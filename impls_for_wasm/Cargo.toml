@@ -1,0 +1,12 @@
+[package]
+name = "impls_for_wasm"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+my_core = { workspace = true }
+
+derive_more = { workspace = true }
+getrandom = { workspace = true }
+uuid = { workspace = true }
+serde = { workspace = true }

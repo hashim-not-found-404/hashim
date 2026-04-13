@@ -1,0 +1,16 @@
+[package]
+name = "db_client_cockroach"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+server_logic = { workspace = true }
+impls_for_wasm = { workspace = true }
+my_core = { workspace = true }
+test_suite = { workspace = true }
+
+tokio-postgres = { workspace = true }
+deadpool-postgres = { workspace = true }
+tokio = { workspace = true }
+uuid = { workspace = true }
+serde_json = { workspace = true }

@@ -1,0 +1,205 @@
+/*
+1- the background is black
+2- all the botton and label and input text have the same text color
+3- the input place holder have text color less degree than the label
+4- all the border same size and same color
+5- the hover have higher degry color for the border
+6- the focus have higher degree of color than hover
+7- label and input and secondary botton all have transperent bg color
+8- primary botton have the same color of the border
+*/
+
+:root {
+    /* Dark theme colors */
+    --color-1: #000000;
+    --color-2: #333333;
+    --color-3: #888888;
+    --color-4: #ffffff;
+    --color-5: #880000;
+    --color-6: none;
+
+    /* font size */
+    --font-size-1: 16px;
+    --font-size-2: 8px;
+
+    /* fonts */
+    --font-1: sans-serif;
+
+    /* Spacing */
+    --padding: 12px;
+    --margin: 6px;
+    --radius: 8px;
+    --border-thick: 2px;
+}
+
+body {
+    margin: 0;
+    background-color: var(--color-1);
+    font-family: var(--font-1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+}
+
+/*1 block-name__element-name_modifier-name_modifiers-value */
+/*2 block_name--element_name-modifier_name-modifiers_value */
+/*3 block_name-element_name--modifier_name---modifiers_value */
+/*4 BlockName-ElementName--ModifierName---ModifiersValue */
+/*5 BlockName-ElementName--ModifierName--ModifiersValue */
+.element-1 {
+    outline: none;
+    background-color: var(--color-2);
+    border-color: var(--color-2);
+    color: var(--color-4);
+    border-radius: var(--radius);
+    border-width: var(--border-thick);
+    border-style: solid;
+}
+
+.element-2 {
+    outline: none;
+    background-color: var(--color-6);
+    border-color: var(--color-2);
+    color: var(--color-4);
+    border-radius: var(--radius);
+    border-width: var(--border-thick);
+    border-style: solid;
+}
+
+.element-3 {
+    outline: none;
+    background-color: var(--color-6);
+    /*border-color: var(--color-6);*/
+    color: var(--color-4);
+    /*border-radius: var(--radius);*/
+    /*border-width: var(--border-thick);*/
+    border-style: none;
+}
+
+.hoverable:hover {
+    border-color: var(--color-3);
+}
+
+.focusable:focus {
+    border-color: var(--color-4);
+}
+
+.clickable:active {
+    border-color: var(--color-4);
+}
+
+.clickable-2:active {
+    background-color: var(--color-2);
+}
+
+.typeable::placeholder {
+    color: var(--color-2);
+}
+
+/*
+.signin-form {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 360px;
+}
+
+.error-label {
+    width: 100%;
+    font-size: 8px;
+    padding: 6px;
+    margin: 0px;
+    box-sizing: border-box;
+
+    color: var(--color-5);
+    background: var(--color-1);
+}
+
+.password-form {
+    width: 100%;
+    font-size: var(--font-size-1);
+    margin: var(--margin);
+    box-sizing: border-box;
+
+    background: var(--color-1);
+}
+
+.input {
+    width: 100%;
+    font-size: var(--font-size-1);
+    padding: var(--padding);
+    margin: var(--margin);
+    box-sizing: border-box;
+}
+
+.password-input {
+    outline: none;
+    color: var(--color-4);
+    background: none;
+    border-color: none;
+    border-radius: none;
+    border-width: none;
+    border-style: none;
+}
+
+.input {
+    background: var(--color-1);
+}
+
+.primary-btn {
+    width: 100%;
+    font-size: var(--font-size-1);
+    padding: var(--padding);
+    margin: var(--margin);
+    box-sizing: border-box;
+}
+
+.primary-btn {
+    background: var(--color-2);
+}
+
+.secondary-btn {
+    width: 100%;
+    font-size: var(--font-size-1);
+    padding: var(--padding);
+    margin: var(--margin);
+    box-sizing: border-box;
+}
+
+.secondary-btn {
+    background: var(--color-1);
+}
+
+.password-input::placeholder,
+.input::placeholder {
+    color: var(--color-3);
+}
+
+.password-form,
+.input,
+.primary-btn,
+.secondary-btn {
+    outline: none;
+    color: var(--color-4);
+    border-color: var(--color-2);
+    border-radius: var(--radius);
+    border-width: var(--border-thick);
+    border-style: solid;
+}
+
+.password-form:hover,
+.input:hover,
+.primary-btn:hover,
+.secondary-btn:hover {
+    border-color: var(--color-3);
+}
+
+.password-form:focus,
+.input:focus,
+.primary-btn:focus,
+.secondary-btn:focus {
+    border-color: var(--color-4);
+}
+*/

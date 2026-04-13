@@ -1,0 +1,17 @@
+[package]
+name = "server_logic"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+my_core = { workspace = true }
+impls_for_wasm = { workspace = true }
+test_suite = { workspace = true }
+
+serde = { workspace = true }
+chrono = { workspace = true }
+derive_more = { workspace = true }
+jsonwebtoken = { workspace = true }
+argon2 = { workspace = true }
+uuid = { workspace = true }
+regex = { workspace = true }

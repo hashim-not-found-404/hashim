@@ -1,0 +1,76 @@
+[workspace]
+resolver = "2"
+members = [
+    # "accounting_lib",
+    "accounting_ui",
+    "client_reqwest",
+    "my_core",
+    "db_client_cockroach",
+    "server_actix",
+    "server_logic",
+    "test_suite",
+    "impls_for_wasm",
+    # "accounting_ui_egui",
+]
+
+[workspace.dependencies]
+# my crates
+client_reqwest = {path = "./client_reqwest"}
+my_core = {path = "./my_core"}
+test_suite = {path = "./test_suite"}
+server_logic = {path = "./server_logic"}
+impls_for_wasm = {path = "./impls_for_wasm"}
+db_client_cockroach = {path = "./db_client_cockroach"}
+
+# database
+deadpool-postgres = "0.14.1"
+tokio-postgres = { version = "0.7.16", features = ["with-uuid-1"]}
+
+# ui
+# eframe = "0.33.3"
+dioxus = { version = "0.7.4", features = ["router"] }
+dioxus-logger = "0.7.4"
+
+# web
+actix-web = { version = "4.12.1" , features = ["rustls-0_23"]}
+actix-cors = "0.7.1"
+reqwest = { version = "0.12.28", default-features = false, features = [
+    "rustls-tls",
+    "json",
+    "multipart",
+    "stream",
+] }
+
+# crypto
+rustls = "0.23.35"
+rustls-pemfile = "2.2.0"
+argon2 = "0.5.3"
+jsonwebtoken = { version = "10.2.0", features = ["rust_crypto"] }
+
+# encode decode
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.149"
+
+# threding
+tokio = {version = "1.51.0", features = ["full"]}
+
+# time
+chrono = "0.4.42"
+
+# macro
+syn = "2.0.114"
+proc-macro2 = "1.0.105"
+quote = "1.0.43"
+
+# random
+getrandom = { version = "0.4.2", features = ["wasm_js"] }
+uuid ={version = "1.23.0",features = ["v7","serde","js"]}
+
+# regex
+regex = "1.12.2"
+
+paste = "1.0.15"
+derive_more ={version = "2.0.1",features = ["full"]}
+
+[profile.dev]
+opt-level = 0

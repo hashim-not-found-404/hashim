@@ -1,0 +1,15 @@
+[package]
+name = "server_actix"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+my_core = { workspace = true }
+server_logic = { workspace = true }
+impls_for_wasm = { workspace = true }
+db_client_cockroach = { workspace = true }
+
+actix-web = { workspace = true }
+actix-cors = { workspace = true }
+rustls = { workspace = true }
+rustls-pemfile = { workspace = true }
