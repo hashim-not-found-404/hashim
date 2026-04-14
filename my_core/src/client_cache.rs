@@ -71,3 +71,11 @@
 
 // i think i need to seperate the state less check from the state full check from storing
 // i think that because i think that will help for scalling the code base and help for adding cache
+
+// what if i change the model to be (CQRS maybe)
+// - state less check
+// - state less operation
+// - read state
+// - state full check
+// - state full operation
+// - write state
