@@ -65,11 +65,20 @@ pub mod business_layer {
     }
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
-    pub struct Input<T> {
+    pub enum Paths {
+        SignUp(sign_up::Input),
+        SignIn(sign_in::Input),
+        GetAllUserRoles(get_all_user_roles::Input),
+        CreateCompany(create_company::Input),
+        CreateCompanyBranch(create_company_branch::Input),
+    }
+
+    #[derive(Debug, Deserialize, Serialize, Clone)]
+    pub struct Input {
         pub transaction_number: u64,
         pub jwt: String,
         pub submit: OperationMode,
-        pub content: T,
+        pub content: Paths,
     }
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -91,8 +100,6 @@ pub mod business_layer {
 
 pub mod sign_up {
     use super::*;
-
-    pub const PATH: &str = "/sign_up";
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Input {
@@ -122,8 +129,6 @@ pub mod sign_up {
 
 pub mod sign_in {
     use super::*;
-
-    pub const PATH: &str = "/sign_in";
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Input {
@@ -157,8 +162,6 @@ pub mod sign_in {
 
 pub mod get_all_user_roles {
     use super::*;
-
-    pub const PATH: &str = "/get_all_user_roles";
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Input;
 
@@ -175,8 +178,6 @@ pub mod get_all_user_roles {
 
 pub mod create_company {
     use super::*;
-
-    pub const PATH: &str = "/create_company";
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Input {
@@ -195,8 +196,6 @@ pub mod create_company {
 
 pub mod create_company_branch {
     use super::*;
-
-    pub const PATH: &str = "/create_company_branch";
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Input {

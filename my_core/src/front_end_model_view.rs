@@ -95,7 +95,7 @@ where
         }
     }
 
-    fn generate_txn<T>(&self, content: T) -> business_layer::Input<T> {
+    fn generate_txn(&self, content: business_layer::Paths) -> business_layer::Input {
         business_layer::Input {
             transaction_number: TxnNumGen::generate(),
             jwt: self

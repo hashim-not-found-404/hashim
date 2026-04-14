@@ -34,6 +34,9 @@ dioxus-logger = "0.7.4"
 # web
 actix-web = { version = "4.12.1" , features = ["rustls-0_23"]}
 actix-cors = "0.7.1"
+actix-ws = "0.4.0"
+tokio-tungstenite = "0.29.0"
+futures-util = "0.3.32"
 reqwest = { version = "0.12.28", default-features = false, features = [
     "rustls-tls",
     "json",

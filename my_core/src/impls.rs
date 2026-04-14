@@ -184,10 +184,7 @@ where
 {
     type Error = ExternalError;
 
-    async fn sign_up(
-        &self,
-        input: business_layer::Input<sign_up::Input>,
-    ) -> sign_up::Result<Self::Error> {
+    async fn sign_up(&self, input: business_layer::Input) -> sign_up::Result<Self::Error> {
         let mut client = self.database.get_client().await?;
 
         for _ in 0..2_u8 {
@@ -223,10 +220,7 @@ where
         return Ok(Err(business_layer::Error::DataHasBeenChangedByOthers));
     }
 
-    async fn sign_in(
-        &self,
-        input: business_layer::Input<sign_in::Input>,
-    ) -> sign_in::Result<ExternalError> {
+    async fn sign_in(&self, input: business_layer::Input) -> sign_in::Result<ExternalError> {
         let mut client = self.database.get_client().await?;
 
         for _ in 0..2_u8 {
@@ -264,7 +258,7 @@ where
 
     async fn get_all_user_roles(
         &self,
-        input: business_layer::Input<get_all_user_roles::Input>,
+        input: business_layer::Input,
     ) -> business_layer::Result<get_all_user_roles::Ok, get_all_user_roles::Error, Self::Error>
     {
         let mut client = self.database.get_client().await?;
@@ -311,7 +305,7 @@ where
 
     async fn create_company(
         &self,
-        input: business_layer::Input<create_company::Input>,
+        input: business_layer::Input,
     ) -> business_layer::Result<create_company::Ok, create_company::Error, Self::Error> {
         let mut client = self.database.get_client().await?;
 
@@ -357,7 +351,7 @@ where
 
     async fn create_company_branch(
         &self,
-        input: business_layer::Input<create_company_branch::Input>,
+        input: business_layer::Input,
     ) -> business_layer::Result<create_company_branch::Ok, create_company_branch::Error, Self::Error>
     {
         todo!()
@@ -395,21 +389,21 @@ where
 
     async fn sign_up(
         &self,
-        input: business_layer::Input<sign_up::Input>,
+        input: business_layer::Input,
     ) -> business_layer::Result<sign_up::Ok, sign_up::Error, Self::Error> {
         self.state_full_check.sign_up(input).await
     }
 
     async fn sign_in(
         &self,
-        input: business_layer::Input<sign_in::Input>,
+        input: business_layer::Input,
     ) -> business_layer::Result<sign_in::Ok, sign_in::Error, Self::Error> {
         self.state_full_check.sign_in(input).await
     }
 
     async fn get_all_user_roles(
         &self,
-        input: business_layer::Input<get_all_user_roles::Input>,
+        input: business_layer::Input,
     ) -> business_layer::Result<get_all_user_roles::Ok, get_all_user_roles::Error, Self::Error>
     {
         self.state_full_check.get_all_user_roles(input).await
@@ -417,14 +411,14 @@ where
 
     async fn create_company(
         &self,
-        input: business_layer::Input<create_company::Input>,
+        input: business_layer::Input,
     ) -> business_layer::Result<create_company::Ok, create_company::Error, Self::Error> {
         self.state_full_check.create_company(input).await
     }
 
     async fn create_company_branch(
         &self,
-        input: business_layer::Input<create_company_branch::Input>,
+        input: business_layer::Input,
     ) -> business_layer::Result<create_company_branch::Ok, create_company_branch::Error, Self::Error>
     {
         let mut errr = create_company_branch::Error {

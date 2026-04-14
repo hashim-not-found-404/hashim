@@ -115,7 +115,7 @@ macro_rules! generate_api_backend_methods {
     ($path:ident) => {
         async fn $path(
             &self,
-            input: business_layer::Input<$path::Input>,
+            input: business_layer::Input,
         ) -> business_layer::Result<$path::Ok, $path::Error, Self::Error>;
     };
 }

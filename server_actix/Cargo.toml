@@ -11,5 +11,7 @@ db_client_cockroach = { workspace = true }
 
 actix-web = { workspace = true }
 actix-cors = { workspace = true }
+actix-ws = { workspace = true }
+futures-util = { workspace = true }
 rustls = { workspace = true }
 rustls-pemfile = { workspace = true }

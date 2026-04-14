@@ -1,6 +1,8 @@
 use actix_cors::Cors;
-use actix_web::{App, HttpResponse, HttpServer, post, web};
+use actix_web::{App, HttpRequest, HttpResponse, HttpServer, post, rt, web};
+use actix_ws::AggregatedMessage;
 use db_client_cockroach::{CockroachClient, CockroachDB};
+use futures_util::StreamExt as _;
 use impls_for_wasm::a1::RowId;
 use my_core::impls::StateLessCheck;
 use my_core::{impls::StateFullCheck, request_response::*, traits::BackendRouts};
@@ -32,8 +34,7 @@ async fn main() {
         App::new()
             .wrap(cors)
             .app_data(actions.clone())
-            .service(service_sign_up)
-            .service(service_sign_in)
+            .route("/ws", web::get().to(ws_handler))
     })
     // .bind_rustls_0_23((HOST, PORT), get_tls_config())
     .bind((HOST, PORT))
@@ -43,27 +44,28 @@ async fn main() {
     .unwrap()
 }
 
-macro_rules! create_route {
-    ($server_route:ident,$route:ident,$route_string:literal) => {
-        #[post($route_string)]
-        async fn $server_route(
-            data: web::Json<business_layer::Input<$route::Input>>,
-            state: web::Data<GG>,
-        ) -> HttpResponse {
-            let result = state.$route(data.into_inner()).await;
-            return HttpResponse::Ok().json(result);
-        }
-    };
-}
+async fn ws_handler(req: HttpRequest, stream: web::Payload) -> HttpResponse {
+    let (res, mut session, stream) = actix_ws::handle(&req, stream).unwrap();
 
-create_route!(service_sign_up, sign_up, "/sign_up");
-create_route!(service_sign_in, sign_in, "/sign_in");
-create_route!(service_create_company, create_company, "/create_company");
-create_route!(
-    service_create_company_branch,
-    create_company_branch,
-    "/create_company_branch"
-);
+    let mut stream = stream
+        .aggregate_continuations()
+        .max_continuation_size(2_usize.pow(16));
+
+    rt::spawn(async move {
+        while let Some(Ok(msg)) = stream.next().await {
+            if let AggregatedMessage::Text(text) = msg {
+                if let Ok(input) = serde_json::from_str::<business_layer::Input>(&text) {
+                    // TODO if sign in or up check jwt
+                    let _ = session.text(serde_json::to_string(&resp).unwrap()).await;
+                } else {
+                    let _ = session.text(format!("Error: {}", e)).await;
+                }
+            }
+        }
+    });
+
+    res
+}
 
 fn get_tls_config() -> rustls::ServerConfig {
     rustls::crypto::aws_lc_rs::default_provider()

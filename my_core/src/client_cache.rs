@@ -79,3 +79,4 @@
 // - state full check
 // - state full operation
 // - write state
+// - send to server if needed
