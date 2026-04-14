@@ -128,3 +128,32 @@ pub trait BackendRouts {
     generate_api_backend_methods!(create_company);
     generate_api_backend_methods!(create_company_branch);
 }
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+pub trait DBTransaction {
+    type Error;
+    type RowId: RowId;
+    type HashedPassword: HashedPassword;
+
+    async fn commit_transaction(self) -> Result<Result<(), domain_errors::AtCommit>, Self::Error>;
+    async fn rollback_transaction(self) -> Result<(), Self::Error>;
+
+    async fn is_new_user(&mut self, user_id: &String) -> Result<bool, Self::Error>;
+}
+
+pub trait ReadState {
+    async fn sign_up(&self) {}
+}
+
+pub trait WriteState {
+    async fn sign_up(&self) {}
+}
+
+pub trait ServerLessOperation {
+    async fn sign_up(&self) {}
+}
+
+pub trait SyncOperation {
+    async fn sign_up(&self) {}
+}

@@ -436,3 +436,50 @@ where
         self.state_full_check.create_company_branch(input).await
     }
 }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+fn server_full_operation_sign_up(input: business_layer::Input) {
+    let user_id = Id::generate();
+    let hashed_password = Authentication::sign_up(input.password);
+}
+
+pub struct Operations<Read, Write, ServerLess, Sync>
+where
+    Read: ReadState,
+    Write: WriteState,
+    ServerLess: ServerLessOperation,
+    Sync: SyncOperation,
+{
+    read: Read,
+    write: Write,
+    server_less_operation: ServerLess,
+    sync: Sync,
+}
+
+impl<Read, Write, ServerLess, Sync> BackendRouts for Operations<Read, Write, ServerLess, Sync>
+where
+    Read: ReadState,
+    Write: WriteState,
+    ServerLess: ServerLessOperation,
+    Sync: SyncOperation,
+{
+    async fn sign_up(
+        &self,
+        input: business_layer::Input,
+    ) -> business_layer::Result<sign_up::Ok, sign_up::Error, Self::Error> {
+        // - state less check
+        // - state less operation
+        // - server less operation // dont need data and dont need trust
+        // - read state
+        // - state full check
+        // - state full operation
+        // - server full operation // dont need data and need trust
+        // - write state
+        // - sync if needed
+        self.read.sign_up();
+        server_full_operation_sign_up(input);
+        self.write.sign_up();
+        self.sync.sign_up()
+    }
+}

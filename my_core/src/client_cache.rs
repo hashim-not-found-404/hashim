@@ -75,8 +75,10 @@
 // what if i change the model to be (CQRS maybe)
 // - state less check
 // - state less operation
+// - server less operation // dont need data and dont need trust
 // - read state
 // - state full check
 // - state full operation
+// - server full operation // dont need data and need trust
 // - write state
-// - send to server if needed
+// - sync if needed
