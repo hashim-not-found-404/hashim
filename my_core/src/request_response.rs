@@ -65,7 +65,7 @@ pub mod business_layer {
     }
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
-    pub enum Paths {
+    pub enum Content {
         SignUp(sign_up::Input),
         SignIn(sign_in::Input),
         GetAllUserRoles(get_all_user_roles::Input),
@@ -74,11 +74,16 @@ pub mod business_layer {
     }
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
-    pub struct Input {
-        pub transaction_number: u64,
-        pub jwt: String,
+    pub struct Header {
+        pub nonce: u64,
         pub submit: OperationMode,
-        pub content: Paths,
+    }
+
+    #[derive(Debug, Deserialize, Serialize, Clone)]
+    pub struct Input {
+        pub signature: String,
+        pub header: Header,
+        pub content: Content,
     }
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -109,9 +114,7 @@ pub mod sign_up {
     }
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
-    pub struct Ok {
-        pub jwt: String,
-    }
+    pub struct Ok;
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub enum UserIdError {

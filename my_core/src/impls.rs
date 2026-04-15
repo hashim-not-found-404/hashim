@@ -1,485 +1,512 @@
 use crate::{db_types, request_response::*, traits::*};
 use std::marker::PhantomData;
 
-pub struct StateFullCheck<DB, Cli, Jwt, Authentication, F, Id>
-where
-    DB: Database<Client = Cli>,
-    Cli: DBClient,
-    for<'a> Cli::Txn<'a>: DBTransaction<RowId = Id, HashedPassword = Authentication>,
-    Jwt: JWT<UserId = Id>,
-    Authentication: HashedPassword,
-    F: Functions,
-    Id: RowId,
-{
-    database: DB,
-    client: PhantomData<Cli>,
-    jwt: Jwt,
-    authentication: PhantomData<Authentication>,
-    functions: PhantomData<F>,
-    rowid: PhantomData<Id>,
-}
+// pub struct StateFullCheck<DB, Cli, Jwt, Authentication, F, Id>
+// where
+//     DB: Database<Client = Cli>,
+//     Cli: DBClient,
+//     for<'a> Cli::Txn<'a>: DBTransaction<RowId = Id, HashedPassword = Authentication>,
+//     Jwt: JWT<UserId = Id>,
+//     Authentication: HashedPassword,
+//     F: Functions,
+//     Id: RowId,
+// {
+//     database: DB,
+//     client: PhantomData<Cli>,
+//     jwt: Jwt,
+//     authentication: PhantomData<Authentication>,
+//     functions: PhantomData<F>,
+//     rowid: PhantomData<Id>,
+// }
 
-impl<DB, Cli, Jwt, Authentication, F, Id, ExternalError>
-    StateFullCheck<DB, Cli, Jwt, Authentication, F, Id>
-where
-    DB: Database<Error = ExternalError, Client = Cli>,
-    Cli: DBClient<Error = ExternalError>,
-    for<'a> Cli::Txn<'a>:
-        DBTransaction<Error = ExternalError, RowId = Id, HashedPassword = Authentication>,
-    Jwt: JWT<UserId = Id>,
-    Authentication: HashedPassword,
-    F: Functions,
-    Id: RowId,
-{
-    pub fn new(database: DB, jwt: Jwt) -> Self {
-        Self {
-            database,
-            client: PhantomData::<Cli>,
-            jwt,
-            authentication: PhantomData::<Authentication>,
-            functions: PhantomData::<F>,
-            rowid: PhantomData::<Id>,
-        }
-    }
+// impl<DB, Cli, Jwt, Authentication, F, Id, ExternalError>
+//     StateFullCheck<DB, Cli, Jwt, Authentication, F, Id>
+// where
+//     DB: Database<Error = ExternalError, Client = Cli>,
+//     Cli: DBClient<Error = ExternalError>,
+//     for<'a> Cli::Txn<'a>:
+//         DBTransaction<Error = ExternalError, RowId = Id, HashedPassword = Authentication>,
+//     Jwt: JWT<UserId = Id>,
+//     Authentication: HashedPassword,
+//     F: Functions,
+//     Id: RowId,
+// {
+//     pub fn new(database: DB, jwt: Jwt) -> Self {
+//         Self {
+//             database,
+//             client: PhantomData::<Cli>,
+//             jwt,
+//             authentication: PhantomData::<Authentication>,
+//             functions: PhantomData::<F>,
+//             rowid: PhantomData::<Id>,
+//         }
+//     }
 
-    async fn sign_up(
-        &self,
-        txn: &mut Cli::Txn<'_>,
-        input: sign_up::Input,
-    ) -> sign_up::Result<ExternalError> {
-        let user_id = Id::generate();
-        let hashed_password = Authentication::sign_up(input.password);
+//     async fn sign_up(
+//         &self,
+//         txn: &mut Cli::Txn<'_>,
+//         input: sign_up::Input,
+//     ) -> sign_up::Result<ExternalError> {
+//         let user_id = Id::generate();
+//         let hashed_password = Authentication::sign_up(input.password);
 
-        let mut errr = sign_up::Error {
-            user_id: None,
-            name: None,
-        };
-        let a = txn
-            .insert_user(&user_id, &input.name, &input.user_id, &hashed_password)
-            .await?;
+//         let mut errr = sign_up::Error {
+//             user_id: None,
+//             name: None,
+//         };
+//         let a = txn
+//             .insert_user(&user_id, &input.name, &input.user_id, &hashed_password)
+//             .await?;
 
-        match a {
-            Ok(_) => {
-                return Ok(Ok(sign_up::Ok {
-                    jwt: self.jwt.sign(&user_id).into(),
-                }));
-            }
-            Err(e) => match e {
-                domain_errors::AtInsertUserId::DuplicatedUserId => {
-                    errr.user_id = Some(sign_up::UserIdError::Duplicated);
-                    return Ok(Err(business_layer::Error::InvalidInput(errr)));
-                }
-            },
-        }
-    }
+//         match a {
+//             Ok(_) => {
+//                 return Ok(Ok(sign_up::Ok {
+//                     jwt: self.jwt.sign(&user_id).into(),
+//                 }));
+//             }
+//             Err(e) => match e {
+//                 domain_errors::AtInsertUserId::DuplicatedUserId => {
+//                     errr.user_id = Some(sign_up::UserIdError::Duplicated);
+//                     return Ok(Err(business_layer::Error::InvalidInput(errr)));
+//                 }
+//             },
+//         }
+//     }
 
-    async fn sign_in(
-        &self,
-        txn: &mut Cli::Txn<'_>,
-        input: sign_in::Input,
-    ) -> sign_in::Result<ExternalError> {
-        let (user_rowid, password_hash) = match txn
-            .select_user_rowid_and_password_hash(&input.user_id)
-            .await?
-        {
-            Some(p) => p,
-            None => {
-                return Ok(Err(business_layer::Error::InvalidInput(sign_in::Error {
-                    user_id: Some(sign_in::UserIdError::NotExist),
-                    password: None,
-                })));
-            }
-        };
+//     async fn sign_in(
+//         &self,
+//         txn: &mut Cli::Txn<'_>,
+//         input: sign_in::Input,
+//     ) -> sign_in::Result<ExternalError> {
+//         let (user_rowid, password_hash) = match txn
+//             .select_user_rowid_and_password_hash(&input.user_id)
+//             .await?
+//         {
+//             Some(p) => p,
+//             None => {
+//                 return Ok(Err(business_layer::Error::InvalidInput(sign_in::Error {
+//                     user_id: Some(sign_in::UserIdError::NotExist),
+//                     password: None,
+//                 })));
+//             }
+//         };
 
-        match Authentication::sign_in(input.password, password_hash) {
-            true => {
-                return Ok(Ok(sign_in::Ok {
-                    jwt: self.jwt.sign(&user_rowid).into(),
-                }));
-            }
-            false => {
-                return Ok(Err(business_layer::Error::InvalidInput(sign_in::Error {
-                    user_id: None,
-                    password: Some(sign_in::PasswordError::WrongPassword),
-                })));
-            }
-        };
-    }
+//         match Authentication::sign_in(input.password, password_hash) {
+//             true => {
+//                 return Ok(Ok(sign_in::Ok {
+//                     jwt: self.jwt.sign(&user_rowid).into(),
+//                 }));
+//             }
+//             false => {
+//                 return Ok(Err(business_layer::Error::InvalidInput(sign_in::Error {
+//                     user_id: None,
+//                     password: Some(sign_in::PasswordError::WrongPassword),
+//                 })));
+//             }
+//         };
+//     }
 
-    async fn get_all_user_roles(
-        &self,
-        txn: &mut Cli::Txn<'_>,
-        input: get_all_user_roles::Input,
-        user_id: &Id,
-    ) -> get_all_user_roles::Result<ExternalError> {
-        let r = txn
-            .select_all_companies_and_branches_for_the_user(user_id)
-            .await?;
-        todo!()
-    }
+//     async fn get_all_user_roles(
+//         &self,
+//         txn: &mut Cli::Txn<'_>,
+//         input: get_all_user_roles::Input,
+//         user_id: &Id,
+//     ) -> get_all_user_roles::Result<ExternalError> {
+//         let r = txn
+//             .select_all_companies_and_branches_for_the_user(user_id)
+//             .await?;
+//         todo!()
+//     }
 
-    async fn create_company(
-        &self,
-        txn: &mut Cli::Txn<'_>,
-        input: create_company::Input,
-        user_id: &Id,
-    ) -> create_company::Result<ExternalError> {
-        let row_id = Id::generate();
+//     async fn create_company(
+//         &self,
+//         txn: &mut Cli::Txn<'_>,
+//         input: create_company::Input,
+//         user_id: &Id,
+//     ) -> create_company::Result<ExternalError> {
+//         let row_id = Id::generate();
 
-        txn.insert_company(&row_id, &input.name, &input.currency)
-            .await?;
+//         txn.insert_company(&row_id, &input.name, &input.currency)
+//             .await?;
 
-        txn.insert_role(
-            &row_id,
-            &custom_types::Role::Manager,
-            &db_types::DataGroup::Company(row_id.clone()),
-            user_id,
-        )
-        .await?;
+//         txn.insert_role(
+//             &row_id,
+//             &custom_types::Role::Manager,
+//             &db_types::DataGroup::Company(row_id.clone()),
+//             user_id,
+//         )
+//         .await?;
 
-        Ok(Ok(create_company::Ok))
-    }
+//         Ok(Ok(create_company::Ok))
+//     }
 
-    async fn create_company_branch(
-        &self,
-        txn: &mut Cli::Txn<'_>,
-        input: create_company_branch::Input,
-        user_id: &Id,
-    ) -> create_company_branch::Result<ExternalError> {
-        let mut errr = create_company_branch::Error {
-            company_belong: None,
-            location: None,
-            name: None,
-        };
+//     async fn create_company_branch(
+//         &self,
+//         txn: &mut Cli::Txn<'_>,
+//         input: create_company_branch::Input,
+//         user_id: &Id,
+//     ) -> create_company_branch::Result<ExternalError> {
+//         let mut errr = create_company_branch::Error {
+//             company_belong: None,
+//             location: None,
+//             name: None,
+//         };
 
-        // TODO check the name if duplicated , check id if not exist
+//         // TODO check the name if duplicated , check id if not exist
 
-        let row_id = Id::generate();
-        // txn.insert_company_branch(&row_id, &a, &data.name, &data.location, &data.currency)
-        //     .await;
+//         let row_id = Id::generate();
+//         // txn.insert_company_branch(&row_id, &a, &data.name, &data.location, &data.currency)
+//         //     .await;
 
-        txn.insert_role(
-            &row_id,
-            &custom_types::Role::Manager,
-            &db_types::DataGroup::Branch(user_id.clone()),
-            user_id,
-        )
-        .await?;
+//         txn.insert_role(
+//             &row_id,
+//             &custom_types::Role::Manager,
+//             &db_types::DataGroup::Branch(user_id.clone()),
+//             user_id,
+//         )
+//         .await?;
 
-        Ok(Ok(create_company_branch::Ok))
-    }
-}
+//         Ok(Ok(create_company_branch::Ok))
+//     }
+// }
 
-impl<DB, Cli, Jwt, Authentication, F, Id, ExternalError> BackendRouts
-    for StateFullCheck<DB, Cli, Jwt, Authentication, F, Id>
-where
-    DB: Database<Error = ExternalError, Client = Cli>,
-    Cli: DBClient<Error = ExternalError>,
-    for<'a> Cli::Txn<'a>:
-        DBTransaction<Error = ExternalError, RowId = Id, HashedPassword = Authentication>,
-    Jwt: JWT<UserId = Id>,
-    Authentication: HashedPassword,
-    F: Functions,
-    Id: RowId,
-{
-    type Error = ExternalError;
+// impl<DB, Cli, Jwt, Authentication, F, Id, ExternalError> BackendRouts
+//     for StateFullCheck<DB, Cli, Jwt, Authentication, F, Id>
+// where
+//     DB: Database<Error = ExternalError, Client = Cli>,
+//     Cli: DBClient<Error = ExternalError>,
+//     for<'a> Cli::Txn<'a>:
+//         DBTransaction<Error = ExternalError, RowId = Id, HashedPassword = Authentication>,
+//     Jwt: JWT<UserId = Id>,
+//     Authentication: HashedPassword,
+//     F: Functions,
+//     Id: RowId,
+// {
+//     type Error = ExternalError;
 
-    async fn sign_up(&self, input: business_layer::Input) -> sign_up::Result<Self::Error> {
-        let mut client = self.database.get_client().await?;
+//     async fn sign_up(&self, input: business_layer::Input) -> sign_up::Result<Self::Error> {
+//         let mut client = self.database.get_client().await?;
 
-        for _ in 0..2_u8 {
-            let mut txn = client.begin_transaction().await?;
+//         for _ in 0..2_u8 {
+//             let mut txn = client.begin_transaction().await?;
 
-            let is_ok = txn
-                .insert_transaction_if_new(input.transaction_number)
-                .await?;
-            if !is_ok {
-                txn.rollback_transaction().await?;
-                return Ok(Err(business_layer::Error::DuplicateTransaction));
-            }
+//             let is_ok = txn
+//                 .insert_transaction_if_new(input.transaction_number)
+//                 .await?;
+//             if !is_ok {
+//                 txn.rollback_transaction().await?;
+//                 return Ok(Err(business_layer::Error::DuplicateTransaction));
+//             }
 
-            let result = self.sign_up(&mut txn, input.content.clone()).await;
-            match result {
-                Ok(o) => {
-                    if input.submit != business_layer::OperationMode::SubmitToServer {
-                        txn.rollback_transaction().await?;
-                        return Ok(o);
-                    }
-                    match txn.commit_transaction().await? {
-                        Ok(_) => return Ok(o),
-                        Err(domain_errors::AtCommit::DataIsChanged) => continue,
-                    }
-                }
-                Err(e) => {
-                    txn.rollback_transaction().await?;
-                    return Err(e);
-                }
-            }
-        }
+//             let result = self.sign_up(&mut txn, input.content.clone()).await;
+//             match result {
+//                 Ok(o) => {
+//                     if input.submit != business_layer::OperationMode::SubmitToServer {
+//                         txn.rollback_transaction().await?;
+//                         return Ok(o);
+//                     }
+//                     match txn.commit_transaction().await? {
+//                         Ok(_) => return Ok(o),
+//                         Err(domain_errors::AtCommit::DataIsChanged) => continue,
+//                     }
+//                 }
+//                 Err(e) => {
+//                     txn.rollback_transaction().await?;
+//                     return Err(e);
+//                 }
+//             }
+//         }
 
-        return Ok(Err(business_layer::Error::DataHasBeenChangedByOthers));
-    }
+//         return Ok(Err(business_layer::Error::DataHasBeenChangedByOthers));
+//     }
 
-    async fn sign_in(&self, input: business_layer::Input) -> sign_in::Result<ExternalError> {
-        let mut client = self.database.get_client().await?;
+//     async fn sign_in(&self, input: business_layer::Input) -> sign_in::Result<ExternalError> {
+//         let mut client = self.database.get_client().await?;
 
-        for _ in 0..2_u8 {
-            let mut txn = client.begin_transaction().await?;
+//         for _ in 0..2_u8 {
+//             let mut txn = client.begin_transaction().await?;
 
-            let is_ok = txn
-                .insert_transaction_if_new(input.transaction_number)
-                .await?;
-            if !is_ok {
-                txn.rollback_transaction().await?;
-                return Ok(Err(business_layer::Error::DuplicateTransaction));
-            }
+//             let is_ok = txn
+//                 .insert_transaction_if_new(input.transaction_number)
+//                 .await?;
+//             if !is_ok {
+//                 txn.rollback_transaction().await?;
+//                 return Ok(Err(business_layer::Error::DuplicateTransaction));
+//             }
 
-            let result = self.sign_in(&mut txn, input.content.clone()).await;
-            match result {
-                Ok(o) => {
-                    if input.submit != business_layer::OperationMode::SubmitToServer {
-                        txn.rollback_transaction().await?;
-                        return Ok(o);
-                    }
-                    match txn.commit_transaction().await? {
-                        Ok(_) => return Ok(o),
-                        Err(domain_errors::AtCommit::DataIsChanged) => continue,
-                    }
-                }
-                Err(e) => {
-                    txn.rollback_transaction().await?;
-                    return Err(e);
-                }
-            }
-        }
+//             let result = self.sign_in(&mut txn, input.content.clone()).await;
+//             match result {
+//                 Ok(o) => {
+//                     if input.submit != business_layer::OperationMode::SubmitToServer {
+//                         txn.rollback_transaction().await?;
+//                         return Ok(o);
+//                     }
+//                     match txn.commit_transaction().await? {
+//                         Ok(_) => return Ok(o),
+//                         Err(domain_errors::AtCommit::DataIsChanged) => continue,
+//                     }
+//                 }
+//                 Err(e) => {
+//                     txn.rollback_transaction().await?;
+//                     return Err(e);
+//                 }
+//             }
+//         }
 
-        return Ok(Err(business_layer::Error::DataHasBeenChangedByOthers));
-    }
+//         return Ok(Err(business_layer::Error::DataHasBeenChangedByOthers));
+//     }
 
-    async fn get_all_user_roles(
-        &self,
-        input: business_layer::Input,
-    ) -> business_layer::Result<get_all_user_roles::Ok, get_all_user_roles::Error, Self::Error>
-    {
-        let mut client = self.database.get_client().await?;
+//     async fn get_all_user_roles(
+//         &self,
+//         input: business_layer::Input,
+//     ) -> business_layer::Result<get_all_user_roles::Ok, get_all_user_roles::Error, Self::Error>
+//     {
+//         let mut client = self.database.get_client().await?;
 
-        for _ in 0..2_u8 {
-            let mut txn = client.begin_transaction().await?;
+//         for _ in 0..2_u8 {
+//             let mut txn = client.begin_transaction().await?;
 
-            let is_ok = txn
-                .insert_transaction_if_new(input.transaction_number)
-                .await?;
-            if !is_ok {
-                txn.rollback_transaction().await?;
-                return Ok(Err(business_layer::Error::DuplicateTransaction));
-            }
+//             let is_ok = txn
+//                 .insert_transaction_if_new(input.transaction_number)
+//                 .await?;
+//             if !is_ok {
+//                 txn.rollback_transaction().await?;
+//                 return Ok(Err(business_layer::Error::DuplicateTransaction));
+//             }
 
-            let id = match self.jwt.validate(input.jwt.clone().into()) {
-                Ok(a) => a,
-                Err(_) => return Ok(Err(business_layer::Error::InvalidJWT)),
-            };
-            let result = self
-                .get_all_user_roles(&mut txn, input.content.clone(), &id)
-                .await;
+//             let id = match self.jwt.validate(input.jwt.clone().into()) {
+//                 Ok(a) => a,
+//                 Err(_) => return Ok(Err(business_layer::Error::InvalidJWT)),
+//             };
+//             let result = self
+//                 .get_all_user_roles(&mut txn, input.content.clone(), &id)
+//                 .await;
 
-            match result {
-                Ok(o) => {
-                    if input.submit != business_layer::OperationMode::SubmitToServer {
-                        txn.rollback_transaction().await?;
-                        return Ok(o);
-                    }
-                    match txn.commit_transaction().await? {
-                        Ok(_) => return Ok(o),
-                        Err(domain_errors::AtCommit::DataIsChanged) => continue,
-                    }
-                }
-                Err(e) => {
-                    txn.rollback_transaction().await?;
-                    return Err(e);
-                }
-            }
-        }
+//             match result {
+//                 Ok(o) => {
+//                     if input.submit != business_layer::OperationMode::SubmitToServer {
+//                         txn.rollback_transaction().await?;
+//                         return Ok(o);
+//                     }
+//                     match txn.commit_transaction().await? {
+//                         Ok(_) => return Ok(o),
+//                         Err(domain_errors::AtCommit::DataIsChanged) => continue,
+//                     }
+//                 }
+//                 Err(e) => {
+//                     txn.rollback_transaction().await?;
+//                     return Err(e);
+//                 }
+//             }
+//         }
 
-        return Ok(Err(business_layer::Error::DataHasBeenChangedByOthers));
-    }
+//         return Ok(Err(business_layer::Error::DataHasBeenChangedByOthers));
+//     }
 
-    async fn create_company(
-        &self,
-        input: business_layer::Input,
-    ) -> business_layer::Result<create_company::Ok, create_company::Error, Self::Error> {
-        let mut client = self.database.get_client().await?;
+//     async fn create_company(
+//         &self,
+//         input: business_layer::Input,
+//     ) -> business_layer::Result<create_company::Ok, create_company::Error, Self::Error> {
+//         let mut client = self.database.get_client().await?;
 
-        for _ in 0..2_u8 {
-            let mut txn = client.begin_transaction().await?;
+//         for _ in 0..2_u8 {
+//             let mut txn = client.begin_transaction().await?;
 
-            let is_ok = txn
-                .insert_transaction_if_new(input.transaction_number)
-                .await?;
-            if !is_ok {
-                txn.rollback_transaction().await?;
-                return Ok(Err(business_layer::Error::DuplicateTransaction));
-            }
+//             let is_ok = txn
+//                 .insert_transaction_if_new(input.transaction_number)
+//                 .await?;
+//             if !is_ok {
+//                 txn.rollback_transaction().await?;
+//                 return Ok(Err(business_layer::Error::DuplicateTransaction));
+//             }
 
-            let id = match self.jwt.validate(input.jwt.clone().into()) {
-                Ok(a) => a,
-                Err(_) => return Ok(Err(business_layer::Error::InvalidJWT)),
-            };
-            let result = self
-                .create_company(&mut txn, input.content.clone(), &id)
-                .await;
+//             let id = match self.jwt.validate(input.jwt.clone().into()) {
+//                 Ok(a) => a,
+//                 Err(_) => return Ok(Err(business_layer::Error::InvalidJWT)),
+//             };
+//             let result = self
+//                 .create_company(&mut txn, input.content.clone(), &id)
+//                 .await;
 
-            match result {
-                Ok(o) => {
-                    if input.submit != business_layer::OperationMode::SubmitToServer {
-                        txn.rollback_transaction().await?;
-                        return Ok(o);
-                    }
-                    match txn.commit_transaction().await? {
-                        Ok(_) => return Ok(o),
-                        Err(domain_errors::AtCommit::DataIsChanged) => continue,
-                    }
-                }
-                Err(e) => {
-                    txn.rollback_transaction().await?;
-                    return Err(e);
-                }
-            }
-        }
+//             match result {
+//                 Ok(o) => {
+//                     if input.submit != business_layer::OperationMode::SubmitToServer {
+//                         txn.rollback_transaction().await?;
+//                         return Ok(o);
+//                     }
+//                     match txn.commit_transaction().await? {
+//                         Ok(_) => return Ok(o),
+//                         Err(domain_errors::AtCommit::DataIsChanged) => continue,
+//                     }
+//                 }
+//                 Err(e) => {
+//                     txn.rollback_transaction().await?;
+//                     return Err(e);
+//                 }
+//             }
+//         }
 
-        return Ok(Err(business_layer::Error::DataHasBeenChangedByOthers));
-    }
+//         return Ok(Err(business_layer::Error::DataHasBeenChangedByOthers));
+//     }
 
-    async fn create_company_branch(
-        &self,
-        input: business_layer::Input,
-    ) -> business_layer::Result<create_company_branch::Ok, create_company_branch::Error, Self::Error>
-    {
-        todo!()
-    }
-}
+//     async fn create_company_branch(
+//         &self,
+//         input: business_layer::Input,
+//     ) -> business_layer::Result<create_company_branch::Ok, create_company_branch::Error, Self::Error>
+//     {
+//         todo!()
+//     }
+// }
 
-pub struct StateLessCheck<SFC, Id>
-where
-    SFC: BackendRouts,
-    Id: RowId,
-{
-    state_full_check: SFC,
-    rowid: PhantomData<Id>,
-}
+// pub struct StateLessCheck<SFC, Id>
+// where
+//     SFC: BackendRouts,
+//     Id: RowId,
+// {
+//     state_full_check: SFC,
+//     rowid: PhantomData<Id>,
+// }
 
-impl<SFC, Id> StateLessCheck<SFC, Id>
-where
-    SFC: BackendRouts,
-    Id: RowId,
-{
-    pub fn new(state_full_check: SFC) -> Self {
-        Self {
-            state_full_check,
-            rowid: PhantomData::<Id>,
-        }
-    }
-}
+// impl<SFC, Id> StateLessCheck<SFC, Id>
+// where
+//     SFC: BackendRouts,
+//     Id: RowId,
+// {
+//     pub fn new(state_full_check: SFC) -> Self {
+//         Self {
+//             state_full_check,
+//             rowid: PhantomData::<Id>,
+//         }
+//     }
+// }
 
-impl<SFC, Id> BackendRouts for StateLessCheck<SFC, Id>
-where
-    SFC: BackendRouts,
-    Id: RowId,
-{
-    type Error = SFC::Error;
+// impl<SFC, Id> BackendRouts for StateLessCheck<SFC, Id>
+// where
+//     SFC: BackendRouts,
+//     Id: RowId,
+// {
+//     type Error = SFC::Error;
 
-    async fn sign_up(
-        &self,
-        input: business_layer::Input,
-    ) -> business_layer::Result<sign_up::Ok, sign_up::Error, Self::Error> {
-        self.state_full_check.sign_up(input).await
-    }
+//     async fn sign_up(
+//         &self,
+//         input: business_layer::Input,
+//     ) -> business_layer::Result<sign_up::Ok, sign_up::Error, Self::Error> {
+//         self.state_full_check.sign_up(input).await
+//     }
 
-    async fn sign_in(
-        &self,
-        input: business_layer::Input,
-    ) -> business_layer::Result<sign_in::Ok, sign_in::Error, Self::Error> {
-        self.state_full_check.sign_in(input).await
-    }
+//     async fn sign_in(
+//         &self,
+//         input: business_layer::Input,
+//     ) -> business_layer::Result<sign_in::Ok, sign_in::Error, Self::Error> {
+//         self.state_full_check.sign_in(input).await
+//     }
 
-    async fn get_all_user_roles(
-        &self,
-        input: business_layer::Input,
-    ) -> business_layer::Result<get_all_user_roles::Ok, get_all_user_roles::Error, Self::Error>
-    {
-        self.state_full_check.get_all_user_roles(input).await
-    }
+//     async fn get_all_user_roles(
+//         &self,
+//         input: business_layer::Input,
+//     ) -> business_layer::Result<get_all_user_roles::Ok, get_all_user_roles::Error, Self::Error>
+//     {
+//         self.state_full_check.get_all_user_roles(input).await
+//     }
 
-    async fn create_company(
-        &self,
-        input: business_layer::Input,
-    ) -> business_layer::Result<create_company::Ok, create_company::Error, Self::Error> {
-        self.state_full_check.create_company(input).await
-    }
+//     async fn create_company(
+//         &self,
+//         input: business_layer::Input,
+//     ) -> business_layer::Result<create_company::Ok, create_company::Error, Self::Error> {
+//         self.state_full_check.create_company(input).await
+//     }
 
-    async fn create_company_branch(
-        &self,
-        input: business_layer::Input,
-    ) -> business_layer::Result<create_company_branch::Ok, create_company_branch::Error, Self::Error>
-    {
-        let mut errr = create_company_branch::Error {
-            company_belong: None,
-            location: None,
-            name: None,
-        };
+//     async fn create_company_branch(
+//         &self,
+//         input: business_layer::Input,
+//     ) -> business_layer::Result<create_company_branch::Ok, create_company_branch::Error, Self::Error>
+//     {
+//         let mut errr = create_company_branch::Error {
+//             company_belong: None,
+//             location: None,
+//             name: None,
+//         };
 
-        let a = Id::try_from(input.content.company_belong.clone());
-        if a.is_err() {
-            errr.company_belong = Some(create_company_branch::CompanyError::IdInWrongFormat);
-        }
+//         let a = Id::try_from(input.content.company_belong.clone());
+//         if a.is_err() {
+//             errr.company_belong = Some(create_company_branch::CompanyError::IdInWrongFormat);
+//         }
 
-        // TODO: check location if correct
-        self.state_full_check.create_company_branch(input).await
-    }
-}
+//         // TODO: check location if correct
+//         self.state_full_check.create_company_branch(input).await
+//     }
+// }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-fn server_full_operation_sign_up(input: business_layer::Input) {
-    let user_id = Id::generate();
-    let hashed_password = Authentication::sign_up(input.password);
+async fn client_side_sign_up<BR>(
+    backend_routs: &BR,
+    mut content: sign_up::Input,
+    header: business_layer::Header,
+) where
+    BR: BackendRouts,
+{
+    backend_routs
+        .sign_up(business_layer::Input {
+            signature: String::new(),
+            header,
+            content: business_layer::Content::SignUp(content),
+        })
+        .await;
 }
 
-pub struct Operations<Read, Write, ServerLess, Sync>
+async fn server_side_sign_up<ExternalError, SSH, Id, Authentication, Cli>(
+    txn: &mut Cli::Txn<'_>,
+    content: sign_up::Input,
+    header: business_layer::Header,
+) -> sign_up::Result<ExternalError>
 where
-    Read: ReadState,
-    Write: WriteState,
-    ServerLess: ServerLessOperation,
-    Sync: SyncOperation,
+    SSH: KeyPair,
+    Id: RowId,
+    Authentication: HashedPassword,
+    Cli: DBClient,
+    for<'a> Cli::Txn<'a>:
+        DBTransaction<Error = ExternalError, RowId = Id, HashedPassword = Authentication>,
 {
-    read: Read,
-    write: Write,
-    server_less_operation: ServerLess,
-    sync: Sync,
-}
+    let hashed_password = Authentication::sign_up(content.password);
+    let row_id = Id::generate();
 
-impl<Read, Write, ServerLess, Sync> BackendRouts for Operations<Read, Write, ServerLess, Sync>
-where
-    Read: ReadState,
-    Write: WriteState,
-    ServerLess: ServerLessOperation,
-    Sync: SyncOperation,
-{
-    async fn sign_up(
-        &self,
-        input: business_layer::Input,
-    ) -> business_layer::Result<sign_up::Ok, sign_up::Error, Self::Error> {
-        // - state less check
-        // - state less operation
-        // - server less operation // dont need data and dont need trust
-        // - read state
-        // - state full check
-        // - state full operation
-        // - server full operation // dont need data and need trust
-        // - write state
-        // - sync if needed
-        self.read.sign_up();
-        server_full_operation_sign_up(input);
-        self.write.sign_up();
-        self.sync.sign_up()
+    let mut errors = sign_up::Error {
+        name: None,
+        user_id: None,
+    };
+
+    let is_new_user = txn.read_sign_up(content.user_id.clone()).await?;
+    if !is_new_user {
+        errors.user_id = Some(sign_up::UserIdError::Duplicated);
+        return Ok(Err(business_layer::Error::InvalidInput(errors)));
     }
+
+    txn.write_sign_up(&row_id, content.user_id, hashed_password, content.name)
+        .await?;
+
+    Ok(Ok(sign_up::Ok))
 }
+
+// async fn client_side_add_ssh<SSH, File, BR>(
+//     backend_routs: &BR,
+//     mut content: sign_up::Input,
+//     header: business_layer::Header,
+// ) where
+//     // SSH: KeyPair,
+//     // File: FileOperation,
+//     BR: BackendRouts,
+// {
+//     // let (privet_key, public_key) = SSH::generate();
+
+//     // File::create(content.user_id.clone(), privet_key.to_string().as_bytes());
+
+//     // content.public_key = public_key.to_string().into_bytes();
+//     backend_routs
+//         .sign_up(business_layer::Input {
+//             signature: String::new(),
+//             header,
+//             content: business_layer::Content::SignUp(content),
+//         })
+//         .await;
+// }

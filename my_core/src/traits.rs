@@ -51,65 +51,65 @@ pub mod domain_errors {
     }
 }
 
-pub trait DBTransaction {
-    type Error;
-    type RowId: RowId;
-    type HashedPassword: HashedPassword;
+// pub trait DBTransaction {
+//     type Error;
+//     type RowId: RowId;
+//     type HashedPassword: HashedPassword;
 
-    async fn commit_transaction(self) -> Result<Result<(), domain_errors::AtCommit>, Self::Error>;
-    async fn rollback_transaction(self) -> Result<(), Self::Error>;
+//     async fn commit_transaction(self) -> Result<Result<(), domain_errors::AtCommit>, Self::Error>;
+//     async fn rollback_transaction(self) -> Result<(), Self::Error>;
 
-    /// return true if new
-    async fn insert_transaction_if_new(
-        &mut self,
-        transaction_number: u64,
-    ) -> Result<bool, Self::Error>;
+//     /// return true if new
+//     async fn insert_transaction_if_new(
+//         &mut self,
+//         transaction_number: u64,
+//     ) -> Result<bool, Self::Error>;
 
-    async fn does_he_have_access_to_here(
-        &mut self,
-        accepted_roles: &[custom_types::Role],
-        company_or_branch: &db_types::DataGroup<Self::RowId>,
-        user_id: &Self::RowId,
-    ) -> Result<bool, Self::Error>;
+//     async fn does_he_have_access_to_here(
+//         &mut self,
+//         accepted_roles: &[custom_types::Role],
+//         company_or_branch: &db_types::DataGroup<Self::RowId>,
+//         user_id: &Self::RowId,
+//     ) -> Result<bool, Self::Error>;
 
-    async fn select_user_rowid_and_password_hash(
-        &mut self,
-        user_id: &String,
-    ) -> Result<Option<(Self::RowId, Self::HashedPassword)>, Self::Error>;
-    async fn select_all_companies_and_branches_for_the_user(
-        &mut self,
-        user_id: &Self::RowId,
-    ) -> Result<Option<Vec<custom_types::Company>>, Self::Error>;
+//     async fn select_user_rowid_and_password_hash(
+//         &mut self,
+//         user_id: &String,
+//     ) -> Result<Option<(Self::RowId, Self::HashedPassword)>, Self::Error>;
+//     async fn select_all_companies_and_branches_for_the_user(
+//         &mut self,
+//         user_id: &Self::RowId,
+//     ) -> Result<Option<Vec<custom_types::Company>>, Self::Error>;
 
-    async fn insert_role(
-        &mut self,
-        row_id: &Self::RowId,
-        role: &custom_types::Role,
-        data_group: &db_types::DataGroup<Self::RowId>,
-        user_id: &Self::RowId,
-    ) -> Result<(), Self::Error>;
-    async fn insert_company(
-        &mut self,
-        row_id: &Self::RowId,
-        name: &String,
-        currency: &custom_types::Currency,
-    ) -> Result<(), Self::Error>;
-    async fn insert_company_branch(
-        &mut self,
-        row_id: &Self::RowId,
-        company_belong: &Self::RowId,
-        name: &String,
-        location: &custom_types::Location,
-        currency: &custom_types::Currency,
-    ) -> Result<(), Self::Error>;
-    async fn insert_user(
-        &mut self,
-        row_id: &Self::RowId,
-        name: &Option<String>,
-        user_id: &String,
-        hashed_password: &Self::HashedPassword,
-    ) -> Result<Result<(), domain_errors::AtInsertUserId>, Self::Error>;
-}
+//     async fn insert_role(
+//         &mut self,
+//         row_id: &Self::RowId,
+//         role: &custom_types::Role,
+//         data_group: &db_types::DataGroup<Self::RowId>,
+//         user_id: &Self::RowId,
+//     ) -> Result<(), Self::Error>;
+//     async fn insert_company(
+//         &mut self,
+//         row_id: &Self::RowId,
+//         name: &String,
+//         currency: &custom_types::Currency,
+//     ) -> Result<(), Self::Error>;
+//     async fn insert_company_branch(
+//         &mut self,
+//         row_id: &Self::RowId,
+//         company_belong: &Self::RowId,
+//         name: &String,
+//         location: &custom_types::Location,
+//         currency: &custom_types::Currency,
+//     ) -> Result<(), Self::Error>;
+//     async fn insert_user(
+//         &mut self,
+//         row_id: &Self::RowId,
+//         name: &Option<String>,
+//         user_id: &String,
+//         hashed_password: &Self::HashedPassword,
+//     ) -> Result<Result<(), domain_errors::AtInsertUserId>, Self::Error>;
+// }
 
 macro_rules! generate_api_backend_methods {
     ($path:ident) => {
@@ -129,31 +129,34 @@ pub trait BackendRouts {
     generate_api_backend_methods!(create_company_branch);
 }
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////
 
 pub trait DBTransaction {
     type Error;
     type RowId: RowId;
     type HashedPassword: HashedPassword;
 
-    async fn commit_transaction(self) -> Result<Result<(), domain_errors::AtCommit>, Self::Error>;
-    async fn rollback_transaction(self) -> Result<(), Self::Error>;
-
-    async fn is_new_user(&mut self, user_id: &String) -> Result<bool, Self::Error>;
+    async fn read_sign_up(&self, user_id: String) -> Result<bool, Self::Error>;
+    async fn write_sign_up(
+        &self,
+        row_id: &Self::RowId,
+        user_id: String,
+        hashed_password: Self::HashedPassword,
+        user_name: Option<String>,
+    ) -> Result<(), Self::Error>;
 }
 
-pub trait ReadState {
-    async fn sign_up(&self) {}
+pub trait KeyPair {
+    type PrivateKey: ToString;
+    type PublicKey: ToString;
+
+    fn generate() -> (Self::PrivateKey, Self::PublicKey);
+    fn sign(private: &Self::PrivateKey, data: &[u8]) -> Vec<u8>;
+    fn verify(public: &Self::PublicKey, data: &[u8], sig: &[u8]) -> bool;
 }
 
-pub trait WriteState {
-    async fn sign_up(&self) {}
-}
-
-pub trait ServerLessOperation {
-    async fn sign_up(&self) {}
-}
-
-pub trait SyncOperation {
-    async fn sign_up(&self) {}
+pub trait FileOperation {
+    type Error;
+    fn create(path: String, data: &[u8]) -> Result<(), Self::Error>;
+    fn read(path: String) -> Result<Vec<u8>, Self::Error>;
 }

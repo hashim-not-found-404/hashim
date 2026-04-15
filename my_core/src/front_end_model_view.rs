@@ -95,62 +95,58 @@ where
         }
     }
 
-    fn generate_txn(&self, content: business_layer::Paths) -> business_layer::Input {
+    fn generate_txn(&self, content: business_layer::Content) -> business_layer::Input {
         business_layer::Input {
-            transaction_number: TxnNumGen::generate(),
-            jwt: self
-                .jwt
-                .lock()
-                .unwrap()
-                .as_ref()
-                .unwrap_or(&String::default())
-                .clone(),
-            submit: business_layer::OperationMode::SubmitToServer,
+            signature: String::new(),
+            header: business_layer::Header {
+                nonce: TxnNumGen::generate(),
+                submit: business_layer::OperationMode::SubmitToServer,
+            },
             content: content,
         }
     }
 
-    pub async fn sign_in(&self) {
-        if self.is_loading_sign_in_or_up.read() == true {
-            return;
-        }
-        self.is_loading_sign_in_or_up.set(true);
+    // pub async fn sign_in(&self) {
+    //     if self.is_loading_sign_in_or_up.read() == true {
+    //         return;
+    //     }
+    //     self.is_loading_sign_in_or_up.set(true);
 
-        self.sign_in_error_for_user_id.set(String::new());
-        self.sign_in_error_for_password.set(String::new());
+    //     self.sign_in_error_for_user_id.set(String::new());
+    //     self.sign_in_error_for_password.set(String::new());
 
-        let input = self.generate_txn(sign_in::Input {
-            user_id: self.user_id.read(),
-            password: self.password.read(),
-        });
+    //     let input = self.generate_txn(business_layer::Content::SignIn(sign_in::Input {
+    //         user_id: self.user_id.read(),
+    //         password: self.password.read(),
+    //     }));
 
-        let result = self.routs.sign_in(input).await;
+    //     let result = self.routs.sign_in(input).await;
 
-        match result {
-            Ok(Ok(business_output)) => {
-                self.is_signed_in.set(true);
-                *self.jwt.lock().unwrap() = Some(business_output.jwt.clone());
-            }
-            Ok(Err(business_error)) => match business_error {
-                business_layer::Error::InvalidInput(err) => {
-                    self.sign_in_error_for_user_id.set(match err.user_id {
-                        Some(_) => String::from("user not exist"),
-                        None => String::new(),
-                    });
-                    self.sign_in_error_for_password.set(match err.password {
-                        Some(_) => String::from("wrong password"),
-                        None => String::new(),
-                    });
-                }
-                _ => unreachable!(),
-            },
-            Err(external_error) => {
-                self.external_errors.set(external_error.to_string());
-            }
-        }
+    //     match result {
+    //         Ok(Ok(business_output)) => {
+    //             self.is_signed_in.set(true);
+    //             *self.jwt.lock().unwrap() = Some(business_output.jwt.clone());
+    //         }
+    //         Ok(Err(business_error)) => match business_error {
+    //             business_layer::Error::InvalidInput(err) => {
+    //                 self.sign_in_error_for_user_id.set(match err.user_id {
+    //                     Some(_) => String::from("user not exist"),
+    //                     None => String::new(),
+    //                 });
+    //                 self.sign_in_error_for_password.set(match err.password {
+    //                     Some(_) => String::from("wrong password"),
+    //                     None => String::new(),
+    //                 });
+    //             }
+    //             _ => unreachable!(),
+    //         },
+    //         Err(external_error) => {
+    //             self.external_errors.set(external_error.to_string());
+    //         }
+    //     }
 
-        self.is_loading_sign_in_or_up.set(false);
-    }
+    //     self.is_loading_sign_in_or_up.set(false);
+    // }
 
     pub async fn sign_up(&self) {
         if self.is_loading_sign_in_or_up.read() == true {
@@ -163,7 +159,7 @@ where
         self.sign_up_error_for_user_id.set(String::new());
         self.sign_up_error_for_user_name.set(String::new());
 
-        let input = self.generate_txn(sign_up::Input {
+        let input = self.generate_txn(business_layer::Content::SignUp(sign_up::Input {
             name: {
                 let x = self.user_name.read();
                 if x.as_str() == "" {
@@ -174,14 +170,14 @@ where
             },
             user_id: self.user_id.read().to_string(),
             password: self.password.read().to_string(),
-        });
+        }));
 
         let result = self.routs.sign_up(input).await;
 
         match result {
             Ok(Ok(business_output)) => {
                 self.is_signed_in.set(true);
-                *self.jwt.lock().unwrap() = Some(business_output.jwt.clone());
+                // *self.jwt.lock().unwrap() = Some(business_output.jwt.clone());
             }
             Ok(Err(business_error)) => match business_error {
                 business_layer::Error::InvalidInput(err) => {
@@ -203,44 +199,44 @@ where
         self.is_loading_sign_in_or_up.set(false);
     }
 
-    pub async fn get_all_user_roles(&self) {
-        let input = self.generate_txn(get_all_user_roles::Input {});
+    // pub async fn get_all_user_roles(&self) {
+    //     let input = self.generate_txn(get_all_user_roles::Input {});
 
-        let result = self.routs.get_all_user_roles(input).await;
+    //     let result = self.routs.get_all_user_roles(input).await;
 
-        match result {
-            Ok(Ok(business_output)) => {
-                self.all_user_roles.set(business_output.all_roles);
-            }
-            Ok(Err(business_error)) => match business_error {
-                business_layer::Error::InvalidInput(err) => {}
-                business_layer::Error::InvalidJWT => self.is_signed_in.set(false),
-                _ => todo!(),
-            },
-            Err(external_error) => {
-                self.external_errors.set(external_error.to_string());
-            }
-        }
-    }
+    //     match result {
+    //         Ok(Ok(business_output)) => {
+    //             self.all_user_roles.set(business_output.all_roles);
+    //         }
+    //         Ok(Err(business_error)) => match business_error {
+    //             business_layer::Error::InvalidInput(err) => {}
+    //             business_layer::Error::InvalidJWT => self.is_signed_in.set(false),
+    //             _ => todo!(),
+    //         },
+    //         Err(external_error) => {
+    //             self.external_errors.set(external_error.to_string());
+    //         }
+    //     }
+    // }
 
-    pub async fn create_company(&self) {
-        let input = self.generate_txn(create_company::Input {
-            name: self.company_name.read(),
-            currency: self.company_currency.read(),
-        });
+    // pub async fn create_company(&self) {
+    //     let input = self.generate_txn(create_company::Input {
+    //         name: self.company_name.read(),
+    //         currency: self.company_currency.read(),
+    //     });
 
-        let result = self.routs.create_company(input).await;
+    //     let result = self.routs.create_company(input).await;
 
-        match result {
-            Ok(Ok(business_output)) => {}
-            Ok(Err(business_error)) => match business_error {
-                business_layer::Error::InvalidInput(err) => {}
-                business_layer::Error::InvalidJWT => self.is_signed_in.set(false),
-                _ => todo!(),
-            },
-            Err(external_error) => {
-                self.external_errors.set(external_error.to_string());
-            }
-        }
-    }
+    //     match result {
+    //         Ok(Ok(business_output)) => {}
+    //         Ok(Err(business_error)) => match business_error {
+    //             business_layer::Error::InvalidInput(err) => {}
+    //             business_layer::Error::InvalidJWT => self.is_signed_in.set(false),
+    //             _ => todo!(),
+    //         },
+    //         Err(external_error) => {
+    //             self.external_errors.set(external_error.to_string());
+    //         }
+    //     }
+    // }
 }

@@ -82,3 +82,5 @@
 // - server full operation // dont need data and need trust
 // - write state
 // - sync if needed
+
+// i need to use ssh keys if i need offline first app
