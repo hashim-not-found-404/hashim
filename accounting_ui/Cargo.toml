@@ -8,7 +8,7 @@ edition = "2021"
 
 [dependencies]
 my_core = { workspace = true }
-client_reqwest = { workspace = true }
+client_tokio_tungstenite = { workspace = true }
 impls_for_wasm = { workspace = true }
 
 dioxus = { workspace = true }

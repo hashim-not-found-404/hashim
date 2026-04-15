@@ -87,14 +87,14 @@ where
     let mut client = db.get_client().await.unwrap();
     let mut txn = client.begin_transaction().await.unwrap();
 
-    txn.insert_user(
-        &Id::generate(),
-        &Some("hashem".into()),
-        &"1234".into(),
-        &H::sign_up("password".into()),
-    )
-    .await
-    .unwrap().unwrap();
+    // txn.insert_user(
+    //     &Id::generate(),
+    //     &Some("hashem".into()),
+    //     &"1234".into(),
+    //     &H::sign_up("password".into()),
+    // )
+    // .await
+    // .unwrap().unwrap();
 
     txn.commit_transaction().await.unwrap().unwrap();
 }

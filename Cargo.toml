@@ -3,19 +3,21 @@ resolver = "2"
 members = [
     # "accounting_lib",
     "accounting_ui",
-    "client_reqwest",
+    # "client_reqwest",
     "my_core",
     "db_client_cockroach",
     "server_actix",
     "server_logic",
     "test_suite",
     "impls_for_wasm",
+    "client_tokio_tungstenite",
     # "accounting_ui_egui",
 ]
 
 [workspace.dependencies]
 # my crates
-client_reqwest = {path = "./client_reqwest"}
+# client_reqwest = {path = "./client_reqwest"}
+client_tokio_tungstenite = {path = "./client_tokio_tungstenite"}
 my_core = {path = "./my_core"}
 test_suite = {path = "./test_suite"}
 server_logic = {path = "./server_logic"}
