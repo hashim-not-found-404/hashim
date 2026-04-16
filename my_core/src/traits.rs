@@ -123,10 +123,10 @@ macro_rules! generate_api_backend_methods {
 pub trait BackendRouts {
     type Error;
     generate_api_backend_methods!(sign_up);
-    generate_api_backend_methods!(sign_in);
-    generate_api_backend_methods!(get_all_user_roles);
-    generate_api_backend_methods!(create_company);
-    generate_api_backend_methods!(create_company_branch);
+    // generate_api_backend_methods!(sign_in);
+    // generate_api_backend_methods!(get_all_user_roles);
+    // generate_api_backend_methods!(create_company);
+    // generate_api_backend_methods!(create_company_branch);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -139,7 +139,10 @@ pub trait DBTransaction {
     async fn commit_transaction(self) -> Result<Result<(), domain_errors::AtCommit>, Self::Error>;
     async fn rollback_transaction(self) -> Result<(), Self::Error>;
 
-    async fn read_sign_up(&mut self, user_id: &String) -> Result<bool, Self::Error>;
+    async fn read_sign_up(
+        &mut self,
+        user_id: &String,
+    ) -> Result<bool /*is new user */, Self::Error>;
     async fn write_sign_up(
         &self,
         row_id: &Self::RowId,
