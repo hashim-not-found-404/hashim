@@ -1,26 +1,9 @@
 use dioxus::core::ReactiveContext;
 use dioxus::prelude::*;
-use impls_for_wasm::a1::{RandomNumber, RowId};
 use my_core::front_end_model_view;
 use my_core::front_end_model_view::Signal;
 use std::collections::HashSet;
-use std::sync::{Arc, LazyLock, Mutex, MutexGuard};
-
-pub static STATE: LazyLock<
-    front_end_model_view::State<
-        my_core::impls::StateLessCheck<client_reqwest::MyClient, RowId>,
-        RandomNumber,
-        MySignal<String>,
-        MySignal<bool>,
-        MySignal<String>,
-        MySignal<my_core::request_response::custom_types::Currency>,
-        MySignal<Vec<my_core::request_response::custom_types::Company>>,
-    >,
-> = LazyLock::new(|| {
-    front_end_model_view::State::new(my_core::impls::StateLessCheck::new(
-        <client_reqwest::MyClient>::default(),
-    ))
-});
+use std::sync::{Arc, Mutex, MutexGuard};
 
 pub struct MySignal<T> {
     value: Arc<Mutex<T>>,

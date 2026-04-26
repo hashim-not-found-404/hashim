@@ -1,4 +1,4 @@
-use crate::{db_types, request_response::*};
+use crate::request_response::*;
 
 pub trait RowId: TryFrom<String> + Clone {
     fn generate() -> Self;
@@ -8,7 +8,7 @@ pub trait Functions {
     fn is_regex(s: &String) -> Result<(), String>;
 }
 
-pub trait TransactionNumber {
+pub trait RandomNumber {
     fn generate() -> u64;
 }
 
@@ -115,14 +115,14 @@ macro_rules! generate_api_backend_methods {
     ($path:ident) => {
         async fn $path(
             &self,
-            input: business_layer::Input,
-        ) -> business_layer::Result<$path::Ok, $path::Error, Self::Error>;
+            input: transport_layer::Input<$path::Input>,
+        ) -> Result<transport_layer::Result<$path::Result>, Self::Error>;
     };
 }
 
 pub trait BackendRouts {
     type Error;
-    generate_api_backend_methods!(sign_up);
+    async fn sign_up(&self, input: sign_up::Input) -> Result<sign_up::Result, Self::Error>;
     // generate_api_backend_methods!(sign_in);
     // generate_api_backend_methods!(get_all_user_roles);
     // generate_api_backend_methods!(create_company);
@@ -142,12 +142,11 @@ pub trait DBTransaction {
     async fn read_sign_up(
         &mut self,
         user_id: &String,
-    ) -> Result<bool /*is new user */, Self::Error>;
+    ) -> Result<bool /* is new user */, Self::Error>;
     async fn write_sign_up(
         &self,
-        row_id: &Self::RowId,
         user_id: String,
         hashed_password: Self::HashedPassword,
         user_name: Option<String>,
-    ) -> Result<(), Self::Error>;
+    ) -> Result<Self::RowId /* is uuid of the user */, Self::Error>;
 }

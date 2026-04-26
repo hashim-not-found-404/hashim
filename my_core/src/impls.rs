@@ -19,6 +19,7 @@ where
     rowid: PhantomData<Id>,
 }
 
+// TODO : this should implement trait BackendRouts
 impl<DB, Cli, Jwt, Authentication, F, Id, ExternalError>
     StateFullCheck<DB, Cli, Jwt, Authentication, F, Id>
 where
@@ -40,33 +41,6 @@ where
             functions: PhantomData::<F>,
             rowid: PhantomData::<Id>,
         }
-    }
-
-    async fn sign_up(
-        &self,
-        txn: &mut Cli::Txn<'_>,
-        input: sign_up::Input,
-    ) -> sign_up::Result<ExternalError> {
-        let user_uuid = Id::generate();
-        let hashed_password = Authentication::sign_up(input.password);
-
-        let mut errr = sign_up::Error {
-            user_id: None,
-            name: None,
-        };
-        let is_new_user = txn.read_sign_up(&input.user_id).await?;
-
-        if !is_new_user {
-            errr.user_id = Some(sign_up::UserIdError::Duplicated);
-            return Ok(Err(business_layer::Error::InvalidInput(errr)));
-        }
-
-        txn.write_sign_up(&user_uuid, input.user_id, hashed_password, input.name)
-            .await?;
-
-        return Ok(Ok(sign_up::Ok {
-            jwt: self.jwt.sign(&user_uuid).into(),
-        }));
     }
 
     // async fn sign_in(
@@ -166,193 +140,195 @@ where
     // }
 }
 
-// impl<DB, Cli, Jwt, Authentication, F, Id, ExternalError> BackendRouts
-//     for StateFullCheck<DB, Cli, Jwt, Authentication, F, Id>
-// where
-//     DB: Database<Error = ExternalError, Client = Cli>,
-//     Cli: DBClient<Error = ExternalError>,
-//     for<'a> Cli::Txn<'a>:
-//         DBTransaction<Error = ExternalError, RowId = Id, HashedPassword = Authentication>,
-//     Jwt: JWT<UserId = Id>,
-//     Authentication: HashedPassword,
-//     F: Functions,
-//     Id: RowId,
-// {
-//     type Error = ExternalError;
+impl<DB, Cli, Jwt, Authentication, F, Id, ExternalError> BackendRouts
+    for StateFullCheck<DB, Cli, Jwt, Authentication, F, Id>
+where
+    DB: Database<Error = ExternalError, Client = Cli>,
+    Cli: DBClient<Error = ExternalError>,
+    for<'a> Cli::Txn<'a>:
+        DBTransaction<Error = ExternalError, RowId = Id, HashedPassword = Authentication>,
+    Jwt: JWT<UserId = Id>,
+    Authentication: HashedPassword,
+    F: Functions,
+    Id: RowId,
+{
+    type Error = ExternalError;
 
-//     async fn sign_up(&self, input: business_layer::Input) -> sign_up::Result<Self::Error> {
-//         let mut client = self.database.get_client().await?;
+    async fn sign_up(&self, input: sign_up::Input) -> Result<sign_up::Result, ExternalError> {
+        let hashed_password = Authentication::sign_up(input.password);
 
-//         for _ in 0..2_u8 {
-//             let mut txn = client.begin_transaction().await?;
+        let mut errr = sign_up::Error {
+            user_id: None,
+            name: None,
+        };
 
-//             let is_ok = txn
-//                 .insert_transaction_if_new(input.transaction_number)
-//                 .await?;
-//             if !is_ok {
-//                 txn.rollback_transaction().await?;
-//                 return Ok(Err(business_layer::Error::DuplicateTransaction));
-//             }
+        let mut client = self.database.get_client().await?;
+        let mut txn = client.begin_transaction().await?;
 
-//             let result = self.sign_up(&mut txn, input.content.clone()).await;
-//             match result {
-//                 Ok(o) => {
-//                     if input.submit != business_layer::OperationMode::SubmitToServer {
-//                         txn.rollback_transaction().await?;
-//                         return Ok(o);
-//                     }
-//                     match txn.commit_transaction().await? {
-//                         Ok(_) => return Ok(o),
-//                         Err(domain_errors::AtCommit::DataIsChanged) => continue,
-//                     }
-//                 }
-//                 Err(e) => {
-//                     txn.rollback_transaction().await?;
-//                     return Err(e);
-//                 }
-//             }
-//         }
+        let result = (|| async {
+            let is_new_user = txn.read_sign_up(&input.user_id).await?;
 
-//         return Ok(Err(business_layer::Error::DataHasBeenChangedByOthers));
-//     }
+            if !is_new_user {
+                errr.user_id = Some(sign_up::UserIdError::Duplicated);
+                return Ok(Err(errr));
+            }
 
-//     async fn sign_in(&self, input: business_layer::Input) -> sign_in::Result<ExternalError> {
-//         let mut client = self.database.get_client().await?;
+            let user_uuid = txn
+                .write_sign_up(input.user_id, hashed_password, input.name)
+                .await?;
 
-//         for _ in 0..2_u8 {
-//             let mut txn = client.begin_transaction().await?;
+            Ok(Ok(sign_up::Ok {
+                jwt: self.jwt.sign(&user_uuid).into(),
+            }))
+        })()
+        .await;
 
-//             let is_ok = txn
-//                 .insert_transaction_if_new(input.transaction_number)
-//                 .await?;
-//             if !is_ok {
-//                 txn.rollback_transaction().await?;
-//                 return Ok(Err(business_layer::Error::DuplicateTransaction));
-//             }
+        if let Ok(Ok(_)) = &result {
+            let _ = txn.commit_transaction().await?;
+        } else {
+            let _ = txn.rollback_transaction().await?;
+        }
 
-//             let result = self.sign_in(&mut txn, input.content.clone()).await;
-//             match result {
-//                 Ok(o) => {
-//                     if input.submit != business_layer::OperationMode::SubmitToServer {
-//                         txn.rollback_transaction().await?;
-//                         return Ok(o);
-//                     }
-//                     match txn.commit_transaction().await? {
-//                         Ok(_) => return Ok(o),
-//                         Err(domain_errors::AtCommit::DataIsChanged) => continue,
-//                     }
-//                 }
-//                 Err(e) => {
-//                     txn.rollback_transaction().await?;
-//                     return Err(e);
-//                 }
-//             }
-//         }
+        return result;
+    }
 
-//         return Ok(Err(business_layer::Error::DataHasBeenChangedByOthers));
-//     }
+    //     async fn sign_in(&self, input: business_layer::Input) -> sign_in::Result<ExternalError> {
+    //         let mut client = self.database.get_client().await?;
 
-//     async fn get_all_user_roles(
-//         &self,
-//         input: business_layer::Input,
-//     ) -> business_layer::Result<get_all_user_roles::Ok, get_all_user_roles::Error, Self::Error>
-//     {
-//         let mut client = self.database.get_client().await?;
+    //         for _ in 0..2_u8 {
+    //             let mut txn = client.begin_transaction().await?;
 
-//         for _ in 0..2_u8 {
-//             let mut txn = client.begin_transaction().await?;
+    //             let is_ok = txn
+    //                 .insert_transaction_if_new(input.transaction_number)
+    //                 .await?;
+    //             if !is_ok {
+    //                 txn.rollback_transaction().await?;
+    //                 return Ok(Err(business_layer::Error::DuplicateTransaction));
+    //             }
 
-//             let is_ok = txn
-//                 .insert_transaction_if_new(input.transaction_number)
-//                 .await?;
-//             if !is_ok {
-//                 txn.rollback_transaction().await?;
-//                 return Ok(Err(business_layer::Error::DuplicateTransaction));
-//             }
+    //             let result = self.sign_in(&mut txn, input.content.clone()).await;
+    //             match result {
+    //                 Ok(o) => {
+    //                     if input.submit != business_layer::OperationMode::SubmitToServer {
+    //                         txn.rollback_transaction().await?;
+    //                         return Ok(o);
+    //                     }
+    //                     match txn.commit_transaction().await? {
+    //                         Ok(_) => return Ok(o),
+    //                         Err(domain_errors::AtCommit::DataIsChanged) => continue,
+    //                     }
+    //                 }
+    //                 Err(e) => {
+    //                     txn.rollback_transaction().await?;
+    //                     return Err(e);
+    //                 }
+    //             }
+    //         }
 
-//             let id = match self.jwt.validate(input.jwt.clone().into()) {
-//                 Ok(a) => a,
-//                 Err(_) => return Ok(Err(business_layer::Error::InvalidJWT)),
-//             };
-//             let result = self
-//                 .get_all_user_roles(&mut txn, input.content.clone(), &id)
-//                 .await;
+    //         return Ok(Err(business_layer::Error::DataHasBeenChangedByOthers));
+    //     }
 
-//             match result {
-//                 Ok(o) => {
-//                     if input.submit != business_layer::OperationMode::SubmitToServer {
-//                         txn.rollback_transaction().await?;
-//                         return Ok(o);
-//                     }
-//                     match txn.commit_transaction().await? {
-//                         Ok(_) => return Ok(o),
-//                         Err(domain_errors::AtCommit::DataIsChanged) => continue,
-//                     }
-//                 }
-//                 Err(e) => {
-//                     txn.rollback_transaction().await?;
-//                     return Err(e);
-//                 }
-//             }
-//         }
+    //     async fn get_all_user_roles(
+    //         &self,
+    //         input: business_layer::Input,
+    //     ) -> business_layer::Result<get_all_user_roles::Ok, get_all_user_roles::Error, Self::Error>
+    //     {
+    //         let mut client = self.database.get_client().await?;
 
-//         return Ok(Err(business_layer::Error::DataHasBeenChangedByOthers));
-//     }
+    //         for _ in 0..2_u8 {
+    //             let mut txn = client.begin_transaction().await?;
 
-//     async fn create_company(
-//         &self,
-//         input: business_layer::Input,
-//     ) -> business_layer::Result<create_company::Ok, create_company::Error, Self::Error> {
-//         let mut client = self.database.get_client().await?;
+    //             let is_ok = txn
+    //                 .insert_transaction_if_new(input.transaction_number)
+    //                 .await?;
+    //             if !is_ok {
+    //                 txn.rollback_transaction().await?;
+    //                 return Ok(Err(business_layer::Error::DuplicateTransaction));
+    //             }
 
-//         for _ in 0..2_u8 {
-//             let mut txn = client.begin_transaction().await?;
+    //             let id = match self.jwt.validate(input.jwt.clone().into()) {
+    //                 Ok(a) => a,
+    //                 Err(_) => return Ok(Err(business_layer::Error::InvalidJWT)),
+    //             };
+    //             let result = self
+    //                 .get_all_user_roles(&mut txn, input.content.clone(), &id)
+    //                 .await;
 
-//             let is_ok = txn
-//                 .insert_transaction_if_new(input.transaction_number)
-//                 .await?;
-//             if !is_ok {
-//                 txn.rollback_transaction().await?;
-//                 return Ok(Err(business_layer::Error::DuplicateTransaction));
-//             }
+    //             match result {
+    //                 Ok(o) => {
+    //                     if input.submit != business_layer::OperationMode::SubmitToServer {
+    //                         txn.rollback_transaction().await?;
+    //                         return Ok(o);
+    //                     }
+    //                     match txn.commit_transaction().await? {
+    //                         Ok(_) => return Ok(o),
+    //                         Err(domain_errors::AtCommit::DataIsChanged) => continue,
+    //                     }
+    //                 }
+    //                 Err(e) => {
+    //                     txn.rollback_transaction().await?;
+    //                     return Err(e);
+    //                 }
+    //             }
+    //         }
 
-//             let id = match self.jwt.validate(input.jwt.clone().into()) {
-//                 Ok(a) => a,
-//                 Err(_) => return Ok(Err(business_layer::Error::InvalidJWT)),
-//             };
-//             let result = self
-//                 .create_company(&mut txn, input.content.clone(), &id)
-//                 .await;
+    //         return Ok(Err(business_layer::Error::DataHasBeenChangedByOthers));
+    //     }
 
-//             match result {
-//                 Ok(o) => {
-//                     if input.submit != business_layer::OperationMode::SubmitToServer {
-//                         txn.rollback_transaction().await?;
-//                         return Ok(o);
-//                     }
-//                     match txn.commit_transaction().await? {
-//                         Ok(_) => return Ok(o),
-//                         Err(domain_errors::AtCommit::DataIsChanged) => continue,
-//                     }
-//                 }
-//                 Err(e) => {
-//                     txn.rollback_transaction().await?;
-//                     return Err(e);
-//                 }
-//             }
-//         }
+    //     async fn create_company(
+    //         &self,
+    //         input: business_layer::Input,
+    //     ) -> business_layer::Result<create_company::Ok, create_company::Error, Self::Error> {
+    //         let mut client = self.database.get_client().await?;
 
-//         return Ok(Err(business_layer::Error::DataHasBeenChangedByOthers));
-//     }
+    //         for _ in 0..2_u8 {
+    //             let mut txn = client.begin_transaction().await?;
 
-//     async fn create_company_branch(
-//         &self,
-//         input: business_layer::Input,
-//     ) -> business_layer::Result<create_company_branch::Ok, create_company_branch::Error, Self::Error>
-//     {
-//         todo!()
-//     }
-// }
+    //             let is_ok = txn
+    //                 .insert_transaction_if_new(input.transaction_number)
+    //                 .await?;
+    //             if !is_ok {
+    //                 txn.rollback_transaction().await?;
+    //                 return Ok(Err(business_layer::Error::DuplicateTransaction));
+    //             }
+
+    //             let id = match self.jwt.validate(input.jwt.clone().into()) {
+    //                 Ok(a) => a,
+    //                 Err(_) => return Ok(Err(business_layer::Error::InvalidJWT)),
+    //             };
+    //             let result = self
+    //                 .create_company(&mut txn, input.content.clone(), &id)
+    //                 .await;
+
+    //             match result {
+    //                 Ok(o) => {
+    //                     if input.submit != business_layer::OperationMode::SubmitToServer {
+    //                         txn.rollback_transaction().await?;
+    //                         return Ok(o);
+    //                     }
+    //                     match txn.commit_transaction().await? {
+    //                         Ok(_) => return Ok(o),
+    //                         Err(domain_errors::AtCommit::DataIsChanged) => continue,
+    //                     }
+    //                 }
+    //                 Err(e) => {
+    //                     txn.rollback_transaction().await?;
+    //                     return Err(e);
+    //                 }
+    //             }
+    //         }
+
+    //         return Ok(Err(business_layer::Error::DataHasBeenChangedByOthers));
+    //     }
+
+    //     async fn create_company_branch(
+    //         &self,
+    //         input: business_layer::Input,
+    //     ) -> business_layer::Result<create_company_branch::Ok, create_company_branch::Error, Self::Error>
+    //     {
+    //         todo!()
+    //     }
+}
 
 // pub struct StateLessCheck<SFC, Id>
 // where

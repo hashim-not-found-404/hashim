@@ -92,11 +92,10 @@ impl DBTransaction for CockroachTxn<'_> {
 
     async fn write_sign_up(
         &self,
-        row_id: &Self::RowId,
         user_id: String,
         hashed_password: Self::HashedPassword,
         user_name: Option<String>,
-    ) -> Result<(), Self::Error> {
+    ) -> Result<Self::RowId, Self::Error> {
         todo!()
     }
 

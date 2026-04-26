@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 pub struct RandomNumber;
-impl traits::TransactionNumber for RandomNumber {
+impl traits::RandomNumber for RandomNumber {
     fn generate() -> u64 {
         let mut buf = [0u8; 8];
         getrandom::fill(&mut buf).unwrap();

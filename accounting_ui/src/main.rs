@@ -1,8 +1,11 @@
+use client_tokio_tungstenite as client;
 mod backend;
-
+use crate::backend::MySignal;
 use dioxus::{core::spawn_forever, prelude::*};
 use dioxus_logger::tracing::Level;
-use my_core::front_end_model_view::Signal;
+use impls_for_wasm::a1::RandomNumber;
+use my_core::front_end_model_view::{self, Signal};
+use std::sync::Arc;
 
 const ICONS_SHOW: Asset = asset!("/assets/icons/show.png");
 const ICONS_HIDE: Asset = asset!("/assets/icons/hide.png");
@@ -19,8 +22,44 @@ enum Route {
 
 fn main() {
     dioxus_logger::init(Level::INFO).unwrap();
-    dioxus::launch(App);
+    // This will send all Rust panics to the browser's console
+    console_error_panic_hook::set_once();
+    dioxus::launch(Initializer);
 }
+
+#[component]
+fn Initializer() -> Element {
+    let init_state = use_resource(|| async {
+        let fut = client::Dsdff::new().await;
+        let state: Dkdkd = Arc::new(front_end_model_view::State::new(fut));
+        use_context_provider(|| state.clone());
+    });
+
+    match (init_state.value())() {
+        Some(state) => {
+            // Convert to AppState if needed
+
+            rsx! {
+                App {}
+            }
+        }
+        None => rsx! {
+            div { class: "loading", "Initializing application..." }
+        },
+    }
+}
+
+type Dkdkd = Arc<
+    front_end_model_view::State<
+        client::Dsdff,
+        RandomNumber,
+        MySignal<String>,
+        MySignal<bool>,
+        MySignal<String>,
+        MySignal<my_core::request_response::custom_types::Currency>,
+        MySignal<Vec<my_core::request_response::custom_types::Company>>,
+    >,
+>;
 
 #[component]
 fn App() -> Element {
@@ -33,26 +72,34 @@ fn App() -> Element {
 
 #[component]
 pub fn SignIn() -> Element {
+    let state = use_context::<Dkdkd>();
+
     let sign_up = move |_| {
         navigator().push(Route::SignUp {});
     };
 
+    let value = state.clone();
     rsx! {
         div {
             input {
                 placeholder: "User ID",
-                oninput: move |event| backend::STATE.user_id.set(event.value()),
-                value: backend::STATE.user_id.read(),
+                oninput: move |event| value.user_id.set(event.value()),
+                value: state.user_id.read(),
             }
             label {
-                {backend::STATE.sign_in_error_for_user_id.read()}
+                {state.sign_in_error_for_user_id.read()}
             }
             PasswordInput{}
             label {
-                {backend::STATE.sign_in_error_for_password.read()}
+                {state.sign_in_error_for_password.read()}
             }
             button {
-                onclick: |_| {spawn_forever(backend::STATE.sign_in());},
+                onclick: move |_| {
+                    let state = state.clone();  // Clone outside the async block
+                    spawn_forever(async move {
+                        let _ = state.sign_in().await;
+                    });
+                },
                 "Sign In"
             }
             button {
@@ -65,31 +112,40 @@ pub fn SignIn() -> Element {
 
 #[component]
 pub fn SignUp() -> Element {
+    let state = use_context::<Dkdkd>();
+
     let sign_in = move |_| {
         navigator().push(Route::SignIn {});
     };
 
+    let value = state.clone();
+    let value1 = state.clone();
     rsx! {
         div {
             input {
                 placeholder: "Name (Optional)",
-                oninput: move |event| backend::STATE.user_name.set(event.value()),
-                value: backend::STATE.user_name.read(),
+                oninput: move |event| value.user_name.set(event.value()),
+                value: state.user_name.read(),
             }
             label {
-                {backend::STATE.sign_up_error_for_user_name.read()}
+                {state.sign_up_error_for_user_name.read()}
             }
             input {
                 placeholder: "User Id",
-                oninput: move |event| backend::STATE.user_id.set(event.value()),
-                value: backend::STATE.user_id.read(),
+                oninput: move |event| value1.user_id.set(event.value()),
+                value: state.user_id.read(),
             }
             label {
-                {backend::STATE.sign_up_error_for_user_id.read()}
+                {state.sign_up_error_for_user_id.read()}
             }
             PasswordInput{}
             button {
-                onclick: |_| {spawn_forever(backend::STATE.sign_up());},
+                onclick: move |_| {
+                    let state = state.clone();  // Clone outside the async block
+                    spawn_forever(async move {
+                        let _ = state.sign_up().await;
+                    });
+                },
                 "Sign Up"
             }
             button {
@@ -102,6 +158,8 @@ pub fn SignUp() -> Element {
 
 #[component]
 pub fn PasswordInput() -> Element {
+    let state = use_context::<Dkdkd>();
+
     let mut is_password_visible = use_signal(|| false);
 
     let (input_type, icon_type) = match is_password_visible.read().clone() {
@@ -109,13 +167,14 @@ pub fn PasswordInput() -> Element {
         false => ("password", ICONS_HIDE),
     };
 
+    let value = state.clone();
     rsx! {
         div {
             input {
                 placeholder: "Password",
                 type: input_type,
-                oninput: move |event| backend::STATE.password.set(event.value()),
-                value: backend::STATE.password.read(),
+                oninput: move |event| value.password.set(event.value()),
+                value: state.password.read(),
             }
             button {
                 onclick: move |_| {*is_password_visible.write()^=true;},
@@ -127,7 +186,9 @@ pub fn PasswordInput() -> Element {
 
 #[component]
 pub fn ErrorStack() -> Element {
-    let err = backend::STATE.external_errors.read();
+    let state = use_context::<Dkdkd>();
+
+    let err = state.external_errors.read();
     if err.is_empty() {
         return rsx!();
     }
@@ -135,7 +196,7 @@ pub fn ErrorStack() -> Element {
     rsx! {
         div {
             button {
-                onclick: |_| {backend::STATE.external_errors.set(String::new())},
+                onclick: move |_| {state.external_errors.set(String::new())},
                 "X"
             }
             label {

@@ -5,3 +5,4 @@ pub mod impls;
 pub mod request_response;
 pub mod traits;
 pub mod translations;
+pub mod web_socket;

@@ -4,9 +4,8 @@ pub const HOST: &str = "127.0.0.1";
 pub const PORT: u16 = 8081;
 pub const ADDRESS: &str = "127.0.0.1:8081";
 
+// TODO : move this to other file
 pub mod custom_types {
-    use crate::db_types;
-
     use super::*;
 
     pub type RowId = String;
@@ -54,7 +53,7 @@ pub mod custom_types {
     }
 }
 
-pub mod business_layer {
+pub mod transport_layer {
     use super::*;
 
     #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
@@ -64,42 +63,32 @@ pub mod business_layer {
         SubmitToServer,
     }
 
-    #[derive(Debug, Deserialize, Serialize, Clone)]
-    pub enum Paths {
-        SignUp(sign_up::Input),
-        SignIn(sign_in::Input),
-        GetAllUserRoles(get_all_user_roles::Input),
-        CreateCompany(create_company::Input),
-        CreateCompanyBranch(create_company_branch::Input),
-    }
+    // // TODO : this should be removed
+    // #[derive(Debug, Deserialize, Serialize, Clone)]
+    // pub struct Input<T> {
+    //     // maybe i need to remove this struct
+    //     pub transaction_number: u64, // help only to prevent double write
+    //     pub jwt: String,             // help only for access control
+    //     pub submit: OperationMode,   // help only for writing
+    //     pub content: T,
+    // }
 
-    #[derive(Debug, Deserialize, Serialize, Clone)]
-    pub struct Input {
-        pub transaction_number: u64,
-        pub jwt: String,
-        pub submit: OperationMode,
-        pub content: Paths,
-    }
+    // // TODO : this should be removed
+    // #[derive(Debug, Deserialize, Serialize, Clone)]
+    // pub enum Error {
+    //     DuplicateTransaction,
+    //     InvalidJWT,
+    //     DataHasBeenChangedByOthers,
+    // }
 
-    #[derive(Debug, Deserialize, Serialize, Clone)]
-    pub enum Error<Input> {
-        // here is the error that is made at the core
-        DuplicateTransaction,
-        InvalidJWT,
-        DataHasBeenChangedByOthers,
-
-        /// this contain the error of the input that user made
-        InvalidInput(Input),
-    }
-
-    pub type Result<Ok, InputError, ExternalError> =
-        std::result::Result<std::result::Result<Ok, Error<InputError>>, ExternalError>;
+    // pub type Result<InputResult> = std::result::Result<InputResult, Error>;
 }
 
 // there should be no generic in all the below types
 
 pub mod sign_up {
     use super::*;
+    pub const PATH: &str = "sign_up";
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Input {
@@ -124,11 +113,12 @@ pub mod sign_up {
         pub name: Option<String>,
     }
 
-    pub type Result<Ext> = business_layer::Result<Ok, Error, Ext>;
+    pub type Result = std::result::Result<Ok, Error>;
 }
 
 pub mod sign_in {
     use super::*;
+    pub const PATH: &str = "sign_in";
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Input {
@@ -157,11 +147,13 @@ pub mod sign_in {
         pub password: Option<PasswordError>,
     }
 
-    pub type Result<Ext> = business_layer::Result<Ok, Error, Ext>;
+    pub type Result = std::result::Result<Ok, Error>;
 }
 
 pub mod get_all_user_roles {
     use super::*;
+    pub const PATH: &str = "get_all_user_roles";
+
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Input;
 
@@ -173,11 +165,12 @@ pub mod get_all_user_roles {
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Error;
 
-    pub type Result<Ext> = business_layer::Result<Ok, Error, Ext>;
+    pub type Result = std::result::Result<Ok, Error>;
 }
 
 pub mod create_company {
     use super::*;
+    pub const PATH: &str = "create_company";
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Input {
@@ -191,11 +184,12 @@ pub mod create_company {
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Error;
 
-    pub type Result<Ext> = business_layer::Result<Ok, Error, Ext>;
+    pub type Result = std::result::Result<Ok, Error>;
 }
 
 pub mod create_company_branch {
     use super::*;
+    pub const PATH: &str = "create_company_branch";
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Input {
@@ -231,5 +225,5 @@ pub mod create_company_branch {
         pub location: Option<LocationError>,
     }
 
-    pub type Result<Ext> = business_layer::Result<Ok, Error, Ext>;
+    pub type Result = std::result::Result<Ok, Error>;
 }
