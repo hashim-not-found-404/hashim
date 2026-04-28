@@ -251,7 +251,6 @@ where
         let text = DE::encode(text);
         self.transport.send_bin(text).await?;
 
-        // TODO : add timeout that is wasm compatble
         let result = message.await;
         self.send_and_receive_pool.unsubscribe(id);
         DE::decode::<ReceiveType>(&result)
@@ -337,5 +336,3 @@ where
         }
     }
 }
-
-// TODO : add timeout

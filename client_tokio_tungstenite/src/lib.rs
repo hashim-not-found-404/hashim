@@ -1,20 +1,17 @@
-use std::{alloc::System, sync::Mutex};
+use std::sync::Arc;
 
 use futures_util::{
     SinkExt, StreamExt,
     stream::{SplitSink, SplitStream},
-    task::{LocalSpawn, LocalSpawnExt, Spawn},
 };
 use impls_for_wasm::a1::RandomNumber;
 use my_core::{
-    request_response::{
-        ADDRESS,
-        sign_up::{self, Input},
-        transport_layer,
-    },
+    request_response::{ADDRESS, sign_up},
     web_socket::WebSocketOp,
 };
 use serde::{Deserialize, Serialize};
+use tokio::sync::Mutex;
+
 use tokio_tungstenite_wasm::{Message, WebSocketStream, connect};
 
 #[derive(Debug, Clone)]
@@ -106,28 +103,41 @@ impl WebSocketOp for MyClient {
     async fn send_bin(&self, data: Vec<u8>) -> Result<(), Self::Error> {
         self.write
             .lock()
-            .unwrap()
-            .send(Message::Binary(data.into()))
             .await
-            .unwrap();
+            .send(Message::Binary(data.into()))
+            .await;
 
         Ok(())
     }
 
     async fn try_receive_bin(&self) -> Result<Vec<u8>, Self::Error> {
-        let Some(Ok(Message::Binary(data))) = self.read.lock().unwrap().next().await else {
+        let Some(Ok(Message::Binary(data))) = self.read.lock().await.next().await else {
             return Err(MyError::Closed);
         };
         return Ok(data.into());
     }
 }
 
-pub struct Dsdff(my_core::web_socket::MyClient<MyClient, Atooooooooooo, RandomNumber>);
+pub struct Dsdff(pub Arc<my_core::web_socket::MyClient<MyClient, Atooooooooooo, RandomNumber>>);
 
 impl Dsdff {
     pub async fn new() -> Self {
         let transport = MyClient::new().await;
-        let cl = Dsdff(my_core::web_socket::MyClient::new(transport));
+        let my_client = my_core::web_socket::MyClient::new(transport);
+        let my_client = Arc::new(my_client);
+        let my_client1 = my_client.clone();
+
+        #[cfg(not(target_arch = "wasm32"))]
+        tokio::spawn(async move {
+            my_client1.receive_radar().await;
+        });
+
+        #[cfg(target_arch = "wasm32")]
+        wasm_bindgen_futures::spawn_local(async move {
+            my_client1.receive_radar().await;
+        });
+
+        let cl = Dsdff(my_client);
         cl
     }
 }

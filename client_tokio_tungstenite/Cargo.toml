@@ -7,9 +7,9 @@ edition = "2024"
 my_core = { workspace = true }
 impls_for_wasm = { workspace = true }
 
-# tokio = { workspace = true }
-# tokio-tungstenite = { workspace = true }
+tokio = { workspace = true, features = ["rt", "sync", "macros"] }
 tokio-tungstenite-wasm = { workspace = true }
+wasm-bindgen-futures = { workspace = true }
 futures-util = { workspace = true }
 futures = { workspace = true }
 serde = { workspace = true }

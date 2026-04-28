@@ -22,7 +22,6 @@ enum Route {
 
 fn main() {
     dioxus_logger::init(Level::INFO).unwrap();
-    // This will send all Rust panics to the browser's console
     console_error_panic_hook::set_once();
     dioxus::launch(Initializer);
 }
@@ -36,15 +35,13 @@ fn Initializer() -> Element {
     });
 
     match (init_state.value())() {
-        Some(state) => {
-            // Convert to AppState if needed
-
+        Some(_) => {
             rsx! {
                 App {}
             }
         }
         None => rsx! {
-            div { class: "loading", "Initializing application..." }
+            div { "Initializing application..." }
         },
     }
 }
