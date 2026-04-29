@@ -58,16 +58,17 @@ async fn ws_handler(req: HttpRequest, stream: web::Payload) -> HttpResponse {
         while let Some(msg) = stream.next().await {
             match msg {
                 Ok(AggregatedMessage::Binary(data)) => {
-                    let a = decode::<my_core::web_socket::MessageType>(&data.to_vec()).unwrap();
-                    dbg!(&a);
+                    let recived_msg =
+                        decode::<my_core::web_socket::MessageType>(&data.to_vec()).unwrap();
+                    dbg!(&recived_msg);
+                    let state = req.app_data::<web::Data<GG>>().unwrap();
 
-                    let msg_to_send = match a {
+                    let msg_to_send = match recived_msg {
                         my_core::web_socket::MessageType::TwoWay { id, path, payload } => {
                             let payload = match path.as_str() {
                                 sign_up::PATH => {
                                     let input = decode::<sign_up::Input>(&payload).unwrap();
-                                    let a = req.app_data::<web::Data<GG>>().unwrap();
-                                    let result = a.sign_up(input).await;
+                                    let result = state.sign_up(input).await;
                                     encode(result)
                                 }
                                 _ => todo!(),
