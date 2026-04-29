@@ -174,7 +174,7 @@ where
             }
 
             let user_uuid = txn
-                .write_sign_up(input.user_id, hashed_password, input.name)
+                .write_sign_up(&input.user_id, &hashed_password, &input.name)
                 .await?;
 
             Ok(Ok(sign_up::Ok {

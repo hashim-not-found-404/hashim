@@ -144,9 +144,9 @@ pub trait DBTransaction {
         user_id: &String,
     ) -> Result<bool /* is new user */, Self::Error>;
     async fn write_sign_up(
-        &self,
-        user_id: String,
-        hashed_password: Self::HashedPassword,
-        user_name: Option<String>,
+        &mut self,
+        user_id: &String,
+        hashed_password: &Self::HashedPassword,
+        user_name: &Option<String>,
     ) -> Result<Self::RowId /* is uuid of the user */, Self::Error>;
 }

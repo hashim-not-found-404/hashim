@@ -105,10 +105,10 @@ impl DBTransaction for CockroachTxn<'_> {
     }
 
     async fn write_sign_up(
-        &self,
-        user_id: String,
-        hashed_password: Self::HashedPassword,
-        user_name: Option<String>,
+        &mut self,
+        user_id: &String,
+        hashed_password: &Self::HashedPassword,
+        user_name: &Option<String>,
     ) -> Result<Self::RowId, Self::Error> {
         let query =
             "INSERT INTO accounting_app.user (id, pass, name) VALUES ($1, $2, $3) RETURNING rowid;";
