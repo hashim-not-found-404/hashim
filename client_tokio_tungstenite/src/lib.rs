@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use futures_util::{
     SinkExt, StreamExt,
     stream::{SplitSink, SplitStream},
@@ -10,8 +8,8 @@ use my_core::{
     web_socket::WebSocketOp,
 };
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 use tokio::sync::Mutex;
-
 use tokio_tungstenite_wasm::{Message, WebSocketStream, connect};
 
 #[derive(Debug, Clone)]
@@ -105,7 +103,8 @@ impl WebSocketOp for MyClient {
             .lock()
             .await
             .send(Message::Binary(data.into()))
-            .await;
+            .await
+            .unwrap();
 
         Ok(())
     }

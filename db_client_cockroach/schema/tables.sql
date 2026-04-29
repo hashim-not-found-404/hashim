@@ -3,7 +3,7 @@ USE accounting_app;
 CREATE SCHEMA IF NOT EXISTS accounting_app;
 
 CREATE TABLE IF NOT EXISTS accounting_app.user(
-    rowid                                       UUID PRIMARY KEY,
+    rowid                                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     name                                        STRING,
     id                                          STRING NOT NULL UNIQUE,
@@ -11,20 +11,20 @@ CREATE TABLE IF NOT EXISTS accounting_app.user(
 );
 
 CREATE TABLE IF NOT EXISTS accounting_app.person_out_side_the_system(
-    rowid                                       UUID PRIMARY KEY,
+    rowid                                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     name                                        STRING
 );
 
 CREATE TABLE IF NOT EXISTS accounting_app.company(
-    rowid                                       UUID PRIMARY KEY,
+    rowid                                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     name                                        STRING NOT NULL,
     currency                                    STRING NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS accounting_app.company_branch(
-    rowid                                       UUID PRIMARY KEY,
+    rowid                                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     company_belong                              UUID REFERENCES accounting_app.company(rowid) ON DELETE CASCADE NOT NULL,
     name                                        STRING NOT NULL,
@@ -34,13 +34,13 @@ CREATE TABLE IF NOT EXISTS accounting_app.company_branch(
 );
 
 CREATE TABLE IF NOT EXISTS accounting_app.photo(
-    rowid                                       UUID PRIMARY KEY,
+    rowid                                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     photo                                       BYTES NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS accounting_app.product(
-    rowid                                       UUID PRIMARY KEY,
+    rowid                                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     name                                        STRING,
     primary_photo                               UUID REFERENCES accounting_app.photo(rowid) ON DELETE CASCADE NOT NULL,
@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS accounting_app.product(
 );
 
 CREATE TABLE IF NOT EXISTS accounting_app.account(
-    rowid                                       UUID PRIMARY KEY,
+    rowid                                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     is_debit                                    BOOL NOT NULL,
     is_permanent_account                        BOOL NOT NULL,
@@ -66,7 +66,7 @@ CREATE TABLE IF NOT EXISTS accounting_app.account(
 );
 
 CREATE TABLE IF NOT EXISTS accounting_app.account_flow_type(
-    rowid                                       UUID PRIMARY KEY,
+    rowid                                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     account                                     UUID REFERENCES accounting_app.account(rowid) ON DELETE CASCADE NOT NULL,
     company_branch                              UUID REFERENCES accounting_app.company_branch(rowid) ON DELETE CASCADE NOT NULL,
@@ -75,7 +75,7 @@ CREATE TABLE IF NOT EXISTS accounting_app.account_flow_type(
 );
 
 CREATE TABLE IF NOT EXISTS accounting_app.inventory_record(
-    rowid                                       UUID PRIMARY KEY,
+    rowid                                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     account                                     UUID REFERENCES accounting_app.account_flow_type(rowid) ON DELETE CASCADE NOT NULL,
     time                                        TIMESTAMPTZ NOT NULL,
@@ -84,14 +84,14 @@ CREATE TABLE IF NOT EXISTS accounting_app.inventory_record(
 );
 
 CREATE TABLE IF NOT EXISTS accounting_app.shared_entry(
-    rowid                                       UUID PRIMARY KEY,
+    rowid                                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     writer                                      UUID REFERENCES accounting_app.user(rowid) ON DELETE CASCADE NOT NULL,
     notes                                       STRING
 );
 
 CREATE TABLE IF NOT EXISTS accounting_app.entry(
-    rowid                                       UUID PRIMARY KEY,
+    rowid                                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     writer                                      UUID REFERENCES accounting_app.user(rowid) ON DELETE CASCADE NOT NULL,
     notes                                       STRING,
@@ -100,13 +100,13 @@ CREATE TABLE IF NOT EXISTS accounting_app.entry(
 );
 
 CREATE TABLE IF NOT EXISTS accounting_app.double_entry(
-    rowid                                       UUID PRIMARY KEY,
+    rowid                                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     entry                                       UUID REFERENCES accounting_app.entry(rowid) ON DELETE CASCADE NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS accounting_app.single_entry(
-    rowid                                       UUID PRIMARY KEY,
+    rowid                                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     double_entry                                UUID REFERENCES accounting_app.double_entry(rowid) ON DELETE CASCADE NOT NULL,
     account                                     UUID REFERENCES accounting_app.account_flow_type(rowid) ON DELETE CASCADE NOT NULL,
@@ -117,7 +117,7 @@ CREATE TABLE IF NOT EXISTS accounting_app.single_entry(
 );
 
 CREATE TABLE IF NOT EXISTS accounting_app.person_attributes(
-    rowid                                       UUID PRIMARY KEY,
+    rowid                                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     person                                      UUID REFERENCES accounting_app.person_out_side_the_system(rowid) ON DELETE CASCADE NOT NULL,
     key_                                        STRING NOT NULL,
@@ -125,7 +125,7 @@ CREATE TABLE IF NOT EXISTS accounting_app.person_attributes(
 );
 
 CREATE TABLE IF NOT EXISTS accounting_app.invoice(
-    rowid                                       UUID PRIMARY KEY,
+    rowid                                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     entry                                       UUID REFERENCES accounting_app.entry(rowid) ON DELETE CASCADE NOT NULL,
     notes                                       STRING,
@@ -143,7 +143,7 @@ CREATE TABLE IF NOT EXISTS accounting_app.invoice(
 );
 
 CREATE TABLE IF NOT EXISTS accounting_app.invoice_product(
-    rowid                                       UUID PRIMARY KEY,
+    rowid                                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     invoice                                     UUID REFERENCES accounting_app.invoice(rowid) ON DELETE CASCADE NOT NULL,
     product                                     UUID REFERENCES accounting_app.product(rowid) ON DELETE CASCADE NOT NULL,
@@ -153,7 +153,7 @@ CREATE TABLE IF NOT EXISTS accounting_app.invoice_product(
 );
 
 CREATE TABLE IF NOT EXISTS accounting_app.product_specifications(
-    rowid                                       UUID PRIMARY KEY,
+    rowid                                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     product                                     UUID REFERENCES accounting_app.product(rowid) ON DELETE CASCADE NOT NULL,
     key_                                        STRING NOT NULL,
@@ -161,7 +161,7 @@ CREATE TABLE IF NOT EXISTS accounting_app.product_specifications(
 );
 
 CREATE TABLE IF NOT EXISTS accounting_app.my_product_on_my_hand(
-    rowid                                       UUID PRIMARY KEY,
+    rowid                                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     product                                     UUID REFERENCES accounting_app.product(rowid) ON DELETE CASCADE NOT NULL,
     company_branch                              UUID REFERENCES accounting_app.company_branch(rowid) ON DELETE CASCADE NOT NULL,
@@ -172,7 +172,7 @@ CREATE TABLE IF NOT EXISTS accounting_app.my_product_on_my_hand(
 );
 
 CREATE TABLE IF NOT EXISTS accounting_app.their_product_on_my_hand(
-    rowid                                       UUID PRIMARY KEY,
+    rowid                                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     product                                     UUID REFERENCES accounting_app.product(rowid) ON DELETE CASCADE NOT NULL,
     company_branch                              UUID REFERENCES accounting_app.company_branch(rowid) ON DELETE CASCADE NOT NULL,
@@ -195,7 +195,7 @@ CREATE TABLE IF NOT EXISTS accounting_app.their_product_on_my_hand(
 );
 
 CREATE TABLE IF NOT EXISTS accounting_app.product_places_for_company_branch(
-    rowid                                       UUID PRIMARY KEY,
+    rowid                                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     company_branch                              UUID REFERENCES accounting_app.company_branch(rowid) ON DELETE CASCADE NOT NULL,
     place_name                                  STRING NOT NULL,
@@ -212,7 +212,7 @@ CREATE TABLE IF NOT EXISTS accounting_app.product_places_for_company_branch(
 );
 
 CREATE TABLE IF NOT EXISTS accounting_app.my_product_on_their_hand(
-    rowid                                       UUID PRIMARY KEY,
+    rowid                                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     product                                     UUID REFERENCES accounting_app.product(rowid) ON DELETE CASCADE NOT NULL,
     company_branch                              UUID REFERENCES accounting_app.company_branch(rowid) ON DELETE CASCADE NOT NULL,
@@ -232,7 +232,7 @@ CREATE TABLE IF NOT EXISTS accounting_app.my_product_on_their_hand(
 );
 
 CREATE TABLE IF NOT EXISTS accounting_app.product_photo(
-    rowid                                       UUID PRIMARY KEY,
+    rowid                                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     product                                     UUID REFERENCES accounting_app.product(rowid) ON DELETE CASCADE NOT NULL,
     photo                                       UUID REFERENCES accounting_app.photo(rowid) ON DELETE CASCADE NOT NULL,
@@ -240,13 +240,13 @@ CREATE TABLE IF NOT EXISTS accounting_app.product_photo(
 );
 
 CREATE TABLE IF NOT EXISTS accounting_app.video(
-    rowid                                       UUID PRIMARY KEY,
+    rowid                                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     video                                       BYTES NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS accounting_app.product_video(
-    rowid                                       UUID PRIMARY KEY,
+    rowid                                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     product                                     UUID REFERENCES accounting_app.product(rowid) ON DELETE CASCADE NOT NULL,
     video                                       UUID REFERENCES accounting_app.video(rowid) ON DELETE CASCADE NOT NULL,
@@ -254,7 +254,7 @@ CREATE TABLE IF NOT EXISTS accounting_app.product_video(
 );
 
 CREATE TABLE IF NOT EXISTS accounting_app.product_code(
-    rowid                                       UUID PRIMARY KEY,
+    rowid                                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     code                                        STRING NOT NULL,
 
@@ -269,7 +269,7 @@ CREATE TABLE IF NOT EXISTS accounting_app.product_code(
 );
 
 CREATE TABLE IF NOT EXISTS accounting_app.contact(
-    rowid                                       UUID PRIMARY KEY,
+    rowid                                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     belong_to                                   UUID REFERENCES accounting_app.person_out_side_the_system(rowid) ON DELETE CASCADE NOT NULL,
     platform                                    STRING NOT NULL,
@@ -277,7 +277,7 @@ CREATE TABLE IF NOT EXISTS accounting_app.contact(
 );
 
 CREATE TABLE IF NOT EXISTS accounting_app.contact_for_user(
-    rowid                                       UUID PRIMARY KEY,
+    rowid                                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     belong_to                                   UUID REFERENCES accounting_app.user(rowid) ON DELETE CASCADE NOT NULL,
     platform                                    STRING NOT NULL,
@@ -285,7 +285,7 @@ CREATE TABLE IF NOT EXISTS accounting_app.contact_for_user(
 );
 
 CREATE TABLE IF NOT EXISTS accounting_app.contact_for_company_branch(
-    rowid                                       UUID PRIMARY KEY,
+    rowid                                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     belong_to                                   UUID REFERENCES accounting_app.company_branch(rowid) ON DELETE CASCADE NOT NULL,
     platform                                    STRING NOT NULL,
@@ -293,7 +293,7 @@ CREATE TABLE IF NOT EXISTS accounting_app.contact_for_company_branch(
 );
 
 CREATE TABLE IF NOT EXISTS accounting_app.contact_for_company(
-    rowid                                       UUID PRIMARY KEY,
+    rowid                                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     belong_to                                   UUID REFERENCES accounting_app.company(rowid) ON DELETE CASCADE NOT NULL,
     platform                                    STRING NOT NULL,
@@ -301,7 +301,7 @@ CREATE TABLE IF NOT EXISTS accounting_app.contact_for_company(
 );
 
 CREATE TABLE IF NOT EXISTS accounting_app.employees(
-    rowid                                       UUID PRIMARY KEY,
+    rowid                                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     company_branch                              UUID REFERENCES accounting_app.company_branch(rowid) ON DELETE CASCADE NOT NULL,
     user_                                       UUID REFERENCES accounting_app.user(rowid) ON DELETE CASCADE NOT NULL,
@@ -309,7 +309,7 @@ CREATE TABLE IF NOT EXISTS accounting_app.employees(
 );
 
 CREATE TABLE IF NOT EXISTS accounting_app.employees_time(
-    rowid                                       UUID PRIMARY KEY,
+    rowid                                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     company_branch                              UUID REFERENCES accounting_app.company_branch(rowid) ON DELETE CASCADE NOT NULL,
     user_                                       UUID REFERENCES accounting_app.user(rowid) ON DELETE CASCADE NOT NULL,
@@ -318,7 +318,7 @@ CREATE TABLE IF NOT EXISTS accounting_app.employees_time(
 );
 
 CREATE TABLE IF NOT EXISTS accounting_app.access_control_for_company(
-    rowid                                       UUID PRIMARY KEY,
+    rowid                                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     data_group                                  UUID REFERENCES accounting_app.company(rowid) ON DELETE CASCADE NOT NULL,
     user_                                       UUID REFERENCES accounting_app.user(rowid) ON DELETE CASCADE NOT NULL,
@@ -326,7 +326,7 @@ CREATE TABLE IF NOT EXISTS accounting_app.access_control_for_company(
 );
 
 CREATE TABLE IF NOT EXISTS accounting_app.access_control_for_company_branch(
-    rowid                                       UUID PRIMARY KEY,
+    rowid                                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     data_group                                  UUID REFERENCES accounting_app.company_branch(rowid) ON DELETE CASCADE NOT NULL,
     user_                                       UUID REFERENCES accounting_app.user(rowid) ON DELETE CASCADE NOT NULL,
@@ -334,21 +334,21 @@ CREATE TABLE IF NOT EXISTS accounting_app.access_control_for_company_branch(
 );
 
 CREATE TABLE IF NOT EXISTS accounting_app.wish_list(
-    rowid                                       UUID PRIMARY KEY,
+    rowid                                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     product                                     UUID REFERENCES accounting_app.product(rowid) ON DELETE CASCADE NOT NULL,
     user_                                       UUID REFERENCES accounting_app.user(rowid) ON DELETE CASCADE NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS accounting_app.like(
-    rowid                                       UUID PRIMARY KEY,
+    rowid                                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     product                                     UUID REFERENCES accounting_app.product(rowid) ON DELETE CASCADE NOT NULL,
     user_                                       UUID REFERENCES accounting_app.user(rowid) ON DELETE CASCADE NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS accounting_app.comment(
-    rowid                                       UUID PRIMARY KEY,
+    rowid                                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     product                                     UUID REFERENCES accounting_app.product(rowid) ON DELETE CASCADE NOT NULL,
     user_                                       UUID REFERENCES accounting_app.user(rowid) ON DELETE CASCADE NOT NULL,
@@ -357,7 +357,7 @@ CREATE TABLE IF NOT EXISTS accounting_app.comment(
 );
 
 CREATE TABLE IF NOT EXISTS accounting_app.shopping_list(
-    rowid                                       UUID PRIMARY KEY,
+    rowid                                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     company_branch                              UUID REFERENCES accounting_app.company_branch(rowid) ON DELETE CASCADE NOT NULL,
     time                                        TIMESTAMPTZ NOT NULL,
@@ -378,7 +378,7 @@ CREATE TABLE IF NOT EXISTS accounting_app.shopping_list(
 );
 
 CREATE TABLE IF NOT EXISTS accounting_app.shopping_list_record(
-    rowid                                       UUID PRIMARY KEY,
+    rowid                                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     shopping_list                               UUID REFERENCES accounting_app.shopping_list(rowid) ON DELETE CASCADE NOT NULL,
     quantity                                    DECIMAL NOT NULL,
@@ -396,7 +396,7 @@ CREATE TABLE IF NOT EXISTS accounting_app.shopping_list_record(
 );
 
 CREATE TABLE IF NOT EXISTS accounting_app.account_translation(
-    rowid                                       UUID PRIMARY KEY,
+    rowid                                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     company_branch                              UUID REFERENCES accounting_app.company_branch(rowid) ON DELETE CASCADE NOT NULL,
     account                                     UUID REFERENCES accounting_app.account(rowid) ON DELETE CASCADE NOT NULL,
@@ -404,13 +404,13 @@ CREATE TABLE IF NOT EXISTS accounting_app.account_translation(
 );
 
 CREATE TABLE IF NOT EXISTS accounting_app.notes_receivable(
-    rowid                                       UUID PRIMARY KEY,
+    rowid                                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     notes                                       STRING NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS accounting_app.triple_entry_for_notes_receivable(
-    rowid                                       UUID PRIMARY KEY,
+    rowid                                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     from_                                       UUID REFERENCES accounting_app.company_branch(rowid) ON DELETE CASCADE NOT NULL,
     to_                                         UUID REFERENCES accounting_app.company_branch(rowid) ON DELETE CASCADE NOT NULL,
@@ -421,14 +421,14 @@ CREATE TABLE IF NOT EXISTS accounting_app.triple_entry_for_notes_receivable(
 );
 
 CREATE TABLE IF NOT EXISTS accounting_app.notes_receivable_users(
-    rowid                                       UUID PRIMARY KEY,
+    rowid                                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     user_                                       UUID REFERENCES accounting_app.user(rowid) ON DELETE CASCADE NOT NULL,
     notes_receivable                            UUID REFERENCES accounting_app.notes_receivable(rowid) ON DELETE CASCADE NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS accounting_app.package(
-    rowid                                       UUID PRIMARY KEY,
+    rowid                                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     location_latitude                           DECIMAL(9,6) NOT NULL CHECK (location_latitude BETWEEN -90 AND 90),
     location_longitude                          DECIMAL(10,6) NOT NULL CHECK (location_longitude BETWEEN -180 AND 180),
@@ -440,7 +440,7 @@ CREATE TABLE IF NOT EXISTS accounting_app.package(
 );
 
 CREATE TABLE IF NOT EXISTS accounting_app.triple_entry_for_package(
-    rowid                                       UUID PRIMARY KEY,
+    rowid                                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     from_                                       UUID REFERENCES accounting_app.company_branch(rowid) ON DELETE CASCADE NOT NULL,
     to_                                         UUID REFERENCES accounting_app.company_branch(rowid) ON DELETE CASCADE NOT NULL,
@@ -450,7 +450,7 @@ CREATE TABLE IF NOT EXISTS accounting_app.triple_entry_for_package(
 );
 
 CREATE TABLE IF NOT EXISTS accounting_app.transaction_number(
-    rowid                                       INT PRIMARY KEY,
+    rowid                                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     time                                        TIMESTAMPTZ NOT NULL
 );

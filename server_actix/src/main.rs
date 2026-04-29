@@ -5,6 +5,7 @@ use db_client_cockroach::{CockroachClient, CockroachDB};
 use futures_util::StreamExt as _;
 use impls_for_wasm::a1::RowId;
 use my_core::{impls::StateFullCheck, request_response::*, traits::BackendRouts};
+use serde::{Deserialize, Serialize};
 use server_logic::{authentication::HashedPassword, functions::Functions, jwt::Key};
 use std::fs::File;
 use std::io::BufReader;
@@ -57,23 +58,30 @@ async fn ws_handler(req: HttpRequest, stream: web::Payload) -> HttpResponse {
         while let Some(msg) = stream.next().await {
             match msg {
                 Ok(AggregatedMessage::Binary(data)) => {
-                    println!("Received binary message of {} bytes", data.len());
+                    let a = decode::<my_core::web_socket::MessageType>(&data.to_vec()).unwrap();
+                    dbg!(&a);
 
-                    // Process the binary data here
-                    // For example, echo back a response
-                    // let response_data = b"Message received".to_vec();
+                    let msg_to_send = match a {
+                        my_core::web_socket::MessageType::TwoWay { id, path, payload } => {
+                            let payload = match path.as_str() {
+                                sign_up::PATH => {
+                                    let input = decode::<sign_up::Input>(&payload).unwrap();
+                                    let a = req.app_data::<web::Data<GG>>().unwrap();
+                                    let result = a.sign_up(input).await;
+                                    encode(result)
+                                }
+                                _ => todo!(),
+                            };
 
-                    // Send a response back to the client
-                    // if let Err(e) = session.binary(response_data).await {
-                    //     eprintln!("Error sending response: {}", e);
-                    //     break;
-                    // }
+                            let msg_to_send =
+                                my_core::web_socket::MessageType::TwoWay { id, path, payload };
 
-                    // Or send a text response
-                    // if let Err(e) = session.text("Message received".to_string()).await {
-                    //     eprintln!("Error sending text response: {}", e);
-                    //     break;
-                    // }
+                            msg_to_send
+                        }
+                        my_core::web_socket::MessageType::OneWay { path, payload } => todo!(),
+                    };
+
+                    session.binary(encode(msg_to_send)).await.unwrap();
                 }
                 Ok(AggregatedMessage::Text(text)) => {
                     println!("Received text message: {}", text);
@@ -141,4 +149,17 @@ fn get_tls_config() -> rustls::ServerConfig {
         .unwrap();
 
     return tls_config;
+}
+
+fn encode<T: Serialize>(data: T) -> Vec<u8> {
+    use postcard::to_allocvec;
+    to_allocvec(&data).unwrap().to_vec()
+}
+
+fn decode<'de, T: Deserialize<'de>>(data: &'de Vec<u8>) -> Result<T, ()> {
+    use postcard::from_bytes;
+    match from_bytes::<T>(data) {
+        Ok(text) => return Ok(text),
+        Err(_) => return Err(()),
+    }
 }
