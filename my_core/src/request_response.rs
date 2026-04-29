@@ -1,87 +1,19 @@
+use crate::db_types;
 use serde::{Deserialize, Serialize};
 
 pub const HOST: &str = "127.0.0.1";
 pub const PORT: u16 = 8081;
 pub const ADDRESS: &str = "127.0.0.1:8081";
 
-// TODO : move this to other file
-pub mod custom_types {
-    use super::*;
-
-    pub type RowId = String;
-
-    #[derive(Debug, Deserialize, Serialize, Clone)]
-    pub struct Location {
-        latitude: f64,
-        longitude: f64,
-    }
-
-    #[derive(Debug, Deserialize, Serialize, Clone, Default)]
-    pub enum Currency {
-        #[default]
-        USD,
-        IQD,
-    }
-    impl Currency {
-        pub fn as_str(&self) -> &str {
-            match self {
-                Self::IQD => "IQD",
-                _ => todo!(),
-            }
-        }
-    }
-
-    #[derive(Debug, Deserialize, Serialize, Clone)]
-    pub enum Role {
-        Manager,
-    }
-
-    #[derive(Debug, Deserialize, Serialize, Clone)]
-    pub struct Branch {
-        pub name: String,
-        pub location: custom_types::Location,
-        pub currency: custom_types::Currency,
-        pub role: Vec<Role>,
-    }
-
-    #[derive(Debug, Deserialize, Serialize, Clone)]
-    pub struct Company {
-        pub name: String,
-        pub currency: custom_types::Currency,
-        pub branches: Vec<Branch>,
-        pub role: Vec<Role>,
-    }
-}
-
 pub mod transport_layer {
     use super::*;
 
+    // maybe i will only check from cache by sync it with the server
     #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
     pub enum OperationMode {
         CheckFromCache,
-        CheckFromServer,
         SubmitToServer,
     }
-
-    // // TODO : this should be removed
-    // #[derive(Debug, Deserialize, Serialize, Clone)]
-    // pub struct Input<T> {
-    //     // maybe i need to remove this struct
-    //     pub transaction_number: u64, // help only to prevent double write
-    //     pub jwt: String,             // help only for access control
-    //     pub submit: OperationMode,   // help only for writing
-    //     pub content: T,
-    // }
-
-    // // TODO : this should be removed
-    // #[derive(Debug, Deserialize, Serialize, Clone)]
-    // pub enum Error {
-    //     DuplicateTransaction,
-    //     InvalidJWT,
-    //     DataHasBeenChangedByOthers,
-    // }
-
-    // pub type Result<InputResult> = std::result::Result<InputResult, Error>;
 }
 
 // there should be no generic in all the below types
@@ -122,7 +54,7 @@ pub mod sign_in {
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Input {
-        pub user_id: custom_types::RowId,
+        pub user_id: db_types::RowId,
         pub password: String,
     }
 
@@ -159,7 +91,7 @@ pub mod get_all_user_roles {
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Ok {
-        pub all_roles: Vec<custom_types::Company>,
+        pub all_roles: Vec<db_types::Company>,
     }
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -175,7 +107,7 @@ pub mod create_company {
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Input {
         pub name: String,
-        pub currency: custom_types::Currency,
+        pub currency: db_types::Currency,
     }
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -193,10 +125,10 @@ pub mod create_company_branch {
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Input {
-        pub company_belong: custom_types::RowId,
+        pub company_belong: db_types::RowId,
         pub name: String,
-        pub location: custom_types::Location,
-        pub currency: custom_types::Currency,
+        pub location: db_types::Location,
+        pub currency: db_types::Currency,
     }
 
     #[derive(Debug, Deserialize, Serialize, Clone)]

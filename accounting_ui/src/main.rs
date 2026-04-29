@@ -4,7 +4,10 @@ use crate::backend::MySignal;
 use dioxus::{core::spawn_forever, prelude::*};
 use dioxus_logger::tracing::Level;
 use impls_for_wasm::a1::RandomNumber;
-use my_core::front_end_model_view::{self, Signal};
+use my_core::{
+    db_types,
+    front_end_model_view::{self, Signal},
+};
 use std::sync::Arc;
 
 const ICONS_SHOW: Asset = asset!("/assets/icons/show.png");
@@ -55,8 +58,8 @@ type Dkdkd = Arc<
         MySignal<String>,
         MySignal<bool>,
         MySignal<String>,
-        MySignal<my_core::request_response::custom_types::Currency>,
-        MySignal<Vec<my_core::request_response::custom_types::Company>>,
+        MySignal<db_types::Currency>,
+        MySignal<Vec<db_types::Company>>,
     >,
 >;
 

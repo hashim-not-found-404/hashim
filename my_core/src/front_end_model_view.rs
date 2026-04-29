@@ -1,4 +1,4 @@
-use crate::{request_response::*, traits::*};
+use crate::{db_types, request_response::*, traits::*};
 use std::{marker::PhantomData, sync::Mutex};
 
 pub trait Signal: Default {
@@ -22,8 +22,8 @@ pub struct State<
     StringSignal: Signal<T = String>,
     BoolSignal: Signal<T = bool>,
     ExternalErrorSignal: Signal<T = String>,
-    CurrencySignal: Signal<T = custom_types::Currency>,
-    UserRolesSignal: Signal<T = Vec<custom_types::Company>>,
+    CurrencySignal: Signal<T = db_types::Currency>,
+    UserRolesSignal: Signal<T = Vec<db_types::Company>>,
 {
     // here for the app logic
     generate_transaction_number: PhantomData<TxnNumGen>,
@@ -71,8 +71,8 @@ where
     StringSignal: Signal<T = String>,
     BoolSignal: Signal<T = bool>,
     ExternalErrorSignal: Signal<T = String>,
-    CurrencySignal: Signal<T = custom_types::Currency>,
-    UserRolesSignal: Signal<T = Vec<custom_types::Company>>,
+    CurrencySignal: Signal<T = db_types::Currency>,
+    UserRolesSignal: Signal<T = Vec<db_types::Company>>,
 {
     pub fn new(routs: Routs) -> Self {
         Self {
