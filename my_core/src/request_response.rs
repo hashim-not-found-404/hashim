@@ -5,17 +5,6 @@ pub const HOST: &str = "127.0.0.1";
 pub const PORT: u16 = 8081;
 pub const ADDRESS: &str = "127.0.0.1:8081";
 
-pub mod transport_layer {
-    use super::*;
-
-    // maybe i will only check from cache by sync it with the server
-    #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
-    pub enum OperationMode {
-        CheckFromCache,
-        SubmitToServer,
-    }
-}
-
 // there should be no generic in all the below types
 
 pub mod sign_up {
