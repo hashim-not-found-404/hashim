@@ -18,6 +18,8 @@ enum Route {
 
     #[route("/sign_up")]
     SignUp {},
+    // #[route("/home")]
+    // Home {},
 }
 
 fn main() {
@@ -205,5 +207,7 @@ pub fn ErrorStack() -> Element {
 
 #[component]
 pub fn CreateCompany() -> Element {
-    rsx! {}
+    rsx! {
+        div { "create company page" }
+    }
 }

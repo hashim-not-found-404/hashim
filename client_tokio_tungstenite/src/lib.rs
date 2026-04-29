@@ -142,14 +142,15 @@ impl my_core::traits::BackendRouts for Dsdff {
     type Error = MyError;
 
     async fn sign_up(&self, input: sign_up::Input) -> Result<sign_up::Result, Self::Error> {
-        // TODO : add timeout
         let result = self
             .0
             .send_and_receive::<sign_up::Input, Result<sign_up::Result, ()>>(
                 sign_up::PATH.to_string(),
                 input,
-            )
-            .await;
+            );
+
+        // TODO : add timeout
+        let result = result.await;
 
         match result {
             Ok(o) => match o {
@@ -166,8 +167,10 @@ impl my_core::traits::BackendRouts for Dsdff {
             .send_and_receive::<sign_in::Input, Result<sign_in::Result, ()>>(
                 sign_in::PATH.to_string(),
                 input,
-            )
-            .await;
+            );
+
+        // TODO : add timeout
+        let result = result.await;
 
         match result {
             Ok(o) => match o {
