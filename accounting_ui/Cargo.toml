@@ -9,7 +9,6 @@ edition = "2021"
 [dependencies]
 my_core = { workspace = true }
 client_tokio_tungstenite = { workspace = true }
-# client_gloo_net = { workspace = true }
 impls_for_wasm = { workspace = true }
 
 dioxus = { workspace = true }
