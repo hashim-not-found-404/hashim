@@ -26,7 +26,6 @@ deadpool-postgres = "0.14.1"
 tokio-postgres = { version = "0.7.16", features = ["with-uuid-1"]}
 
 # ui
-# eframe = "0.33.3"
 dioxus = { version = "0.7.4", features = ["router"] }
 dioxus-logger = "0.7.4"
 
@@ -50,8 +49,9 @@ jsonwebtoken = { version = "10.2.0", features = ["rust_crypto"] }
 serde = { version = "1.0.228", features = ["derive"] }
 postcard = { version = "1.1.3", features = ["alloc"] }
 
-# threding
-tokio = {version = "1.51.0"}
+# runtime
+tokio = "1.51.0"
+agnostic-lite = "0.6.1"
 
 # time
 chrono = "0.4.42"
