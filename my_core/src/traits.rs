@@ -32,12 +32,20 @@ pub trait Database {
 
 pub trait DBClient {
     type Error;
+    type RowId: RowId;
+    type HashedPassword: HashedPassword;
+
     type Txn<'a>: DBTransaction
     where
         Self: 'a;
+
     async fn begin_transaction(&mut self) -> Result<Self::Txn<'_>, Self::Error>;
     // here we just do read we dont do here any set or check
-    // and all the read for the chack and all of it not transaction
+
+    async fn read_sign_in(
+        &mut self,
+        user_id: &String,
+    ) -> Result<Option<(Self::RowId, Self::HashedPassword)>, Self::Error>;
 }
 
 pub mod domain_errors {
@@ -50,86 +58,6 @@ pub mod domain_errors {
         DuplicatedUserId,
     }
 }
-
-// pub trait DBTransaction {
-//     type Error;
-//     type RowId: RowId;
-//     type HashedPassword: HashedPassword;
-
-//     async fn commit_transaction(self) -> Result<Result<(), domain_errors::AtCommit>, Self::Error>;
-//     async fn rollback_transaction(self) -> Result<(), Self::Error>;
-
-//     /// return true if new
-//     async fn insert_transaction_if_new(
-//         &mut self,
-//         transaction_number: u64,
-//     ) -> Result<bool, Self::Error>;
-
-//     async fn does_he_have_access_to_here(
-//         &mut self,
-//         accepted_roles: &[custom_types::Role],
-//         company_or_branch: &db_types::DataGroup<Self::RowId>,
-//         user_id: &Self::RowId,
-//     ) -> Result<bool, Self::Error>;
-
-//     async fn select_user_rowid_and_password_hash(
-//         &mut self,
-//         user_id: &String,
-//     ) -> Result<Option<(Self::RowId, Self::HashedPassword)>, Self::Error>;
-//     async fn select_all_companies_and_branches_for_the_user(
-//         &mut self,
-//         user_id: &Self::RowId,
-//     ) -> Result<Option<Vec<custom_types::Company>>, Self::Error>;
-
-//     async fn insert_role(
-//         &mut self,
-//         row_id: &Self::RowId,
-//         role: &custom_types::Role,
-//         data_group: &db_types::DataGroup<Self::RowId>,
-//         user_id: &Self::RowId,
-//     ) -> Result<(), Self::Error>;
-//     async fn insert_company(
-//         &mut self,
-//         row_id: &Self::RowId,
-//         name: &String,
-//         currency: &custom_types::Currency,
-//     ) -> Result<(), Self::Error>;
-//     async fn insert_company_branch(
-//         &mut self,
-//         row_id: &Self::RowId,
-//         company_belong: &Self::RowId,
-//         name: &String,
-//         location: &custom_types::Location,
-//         currency: &custom_types::Currency,
-//     ) -> Result<(), Self::Error>;
-//     async fn insert_user(
-//         &mut self,
-//         row_id: &Self::RowId,
-//         name: &Option<String>,
-//         user_id: &String,
-//         hashed_password: &Self::HashedPassword,
-//     ) -> Result<Result<(), domain_errors::AtInsertUserId>, Self::Error>;
-// }
-
-macro_rules! generate_api_backend_methods {
-    ($path:ident) => {
-        async fn $path(
-            &self,
-            input: transport_layer::Input<$path::Input>,
-        ) -> Result<transport_layer::Result<$path::Result>, Self::Error>;
-    };
-}
-
-pub trait BackendRouts {
-    type Error;
-    async fn sign_up(&self, input: sign_up::Input) -> Result<sign_up::Result, Self::Error>;
-    // generate_api_backend_methods!(sign_in);
-    // generate_api_backend_methods!(get_all_user_roles);
-    // generate_api_backend_methods!(create_company);
-    // generate_api_backend_methods!(create_company_branch);
-}
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////
 
 pub trait DBTransaction {
     type Error;
@@ -149,4 +77,22 @@ pub trait DBTransaction {
         hashed_password: &Self::HashedPassword,
         user_name: &Option<String>,
     ) -> Result<Self::RowId /* is uuid of the user */, Self::Error>;
+}
+
+macro_rules! generate_api_backend_methods {
+    ($path:ident) => {
+        async fn $path(
+            &self,
+            input: transport_layer::Input<$path::Input>,
+        ) -> Result<transport_layer::Result<$path::Result>, Self::Error>;
+    };
+}
+
+pub trait BackendRouts {
+    type Error;
+    async fn sign_up(&self, input: sign_up::Input) -> Result<sign_up::Result, Self::Error>;
+    async fn sign_in(&self, input: sign_in::Input) -> Result<sign_in::Result, Self::Error>;
+    // generate_api_backend_methods!(get_all_user_roles);
+    // generate_api_backend_methods!(create_company);
+    // generate_api_backend_methods!(create_company_branch);
 }

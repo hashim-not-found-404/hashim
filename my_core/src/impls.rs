@@ -1,4 +1,4 @@
-use crate::{db_types, request_response::*, traits::*};
+use crate::{request_response::*, traits::*};
 use std::marker::PhantomData;
 
 pub struct StateFullCheck<DB, Cli, Jwt, Authentication, F, Id>
@@ -42,39 +42,6 @@ where
             rowid: PhantomData::<Id>,
         }
     }
-
-    // async fn sign_in(
-    //     &self,
-    //     txn: &mut Cli::Txn<'_>,
-    //     input: sign_in::Input,
-    // ) -> sign_in::Result<ExternalError> {
-    //     let (user_rowid, password_hash) = match txn
-    //         .select_user_rowid_and_password_hash(&input.user_id)
-    //         .await?
-    //     {
-    //         Some(p) => p,
-    //         None => {
-    //             return Ok(Err(business_layer::Error::InvalidInput(sign_in::Error {
-    //                 user_id: Some(sign_in::UserIdError::NotExist),
-    //                 password: None,
-    //             })));
-    //         }
-    //     };
-
-    //     match Authentication::sign_in(input.password, password_hash) {
-    //         true => {
-    //             return Ok(Ok(sign_in::Ok {
-    //                 jwt: self.jwt.sign(&user_rowid).into(),
-    //             }));
-    //         }
-    //         false => {
-    //             return Ok(Err(business_layer::Error::InvalidInput(sign_in::Error {
-    //                 user_id: None,
-    //                 password: Some(sign_in::PasswordError::WrongPassword),
-    //             })));
-    //         }
-    //     };
-    // }
 
     // async fn get_all_user_roles(
     //     &self,
@@ -144,7 +111,7 @@ impl<DB, Cli, Jwt, Authentication, F, Id, ExternalError> BackendRouts
     for StateFullCheck<DB, Cli, Jwt, Authentication, F, Id>
 where
     DB: Database<Error = ExternalError, Client = Cli>,
-    Cli: DBClient<Error = ExternalError>,
+    Cli: DBClient<Error = ExternalError, RowId = Id, HashedPassword = Authentication>,
     for<'a> Cli::Txn<'a>:
         DBTransaction<Error = ExternalError, RowId = Id, HashedPassword = Authentication>,
     Jwt: JWT<UserId = Id>,
@@ -192,41 +159,34 @@ where
         return result;
     }
 
-    //     async fn sign_in(&self, input: business_layer::Input) -> sign_in::Result<ExternalError> {
-    //         let mut client = self.database.get_client().await?;
+    async fn sign_in(&self, input: sign_in::Input) -> Result<sign_in::Result, Self::Error> {
+        let mut errr = sign_in::Error {
+            user_id: None,
+            password: None,
+        };
 
-    //         for _ in 0..2_u8 {
-    //             let mut txn = client.begin_transaction().await?;
+        let mut client = self.database.get_client().await?;
 
-    //             let is_ok = txn
-    //                 .insert_transaction_if_new(input.transaction_number)
-    //                 .await?;
-    //             if !is_ok {
-    //                 txn.rollback_transaction().await?;
-    //                 return Ok(Err(business_layer::Error::DuplicateTransaction));
-    //             }
+        let (user_rowid, password_hash) = match client.read_sign_in(&input.user_id).await? {
+            Some(p) => p,
+            None => {
+                errr.user_id = Some(sign_in::UserIdError::NotExist);
+                return Ok(Err(errr));
+            }
+        };
 
-    //             let result = self.sign_in(&mut txn, input.content.clone()).await;
-    //             match result {
-    //                 Ok(o) => {
-    //                     if input.submit != business_layer::OperationMode::SubmitToServer {
-    //                         txn.rollback_transaction().await?;
-    //                         return Ok(o);
-    //                     }
-    //                     match txn.commit_transaction().await? {
-    //                         Ok(_) => return Ok(o),
-    //                         Err(domain_errors::AtCommit::DataIsChanged) => continue,
-    //                     }
-    //                 }
-    //                 Err(e) => {
-    //                     txn.rollback_transaction().await?;
-    //                     return Err(e);
-    //                 }
-    //             }
-    //         }
-
-    //         return Ok(Err(business_layer::Error::DataHasBeenChangedByOthers));
-    //     }
+        match Authentication::sign_in(input.password, password_hash) {
+            true => {
+                return Ok(Ok(sign_in::Ok {
+                    jwt: self.jwt.sign(&user_rowid).into(),
+                }));
+            }
+            false => {
+                errr.password = Some(sign_in::PasswordError::WrongPassword);
+                return Ok(Err(errr));
+            }
+        };
+    }
 
     //     async fn get_all_user_roles(
     //         &self,

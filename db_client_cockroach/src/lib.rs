@@ -1,11 +1,5 @@
 use deadpool_postgres::{Config, Pool, Runtime};
-use impls_for_wasm::a1::RowId;
-use my_core::{
-    db_types,
-    request_response::*,
-    traits::{self, DBClient, DBTransaction, Database},
-};
-use serde_json;
+use my_core::traits::{self, DBClient, DBTransaction, Database};
 use server_logic::*;
 use tokio_postgres::{NoTls, Row, error::SqlState, types::ToSql};
 use uuid::Uuid;
@@ -50,12 +44,45 @@ impl Database for CockroachDB {
 
 impl DBClient for CockroachClient {
     type Error = ();
+    type RowId = impls_for_wasm::a1::RowId;
+    type HashedPassword = authentication::HashedPassword;
     type Txn<'a> = CockroachTxn<'a>;
 
     async fn begin_transaction(&mut self) -> Result<Self::Txn<'_>, Self::Error> {
         Ok(CockroachTxn {
             txn: self.client.transaction().await.unwrap(),
         })
+    }
+
+    async fn read_sign_in(
+        &mut self,
+        user_id: &String,
+    ) -> Result<Option<(Self::RowId, Self::HashedPassword)>, Self::Error> {
+        let query = "SELECT rowid,pass FROM accounting_app.user WHERE id = $1 limit 1;";
+        let stmt = self.client.prepare_cached(query).await.unwrap();
+        let result = self.client.query_opt(&stmt, &[user_id]).await;
+
+        match result {
+            Ok(Some(row)) => {
+                let row_id = row.try_get::<_, Uuid>(0);
+                let row_id = match row_id {
+                    Ok(o) => o,
+                    Err(e) => unreachable!("{}", e),
+                };
+
+                let hashed_password = row.try_get::<_, String>(1);
+                let hashed_password = match hashed_password {
+                    Ok(o) => o,
+                    Err(e) => unreachable!("{}", e),
+                };
+
+                return Ok(Some((row_id.into(), hashed_password.into())));
+            }
+            Ok(None) => {
+                return Ok(None);
+            }
+            Err(e) => unreachable!("{}", e),
+        }
     }
 }
 

@@ -60,7 +60,6 @@ async fn ws_handler(req: HttpRequest, stream: web::Payload) -> HttpResponse {
                 Ok(AggregatedMessage::Binary(data)) => {
                     let recived_msg =
                         decode::<my_core::web_socket::MessageType>(&data.to_vec()).unwrap();
-                    dbg!(&recived_msg);
                     let state = req.app_data::<web::Data<GG>>().unwrap();
 
                     let msg_to_send = match recived_msg {
@@ -69,6 +68,11 @@ async fn ws_handler(req: HttpRequest, stream: web::Payload) -> HttpResponse {
                                 sign_up::PATH => {
                                     let input = decode::<sign_up::Input>(&payload).unwrap();
                                     let result = state.sign_up(input).await;
+                                    encode(result)
+                                }
+                                sign_in::PATH => {
+                                    let input = decode::<sign_in::Input>(&payload).unwrap();
+                                    let result = state.sign_in(input).await;
                                     encode(result)
                                 }
                                 _ => todo!(),

@@ -19,3 +19,6 @@ clear &&
 git add . &&
 git commit -m "" &&
 git push origin main
+
+clear && RUSTFLAGS="-Awarnings" dx serve -p accounting_ui
+clear && RUSTFLAGS="-Awarnings" cargo run -p server_actix

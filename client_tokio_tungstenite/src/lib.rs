@@ -3,10 +3,7 @@ use futures_util::{
     stream::{SplitSink, SplitStream},
 };
 use impls_for_wasm::a1::RandomNumber;
-use my_core::{
-    request_response::{ADDRESS, sign_up},
-    web_socket::WebSocketOp,
-};
+use my_core::{request_response::*, web_socket::WebSocketOp};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -149,6 +146,24 @@ impl my_core::traits::BackendRouts for Dsdff {
             .0
             .send_and_receive::<sign_up::Input, Result<sign_up::Result, ()>>(
                 sign_up::PATH.to_string(),
+                input,
+            )
+            .await;
+
+        match result {
+            Ok(o) => match o {
+                Ok(o) => Ok(o),
+                Err(_) => Err(MyError::ServerError),
+            },
+            Err(e) => Err(e),
+        }
+    }
+
+    async fn sign_in(&self, input: sign_in::Input) -> Result<sign_in::Result, Self::Error> {
+        let result = self
+            .0
+            .send_and_receive::<sign_in::Input, Result<sign_in::Result, ()>>(
+                sign_in::PATH.to_string(),
                 input,
             )
             .await;

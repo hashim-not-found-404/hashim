@@ -111,45 +111,44 @@ where
     // }
 
     pub async fn sign_in(&self) {
-        //     if self.is_loading_sign_in_or_up.read() == true {
-        //         return;
-        //     }
-        //     self.is_loading_sign_in_or_up.set(true);
+        if self.is_loading_sign_in_or_up.read() == true {
+            return;
+        }
+        self.is_loading_sign_in_or_up.set(true);
 
-        //     self.sign_in_error_for_user_id.set(String::new());
-        //     self.sign_in_error_for_password.set(String::new());
+        self.sign_in_error_for_user_id.set(String::new());
+        self.sign_in_error_for_password.set(String::new());
 
-        //     let input = self.generate_txn(sign_in::Input {
-        //         user_id: self.user_id.read(),
-        //         password: self.password.read(),
-        //     });
+        let input = sign_in::Input {
+            user_id: self.user_id.read(),
+            password: self.password.read(),
+        };
 
-        //     let result = self.routs.sign_in(input).await;
+        let result = self.routs.sign_in(input).await;
 
-        //     match result {
-        //         Ok(Ok(business_output)) => {
-        //             self.is_signed_in.set(true);
-        //             *self.jwt.lock().unwrap() = Some(business_output.jwt.clone());
-        //         }
-        //         Ok(Err(business_error)) => match business_error {
-        //             business_layer::Error::InvalidInput(err) => {
-        //                 self.sign_in_error_for_user_id.set(match err.user_id {
-        //                     Some(_) => String::from("user not exist"),
-        //                     None => String::new(),
-        //                 });
-        //                 self.sign_in_error_for_password.set(match err.password {
-        //                     Some(_) => String::from("wrong password"),
-        //                     None => String::new(),
-        //                 });
-        //             }
-        //             _ => unreachable!(),
-        //         },
-        //         Err(external_error) => {
-        //             self.external_errors.set(external_error.to_string());
-        //         }
-        //     }
+        match result {
+            Ok(Ok(business_output)) => {
+                self.is_signed_in.set(true);
+                *self.jwt.lock().unwrap() = Some(business_output.jwt.clone());
+            }
+            Ok(Err(business_error)) => {
+                self.sign_in_error_for_user_id
+                    .set(match business_error.user_id {
+                        Some(_) => String::from("user not exist"),
+                        None => String::new(),
+                    });
+                self.sign_in_error_for_password
+                    .set(match business_error.password {
+                        Some(_) => String::from("wrong password"),
+                        None => String::new(),
+                    });
+            }
+            Err(external_error) => {
+                self.external_errors.set(external_error.to_string());
+            }
+        }
 
-        //     self.is_loading_sign_in_or_up.set(false);
+        self.is_loading_sign_in_or_up.set(false);
     }
 
     pub async fn sign_up(&self) {
