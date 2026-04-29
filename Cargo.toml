@@ -27,8 +27,9 @@ impls_for_wasm = {path = "./impls_for_wasm"}
 db_client_cockroach = {path = "./db_client_cockroach"}
 
 # database
-deadpool-postgres = "0.14.1"
-tokio-postgres = { version = "0.7.16", features = ["with-uuid-1"]}
+sqlx = { version = "0.8.6", features = ["runtime-tokio-native-tls", "postgres", "uuid", "macros"]}
+# deadpool-postgres = "0.14.1"
+# tokio-postgres = { version = "0.7.16", features = ["with-uuid-1"]}
 
 # ui
 # eframe = "0.33.3"

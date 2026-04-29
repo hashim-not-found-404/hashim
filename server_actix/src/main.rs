@@ -16,7 +16,7 @@ type GG = StateFullCheck<CockroachDB, CockroachClient, Key, HashedPassword, Func
 async fn main() {
     println!("started server");
 
-    let actions: GG = StateFullCheck::new(CockroachDB::default(), Key::default());
+    let actions: GG = StateFullCheck::new(CockroachDB::new().await, Key::default());
 
     let actions = web::Data::new(actions);
 

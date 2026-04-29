@@ -1,40 +1,39 @@
-use deadpool_postgres::{Config, Pool, Runtime};
-use impls_for_wasm::a1::RowId;
-use my_core::{
-    db_types,
-    request_response::*,
-    traits::{self, DBClient, DBTransaction, Database},
-};
-use serde_json;
+use my_core::traits::{self, DBClient, DBTransaction, Database};
 use server_logic::*;
-use tokio_postgres::{NoTls, Row, error::SqlState, types::ToSql};
+use sqlx::{PgPool, Postgres, Row, Transaction, postgres::PgPoolOptions};
 use uuid::Uuid;
 
 pub struct CockroachDB {
-    pool: Pool,
+    pool: PgPool,
 }
 
-impl Default for CockroachDB {
+impl CockroachDB {
     /// Creates a new connection pool to CockroachDB.
-    fn default() -> Self {
-        let mut cfg = Config::new();
+    pub async fn new() -> Self {
+        // Build connection URL from components
+        let host = "localhost";
+        let port = 26257;
+        let user = "root";
+        let database = "accounting_app";
 
-        // Connection settings
-        cfg.host = Some("localhost".to_string());
-        cfg.port = Some(26257);
-        cfg.user = Some("root".to_string());
-        cfg.dbname = Some("accounting_app".to_string());
+        // Construct the URL
+        let url = format!(
+            "postgresql://{}:{}@{}:{}/{}?sslmode=disable",
+            user,     // No password for root (CockroachDB default)
+            "",       // Empty password
+            host,     // localhost
+            port,     //
+            database  // accounting_app
+        );
 
-        let pool = cfg
-            .create_pool(Some(Runtime::Tokio1), NoTls)
-            .expect("Failed to create database pool");
+        let pool = PgPoolOptions::new()
+            .max_connections(10) // Configure pool size
+            .connect(&url)
+            .await
+            .unwrap();
 
-        CockroachDB { pool: pool }
+        CockroachDB { pool }
     }
-}
-
-pub struct CockroachClient {
-    client: deadpool_postgres::Object,
 }
 
 impl Database for CockroachDB {
@@ -43,9 +42,13 @@ impl Database for CockroachDB {
 
     async fn get_client(&self) -> Result<Self::Client, Self::Error> {
         Ok(CockroachClient {
-            client: self.pool.get().await.unwrap(),
+            client: self.pool.clone(),
         })
     }
+}
+
+pub struct CockroachClient {
+    client: PgPool,
 }
 
 impl DBClient for CockroachClient {
@@ -53,14 +56,13 @@ impl DBClient for CockroachClient {
     type Txn<'a> = CockroachTxn<'a>;
 
     async fn begin_transaction(&mut self) -> Result<Self::Txn<'_>, Self::Error> {
-        Ok(CockroachTxn {
-            txn: self.client.transaction().await.unwrap(),
-        })
+        let txn = self.client.begin().await.unwrap();
+        Ok(CockroachTxn { txn })
     }
 }
 
 pub struct CockroachTxn<'a> {
-    txn: deadpool_postgres::Transaction<'a>,
+    txn: Transaction<'a, Postgres>,
 }
 
 impl DBTransaction for CockroachTxn<'_> {
@@ -74,10 +76,7 @@ impl DBTransaction for CockroachTxn<'_> {
         match self.txn.commit().await {
             Ok(_) => return Ok(Ok(())),
             Err(e) => {
-                if get_sql_state(e) == SqlState::T_R_SERIALIZATION_FAILURE {
-                    return Ok(Err(traits::domain_errors::AtCommit::DataIsChanged));
-                }
-                unreachable!()
+                todo!()
             }
         }
     }
@@ -89,12 +88,19 @@ impl DBTransaction for CockroachTxn<'_> {
 
     async fn read_sign_up(&mut self, user_id: &String) -> Result<bool, Self::Error> {
         let query = "SELECT EXISTS( SELECT 1 FROM accounting_app.user WHERE id = $1 );";
-        let stmt = self.txn.prepare_cached(query).await.unwrap();
-        let result = self.txn.query_one(&stmt, &[user_id]).await;
+        let stmt = sqlx::query(query);
+        let result = stmt.bind(&user_id).fetch_one(&mut *self.txn).await;
+
+        let result = sqlx::query!(
+            "SELECT EXISTS( SELECT 1 FROM accounting_app.user WHERE id = $1 );",
+            user_id
+        )
+        .fetch_one(&mut *self.txn)
+        .await;
 
         match result {
             Ok(row) => {
-                let value = row.try_get::<_, bool>(0);
+                let value = row.try_get::<bool, _>(0);
                 match value {
                     Ok(o) => return Ok(!o),
                     Err(e) => unreachable!("{}", e),
@@ -105,49 +111,32 @@ impl DBTransaction for CockroachTxn<'_> {
     }
 
     async fn write_sign_up(
-        &self,
-        user_id: String,
-        hashed_password: Self::HashedPassword,
-        user_name: Option<String>,
+        &mut self,
+        user_id: &String,
+        hashed_password: &Self::HashedPassword,
+        user_name: &Option<String>,
     ) -> Result<Self::RowId, Self::Error> {
         let query =
             "INSERT INTO accounting_app.user (id, pass, name) VALUES ($1, $2, $3) RETURNING rowid;";
-        let stmt = self.txn.prepare_cached(query).await.unwrap();
-        let result = self
-            .txn
-            .query_one(
-                &stmt,
-                &[&user_id, &hashed_password.into_inner(), &user_name],
-            )
+        let stmt = sqlx::query(query);
+        let result = stmt
+            .bind(&user_id)
+            .bind(&hashed_password.into_inner())
+            .bind(&user_name)
+            .fetch_one(&mut *self.txn)
             .await;
 
         match result {
             Ok(row) => {
-                let value = row.try_get::<_, Uuid>(0);
+                let value = row.try_get::<Uuid, _>(0);
                 match value {
-                    Ok(o) => return Ok(o.into()),
+                    Ok(o) => return Ok(Self::RowId::try_from(o).unwrap()),
                     Err(e) => unreachable!("{}", e),
                 }
             }
             Err(e) => unreachable!("{}", e),
         }
     }
-}
-
-impl CockroachTxn<'_> {
-    async fn execute(&self, query: &str, params: &[&(dyn ToSql + Sync)]) {
-        let stmt = self.txn.prepare_cached(query).await.unwrap();
-        self.txn.execute(&stmt, params).await.unwrap();
-    }
-
-    async fn query_opt(&self, query: &str, params: &[&(dyn ToSql + Sync)]) -> Option<Row> {
-        let stmt = self.txn.prepare_cached(query).await.unwrap();
-        return self.txn.query_opt(&stmt, params).await.unwrap();
-    }
-}
-
-fn get_sql_state(error: tokio_postgres::Error) -> SqlState {
-    return error.as_db_error().unwrap().code().clone();
 }
 
 #[cfg(test)]
