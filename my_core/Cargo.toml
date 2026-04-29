@@ -1,9 +1,10 @@
+# this crate is dependencies-agnostic and platform--agnostic
+# dont add any external dependencies other than serde
 [package]
 name = "my_core"
 version = "0.1.0"
 edition = "2024"
 
-# dont add any external dependencies other than serde
-# and dont add any enternal dependencies at all
 [dependencies]
 serde = { workspace = true }
+agnostic-lite = { workspace = true }
