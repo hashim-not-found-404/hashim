@@ -1,3 +1,4 @@
+use agnostic_lite::RuntimeLite;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashMap, VecDeque},
@@ -7,6 +8,7 @@ use std::{
     pin::Pin,
     sync::{Arc, Mutex},
     task::{Context, Poll, Waker},
+    time::Duration,
 };
 
 use crate::traits;
@@ -209,10 +211,12 @@ pub trait Coding {
     fn decode<'de, T: serde::Deserialize<'de>>(data: &'de Vec<u8>) -> Result<T, Self::Error>;
 }
 
-pub struct MyClient<WS, DE, RN>
+pub struct MyClient<WS, DE, RN, RT>
 where
     WS: WebSocketOp,
+    RT: RuntimeLite,
 {
+    runtime: PhantomData<RT>,
     random_number: PhantomData<RN>,
     coding: PhantomData<DE>,
     transport: WS,
@@ -221,14 +225,16 @@ where
     receive_only_pool: ReceiveOnlyPool,
 }
 
-impl<WS, DE, E, RN> MyClient<WS, DE, RN>
+impl<WS, DE, E, RN, RT> MyClient<WS, DE, RN, RT>
 where
     RN: traits::RandomNumber,
     WS: WebSocketOp<Error = E>,
     DE: Coding<Error = E>,
+    RT: RuntimeLite,
 {
     pub fn new(transport: WS) -> Self {
         Self {
+            runtime: PhantomData::<RT>,
             random_number: PhantomData::<RN>,
             coding: PhantomData::<DE>,
             transport: transport,
@@ -242,6 +248,7 @@ where
         &self,
         path: String,
         payload: SendType,
+        timeout_in_secs: u32,
     ) -> Result<ReceiveType, WS::Error> {
         let id = RN::generate();
         let message = self.send_and_receive_pool.subscribe(id);
@@ -251,9 +258,14 @@ where
         let text = DE::encode(text);
         self.transport.send_bin(text).await?;
 
-        let result = message.await;
+        let r = match RT::timeout_local(Duration::from_secs(timeout_in_secs as u64), message).await
+        {
+            Ok(result) => DE::decode::<ReceiveType>(&result),
+            Err(e) => panic!("noooooooooooooooooooo"),
+        };
+
         self.send_and_receive_pool.unsubscribe(id);
-        DE::decode::<ReceiveType>(&result)
+        r
     }
 
     pub async fn receive_and_send<SendType: Serialize, ReceiveType: for<'de> Deserialize<'de>>(
