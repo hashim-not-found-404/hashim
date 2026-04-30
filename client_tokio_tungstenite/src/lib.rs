@@ -129,17 +129,14 @@ pub struct Dsdff(Arc<my_core::web_socket::MyClient<MyClient, Atooooooooooo, Rand
 
 impl Dsdff {
     pub async fn new() -> Self {
-        let transport = MyClient::new().await;
-        let my_client = my_core::web_socket::MyClient::new(transport);
-        let my_client = Arc::new(my_client);
+        let my_client = Arc::new(my_core::web_socket::MyClient::new(MyClient::new().await));
         let my_client1 = my_client.clone();
 
         NativeSpawner::spawn_local(async move {
             my_client1.receive_radar().await;
         });
 
-        let cl = Dsdff(my_client);
-        cl
+        Dsdff(my_client)
     }
 }
 

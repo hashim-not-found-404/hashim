@@ -8,23 +8,14 @@ pub trait Signal: Default {
 }
 
 pub struct State<
-    Routs,
-    TxnNumGen,
-    StringSignal,
-    BoolSignal,
-    ExternalErrorSignal,
-    CurrencySignal,
-    UserRolesSignal,
-> where
-    Routs: BackendRouts,
-    Routs::Error: ToString,
+    Routs: BackendRouts<Error: ToString>,
     TxnNumGen: RandomNumber,
     StringSignal: Signal<T = String>,
     BoolSignal: Signal<T = bool>,
     ExternalErrorSignal: Signal<T = String>,
     CurrencySignal: Signal<T = db_types::Currency>,
     UserRolesSignal: Signal<T = Vec<db_types::Company>>,
-{
+> {
     // here for the app logic
     generate_transaction_number: PhantomData<TxnNumGen>,
     routs: Routs,
@@ -47,13 +38,13 @@ pub struct State<
 }
 
 impl<
-    Routs,
-    TxnNumGen,
-    StringSignal,
-    BoolSignal,
-    ExternalErrorSignal,
-    CurrencySignal,
-    UserRolesSignal,
+    Routs: BackendRouts<Error: ToString>,
+    TxnNumGen: RandomNumber,
+    StringSignal: Signal<T = String>,
+    BoolSignal: Signal<T = bool>,
+    ExternalErrorSignal: Signal<T = String>,
+    CurrencySignal: Signal<T = db_types::Currency>,
+    UserRolesSignal: Signal<T = Vec<db_types::Company>>,
 >
     State<
         Routs,
@@ -64,15 +55,6 @@ impl<
         CurrencySignal,
         UserRolesSignal,
     >
-where
-    Routs: BackendRouts,
-    Routs::Error: ToString,
-    TxnNumGen: RandomNumber,
-    StringSignal: Signal<T = String>,
-    BoolSignal: Signal<T = bool>,
-    ExternalErrorSignal: Signal<T = String>,
-    CurrencySignal: Signal<T = db_types::Currency>,
-    UserRolesSignal: Signal<T = Vec<db_types::Company>>,
 {
     pub fn new(routs: Routs) -> Self {
         Self {
@@ -94,21 +76,6 @@ where
             all_user_roles: UserRolesSignal::default(),
         }
     }
-
-    // fn generate_txn<T>(&self, content: T) -> transport_layer::Input<T> {
-    //     transport_layer::Input {
-    //         transaction_number: TxnNumGen::generate(),
-    //         jwt: self
-    //             .jwt
-    //             .lock()
-    //             .unwrap()
-    //             .as_ref()
-    //             .unwrap_or(&String::default())
-    //             .clone(),
-    //         submit: transport_layer::OperationMode::SubmitToServer,
-    //         content: content,
-    //     }
-    // }
 
     pub async fn sign_in(&self) {
         if self.is_loading_sign_in_or_up.read() == true {
