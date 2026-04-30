@@ -1,3 +1,10 @@
+#[cfg(not(target_arch = "wasm32"))]
+use agnostic_lite::tokio::{TokioRuntime as NativeRuntime, TokioSpawner as NativeSpawner};
+
+#[cfg(target_arch = "wasm32")]
+use agnostic_lite::wasm::{WasmRuntime as NativeRuntime, WasmSpawner as NativeSpawner};
+
+use agnostic_lite::{AsyncLocalSpawner, RuntimeLite};
 use futures_util::{
     SinkExt, StreamExt,
     stream::{SplitSink, SplitStream},
@@ -5,8 +12,10 @@ use futures_util::{
 use impls_for_wasm::a1::RandomNumber;
 use my_core::{request_response::*, web_socket::WebSocketOp};
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
-use tokio::sync::Mutex;
+use std::{
+    sync::{Arc, Mutex},
+    time::Duration,
+};
 use tokio_tungstenite_wasm::{Message, WebSocketStream, connect};
 
 #[derive(Debug, Clone)]
@@ -14,6 +23,7 @@ pub enum MyError {
     DecodingError,
     Closed,
     ServerError,
+    Timeout,
     //
     OtherUnexpectedStatusCode(String),
     SomeInternalErrorOfTheServer,
@@ -43,6 +53,7 @@ impl ToString for MyError {
             MyError::DecodingError => todo!(),
             MyError::Closed => todo!(),
             MyError::ServerError => todo!(),
+            MyError::Timeout => String::from("Timeout"),
         }
     }
 }
@@ -98,7 +109,7 @@ impl WebSocketOp for MyClient {
     async fn send_bin(&self, data: Vec<u8>) -> Result<(), Self::Error> {
         self.write
             .lock()
-            .await
+            .unwrap()
             .send(Message::Binary(data.into()))
             .await
             .unwrap();
@@ -107,14 +118,14 @@ impl WebSocketOp for MyClient {
     }
 
     async fn try_receive_bin(&self) -> Result<Vec<u8>, Self::Error> {
-        let Some(Ok(Message::Binary(data))) = self.read.lock().await.next().await else {
+        let Some(Ok(Message::Binary(data))) = self.read.lock().unwrap().next().await else {
             return Err(MyError::Closed);
         };
         return Ok(data.into());
     }
 }
 
-pub struct Dsdff(pub Arc<my_core::web_socket::MyClient<MyClient, Atooooooooooo, RandomNumber>>);
+pub struct Dsdff(Arc<my_core::web_socket::MyClient<MyClient, Atooooooooooo, RandomNumber>>);
 
 impl Dsdff {
     pub async fn new() -> Self {
@@ -123,13 +134,7 @@ impl Dsdff {
         let my_client = Arc::new(my_client);
         let my_client1 = my_client.clone();
 
-        #[cfg(not(target_arch = "wasm32"))]
-        tokio::spawn(async move {
-            my_client1.receive_radar().await;
-        });
-
-        #[cfg(target_arch = "wasm32")]
-        wasm_bindgen_futures::spawn_local(async move {
+        NativeSpawner::spawn_local(async move {
             my_client1.receive_radar().await;
         });
 
@@ -149,8 +154,9 @@ impl my_core::traits::BackendRouts for Dsdff {
                 input,
             );
 
-        // TODO : add timeout
-        let result = result.await;
+        let Ok(result) = NativeRuntime::timeout_local(Duration::from_secs(2), result).await else {
+            return Err(MyError::Timeout);
+        };
 
         match result {
             Ok(o) => match o {
@@ -169,8 +175,9 @@ impl my_core::traits::BackendRouts for Dsdff {
                 input,
             );
 
-        // TODO : add timeout
-        let result = result.await;
+        let Ok(result) = NativeRuntime::timeout_local(Duration::from_secs(2), result).await else {
+            return Err(MyError::Timeout);
+        };
 
         match result {
             Ok(o) => match o {

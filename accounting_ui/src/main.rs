@@ -74,7 +74,7 @@ fn App() -> Element {
 
 #[component]
 pub fn SignIn() -> Element {
-    let state = use_context::<Dkdkd>();
+    let state = consume_context::<Dkdkd>();
 
     let sign_up = move |_| {
         navigator().push(Route::SignUp {});
@@ -97,9 +97,9 @@ pub fn SignIn() -> Element {
             }
             button {
                 onclick: move |_| {
-                    let state = state.clone();  // Clone outside the async block
+                    let state = state.clone();
                     spawn_forever(async move {
-                        let _ = state.sign_in().await;
+                        state.sign_in().await;
                     });
                 },
                 "Sign In"
@@ -114,7 +114,7 @@ pub fn SignIn() -> Element {
 
 #[component]
 pub fn SignUp() -> Element {
-    let state = use_context::<Dkdkd>();
+    let state = consume_context::<Dkdkd>();
 
     let sign_in = move |_| {
         navigator().push(Route::SignIn {});
@@ -143,9 +143,9 @@ pub fn SignUp() -> Element {
             PasswordInput{}
             button {
                 onclick: move |_| {
-                    let state = state.clone();  // Clone outside the async block
+                    let state = state.clone();
                     spawn_forever(async move {
-                        let _ = state.sign_up().await;
+                        state.sign_up().await;
                     });
                 },
                 "Sign Up"
@@ -160,7 +160,7 @@ pub fn SignUp() -> Element {
 
 #[component]
 pub fn PasswordInput() -> Element {
-    let state = use_context::<Dkdkd>();
+    let state = consume_context::<Dkdkd>();
 
     let mut is_password_visible = use_signal(|| false);
 
@@ -188,7 +188,7 @@ pub fn PasswordInput() -> Element {
 
 #[component]
 pub fn ErrorStack() -> Element {
-    let state = use_context::<Dkdkd>();
+    let state = consume_context::<Dkdkd>();
 
     let err = state.external_errors.read();
     if err.is_empty() {
