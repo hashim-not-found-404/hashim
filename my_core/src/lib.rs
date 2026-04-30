@@ -18,6 +18,17 @@ pub mod prelude {
         web_socket::{self, Coding, WebSocketOp},
     };
 
+    // std
+    pub(crate) use std::{
+        collections::{HashMap, VecDeque},
+        future::Future,
+        marker::PhantomData,
+        pin::Pin,
+        sync::{Arc, Mutex},
+        task::{Context, Poll, Waker},
+        time::Duration,
+    };
+
     // third party
     pub(crate) use agnostic_lite::RuntimeLite;
     pub(crate) use serde::{Deserialize, Serialize};

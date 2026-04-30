@@ -1,5 +1,4 @@
 use crate::prelude::*;
-use std::marker::PhantomData;
 
 pub struct StateFullCheck<DB, Cli, Jwt, Authentication, F, Id>
 where

@@ -1,5 +1,4 @@
 use crate::prelude::*;
-use std::{marker::PhantomData, sync::Mutex};
 
 pub trait Signal: Default {
     type T;
