@@ -128,14 +128,7 @@ pub struct Dsdff(
 
 impl Dsdff {
     pub async fn new() -> Self {
-        let my_client = Arc::new(my_core::web_socket::MyClient::new(MyClient::new().await));
-        let my_client1 = my_client.clone();
-
-        NativeSpawner::spawn_local(async move {
-            my_client1.receive_radar().await;
-        });
-
-        Dsdff(my_client)
+        Self(my_core::web_socket::MyClient::new(MyClient::new().await))
     }
 }
 

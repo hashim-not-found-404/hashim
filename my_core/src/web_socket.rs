@@ -224,13 +224,13 @@ where
 
 impl<WS, DE, E, RN, RT> MyClient<WS, DE, RN, RT>
 where
-    RN: RandomNumber,
-    WS: WebSocketOp<Error = E>,
-    DE: Coding<Error = E>,
+    RN: RandomNumber + 'static,
+    WS: WebSocketOp<Error = E> + 'static,
+    DE: Coding<Error = E> + 'static,
     RT: RuntimeLite,
 {
-    pub fn new(transport: WS) -> Self {
-        Self {
+    pub fn new(transport: WS) -> Arc<Self> {
+        let my_client = Self {
             runtime: PhantomData::<RT>,
             random_number: PhantomData::<RN>,
             coding: PhantomData::<DE>,
@@ -238,7 +238,14 @@ where
             send_and_receive_pool: SendAndReceivePool(Mutex::new(HashMap::new())),
             receive_and_send_pool: ReceiveAndSendPool(Mutex::new(HashMap::new())),
             receive_only_pool: ReceiveOnlyPool(Mutex::new(HashMap::new())),
-        }
+        };
+
+        let my_client = Arc::new(my_client);
+        let my_client1 = my_client.clone();
+        let _ = RT::spawn_local(async move {
+            my_client1.receive_radar().await;
+        });
+        my_client
     }
 
     pub async fn send_and_receive<SendType: Serialize, ReceiveType: for<'de> Deserialize<'de>>(
