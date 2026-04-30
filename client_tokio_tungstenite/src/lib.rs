@@ -4,18 +4,15 @@ use agnostic_lite::tokio::{TokioRuntime as NativeRuntime, TokioSpawner as Native
 #[cfg(target_arch = "wasm32")]
 use agnostic_lite::wasm::{WasmRuntime as NativeRuntime, WasmSpawner as NativeSpawner};
 
-use agnostic_lite::{AsyncLocalSpawner, RuntimeLite};
+use agnostic_lite::AsyncLocalSpawner;
 use futures_util::{
     SinkExt, StreamExt,
     stream::{SplitSink, SplitStream},
 };
-use impls_for_wasm::a1::RandomNumber;
-use my_core::{request_response::*, web_socket::WebSocketOp};
+use impls_for_wasm::a1::RandomNumberS;
+use my_core::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::{
-    sync::{Arc, Mutex},
-    time::Duration,
-};
+use std::sync::{Arc, Mutex};
 use tokio_tungstenite_wasm::{Message, WebSocketStream, connect};
 
 #[derive(Debug, Clone)]
@@ -35,7 +32,7 @@ pub enum MyError {
 impl ToString for MyError {
     fn to_string(&self) -> String {
         match self {
-            Self::OtherUnexpectedStatusCode(s) => {
+            Self::OtherUnexpectedStatusCode(_) => {
                 return String::from("other_unexpected_status_code");
             }
             Self::SomeInternalErrorOfTheServer => {
@@ -126,7 +123,7 @@ impl WebSocketOp for MyClient {
 }
 
 pub struct Dsdff(
-    Arc<my_core::web_socket::MyClient<MyClient, Atooooooooooo, RandomNumber, NativeRuntime>>,
+    Arc<my_core::web_socket::MyClient<MyClient, Atooooooooooo, RandomNumberS, NativeRuntime>>,
 );
 
 impl Dsdff {

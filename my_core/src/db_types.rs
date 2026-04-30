@@ -1,4 +1,4 @@
-use serde::{Deserialize, Serialize};
+use crate::prelude::*;
 
 // #[derive(Debug, Deserialize, Serialize, Clone)]
 pub enum DataGroup<RowId> {

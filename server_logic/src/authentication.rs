@@ -1,17 +1,17 @@
 use argon2::password_hash::{PasswordHash, SaltString, rand_core::OsRng};
 use argon2::{Argon2, PasswordHasher, PasswordVerifier};
 use derive_more::From;
-use my_core::traits;
+use my_core::prelude::*;
 
 #[derive(Clone, From)]
-pub struct HashedPassword(String);
-impl HashedPassword {
+pub struct HashedPasswordS(String);
+impl HashedPasswordS {
     pub fn into_inner(&self) -> String {
         self.0.clone()
     }
 }
 
-impl traits::HashedPassword for HashedPassword {
+impl HashedPassword for HashedPasswordS {
     fn sign_up(password: String) -> Self {
         // 1. Generate a cryptographically random salt
         let salt = SaltString::generate(&mut OsRng);
@@ -49,6 +49,6 @@ mod tests {
 
     #[test]
     fn test_authentication() {
-        test_suite::test_hashed_password::<HashedPassword>();
+        test_suite::test_hashed_password::<HashedPasswordS>();
     }
 }

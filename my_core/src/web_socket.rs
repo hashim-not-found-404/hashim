@@ -1,5 +1,4 @@
-use agnostic_lite::RuntimeLite;
-use serde::{Deserialize, Serialize};
+use crate::prelude::*;
 use std::{
     collections::{HashMap, VecDeque},
     fmt::Debug,
@@ -10,8 +9,6 @@ use std::{
     task::{Context, Poll, Waker},
     time::Duration,
 };
-
-use crate::traits;
 
 type Payload = Vec<u8>;
 
@@ -227,7 +224,7 @@ where
 
 impl<WS, DE, E, RN, RT> MyClient<WS, DE, RN, RT>
 where
-    RN: traits::RandomNumber,
+    RN: RandomNumber,
     WS: WebSocketOp<Error = E>,
     DE: Coding<Error = E>,
     RT: RuntimeLite,
@@ -261,7 +258,7 @@ where
         let r = match RT::timeout_local(Duration::from_secs(timeout_in_secs as u64), message).await
         {
             Ok(result) => DE::decode::<ReceiveType>(&result),
-            Err(e) => panic!("noooooooooooooooooooo"),
+            Err(_) => panic!("noooooooooooooooooooo"),
         };
 
         self.send_and_receive_pool.unsubscribe(id);

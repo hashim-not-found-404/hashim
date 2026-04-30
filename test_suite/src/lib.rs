@@ -1,6 +1,5 @@
+use my_core::prelude::*;
 use std::fmt::Debug;
-
-use my_core::traits::*;
 
 pub fn test_hashed_password<T: HashedPassword + Clone>() {
     let password = "hashem".to_string();
@@ -85,7 +84,7 @@ where
 {
     let db = DB::default();
     let mut client = db.get_client().await.unwrap();
-    let mut txn = client.begin_transaction().await.unwrap();
+    let txn = client.begin_transaction().await.unwrap();
 
     // txn.insert_user(
     //     &Id::generate(),

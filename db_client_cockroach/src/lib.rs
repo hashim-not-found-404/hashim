@@ -1,5 +1,5 @@
 use deadpool_postgres::{Config, Pool, Runtime};
-use my_core::traits::{self, DBClient, DBTransaction, Database};
+use my_core::prelude::*;
 use server_logic::*;
 use tokio_postgres::{NoTls, Row, error::SqlState, types::ToSql};
 use uuid::Uuid;
@@ -44,8 +44,8 @@ impl Database for CockroachDB {
 
 impl DBClient for CockroachClient {
     type Error = ();
-    type RowId = impls_for_wasm::a1::RowId;
-    type HashedPassword = authentication::HashedPassword;
+    type RowId = impls_for_wasm::a1::RowIdS;
+    type HashedPassword = authentication::HashedPasswordS;
     type Txn<'a> = CockroachTxn<'a>;
 
     async fn begin_transaction(&mut self) -> Result<Self::Txn<'_>, Self::Error> {
@@ -92,17 +92,15 @@ pub struct CockroachTxn<'a> {
 
 impl DBTransaction for CockroachTxn<'_> {
     type Error = ();
-    type RowId = impls_for_wasm::a1::RowId;
-    type HashedPassword = authentication::HashedPassword;
+    type RowId = impls_for_wasm::a1::RowIdS;
+    type HashedPassword = authentication::HashedPasswordS;
 
-    async fn commit_transaction(
-        self,
-    ) -> Result<Result<(), traits::domain_errors::AtCommit>, Self::Error> {
+    async fn commit_transaction(self) -> Result<Result<(), domain_errors::AtCommit>, Self::Error> {
         match self.txn.commit().await {
             Ok(_) => return Ok(Ok(())),
             Err(e) => {
                 if get_sql_state(e) == SqlState::T_R_SERIALIZATION_FAILURE {
-                    return Ok(Err(traits::domain_errors::AtCommit::DataIsChanged));
+                    return Ok(Err(domain_errors::AtCommit::DataIsChanged));
                 }
                 unreachable!()
             }
@@ -185,8 +183,8 @@ mod tests {
     async fn test_insert_user() {
         test_suite::test_insert_user::<
             CockroachDB,
-            impls_for_wasm::a1::RowId,
-            server_logic::authentication::HashedPassword,
+            impls_for_wasm::a1::RowIdS,
+            server_logic::authentication::HashedPasswordS,
         >()
         .await;
     }

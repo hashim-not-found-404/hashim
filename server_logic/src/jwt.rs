@@ -1,7 +1,7 @@
 use chrono::{Duration, Utc};
-use impls_for_wasm::a1::RowId;
+use impls_for_wasm::a1::RowIdS;
 use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode};
-use my_core::traits;
+use my_core::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
@@ -24,12 +24,12 @@ impl Default for Key {
 
 #[derive(Serialize, Deserialize)]
 struct Claims {
-    id: RowId,
+    id: RowIdS,
     exp: u64,
 }
 
-impl traits::JWT for Key {
-    type UserId = RowId;
+impl JWT for Key {
+    type UserId = RowIdS;
     type JsonWebToken = String;
 
     fn sign(&self, id: &Self::UserId) -> Self::JsonWebToken {
@@ -67,6 +67,6 @@ mod tests {
 
     #[test]
     fn test_jwt() {
-        test_suite::test_jwt::<Key, RowId>();
+        test_suite::test_jwt::<Key, RowIdS>();
     }
 }

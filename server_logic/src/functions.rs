@@ -1,17 +1,14 @@
-use derive_more::{Eq, From};
-use my_core::traits;
+use my_core::prelude::*;
 use regex::Regex;
-use serde::{Deserialize, Serialize};
 use std::sync::LazyLock;
-use uuid::Uuid;
 
 static RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^[\p{L}\p{M}]+(?:[-'][\p{L}\p{M}]+)*$").unwrap());
 
 #[derive(Clone)]
-pub struct Functions;
+pub struct FunctionsS;
 
-impl traits::Functions for Functions {
+impl Functions for FunctionsS {
     fn is_regex(s: &String) -> Result<(), String> {
         match RE.is_match(s) {
             true => return Ok(()),
@@ -26,6 +23,6 @@ mod tests {
 
     #[test]
     fn test_is_regex() {
-        test_suite::test_is_regex::<Functions>();
+        test_suite::test_is_regex::<FunctionsS>();
     }
 }

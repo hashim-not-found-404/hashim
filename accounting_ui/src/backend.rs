@@ -1,7 +1,6 @@
 use dioxus::core::ReactiveContext;
 use dioxus::prelude::*;
-use my_core::front_end_model_view;
-use my_core::front_end_model_view::Signal;
+use my_core::prelude::{Signal, *};
 use std::collections::HashSet;
 use std::sync::{Arc, Mutex, MutexGuard};
 
@@ -42,7 +41,7 @@ impl<T: 'static + Clone + Default> Default for MySignal<T> {
     }
 }
 
-impl<T: 'static + Clone + Default> front_end_model_view::Signal for MySignal<T> {
+impl<T: 'static + Clone + Default> Signal for MySignal<T> {
     type T = T;
     fn read(&self) -> Self::T {
         // Subscribe the context observing the signal (if any) to updates of its value.

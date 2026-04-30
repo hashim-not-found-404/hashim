@@ -3,11 +3,8 @@ mod backend;
 use crate::backend::MySignal;
 use dioxus::{core::spawn_forever, prelude::*};
 use dioxus_logger::tracing::{self, Level};
-use impls_for_wasm::a1::RandomNumber;
-use my_core::{
-    db_types,
-    front_end_model_view::{self, Signal},
-};
+use impls_for_wasm::a1::RandomNumberS;
+use my_core::prelude::{Signal, *};
 use std::sync::Arc;
 
 const ICONS_SHOW: Asset = asset!("/assets/icons/show.png");
@@ -54,7 +51,7 @@ fn Initializer() -> Element {
 type Dkdkd = Arc<
     front_end_model_view::State<
         client::Dsdff,
-        RandomNumber,
+        RandomNumberS,
         MySignal<String>,
         MySignal<bool>,
         MySignal<String>,

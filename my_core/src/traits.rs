@@ -1,4 +1,4 @@
-use crate::request_response::*;
+use crate::prelude::*;
 
 pub trait RowId: TryFrom<String> + Clone {
     fn generate() -> Self;
