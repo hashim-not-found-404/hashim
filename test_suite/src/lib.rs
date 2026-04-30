@@ -71,7 +71,7 @@ where
     assert_eq!(output_id, input_id);
 }
 
-pub async fn test_insert_user<DB, Id, H>()
+pub async fn test_commit<DB, Id, H>()
 where
     DB: Database + Default,
     for<'a> <DB::Client as DBClient>::Txn<'a>: DBTransaction<RowId = Id, HashedPassword = H>,
@@ -85,15 +85,6 @@ where
     let db = DB::default();
     let mut client = db.get_client().await.unwrap();
     let txn = client.begin_transaction().await.unwrap();
-
-    // txn.insert_user(
-    //     &Id::generate(),
-    //     &Some("hashem".into()),
-    //     &"1234".into(),
-    //     &H::sign_up("password".into()),
-    // )
-    // .await
-    // .unwrap().unwrap();
 
     txn.commit_transaction().await.unwrap().unwrap();
 }

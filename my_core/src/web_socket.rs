@@ -252,14 +252,14 @@ where
         let text = DE::encode(text);
         self.transport.send_bin(text).await?;
 
-        let r = match RT::timeout_local(Duration::from_secs(timeout_in_secs as u64), message).await
-        {
-            Ok(result) => DE::decode::<ReceiveType>(&result),
-            Err(_) => panic!("noooooooooooooooooooo"),
-        };
+        let result =
+            match RT::timeout_local(Duration::from_secs(timeout_in_secs as u64), message).await {
+                Ok(result) => DE::decode::<ReceiveType>(&result),
+                Err(_) => panic!("noooooooooooooooooooo"),
+            };
 
         self.send_and_receive_pool.unsubscribe(id);
-        r
+        result
     }
 
     pub async fn receive_and_send<SendType: Serialize, ReceiveType: for<'de> Deserialize<'de>>(

@@ -181,7 +181,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_insert_user() {
-        test_suite::test_insert_user::<
+        test_suite::test_commit::<
             CockroachDB,
             impls_for_wasm::a1::RowIdS,
             server_logic::authentication::HashedPasswordS,
