@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-struct Atooooooooooo;
+pub struct Atooooooooooo;
 impl my_core::web_socket::Coding for Atooooooooooo {
     type Error = MyError;
 

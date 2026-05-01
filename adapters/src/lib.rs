@@ -9,12 +9,12 @@ pub mod functions;
 pub mod jwt;
 pub mod random_number;
 pub mod row_id;
-pub mod web_socket;
+pub mod web_socket_adapter;
 
 pub mod prelude {
     pub use super::MyError;
     pub use crate::{
-        authentication, encode_decode, functions, jwt, random_number, row_id, web_socket,
+        authentication, encode_decode, functions, jwt, random_number, row_id, web_socket_adapter,
     };
 
     // my crates
