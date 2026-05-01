@@ -81,17 +81,14 @@ pub trait DBTransaction {
 
 macro_rules! generate_api_backend_methods {
     ($path:ident) => {
-        async fn $path(
-            &self,
-            input: transport_layer::Input<$path::Input>,
-        ) -> Result<transport_layer::Result<$path::Result>, Self::Error>;
+        async fn $path(&self, input: $path::Input) -> Result<$path::Result, Self::Error>;
     };
 }
 
 pub trait BackendRouts {
     type Error;
-    async fn sign_up(&self, input: sign_up::Input) -> Result<sign_up::Result, Self::Error>;
-    async fn sign_in(&self, input: sign_in::Input) -> Result<sign_in::Result, Self::Error>;
+    generate_api_backend_methods!(sign_up);
+    generate_api_backend_methods!(sign_in);
     // generate_api_backend_methods!(get_all_user_roles);
     // generate_api_backend_methods!(create_company);
     // generate_api_backend_methods!(create_company_branch);
