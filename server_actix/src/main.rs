@@ -3,11 +3,9 @@ use actix_web::{App, HttpRequest, HttpResponse, HttpServer, rt, web};
 use actix_ws::AggregatedMessage;
 use adapters::prelude::*;
 use db_client_cockroach::{CockroachClient, CockroachDB};
-use futures_util::StreamExt as _;
+use futures_util::StreamExt;
 use my_core::prelude::*;
-use serde::{Deserialize, Serialize};
-use std::fs::File;
-use std::io::BufReader;
+use std::{fs::File, io::BufReader};
 
 type GG = impls::StateFullCheck<
     CockroachDB,
@@ -64,22 +62,30 @@ async fn ws_handler(req: HttpRequest, stream: web::Payload) -> HttpResponse {
         while let Some(msg) = stream.next().await {
             match msg {
                 Ok(AggregatedMessage::Binary(data)) => {
-                    let recived_msg =
-                        decode::<my_core::web_socket::MessageType>(&data.to_vec()).unwrap();
+                    let recived_msg = encode_decode::Atooooooooooo::decode::<
+                        my_core::web_socket::MessageType,
+                    >(&data.to_vec())
+                    .unwrap();
                     let state = req.app_data::<web::Data<GG>>().unwrap();
 
                     let msg_to_send = match recived_msg {
                         my_core::web_socket::MessageType::TwoWay { id, path, payload } => {
                             let payload = match path.as_str() {
                                 sign_up::PATH => {
-                                    let input = decode::<sign_up::Input>(&payload).unwrap();
+                                    let input = encode_decode::Atooooooooooo::decode::<
+                                        sign_up::Input,
+                                    >(&payload)
+                                    .unwrap();
                                     let result = state.sign_up(input).await;
-                                    encode(result)
+                                    encode_decode::Atooooooooooo::encode(result)
                                 }
                                 sign_in::PATH => {
-                                    let input = decode::<sign_in::Input>(&payload).unwrap();
+                                    let input = encode_decode::Atooooooooooo::decode::<
+                                        sign_in::Input,
+                                    >(&payload)
+                                    .unwrap();
                                     let result = state.sign_in(input).await;
-                                    encode(result)
+                                    encode_decode::Atooooooooooo::encode(result)
                                 }
                                 _ => todo!(),
                             };
@@ -92,7 +98,10 @@ async fn ws_handler(req: HttpRequest, stream: web::Payload) -> HttpResponse {
                         my_core::web_socket::MessageType::OneWay { path, payload } => todo!(),
                     };
 
-                    session.binary(encode(msg_to_send)).await.unwrap();
+                    session
+                        .binary(encode_decode::Atooooooooooo::encode(msg_to_send))
+                        .await
+                        .unwrap();
                 }
                 Ok(AggregatedMessage::Text(text)) => {
                     println!("Received text message: {}", text);
@@ -160,17 +169,4 @@ fn get_tls_config() -> rustls::ServerConfig {
         .unwrap();
 
     return tls_config;
-}
-
-fn encode<T: Serialize>(data: T) -> Vec<u8> {
-    use postcard::to_allocvec;
-    to_allocvec(&data).unwrap().to_vec()
-}
-
-fn decode<'de, T: Deserialize<'de>>(data: &'de Vec<u8>) -> Result<T, ()> {
-    use postcard::from_bytes;
-    match from_bytes::<T>(data) {
-        Ok(text) => return Ok(text),
-        Err(_) => return Err(()),
-    }
 }

@@ -14,5 +14,3 @@ actix-ws = { workspace = true }
 futures-util = { workspace = true }
 rustls = { workspace = true }
 rustls-pemfile = { workspace = true }
-serde = { workspace = true }
-postcard = { workspace = true }
