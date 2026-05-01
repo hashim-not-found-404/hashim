@@ -1,7 +1,7 @@
 use crate::prelude::*;
 
 pub struct Atooooooooooo;
-impl my_core::web_socket::Coding for Atooooooooooo {
+impl Coding for Atooooooooooo {
     type Error = MyError;
 
     fn encode<T: Serialize>(data: T) -> Vec<u8> {

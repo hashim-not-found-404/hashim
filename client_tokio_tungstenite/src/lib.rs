@@ -10,7 +10,7 @@ use std::sync::Arc;
 
 pub struct Dsdff(
     Arc<
-        my_core::web_socket::MyClient<
+        web_socket::MyClient<
             web_socket_adapter::MyClient,
             encode_decode::Atooooooooooo,
             random_number::RandomNumberS,
@@ -27,7 +27,7 @@ impl Dsdff {
     }
 }
 
-impl my_core::traits::BackendRouts for Dsdff {
+impl BackendRouts for Dsdff {
     type Error = MyError;
 
     async fn sign_up(&self, input: sign_up::Input) -> Result<sign_up::Result, Self::Error> {

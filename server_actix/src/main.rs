@@ -62,14 +62,15 @@ async fn ws_handler(req: HttpRequest, stream: web::Payload) -> HttpResponse {
         while let Some(msg) = stream.next().await {
             match msg {
                 Ok(AggregatedMessage::Binary(data)) => {
-                    let recived_msg = encode_decode::Atooooooooooo::decode::<
-                        my_core::web_socket::MessageType,
-                    >(&data.to_vec())
-                    .unwrap();
+                    let recived_msg =
+                        encode_decode::Atooooooooooo::decode::<web_socket::MessageType>(
+                            &data.to_vec(),
+                        )
+                        .unwrap();
                     let state = req.app_data::<web::Data<GG>>().unwrap();
 
                     let msg_to_send = match recived_msg {
-                        my_core::web_socket::MessageType::TwoWay { id, path, payload } => {
+                        web_socket::MessageType::TwoWay { id, path, payload } => {
                             let payload = match path.as_str() {
                                 sign_up::PATH => {
                                     let input = encode_decode::Atooooooooooo::decode::<
@@ -90,12 +91,11 @@ async fn ws_handler(req: HttpRequest, stream: web::Payload) -> HttpResponse {
                                 _ => todo!(),
                             };
 
-                            let msg_to_send =
-                                my_core::web_socket::MessageType::TwoWay { id, path, payload };
+                            let msg_to_send = web_socket::MessageType::TwoWay { id, path, payload };
 
                             msg_to_send
                         }
-                        my_core::web_socket::MessageType::OneWay { path, payload } => todo!(),
+                        web_socket::MessageType::OneWay { path, payload } => todo!(),
                     };
 
                     session
