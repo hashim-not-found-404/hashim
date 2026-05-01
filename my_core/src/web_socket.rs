@@ -195,7 +195,7 @@ pub trait WebSocketOp {
 pub trait Coding {
     type Error;
     fn encode<T: Serialize>(data: T) -> Vec<u8>;
-    fn decode<'de, T: serde::Deserialize<'de>>(data: &'de Vec<u8>) -> Result<T, Self::Error>;
+    fn decode<'de, T: Deserialize<'de>>(data: &'de Vec<u8>) -> Result<T, Self::Error>;
 }
 
 pub struct MyClient<WS, DE, RN, RT>

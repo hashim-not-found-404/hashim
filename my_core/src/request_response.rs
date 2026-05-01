@@ -33,7 +33,7 @@ pub mod sign_up {
         pub name: Option<String>,
     }
 
-    pub type Result = std::result::Result<Ok, Error>;
+    pub type Result = StdResult<Ok, Error>;
 }
 
 pub mod sign_in {
@@ -67,7 +67,7 @@ pub mod sign_in {
         pub password: Option<PasswordError>,
     }
 
-    pub type Result = std::result::Result<Ok, Error>;
+    pub type Result = StdResult<Ok, Error>;
 }
 
 pub mod get_all_user_roles {
@@ -85,7 +85,7 @@ pub mod get_all_user_roles {
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Error;
 
-    pub type Result = std::result::Result<Ok, Error>;
+    pub type Result = StdResult<Ok, Error>;
 }
 
 pub mod create_company {
@@ -104,7 +104,7 @@ pub mod create_company {
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Error;
 
-    pub type Result = std::result::Result<Ok, Error>;
+    pub type Result = StdResult<Ok, Error>;
 }
 
 pub mod create_company_branch {
@@ -145,5 +145,5 @@ pub mod create_company_branch {
         pub location: Option<LocationError>,
     }
 
-    pub type Result = std::result::Result<Ok, Error>;
+    pub type Result = StdResult<Ok, Error>;
 }
