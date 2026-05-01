@@ -1,20 +1,27 @@
 [package]
-name = "client_tokio_tungstenite"
+name = "adapters"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
 my_core = { workspace = true }
-adapters = { workspace = true }
+test_suite = { workspace = true }
 
+derive_more = { workspace = true }
+serde = { workspace = true }
+uuid = { workspace = true }
 tokio-tungstenite-wasm = { workspace = true }
 futures-util = { workspace = true }
 futures = { workspace = true }
-serde = { workspace = true }
 postcard = { workspace = true }
+getrandom = { workspace = true }
+chrono = { workspace = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 agnostic-lite = { workspace = true, features = ["time","wasm"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 agnostic-lite = { workspace = true, features = ["time","tokio"] }
+argon2 = { workspace = true }
+jsonwebtoken = { workspace = true }
+regex = { workspace = true }

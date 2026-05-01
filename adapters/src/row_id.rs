@@ -1,16 +1,4 @@
-use derive_more::From;
-use my_core::prelude::*;
-use serde::{Deserialize, Serialize};
-use uuid::Uuid;
-
-pub struct RandomNumberS;
-impl RandomNumber for RandomNumberS {
-    fn generate() -> u64 {
-        let mut buf = [0u8; 8];
-        getrandom::fill(&mut buf).unwrap();
-        u64::from_ne_bytes(buf)
-    }
-}
+use crate::prelude::*;
 
 #[derive(Clone, Serialize, Deserialize, Debug, Eq, PartialEq, From)]
 pub struct RowIdS(Uuid);

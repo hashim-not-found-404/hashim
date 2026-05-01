@@ -4,8 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-server_logic = { workspace = true }
-impls_for_wasm = { workspace = true }
+adapters = { workspace = true }
 my_core = { workspace = true }
 test_suite = { workspace = true }
 

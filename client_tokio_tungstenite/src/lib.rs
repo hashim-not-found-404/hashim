@@ -4,12 +4,12 @@ use agnostic_lite::tokio::{TokioRuntime as NativeRuntime, TokioSpawner as Native
 #[cfg(target_arch = "wasm32")]
 use agnostic_lite::wasm::{WasmRuntime as NativeRuntime, WasmSpawner as NativeSpawner};
 
+use adapters::prelude::*;
 use agnostic_lite::AsyncLocalSpawner;
 use futures_util::{
     SinkExt, StreamExt,
     stream::{SplitSink, SplitStream},
 };
-use impls_for_wasm::a1::RandomNumberS;
 use my_core::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
@@ -123,7 +123,14 @@ impl WebSocketOp for MyClient {
 }
 
 pub struct Dsdff(
-    Arc<my_core::web_socket::MyClient<MyClient, Atooooooooooo, RandomNumberS, NativeRuntime>>,
+    Arc<
+        my_core::web_socket::MyClient<
+            MyClient,
+            Atooooooooooo,
+            random_number::RandomNumberS,
+            NativeRuntime,
+        >,
+    >,
 );
 
 impl Dsdff {

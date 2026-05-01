@@ -1,16 +1,17 @@
-use argon2::password_hash::{PasswordHash, SaltString, rand_core::OsRng};
-use argon2::{Argon2, PasswordHasher, PasswordVerifier};
-use derive_more::From;
-use my_core::prelude::*;
+use crate::prelude::*;
 
+#[cfg(not(target_arch = "wasm32"))]
 #[derive(Clone, From)]
 pub struct HashedPasswordS(String);
+
+#[cfg(not(target_arch = "wasm32"))]
 impl HashedPasswordS {
     pub fn into_inner(&self) -> String {
         self.0.clone()
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl HashedPassword for HashedPasswordS {
     fn sign_up(password: String) -> Self {
         // 1. Generate a cryptographically random salt

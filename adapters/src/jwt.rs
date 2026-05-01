@@ -1,19 +1,17 @@
-use chrono::{Duration, Utc};
-use impls_for_wasm::a1::RowIdS;
-use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode};
-use my_core::prelude::*;
-use serde::{Deserialize, Serialize};
-use std::sync::Arc;
+use crate::prelude::*;
 
+#[cfg(not(target_arch = "wasm32"))]
 fn exp_time() -> u64 {
     (Utc::now() + Duration::minutes(30)).timestamp() as u64
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 #[derive(Clone, Debug)]
 pub struct Key {
     key: Arc<Vec<u8>>,
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl Default for Key {
     fn default() -> Self {
         Self {
@@ -22,14 +20,16 @@ impl Default for Key {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 #[derive(Serialize, Deserialize)]
 struct Claims {
-    id: RowIdS,
+    id: row_id::RowIdS,
     exp: u64,
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl JWT for Key {
-    type UserId = RowIdS;
+    type UserId = row_id::RowIdS;
     type JsonWebToken = String;
 
     fn sign(&self, id: &Self::UserId) -> Self::JsonWebToken {
@@ -67,6 +67,6 @@ mod tests {
 
     #[test]
     fn test_jwt() {
-        test_suite::test_jwt::<Key, RowIdS>();
+        test_suite::test_jwt::<Key, row_id::RowIdS>();
     }
 }

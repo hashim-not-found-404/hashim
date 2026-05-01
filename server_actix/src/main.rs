@@ -1,23 +1,28 @@
 use actix_cors::Cors;
 use actix_web::{App, HttpRequest, HttpResponse, HttpServer, rt, web};
 use actix_ws::AggregatedMessage;
+use adapters::prelude::*;
 use db_client_cockroach::{CockroachClient, CockroachDB};
 use futures_util::StreamExt as _;
-use impls_for_wasm::a1::RowIdS;
 use my_core::prelude::*;
 use serde::{Deserialize, Serialize};
-use server_logic::{authentication::HashedPasswordS, functions::FunctionsS, jwt::Key};
 use std::fs::File;
 use std::io::BufReader;
 
-type GG =
-    impls::StateFullCheck<CockroachDB, CockroachClient, Key, HashedPasswordS, FunctionsS, RowIdS>;
+type GG = impls::StateFullCheck<
+    CockroachDB,
+    CockroachClient,
+    jwt::Key,
+    authentication::HashedPasswordS,
+    functions::FunctionsS,
+    row_id::RowIdS,
+>;
 
 #[actix_web::main]
 async fn main() {
     println!("started server");
 
-    let actions = GG::new(CockroachDB::default(), Key::default());
+    let actions = GG::new(CockroachDB::default(), jwt::Key::default());
 
     let actions = web::Data::new(actions);
 

@@ -1,9 +1,9 @@
 use client_tokio_tungstenite as client;
 mod backend;
 use crate::backend::MySignal;
+use adapters::prelude::*;
 use dioxus::{core::spawn_forever, prelude::*};
 use dioxus_logger::tracing::{self, Level};
-use impls_for_wasm::a1::RandomNumberS;
 use my_core::prelude::{Signal, *};
 use std::sync::Arc;
 
@@ -51,7 +51,7 @@ fn Initializer() -> Element {
 type Dkdkd = Arc<
     front_end_model_view::State<
         client::Dsdff,
-        RandomNumberS,
+        random_number::RandomNumberS,
         MySignal<String>,
         MySignal<bool>,
         MySignal<String>,

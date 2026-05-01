@@ -5,8 +5,7 @@ edition = "2024"
 
 [dependencies]
 my_core = { workspace = true }
-server_logic = { workspace = true }
-impls_for_wasm = { workspace = true }
+adapters = { workspace = true }
 db_client_cockroach = { workspace = true }
 
 actix-web = { workspace = true }

@@ -6,10 +6,9 @@ members = [
     "my_core",
     "db_client_cockroach",
     "server_actix",
-    "server_logic",
     "test_suite",
-    "impls_for_wasm",
     "client_tokio_tungstenite",
+    "adapters",
 ]
 
 [workspace.dependencies]
@@ -17,8 +16,7 @@ members = [
 client_tokio_tungstenite = {path = "./client_tokio_tungstenite"}
 my_core = {path = "./my_core"}
 test_suite = {path = "./test_suite"}
-server_logic = {path = "./server_logic"}
-impls_for_wasm = {path = "./impls_for_wasm"}
+adapters = {path = "./adapters"}
 db_client_cockroach = {path = "./db_client_cockroach"}
 
 # database
@@ -36,7 +34,6 @@ actix-ws = "0.4.0"
 futures = "0.3.32"
 futures-util = "0.3.32"
 wasm-bindgen-futures = "0.4.70"
-tokio-tungstenite = "0.29.0"
 tokio-tungstenite-wasm = "0.8.2"
 
 # crypto

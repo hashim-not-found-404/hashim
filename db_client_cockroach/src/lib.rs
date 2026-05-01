@@ -1,6 +1,6 @@
+use adapters::prelude::*;
 use deadpool_postgres::{Config, Pool, Runtime};
 use my_core::prelude::*;
-use server_logic::*;
 use tokio_postgres::{NoTls, Row, error::SqlState, types::ToSql};
 use uuid::Uuid;
 
@@ -44,7 +44,7 @@ impl Database for CockroachDB {
 
 impl DBClient for CockroachClient {
     type Error = ();
-    type RowId = impls_for_wasm::a1::RowIdS;
+    type RowId = row_id::RowIdS;
     type HashedPassword = authentication::HashedPasswordS;
     type Txn<'a> = CockroachTxn<'a>;
 
@@ -92,7 +92,7 @@ pub struct CockroachTxn<'a> {
 
 impl DBTransaction for CockroachTxn<'_> {
     type Error = ();
-    type RowId = impls_for_wasm::a1::RowIdS;
+    type RowId = row_id::RowIdS;
     type HashedPassword = authentication::HashedPasswordS;
 
     async fn commit_transaction(self) -> Result<Result<(), domain_errors::AtCommit>, Self::Error> {
@@ -181,11 +181,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_insert_user() {
-        test_suite::test_commit::<
-            CockroachDB,
-            impls_for_wasm::a1::RowIdS,
-            server_logic::authentication::HashedPasswordS,
-        >()
-        .await;
+        test_suite::test_commit::<CockroachDB, row_id::RowIdS, authentication::HashedPasswordS>()
+            .await;
     }
 }
