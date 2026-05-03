@@ -24,7 +24,6 @@ pub mod prelude {
 
     // std
     pub(crate) use std::{
-        pin::pin,
         sync::{Arc, LazyLock, Mutex},
         time::Duration,
     };
