@@ -47,7 +47,7 @@ impl JWT for Key {
         .into()
     }
 
-    fn validate(&self, token: Self::JsonWebToken) -> Result<Self::UserId, ()> {
+    fn validate(&self, token: Self::JsonWebToken) -> Option<Self::UserId> {
         let result = decode::<Claims>(
             &token,
             &DecodingKey::from_secret(&self.key),
@@ -55,8 +55,8 @@ impl JWT for Key {
         );
 
         match result {
-            Ok(token) => return Ok(token.claims.id),
-            Err(_) => return Err(()),
+            Ok(token) => return Some(token.claims.id),
+            Err(_) => return None,
         }
     }
 }

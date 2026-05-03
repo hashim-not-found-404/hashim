@@ -7,7 +7,6 @@ pub mod traits;
 pub mod translations;
 pub mod web_socket;
 
-// the reasone to add this is to make all the deps are drop in and replacement
 pub mod prelude {
     pub type DynamicError = Box<dyn Error>;
 

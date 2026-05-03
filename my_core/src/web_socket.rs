@@ -199,7 +199,10 @@ pub trait Coding {
 
 pub trait Runtime {
     fn spawn<F: Future + 'static>(fut: F);
-    async fn timeout<T, F: Future<Output = T>>(duration: Duration, fut: F) -> Result<T, ()>;
+    async fn timeout<T, F: Future<Output = T>>(
+        duration: Duration,
+        fut: F,
+    ) -> Result<T, DynamicError>;
 }
 
 pub struct MyClient<WS, DE, RN, RT>
@@ -258,13 +261,9 @@ where
         let text = DE::encode(text);
         self.transport.send_bin(text).await?;
 
-        let result = match RT::timeout(Duration::from_secs(timeout_in_secs as u64), message).await {
-            Ok(result) => DE::decode::<ReceiveType>(&result),
-            Err(_) => todo!("timeout"),
-        };
-
+        let result = RT::timeout(Duration::from_secs(timeout_in_secs as u64), message).await?;
         self.send_and_receive_pool.unsubscribe(id);
-        result
+        DE::decode::<ReceiveType>(&result)
     }
 
     pub async fn receive_and_send<SendType: Serialize, ReceiveType: for<'de> Deserialize<'de>>(

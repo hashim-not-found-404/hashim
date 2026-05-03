@@ -19,7 +19,7 @@ pub trait JWT {
     type UserId: RowId;
     type JsonWebToken: From<String> + Into<String>;
     fn sign(&self, user_uuid: &Self::UserId) -> Self::JsonWebToken;
-    fn validate(&self, token: Self::JsonWebToken) -> Result<Self::UserId, ()>;
+    fn validate(&self, token: Self::JsonWebToken) -> Option<Self::UserId>;
 }
 
 pub trait Database {
@@ -36,6 +36,7 @@ pub trait DBClient {
         Self: 'a;
 
     async fn begin_transaction(&mut self) -> Result<Self::Txn<'_>, DynamicError>;
+
     // here we just do read we dont do here any set or check
 
     async fn read_sign_in(

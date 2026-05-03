@@ -1,6 +1,7 @@
 use crate::prelude::*;
 
 pub struct RuntimeS;
+
 #[cfg(target_arch = "wasm32")]
 impl Runtime for RuntimeS {
     fn spawn<F: Future + 'static>(fut: F) {
@@ -10,7 +11,10 @@ impl Runtime for RuntimeS {
         });
     }
 
-    async fn timeout<T, F: Future<Output = T>>(duration: Duration, fut: F) -> Result<T, ()> {
+    async fn timeout<T, F: Future<Output = T>>(
+        duration: Duration,
+        fut: F,
+    ) -> Result<T, DynamicError> {
         let timeout_ms = duration.as_millis() as u32;
 
         let fut_pinned = pin!(fut);
@@ -18,7 +22,7 @@ impl Runtime for RuntimeS {
 
         match select(fut_pinned, timeout_pinned).await {
             Either::Left((result, _)) => Ok(result),
-            Either::Right((_, _)) => Err(()),
+            Either::Right((_, _)) => Err("timeout".into()),
         }
     }
 }
@@ -29,7 +33,10 @@ impl Runtime for RuntimeS {
         todo!()
     }
 
-    async fn timeout<T, F: Future<Output = T>>(duration: Duration, fut: F) -> Result<T, ()> {
+    async fn timeout<T, F: Future<Output = T>>(
+        duration: Duration,
+        fut: F,
+    ) -> Result<T, DynamicError> {
         todo!()
     }
 }
