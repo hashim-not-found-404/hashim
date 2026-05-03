@@ -16,7 +16,7 @@ pub mod prelude {
         request_response::*,
         traits::*,
         translations,
-        web_socket::{self, Coding, WebSocketOp},
+        web_socket::{self, Coding, Runtime, WebSocketOp},
     };
 
     // std
@@ -32,6 +32,5 @@ pub mod prelude {
     };
 
     // third party
-    pub(crate) use agnostic_lite::RuntimeLite;
     pub(crate) use serde::{Deserialize, Serialize};
 }

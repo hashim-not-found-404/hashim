@@ -198,10 +198,15 @@ pub trait Coding {
     fn decode<'de, T: Deserialize<'de>>(data: &'de Vec<u8>) -> Result<T, Self::Error>;
 }
 
+pub trait Runtime {
+    fn spawn<F: Future>(fut: F);
+    async fn timeout<T, F: Future<Output = T>>(duration: Duration, fut: F) -> Result<T, ()>;
+}
+
 pub struct MyClient<WS, DE, RN, RT>
 where
     WS: WebSocketOp,
-    RT: RuntimeLite,
+    RT: Runtime,
 {
     runtime: PhantomData<RT>,
     random_number: PhantomData<RN>,
@@ -214,12 +219,12 @@ where
 
 impl<WS, DE, E, RN, RT> MyClient<WS, DE, RN, RT>
 where
-    RN: RandomNumber + 'static,
-    WS: WebSocketOp<Error = E> + 'static,
-    DE: Coding<Error = E> + 'static,
-    RT: RuntimeLite,
+    RN: RandomNumber,
+    WS: WebSocketOp<Error = E>,
+    DE: Coding<Error = E>,
+    RT: Runtime,
 {
-    pub fn new(transport: WS) -> Arc<Self> {
+    pub fn new(transport: WS) -> Self {
         let my_client = Self {
             runtime: PhantomData::<RT>,
             random_number: PhantomData::<RN>,
@@ -230,10 +235,9 @@ where
             receive_only_pool: ReceiveOnlyPool(Mutex::new(HashMap::new())),
         };
 
-        let my_client = Arc::new(my_client);
-        let my_client1 = my_client.clone();
-        let _ = RT::spawn_local(async move {
-            my_client1.receive_radar().await;
+        // let my_client = Arc::new(my_client);
+        RT::spawn(async {
+            my_client.receive_radar().await;
         });
         my_client
     }
@@ -252,13 +256,14 @@ where
         let text = DE::encode(text);
         self.transport.send_bin(text).await?;
 
-        let result =
-            match RT::timeout_local(Duration::from_secs(timeout_in_secs as u64), message).await {
-                Ok(result) => DE::decode::<ReceiveType>(&result),
-                Err(_) => panic!("noooooooooooooooooooo"),
-            };
+        let result = match RT::timeout(Duration::from_secs(timeout_in_secs as u64), message).await {
+            Ok(result) => DE::decode::<ReceiveType>(&result),
+            Err(_) => panic!("noooooooooooooooooooo"),
+        };
 
+        // let result = message.await;
         self.send_and_receive_pool.unsubscribe(id);
+        // DE::decode::<ReceiveType>(&result)
         result
     }
 

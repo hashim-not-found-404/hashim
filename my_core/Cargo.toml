@@ -7,4 +7,3 @@ edition = "2024"
 
 [dependencies]
 serde = { workspace = true }
-agnostic-lite = { workspace = true, features = ["time"] }

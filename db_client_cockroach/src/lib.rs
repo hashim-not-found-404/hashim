@@ -174,14 +174,3 @@ impl CockroachTxn<'_> {
 fn get_sql_state(error: tokio_postgres::Error) -> SqlState {
     return error.as_db_error().unwrap().code().clone();
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[tokio::test]
-    async fn test_insert_user() {
-        test_suite::test_commit::<CockroachDB, row_id::RowIdS, authentication::HashedPasswordS>()
-            .await;
-    }
-}

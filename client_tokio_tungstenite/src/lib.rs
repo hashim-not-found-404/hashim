@@ -1,21 +1,12 @@
-#[cfg(not(target_arch = "wasm32"))]
-use agnostic_lite::tokio::TokioRuntime as NativeRuntime;
-
-#[cfg(target_arch = "wasm32")]
-use agnostic_lite::wasm::WasmRuntime as NativeRuntime;
-
 use adapters::prelude::*;
 use my_core::prelude::*;
-use std::sync::Arc;
 
 pub struct Dsdff(
-    Arc<
-        web_socket::MyClient<
-            web_socket_adapter::MyClient,
-            encode_decode::Atooooooooooo,
-            random_number::RandomNumberS,
-            NativeRuntime,
-        >,
+    web_socket::MyClient<
+        web_socket_adapter::MyClient,
+        encode_decode::Atooooooooooo,
+        random_number::RandomNumberS,
+        runtime::RuntimeS,
     >,
 );
 
