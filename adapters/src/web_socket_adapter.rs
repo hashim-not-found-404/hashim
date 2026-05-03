@@ -30,12 +30,12 @@ impl WebSocketOp for MyClient {
 
         match guard.next().await {
             Some(Ok(o)) => match o {
-                Message::Text(utf8_bytes) => todo!(),
+                Message::Text(utf8_bytes) => return Err("it's text".into()),
                 Message::Binary(bytes) => return Ok(bytes.into()),
                 Message::Close(close_frame) => todo!("{:?}", close_frame),
             },
             Some(Err(o)) => return Err(Box::new(o)),
-            None => todo!(),
+            None => return Err("it's None".into()),
         }
     }
 }

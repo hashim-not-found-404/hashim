@@ -34,7 +34,7 @@ impl BackendRouts for Dsdff {
         match result {
             Ok(o) => match o {
                 Ok(o) => Ok(o),
-                Err(_) => Err(Box::new(MyError::ServerError)),
+                Err(_) => Err("internal server error".into()),
             },
             Err(e) => return Err(e),
         }
@@ -53,7 +53,7 @@ impl BackendRouts for Dsdff {
         match result {
             Ok(o) => match o {
                 Ok(o) => Ok(o),
-                Err(_) => Err(Box::new(MyError::ServerError)),
+                Err(_) => Err("internal server error".into()),
             },
             Err(e) => return Err(e),
         }

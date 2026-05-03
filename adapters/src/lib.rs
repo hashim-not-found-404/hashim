@@ -17,7 +17,6 @@ pub mod runtime;
 pub mod web_socket_adapter;
 
 pub mod prelude {
-    pub use super::MyError;
     pub use crate::{
         authentication, encode_decode, functions, jwt, random_number, row_id, runtime,
         web_socket_adapter,
@@ -67,19 +66,3 @@ pub mod prelude {
     #[cfg(target_arch = "wasm32")]
     pub(crate) use wasm_bindgen_futures::spawn_local;
 }
-
-#[derive(Debug, Clone, Display)]
-pub enum MyError {
-    DecodingError,
-    Closed,
-    ServerError,
-    Timeout,
-    //
-    OtherUnexpectedStatusCode(String),
-    SomeInternalErrorOfTheServer,
-    Decoding,
-    CheckYourWifi,
-    ErrorAtSendingRequest(String),
-}
-
-impl Error for MyError {}
