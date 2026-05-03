@@ -186,6 +186,8 @@ impl ReceiveOnlyPool {
     }
 }
 
+// TODO : add connect method
+// TODO : change all the errors asossiated types to be error enum
 pub trait WebSocketOp {
     type Error;
     async fn send_bin(&self, data: Vec<u8>) -> Result<(), Self::Error>;
@@ -199,13 +201,8 @@ pub trait Coding {
 }
 
 pub trait Runtime {
-    fn spawn<F>(fut: F)
-    where
-        F: Future + 'static;
-
-    async fn timeout<T, F>(duration: Duration, fut: F) -> Result<T, ()>
-    where
-        F: Future<Output = T>;
+    fn spawn<F: Future + 'static>(fut: F);
+    async fn timeout<T, F: Future<Output = T>>(duration: Duration, fut: F) -> Result<T, ()>;
 }
 
 pub struct MyClient<WS, DE, RN, RT>
