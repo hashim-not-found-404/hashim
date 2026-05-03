@@ -33,8 +33,7 @@ impl WebSocketOp for MyClient {
             .lock()
             .unwrap()
             .send(Message::Binary(data.into()))
-            .await
-            .unwrap();
+            .await?;
 
         Ok(())
     }

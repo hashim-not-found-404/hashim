@@ -187,7 +187,6 @@ impl ReceiveOnlyPool {
 }
 
 // TODO : add connect method
-// TODO : change all the errors asossiated types to be error enum
 pub trait WebSocketOp {
     async fn send_bin(&self, data: Vec<u8>) -> Result<(), ThisISTheNewError>;
     async fn try_receive_bin(&self) -> Result<Vec<u8>, ThisISTheNewError>;
