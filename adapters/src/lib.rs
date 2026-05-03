@@ -32,6 +32,9 @@ pub mod prelude {
         time::Duration,
     };
 
+    #[cfg(target_arch = "wasm32")]
+    pub(crate) use std::pin::pin;
+
     // third party
     pub(crate) use chrono::{Duration as ChronoDuration, Utc};
     pub(crate) use derive_more::From;
