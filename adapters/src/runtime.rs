@@ -1,6 +1,11 @@
 #[cfg(target_arch = "wasm32")]
 pub mod m {
     use crate::prelude::*;
+    use futures::future::{Either, select};
+    use gloo_net::websocket::{Message, futures::WebSocket};
+    use gloo_timers::future::TimeoutFuture;
+    use std::{pin::pin, time::Duration};
+    use wasm_bindgen_futures::spawn_local;
 
     pub struct S;
 
@@ -32,6 +37,7 @@ pub mod m {
 #[cfg(not(target_arch = "wasm32"))]
 pub mod m {
     use crate::prelude::*;
+    use std::time::Duration;
 
     pub struct S;
 

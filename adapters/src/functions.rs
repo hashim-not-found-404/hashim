@@ -1,6 +1,8 @@
 #[cfg(not(target_arch = "wasm32"))]
 pub mod m {
     use crate::prelude::*;
+    use regex::Regex;
+    use std::sync::LazyLock;
 
     static RE: LazyLock<Regex> =
         LazyLock::new(|| Regex::new(r"^[\p{L}\p{M}]+(?:[-'][\p{L}\p{M}]+)*$").unwrap());

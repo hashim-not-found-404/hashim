@@ -1,5 +1,7 @@
 pub mod m {
     use crate::prelude::*;
+    use postcard::{from_bytes, to_allocvec};
+    use serde::{Deserialize, Serialize};
 
     pub struct S;
 

@@ -1,5 +1,8 @@
 pub mod m {
     use crate::prelude::*;
+    use derive_more::From;
+    use serde::{Deserialize, Serialize};
+    use uuid::Uuid;
 
     #[derive(Clone, Serialize, Deserialize, Debug, Eq, PartialEq, From)]
     pub struct S(Uuid);

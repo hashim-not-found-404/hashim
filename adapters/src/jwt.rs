@@ -1,9 +1,13 @@
 #[cfg(not(target_arch = "wasm32"))]
 pub mod m {
     use crate::prelude::*;
+    use chrono::{Duration, Utc};
+    use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode};
+    use serde::{Deserialize, Serialize};
+    use std::sync::Arc;
 
     fn exp_time() -> u64 {
-        (Utc::now() + ChronoDuration::minutes(30)).timestamp() as u64
+        (Utc::now() + Duration::minutes(30)).timestamp() as u64
     }
 
     #[derive(Clone, Debug)]
