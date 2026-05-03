@@ -5,30 +5,19 @@ pub struct MyClient {
     read: Mutex<SplitStream<WebSocketStream>>,
 }
 
-impl MyClient {
-    pub async fn new() -> Self {
-        let url = format!("ws://{}/ws", ADDRESS);
-
-        let ws_stream = connect(url).await;
-
-        let ws_stream = match ws_stream {
-            Ok(o) => o,
-            Err(e) => {
-                panic!("{:?}", e)
-            }
-        };
+impl WebSocketOp for MyClient {
+    async fn connect(url: &str) -> Result<Self, DynamicError> {
+        let ws_stream = connect(url).await?;
 
         let (write, read) = ws_stream.split();
 
-        Self {
+        Ok(Self {
             write: Mutex::new(write),
             read: Mutex::new(read),
-        }
+        })
     }
-}
 
-impl WebSocketOp for MyClient {
-    async fn send_bin(&self, data: Vec<u8>) -> Result<(), ThisISTheNewError> {
+    async fn send_bin(&self, data: Vec<u8>) -> Result<(), DynamicError> {
         self.write
             .lock()
             .unwrap()
@@ -38,7 +27,7 @@ impl WebSocketOp for MyClient {
         Ok(())
     }
 
-    async fn try_receive_bin(&self) -> Result<Vec<u8>, ThisISTheNewError> {
+    async fn try_receive_bin(&self) -> Result<Vec<u8>, DynamicError> {
         todo!("solve the blocking and the await");
         let mut guard = self.read.lock().unwrap();
 

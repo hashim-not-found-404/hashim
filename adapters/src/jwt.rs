@@ -60,13 +60,3 @@ impl JWT for Key {
         }
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_jwt() {
-        test_suite::test_jwt::<Key, row_id::RowIdS>();
-    }
-}

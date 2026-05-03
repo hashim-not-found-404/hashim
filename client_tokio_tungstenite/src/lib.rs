@@ -15,14 +15,13 @@ pub struct Dsdff(
 
 impl Dsdff {
     pub async fn new() -> Self {
-        Self(web_socket::MyClient::new(
-            web_socket_adapter::MyClient::new().await,
-        ))
+        let url = format!("ws://{}/ws", ADDRESS);
+        Self(web_socket::MyClient::connect(url.as_str()).await.unwrap())
     }
 }
 
 impl BackendRouts for Dsdff {
-    async fn sign_up(&self, input: sign_up::Input) -> Result<sign_up::Result, ThisISTheNewError> {
+    async fn sign_up(&self, input: sign_up::Input) -> Result<sign_up::Result, DynamicError> {
         let result = self
             .0
             .send_and_receive::<sign_up::Input, Result<sign_up::Result, ()>>(
@@ -41,7 +40,7 @@ impl BackendRouts for Dsdff {
         }
     }
 
-    async fn sign_in(&self, input: sign_in::Input) -> Result<sign_in::Result, ThisISTheNewError> {
+    async fn sign_in(&self, input: sign_in::Input) -> Result<sign_in::Result, DynamicError> {
         let result = self
             .0
             .send_and_receive::<sign_in::Input, Result<sign_in::Result, ()>>(

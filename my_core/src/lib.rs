@@ -9,7 +9,8 @@ pub mod web_socket;
 
 // the reasone to add this is to make all the deps are drop in and replacement
 pub mod prelude {
-    pub type ThisISTheNewError = Box<dyn Error>;
+    pub type DynamicError = Box<dyn Error>;
+
     pub use crate::{
         client_cache, db_types,
         front_end_model_view::{self, Signal},

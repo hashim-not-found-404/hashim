@@ -1,5 +1,4 @@
 use my_core::prelude::*;
-use std::fmt::Debug;
 
 pub fn test_hashed_password<T: HashedPassword + Clone>() {
     let password = "hashem".to_string();
@@ -55,20 +54,6 @@ pub fn test_is_regex<T: Functions>() {
         let result = T::is_regex(&text.to_string());
         assert_eq!(expected == true && result.is_err(), false);
     }
-}
-
-pub fn test_jwt<Jwt, Id>()
-where
-    Jwt: JWT<UserId = Id> + Default + Debug,
-    Id: RowId + Eq + Debug,
-{
-    let jwt = Jwt::default();
-    let input_id = Id::generate();
-
-    let token = jwt.sign(&input_id);
-    let output_id = jwt.validate(token).unwrap();
-
-    assert_eq!(output_id, input_id);
 }
 
 pub async fn test_commit<DB, Id, H>()

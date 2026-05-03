@@ -186,15 +186,15 @@ impl ReceiveOnlyPool {
     }
 }
 
-// TODO : add connect method
-pub trait WebSocketOp {
-    async fn send_bin(&self, data: Vec<u8>) -> Result<(), ThisISTheNewError>;
-    async fn try_receive_bin(&self) -> Result<Vec<u8>, ThisISTheNewError>;
+pub trait WebSocketOp: Sized {
+    async fn connect(url: &str) -> Result<Self, DynamicError>;
+    async fn send_bin(&self, data: Vec<u8>) -> Result<(), DynamicError>;
+    async fn try_receive_bin(&self) -> Result<Vec<u8>, DynamicError>;
 }
 
 pub trait Coding {
     fn encode<T: Serialize>(data: T) -> Vec<u8>;
-    fn decode<'de, T: Deserialize<'de>>(data: &'de Vec<u8>) -> Result<T, ThisISTheNewError>;
+    fn decode<'de, T: Deserialize<'de>>(data: &'de Vec<u8>) -> Result<T, DynamicError>;
 }
 
 pub trait Runtime {
@@ -223,7 +223,9 @@ where
     DE: Coding + 'static,
     RT: Runtime + 'static,
 {
-    pub fn new(transport: WS) -> Arc<Self> {
+    pub async fn connect(url: &str) -> Result<Arc<Self>, DynamicError> {
+        let transport = WS::connect(url).await?;
+
         let my_client = Self {
             runtime: PhantomData::<RT>,
             random_number: PhantomData::<RN>,
@@ -239,7 +241,7 @@ where
         RT::spawn(async move {
             my_client1.receive_radar().await;
         });
-        my_client
+        Ok(my_client)
     }
 
     pub async fn send_and_receive<SendType: Serialize, ReceiveType: for<'de> Deserialize<'de>>(
@@ -247,7 +249,7 @@ where
         path: String,
         payload: SendType,
         timeout_in_secs: u32,
-    ) -> Result<ReceiveType, ThisISTheNewError> {
+    ) -> Result<ReceiveType, DynamicError> {
         let id = RN::generate();
         let message = self.send_and_receive_pool.subscribe(id);
 
@@ -269,7 +271,7 @@ where
         &self,
         path: String,
         operation: impl AsyncFn(ReceiveType) -> SendType,
-    ) -> Result<(), ThisISTheNewError> {
+    ) -> Result<(), DynamicError> {
         let message = self.receive_and_send_pool.subscribe(path.clone());
 
         loop {
@@ -296,7 +298,7 @@ where
         &self,
         path: String,
         payload: SendType,
-    ) -> Result<(), ThisISTheNewError> {
+    ) -> Result<(), DynamicError> {
         let payload = DE::encode(payload);
         let text = MessageType::OneWay {
             path: path,
@@ -310,7 +312,7 @@ where
         &self,
         path: String,
         operation: impl AsyncFn(ReceiveType),
-    ) -> Result<(), ThisISTheNewError> {
+    ) -> Result<(), DynamicError> {
         let message = self.receive_only_pool.subscribe(path.clone());
 
         loop {
@@ -322,7 +324,7 @@ where
         }
     }
 
-    pub async fn receive_radar(&self) {
+    async fn receive_radar(&self) {
         loop {
             let Ok(raw_data) = self.transport.try_receive_bin().await else {
                 continue;

@@ -34,7 +34,7 @@ pub struct CockroachClient {
 impl Database for CockroachDB {
     type Client = CockroachClient;
 
-    async fn get_client(&self) -> Result<Self::Client, ThisISTheNewError> {
+    async fn get_client(&self) -> Result<Self::Client, DynamicError> {
         Ok(CockroachClient {
             client: self.pool.get().await?,
         })
@@ -46,7 +46,7 @@ impl DBClient for CockroachClient {
     type HashedPassword = authentication::HashedPasswordS;
     type Txn<'a> = CockroachTxn<'a>;
 
-    async fn begin_transaction(&mut self) -> Result<Self::Txn<'_>, ThisISTheNewError> {
+    async fn begin_transaction(&mut self) -> Result<Self::Txn<'_>, DynamicError> {
         Ok(CockroachTxn {
             txn: self.client.transaction().await?,
         })
@@ -55,7 +55,7 @@ impl DBClient for CockroachClient {
     async fn read_sign_in(
         &mut self,
         user_id: &String,
-    ) -> Result<Option<(Self::RowId, Self::HashedPassword)>, ThisISTheNewError> {
+    ) -> Result<Option<(Self::RowId, Self::HashedPassword)>, DynamicError> {
         let query = "SELECT rowid,pass FROM accounting_app.user WHERE id = $1 limit 1;";
         let stmt = self.client.prepare_cached(query).await?;
         let result = self.client.query_opt(&stmt, &[user_id]).await;
@@ -94,7 +94,7 @@ impl DBTransaction for CockroachTxn<'_> {
 
     async fn commit_transaction(
         self,
-    ) -> Result<Result<(), domain_errors::AtCommit>, ThisISTheNewError> {
+    ) -> Result<Result<(), domain_errors::AtCommit>, DynamicError> {
         match self.txn.commit().await {
             Ok(_) => return Ok(Ok(())),
             Err(e) => {
@@ -106,12 +106,12 @@ impl DBTransaction for CockroachTxn<'_> {
         }
     }
 
-    async fn rollback_transaction(self) -> Result<(), ThisISTheNewError> {
+    async fn rollback_transaction(self) -> Result<(), DynamicError> {
         self.txn.rollback().await?;
         Ok(())
     }
 
-    async fn read_sign_up(&mut self, user_id: &String) -> Result<bool, ThisISTheNewError> {
+    async fn read_sign_up(&mut self, user_id: &String) -> Result<bool, DynamicError> {
         let query = "SELECT EXISTS( SELECT 1 FROM accounting_app.user WHERE id = $1 );";
         let stmt = self.txn.prepare_cached(query).await?;
         let result = self.txn.query_one(&stmt, &[user_id]).await;
@@ -133,7 +133,7 @@ impl DBTransaction for CockroachTxn<'_> {
         user_id: &String,
         hashed_password: &Self::HashedPassword,
         user_name: &Option<String>,
-    ) -> Result<Self::RowId, ThisISTheNewError> {
+    ) -> Result<Self::RowId, DynamicError> {
         let query =
             "INSERT INTO accounting_app.user (id, pass, name) VALUES ($1, $2, $3) RETURNING rowid;";
         let stmt = self.txn.prepare_cached(query).await?;

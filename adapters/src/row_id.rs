@@ -19,8 +19,4 @@ impl TryFrom<String> for RowIdS {
     }
 }
 
-impl RowId for RowIdS {
-    fn generate() -> Self {
-        Self(Uuid::now_v7())
-    }
-}
+impl RowId for RowIdS {}

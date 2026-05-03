@@ -1,8 +1,6 @@
 use crate::prelude::*;
 
-pub trait RowId: TryFrom<String> + Clone {
-    fn generate() -> Self;
-}
+pub trait RowId {}
 
 pub trait Functions {
     fn is_regex(s: &String) -> Result<(), String>;
@@ -26,7 +24,7 @@ pub trait JWT {
 
 pub trait Database {
     type Client: DBClient;
-    async fn get_client(&self) -> Result<Self::Client, ThisISTheNewError>;
+    async fn get_client(&self) -> Result<Self::Client, DynamicError>;
 }
 
 pub trait DBClient {
@@ -37,13 +35,13 @@ pub trait DBClient {
     where
         Self: 'a;
 
-    async fn begin_transaction(&mut self) -> Result<Self::Txn<'_>, ThisISTheNewError>;
+    async fn begin_transaction(&mut self) -> Result<Self::Txn<'_>, DynamicError>;
     // here we just do read we dont do here any set or check
 
     async fn read_sign_in(
         &mut self,
         user_id: &String,
-    ) -> Result<Option<(Self::RowId, Self::HashedPassword)>, ThisISTheNewError>;
+    ) -> Result<Option<(Self::RowId, Self::HashedPassword)>, DynamicError>;
 }
 
 pub mod domain_errors {
@@ -61,26 +59,24 @@ pub trait DBTransaction {
     type RowId: RowId;
     type HashedPassword: HashedPassword;
 
-    async fn commit_transaction(
-        self,
-    ) -> Result<Result<(), domain_errors::AtCommit>, ThisISTheNewError>;
-    async fn rollback_transaction(self) -> Result<(), ThisISTheNewError>;
+    async fn commit_transaction(self) -> Result<Result<(), domain_errors::AtCommit>, DynamicError>;
+    async fn rollback_transaction(self) -> Result<(), DynamicError>;
 
     async fn read_sign_up(
         &mut self,
         user_id: &String,
-    ) -> Result<bool /* is new user */, ThisISTheNewError>;
+    ) -> Result<bool /* is new user */, DynamicError>;
     async fn write_sign_up(
         &mut self,
         user_id: &String,
         hashed_password: &Self::HashedPassword,
         user_name: &Option<String>,
-    ) -> Result<Self::RowId /* is uuid of the user */, ThisISTheNewError>;
+    ) -> Result<Self::RowId /* is uuid of the user */, DynamicError>;
 }
 
 macro_rules! generate_api_backend_methods {
     ($path:ident) => {
-        async fn $path(&self, input: $path::Input) -> Result<$path::Result, ThisISTheNewError>;
+        async fn $path(&self, input: $path::Input) -> Result<$path::Result, DynamicError>;
     };
 }
 
