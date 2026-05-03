@@ -42,6 +42,7 @@ impl WebSocketOp for MyClient {
     }
 
     async fn try_receive_bin(&self) -> Result<Vec<u8>, Self::Error> {
+        todo!("solve the blocking and the await");
         let mut guard = self.read.lock().unwrap();
 
         match guard.next().await {

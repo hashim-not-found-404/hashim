@@ -26,10 +26,11 @@ pub mod prelude {
     pub(crate) use std::{
         pin::pin,
         sync::{Arc, LazyLock, Mutex},
+        time::Duration,
     };
 
     // third party
-    pub(crate) use chrono::{Duration, Utc};
+    pub(crate) use chrono::{Duration as ChronoDuration, Utc};
     pub(crate) use derive_more::From;
     pub(crate) use futures_util::{
         SinkExt, StreamExt,

@@ -10,10 +10,7 @@ impl Runtime for RuntimeS {
         });
     }
 
-    async fn timeout<T, F: Future<Output = T>>(
-        duration: std::time::Duration,
-        fut: F,
-    ) -> Result<T, ()> {
+    async fn timeout<T, F: Future<Output = T>>(duration: Duration, fut: F) -> Result<T, ()> {
         let timeout_ms = duration.as_millis() as u32;
 
         let fut_pinned = pin!(fut);
@@ -32,10 +29,7 @@ impl Runtime for RuntimeS {
         todo!()
     }
 
-    async fn timeout<T, F: Future<Output = T>>(
-        duration: std::time::Duration,
-        fut: F,
-    ) -> Result<T, ()> {
+    async fn timeout<T, F: Future<Output = T>>(duration: Duration, fut: F) -> Result<T, ()> {
         todo!()
     }
 }

@@ -2,7 +2,7 @@ use crate::prelude::*;
 
 #[cfg(not(target_arch = "wasm32"))]
 fn exp_time() -> u64 {
-    (Utc::now() + Duration::minutes(30)).timestamp() as u64
+    (Utc::now() + ChronoDuration::minutes(30)).timestamp() as u64
 }
 
 #[cfg(not(target_arch = "wasm32"))]
