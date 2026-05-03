@@ -44,7 +44,6 @@ pub mod prelude {
     pub(crate) use getrandom::fill;
     pub(crate) use postcard::{from_bytes, to_allocvec};
     pub(crate) use serde::{Deserialize, Serialize};
-    pub(crate) use tokio_tungstenite_wasm::{Message, WebSocketStream, connect};
     pub(crate) use uuid::Uuid;
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -61,6 +60,8 @@ pub mod prelude {
 
     #[cfg(target_arch = "wasm32")]
     pub(crate) use futures::future::{Either, select};
+    #[cfg(target_arch = "wasm32")]
+    pub(crate) use gloo_net::websocket::{Message, futures::WebSocket};
     #[cfg(target_arch = "wasm32")]
     pub(crate) use gloo_timers::future::TimeoutFuture;
     #[cfg(target_arch = "wasm32")]

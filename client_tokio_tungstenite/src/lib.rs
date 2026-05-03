@@ -27,7 +27,7 @@ impl BackendRouts for Dsdff {
             .send_and_receive::<sign_up::Input, Result<sign_up::Result, ()>>(
                 sign_up::PATH.to_string(),
                 input,
-                20,
+                2,
             )
             .await;
 
@@ -46,7 +46,7 @@ impl BackendRouts for Dsdff {
             .send_and_receive::<sign_in::Input, Result<sign_in::Result, ()>>(
                 sign_in::PATH.to_string(),
                 input,
-                20,
+                2,
             )
             .await;
 

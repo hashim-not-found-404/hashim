@@ -10,7 +10,6 @@ test_suite = { workspace = true }
 derive_more = { workspace = true }
 serde = { workspace = true }
 uuid = { workspace = true }
-tokio-tungstenite-wasm = { workspace = true }
 futures-util = { workspace = true }
 futures = { workspace = true }
 postcard = { workspace = true }
@@ -18,10 +17,13 @@ getrandom = { workspace = true }
 chrono = { workspace = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
+gloo-net = { workspace = true }
 gloo-timers = { workspace = true }
 wasm-bindgen-futures = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+tokio-tungstenite = { workspace = true }
+tokio = { workspace = true }
 argon2 = { workspace = true }
 jsonwebtoken = { workspace = true }
 regex = { workspace = true }
