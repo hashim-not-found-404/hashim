@@ -21,7 +21,7 @@ pub mod prelude {
     pub(crate) use my_core::prelude::*;
 
     // std
-    pub(crate) use std::sync::{Arc, LazyLock, Mutex};
+    pub(crate) use std::sync::{Arc, LazyLock};
 
     // third party
     pub(crate) use chrono::{Duration, Utc};
@@ -47,7 +47,8 @@ pub mod prelude {
     };
     #[cfg(not(target_arch = "wasm32"))]
     pub(crate) use regex::Regex;
-
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) use tokio::sync::Mutex;
     // #[cfg(target_arch = "wasm32")]
 }
 

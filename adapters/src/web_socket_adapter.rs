@@ -33,7 +33,7 @@ impl WebSocketOp for MyClient {
     async fn send_bin(&self, data: Vec<u8>) -> Result<(), Self::Error> {
         self.write
             .lock()
-            .unwrap()
+            .await
             .send(Message::Binary(data.into()))
             .await
             .unwrap();
@@ -42,7 +42,7 @@ impl WebSocketOp for MyClient {
     }
 
     async fn try_receive_bin(&self) -> Result<Vec<u8>, Self::Error> {
-        let Some(Ok(Message::Binary(data))) = self.read.lock().unwrap().next().await else {
+        let Some(Ok(Message::Binary(data))) = self.read.lock().await.next().await else {
             return Err(MyError::Closed);
         };
         return Ok(data.into());

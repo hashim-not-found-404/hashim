@@ -1,3 +1,5 @@
+use dioxus_logger::tracing;
+
 use crate::prelude::*;
 
 type Payload = Vec<u8>;
@@ -43,13 +45,17 @@ impl Future for MyBox<Payload> {
     type Output = Payload;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        tracing::info!("he enter the poll");
         let mut guard = self.inner.lock().unwrap();
 
+        tracing::info!("we are inside the poll");
         if let Some(payload) = guard.result.take() {
+            tracing::info!("he is ready");
             return Poll::Ready(payload);
         }
 
         guard.waker = Some(cx.waker().clone());
+        tracing::info!("he pending");
         Poll::Pending
     }
 }

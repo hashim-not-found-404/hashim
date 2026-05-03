@@ -25,3 +25,4 @@ agnostic-lite = { workspace = true, features = ["time","tokio"] }
 argon2 = { workspace = true }
 jsonwebtoken = { workspace = true }
 regex = { workspace = true }
+tokio = { workspace = true }

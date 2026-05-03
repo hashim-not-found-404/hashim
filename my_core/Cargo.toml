@@ -8,3 +8,4 @@ edition = "2024"
 [dependencies]
 serde = { workspace = true }
 agnostic-lite = { workspace = true, features = ["time"] }
+dioxus-logger = { workspace = true }

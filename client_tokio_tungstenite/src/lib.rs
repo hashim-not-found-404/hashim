@@ -76,3 +76,25 @@ impl BackendRouts for Dsdff {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use tokio::{self, runtime, task};
+
+    use super::*;
+
+    #[tokio::test]
+    async fn test_name() {
+        let t = runtime::LocalRuntime::new().unwrap();
+        t.spawn_blocking(async || {
+            let a = Dsdff::new().await;
+            a.sign_in(sign_in::Input {
+                user_id: "hashim".to_string(),
+                password: "1".to_string(),
+            })
+            .await
+            .unwrap()
+            .unwrap();
+        });
+    }
+}
