@@ -6,7 +6,6 @@ edition = "2024"
 [dependencies]
 adapters = { workspace = true }
 my_core = { workspace = true }
-test_suite = { workspace = true }
 
 tokio-postgres = { workspace = true }
 deadpool-postgres = { workspace = true }

@@ -1,8 +1,0 @@
-[package]
-name = "test_suite"
-version = "0.1.0"
-edition = "2024"
-
-# this should be only dependent on the my_core because the crate will contain mocks and that mocks should be campatable with wasm
-[dependencies]
-my_core = { workspace = true }

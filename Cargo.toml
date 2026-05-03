@@ -6,7 +6,6 @@ members = [
     "my_core",
     "db_client_cockroach",
     "server_actix",
-    "test_suite",
     "client_tokio_tungstenite",
     "adapters",
 ]
@@ -15,7 +14,6 @@ members = [
 # my crates
 client_tokio_tungstenite = {path = "./client_tokio_tungstenite"}
 my_core = {path = "./my_core"}
-test_suite = {path = "./test_suite"}
 adapters = {path = "./adapters"}
 db_client_cockroach = {path = "./db_client_cockroach"}
 
