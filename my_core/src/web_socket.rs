@@ -189,15 +189,13 @@ impl ReceiveOnlyPool {
 // TODO : add connect method
 // TODO : change all the errors asossiated types to be error enum
 pub trait WebSocketOp {
-    type Error;
-    async fn send_bin(&self, data: Vec<u8>) -> Result<(), Self::Error>;
-    async fn try_receive_bin(&self) -> Result<Vec<u8>, Self::Error>;
+    async fn send_bin(&self, data: Vec<u8>) -> Result<(), ThisISTheNewError>;
+    async fn try_receive_bin(&self) -> Result<Vec<u8>, ThisISTheNewError>;
 }
 
 pub trait Coding {
-    type Error;
     fn encode<T: Serialize>(data: T) -> Vec<u8>;
-    fn decode<'de, T: Deserialize<'de>>(data: &'de Vec<u8>) -> Result<T, Self::Error>;
+    fn decode<'de, T: Deserialize<'de>>(data: &'de Vec<u8>) -> Result<T, ThisISTheNewError>;
 }
 
 pub trait Runtime {
@@ -219,13 +217,12 @@ where
     receive_only_pool: ReceiveOnlyPool,
 }
 
-impl<WS, DE, E, RN, RT> MyClient<WS, DE, RN, RT>
+impl<WS, DE, RN, RT> MyClient<WS, DE, RN, RT>
 where
     RN: RandomNumber + 'static,
-    WS: WebSocketOp<Error = E> + 'static,
-    DE: Coding<Error = E> + 'static,
+    WS: WebSocketOp + 'static,
+    DE: Coding + 'static,
     RT: Runtime + 'static,
-    E: 'static,
 {
     pub fn new(transport: WS) -> Arc<Self> {
         let my_client = Self {
@@ -251,7 +248,7 @@ where
         path: String,
         payload: SendType,
         timeout_in_secs: u32,
-    ) -> Result<ReceiveType, WS::Error> {
+    ) -> Result<ReceiveType, ThisISTheNewError> {
         let id = RN::generate();
         let message = self.send_and_receive_pool.subscribe(id);
 
@@ -273,7 +270,7 @@ where
         &self,
         path: String,
         operation: impl AsyncFn(ReceiveType) -> SendType,
-    ) -> Result<(), WS::Error> {
+    ) -> Result<(), ThisISTheNewError> {
         let message = self.receive_and_send_pool.subscribe(path.clone());
 
         loop {
@@ -300,7 +297,7 @@ where
         &self,
         path: String,
         payload: SendType,
-    ) -> Result<(), WS::Error> {
+    ) -> Result<(), ThisISTheNewError> {
         let payload = DE::encode(payload);
         let text = MessageType::OneWay {
             path: path,
@@ -314,7 +311,7 @@ where
         &self,
         path: String,
         operation: impl AsyncFn(ReceiveType),
-    ) -> Result<(), WS::Error> {
+    ) -> Result<(), ThisISTheNewError> {
         let message = self.receive_only_pool.subscribe(path.clone());
 
         loop {

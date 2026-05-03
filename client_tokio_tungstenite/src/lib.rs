@@ -22,9 +22,7 @@ impl Dsdff {
 }
 
 impl BackendRouts for Dsdff {
-    type Error = MyError;
-
-    async fn sign_up(&self, input: sign_up::Input) -> Result<sign_up::Result, Self::Error> {
+    async fn sign_up(&self, input: sign_up::Input) -> Result<sign_up::Result, ThisISTheNewError> {
         let result = self
             .0
             .send_and_receive::<sign_up::Input, Result<sign_up::Result, ()>>(
@@ -37,13 +35,13 @@ impl BackendRouts for Dsdff {
         match result {
             Ok(o) => match o {
                 Ok(o) => Ok(o),
-                Err(_) => Err(MyError::ServerError),
+                Err(_) => Err(Box::new(MyError::ServerError)),
             },
-            Err(e) => Err(e),
+            Err(e) => return Err(e),
         }
     }
 
-    async fn sign_in(&self, input: sign_in::Input) -> Result<sign_in::Result, Self::Error> {
+    async fn sign_in(&self, input: sign_in::Input) -> Result<sign_in::Result, ThisISTheNewError> {
         let result = self
             .0
             .send_and_receive::<sign_in::Input, Result<sign_in::Result, ()>>(
@@ -56,9 +54,9 @@ impl BackendRouts for Dsdff {
         match result {
             Ok(o) => match o {
                 Ok(o) => Ok(o),
-                Err(_) => Err(MyError::ServerError),
+                Err(_) => Err(Box::new(MyError::ServerError)),
             },
-            Err(e) => Err(e),
+            Err(e) => return Err(e),
         }
     }
 }

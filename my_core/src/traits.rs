@@ -25,13 +25,11 @@ pub trait JWT {
 }
 
 pub trait Database {
-    type Error;
     type Client: DBClient;
-    async fn get_client(&self) -> Result<Self::Client, Self::Error>;
+    async fn get_client(&self) -> Result<Self::Client, ThisISTheNewError>;
 }
 
 pub trait DBClient {
-    type Error;
     type RowId: RowId;
     type HashedPassword: HashedPassword;
 
@@ -39,13 +37,13 @@ pub trait DBClient {
     where
         Self: 'a;
 
-    async fn begin_transaction(&mut self) -> Result<Self::Txn<'_>, Self::Error>;
+    async fn begin_transaction(&mut self) -> Result<Self::Txn<'_>, ThisISTheNewError>;
     // here we just do read we dont do here any set or check
 
     async fn read_sign_in(
         &mut self,
         user_id: &String,
-    ) -> Result<Option<(Self::RowId, Self::HashedPassword)>, Self::Error>;
+    ) -> Result<Option<(Self::RowId, Self::HashedPassword)>, ThisISTheNewError>;
 }
 
 pub mod domain_errors {
@@ -60,33 +58,33 @@ pub mod domain_errors {
 }
 
 pub trait DBTransaction {
-    type Error;
     type RowId: RowId;
     type HashedPassword: HashedPassword;
 
-    async fn commit_transaction(self) -> Result<Result<(), domain_errors::AtCommit>, Self::Error>;
-    async fn rollback_transaction(self) -> Result<(), Self::Error>;
+    async fn commit_transaction(
+        self,
+    ) -> Result<Result<(), domain_errors::AtCommit>, ThisISTheNewError>;
+    async fn rollback_transaction(self) -> Result<(), ThisISTheNewError>;
 
     async fn read_sign_up(
         &mut self,
         user_id: &String,
-    ) -> Result<bool /* is new user */, Self::Error>;
+    ) -> Result<bool /* is new user */, ThisISTheNewError>;
     async fn write_sign_up(
         &mut self,
         user_id: &String,
         hashed_password: &Self::HashedPassword,
         user_name: &Option<String>,
-    ) -> Result<Self::RowId /* is uuid of the user */, Self::Error>;
+    ) -> Result<Self::RowId /* is uuid of the user */, ThisISTheNewError>;
 }
 
 macro_rules! generate_api_backend_methods {
     ($path:ident) => {
-        async fn $path(&self, input: $path::Input) -> Result<$path::Result, Self::Error>;
+        async fn $path(&self, input: $path::Input) -> Result<$path::Result, ThisISTheNewError>;
     };
 }
 
 pub trait BackendRouts {
-    type Error;
     generate_api_backend_methods!(sign_up);
     generate_api_backend_methods!(sign_in);
     // generate_api_backend_methods!(get_all_user_roles);

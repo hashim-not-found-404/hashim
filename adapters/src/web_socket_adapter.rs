@@ -28,9 +28,7 @@ impl MyClient {
 }
 
 impl WebSocketOp for MyClient {
-    type Error = MyError;
-
-    async fn send_bin(&self, data: Vec<u8>) -> Result<(), Self::Error> {
+    async fn send_bin(&self, data: Vec<u8>) -> Result<(), ThisISTheNewError> {
         self.write
             .lock()
             .unwrap()
@@ -41,7 +39,7 @@ impl WebSocketOp for MyClient {
         Ok(())
     }
 
-    async fn try_receive_bin(&self) -> Result<Vec<u8>, Self::Error> {
+    async fn try_receive_bin(&self) -> Result<Vec<u8>, ThisISTheNewError> {
         todo!("solve the blocking and the await");
         let mut guard = self.read.lock().unwrap();
 
@@ -51,7 +49,7 @@ impl WebSocketOp for MyClient {
                 Message::Binary(bytes) => return Ok(bytes.into()),
                 Message::Close(close_frame) => todo!(),
             },
-            Some(Err(o)) => return Err(MyError::Closed),
+            Some(Err(o)) => return Err(Box::new(o)),
             None => todo!(),
         }
     }

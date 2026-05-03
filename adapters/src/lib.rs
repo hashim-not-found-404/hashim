@@ -3,6 +3,10 @@
 // one file maybe have multiple impls
 // name of the file not equal the name of the trait
 
+use std::error::Error;
+
+use derive_more::Display;
+
 pub mod authentication;
 pub mod encode_decode;
 pub mod functions;
@@ -61,7 +65,7 @@ pub mod prelude {
     pub(crate) use wasm_bindgen_futures::spawn_local;
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Display)]
 pub enum MyError {
     DecodingError,
     Closed,
@@ -75,28 +79,4 @@ pub enum MyError {
     ErrorAtSendingRequest(String),
 }
 
-impl ToString for MyError {
-    fn to_string(&self) -> String {
-        match self {
-            Self::OtherUnexpectedStatusCode(_) => {
-                return String::from("other_unexpected_status_code");
-            }
-            Self::SomeInternalErrorOfTheServer => {
-                return String::from("some_internal_error_of_the_server");
-            }
-            Self::Decoding => {
-                return String::from("decoding");
-            }
-            Self::CheckYourWifi => {
-                return String::from("check_your_wifi");
-            }
-            Self::ErrorAtSendingRequest(s) => {
-                return String::from("error_at_sending_request");
-            }
-            MyError::DecodingError => todo!(),
-            MyError::Closed => todo!(),
-            MyError::ServerError => todo!(),
-            MyError::Timeout => String::from("Timeout"),
-        }
-    }
-}
+impl Error for MyError {}

@@ -78,9 +78,6 @@ where
     Id: RowId,
     H: HashedPassword,
     // Add these Debug bounds:
-    <DB as Database>::Error: Debug,
-    <<DB as Database>::Client as DBClient>::Error: Debug,
-    for<'a> <<<DB as Database>::Client as DBClient>::Txn<'a> as DBTransaction>::Error: Debug,
 {
     let db = DB::default();
     let mut client = db.get_client().await.unwrap();

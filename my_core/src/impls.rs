@@ -19,13 +19,11 @@ where
 }
 
 // TODO : this should implement trait BackendRouts
-impl<DB, Cli, Jwt, Authentication, F, Id, ExternalError>
-    StateFullCheck<DB, Cli, Jwt, Authentication, F, Id>
+impl<DB, Cli, Jwt, Authentication, F, Id> StateFullCheck<DB, Cli, Jwt, Authentication, F, Id>
 where
-    DB: Database<Error = ExternalError, Client = Cli>,
-    Cli: DBClient<Error = ExternalError>,
-    for<'a> Cli::Txn<'a>:
-        DBTransaction<Error = ExternalError, RowId = Id, HashedPassword = Authentication>,
+    DB: Database<Client = Cli>,
+    Cli: DBClient,
+    for<'a> Cli::Txn<'a>: DBTransaction<RowId = Id, HashedPassword = Authentication>,
     Jwt: JWT<UserId = Id>,
     Authentication: HashedPassword,
     F: Functions,
@@ -106,21 +104,18 @@ where
     // }
 }
 
-impl<DB, Cli, Jwt, Authentication, F, Id, ExternalError> BackendRouts
+impl<DB, Cli, Jwt, Authentication, F, Id> BackendRouts
     for StateFullCheck<DB, Cli, Jwt, Authentication, F, Id>
 where
-    DB: Database<Error = ExternalError, Client = Cli>,
-    Cli: DBClient<Error = ExternalError, RowId = Id, HashedPassword = Authentication>,
-    for<'a> Cli::Txn<'a>:
-        DBTransaction<Error = ExternalError, RowId = Id, HashedPassword = Authentication>,
+    DB: Database<Client = Cli>,
+    Cli: DBClient<RowId = Id, HashedPassword = Authentication>,
+    for<'a> Cli::Txn<'a>: DBTransaction<RowId = Id, HashedPassword = Authentication>,
     Jwt: JWT<UserId = Id>,
     Authentication: HashedPassword,
     F: Functions,
     Id: RowId,
 {
-    type Error = ExternalError;
-
-    async fn sign_up(&self, input: sign_up::Input) -> Result<sign_up::Result, ExternalError> {
+    async fn sign_up(&self, input: sign_up::Input) -> Result<sign_up::Result, ThisISTheNewError> {
         let hashed_password = Authentication::sign_up(input.password);
 
         let mut errr = sign_up::Error {
@@ -158,7 +153,7 @@ where
         return result;
     }
 
-    async fn sign_in(&self, input: sign_in::Input) -> Result<sign_in::Result, Self::Error> {
+    async fn sign_in(&self, input: sign_in::Input) -> Result<sign_in::Result, ThisISTheNewError> {
         let mut errr = sign_in::Error {
             user_id: None,
             password: None,
@@ -190,7 +185,7 @@ where
     //     async fn get_all_user_roles(
     //         &self,
     //         input: business_layer::Input,
-    //     ) -> business_layer::Result<get_all_user_roles::Ok, get_all_user_roles::Error, Self::Error>
+    //     ) -> business_layer::Result<get_all_user_roles::Ok, get_all_user_roles::Error, ThisISTheNewError>
     //     {
     //         let mut client = self.database.get_client().await?;
 
@@ -237,7 +232,7 @@ where
     //     async fn create_company(
     //         &self,
     //         input: business_layer::Input,
-    //     ) -> business_layer::Result<create_company::Ok, create_company::Error, Self::Error> {
+    //     ) -> business_layer::Result<create_company::Ok, create_company::Error, ThisISTheNewError> {
     //         let mut client = self.database.get_client().await?;
 
     //         for _ in 0..2_u8 {
@@ -283,7 +278,7 @@ where
     //     async fn create_company_branch(
     //         &self,
     //         input: business_layer::Input,
-    //     ) -> business_layer::Result<create_company_branch::Ok, create_company_branch::Error, Self::Error>
+    //     ) -> business_layer::Result<create_company_branch::Ok, create_company_branch::Error, ThisISTheNewError>
     //     {
     //         todo!()
     //     }
@@ -321,21 +316,21 @@ where
 //     async fn sign_up(
 //         &self,
 //         input: business_layer::Input,
-//     ) -> business_layer::Result<sign_up::Ok, sign_up::Error, Self::Error> {
+//     ) -> business_layer::Result<sign_up::Ok, sign_up::Error, ThisISTheNewError> {
 //         self.state_full_check.sign_up(input).await
 //     }
 
 //     async fn sign_in(
 //         &self,
 //         input: business_layer::Input,
-//     ) -> business_layer::Result<sign_in::Ok, sign_in::Error, Self::Error> {
+//     ) -> business_layer::Result<sign_in::Ok, sign_in::Error, ThisISTheNewError> {
 //         self.state_full_check.sign_in(input).await
 //     }
 
 //     async fn get_all_user_roles(
 //         &self,
 //         input: business_layer::Input,
-//     ) -> business_layer::Result<get_all_user_roles::Ok, get_all_user_roles::Error, Self::Error>
+//     ) -> business_layer::Result<get_all_user_roles::Ok, get_all_user_roles::Error, ThisISTheNewError>
 //     {
 //         self.state_full_check.get_all_user_roles(input).await
 //     }
@@ -343,14 +338,14 @@ where
 //     async fn create_company(
 //         &self,
 //         input: business_layer::Input,
-//     ) -> business_layer::Result<create_company::Ok, create_company::Error, Self::Error> {
+//     ) -> business_layer::Result<create_company::Ok, create_company::Error, ThisISTheNewError> {
 //         self.state_full_check.create_company(input).await
 //     }
 
 //     async fn create_company_branch(
 //         &self,
 //         input: business_layer::Input,
-//     ) -> business_layer::Result<create_company_branch::Ok, create_company_branch::Error, Self::Error>
+//     ) -> business_layer::Result<create_company_branch::Ok, create_company_branch::Error, ThisISTheNewError>
 //     {
 //         let mut errr = create_company_branch::Error {
 //             company_belong: None,

@@ -77,7 +77,7 @@ async fn ws_handler(req: HttpRequest, stream: web::Payload) -> HttpResponse {
                                         sign_up::Input,
                                     >(&payload)
                                     .unwrap();
-                                    let result = state.sign_up(input).await;
+                                    let result = state.sign_up(input).await.unwrap();
                                     encode_decode::Atooooooooooo::encode(result)
                                 }
                                 sign_in::PATH => {
@@ -85,7 +85,7 @@ async fn ws_handler(req: HttpRequest, stream: web::Payload) -> HttpResponse {
                                         sign_in::Input,
                                     >(&payload)
                                     .unwrap();
-                                    let result = state.sign_in(input).await;
+                                    let result = state.sign_in(input).await.unwrap();
                                     encode_decode::Atooooooooooo::encode(result)
                                 }
                                 _ => todo!(),

@@ -7,7 +7,7 @@ pub trait Signal: Default {
 }
 
 pub struct State<
-    Routs: BackendRouts<Error: ToString>,
+    Routs: BackendRouts,
     TxnNumGen: RandomNumber,
     StringSignal: Signal<T = String>,
     BoolSignal: Signal<T = bool>,
@@ -37,7 +37,7 @@ pub struct State<
 }
 
 impl<
-    Routs: BackendRouts<Error: ToString>,
+    Routs: BackendRouts,
     TxnNumGen: RandomNumber,
     StringSignal: Signal<T = String>,
     BoolSignal: Signal<T = bool>,

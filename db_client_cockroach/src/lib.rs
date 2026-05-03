@@ -1,7 +1,7 @@
 use adapters::prelude::*;
 use deadpool_postgres::{Config, Pool, Runtime};
 use my_core::prelude::*;
-use tokio_postgres::{NoTls, Row, error::SqlState, types::ToSql};
+use tokio_postgres::{NoTls, error::SqlState};
 use uuid::Uuid;
 
 pub struct CockroachDB {
@@ -32,34 +32,32 @@ pub struct CockroachClient {
 }
 
 impl Database for CockroachDB {
-    type Error = ();
     type Client = CockroachClient;
 
-    async fn get_client(&self) -> Result<Self::Client, Self::Error> {
+    async fn get_client(&self) -> Result<Self::Client, ThisISTheNewError> {
         Ok(CockroachClient {
-            client: self.pool.get().await.unwrap(),
+            client: self.pool.get().await?,
         })
     }
 }
 
 impl DBClient for CockroachClient {
-    type Error = ();
     type RowId = row_id::RowIdS;
     type HashedPassword = authentication::HashedPasswordS;
     type Txn<'a> = CockroachTxn<'a>;
 
-    async fn begin_transaction(&mut self) -> Result<Self::Txn<'_>, Self::Error> {
+    async fn begin_transaction(&mut self) -> Result<Self::Txn<'_>, ThisISTheNewError> {
         Ok(CockroachTxn {
-            txn: self.client.transaction().await.unwrap(),
+            txn: self.client.transaction().await?,
         })
     }
 
     async fn read_sign_in(
         &mut self,
         user_id: &String,
-    ) -> Result<Option<(Self::RowId, Self::HashedPassword)>, Self::Error> {
+    ) -> Result<Option<(Self::RowId, Self::HashedPassword)>, ThisISTheNewError> {
         let query = "SELECT rowid,pass FROM accounting_app.user WHERE id = $1 limit 1;";
-        let stmt = self.client.prepare_cached(query).await.unwrap();
+        let stmt = self.client.prepare_cached(query).await?;
         let result = self.client.query_opt(&stmt, &[user_id]).await;
 
         match result {
@@ -91,11 +89,12 @@ pub struct CockroachTxn<'a> {
 }
 
 impl DBTransaction for CockroachTxn<'_> {
-    type Error = ();
     type RowId = row_id::RowIdS;
     type HashedPassword = authentication::HashedPasswordS;
 
-    async fn commit_transaction(self) -> Result<Result<(), domain_errors::AtCommit>, Self::Error> {
+    async fn commit_transaction(
+        self,
+    ) -> Result<Result<(), domain_errors::AtCommit>, ThisISTheNewError> {
         match self.txn.commit().await {
             Ok(_) => return Ok(Ok(())),
             Err(e) => {
@@ -107,14 +106,14 @@ impl DBTransaction for CockroachTxn<'_> {
         }
     }
 
-    async fn rollback_transaction(self) -> Result<(), Self::Error> {
-        self.txn.rollback().await.unwrap();
+    async fn rollback_transaction(self) -> Result<(), ThisISTheNewError> {
+        self.txn.rollback().await?;
         Ok(())
     }
 
-    async fn read_sign_up(&mut self, user_id: &String) -> Result<bool, Self::Error> {
+    async fn read_sign_up(&mut self, user_id: &String) -> Result<bool, ThisISTheNewError> {
         let query = "SELECT EXISTS( SELECT 1 FROM accounting_app.user WHERE id = $1 );";
-        let stmt = self.txn.prepare_cached(query).await.unwrap();
+        let stmt = self.txn.prepare_cached(query).await?;
         let result = self.txn.query_one(&stmt, &[user_id]).await;
 
         match result {
@@ -134,10 +133,10 @@ impl DBTransaction for CockroachTxn<'_> {
         user_id: &String,
         hashed_password: &Self::HashedPassword,
         user_name: &Option<String>,
-    ) -> Result<Self::RowId, Self::Error> {
+    ) -> Result<Self::RowId, ThisISTheNewError> {
         let query =
             "INSERT INTO accounting_app.user (id, pass, name) VALUES ($1, $2, $3) RETURNING rowid;";
-        let stmt = self.txn.prepare_cached(query).await.unwrap();
+        let stmt = self.txn.prepare_cached(query).await?;
         let result = self
             .txn
             .query_one(
@@ -156,18 +155,6 @@ impl DBTransaction for CockroachTxn<'_> {
             }
             Err(e) => unreachable!("{}", e),
         }
-    }
-}
-
-impl CockroachTxn<'_> {
-    async fn execute(&self, query: &str, params: &[&(dyn ToSql + Sync)]) {
-        let stmt = self.txn.prepare_cached(query).await.unwrap();
-        self.txn.execute(&stmt, params).await.unwrap();
-    }
-
-    async fn query_opt(&self, query: &str, params: &[&(dyn ToSql + Sync)]) -> Option<Row> {
-        let stmt = self.txn.prepare_cached(query).await.unwrap();
-        return self.txn.query_opt(&stmt, params).await.unwrap();
     }
 }
 
