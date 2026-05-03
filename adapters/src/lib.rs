@@ -2,10 +2,9 @@
 // one file have one trait
 // one file maybe have multiple impls
 // name of the file not equal the name of the trait
-
-use std::error::Error;
-
-use derive_more::Display;
+// each one implementaion of trait inside module named `m` and each struct is named `S`
+// TODO : make every (impl and struct and use) inside mod
+// TODO : destruct all the imports from here to make the code easy to scale
 
 pub mod authentication;
 pub mod encode_decode;

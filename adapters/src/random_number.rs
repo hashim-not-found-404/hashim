@@ -1,10 +1,13 @@
-use crate::prelude::*;
+pub mod m {
+    use crate::prelude::*;
 
-pub struct RandomNumberS;
-impl RandomNumber for RandomNumberS {
-    fn generate() -> u64 {
-        let mut buf = [0u8; 8];
-        fill(&mut buf).unwrap();
-        u64::from_ne_bytes(buf)
+    pub struct S;
+
+    impl RandomNumber for S {
+        fn generate() -> u64 {
+            let mut buf = [0u8; 8];
+            fill(&mut buf).unwrap();
+            u64::from_ne_bytes(buf)
+        }
     }
 }

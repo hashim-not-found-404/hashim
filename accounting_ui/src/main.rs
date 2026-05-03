@@ -51,7 +51,7 @@ fn Initializer() -> Element {
 type Dkdkd = Arc<
     front_end_model_view::State<
         client::Dsdff,
-        random_number::RandomNumberS,
+        random_number::m::S,
         MySignal<String>,
         MySignal<bool>,
         MySignal<String>,

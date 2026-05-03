@@ -5,10 +5,10 @@ use std::sync::Arc;
 pub struct Dsdff(
     Arc<
         web_socket::MyClient<
-            web_socket_adapter::MyClient,
-            encode_decode::Atooooooooooo,
-            random_number::RandomNumberS,
-            runtime::RuntimeS,
+            web_socket_adapter::m::S,
+            encode_decode::m::S,
+            random_number::m::S,
+            runtime::m::S,
         >,
     >,
 );

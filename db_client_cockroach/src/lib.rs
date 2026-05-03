@@ -42,8 +42,8 @@ impl Database for CockroachDB {
 }
 
 impl DBClient for CockroachClient {
-    type RowId = row_id::RowIdS;
-    type HashedPassword = authentication::HashedPasswordS;
+    type RowId = row_id::m::S;
+    type HashedPassword = authentication::m::S;
     type Txn<'a> = CockroachTxn<'a>;
 
     async fn begin_transaction(&mut self) -> Result<Self::Txn<'_>, DynamicError> {
@@ -89,12 +89,10 @@ pub struct CockroachTxn<'a> {
 }
 
 impl DBTransaction for CockroachTxn<'_> {
-    type RowId = row_id::RowIdS;
-    type HashedPassword = authentication::HashedPasswordS;
+    type RowId = row_id::m::S;
+    type HashedPassword = authentication::m::S;
 
-    async fn commit_transaction(
-        self,
-    ) -> Result<Result<(), domain_errors::AtCommit>, DynamicError> {
+    async fn commit_transaction(self) -> Result<Result<(), domain_errors::AtCommit>, DynamicError> {
         match self.txn.commit().await {
             Ok(_) => return Ok(Ok(())),
             Err(e) => {

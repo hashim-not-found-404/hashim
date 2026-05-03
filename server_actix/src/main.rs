@@ -10,17 +10,17 @@ use std::{fs::File, io::BufReader};
 type GG = impls::StateFullCheck<
     CockroachDB,
     CockroachClient,
-    jwt::Key,
-    authentication::HashedPasswordS,
-    functions::FunctionsS,
-    row_id::RowIdS,
+    jwt::m::S,
+    authentication::m::S,
+    functions::m::S,
+    row_id::m::S,
 >;
 
 #[actix_web::main]
 async fn main() {
     println!("started server");
 
-    let actions = GG::new(CockroachDB::default(), jwt::Key::default());
+    let actions = GG::new(CockroachDB::default(), jwt::m::S::default());
 
     let actions = web::Data::new(actions);
 
@@ -63,30 +63,26 @@ async fn ws_handler(req: HttpRequest, stream: web::Payload) -> HttpResponse {
             match msg {
                 Ok(AggregatedMessage::Binary(data)) => {
                     let recived_msg =
-                        encode_decode::Atooooooooooo::decode::<web_socket::MessageType>(
-                            &data.to_vec(),
-                        )
-                        .unwrap();
+                        encode_decode::m::S::decode::<web_socket::MessageType>(&data.to_vec())
+                            .unwrap();
                     let state = req.app_data::<web::Data<GG>>().unwrap();
 
                     let msg_to_send = match recived_msg {
                         web_socket::MessageType::TwoWay { id, path, payload } => {
                             let payload = match path.as_str() {
                                 sign_up::PATH => {
-                                    let input = encode_decode::Atooooooooooo::decode::<
-                                        sign_up::Input,
-                                    >(&payload)
-                                    .unwrap();
+                                    let input =
+                                        encode_decode::m::S::decode::<sign_up::Input>(&payload)
+                                            .unwrap();
                                     let result = state.sign_up(input).await.unwrap();
-                                    encode_decode::Atooooooooooo::encode(result)
+                                    encode_decode::m::S::encode(result)
                                 }
                                 sign_in::PATH => {
-                                    let input = encode_decode::Atooooooooooo::decode::<
-                                        sign_in::Input,
-                                    >(&payload)
-                                    .unwrap();
+                                    let input =
+                                        encode_decode::m::S::decode::<sign_in::Input>(&payload)
+                                            .unwrap();
                                     let result = state.sign_in(input).await.unwrap();
-                                    encode_decode::Atooooooooooo::encode(result)
+                                    encode_decode::m::S::encode(result)
                                 }
                                 _ => todo!(),
                             };
@@ -99,7 +95,7 @@ async fn ws_handler(req: HttpRequest, stream: web::Payload) -> HttpResponse {
                     };
 
                     session
-                        .binary(encode_decode::Atooooooooooo::encode(msg_to_send))
+                        .binary(encode_decode::m::S::encode(msg_to_send))
                         .await
                         .unwrap();
                 }
