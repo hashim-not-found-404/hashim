@@ -1,12 +1,15 @@
 use adapters::prelude::*;
 use my_core::prelude::*;
+use std::sync::Arc;
 
 pub struct Dsdff(
-    web_socket::MyClient<
-        web_socket_adapter::MyClient,
-        encode_decode::Atooooooooooo,
-        random_number::RandomNumberS,
-        runtime::RuntimeS,
+    Arc<
+        web_socket::MyClient<
+            web_socket_adapter::MyClient,
+            encode_decode::Atooooooooooo,
+            random_number::RandomNumberS,
+            runtime::RuntimeS,
+        >,
     >,
 );
 
@@ -27,13 +30,9 @@ impl BackendRouts for Dsdff {
             .send_and_receive::<sign_up::Input, Result<sign_up::Result, ()>>(
                 sign_up::PATH.to_string(),
                 input,
-                2,
+                20,
             )
             .await;
-
-        // let Ok(result) = NativeRuntime::timeout_local(Duration::from_secs(2), result).await else {
-        //     return Err(MyError::Timeout);
-        // };
 
         match result {
             Ok(o) => match o {
@@ -50,13 +49,9 @@ impl BackendRouts for Dsdff {
             .send_and_receive::<sign_in::Input, Result<sign_in::Result, ()>>(
                 sign_in::PATH.to_string(),
                 input,
-                2,
+                20,
             )
             .await;
-
-        // let Ok(result) = NativeRuntime::timeout_local(Duration::from_secs(2), result).await else {
-        //     return Err(MyError::Timeout);
-        // };
 
         match result {
             Ok(o) => match o {

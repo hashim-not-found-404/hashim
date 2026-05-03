@@ -1,8 +1,32 @@
 use crate::prelude::*;
 
 pub struct RuntimeS;
+#[cfg(target_arch = "wasm32")]
+impl Runtime for RuntimeS {
+    fn spawn<F: Future + 'static>(fut: F) {
+        // For WASM: spawn_local schedules the future on the browser's event loop
+        spawn_local(async {
+            fut.await;
+        });
+    }
 
-// #[cfg(not(target_arch = "wasm32"))]
+    async fn timeout<T, F: Future<Output = T>>(
+        duration: std::time::Duration,
+        fut: F,
+    ) -> Result<T, ()> {
+        let timeout_ms = duration.as_millis() as u32;
+
+        let fut_pinned = pin!(fut);
+        let timeout_pinned = pin!(TimeoutFuture::new(timeout_ms));
+
+        match select(fut_pinned, timeout_pinned).await {
+            Either::Left((result, _)) => Ok(result),
+            Either::Right((_, _)) => Err(()),
+        }
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
 impl Runtime for RuntimeS {
     fn spawn<F: Future>(fut: F) {
         todo!()

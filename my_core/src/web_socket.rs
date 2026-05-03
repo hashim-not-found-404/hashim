@@ -199,8 +199,14 @@ pub trait Coding {
 }
 
 pub trait Runtime {
-    fn spawn<F: Future>(fut: F);
-    async fn timeout<T, F: Future<Output = T>>(duration: Duration, fut: F) -> Result<T, ()>;
+    fn spawn<F>(fut: F)
+    where
+        F: Future + 'static;
+
+    async fn timeout<T, F>(duration: Duration, fut: F) -> Result<T, ()>
+    where
+        T: 'static,
+        F: Future<Output = T>;
 }
 
 pub struct MyClient<WS, DE, RN, RT>
@@ -219,12 +225,13 @@ where
 
 impl<WS, DE, E, RN, RT> MyClient<WS, DE, RN, RT>
 where
-    RN: RandomNumber,
-    WS: WebSocketOp<Error = E>,
-    DE: Coding<Error = E>,
-    RT: Runtime,
+    RN: RandomNumber + 'static,
+    WS: WebSocketOp<Error = E> + 'static,
+    DE: Coding<Error = E> + 'static,
+    RT: Runtime + 'static,
+    E: 'static,
 {
-    pub fn new(transport: WS) -> Self {
+    pub fn new(transport: WS) -> Arc<Self> {
         let my_client = Self {
             runtime: PhantomData::<RT>,
             random_number: PhantomData::<RN>,
@@ -235,9 +242,10 @@ where
             receive_only_pool: ReceiveOnlyPool(Mutex::new(HashMap::new())),
         };
 
-        // let my_client = Arc::new(my_client);
-        RT::spawn(async {
-            my_client.receive_radar().await;
+        let my_client = Arc::new(my_client);
+        let my_client1 = my_client.clone();
+        RT::spawn(async move {
+            my_client1.receive_radar().await;
         });
         my_client
     }

@@ -23,7 +23,10 @@ pub mod prelude {
     pub(crate) use my_core::prelude::*;
 
     // std
-    pub(crate) use std::sync::{Arc, LazyLock, Mutex};
+    pub(crate) use std::{
+        pin::pin,
+        sync::{Arc, LazyLock, Mutex},
+    };
 
     // third party
     pub(crate) use chrono::{Duration, Utc};
@@ -50,7 +53,12 @@ pub mod prelude {
     #[cfg(not(target_arch = "wasm32"))]
     pub(crate) use regex::Regex;
 
-    // #[cfg(target_arch = "wasm32")]
+    #[cfg(target_arch = "wasm32")]
+    pub(crate) use futures::future::{Either, select};
+    #[cfg(target_arch = "wasm32")]
+    pub(crate) use gloo_timers::future::TimeoutFuture;
+    #[cfg(target_arch = "wasm32")]
+    pub(crate) use wasm_bindgen_futures::spawn_local;
 }
 
 #[derive(Debug, Clone)]

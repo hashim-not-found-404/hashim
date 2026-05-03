@@ -42,9 +42,16 @@ impl WebSocketOp for MyClient {
     }
 
     async fn try_receive_bin(&self) -> Result<Vec<u8>, Self::Error> {
-        let Some(Ok(Message::Binary(data))) = self.read.lock().unwrap().next().await else {
-            return Err(MyError::Closed);
-        };
-        return Ok(data.into());
+        let mut guard = self.read.lock().unwrap();
+
+        match guard.next().await {
+            Some(Ok(o)) => match o {
+                Message::Text(utf8_bytes) => todo!(),
+                Message::Binary(bytes) => return Ok(bytes.into()),
+                Message::Close(close_frame) => todo!(),
+            },
+            Some(Err(o)) => return Err(MyError::Closed),
+            None => todo!(),
+        }
     }
 }
