@@ -205,7 +205,6 @@ pub trait Runtime {
 
     async fn timeout<T, F>(duration: Duration, fut: F) -> Result<T, ()>
     where
-        T: 'static,
         F: Future<Output = T>;
 }
 
@@ -266,12 +265,10 @@ where
 
         let result = match RT::timeout(Duration::from_secs(timeout_in_secs as u64), message).await {
             Ok(result) => DE::decode::<ReceiveType>(&result),
-            Err(_) => panic!("noooooooooooooooooooo"),
+            Err(_) => todo!("timeout"),
         };
 
-        // let result = message.await;
         self.send_and_receive_pool.unsubscribe(id);
-        // DE::decode::<ReceiveType>(&result)
         result
     }
 

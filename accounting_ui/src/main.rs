@@ -95,13 +95,9 @@ pub fn SignIn() -> Element {
             button {
                 onclick: move |_| {
                     let state = state.clone();
-                    tracing::info!("we are inside the click");
                     spawn_forever(async move {
-                        tracing::info!("we are inside the future");
                         state.sign_in().await;
-                        tracing::info!("the future finish");
                     });
-                    tracing::info!("there is no block on , but there was DEADDDDD LOOOOCK ;|");
                 },
                 "Sign In"
             }
