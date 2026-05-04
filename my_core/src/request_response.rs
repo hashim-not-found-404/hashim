@@ -10,24 +10,24 @@ pub mod sign_up {
     use super::*;
     pub const PATH: &str = "sign_up";
 
-    #[derive(Debug, Deserialize, Serialize, Clone)]
+    #[derive(Debug, Deserialize, Serialize)]
     pub struct Input {
         pub name: Option<String>,
         pub user_id: String,
         pub password: String,
     }
 
-    #[derive(Debug, Deserialize, Serialize, Clone)]
+    #[derive(Debug, Deserialize, Serialize)]
     pub struct Ok {
         pub jwt: String,
     }
 
-    #[derive(Debug, Deserialize, Serialize, Clone)]
+    #[derive(Debug, Deserialize, Serialize)]
     pub enum UserIdError {
         Duplicated,
     }
 
-    #[derive(Debug, Deserialize, Serialize, Clone)]
+    #[derive(Debug, Deserialize, Serialize)]
     pub struct Error {
         pub user_id: Option<UserIdError>,
         pub name: Option<String>,
@@ -40,28 +40,28 @@ pub mod sign_in {
     use super::*;
     pub const PATH: &str = "sign_in";
 
-    #[derive(Debug, Deserialize, Serialize, Clone)]
+    #[derive(Debug, Deserialize, Serialize)]
     pub struct Input {
         pub user_id: db_types::RowId,
         pub password: String,
     }
 
-    #[derive(Debug, Deserialize, Serialize, Clone)]
+    #[derive(Debug, Deserialize, Serialize)]
     pub struct Ok {
         pub jwt: String,
     }
 
-    #[derive(Debug, Deserialize, Serialize, Clone)]
+    #[derive(Debug, Deserialize, Serialize)]
     pub enum UserIdError {
         NotExist,
     }
 
-    #[derive(Debug, Deserialize, Serialize, Clone)]
+    #[derive(Debug, Deserialize, Serialize)]
     pub enum PasswordError {
         WrongPassword,
     }
 
-    #[derive(Debug, Deserialize, Serialize, Clone)]
+    #[derive(Debug, Deserialize, Serialize)]
     pub struct Error {
         pub user_id: Option<UserIdError>,
         pub password: Option<PasswordError>,
@@ -74,15 +74,15 @@ pub mod get_all_user_roles {
     use super::*;
     pub const PATH: &str = "get_all_user_roles";
 
-    #[derive(Debug, Deserialize, Serialize, Clone)]
+    #[derive(Debug, Deserialize, Serialize)]
     pub struct Input;
 
-    #[derive(Debug, Deserialize, Serialize, Clone)]
+    #[derive(Debug, Deserialize, Serialize)]
     pub struct Ok {
         pub all_roles: Vec<db_types::Company>,
     }
 
-    #[derive(Debug, Deserialize, Serialize, Clone)]
+    #[derive(Debug, Deserialize, Serialize)]
     pub struct Error;
 
     pub type Result = StdResult<Ok, Error>;
@@ -92,16 +92,16 @@ pub mod create_company {
     use super::*;
     pub const PATH: &str = "create_company";
 
-    #[derive(Debug, Deserialize, Serialize, Clone)]
+    #[derive(Debug, Deserialize, Serialize)]
     pub struct Input {
         pub name: String,
         pub currency: db_types::Currency,
     }
 
-    #[derive(Debug, Deserialize, Serialize, Clone)]
+    #[derive(Debug, Deserialize, Serialize)]
     pub struct Ok;
 
-    #[derive(Debug, Deserialize, Serialize, Clone)]
+    #[derive(Debug, Deserialize, Serialize)]
     pub struct Error;
 
     pub type Result = StdResult<Ok, Error>;
@@ -111,7 +111,7 @@ pub mod create_company_branch {
     use super::*;
     pub const PATH: &str = "create_company_branch";
 
-    #[derive(Debug, Deserialize, Serialize, Clone)]
+    #[derive(Debug, Deserialize, Serialize)]
     pub struct Input {
         pub company_belong: db_types::RowId,
         pub name: String,
@@ -119,26 +119,26 @@ pub mod create_company_branch {
         pub currency: db_types::Currency,
     }
 
-    #[derive(Debug, Deserialize, Serialize, Clone)]
+    #[derive(Debug, Deserialize, Serialize)]
     pub struct Ok;
 
-    #[derive(Debug, Deserialize, Serialize, Clone)]
+    #[derive(Debug, Deserialize, Serialize)]
     pub enum CompanyError {
         IdInWrongFormat,
         NotExist,
     }
 
-    #[derive(Debug, Deserialize, Serialize, Clone)]
+    #[derive(Debug, Deserialize, Serialize)]
     pub enum NameError {
         Duplicated,
     }
 
-    #[derive(Debug, Deserialize, Serialize, Clone)]
+    #[derive(Debug, Deserialize, Serialize)]
     pub enum LocationError {
         NotExist,
     }
 
-    #[derive(Debug, Deserialize, Serialize, Clone)]
+    #[derive(Debug, Deserialize, Serialize)]
     pub struct Error {
         pub company_belong: Option<CompanyError>,
         pub name: Option<NameError>,
