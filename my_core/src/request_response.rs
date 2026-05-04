@@ -16,7 +16,10 @@ impl Error for HashimError {}
 
 impl Display for HashimError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self)
+        match self {
+            HashimError::InternalServerError => write!(f, "Internal Server Error"),
+            HashimError::DecodingErrorAtServer => write!(f, "Decoding Error at Server"),
+        }
     }
 }
 
