@@ -1,4 +1,3 @@
-use client_tokio_tungstenite as client;
 mod backend;
 use crate::backend::MySignal;
 use adapters::prelude::*;
@@ -6,6 +5,25 @@ use dioxus::{core::spawn_forever, prelude::*};
 use dioxus_logger::tracing::Level;
 use my_core::prelude::{Signal, *};
 use std::sync::Arc;
+
+type StateOfEveryThing = Arc<
+    front_end_model_view::State<
+        client::RoutsForClientSide<
+            web_socket::MyClient<
+                web_socket_adapter::m::S,
+                encode_decode::m::S,
+                random_number::m::S,
+                runtime::m::S,
+            >,
+        >,
+        random_number::m::S,
+        MySignal<String>,
+        MySignal<bool>,
+        MySignal<String>,
+        MySignal<db_types::Currency>,
+        MySignal<Vec<db_types::Company>>,
+    >,
+>;
 
 const ICONS_SHOW: Asset = asset!("/assets/icons/show.png");
 const ICONS_HIDE: Asset = asset!("/assets/icons/hide.png");
@@ -31,8 +49,10 @@ fn main() {
 #[component]
 fn Initializer() -> Element {
     let init_state = use_resource(|| async {
-        let fut = client::Dsdff::new().await;
-        let state: Dkdkd = Arc::new(front_end_model_view::State::new(fut));
+        let url = format!("ws://{}/ws", ADDRESS);
+        let connect = web_socket::MyClient::connect(url.as_str()).await;
+        let fut = client::RoutsForClientSide::new(connect.unwrap()).await;
+        let state: StateOfEveryThing = Arc::new(front_end_model_view::State::new(fut));
         use_context_provider(|| state.clone());
     });
 
@@ -48,18 +68,6 @@ fn Initializer() -> Element {
     }
 }
 
-type Dkdkd = Arc<
-    front_end_model_view::State<
-        client::Dsdff,
-        random_number::m::S,
-        MySignal<String>,
-        MySignal<bool>,
-        MySignal<String>,
-        MySignal<db_types::Currency>,
-        MySignal<Vec<db_types::Company>>,
-    >,
->;
-
 #[component]
 fn App() -> Element {
     rsx! {
@@ -71,7 +79,7 @@ fn App() -> Element {
 
 #[component]
 pub fn SignIn() -> Element {
-    let state = consume_context::<Dkdkd>();
+    let state = consume_context::<StateOfEveryThing>();
 
     let sign_up = move |_| {
         navigator().push(Route::SignUp {});
@@ -111,7 +119,7 @@ pub fn SignIn() -> Element {
 
 #[component]
 pub fn SignUp() -> Element {
-    let state = consume_context::<Dkdkd>();
+    let state = consume_context::<StateOfEveryThing>();
 
     let sign_in = move |_| {
         navigator().push(Route::SignIn {});
@@ -157,7 +165,7 @@ pub fn SignUp() -> Element {
 
 #[component]
 pub fn PasswordInput() -> Element {
-    let state = consume_context::<Dkdkd>();
+    let state = consume_context::<StateOfEveryThing>();
 
     let mut is_password_visible = use_signal(|| false);
 
@@ -185,7 +193,7 @@ pub fn PasswordInput() -> Element {
 
 #[component]
 pub fn ErrorStack() -> Element {
-    let state = consume_context::<Dkdkd>();
+    let state = consume_context::<StateOfEveryThing>();
 
     let err = state.external_errors.read();
     if err.is_empty() {

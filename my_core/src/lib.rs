@@ -1,3 +1,4 @@
+pub mod client;
 pub mod client_cache;
 pub mod db_types;
 pub mod front_end_model_view;
@@ -10,14 +11,15 @@ pub mod web_socket;
 pub mod prelude {
     pub type DynamicError = Box<dyn Error>;
 
+    pub use crate::mbg; // this macro for dev only
     pub use crate::{
-        client_cache, db_types,
+        client, client_cache, db_types,
         front_end_model_view::{self, Signal},
-        impls, mbg,
+        impls,
         request_response::*,
         traits::*,
         translations,
-        web_socket::{self, Coding, Runtime, WebSocketOp},
+        web_socket::{self, Coding, Runtime, WebSocket, WebSocketOp},
     };
 
     // std

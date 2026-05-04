@@ -1,5 +1,53 @@
 use crate::prelude::*;
 
+pub trait WebSocketOp: Sized {
+    async fn connect(url: &str) -> Result<Self, DynamicError>;
+    async fn send_bin(&self, data: &Vec<u8>) -> Result<(), DynamicError>;
+    async fn try_receive_bin(&self) -> Result<Vec<u8>, DynamicError>;
+}
+
+pub trait Coding {
+    fn encode<T: Serialize>(data: &T) -> Vec<u8>;
+    fn decode<'de, T: Deserialize<'de>>(data: &'de Vec<u8>) -> Result<T, DynamicError>;
+}
+
+pub trait Runtime {
+    fn spawn<F: Future + 'static>(fut: F);
+    async fn timeout<T, F: Future<Output = T>>(
+        duration: Duration,
+        fut: F,
+    ) -> Result<T, DynamicError>;
+}
+
+pub trait WebSocket {
+    async fn connect(url: &str) -> Result<Arc<Self>, DynamicError>;
+
+    async fn send_and_receive<SendType: Serialize, ReceiveType: for<'de> Deserialize<'de>>(
+        &self,
+        path: &String,
+        payload: &SendType,
+        timeout_in_secs: u32,
+    ) -> Result<ReceiveType, DynamicError>;
+
+    async fn receive_and_send<SendType: Serialize, ReceiveType: for<'de> Deserialize<'de>>(
+        &self,
+        path: &String,
+        operation: impl AsyncFn(ReceiveType) -> SendType,
+    ) -> Result<(), DynamicError>;
+
+    async fn send_only<SendType: Serialize>(
+        &self,
+        path: &String,
+        payload: &SendType,
+    ) -> Result<(), DynamicError>;
+
+    async fn receive_only<ReceiveType: for<'de> Deserialize<'de>>(
+        &self,
+        path: &String,
+        operation: impl AsyncFn(ReceiveType),
+    ) -> Result<(), DynamicError>;
+}
+
 type Payload = Vec<u8>;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -190,25 +238,6 @@ impl ReceiveOnlyPool {
     }
 }
 
-pub trait WebSocketOp: Sized {
-    async fn connect(url: &str) -> Result<Self, DynamicError>;
-    async fn send_bin(&self, data: &Vec<u8>) -> Result<(), DynamicError>;
-    async fn try_receive_bin(&self) -> Result<Vec<u8>, DynamicError>;
-}
-
-pub trait Coding {
-    fn encode<T: Serialize>(data: &T) -> Vec<u8>;
-    fn decode<'de, T: Deserialize<'de>>(data: &'de Vec<u8>) -> Result<T, DynamicError>;
-}
-
-pub trait Runtime {
-    fn spawn<F: Future + 'static>(fut: F);
-    async fn timeout<T, F: Future<Output = T>>(
-        duration: Duration,
-        fut: F,
-    ) -> Result<T, DynamicError>;
-}
-
 pub struct MyClient<WS, DE, RN, RT>
 where
     WS: WebSocketOp,
@@ -223,14 +252,14 @@ where
     receive_only_pool: ReceiveOnlyPool,
 }
 
-impl<WS, DE, RN, RT> MyClient<WS, DE, RN, RT>
+impl<WS, DE, RN, RT> WebSocket for MyClient<WS, DE, RN, RT>
 where
     RN: RandomNumber + 'static,
     WS: WebSocketOp + 'static,
     DE: Coding + 'static,
     RT: Runtime + 'static,
 {
-    pub async fn connect(url: &str) -> Result<Arc<Self>, DynamicError> {
+    async fn connect(url: &str) -> Result<Arc<Self>, DynamicError> {
         let transport = WS::connect(url).await?;
 
         let my_client = Self {
@@ -251,7 +280,7 @@ where
         Ok(my_client)
     }
 
-    pub async fn send_and_receive<SendType: Serialize, ReceiveType: for<'de> Deserialize<'de>>(
+    async fn send_and_receive<SendType: Serialize, ReceiveType: for<'de> Deserialize<'de>>(
         &self,
         path: &String,
         payload: &SendType,
@@ -285,7 +314,7 @@ where
         };
     }
 
-    pub async fn receive_and_send<SendType: Serialize, ReceiveType: for<'de> Deserialize<'de>>(
+    async fn receive_and_send<SendType: Serialize, ReceiveType: for<'de> Deserialize<'de>>(
         &self,
         path: &String,
         operation: impl AsyncFn(ReceiveType) -> SendType,
@@ -315,7 +344,7 @@ where
         }
     }
 
-    pub async fn send_only<SendType: Serialize>(
+    async fn send_only<SendType: Serialize>(
         &self,
         path: &String,
         payload: &SendType,
@@ -329,7 +358,7 @@ where
         self.transport.send_bin(&text).await
     }
 
-    pub async fn receive_only<ReceiveType: for<'de> Deserialize<'de>>(
+    async fn receive_only<ReceiveType: for<'de> Deserialize<'de>>(
         &self,
         path: &String,
         operation: impl AsyncFn(ReceiveType),
@@ -344,7 +373,14 @@ where
             operation(payload).await;
         }
     }
-
+}
+impl<WS, DE, RN, RT> MyClient<WS, DE, RN, RT>
+where
+    RN: RandomNumber + 'static,
+    WS: WebSocketOp + 'static,
+    DE: Coding + 'static,
+    RT: Runtime + 'static,
+{
     async fn receive_radar(&self) {
         loop {
             let Ok(raw_data) = self.transport.try_receive_bin().await else {

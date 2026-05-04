@@ -6,13 +6,11 @@ members = [
     "my_core",
     "db_client_cockroach",
     "server_actix",
-    "client_tokio_tungstenite",
     "adapters",
 ]
 
 [workspace.dependencies]
 # my crates
-client_tokio_tungstenite = {path = "./client_tokio_tungstenite"}
 my_core = {path = "./my_core"}
 adapters = {path = "./adapters"}
 db_client_cockroach = {path = "./db_client_cockroach"}

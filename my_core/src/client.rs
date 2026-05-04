@@ -1,29 +1,19 @@
-use adapters::prelude::*;
-use my_core::prelude::*;
-use std::sync::Arc;
+use crate::prelude::*;
 
-pub struct Dsdff(
-    Arc<
-        web_socket::MyClient<
-            web_socket_adapter::m::S,
-            encode_decode::m::S,
-            random_number::m::S,
-            runtime::m::S,
-        >,
-    >,
-);
+pub struct RoutsForClientSide<T: WebSocket> {
+    inner: Arc<T>,
+}
 
-impl Dsdff {
-    pub async fn new() -> Self {
-        let url = format!("ws://{}/ws", ADDRESS);
-        Self(web_socket::MyClient::connect(url.as_str()).await.unwrap())
+impl<T: WebSocket> RoutsForClientSide<T> {
+    pub async fn new(inner: Arc<T>) -> Self {
+        Self { inner }
     }
 }
 
-impl BackendRouts for Dsdff {
+impl<T: WebSocket> BackendRouts for RoutsForClientSide<T> {
     async fn sign_up(&self, input: &sign_up::Input) -> Result<sign_up::Result, DynamicError> {
         let result = self
-            .0
+            .inner
             .send_and_receive::<sign_up::Input, Result<sign_up::Result, HashimError>>(
                 &sign_up::PATH.to_string(),
                 input,
@@ -36,7 +26,7 @@ impl BackendRouts for Dsdff {
 
     async fn sign_in(&self, input: &sign_in::Input) -> Result<sign_in::Result, DynamicError> {
         let result = self
-            .0
+            .inner
             .send_and_receive::<sign_in::Input, Result<sign_in::Result, HashimError>>(
                 &sign_in::PATH.to_string(),
                 input,
