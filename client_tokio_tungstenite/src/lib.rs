@@ -29,14 +29,11 @@ impl BackendRouts for Dsdff {
                 input,
                 2,
             )
-            .await;
+            .await?;
 
         match result {
-            Ok(o) => match o {
-                Ok(o) => Ok(o),
-                Err(_) => Err("internal server error".into()),
-            },
-            Err(e) => return Err(e),
+            Ok(o) => Ok(o),
+            Err(_) => Err("internal server error".into()),
         }
     }
 
@@ -48,15 +45,11 @@ impl BackendRouts for Dsdff {
                 input,
                 2,
             )
-            .await;
+            .await?;
 
-        dioxus_logger::tracing::info!("{:?}", result);
         match result {
-            Ok(o) => match o {
-                Ok(o) => Ok(o),
-                Err(_) => Err("internal server error".into()),
-            },
-            Err(e) => return Err(e),
+            Ok(o) => Ok(o),
+            Err(_) => Err("internal server error".into()),
         }
     }
 }
