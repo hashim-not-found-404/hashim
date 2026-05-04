@@ -12,8 +12,8 @@ pub mod m {
 
         fn decode<'de, T: Deserialize<'de>>(data: &'de Vec<u8>) -> Result<T, DynamicError> {
             match from_bytes::<T>(data) {
-                Ok(text) => return Ok(text),
-                Err(err) => return Err(Box::new(err)),
+                Ok(text) => Ok(text),
+                Err(err) => Err(Box::new(err)),
             }
         }
     }
