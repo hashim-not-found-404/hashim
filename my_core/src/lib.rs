@@ -13,7 +13,7 @@ pub mod prelude {
     pub use crate::{
         client_cache, db_types,
         front_end_model_view::{self, Signal},
-        impls,
+        impls, mbg,
         request_response::*,
         traits::*,
         translations,
@@ -24,6 +24,7 @@ pub mod prelude {
     pub(crate) use std::{
         collections::{HashMap, VecDeque},
         error::Error,
+        fmt::Display,
         future::Future,
         marker::PhantomData,
         pin::Pin,
@@ -35,4 +36,20 @@ pub mod prelude {
 
     // third party
     pub(crate) use serde::{Deserialize, Serialize};
+}
+
+#[macro_export]
+macro_rules! mbg {
+    () => {
+        #[cfg(not(target_arch = "wasm32"))]
+        dbg!();
+        #[cfg(target_arch = "wasm32")]
+        dioxus_logger::tracing::info!("");
+    };
+    ($($val:expr),+ $(,)?) => {
+        #[cfg(not(target_arch = "wasm32"))]
+        ($(dbg!($val)),+,);
+        #[cfg(target_arch = "wasm32")]
+        ($(dioxus_logger::tracing::info!("{:?}", $val)),+,);
+    };
 }

@@ -110,7 +110,10 @@ impl<
                     });
             }
             Err(external_error) => {
-                self.external_errors.set(external_error.to_string());
+                mbg!(&external_error);
+                let v = external_error.to_string(); // here is the bug maybe deadlock
+                mbg!(&v);
+                self.external_errors.set(v);
             }
         }
 
