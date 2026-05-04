@@ -266,9 +266,9 @@ where
             path: path.clone(),
             payload,
         };
-        let text = DE::encode(&text);
+        let data = DE::encode(&text);
 
-        if let Err(err) = self.transport.send_bin(&text).await {
+        if let Err(err) = self.transport.send_bin(&data).await {
             self.send_and_receive_pool.unsubscribe(&id);
             return Err(err);
         };
