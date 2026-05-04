@@ -6,13 +6,13 @@ pub mod m {
     use serde::{Deserialize, Serialize};
     use std::sync::Arc;
 
-    fn exp_time() -> u64 {
-        (Utc::now() + Duration::minutes(30)).timestamp() as u64
-    }
-
     #[derive(Clone, Debug)]
     pub struct S {
         key: Arc<Vec<u8>>,
+    }
+
+    fn exp_time() -> u64 {
+        (Utc::now() + Duration::minutes(30)).timestamp() as u64
     }
 
     impl Default for S {

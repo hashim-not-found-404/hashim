@@ -4,11 +4,11 @@ pub mod m {
     use regex::Regex;
     use std::sync::LazyLock;
 
-    static RE: LazyLock<Regex> =
-        LazyLock::new(|| Regex::new(r"^[\p{L}\p{M}]+(?:[-'][\p{L}\p{M}]+)*$").unwrap());
-
     #[derive(Clone)]
     pub struct S;
+
+    static RE: LazyLock<Regex> =
+        LazyLock::new(|| Regex::new(r"^[\p{L}\p{M}]+(?:[-'][\p{L}\p{M}]+)*$").unwrap());
 
     impl Functions for S {
         fn is_regex(s: &String) -> Result<(), String> {
