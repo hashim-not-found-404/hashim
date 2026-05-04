@@ -1,3 +1,24 @@
+#[cfg(not(target_arch = "wasm32"))]
+pub mod m {
+    use crate::prelude::*;
+    use std::time::Duration;
+
+    pub struct S;
+
+    impl Runtime for S {
+        fn spawn<F: Future>(fut: F) {
+            todo!()
+        }
+
+        async fn timeout<T, F: Future<Output = T>>(
+            duration: Duration,
+            fut: F,
+        ) -> Result<T, DynamicError> {
+            todo!()
+        }
+    }
+}
+
 #[cfg(target_arch = "wasm32")]
 pub mod m {
     use crate::prelude::*;
@@ -30,27 +51,6 @@ pub mod m {
                 Either::Left((result, _)) => Ok(result),
                 Either::Right((_, _)) => Err("timeout".into()),
             }
-        }
-    }
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-pub mod m {
-    use crate::prelude::*;
-    use std::time::Duration;
-
-    pub struct S;
-
-    impl Runtime for S {
-        fn spawn<F: Future>(fut: F) {
-            todo!()
-        }
-
-        async fn timeout<T, F: Future<Output = T>>(
-            duration: Duration,
-            fut: F,
-        ) -> Result<T, DynamicError> {
-            todo!()
         }
     }
 }
