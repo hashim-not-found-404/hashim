@@ -90,7 +90,7 @@ impl<
             password: self.password.read(),
         };
 
-        let result = self.routs.sign_in(input).await;
+        let result = self.routs.sign_in(&input).await;
 
         match result {
             Ok(Ok(business_output)) => {
@@ -141,7 +141,7 @@ impl<
             password: self.password.read().to_string(),
         };
 
-        let result = self.routs.sign_up(input).await;
+        let result = self.routs.sign_up(&input).await;
 
         match result {
             Ok(Ok(business_output)) => {

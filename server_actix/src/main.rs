@@ -74,15 +74,15 @@ async fn ws_handler(req: HttpRequest, stream: web::Payload) -> HttpResponse {
                                     let input =
                                         encode_decode::m::S::decode::<sign_up::Input>(&payload)
                                             .unwrap();
-                                    let result = state.sign_up(input).await.unwrap();
-                                    encode_decode::m::S::encode(result)
+                                    let result = state.sign_up(&input).await.unwrap();
+                                    encode_decode::m::S::encode(&result)
                                 }
                                 sign_in::PATH => {
                                     let input =
                                         encode_decode::m::S::decode::<sign_in::Input>(&payload)
                                             .unwrap();
-                                    let result = state.sign_in(input).await.unwrap();
-                                    encode_decode::m::S::encode(result)
+                                    let result = state.sign_in(&input).await.unwrap();
+                                    encode_decode::m::S::encode(&result)
                                 }
                                 _ => todo!(),
                             };
@@ -95,7 +95,7 @@ async fn ws_handler(req: HttpRequest, stream: web::Payload) -> HttpResponse {
                     };
 
                     session
-                        .binary(encode_decode::m::S::encode(msg_to_send))
+                        .binary(encode_decode::m::S::encode(&msg_to_send))
                         .await
                         .unwrap();
                 }

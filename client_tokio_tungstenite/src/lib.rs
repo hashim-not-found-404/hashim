@@ -21,11 +21,11 @@ impl Dsdff {
 }
 
 impl BackendRouts for Dsdff {
-    async fn sign_up(&self, input: sign_up::Input) -> Result<sign_up::Result, DynamicError> {
+    async fn sign_up(&self, input: &sign_up::Input) -> Result<sign_up::Result, DynamicError> {
         let result = self
             .0
             .send_and_receive::<sign_up::Input, Result<sign_up::Result, ()>>(
-                sign_up::PATH.to_string(),
+                &sign_up::PATH.to_string(),
                 input,
                 2,
             )
@@ -40,16 +40,17 @@ impl BackendRouts for Dsdff {
         }
     }
 
-    async fn sign_in(&self, input: sign_in::Input) -> Result<sign_in::Result, DynamicError> {
+    async fn sign_in(&self, input: &sign_in::Input) -> Result<sign_in::Result, DynamicError> {
         let result = self
             .0
             .send_and_receive::<sign_in::Input, Result<sign_in::Result, ()>>(
-                sign_in::PATH.to_string(),
+                &sign_in::PATH.to_string(),
                 input,
                 2,
             )
             .await;
 
+        dioxus_logger::tracing::info!("{:?}", result);
         match result {
             Ok(o) => match o {
                 Ok(o) => Ok(o),

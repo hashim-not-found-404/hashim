@@ -55,13 +55,13 @@ impl Future for MyBox<Payload> {
 }
 
 impl SendAndReceivePool {
-    fn subscribe(&self, id: u64) -> MyBox<Payload> {
+    fn subscribe(&self, id: &u64) -> MyBox<Payload> {
         let box_ = MyBox::new();
-        self.0.lock().unwrap().insert(id, box_.clone());
+        self.0.lock().unwrap().insert(id.clone(), box_.clone());
         return box_;
     }
 
-    fn set(&self, id: u64, payload: &Payload) -> Result<(), ()> {
+    fn set(&self, id: &u64, payload: &Payload) -> Result<(), ()> {
         let guard = self.0.lock().unwrap();
         let option_value = guard.get(&id);
 
@@ -79,7 +79,7 @@ impl SendAndReceivePool {
         Ok(())
     }
 
-    fn unsubscribe(&self, id: u64) {
+    fn unsubscribe(&self, id: &u64) {
         self.0.lock().unwrap().remove(&id);
     }
 }
@@ -105,16 +105,16 @@ impl Future for MyBox<VecDeque<(u64, Payload)>> {
 }
 
 impl ReceiveAndSendPool {
-    fn subscribe(&self, path: String) -> MyBox<VecDeque<(u64, Payload)>> {
+    fn subscribe(&self, path: &String) -> MyBox<VecDeque<(u64, Payload)>> {
         let box_ = MyBox::new();
-        self.0.lock().unwrap().insert(path, box_.clone());
+        self.0.lock().unwrap().insert(path.clone(), box_.clone());
         return box_;
     }
 
-    fn set(&self, path: String, id: u64, payload: Payload) {
+    fn set(&self, path: &String, id: &u64, payload: &Payload) {
         let box_value = {
             let guard = self.0.lock().unwrap();
-            guard.get(&path).cloned()
+            guard.get(path).cloned()
         };
 
         if let Some(box_value) = box_value {
@@ -125,13 +125,17 @@ impl ReceiveAndSendPool {
                 None => VecDeque::new(),
             };
 
-            queue.push_back((id, payload));
+            queue.push_back((id.clone(), payload.clone()));
 
             inner_guard.result = Some(queue);
             if let Some(waker) = inner_guard.waker.take() {
                 waker.wake();
             }
         }
+    }
+
+    fn unsubscribe(&self, path: &String) {
+        self.0.lock().unwrap().remove(path);
     }
 }
 
@@ -156,16 +160,16 @@ impl Future for MyBox<VecDeque<Payload>> {
 }
 
 impl ReceiveOnlyPool {
-    fn subscribe(&self, path: String) -> MyBox<VecDeque<Payload>> {
+    fn subscribe(&self, path: &String) -> MyBox<VecDeque<Payload>> {
         let box_ = MyBox::new();
-        self.0.lock().unwrap().insert(path, box_.clone());
+        self.0.lock().unwrap().insert(path.clone(), box_.clone());
         return box_;
     }
 
-    fn set(&self, path: String, payload: Payload) {
+    fn set(&self, path: &String, payload: &Payload) {
         let box_value = {
             let guard = self.0.lock().unwrap();
-            guard.get(&path).cloned()
+            guard.get(path).cloned()
         };
 
         if let Some(box_value) = box_value {
@@ -176,7 +180,7 @@ impl ReceiveOnlyPool {
                 None => VecDeque::new(),
             };
 
-            queue.push_back(payload);
+            queue.push_back(payload.clone());
 
             inner_guard.result = Some(queue);
             if let Some(waker) = inner_guard.waker.take() {
@@ -188,12 +192,12 @@ impl ReceiveOnlyPool {
 
 pub trait WebSocketOp: Sized {
     async fn connect(url: &str) -> Result<Self, DynamicError>;
-    async fn send_bin(&self, data: Vec<u8>) -> Result<(), DynamicError>;
+    async fn send_bin(&self, data: &Vec<u8>) -> Result<(), DynamicError>;
     async fn try_receive_bin(&self) -> Result<Vec<u8>, DynamicError>;
 }
 
 pub trait Coding {
-    fn encode<T: Serialize>(data: T) -> Vec<u8>;
+    fn encode<T: Serialize>(data: &T) -> Vec<u8>;
     fn decode<'de, T: Deserialize<'de>>(data: &'de Vec<u8>) -> Result<T, DynamicError>;
 }
 
@@ -249,29 +253,44 @@ where
 
     pub async fn send_and_receive<SendType: Serialize, ReceiveType: for<'de> Deserialize<'de>>(
         &self,
-        path: String,
-        payload: SendType,
+        path: &String,
+        payload: &SendType,
         timeout_in_secs: u32,
     ) -> Result<ReceiveType, DynamicError> {
         let id = RN::generate();
-        let message = self.send_and_receive_pool.subscribe(id);
+        let message = self.send_and_receive_pool.subscribe(&id);
 
         let payload = DE::encode(payload);
-        let text = MessageType::TwoWay { id, path, payload };
-        let text = DE::encode(text);
-        self.transport.send_bin(text).await?;
+        let text = MessageType::TwoWay {
+            id,
+            path: path.clone(),
+            payload,
+        };
+        let text = DE::encode(&text);
 
-        let result = RT::timeout(Duration::from_secs(timeout_in_secs as u64), message).await?;
-        self.send_and_receive_pool.unsubscribe(id);
-        DE::decode::<ReceiveType>(&result)
+        if let Err(err) = self.transport.send_bin(&text).await {
+            self.send_and_receive_pool.unsubscribe(&id);
+            return Err(err);
+        };
+
+        match RT::timeout(Duration::from_secs(timeout_in_secs as u64), message).await {
+            Ok(result) => {
+                self.send_and_receive_pool.unsubscribe(&id);
+                return DE::decode::<ReceiveType>(&result);
+            }
+            Err(e) => {
+                self.send_and_receive_pool.unsubscribe(&id);
+                return Err(e);
+            }
+        };
     }
 
     pub async fn receive_and_send<SendType: Serialize, ReceiveType: for<'de> Deserialize<'de>>(
         &self,
-        path: String,
+        path: &String,
         operation: impl AsyncFn(ReceiveType) -> SendType,
     ) -> Result<(), DynamicError> {
-        let message = self.receive_and_send_pool.subscribe(path.clone());
+        let message = self.receive_and_send_pool.subscribe(path);
 
         loop {
             let (id, payload) = message.clone().await;
@@ -281,38 +300,41 @@ where
             };
 
             let payload_to_send = operation(payload).await;
-            let payload_to_send = DE::encode(payload_to_send);
+            let payload_to_send = DE::encode(&payload_to_send);
 
             let text = MessageType::TwoWay {
                 id: id,
                 path: path.clone(),
                 payload: payload_to_send,
             };
-            let text = DE::encode(text);
-            self.transport.send_bin(text).await?;
+            let text = DE::encode(&text);
+            if let Err(err) = self.transport.send_bin(&text).await {
+                self.receive_and_send_pool.unsubscribe(path);
+                return Err(err);
+            };
         }
     }
 
     pub async fn send_only<SendType: Serialize>(
         &self,
-        path: String,
-        payload: SendType,
+        path: &String,
+        payload: &SendType,
     ) -> Result<(), DynamicError> {
         let payload = DE::encode(payload);
         let text = MessageType::OneWay {
-            path: path,
+            path: path.clone(),
             payload: payload,
         };
-        let text = DE::encode(text);
-        self.transport.send_bin(text).await
+        let text = DE::encode(&text);
+        self.transport.send_bin(&text).await
     }
 
     pub async fn receive_only<ReceiveType: for<'de> Deserialize<'de>>(
         &self,
-        path: String,
+        path: &String,
         operation: impl AsyncFn(ReceiveType),
     ) -> Result<(), DynamicError> {
-        let message = self.receive_only_pool.subscribe(path.clone());
+        let message = self.receive_only_pool.subscribe(path);
 
         loop {
             let payload = message.clone().await;
@@ -334,12 +356,19 @@ where
             };
 
             match decoded_data {
-                MessageType::TwoWay { id, path, payload } => {
-                    if self.send_and_receive_pool.set(id, &payload).is_err() {
+                MessageType::TwoWay {
+                    ref id,
+                    ref path,
+                    ref payload,
+                } => {
+                    if self.send_and_receive_pool.set(id, payload).is_err() {
                         self.receive_and_send_pool.set(path, id, payload);
                     };
                 }
-                MessageType::OneWay { path, payload } => {
+                MessageType::OneWay {
+                    ref path,
+                    ref payload,
+                } => {
                     self.receive_only_pool.set(path, payload);
                 }
             }

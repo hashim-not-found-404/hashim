@@ -11,8 +11,8 @@ pub trait RandomNumber {
 }
 
 pub trait HashedPassword {
-    fn sign_up(password: String) -> Self;
-    fn sign_in(password: String, password_hash: Self) -> bool;
+    fn sign_up(password: &String) -> Self;
+    fn sign_in(password: &String, password_hash: &Self) -> bool;
 }
 
 pub trait JWT {
@@ -77,7 +77,7 @@ pub trait DBTransaction {
 
 macro_rules! generate_api_backend_methods {
     ($path:ident) => {
-        async fn $path(&self, input: $path::Input) -> Result<$path::Result, DynamicError>;
+        async fn $path(&self, input: &$path::Input) -> Result<$path::Result, DynamicError>;
     };
 }
 

@@ -115,8 +115,8 @@ where
     F: Functions,
     Id: RowId,
 {
-    async fn sign_up(&self, input: sign_up::Input) -> Result<sign_up::Result, DynamicError> {
-        let hashed_password = Authentication::sign_up(input.password);
+    async fn sign_up(&self, input: &sign_up::Input) -> Result<sign_up::Result, DynamicError> {
+        let hashed_password = Authentication::sign_up(&input.password);
 
         let mut errr = sign_up::Error {
             user_id: None,
@@ -153,7 +153,7 @@ where
         return result;
     }
 
-    async fn sign_in(&self, input: sign_in::Input) -> Result<sign_in::Result, DynamicError> {
+    async fn sign_in(&self, input: &sign_in::Input) -> Result<sign_in::Result, DynamicError> {
         let mut errr = sign_in::Error {
             user_id: None,
             password: None,
@@ -169,7 +169,7 @@ where
             }
         };
 
-        match Authentication::sign_in(input.password, password_hash) {
+        match Authentication::sign_in(&input.password, &password_hash) {
             true => {
                 return Ok(Ok(sign_in::Ok {
                     jwt: self.jwt.sign(&user_rowid).into(),

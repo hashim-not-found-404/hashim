@@ -23,11 +23,11 @@ pub mod m {
             })
         }
 
-        async fn send_bin(&self, data: Vec<u8>) -> Result<(), DynamicError> {
+        async fn send_bin(&self, data: &Vec<u8>) -> Result<(), DynamicError> {
             self.write
                 .lock()
                 .unwrap()
-                .send(Message::Binary(data.into()))
+                .send(Message::Binary(data.clone().into()))
                 .await?;
 
             Ok(())
@@ -80,11 +80,11 @@ pub mod m {
             })
         }
 
-        async fn send_bin(&self, data: Vec<u8>) -> Result<(), DynamicError> {
+        async fn send_bin(&self, data: &Vec<u8>) -> Result<(), DynamicError> {
             self.write
                 .lock()
                 .unwrap()
-                .send(Message::Bytes(data.into()))
+                .send(Message::Bytes(data.clone().into()))
                 .await?;
 
             Ok(())

@@ -6,3 +6,5 @@ edition = "2024"
 [dependencies]
 my_core = { workspace = true }
 adapters = { workspace = true }
+
+dioxus-logger = { workspace = true }

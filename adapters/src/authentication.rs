@@ -17,7 +17,7 @@ pub mod m {
     }
 
     impl HashedPassword for S {
-        fn sign_up(password: String) -> Self {
+        fn sign_up(password: &String) -> Self {
             // 1. Generate a cryptographically random salt
             let salt = SaltString::generate(&mut OsRng);
 
@@ -35,7 +35,7 @@ pub mod m {
             Self(password_hash)
         }
 
-        fn sign_in(password: String, password_hash: Self) -> bool {
+        fn sign_in(password: &String, password_hash: &Self) -> bool {
             // 1. Parse the stored PHC string
             let parsed_hash = PasswordHash::new(&password_hash.0).unwrap();
 
