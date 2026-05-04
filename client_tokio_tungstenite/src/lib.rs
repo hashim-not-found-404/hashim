@@ -24,32 +24,26 @@ impl BackendRouts for Dsdff {
     async fn sign_up(&self, input: &sign_up::Input) -> Result<sign_up::Result, DynamicError> {
         let result = self
             .0
-            .send_and_receive::<sign_up::Input, Result<sign_up::Result, ()>>(
+            .send_and_receive::<sign_up::Input, Result<sign_up::Result, HashimError>>(
                 &sign_up::PATH.to_string(),
                 input,
                 2,
             )
-            .await?;
+            .await??;
 
-        match result {
-            Ok(o) => Ok(o),
-            Err(_) => Err("internal server error".into()),
-        }
+        Ok(result)
     }
 
     async fn sign_in(&self, input: &sign_in::Input) -> Result<sign_in::Result, DynamicError> {
         let result = self
             .0
-            .send_and_receive::<sign_in::Input, Result<sign_in::Result, ()>>(
+            .send_and_receive::<sign_in::Input, Result<sign_in::Result, HashimError>>(
                 &sign_in::PATH.to_string(),
                 input,
                 2,
             )
-            .await?;
+            .await??;
 
-        match result {
-            Ok(o) => Ok(o),
-            Err(_) => Err("internal server error".into()),
-        }
+        Ok(result)
     }
 }

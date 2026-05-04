@@ -6,6 +6,20 @@ pub const ADDRESS: &str = "127.0.0.1:8081";
 
 // there should be no generic in all the below types
 
+#[derive(Debug, Deserialize, Serialize)]
+pub enum HashimError {
+    InternalServerError,
+    DecodingErrorAtServer,
+}
+
+impl Error for HashimError {}
+
+impl Display for HashimError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self)
+    }
+}
+
 pub mod sign_up {
     use super::*;
     pub const PATH: &str = "sign_up";

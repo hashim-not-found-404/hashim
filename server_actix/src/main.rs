@@ -72,16 +72,30 @@ async fn ws_handler(req: HttpRequest, stream: web::Payload) -> HttpResponse {
                             let payload = match path.as_str() {
                                 sign_up::PATH => {
                                     let input =
-                                        encode_decode::m::S::decode::<sign_up::Input>(&payload)
-                                            .unwrap();
-                                    let result = state.sign_up(&input).await.unwrap();
+                                        encode_decode::m::S::decode::<sign_up::Input>(&payload);
+
+                                    let result = match input {
+                                        Ok(input) => match state.sign_up(&input).await {
+                                            Ok(o) => Ok(o),
+                                            Err(_) => Err(HashimError::InternalServerError),
+                                        },
+                                        Err(_) => Err(HashimError::DecodingErrorAtServer),
+                                    };
+
                                     encode_decode::m::S::encode(&result)
                                 }
                                 sign_in::PATH => {
                                     let input =
-                                        encode_decode::m::S::decode::<sign_in::Input>(&payload)
-                                            .unwrap();
-                                    let result = state.sign_in(&input).await.unwrap();
+                                        encode_decode::m::S::decode::<sign_in::Input>(&payload);
+
+                                    let result = match input {
+                                        Ok(input) => match state.sign_in(&input).await {
+                                            Ok(o) => Ok(o),
+                                            Err(_) => Err(HashimError::InternalServerError),
+                                        },
+                                        Err(_) => Err(HashimError::DecodingErrorAtServer),
+                                    };
+
                                     encode_decode::m::S::encode(&result)
                                 }
                                 _ => todo!(),
