@@ -381,7 +381,7 @@ where
     DE: Coding + 'static,
     RT: Runtime + 'static,
 {
-    async fn receive_radar(&self) {
+    async fn receive_radar(&self) -> ! {
         loop {
             let Ok(raw_data) = self.transport.try_receive_bin().await else {
                 continue;
