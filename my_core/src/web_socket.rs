@@ -23,26 +23,26 @@ pub trait WAMP {
     async fn connect(url: &str) -> Result<Arc<Self>, DynamicError>;
 
     async fn send_and_receive<SendType: Serialize, ReceiveType: for<'de> Deserialize<'de>>(
-        &self,
+        self: Arc<Self>,
         path: &String,
         payload: &SendType,
         timeout_in_secs: u32,
     ) -> Result<ReceiveType, DynamicError>;
 
     async fn receive_and_send<SendType: Serialize, ReceiveType: for<'de> Deserialize<'de>>(
-        &self,
+        self: Arc<Self>,
         path: &String,
         operation: impl AsyncFn(ReceiveType) -> SendType,
     ) -> Result<(), DynamicError>;
 
     async fn send_only<SendType: Serialize>(
-        &self,
+        self: Arc<Self>,
         path: &String,
         payload: &SendType,
     ) -> Result<(), DynamicError>;
 
     async fn receive_only<ReceiveType: for<'de> Deserialize<'de>>(
-        &self,
+        self: Arc<Self>,
         path: &String,
         operation: impl AsyncFn(ReceiveType),
     ) -> !;
@@ -238,7 +238,7 @@ impl ReceiveOnlyPool {
     }
 }
 
-pub struct MyClient<WS, DE, RN, RT>
+pub struct MyWAMP<WS, DE, RN, RT>
 where
     WS: WebSocketOp,
     RT: Runtime,
@@ -252,7 +252,7 @@ where
     receive_only_pool: ReceiveOnlyPool,
 }
 
-impl<WS, DE, RN, RT> WAMP for MyClient<WS, DE, RN, RT>
+impl<WS, DE, RN, RT> WAMP for MyWAMP<WS, DE, RN, RT>
 where
     RN: RandomNumber + 'static,
     WS: WebSocketOp + 'static,
@@ -262,7 +262,7 @@ where
     async fn connect(url: &str) -> Result<Arc<Self>, DynamicError> {
         let transport = WS::connect(url).await?;
 
-        let my_client = Self {
+        let my_client = Arc::new(Self {
             runtime: PhantomData::<RT>,
             random_number: PhantomData::<RN>,
             coding: PhantomData::<DE>,
@@ -270,18 +270,14 @@ where
             send_and_receive_pool: SendAndReceivePool(Mutex::new(HashMap::new())),
             receive_and_send_pool: ReceiveAndSendPool(Mutex::new(HashMap::new())),
             receive_only_pool: ReceiveOnlyPool(Mutex::new(HashMap::new())),
-        };
-
-        let my_client = Arc::new(my_client);
-        let my_client1 = my_client.clone();
-        RT::spawn(async move {
-            my_client1.receive_radar().await;
         });
+
+        my_client.clone().receive_radar();
         Ok(my_client)
     }
 
     async fn send_and_receive<SendType: Serialize, ReceiveType: for<'de> Deserialize<'de>>(
-        &self,
+        self: Arc<Self>,
         path: &String,
         payload: &SendType,
         timeout_in_secs: u32,
@@ -315,7 +311,7 @@ where
     }
 
     async fn receive_and_send<SendType: Serialize, ReceiveType: for<'de> Deserialize<'de>>(
-        &self,
+        self: Arc<Self>,
         path: &String,
         operation: impl AsyncFn(ReceiveType) -> SendType,
     ) -> Result<(), DynamicError> {
@@ -345,7 +341,7 @@ where
     }
 
     async fn send_only<SendType: Serialize>(
-        &self,
+        self: Arc<Self>,
         path: &String,
         payload: &SendType,
     ) -> Result<(), DynamicError> {
@@ -359,7 +355,7 @@ where
     }
 
     async fn receive_only<ReceiveType: for<'de> Deserialize<'de>>(
-        &self,
+        self: Arc<Self>,
         path: &String,
         operation: impl AsyncFn(ReceiveType),
     ) -> ! {
@@ -374,40 +370,42 @@ where
         }
     }
 }
-impl<WS, DE, RN, RT> MyClient<WS, DE, RN, RT>
+impl<WS, DE, RN, RT> MyWAMP<WS, DE, RN, RT>
 where
     RN: RandomNumber + 'static,
     WS: WebSocketOp + 'static,
     DE: Coding + 'static,
     RT: Runtime + 'static,
 {
-    async fn receive_radar(&self) -> ! {
-        loop {
-            let Ok(raw_data) = self.transport.try_receive_bin().await else {
-                continue;
-            };
+    fn receive_radar(self: Arc<Self>) {
+        RT::spawn(async move {
+            loop {
+                let Ok(raw_data) = self.transport.try_receive_bin().await else {
+                    continue;
+                };
 
-            let Ok(decoded_data) = DE::decode::<MessageType>(&raw_data) else {
-                continue;
-            };
+                let Ok(decoded_data) = DE::decode::<MessageType>(&raw_data) else {
+                    continue;
+                };
 
-            match decoded_data {
-                MessageType::TwoWay {
-                    ref id,
-                    ref path,
-                    ref payload,
-                } => {
-                    if self.send_and_receive_pool.set(id, payload).is_err() {
-                        self.receive_and_send_pool.set(path, id, payload);
-                    };
-                }
-                MessageType::OneWay {
-                    ref path,
-                    ref payload,
-                } => {
-                    self.receive_only_pool.set(path, payload);
+                match decoded_data {
+                    MessageType::TwoWay {
+                        ref id,
+                        ref path,
+                        ref payload,
+                    } => {
+                        if self.send_and_receive_pool.set(id, payload).is_err() {
+                            self.receive_and_send_pool.set(path, id, payload);
+                        };
+                    }
+                    MessageType::OneWay {
+                        ref path,
+                        ref payload,
+                    } => {
+                        self.receive_only_pool.set(path, payload);
+                    }
                 }
             }
-        }
+        });
     }
 }

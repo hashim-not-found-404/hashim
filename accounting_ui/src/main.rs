@@ -8,7 +8,7 @@ use std::sync::Arc;
 
 type StateOfEveryThing = Arc<
     front_end_model_view::State<
-        web_socket::MyClient<
+        web_socket::MyWAMP<
             web_socket_adapter::m::S,
             encode_decode::m::S,
             random_number::m::S,
@@ -50,7 +50,7 @@ fn main() {
 fn Initializer() -> Element {
     let init_state = use_resource(|| async {
         let url = format!("ws://{}/ws", ADDRESS);
-        let connect = web_socket::MyClient::connect(url.as_str()).await;
+        let connect = web_socket::MyWAMP::connect(url.as_str()).await;
         let cache = cache::m::S::new().await.unwrap();
         let fut = client::RoutsForClientSide::new(connect.unwrap(), cache).await;
         let state: StateOfEveryThing = Arc::new(front_end_model_view::State::new(fut));

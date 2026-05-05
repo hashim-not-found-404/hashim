@@ -33,6 +33,7 @@ where
     pub async fn sign_up(&self, input: &sign_up::Input) -> Result<sign_up::Result, DynamicError> {
         let result = self
             .web_socket
+            .clone()
             .send_and_receive::<sign_up::Input, Result<sign_up::Result, HashimError>>(
                 &sign_up::PATH.to_string(),
                 input,
@@ -46,6 +47,7 @@ where
     pub async fn sign_in(&self, input: &sign_in::Input) -> Result<sign_in::Result, DynamicError> {
         let result = self
             .web_socket
+            .clone()
             .send_and_receive::<sign_in::Input, Result<sign_in::Result, HashimError>>(
                 &sign_in::PATH.to_string(),
                 input,
@@ -59,6 +61,7 @@ where
     pub fn data_receiver<Sg: Signal<T = String> + 'static>(self: Arc<Self>, err: Sg) {
         RN::spawn(async move {
             self.web_socket
+                .clone()
                 .receive_only::<data_receiver::Input>(
                     &data_receiver::PATH.to_string(),
                     async |data| {
