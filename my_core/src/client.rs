@@ -1,19 +1,38 @@
 use crate::prelude::*;
 
-pub struct RoutsForClientSide<T: WebSocket> {
-    inner: Arc<T>,
+pub trait CacheIO: Sized {
+    async fn new() -> Result<Self, DynamicError>;
+    async fn write_data(&self, data: &data_receiver::Input) -> Result<(), DynamicError>;
 }
 
-impl<T: WebSocket> RoutsForClientSide<T> {
-    pub async fn new(inner: Arc<T>) -> Self {
-        Self { inner }
+pub struct RoutsForClientSide<WS, RN, CH>
+where
+    WS: WebSocket + 'static,
+    RN: Runtime + 'static,
+    CH: CacheIO + 'static,
+{
+    web_socket: Arc<WS>,
+    runtime: PhantomData<RN>,
+    cache: CH,
+}
+
+impl<WS, RN, CH> RoutsForClientSide<WS, RN, CH>
+where
+    WS: WebSocket + 'static,
+    RN: Runtime + 'static,
+    CH: CacheIO + 'static,
+{
+    pub async fn new(inner: Arc<WS>, cache: CH) -> Self {
+        Self {
+            web_socket: inner,
+            runtime: PhantomData::<RN>,
+            cache,
+        }
     }
-}
 
-impl<T: WebSocket> RoutsForClientSide<T> {
     pub async fn sign_up(&self, input: &sign_up::Input) -> Result<sign_up::Result, DynamicError> {
         let result = self
-            .inner
+            .web_socket
             .send_and_receive::<sign_up::Input, Result<sign_up::Result, HashimError>>(
                 &sign_up::PATH.to_string(),
                 input,
@@ -26,7 +45,7 @@ impl<T: WebSocket> RoutsForClientSide<T> {
 
     pub async fn sign_in(&self, input: &sign_in::Input) -> Result<sign_in::Result, DynamicError> {
         let result = self
-            .inner
+            .web_socket
             .send_and_receive::<sign_in::Input, Result<sign_in::Result, HashimError>>(
                 &sign_in::PATH.to_string(),
                 input,
@@ -35,5 +54,22 @@ impl<T: WebSocket> RoutsForClientSide<T> {
             .await??;
 
         Ok(result)
+    }
+
+    pub fn data_receiver<Sg: Signal<T = String> + 'static>(self: Arc<Self>, err: Sg) {
+        RN::spawn(async move {
+            self.web_socket
+                .receive_only::<data_receiver::Input>(
+                    &data_receiver::PATH.to_string(),
+                    async |data| {
+                        let a = self.cache.write_data(&data).await;
+                        match a {
+                            Ok(_) => return,
+                            Err(e) => err.set(e.to_string()),
+                        };
+                    },
+                )
+                .await;
+        });
     }
 }

@@ -14,6 +14,8 @@ type StateOfEveryThing = Arc<
             random_number::m::S,
             runtime::m::S,
         >,
+        runtime::m::S,
+        cache::m::S,
         random_number::m::S,
         MySignal<String>,
         MySignal<bool>,
@@ -49,7 +51,8 @@ fn Initializer() -> Element {
     let init_state = use_resource(|| async {
         let url = format!("ws://{}/ws", ADDRESS);
         let connect = web_socket::MyClient::connect(url.as_str()).await;
-        let fut = client::RoutsForClientSide::new(connect.unwrap()).await;
+        let cache = cache::m::S::new().await.unwrap();
+        let fut = client::RoutsForClientSide::new(connect.unwrap(), cache).await;
         let state: StateOfEveryThing = Arc::new(front_end_model_view::State::new(fut));
         use_context_provider(|| state.clone());
     });

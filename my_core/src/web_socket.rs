@@ -45,7 +45,7 @@ pub trait WebSocket {
         &self,
         path: &String,
         operation: impl AsyncFn(ReceiveType),
-    ) -> Result<(), DynamicError>;
+    ) -> !;
 }
 
 type Payload = Vec<u8>;
@@ -362,7 +362,7 @@ where
         &self,
         path: &String,
         operation: impl AsyncFn(ReceiveType),
-    ) -> Result<(), DynamicError> {
+    ) -> ! {
         let message = self.receive_only_pool.subscribe(path);
 
         loop {

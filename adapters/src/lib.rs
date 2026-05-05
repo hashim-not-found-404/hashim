@@ -5,6 +5,7 @@
 // each one implementaion of trait inside module named `m` and each struct is named `S`
 
 pub mod authentication;
+pub mod cache;
 pub mod encode_decode;
 pub mod functions;
 pub mod jwt;
@@ -15,7 +16,7 @@ pub mod web_socket_adapter;
 
 pub mod prelude {
     pub use crate::{
-        authentication, encode_decode, functions, jwt, random_number, row_id, runtime,
+        authentication, cache, encode_decode, functions, jwt, random_number, row_id, runtime,
         web_socket_adapter,
     };
 

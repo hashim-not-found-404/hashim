@@ -87,6 +87,23 @@ pub mod sign_in {
     pub type Result = StdResult<Ok, Error>;
 }
 
+pub mod data_receiver {
+    use super::*;
+    pub const PATH: &str = "data_receiver";
+
+    #[derive(Debug, Deserialize, Serialize)]
+    pub struct Content {
+        pub table: String,
+        pub column: String,
+        pub uuid: String,
+        pub value: String,
+        pub version: u64,
+    }
+
+    #[derive(Debug, Deserialize, Serialize)]
+    pub struct Input(Vec<Content>);
+}
+
 pub mod get_all_user_roles {
     use super::*;
     pub const PATH: &str = "get_all_user_roles";

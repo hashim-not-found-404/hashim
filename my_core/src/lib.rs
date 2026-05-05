@@ -13,7 +13,8 @@ pub mod prelude {
 
     pub use crate::mbg; // this macro for dev only
     pub use crate::{
-        client, client_cache, db_types,
+        client::{self, CacheIO},
+        client_cache, db_types,
         front_end_model_view::{self, Signal},
         impls,
         request_response::*,
