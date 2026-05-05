@@ -3,7 +3,7 @@ use crate::prelude::*;
 pub trait WebSocketOp: Sized {
     async fn connect(url: &str) -> Result<Self, DynamicError>;
     async fn send_bin(&self, data: &Vec<u8>) -> Result<(), DynamicError>;
-    async fn try_receive_bin(&self) -> Result<Vec<u8>, DynamicError>;
+    async fn receive_bin(&self) -> Result<Vec<u8>, DynamicError>;
 }
 
 pub trait Coding {
@@ -380,7 +380,7 @@ where
     fn receive_radar(self: Arc<Self>) {
         RT::spawn(async move {
             loop {
-                let Ok(raw_data) = self.transport.try_receive_bin().await else {
+                let Ok(raw_data) = self.transport.receive_bin().await else {
                     continue;
                 };
 

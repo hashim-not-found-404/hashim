@@ -33,7 +33,7 @@ pub mod m {
             Ok(())
         }
 
-        async fn try_receive_bin(&self) -> Result<Vec<u8>, DynamicError> {
+        async fn receive_bin(&self) -> Result<Vec<u8>, DynamicError> {
             let mut guard = self.read.lock().unwrap();
 
             match guard.next().await {
@@ -90,7 +90,7 @@ pub mod m {
             Ok(())
         }
 
-        async fn try_receive_bin(&self) -> Result<Vec<u8>, DynamicError> {
+        async fn receive_bin(&self) -> Result<Vec<u8>, DynamicError> {
             let mut guard = self.read.lock().unwrap();
 
             match guard.next().await {
