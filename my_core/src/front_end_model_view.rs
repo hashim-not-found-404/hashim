@@ -7,7 +7,7 @@ pub trait Signal: Default {
 }
 
 pub struct State<
-    Routs: BackendRouts,
+    WS: WebSocket,
     TxnNumGen: RandomNumber,
     StringSignal: Signal<T = String>,
     BoolSignal: Signal<T = bool>,
@@ -17,7 +17,7 @@ pub struct State<
 > {
     // here for the app logic
     generate_transaction_number: PhantomData<TxnNumGen>,
-    routs: Routs,
+    routs: client::RoutsForClientSide<WS>,
     jwt: Mutex<Option<String>>,
 
     // here every field to display
@@ -37,7 +37,7 @@ pub struct State<
 }
 
 impl<
-    Routs: BackendRouts,
+    WS: WebSocket,
     TxnNumGen: RandomNumber,
     StringSignal: Signal<T = String>,
     BoolSignal: Signal<T = bool>,
@@ -46,7 +46,7 @@ impl<
     UserRolesSignal: Signal<T = Vec<db_types::Company>>,
 >
     State<
-        Routs,
+        WS,
         TxnNumGen,
         StringSignal,
         BoolSignal,
@@ -55,10 +55,10 @@ impl<
         UserRolesSignal,
     >
 {
-    pub fn new(routs: Routs) -> Self {
+    pub fn new(routs: client::RoutsForClientSide<WS>) -> Self {
         Self {
             generate_transaction_number: PhantomData::<TxnNumGen>,
-            routs,
+            routs: routs,
             jwt: Mutex::new(None),
             is_signed_in: BoolSignal::default(),
             is_loading_sign_in_or_up: BoolSignal::default(),

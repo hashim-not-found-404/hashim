@@ -74,17 +74,3 @@ pub trait DBTransaction {
         user_name: &Option<String>,
     ) -> Result<Self::RowId /* is uuid of the user */, DynamicError>;
 }
-
-macro_rules! generate_api_backend_methods {
-    ($path:ident) => {
-        async fn $path(&self, input: &$path::Input) -> Result<$path::Result, DynamicError>;
-    };
-}
-
-pub trait BackendRouts {
-    generate_api_backend_methods!(sign_up);
-    generate_api_backend_methods!(sign_in);
-    // generate_api_backend_methods!(get_all_user_roles);
-    // generate_api_backend_methods!(create_company);
-    // generate_api_backend_methods!(create_company_branch);
-}

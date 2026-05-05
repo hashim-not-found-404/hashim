@@ -104,8 +104,7 @@ where
     // }
 }
 
-impl<DB, Cli, Jwt, Authentication, F, Id> BackendRouts
-    for StateFullCheck<DB, Cli, Jwt, Authentication, F, Id>
+impl<DB, Cli, Jwt, Authentication, F, Id> StateFullCheck<DB, Cli, Jwt, Authentication, F, Id>
 where
     DB: Database<Client = Cli>,
     Cli: DBClient<RowId = Id, HashedPassword = Authentication>,
@@ -115,7 +114,7 @@ where
     F: Functions,
     Id: RowId,
 {
-    async fn sign_up(&self, input: &sign_up::Input) -> Result<sign_up::Result, DynamicError> {
+    pub async fn sign_up(&self, input: &sign_up::Input) -> Result<sign_up::Result, DynamicError> {
         let hashed_password = Authentication::sign_up(&input.password);
 
         let mut errr = sign_up::Error {
@@ -153,7 +152,7 @@ where
         return result;
     }
 
-    async fn sign_in(&self, input: &sign_in::Input) -> Result<sign_in::Result, DynamicError> {
+    pub async fn sign_in(&self, input: &sign_in::Input) -> Result<sign_in::Result, DynamicError> {
         let mut errr = sign_in::Error {
             user_id: None,
             password: None,

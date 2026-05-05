@@ -8,13 +8,11 @@ use std::sync::Arc;
 
 type StateOfEveryThing = Arc<
     front_end_model_view::State<
-        client::RoutsForClientSide<
-            web_socket::MyClient<
-                web_socket_adapter::m::S,
-                encode_decode::m::S,
-                random_number::m::S,
-                runtime::m::S,
-            >,
+        web_socket::MyClient<
+            web_socket_adapter::m::S,
+            encode_decode::m::S,
+            random_number::m::S,
+            runtime::m::S,
         >,
         random_number::m::S,
         MySignal<String>,

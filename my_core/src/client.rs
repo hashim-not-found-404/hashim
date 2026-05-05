@@ -10,8 +10,8 @@ impl<T: WebSocket> RoutsForClientSide<T> {
     }
 }
 
-impl<T: WebSocket> BackendRouts for RoutsForClientSide<T> {
-    async fn sign_up(&self, input: &sign_up::Input) -> Result<sign_up::Result, DynamicError> {
+impl<T: WebSocket> RoutsForClientSide<T> {
+    pub async fn sign_up(&self, input: &sign_up::Input) -> Result<sign_up::Result, DynamicError> {
         let result = self
             .inner
             .send_and_receive::<sign_up::Input, Result<sign_up::Result, HashimError>>(
@@ -24,7 +24,7 @@ impl<T: WebSocket> BackendRouts for RoutsForClientSide<T> {
         Ok(result)
     }
 
-    async fn sign_in(&self, input: &sign_in::Input) -> Result<sign_in::Result, DynamicError> {
+    pub async fn sign_in(&self, input: &sign_in::Input) -> Result<sign_in::Result, DynamicError> {
         let result = self
             .inner
             .send_and_receive::<sign_in::Input, Result<sign_in::Result, HashimError>>(
