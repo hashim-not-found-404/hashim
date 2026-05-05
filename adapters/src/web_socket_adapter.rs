@@ -63,13 +63,13 @@ pub mod m {
     use wasm_bindgen_futures::spawn_local;
 
     pub struct S {
-        write: Mutex<SplitSink<WAMP, Message>>,
-        read: Mutex<SplitStream<WAMP>>,
+        write: Mutex<SplitSink<WebSocket, Message>>,
+        read: Mutex<SplitStream<WebSocket>>,
     }
 
     impl WebSocketOp for S {
         async fn connect(url: &str) -> Result<Self, DynamicError> {
-            let ws = WAMP::open(url)?;
+            let ws = WebSocket::open(url)?;
 
             // Split into write and read halves
             let (write, read) = ws.split();
