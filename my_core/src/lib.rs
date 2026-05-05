@@ -20,7 +20,7 @@ pub mod prelude {
         request_response::*,
         traits::*,
         translations,
-        web_socket::{self, Coding, Runtime, WebSocket, WebSocketOp},
+        web_socket::{self, Coding, Runtime, WAMP, WebSocketOp},
     };
 
     // std

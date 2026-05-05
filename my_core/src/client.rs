@@ -5,24 +5,24 @@ pub trait CacheIO: Sized {
     async fn write_data(&self, data: &data_receiver::Input) -> Result<(), DynamicError>;
 }
 
-pub struct RoutsForClientSide<WS, RN, CH>
+pub struct RoutsForClientSide<WA, RN, CH>
 where
-    WS: WebSocket + 'static,
+    WA: WAMP + 'static,
     RN: Runtime + 'static,
     CH: CacheIO + 'static,
 {
-    web_socket: Arc<WS>,
+    web_socket: Arc<WA>,
     runtime: PhantomData<RN>,
     cache: CH,
 }
 
-impl<WS, RN, CH> RoutsForClientSide<WS, RN, CH>
+impl<WA, RN, CH> RoutsForClientSide<WA, RN, CH>
 where
-    WS: WebSocket + 'static,
+    WA: WAMP + 'static,
     RN: Runtime + 'static,
     CH: CacheIO + 'static,
 {
-    pub async fn new(inner: Arc<WS>, cache: CH) -> Self {
+    pub async fn new(inner: Arc<WA>, cache: CH) -> Self {
         Self {
             web_socket: inner,
             runtime: PhantomData::<RN>,

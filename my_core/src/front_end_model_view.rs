@@ -7,7 +7,7 @@ pub trait Signal: Default {
 }
 
 pub struct State<
-    WS: WebSocket + 'static,
+    WA: WAMP + 'static,
     RN: Runtime + 'static,
     CH: CacheIO + 'static,
     TxnNumGen: RandomNumber,
@@ -19,7 +19,7 @@ pub struct State<
 > {
     // here for the app logic
     generate_transaction_number: PhantomData<TxnNumGen>,
-    routs: client::RoutsForClientSide<WS, RN, CH>,
+    routs: client::RoutsForClientSide<WA, RN, CH>,
     jwt: Mutex<Option<String>>,
 
     // here every field to display
@@ -39,7 +39,7 @@ pub struct State<
 }
 
 impl<
-    WS: WebSocket,
+    WA: WAMP,
     RN: Runtime,
     CH: CacheIO,
     TxnNumGen: RandomNumber,
@@ -50,7 +50,7 @@ impl<
     UserRolesSignal: Signal<T = Vec<db_types::Company>>,
 >
     State<
-        WS,
+        WA,
         RN,
         CH,
         TxnNumGen,
@@ -61,7 +61,7 @@ impl<
         UserRolesSignal,
     >
 {
-    pub fn new(routs: client::RoutsForClientSide<WS, RN, CH>) -> Self {
+    pub fn new(routs: client::RoutsForClientSide<WA, RN, CH>) -> Self {
         Self {
             generate_transaction_number: PhantomData::<TxnNumGen>,
             routs: routs,

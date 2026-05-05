@@ -19,7 +19,7 @@ pub trait Runtime {
     ) -> Result<T, DynamicError>;
 }
 
-pub trait WebSocket {
+pub trait WAMP {
     async fn connect(url: &str) -> Result<Arc<Self>, DynamicError>;
 
     async fn send_and_receive<SendType: Serialize, ReceiveType: for<'de> Deserialize<'de>>(
@@ -252,7 +252,7 @@ where
     receive_only_pool: ReceiveOnlyPool,
 }
 
-impl<WS, DE, RN, RT> WebSocket for MyClient<WS, DE, RN, RT>
+impl<WS, DE, RN, RT> WAMP for MyClient<WS, DE, RN, RT>
 where
     RN: RandomNumber + 'static,
     WS: WebSocketOp + 'static,
