@@ -4,7 +4,8 @@ pub mod m {
 
     impl CacheIO for S {
         async fn new() -> Result<Self, DynamicError> {
-            todo!()
+            mbg!("here is the error was");
+            Ok(S)
         }
 
         async fn write_data(&self, data: &data_receiver::Input) -> Result<(), DynamicError> {

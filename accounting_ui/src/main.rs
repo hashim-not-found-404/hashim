@@ -6,14 +6,16 @@ use dioxus_logger::tracing::Level;
 use my_core::prelude::{Signal, *};
 use std::sync::Arc;
 
+type TypeMyWAMP = web_socket::MyWAMP<
+    web_socket_adapter::m::S,
+    encode_decode::m::S,
+    random_number::m::S,
+    runtime::m::S,
+>;
+
 type StateOfEveryThing = Arc<
     front_end_model_view::State<
-        web_socket::MyWAMP<
-            web_socket_adapter::m::S,
-            encode_decode::m::S,
-            random_number::m::S,
-            runtime::m::S,
-        >,
+        TypeMyWAMP,
         runtime::m::S,
         cache::m::S,
         random_number::m::S,
@@ -42,7 +44,7 @@ enum Route {
 
 fn main() {
     dioxus_logger::init(Level::INFO).unwrap();
-    console_error_panic_hook::set_once();
+    // console_error_panic_hook::set_once();
     dioxus::launch(Initializer);
 }
 
@@ -50,9 +52,12 @@ fn main() {
 fn Initializer() -> Element {
     let init_state = use_resource(|| async {
         let url = format!("ws://{}/ws", ADDRESS);
-        let connect = web_socket::MyWAMP::connect(url.as_str()).await;
+        let connect: TypeMyWAMP = web_socket::MyWAMP::connect(url.as_str()).await.unwrap();
         let cache = cache::m::S::new().await.unwrap();
-        let fut = client::RoutsForClientSide::new(connect.unwrap(), cache).await;
+        let fut = client::RoutsForClientSide::<TypeMyWAMP, runtime::m::S, cache::m::S>::new(
+            connect, cache,
+        )
+        .await;
         let state: StateOfEveryThing = Arc::new(front_end_model_view::State::new(fut));
         use_context_provider(|| state.clone());
     });

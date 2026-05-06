@@ -11,16 +11,17 @@ pub mod web_socket;
 pub mod prelude {
     pub type DynamicError = Box<dyn Error>;
 
+    #[cfg(target_arch = "wasm32")]
+    pub use dioxus_logger;
+
     pub use crate::mbg; // this macro for dev only
     pub use crate::{
-        client::{self, CacheIO},
-        client_cache, db_types,
+        client, client_cache, db_types,
         front_end_model_view::{self, Signal},
         impls,
         request_response::*,
         traits::*,
-        translations,
-        web_socket::{self, Coding, Runtime, WAMP, WebSocketOp},
+        translations, web_socket,
     };
 
     // std

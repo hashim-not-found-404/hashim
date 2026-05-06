@@ -16,6 +16,10 @@ pub mod m {
         ) -> Result<T, DynamicError> {
             todo!()
         }
+
+        async fn sleep(duration: Duration) {
+            todo!()
+        }
     }
 }
 
@@ -32,7 +36,6 @@ pub mod m {
 
     impl Runtime for S {
         fn spawn<F: Future + 'static>(fut: F) {
-            // For WASM: spawn_local schedules the future on the browser's event loop
             spawn_local(async {
                 fut.await;
             });
@@ -51,6 +54,10 @@ pub mod m {
                 Either::Left((result, _)) => Ok(result),
                 Either::Right((_, _)) => Err("timeout".into()),
             }
+        }
+
+        async fn sleep(duration: Duration) {
+            gloo_timers::future::sleep(duration).await;
         }
     }
 }

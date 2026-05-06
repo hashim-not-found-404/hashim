@@ -74,3 +74,69 @@ pub trait DBTransaction {
         user_name: &Option<String>,
     ) -> Result<Self::RowId /* is uuid of the user */, DynamicError>;
 }
+
+pub trait WebSocketOp: Sized {
+    async fn connect(url: &str) -> Result<Self, DynamicError>;
+    async fn send_bin(&self, data: &Vec<u8>) -> Result<(), DynamicError>;
+    async fn receive_bin(&self) -> Result<Vec<u8>, DynamicError>;
+}
+
+pub trait Coding {
+    fn encode<T: Serialize>(data: &T) -> Vec<u8>;
+    fn decode<'de, T: Deserialize<'de>>(data: &'de Vec<u8>) -> Result<T, DynamicError>;
+}
+
+pub trait Runtime {
+    fn spawn<F: Future + 'static>(fut: F);
+    async fn timeout<T, F: Future<Output = T>>(
+        duration: Duration,
+        fut: F,
+    ) -> Result<T, DynamicError>;
+    async fn sleep(duration: Duration);
+}
+
+// pub trait Sender<T> {
+//     fn send(&self, t: T) -> Result<(), DynamicError>;
+// }
+// pub trait Receiver<T> {
+//     async fn recv(&self) -> Result<T, DynamicError>;
+// }
+// pub trait MultiProducerSingleConsumer<T> {
+//     fn channel() -> (impl Sender<T>, impl Receiver<T>);
+// }
+
+pub trait WAMP: Sized {
+    async fn connect(url: &str) -> Result<Self, DynamicError>;
+
+    fn get_error(&self) -> DynamicError;
+
+    async fn send_and_receive<SendType: Serialize, ReceiveType: for<'de> Deserialize<'de>>(
+        &self,
+        path: &String,
+        payload: &SendType,
+        timeout_in_secs: u32,
+    ) -> Result<ReceiveType, DynamicError>;
+
+    async fn receive_and_send<SendType: Serialize, ReceiveType: for<'de> Deserialize<'de>>(
+        &self,
+        path: &String,
+        operation: impl AsyncFn(ReceiveType) -> SendType,
+    ) -> Result<(), DynamicError>;
+
+    async fn send_only<SendType: Serialize>(
+        &self,
+        path: &String,
+        payload: &SendType,
+    ) -> Result<(), DynamicError>;
+
+    async fn receive_only<ReceiveType: for<'de> Deserialize<'de>>(
+        &self,
+        path: &String,
+        operation: impl AsyncFn(ReceiveType),
+    ) -> !;
+}
+
+pub trait CacheIO: Sized {
+    async fn new() -> Result<Self, DynamicError>;
+    async fn write_data(&self, data: &data_receiver::Input) -> Result<(), DynamicError>;
+}
