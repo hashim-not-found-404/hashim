@@ -26,15 +26,13 @@ pub mod prelude {
 
     // std
     pub(crate) use std::{
-        collections::{HashMap, VecDeque},
+        collections::HashMap,
         error::Error,
         fmt::Display,
         future::Future,
         marker::PhantomData,
-        pin::Pin,
         result::Result as StdResult,
         sync::{Arc, Mutex},
-        task::{Context, Poll, Waker},
         time::Duration,
     };
 

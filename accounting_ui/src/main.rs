@@ -11,6 +11,7 @@ type TypeMyWAMP = web_socket::MyWAMP<
     encode_decode::m::S,
     random_number::m::S,
     runtime::m::S,
+    actors::m::S,
 >;
 
 type StateOfEveryThing = Arc<

@@ -1,5 +1,4 @@
 use crate::prelude::*;
-use std::sync::mpsc::{self, Receiver, Sender};
 
 type Payload = Vec<u8>;
 
@@ -16,47 +15,40 @@ pub enum MessageType {
     },
 }
 
-enum BrokerMessage {
+enum BrokerMessage<MPSC: MultiProducerSingleConsumer> {
     FromRadar(Vec<u8>),
-    FromSendAndReceive(u64, mpsc::Sender<Payload>),
-    FromReceiveAndSend(String, mpsc::Sender<(u64, Payload)>),
-    FromReceiveOnly(String, mpsc::Sender<Payload>),
+    FromSendAndReceive(u64, MPSC::Sender<Payload>),
+    FromReceiveAndSend(String, MPSC::Sender<(u64, Payload)>),
+    FromReceiveOnly(String, MPSC::Sender<Payload>),
 }
 
-pub struct MyWAMP<WS, DE, RN, RT>
+pub struct MyWAMP<WS, DE, RN, RT, MPSC>
 where
     WS: WebSocketOp,
     RT: Runtime,
+    MPSC: MultiProducerSingleConsumer,
 {
     runtime: PhantomData<RT>,
     random_number: PhantomData<RN>,
     coding: PhantomData<DE>,
     transport: PhantomData<WS>,
-    broker_mail_box: Sender<BrokerMessage>,
-    send_bin_mail_box: Sender<Vec<u8>>,
-    error_receiver: Receiver<DynamicError>,
+    broker_mail_box: MPSC::Sender<BrokerMessage<MPSC>>,
+    send_bin_mail_box: MPSC::Sender<Vec<u8>>,
+    error_receiver: MPSC::Receiver<DynamicError>,
 }
 
-impl<WS, DE, RN, RT> MyWAMP<WS, DE, RN, RT>
+impl<WS, DE, RN, RT, MPSC> WAMP for MyWAMP<WS, DE, RN, RT, MPSC>
 where
     RN: RandomNumber + 'static,
     WS: WebSocketOp + 'static,
     DE: Coding + 'static,
     RT: Runtime + 'static,
-{
-}
-
-impl<WS, DE, RN, RT> WAMP for MyWAMP<WS, DE, RN, RT>
-where
-    RN: RandomNumber + 'static,
-    WS: WebSocketOp + 'static,
-    DE: Coding + 'static,
-    RT: Runtime + 'static,
+    MPSC: MultiProducerSingleConsumer + 'static,
 {
     async fn connect(url: &str) -> Result<Self, DynamicError> {
         let transport = Arc::new(WS::connect(url).await?);
 
-        let (error_mail, error_receiver) = mpsc::channel();
+        let (error_mail, error_receiver) = MPSC::channel();
 
         let broker_mail = Self::broker_actor(error_mail.clone());
         Self::receive_bin_actor(transport.clone(), broker_mail.clone(), error_mail.clone());
@@ -75,8 +67,8 @@ where
         Ok(my_client)
     }
 
-    fn get_error(&self) -> DynamicError {
-        self.error_receiver.recv().unwrap()
+    async fn get_error(&self) -> DynamicError {
+        self.error_receiver.recv().await.unwrap()
     }
 
     async fn send_and_receive<SendType: Serialize, ReceiveType: for<'de> Deserialize<'de>>(
@@ -94,13 +86,15 @@ where
             payload,
         };
         let data = DE::encode(&text);
-        self.send_bin_mail_box.send(data)?;
+        self.send_bin_mail_box.send(data).await?;
 
-        let (sender, receiver) = mpsc::channel();
+        let (sender, receiver) = MPSC::channel();
         self.broker_mail_box
-            .send(BrokerMessage::FromSendAndReceive(id, sender))?;
+            .send(BrokerMessage::<MPSC>::FromSendAndReceive(id, sender))
+            .await?;
 
-        let result = receiver.recv_timeout(Duration::from_secs(timeout_in_secs as u64))?;
+        let result =
+            RT::timeout(Duration::from_secs(timeout_in_secs as u64), receiver.recv()).await??;
 
         return DE::decode::<ReceiveType>(&result);
     }
@@ -110,12 +104,16 @@ where
         path: &String,
         operation: impl AsyncFn(ReceiveType) -> SendType,
     ) -> Result<(), DynamicError> {
-        let (sender, receiver) = mpsc::channel();
+        let (sender, receiver) = MPSC::channel();
         self.broker_mail_box
-            .send(BrokerMessage::FromReceiveAndSend(path.clone(), sender))?;
+            .send(BrokerMessage::<MPSC>::FromReceiveAndSend(
+                path.clone(),
+                sender,
+            ))
+            .await?;
 
         loop {
-            let (id, payload) = receiver.recv().unwrap();
+            let (id, payload) = receiver.recv().await.unwrap();
 
             let Ok(payload) = DE::decode::<ReceiveType>(&payload) else {
                 continue;
@@ -130,7 +128,7 @@ where
                 payload: payload_to_send,
             };
             let text = DE::encode(&text);
-            self.send_bin_mail_box.send(text)?;
+            self.send_bin_mail_box.send(text).await?;
         }
     }
 
@@ -145,7 +143,7 @@ where
             payload: payload,
         };
         let text = DE::encode(&text);
-        self.send_bin_mail_box.send(text)?;
+        self.send_bin_mail_box.send(text).await?;
         Ok(())
     }
 
@@ -154,13 +152,14 @@ where
         path: &String,
         operation: impl AsyncFn(ReceiveType),
     ) -> ! {
-        let (sender, receiver) = mpsc::channel();
+        let (sender, receiver) = MPSC::channel();
         self.broker_mail_box
-            .send(BrokerMessage::FromReceiveOnly(path.clone(), sender))
+            .send(BrokerMessage::<MPSC>::FromReceiveOnly(path.clone(), sender))
+            .await
             .unwrap();
 
         loop {
-            let payload = receiver.recv().unwrap();
+            let payload = receiver.recv().await.unwrap();
             let Ok(payload) = DE::decode::<ReceiveType>(&payload) else {
                 continue;
             };
@@ -169,28 +168,31 @@ where
     }
 }
 
-impl<WS, DE, RN, RT> MyWAMP<WS, DE, RN, RT>
+impl<WS, DE, RN, RT, MPSC> MyWAMP<WS, DE, RN, RT, MPSC>
 where
     RN: RandomNumber + 'static,
     WS: WebSocketOp + 'static,
     DE: Coding + 'static,
     RT: Runtime + 'static,
+    MPSC: MultiProducerSingleConsumer + 'static,
 {
-    fn broker_actor(error_mail_box: Sender<DynamicError>) -> Sender<BrokerMessage> {
-        let (sender, receiver) = mpsc::channel();
+    fn broker_actor(
+        error_mail_box: MPSC::Sender<DynamicError>,
+    ) -> MPSC::Sender<BrokerMessage<MPSC>> {
+        let (sender, receiver) = MPSC::channel();
 
         RT::spawn(async move {
-            let mut send_and_receive_pool = HashMap::<u64, mpsc::Sender<Payload>>::new();
-            let mut receive_and_send_pool = HashMap::<String, mpsc::Sender<(u64, Payload)>>::new();
-            let mut receive_only_pool = HashMap::<String, mpsc::Sender<Payload>>::new();
+            let mut send_and_receive_pool = HashMap::<u64, MPSC::Sender<Payload>>::new();
+            let mut receive_and_send_pool = HashMap::<String, MPSC::Sender<(u64, Payload)>>::new();
+            let mut receive_only_pool = HashMap::<String, MPSC::Sender<Payload>>::new();
 
             loop {
-                match receiver.recv().unwrap() {
+                match receiver.recv().await.unwrap() {
                     BrokerMessage::FromRadar(raw_data) => {
                         let message_type = match DE::decode::<MessageType>(&raw_data) {
                             Ok(message_type) => message_type,
                             Err(err) => {
-                                error_mail_box.send(err).unwrap();
+                                error_mail_box.send(err).await.unwrap();
                                 continue;
                             }
                         };
@@ -198,12 +200,20 @@ where
                         match message_type {
                             MessageType::TwoWay { id, path, payload } => {
                                 if let Some(sender) = send_and_receive_pool.remove(&id) {
-                                    sender.send(payload).unwrap();
+                                    if let Ok(_) = sender.send(payload.clone()).await {
+                                        continue;
+                                    }
+
+                                    if let Some(sender) = receive_only_pool.get_mut(&path) {
+                                        sender.send(payload).await.unwrap();
+                                        continue;
+                                    }
+
                                     continue;
                                 }
 
-                                if let Some(sender) = receive_and_send_pool.get(&path) {
-                                    sender.send((id, payload)).unwrap();
+                                if let Some(sender) = receive_and_send_pool.get_mut(&path) {
+                                    sender.send((id, payload)).await.unwrap();
                                     continue;
                                 }
 
@@ -211,16 +221,18 @@ where
                                 .send(
                                     "there is data received in wrong path or maybe timeout there was".into(),
                                 )
+                                .await
                                 .unwrap();
                             }
                             MessageType::OneWay { path, payload } => {
-                                if let Some(sender) = receive_only_pool.get(&path) {
-                                    sender.send(payload).unwrap();
+                                if let Some(sender) = receive_only_pool.get_mut(&path) {
+                                    sender.send(payload).await.unwrap();
                                     continue;
                                 }
 
                                 error_mail_box
                                     .send("there is data received in wrong path".into())
+                                    .await
                                     .unwrap();
                             }
                         }
@@ -243,8 +255,8 @@ where
 
     fn receive_bin_actor(
         transport: Arc<WS>,
-        broker_mail_box: Sender<BrokerMessage>,
-        error_mail_box: Sender<DynamicError>,
+        broker_mail_box: MPSC::Sender<BrokerMessage<MPSC>>,
+        error_mail_box: MPSC::Sender<DynamicError>,
     ) {
         RT::spawn(async move {
             loop {
@@ -252,27 +264,31 @@ where
                     Ok(data) => {
                         broker_mail_box
                             .send(BrokerMessage::FromRadar(data))
+                            .await
                             .unwrap();
                     }
 
                     Err(err) => {
-                        error_mail_box.send(err).unwrap();
+                        error_mail_box.send(err).await.unwrap();
                     }
                 }
             }
         })
     }
 
-    fn send_bin_actor(transport: Arc<WS>, error_mail_box: Sender<DynamicError>) -> Sender<Vec<u8>> {
-        let (sender, receiver) = mpsc::channel();
+    fn send_bin_actor(
+        transport: Arc<WS>,
+        error_mail_box: MPSC::Sender<DynamicError>,
+    ) -> MPSC::Sender<Vec<u8>> {
+        let (sender, receiver) = MPSC::channel();
 
         let sender1 = sender.clone();
         RT::spawn(async move {
             loop {
-                let bin = receiver.recv().unwrap();
+                let bin = receiver.recv().await.unwrap();
                 if let Err(err) = transport.send_bin(&bin).await {
-                    sender1.send(bin).unwrap();
-                    error_mail_box.send(err).unwrap();
+                    sender1.send(bin).await.unwrap();
+                    error_mail_box.send(err).await.unwrap();
                     RT::sleep(Duration::from_secs(1)).await;
                 };
             }

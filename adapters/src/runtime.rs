@@ -27,7 +27,6 @@ pub mod m {
 pub mod m {
     use crate::prelude::*;
     use futures::future::{Either, select};
-    use gloo_net::websocket::{Message, futures::WebSocket};
     use gloo_timers::future::TimeoutFuture;
     use std::{pin::pin, time::Duration};
     use wasm_bindgen_futures::spawn_local;

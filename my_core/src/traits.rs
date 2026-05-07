@@ -95,20 +95,23 @@ pub trait Runtime {
     async fn sleep(duration: Duration);
 }
 
-// pub trait Sender<T> {
-//     fn send(&self, t: T) -> Result<(), DynamicError>;
-// }
-// pub trait Receiver<T> {
-//     async fn recv(&self) -> Result<T, DynamicError>;
-// }
-// pub trait MultiProducerSingleConsumer<T> {
-//     fn channel() -> (impl Sender<T>, impl Receiver<T>);
-// }
+pub trait Sender<T>: Clone {
+    async fn send(&self, t: T) -> Result<(), DynamicError>;
+}
+pub trait Receiver<T> {
+    async fn recv(&self) -> Result<T, DynamicError>;
+}
+pub trait MultiProducerSingleConsumer {
+    type Sender<T>: Sender<T> + Clone;
+    type Receiver<T>: Receiver<T>;
+
+    fn channel<T>() -> (Self::Sender<T>, Self::Receiver<T>);
+}
 
 pub trait WAMP: Sized {
     async fn connect(url: &str) -> Result<Self, DynamicError>;
 
-    fn get_error(&self) -> DynamicError;
+    async fn get_error(&self) -> DynamicError;
 
     async fn send_and_receive<SendType: Serialize, ReceiveType: for<'de> Deserialize<'de>>(
         &self,
