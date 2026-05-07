@@ -24,8 +24,6 @@ enum BrokerMessage<MPSC: MultiProducerSingleConsumer> {
 
 pub struct MyWAMP<WS, DE, RN, RT, MPSC>
 where
-    WS: WebSocketOp,
-    RT: Runtime,
     MPSC: MultiProducerSingleConsumer,
 {
     runtime: PhantomData<RT>,
@@ -45,6 +43,7 @@ where
     RT: Runtime + 'static,
     MPSC: MultiProducerSingleConsumer + 'static,
 {
+    // TODO : i need to send the error to the error actor and implement reconnect or (connecting actor)
     async fn connect(url: &str) -> Result<Self, DynamicError> {
         let transport = Arc::new(WS::connect(url).await?);
 
