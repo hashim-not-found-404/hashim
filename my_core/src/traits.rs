@@ -86,6 +86,11 @@ pub trait Coding {
     fn decode<'de, T: Deserialize<'de>>(data: &'de Vec<u8>) -> Result<T, DynamicError>;
 }
 
+pub enum Either<L, R> {
+    Left(L),
+    Right(R),
+}
+
 pub trait Runtime {
     fn spawn<F: Future + 'static>(fut: F);
     async fn timeout<T, F: Future<Output = T>>(
@@ -93,14 +98,20 @@ pub trait Runtime {
         fut: F,
     ) -> Result<T, DynamicError>;
     async fn sleep(duration: Duration);
+    async fn select<L, R, F1: Future<Output = L>, F2: Future<Output = R>>(
+        fut1: F1,
+        fut2: F2,
+    ) -> Either<L, R>;
 }
 
 pub trait Sender<T>: Clone {
     async fn send(&self, t: T) -> Result<(), DynamicError>;
 }
+
 pub trait Receiver<T> {
     async fn recv(&self) -> Result<T, DynamicError>;
 }
+
 pub trait MultiProducerSingleConsumer {
     type Sender<T>: Sender<T> + Clone;
     type Receiver<T>: Receiver<T>;
@@ -109,9 +120,10 @@ pub trait MultiProducerSingleConsumer {
 }
 
 pub trait WAMP: Sized {
-    async fn connect(url: &str) -> Result<Self, DynamicError>;
-
+    fn new() -> Self;
     async fn get_error(&self) -> DynamicError;
+    async fn connect_to_url(&self, url: &String);
+    async fn close(self);
 
     async fn send_and_receive<SendType: Serialize, ReceiveType: for<'de> Deserialize<'de>>(
         &self,

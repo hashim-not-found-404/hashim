@@ -53,7 +53,8 @@ fn main() {
 fn Initializer() -> Element {
     let init_state = use_resource(|| async {
         let url = format!("ws://{}/ws", ADDRESS);
-        let connect: TypeMyWAMP = web_socket::MyWAMP::connect(url.as_str()).await.unwrap();
+        let connect: TypeMyWAMP = web_socket::MyWAMP::new();
+        connect.connect_to_url(&url).await;
         let cache = cache::m::S::new().await.unwrap();
         let fut = client::RoutsForClientSide::<TypeMyWAMP, runtime::m::S, cache::m::S>::new(
             connect, cache,
