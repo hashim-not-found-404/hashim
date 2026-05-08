@@ -8,7 +8,7 @@ pub trait Signal: Default {
 
 pub struct State<
     WA: WAMP + 'static,
-    RN: Runtime + 'static,
+    RT: Runtime + 'static,
     CH: CacheIO + 'static,
     TxnNumGen: RandomNumber,
     StringSignal: Signal<T = String>,
@@ -19,7 +19,7 @@ pub struct State<
 > {
     // here for the app logic
     generate_transaction_number: PhantomData<TxnNumGen>,
-    routs: client::RoutsForClientSide<WA, RN, CH>,
+    routs: client::RoutsForClientSide<WA, RT, CH>,
     jwt: Mutex<Option<String>>,
 
     // here every field to display
@@ -40,7 +40,7 @@ pub struct State<
 
 impl<
     WA: WAMP,
-    RN: Runtime,
+    RT: Runtime,
     CH: CacheIO,
     TxnNumGen: RandomNumber,
     StringSignal: Signal<T = String>,
@@ -51,7 +51,7 @@ impl<
 >
     State<
         WA,
-        RN,
+        RT,
         CH,
         TxnNumGen,
         StringSignal,
@@ -61,7 +61,7 @@ impl<
         UserRolesSignal,
     >
 {
-    pub fn new(routs: client::RoutsForClientSide<WA, RN, CH>) -> Self {
+    pub fn new(routs: client::RoutsForClientSide<WA, RT, CH>) -> Self {
         Self {
             generate_transaction_number: PhantomData::<TxnNumGen>,
             routs: routs,
@@ -171,6 +171,15 @@ impl<
         }
 
         self.is_loading_sign_in_or_up.set(false);
+    }
+
+    fn listen_to_error(&self) {
+        // RT::spawn(async {
+        //     loop {
+        //         let err = self.routs.get_error().await;
+        //         self.external_errors.set(err.to_string());
+        //     }
+        // });
     }
 
     // pub async fn get_all_user_roles(&self) {

@@ -51,6 +51,9 @@ where
         Ok(result)
     }
 
+    pub async fn get_error(&self) -> DynamicError {
+        self.web_socket.get_error().await
+    }
     // TODO : i need to display the error to the ui
     // maybe i need to return rx "receiver" variabe to make it as actor model
     // pub fn data_receiver<Sg: Signal<T = String> + 'static>(self: Arc<Self>, err: Sg) {

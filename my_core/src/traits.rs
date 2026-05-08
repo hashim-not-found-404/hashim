@@ -115,7 +115,6 @@ pub trait Receiver<T> {
 pub trait MultiProducerSingleConsumer {
     type Sender<T>: Sender<T> + Clone;
     type Receiver<T>: Receiver<T>;
-
     fn channel<T>() -> (Self::Sender<T>, Self::Receiver<T>);
 }
 

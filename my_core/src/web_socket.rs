@@ -1,5 +1,3 @@
-use std::sync::RwLock;
-
 use crate::prelude::*;
 
 type Payload = Vec<u8>;
@@ -68,7 +66,6 @@ where
     RT: Runtime + 'static,
     MPSC: MultiProducerSingleConsumer + 'static,
 {
-    // TODO : i need to send the error to the error actor and implement reconnect or (connecting actor)
     fn new() -> Self {
         let (sender_to_error, receiver_to_error) = MPSC::channel();
         let (sender_to_connector, receiver_to_connector) = MPSC::channel();
@@ -364,7 +361,7 @@ where
     async fn receive_bin_actor(
         ws: Arc<RwLock<Option<WS>>>,
         receiver_to_receive_bin: MPSC::Receiver<MessageToReceiveBin>,
-        sender_to_connector: MPSC::Sender<MessageToConnector>,
+        sender_to_connector: MPSC::Sender<MessageToConnector>, // TODO : i need to send reconnect
         sender_to_broker: MPSC::Sender<MessageToBroker<MPSC>>,
         sender_to_error: MPSC::Sender<DynamicError>,
     ) {
