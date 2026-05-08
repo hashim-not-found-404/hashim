@@ -75,32 +75,22 @@ where
 
         let ws = Arc::new(RwLock::new(None));
 
-        RT::spawn(Self::connector_actor(
-            ws.clone(),
-            receiver_to_connector,
-            sender_to_error.clone(),
-        ));
-
-        RT::spawn(Self::broker_actor(
-            receiver_to_broker,
-            sender_to_error.clone(),
-        ));
-
-        RT::spawn(Self::receive_bin_actor(
+        Self::connector_actor(ws.clone(), receiver_to_connector, sender_to_error.clone());
+        Self::broker_actor(receiver_to_broker, sender_to_error.clone());
+        Self::receive_bin_actor(
             ws.clone(),
             receiver_to_receive_bin,
             sender_to_connector.clone(),
             sender_to_broker.clone(),
             sender_to_error.clone(),
-        ));
-
-        RT::spawn(Self::send_bin_actor(
+        );
+        Self::send_bin_actor(
             ws.clone(),
             receiver_to_send_bin,
             sender_to_send_bin.clone(),
             sender_to_connector.clone(),
             sender_to_error.clone(),
-        ));
+        );
 
         Self {
             runtime: PhantomData::<RT>,
@@ -259,181 +249,189 @@ where
     RT: Runtime + 'static,
     MPSC: MultiProducerSingleConsumer + 'static,
 {
-    async fn connector_actor(
+    fn connector_actor(
         ws: Arc<RwLock<Option<WS>>>,
         receiver_to_connector: MPSC::Receiver<MessageToConnector>,
         sender_to_error: MPSC::Sender<DynamicError>,
     ) {
-        let mut url = None;
-        loop {
-            match receiver_to_connector.recv().await.unwrap() {
-                MessageToConnector::ShutDown => return,
-                MessageToConnector::Url(ur) => url = Some(ur),
-                MessageToConnector::Reconnect => {}
-            };
+        RT::spawn(async move {
+            let mut url = None;
+            loop {
+                match receiver_to_connector.recv().await.unwrap() {
+                    MessageToConnector::ShutDown => return,
+                    MessageToConnector::Url(ur) => url = Some(ur),
+                    MessageToConnector::Reconnect => {}
+                };
 
-            if let Some(ref ur) = url {
-                let result = WS::connect(ur.as_str()).await;
-                match result {
-                    Ok(o) => {
-                        let mut guard = ws.write().unwrap();
-                        *guard = Some(o);
+                if let Some(ref ur) = url {
+                    let result = WS::connect(ur.as_str()).await;
+                    match result {
+                        Ok(o) => {
+                            let mut guard = ws.write().unwrap();
+                            *guard = Some(o);
+                        }
+                        Err(e) => sender_to_error.send(e).await.unwrap(),
                     }
-                    Err(e) => sender_to_error.send(e).await.unwrap(),
                 }
             }
-        }
+        })
     }
 
-    async fn broker_actor(
+    fn broker_actor(
         receiver_to_broker: MPSC::Receiver<MessageToBroker<MPSC>>,
         sender_to_error: MPSC::Sender<DynamicError>,
     ) {
-        let mut send_and_receive_pool = HashMap::<u64, MPSC::Sender<Payload>>::new();
-        let mut receive_and_send_pool = HashMap::<String, MPSC::Sender<(u64, Payload)>>::new();
-        let mut receive_only_pool = HashMap::<String, MPSC::Sender<Payload>>::new();
+        RT::spawn(async move {
+            let mut send_and_receive_pool = HashMap::<u64, MPSC::Sender<Payload>>::new();
+            let mut receive_and_send_pool = HashMap::<String, MPSC::Sender<(u64, Payload)>>::new();
+            let mut receive_only_pool = HashMap::<String, MPSC::Sender<Payload>>::new();
 
-        loop {
-            match receiver_to_broker.recv().await.unwrap() {
-                MessageToBroker::FromRadar(raw_data) => {
-                    let message_type = match DE::decode::<MessageType>(&raw_data) {
-                        Ok(message_type) => message_type,
-                        Err(err) => {
-                            sender_to_error.send(err).await.unwrap();
-                            continue;
-                        }
-                    };
+            loop {
+                match receiver_to_broker.recv().await.unwrap() {
+                    MessageToBroker::FromRadar(raw_data) => {
+                        let message_type = match DE::decode::<MessageType>(&raw_data) {
+                            Ok(message_type) => message_type,
+                            Err(err) => {
+                                sender_to_error.send(err).await.unwrap();
+                                continue;
+                            }
+                        };
 
-                    match message_type {
-                        MessageType::TwoWay { id, path, payload } => {
-                            if let Some(sender) = send_and_receive_pool.remove(&id) {
-                                if let Ok(_) = sender.send(payload.clone()).await {
+                        match message_type {
+                            MessageType::TwoWay { id, path, payload } => {
+                                if let Some(sender) = send_and_receive_pool.remove(&id) {
+                                    if let Ok(_) = sender.send(payload.clone()).await {
+                                        continue;
+                                    }
+
+                                    if let Some(sender) = receive_only_pool.get_mut(&path) {
+                                        sender.send(payload).await.unwrap();
+                                        continue;
+                                    }
+
                                     continue;
                                 }
 
-                                if let Some(sender) = receive_only_pool.get_mut(&path) {
-                                    sender.send(payload).await.unwrap();
+                                if let Some(sender) = receive_and_send_pool.get_mut(&path) {
+                                    sender.send((id, payload)).await.unwrap();
                                     continue;
                                 }
 
-                                continue;
-                            }
-
-                            if let Some(sender) = receive_and_send_pool.get_mut(&path) {
-                                sender.send((id, payload)).await.unwrap();
-                                continue;
-                            }
-
-                            sender_to_error
+                                sender_to_error
                                 .send(
                                     "there is data received in wrong path or maybe timeout there was".into(),
                                 )
                                 .await
                                 .unwrap();
-                        }
-                        MessageType::OneWay { path, payload } => {
-                            if let Some(sender) = receive_only_pool.get_mut(&path) {
-                                sender.send(payload).await.unwrap();
-                                continue;
                             }
+                            MessageType::OneWay { path, payload } => {
+                                if let Some(sender) = receive_only_pool.get_mut(&path) {
+                                    sender.send(payload).await.unwrap();
+                                    continue;
+                                }
 
-                            sender_to_error
-                                .send("there is data received in wrong path".into())
-                                .await
-                                .unwrap();
+                                sender_to_error
+                                    .send("there is data received in wrong path".into())
+                                    .await
+                                    .unwrap();
+                            }
                         }
                     }
+                    MessageToBroker::FromSendAndReceive(id, sender) => {
+                        send_and_receive_pool.insert(id, sender);
+                    }
+                    MessageToBroker::FromReceiveAndSend(path, sender) => {
+                        receive_and_send_pool.insert(path, sender);
+                    }
+                    MessageToBroker::FromReceiveOnly(path, sender) => {
+                        receive_only_pool.insert(path, sender);
+                    }
+                    MessageToBroker::ShutDown => return,
                 }
-                MessageToBroker::FromSendAndReceive(id, sender) => {
-                    send_and_receive_pool.insert(id, sender);
-                }
-                MessageToBroker::FromReceiveAndSend(path, sender) => {
-                    receive_and_send_pool.insert(path, sender);
-                }
-                MessageToBroker::FromReceiveOnly(path, sender) => {
-                    receive_only_pool.insert(path, sender);
-                }
-                MessageToBroker::ShutDown => return,
             }
-        }
+        })
     }
 
-    async fn receive_bin_actor(
+    fn receive_bin_actor(
         ws: Arc<RwLock<Option<WS>>>,
         receiver_to_receive_bin: MPSC::Receiver<MessageToReceiveBin>,
         sender_to_connector: MPSC::Sender<MessageToConnector>, // TODO : i need to send reconnect
         sender_to_broker: MPSC::Sender<MessageToBroker<MPSC>>,
         sender_to_error: MPSC::Sender<DynamicError>,
     ) {
-        loop {
-            let fut1 = async {
-                let guard = ws.read().unwrap();
-                let guard = guard.as_ref();
+        RT::spawn(async move {
+            loop {
+                let fut1 = async {
+                    let guard = ws.read().unwrap();
+                    let guard = guard.as_ref();
 
-                match guard {
-                    Some(ws) => ws.receive_bin().await,
-                    None => Err("error he is at init".into()),
-                }
-            };
-
-            match RT::select(fut1, receiver_to_receive_bin.recv()).await {
-                Either::Left(l) => match l {
-                    Ok(data) => {
-                        sender_to_broker
-                            .send(MessageToBroker::FromRadar(data))
-                            .await
-                            .unwrap();
+                    match guard {
+                        Some(ws) => ws.receive_bin().await,
+                        None => Err("error he is at init".into()),
                     }
+                };
 
-                    Err(err) => {
-                        sender_to_error.send(err).await.unwrap();
+                match RT::select(fut1, receiver_to_receive_bin.recv()).await {
+                    Either::Left(l) => match l {
+                        Ok(data) => {
+                            sender_to_broker
+                                .send(MessageToBroker::FromRadar(data))
+                                .await
+                                .unwrap();
+                        }
+
+                        Err(err) => {
+                            sender_to_error.send(err).await.unwrap();
+                        }
+                    },
+                    Either::Right(r) => {
+                        r.unwrap();
+                        return;
                     }
-                },
-                Either::Right(r) => {
-                    r.unwrap();
-                    return;
                 }
             }
-        }
+        })
     }
 
-    async fn send_bin_actor(
+    fn send_bin_actor(
         ws: Arc<RwLock<Option<WS>>>,
         receiver_to_send_bin: MPSC::Receiver<MessageToSendBin>,
         sender_to_send_bin: MPSC::Sender<MessageToSendBin>,
         sender_to_connector: MPSC::Sender<MessageToConnector>,
         sender_to_error: MPSC::Sender<DynamicError>,
     ) {
-        loop {
-            match receiver_to_send_bin.recv().await.unwrap() {
-                MessageToSendBin::ShutDown => return,
-                MessageToSendBin::Bin(bin) => {
-                    let guard = ws.read().unwrap();
-                    let guard = guard.as_ref();
+        RT::spawn(async move {
+            loop {
+                match receiver_to_send_bin.recv().await.unwrap() {
+                    MessageToSendBin::ShutDown => return,
+                    MessageToSendBin::Bin(bin) => {
+                        let guard = ws.read().unwrap();
+                        let guard = guard.as_ref();
 
-                    match guard {
-                        Some(ws) => {
-                            if let Err(err) = ws.send_bin(&bin).await {
+                        match guard {
+                            Some(ws) => {
+                                if let Err(err) = ws.send_bin(&bin).await {
+                                    sender_to_send_bin
+                                        .send(MessageToSendBin::Bin(bin))
+                                        .await
+                                        .unwrap();
+                                    sender_to_error.send(err).await.unwrap();
+                                    RT::sleep(Duration::from_secs(1)).await;
+                                }
+                            }
+
+                            None => {
                                 sender_to_send_bin
                                     .send(MessageToSendBin::Bin(bin))
                                     .await
                                     .unwrap();
-                                sender_to_error.send(err).await.unwrap();
+
                                 RT::sleep(Duration::from_secs(1)).await;
                             }
-                        }
-
-                        None => {
-                            sender_to_send_bin
-                                .send(MessageToSendBin::Bin(bin))
-                                .await
-                                .unwrap();
-
-                            RT::sleep(Duration::from_secs(1)).await;
-                        }
-                    };
+                        };
+                    }
                 }
             }
-        }
+        })
     }
 }
