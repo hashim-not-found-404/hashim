@@ -118,7 +118,7 @@ pub trait MultiProducerSingleConsumer {
     fn channel<T>() -> (Self::Sender<T>, Self::Receiver<T>);
 }
 
-pub trait WAMP: Sized {
+pub trait WAMP {
     type Sender<T>: Sender<T>;
     fn new(sender_to_error: Self::Sender<DynamicError>) -> Self;
     async fn connect_to_url(&self, url: &String);
