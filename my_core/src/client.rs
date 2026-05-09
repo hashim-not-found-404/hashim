@@ -1,5 +1,7 @@
 use crate::prelude::*;
 
+const TIMEOUT: u32 = 2;
+
 pub struct RoutsForClientSide<WA, RN, CH>
 where
     WA: WAMP + 'static,
@@ -31,7 +33,7 @@ where
             .send_and_receive::<sign_up::Input, Result<sign_up::Result, HashimError>>(
                 &sign_up::PATH.to_string(),
                 input,
-                100,
+                TIMEOUT,
             )
             .await??;
 
@@ -44,7 +46,7 @@ where
             .send_and_receive::<sign_in::Input, Result<sign_in::Result, HashimError>>(
                 &sign_in::PATH.to_string(),
                 input,
-                100,
+                TIMEOUT,
             )
             .await??;
 
