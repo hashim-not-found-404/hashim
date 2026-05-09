@@ -7,7 +7,7 @@ use futures_util::StreamExt;
 use my_core::prelude::*;
 use std::{fs::File, io::BufReader};
 
-type GG = impls::StateFullCheck<
+type GG = server_methods::ServerMethods<
     CockroachDB,
     CockroachClient,
     jwt::m::S,
