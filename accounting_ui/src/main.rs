@@ -1,7 +1,7 @@
 mod backend;
 use crate::backend::MySignal;
 use adapters::prelude::*;
-use dioxus::{core::spawn_forever, prelude::*};
+use dioxus::prelude::*;
 use dioxus_logger::tracing::Level;
 use my_core::prelude::{Signal, *};
 use std::sync::Arc;

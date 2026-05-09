@@ -220,8 +220,8 @@ where
     async fn receive_only<ReceiveType: for<'de> Deserialize<'de>>(
         &self,
         path: &String,
-        operation: impl AsyncFn(ReceiveType),
-    ) -> ! {
+        operation: impl AsyncFn(ReceiveType) + 'static,
+    ) {
         let (sender, receiver) = MPSC::channel();
         self.sender_to_broker
             .send(MessageToBroker::<MPSC>::FromReceiveOnly(
@@ -231,13 +231,15 @@ where
             .await
             .unwrap();
 
-        loop {
-            let payload = receiver.recv().await.unwrap();
-            let Ok(payload) = DE::decode::<ReceiveType>(&payload) else {
-                continue;
-            };
-            operation(payload).await;
-        }
+        RT::spawn(async move {
+            loop {
+                let payload = receiver.recv().await.unwrap();
+                let Ok(payload) = DE::decode::<ReceiveType>(&payload) else {
+                    continue;
+                };
+                operation(payload).await;
+            }
+        })
     }
 }
 

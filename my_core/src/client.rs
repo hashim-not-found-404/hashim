@@ -56,20 +56,19 @@ where
     }
     // TODO : i need to display the error to the ui
     // maybe i need to return rx "receiver" variabe to make it as actor model
-    // pub fn data_receiver<Sg: Signal<T = String> + 'static>(self: Arc<Self>, err: Sg) {
-    //     RN::spawn(async move {
-    //         self.web_socket
-    //             .receive_only::<data_receiver::Input>(
-    //                 &data_receiver::PATH.to_string(),
-    //                 async |data| {
-    //                     let a = self.cache.write_data(&data).await;
-    //                     match a {
-    //                         Ok(_) => return,
-    //                         Err(e) => err.set(e.to_string()),
-    //                     };
-    //                 },
-    //             )
-    //             .await;
-    //     });
-    // }
+    pub async fn data_receiver<Sg: Signal<T = String> + 'static>(self: Arc<Self>, err: Sg) {
+        self.clone()
+            .web_socket
+            .receive_only::<data_receiver::Input>(
+                &data_receiver::PATH.to_string(),
+                async move |data| {
+                    let a = self.cache.write_data(&data).await;
+                    match a {
+                        Ok(_) => return,
+                        Err(e) => err.set(e.to_string()),
+                    };
+                },
+            )
+            .await;
+    }
 }

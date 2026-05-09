@@ -146,8 +146,8 @@ pub trait WAMP: Sized {
     async fn receive_only<ReceiveType: for<'de> Deserialize<'de>>(
         &self,
         path: &String,
-        operation: impl AsyncFn(ReceiveType),
-    ) -> !;
+        operation: impl AsyncFn(ReceiveType) + 'static,
+    );
 }
 
 pub trait CacheIO: Sized {
