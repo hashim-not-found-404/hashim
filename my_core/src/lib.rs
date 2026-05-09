@@ -3,6 +3,7 @@ pub mod client_cache;
 pub mod db_types;
 pub mod front_end_model_view;
 pub mod request_response;
+pub mod server;
 pub mod server_methods;
 pub mod traits;
 pub mod translations;
@@ -19,7 +20,7 @@ pub mod prelude {
         client, client_cache, db_types,
         front_end_model_view::{self, Signal},
         request_response::*,
-        server_methods,
+        server, server_methods,
         traits::*,
         translations, web_socket,
     };

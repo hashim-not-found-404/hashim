@@ -7,7 +7,7 @@ RUSTFLAGS="-Awarnings" dx serve -p accounting_ui &&
 du -sh ./target &&
 zed . &&
 exit
-git ls-files "*.rs" | xargs cat | grep -v '^\s*$' | grep -v '^\s*//' | wc -l
+git ls-files "*.rs" | xargs wc -l | tail -1
 
 clear && cockroach start-single-node --insecure
 clear && cockroach sql --insecure

@@ -62,56 +62,18 @@ async fn ws_handler(req: HttpRequest, stream: web::Payload) -> HttpResponse {
         while let Some(msg) = stream.next().await {
             match msg {
                 Ok(AggregatedMessage::Binary(data)) => {
-                    let recived_msg =
-                        encode_decode::m::S::decode::<web_socket::MessageType>(&data.to_vec())
-                            .unwrap();
                     let state = req.app_data::<web::Data<GG>>().unwrap();
-
-                    let msg_to_send = match recived_msg {
-                        web_socket::MessageType::TwoWay { id, path, payload } => {
-                            let payload = match path.as_str() {
-                                sign_up::PATH => {
-                                    let input =
-                                        encode_decode::m::S::decode::<sign_up::Input>(&payload);
-
-                                    let result = match input {
-                                        Ok(input) => match state.sign_up(&input).await {
-                                            Ok(o) => Ok(o),
-                                            Err(_) => Err(HashimError::InternalServerError),
-                                        },
-                                        Err(_) => Err(HashimError::DecodingErrorAtServer),
-                                    };
-
-                                    encode_decode::m::S::encode(&result)
-                                }
-                                sign_in::PATH => {
-                                    let input =
-                                        encode_decode::m::S::decode::<sign_in::Input>(&payload);
-
-                                    let result = match input {
-                                        Ok(input) => match state.sign_in(&input).await {
-                                            Ok(o) => Ok(o),
-                                            Err(_) => Err(HashimError::InternalServerError),
-                                        },
-                                        Err(_) => Err(HashimError::DecodingErrorAtServer),
-                                    };
-
-                                    encode_decode::m::S::encode(&result)
-                                }
-                                _ => todo!(),
-                            };
-
-                            let msg_to_send = web_socket::MessageType::TwoWay { id, path, payload };
-
-                            msg_to_send
-                        }
-                        web_socket::MessageType::OneWay { path, payload } => todo!(),
-                    };
-
-                    session
-                        .binary(encode_decode::m::S::encode(&msg_to_send))
-                        .await
-                        .unwrap();
+                    let data = server::server::<
+                        CockroachDB,
+                        CockroachClient,
+                        jwt::m::S,
+                        authentication::m::S,
+                        functions::m::S,
+                        row_id::m::S,
+                        encode_decode::m::S,
+                    >(&data.to_vec(), state)
+                    .await;
+                    session.binary(data).await.unwrap();
                 }
                 Ok(AggregatedMessage::Text(text)) => {
                     println!("Received text message: {}", text);
