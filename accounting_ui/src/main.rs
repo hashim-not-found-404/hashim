@@ -60,7 +60,7 @@ fn Initializer() -> Element {
             connect, cache,
         )
         .await;
-        let state: StateOfEveryThing = Arc::new(front_end_model_view::State::new(fut));
+        let state: StateOfEveryThing = front_end_model_view::State::new(fut);
         use_context_provider(|| state.clone());
     });
 
@@ -109,12 +109,7 @@ pub fn SignIn() -> Element {
                 {state.sign_in_error_for_password.read()}
             }
             button {
-                onclick: move |_| {
-                    let state = state.clone();
-                    spawn_forever(async move {
-                        state.sign_in().await;
-                    });
-                },
+                onclick: move |_| state.clone().sign_in(),
                 "Sign In"
             }
             button {
@@ -155,12 +150,7 @@ pub fn SignUp() -> Element {
             }
             PasswordInput{}
             button {
-                onclick: move |_| {
-                    let state = state.clone();
-                    spawn_forever(async move {
-                        state.sign_up().await;
-                    });
-                },
+                onclick: move |_| state.clone().sign_up(),
                 "Sign Up"
             }
             button {

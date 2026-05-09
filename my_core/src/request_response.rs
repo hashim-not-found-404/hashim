@@ -10,6 +10,7 @@ pub const ADDRESS: &str = "127.0.0.1:8081";
 pub enum HashimError {
     InternalServerError,
     DecodingErrorAtServer,
+    ConnectionClosed,
 }
 
 impl Error for HashimError {}
@@ -19,6 +20,7 @@ impl Display for HashimError {
         match self {
             HashimError::InternalServerError => write!(f, "Internal Server Error"),
             HashimError::DecodingErrorAtServer => write!(f, "Decoding Error at Server"),
+            HashimError::ConnectionClosed => write!(f, "Connection Closed"),
         }
     }
 }

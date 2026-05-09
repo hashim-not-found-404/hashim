@@ -40,11 +40,11 @@ pub mod m {
                 Some(Ok(message)) => match message {
                     Message::Text(_) => Err("it's text".into()),
                     Message::Binary(bytes) => Ok(bytes.to_vec()),
-                    Message::Close(_) => Err("it's closed".into()),
+                    Message::Close(_) => Err(HashimError::ConnectionClosed.into()),
                     _ => Err("other message type".into()),
                 },
                 Some(Err(e)) => Err(e.to_string().into()),
-                None => Err("it's closed".into()),
+                None => Err(HashimError::ConnectionClosed.into()),
             }
         }
     }
@@ -99,7 +99,7 @@ pub mod m {
                     Message::Bytes(bytes) => Ok(bytes.to_vec()),
                 },
                 Some(Err(e)) => Err(e.into()),
-                None => Err("it's closed".into()),
+                None => Err(HashimError::ConnectionClosed.into()),
             }
         }
     }
