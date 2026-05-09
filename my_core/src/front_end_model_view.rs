@@ -11,7 +11,7 @@ pub struct State<
     RT: Runtime + 'static,
     MPSC: MultiProducerSingleConsumer + 'static,
     CH: CacheIO + 'static,
-    TxnNumGen: RandomNumber + 'static,
+    RN: RandomNumber + 'static,
     StringSignal: Signal<T = String> + 'static,
     BoolSignal: Signal<T = bool> + 'static,
     ExternalErrorSignal: Signal<T = String> + 'static,
@@ -19,9 +19,9 @@ pub struct State<
     UserRolesSignal: Signal<T = Vec<db_types::Company>> + 'static,
 > {
     // here for the app logic
-    generate_transaction_number: PhantomData<TxnNumGen>,
+    generate_transaction_number: PhantomData<RN>,
     routs: Arc<client::RoutsForClientSide<WA, RT, MPSC, CH>>,
-    jwt: Mutex<Option<String>>,
+    jwt: RwLock<Option<String>>,
 
     // here every field to display
     pub is_signed_in: BoolSignal,
@@ -72,7 +72,7 @@ impl<
         let state = Arc::new(Self {
             generate_transaction_number: PhantomData::<TxnNumGen>,
             routs: routs,
-            jwt: Mutex::new(None),
+            jwt: RwLock::new(None),
             is_signed_in: BoolSignal::default(),
             is_loading_sign_in_or_up: BoolSignal::default(),
             user_name: StringSignal::default(),
@@ -123,7 +123,7 @@ impl<
             match result {
                 Ok(Ok(business_output)) => {
                     self.is_signed_in.set(true);
-                    *self.jwt.lock().unwrap() = Some(business_output.jwt.clone());
+                    *self.jwt.write().unwrap() = Some(business_output.jwt.clone());
                 }
                 Ok(Err(business_error)) => {
                     self.sign_up_error_for_user_id
@@ -165,7 +165,7 @@ impl<
             match result {
                 Ok(Ok(business_output)) => {
                     self.is_signed_in.set(true);
-                    *self.jwt.lock().unwrap() = Some(business_output.jwt.clone());
+                    *self.jwt.write().unwrap() = Some(business_output.jwt.clone());
                 }
                 Ok(Err(business_error)) => {
                     self.sign_in_error_for_user_id
