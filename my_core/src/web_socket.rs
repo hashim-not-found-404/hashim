@@ -381,10 +381,13 @@ where
                             let result = err.downcast::<HashimError>();
                             let err = match result {
                                 Ok(my_error) => {
-                                    sender_to_connector
-                                        .send(MessageToConnector::Reconnect)
-                                        .await
-                                        .unwrap();
+                                    if *my_error.as_ref() == HashimError::ConnectionClosed {
+                                        sender_to_connector
+                                            .send(MessageToConnector::Reconnect)
+                                            .await
+                                            .unwrap();
+                                    }
+
                                     my_error
                                 }
                                 Err(other_error) => other_error,
@@ -428,10 +431,13 @@ where
                                     let result = err.downcast::<HashimError>();
                                     let err = match result {
                                         Ok(my_error) => {
-                                            sender_to_connector
-                                                .send(MessageToConnector::Reconnect)
-                                                .await
-                                                .unwrap();
+                                            if *my_error.as_ref() == HashimError::ConnectionClosed {
+                                                sender_to_connector
+                                                    .send(MessageToConnector::Reconnect)
+                                                    .await
+                                                    .unwrap();
+                                            }
+
                                             my_error
                                         }
                                         Err(other_error) => other_error,
