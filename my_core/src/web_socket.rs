@@ -378,7 +378,19 @@ where
                         }
 
                         Err(err) => {
+                            let result = err.downcast::<HashimError>();
+                            let err = match result {
+                                Ok(my_error) => {
+                                    sender_to_connector
+                                        .send(MessageToConnector::Reconnect)
+                                        .await
+                                        .unwrap();
+                                    my_error
+                                }
+                                Err(other_error) => other_error,
+                            };
                             sender_to_error.send(err).await.unwrap();
+                            RT::sleep(Duration::from_secs(1)).await;
                         }
                     },
                     Either::Right(r) => {
@@ -412,6 +424,19 @@ where
                                         .send(MessageToSendBin::Bin(bin))
                                         .await
                                         .unwrap();
+
+                                    let result = err.downcast::<HashimError>();
+                                    let err = match result {
+                                        Ok(my_error) => {
+                                            sender_to_connector
+                                                .send(MessageToConnector::Reconnect)
+                                                .await
+                                                .unwrap();
+                                            my_error
+                                        }
+                                        Err(other_error) => other_error,
+                                    };
+
                                     sender_to_error.send(err).await.unwrap();
                                     RT::sleep(Duration::from_secs(1)).await;
                                 }
