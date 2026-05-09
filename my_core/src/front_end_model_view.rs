@@ -7,8 +7,9 @@ pub trait Signal: Default {
 }
 
 pub struct State<
-    WA: WAMP + 'static,
+    WA: WAMP<Sender<DynamicError> = MPSC::Sender<DynamicError>> + 'static,
     RT: Runtime + 'static,
+    MPSC: MultiProducerSingleConsumer + 'static,
     CH: CacheIO + 'static,
     TxnNumGen: RandomNumber + 'static,
     StringSignal: Signal<T = String> + 'static,
@@ -19,7 +20,7 @@ pub struct State<
 > {
     // here for the app logic
     generate_transaction_number: PhantomData<TxnNumGen>,
-    routs: client::RoutsForClientSide<WA, RT, CH>,
+    routs: Arc<client::RoutsForClientSide<WA, RT, MPSC, CH>>,
     jwt: Mutex<Option<String>>,
 
     // here every field to display
@@ -39,8 +40,9 @@ pub struct State<
 }
 
 impl<
-    WA: WAMP,
+    WA: WAMP<Sender<DynamicError> = MPSC::Sender<DynamicError>> + 'static,
     RT: Runtime,
+    MPSC: MultiProducerSingleConsumer,
     CH: CacheIO,
     TxnNumGen: RandomNumber,
     StringSignal: Signal<T = String>,
@@ -52,6 +54,7 @@ impl<
     State<
         WA,
         RT,
+        MPSC,
         CH,
         TxnNumGen,
         StringSignal,
@@ -61,7 +64,11 @@ impl<
         UserRolesSignal,
     >
 {
-    pub fn new(routs: client::RoutsForClientSide<WA, RT, CH>) -> Arc<Self> {
+    pub async fn new() -> Arc<Self> {
+        let (sender_to_error, receiver_to_error) = MPSC::channel();
+
+        let routs = client::RoutsForClientSide::<WA, RT, MPSC, CH>::new(sender_to_error).await;
+
         let state = Arc::new(Self {
             generate_transaction_number: PhantomData::<TxnNumGen>,
             routs: routs,
@@ -81,7 +88,7 @@ impl<
             all_user_roles: UserRolesSignal::default(),
         });
 
-        state.clone().listen_to_error();
+        state.clone().listen_to_error(receiver_to_error);
 
         state
     }
@@ -111,7 +118,7 @@ impl<
                 password: self.password.read().to_string(),
             };
 
-            let result = self.routs.sign_up(&input).await;
+            let result = self.routs.clone().sign_up(&input).await;
 
             match result {
                 Ok(Ok(business_output)) => {
@@ -153,7 +160,7 @@ impl<
                 password: self.password.read(),
             };
 
-            let result = self.routs.sign_in(&input).await;
+            let result = self.routs.clone().sign_in(&input).await;
 
             match result {
                 Ok(Ok(business_output)) => {
@@ -181,10 +188,10 @@ impl<
         });
     }
 
-    fn listen_to_error(self: Arc<Self>) {
+    fn listen_to_error(self: Arc<Self>, receiver_to_error: MPSC::Receiver<DynamicError>) {
         RT::spawn(async move {
             loop {
-                let err = self.routs.get_error().await;
+                let err = receiver_to_error.recv().await.unwrap();
                 self.external_errors.set(err.to_string());
             }
         });

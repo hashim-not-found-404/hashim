@@ -51,7 +51,6 @@ where
     coding: PhantomData<DE>,
     transport: PhantomData<WS>,
 
-    receiver_to_error: MPSC::Receiver<DynamicError>,
     sender_to_connector: MPSC::Sender<MessageToConnector>,
     sender_to_broker: MPSC::Sender<MessageToBroker<MPSC>>,
     sender_to_send_bin: MPSC::Sender<MessageToSendBin>,
@@ -66,8 +65,9 @@ where
     RT: Runtime + 'static,
     MPSC: MultiProducerSingleConsumer + 'static,
 {
-    fn new() -> Self {
-        let (sender_to_error, receiver_to_error) = MPSC::channel();
+    type Sender<T> = MPSC::Sender<T>;
+
+    fn new(sender_to_error: Self::Sender<DynamicError>) -> Self {
         let (sender_to_connector, receiver_to_connector) = MPSC::channel();
         let (sender_to_broker, receiver_to_broker) = MPSC::channel();
         let (sender_to_send_bin, receiver_to_send_bin) = MPSC::channel();
@@ -97,16 +97,11 @@ where
             random_number: PhantomData::<RN>,
             coding: PhantomData::<DE>,
             transport: PhantomData::<WS>,
-            receiver_to_error,
             sender_to_connector,
             sender_to_broker,
             sender_to_send_bin,
             sender_to_receive_bin,
         }
-    }
-
-    async fn get_error(&self) -> DynamicError {
-        self.receiver_to_error.recv().await.unwrap()
     }
 
     async fn connect_to_url(&self, url: &String) {

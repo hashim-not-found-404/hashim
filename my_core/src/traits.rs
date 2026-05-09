@@ -113,14 +113,14 @@ pub trait Receiver<T> {
 }
 
 pub trait MultiProducerSingleConsumer {
-    type Sender<T>: Sender<T> + Clone;
+    type Sender<T>: Sender<T>;
     type Receiver<T>: Receiver<T>;
     fn channel<T>() -> (Self::Sender<T>, Self::Receiver<T>);
 }
 
 pub trait WAMP: Sized {
-    fn new() -> Self;
-    async fn get_error(&self) -> DynamicError;
+    type Sender<T>: Sender<T>;
+    fn new(sender_to_error: Self::Sender<DynamicError>) -> Self;
     async fn connect_to_url(&self, url: &String);
     async fn close(self);
 

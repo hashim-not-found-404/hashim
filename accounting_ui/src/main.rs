@@ -18,6 +18,7 @@ type StateOfEveryThing = Arc<
     front_end_model_view::State<
         TypeMyWAMP,
         runtime::m::S,
+        actors::m::S,
         cache::m::S,
         random_number::m::S,
         MySignal<String>,
@@ -52,15 +53,7 @@ fn main() {
 #[component]
 fn Initializer() -> Element {
     let init_state = use_resource(|| async {
-        let url = format!("ws://{}/ws", ADDRESS);
-        let connect: TypeMyWAMP = web_socket::MyWAMP::new();
-        connect.connect_to_url(&url).await;
-        let cache = cache::m::S::new().await.unwrap();
-        let fut = client::RoutsForClientSide::<TypeMyWAMP, runtime::m::S, cache::m::S>::new(
-            connect, cache,
-        )
-        .await;
-        let state: StateOfEveryThing = front_end_model_view::State::new(fut);
+        let state: StateOfEveryThing = front_end_model_view::State::new().await;
         use_context_provider(|| state.clone());
     });
 

@@ -2,32 +2,50 @@ use crate::prelude::*;
 
 const TIMEOUT: u32 = 2;
 
-pub struct RoutsForClientSide<WA, RN, CH>
+pub struct RoutsForClientSide<WA, RT, MPSC, CH>
 where
     WA: WAMP + 'static,
-    RN: Runtime + 'static,
+    RT: Runtime + 'static,
+    MPSC: MultiProducerSingleConsumer + 'static,
     CH: CacheIO + 'static,
 {
     web_socket: WA,
-    runtime: PhantomData<RN>,
+    runtime: PhantomData<RT>,
+    mpsc: PhantomData<MPSC>,
     cache: CH,
 }
 
-impl<WA, RN, CH> RoutsForClientSide<WA, RN, CH>
+impl<WA, RT, MPSC, CH> RoutsForClientSide<WA, RT, MPSC, CH>
 where
-    WA: WAMP + 'static,
-    RN: Runtime + 'static,
+    WA: WAMP<Sender<DynamicError> = MPSC::Sender<DynamicError>> + 'static,
+    RT: Runtime + 'static,
+    MPSC: MultiProducerSingleConsumer + 'static,
     CH: CacheIO + 'static,
 {
-    pub async fn new(inner: WA, cache: CH) -> Self {
-        Self {
-            web_socket: inner,
-            runtime: PhantomData::<RN>,
-            cache,
-        }
+    pub async fn new(sender_to_error: MPSC::Sender<DynamicError>) -> Arc<Self> {
+        let url = format!("ws://{}/ws", ADDRESS);
+        let web_socket = WA::new(sender_to_error.clone());
+        web_socket.connect_to_url(&url).await;
+
+        let routs_for_client_side = Arc::new(Self {
+            web_socket,
+            runtime: PhantomData::<RT>,
+            mpsc: PhantomData::<MPSC>,
+            cache: CH::new().await.unwrap(),
+        });
+
+        routs_for_client_side
+            .clone()
+            .data_receiver(sender_to_error)
+            .await;
+
+        routs_for_client_side
     }
 
-    pub async fn sign_up(&self, input: &sign_up::Input) -> Result<sign_up::Result, DynamicError> {
+    pub async fn sign_up(
+        self: Arc<Self>,
+        input: &sign_up::Input,
+    ) -> Result<sign_up::Result, DynamicError> {
         let result = self
             .web_socket
             .send_and_receive::<sign_up::Input, Result<sign_up::Result, HashimError>>(
@@ -40,7 +58,10 @@ where
         Ok(result)
     }
 
-    pub async fn sign_in(&self, input: &sign_in::Input) -> Result<sign_in::Result, DynamicError> {
+    pub async fn sign_in(
+        self: Arc<Self>,
+        input: &sign_in::Input,
+    ) -> Result<sign_in::Result, DynamicError> {
         let result = self
             .web_socket
             .send_and_receive::<sign_in::Input, Result<sign_in::Result, HashimError>>(
@@ -53,12 +74,7 @@ where
         Ok(result)
     }
 
-    pub async fn get_error(&self) -> DynamicError {
-        self.web_socket.get_error().await
-    }
-    // TODO : i need to display the error to the ui
-    // maybe i need to return rx "receiver" variabe to make it as actor model
-    pub async fn data_receiver<Sg: Signal<T = String> + 'static>(self: Arc<Self>, err: Sg) {
+    pub async fn data_receiver(self: Arc<Self>, sender_to_error: MPSC::Sender<DynamicError>) {
         self.clone()
             .web_socket
             .receive_only::<data_receiver::Input>(
@@ -67,7 +83,7 @@ where
                     let a = self.cache.write_data(&data).await;
                     match a {
                         Ok(_) => return,
-                        Err(e) => err.set(e.to_string()),
+                        Err(e) => sender_to_error.send(e).await.unwrap(),
                     };
                 },
             )
