@@ -33,7 +33,7 @@ pub mod prelude {
         future::Future,
         marker::PhantomData,
         result::Result as StdResult,
-        sync::{Arc, Mutex, RwLock},
+        sync::{Arc, RwLock},
         time::Duration,
     };
 
