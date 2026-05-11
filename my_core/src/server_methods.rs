@@ -257,6 +257,10 @@ pub fn broker_actor<
                                         index += 1;
                                     }
                                 }
+
+                                if channels.len() == 0 {
+                                    pool_of_server_facad_channels.remove(&user_uuid);
+                                }
                             }
                             None => {
                                 dbg!("there is some problem here this should not happen");
