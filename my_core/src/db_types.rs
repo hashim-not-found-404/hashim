@@ -6,7 +6,7 @@ pub enum DataGroup<RowId> {
     Branch(RowId),
 }
 
-pub type RowId = String;
+pub type RowIdType = String;
 
 // maybe i will only check from cache by sync it with the server
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]

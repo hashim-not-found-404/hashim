@@ -48,9 +48,7 @@ where
                 _ => todo!(),
             };
 
-            let msg_to_send = web_socket::MessageType::TwoWay { id, path, payload };
-
-            msg_to_send
+            web_socket::MessageType::TwoWay { id, path, payload }
         }
         web_socket::MessageType::OneWay { path, payload } => todo!(),
     };

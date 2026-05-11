@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-pub trait RowId {}
+pub trait RowId: Clone + Hash + Eq {}
 
 pub trait Functions {
     fn is_regex(s: &String) -> Result<(), String>;
@@ -43,6 +43,10 @@ pub trait DBClient {
         &mut self,
         user_id: &String,
     ) -> Result<Option<(Self::RowId, Self::HashedPassword)>, DynamicError>;
+    async fn read_roles_for_user(
+        &mut self,
+        user_uuid: &Self::RowId,
+    ) -> Result<Vec<(server_methods::CompanyOrBranch<Self::RowId>, db_types::Role)>, DynamicError>;
 }
 
 pub mod domain_errors {

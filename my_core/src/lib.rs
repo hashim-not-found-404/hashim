@@ -31,6 +31,7 @@ pub mod prelude {
         error::Error,
         fmt::Display,
         future::Future,
+        hash::Hash,
         marker::PhantomData,
         result::Result as StdResult,
         sync::{Arc, RwLock},

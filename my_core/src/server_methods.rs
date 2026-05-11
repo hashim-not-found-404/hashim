@@ -105,4 +105,167 @@ where
             }
         };
     }
+
+    pub async fn get_table_of_subscribed_data(
+        &self,
+        user_uuid: &Id,
+    ) -> Result<SubscribedData<Id>, DynamicError> {
+        let mut client = self.database.get_client().await?;
+        let roles = client.read_roles_for_user(user_uuid).await?;
+
+        let mut subs: SubscribedData<Id> = HashMap::with_capacity(roles.len());
+        for (company, role) in roles {
+            subs.insert(company, role_to_subscribe_mapping(role));
+        }
+        subs.shrink_to_fit();
+        Ok(subs)
+    }
+}
+
+// here dont contain data
+pub enum Subscribe {}
+pub(crate) fn role_to_subscribe_mapping(role: db_types::Role) -> Vec<Subscribe> {
+    todo!()
+}
+
+pub(crate) fn resource_filtering_based_on_subscribe(
+    subscribe: &Vec<Subscribe>,
+    resource: &Vec<Resource>,
+) -> Vec<Resource> {
+    todo!()
+}
+
+// here dont data
+#[derive(Clone)]
+pub enum Resource {}
+trait DataToResourceMapping {
+    fn map_to_resource(&self) -> Vec<Resource>;
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, Hash, PartialEq, Eq)]
+pub enum CompanyOrBranch<Id: RowId> {
+    Company(Id),
+    Branch(Id),
+}
+
+type SubscribedData<Id> = HashMap<CompanyOrBranch<Id>, Vec<Subscribe>>;
+type ResourcesToShare<Id> = HashMap<CompanyOrBranch<Id>, Vec<Resource>>;
+
+pub enum MessageToBroker<Id: RowId, MPSC: MultiProducerSingleConsumer> {
+    Subscribe(Id, SubscribedData<Id>, MPSC::Sender<Vec<Resource>>),
+    Publish(ResourcesToShare<Id>),
+}
+
+pub fn broker_actor<
+    RT: Runtime,
+    MPSC: MultiProducerSingleConsumer + 'static,
+    Id: RowId + 'static,
+>(
+    receiver_to_broker: MPSC::Receiver<MessageToBroker<Id, MPSC>>,
+) {
+    RT::spawn(async move {
+        let mut pool_of_pubsub: HashMap<
+            CompanyOrBranch<Id>, // company uuid
+            HashMap<
+                Id, // user uuid
+                Vec<Subscribe>,
+            >,
+        > = HashMap::with_capacity(100000);
+
+        let mut pool_of_server_facad_channels: HashMap<
+            Id,                               // user uuid
+            Vec<MPSC::Sender<Vec<Resource>>>, // because user may have multiple web socket connection
+        > = HashMap::with_capacity(10000);
+
+        loop {
+            let message = receiver_to_broker.recv().await.unwrap();
+            match message {
+                MessageToBroker::Subscribe(
+                    user_uuid,
+                    list_of_subscribtion,
+                    channel_to_send_to_facad,
+                ) => {
+                    let channels = pool_of_server_facad_channels.get_mut(&user_uuid);
+
+                    match channels {
+                        Some(channels) => {
+                            channels.insert(channels.len(), channel_to_send_to_facad.clone())
+                        }
+                        None => {
+                            pool_of_server_facad_channels
+                                .insert(user_uuid.clone(), vec![channel_to_send_to_facad.clone()]);
+                        }
+                    }
+
+                    for (company, subscribes) in list_of_subscribtion {
+                        let user_and_subscribes = pool_of_pubsub.get_mut(&company);
+                        match user_and_subscribes {
+                            Some(user_and_subscribes) => {
+                                user_and_subscribes.insert(user_uuid.clone(), subscribes);
+                            }
+                            None => {
+                                let mut user_and_subscribes = HashMap::new();
+                                user_and_subscribes.insert(user_uuid.clone(), subscribes);
+                                pool_of_pubsub.insert(company, user_and_subscribes);
+                            }
+                        }
+                    }
+                }
+                MessageToBroker::Publish(list_of_resource) => {
+                    let mut resource_to_send: HashMap<
+                        Id, // user uuid
+                        Vec<Resource>,
+                    > = HashMap::new();
+
+                    for (company, resource) in list_of_resource {
+                        let user_and_subscribe = pool_of_pubsub.get(&company);
+                        match user_and_subscribe {
+                            Some(user_and_subscribe) => {
+                                for (user_uuid, subscribe) in user_and_subscribe {
+                                    let mut resource_for_user =
+                                        resource_filtering_based_on_subscribe(subscribe, &resource);
+
+                                    let resource_to_append = resource_to_send.get_mut(user_uuid);
+                                    match resource_to_append {
+                                        Some(resource_to_append) => {
+                                            resource_to_append.append(&mut resource_for_user)
+                                        }
+                                        None => {
+                                            resource_to_send
+                                                .insert(user_uuid.clone(), resource_for_user);
+                                        }
+                                    }
+                                }
+                            }
+                            None => {
+                                dbg!("there is some problem here this should not happen");
+                                continue;
+                            }
+                        }
+                    }
+
+                    for (user_uuid, resource) in resource_to_send {
+                        let channels = pool_of_server_facad_channels.get_mut(&user_uuid);
+
+                        match channels {
+                            Some(channels) => {
+                                let mut index = 0;
+                                while index < channels.len() {
+                                    if channels[index].send(resource.clone()).await.is_err() {
+                                        channels.remove(index);
+                                    } else {
+                                        index += 1;
+                                    }
+                                }
+                            }
+                            None => {
+                                dbg!("there is some problem here this should not happen");
+                                continue;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    });
 }

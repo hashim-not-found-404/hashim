@@ -61,7 +61,7 @@ pub mod sign_in {
 
     #[derive(Debug, Deserialize, Serialize)]
     pub struct Input {
-        pub user_id: db_types::RowId,
+        pub user_id: db_types::RowIdType,
         pub password: String,
     }
 
@@ -149,7 +149,7 @@ pub mod create_company_branch {
 
     #[derive(Debug, Deserialize, Serialize)]
     pub struct Input {
-        pub company_belong: db_types::RowId,
+        pub company_belong: db_types::RowIdType,
         pub name: String,
         pub location: db_types::Location,
         pub currency: db_types::Currency,
