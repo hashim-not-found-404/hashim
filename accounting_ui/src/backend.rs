@@ -1,8 +1,9 @@
-use dioxus::core::ReactiveContext;
-use dioxus::prelude::*;
-use my_core::prelude::{Signal, *};
-use std::collections::HashSet;
-use std::sync::{Arc, Mutex, MutexGuard};
+use dioxus::{core::ReactiveContext, prelude::*};
+use my_core::prelude::*;
+use std::{
+    collections::HashSet,
+    sync::{Arc, Mutex, MutexGuard},
+};
 
 pub struct MySignal<T> {
     value: Arc<Mutex<T>>,

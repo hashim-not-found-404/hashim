@@ -1,5 +1,6 @@
 use crate::prelude::*;
 
+// TODO : make the server as actor
 pub async fn server<DB, Cli, Jwt, Authentication, F, Id, DE>(
     received_data: &Vec<u8>,
     state: &server_methods::ServerMethods<DB, Cli, Jwt, Authentication, F, Id>,
