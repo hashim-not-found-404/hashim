@@ -369,7 +369,7 @@ where
                 };
 
                 match RT::select(fut1, receiver_to_receive_bin.recv()).await {
-                    Either::Left(l) => match l {
+                    Either::One(l) => match l {
                         Ok(data) => {
                             sender_to_broker
                                 .send(MessageToBroker::FromRadar(data))
@@ -396,7 +396,7 @@ where
                             RT::sleep(Duration::from_secs(1)).await;
                         }
                     },
-                    Either::Right(r) => {
+                    Either::Two(r) => {
                         r.unwrap();
                         return;
                     }

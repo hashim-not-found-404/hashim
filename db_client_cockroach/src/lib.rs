@@ -8,9 +8,10 @@ pub struct CockroachDB {
     pool: Pool,
 }
 
-impl Default for CockroachDB {
-    /// Creates a new connection pool to CockroachDB.
-    fn default() -> Self {
+impl Database for CockroachDB {
+    type Client = CockroachClient;
+
+    async fn new() -> Self {
         let mut cfg = Config::new();
 
         // Connection settings
@@ -25,20 +26,16 @@ impl Default for CockroachDB {
 
         CockroachDB { pool: pool }
     }
-}
-
-pub struct CockroachClient {
-    client: deadpool_postgres::Object,
-}
-
-impl Database for CockroachDB {
-    type Client = CockroachClient;
 
     async fn get_client(&self) -> Result<Self::Client, DynamicError> {
         Ok(CockroachClient {
             client: self.pool.get().await?,
         })
     }
+}
+
+pub struct CockroachClient {
+    client: deadpool_postgres::Object,
 }
 
 impl DBClient for CockroachClient {
@@ -81,6 +78,13 @@ impl DBClient for CockroachClient {
             }
             Err(e) => unreachable!("{}", e),
         }
+    }
+
+    async fn read_roles_for_user(
+        &mut self,
+        user_uuid: &Self::RowId,
+    ) -> Result<server_methods::AllRolesForUser<Self::RowId>, DynamicError> {
+        todo!()
     }
 }
 

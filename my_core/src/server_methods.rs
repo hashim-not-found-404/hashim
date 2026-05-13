@@ -77,7 +77,10 @@ where
         return result;
     }
 
-    pub async fn sign_in(&self, input: &sign_in::Input) -> Result<sign_in::Result, DynamicError> {
+    pub async fn sign_in(
+        &self,
+        input: &sign_in::Input,
+    ) -> Result<Result<(sign_in::Ok, Id), sign_in::Error>, DynamicError> {
         let mut errr = sign_in::Error {
             user_id: None,
             password: None,
@@ -95,9 +98,12 @@ where
 
         match Authentication::sign_in(&input.password, &password_hash) {
             true => {
-                return Ok(Ok(sign_in::Ok {
-                    jwt: self.jwt.sign(&user_rowid).into(),
-                }));
+                return Ok(Ok((
+                    sign_in::Ok {
+                        jwt: self.jwt.sign(&user_rowid).into(),
+                    },
+                    user_rowid,
+                )));
             }
             false => {
                 errr.password = Some(sign_in::PasswordError::WrongPassword);
@@ -109,22 +115,32 @@ where
     pub async fn get_table_of_subscribed_data(
         &self,
         user_uuid: &Id,
-    ) -> Result<SubscribedData<Id>, DynamicError> {
+    ) -> Result<AllSubscribesForUser<Id>, DynamicError> {
         let mut client = self.database.get_client().await?;
         let roles = client.read_roles_for_user(user_uuid).await?;
 
-        let mut subs: SubscribedData<Id> = HashMap::with_capacity(roles.len());
-        for (company, role) in roles {
-            subs.insert(company, role_to_subscribe_mapping(role));
+        let mut subs = AllSubscribesForUser {
+            companies: HashMap::new(),
+            branches: HashMap::new(),
+        };
+
+        for (company, role) in roles.companies {
+            subs.companies
+                .insert(company, role_to_subscribe_mapping(role));
         }
-        subs.shrink_to_fit();
+
+        for (branch, role) in roles.branches {
+            subs.branches
+                .insert(branch, role_to_subscribe_mapping(role));
+        }
+
         Ok(subs)
     }
 }
 
 // here dont contain data
 pub enum Subscribe {}
-pub(crate) fn role_to_subscribe_mapping(role: db_types::Role) -> Vec<Subscribe> {
+pub(crate) fn role_to_subscribe_mapping(role: Vec<db_types::Role>) -> Vec<Subscribe> {
     todo!()
 }
 
@@ -135,25 +151,42 @@ pub(crate) fn resource_filtering_based_on_subscribe(
     todo!()
 }
 
-// here dont data
+// here contain data
 #[derive(Clone)]
 pub enum Resource {}
 trait DataToResourceMapping {
     fn map_to_resource(&self) -> Vec<Resource>;
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, Hash, PartialEq, Eq)]
-pub enum CompanyOrBranch<Id: RowId> {
-    Company(Id),
-    Branch(Id),
+pub struct AllRolesForUser<Id: RowId> {
+    companies: HashMap<Id, Vec<db_types::Role>>,
+    branches: HashMap<Id, Vec<db_types::Role>>,
 }
 
-type SubscribedData<Id> = HashMap<CompanyOrBranch<Id>, Vec<Subscribe>>;
-type ResourcesToShare<Id> = HashMap<CompanyOrBranch<Id>, Vec<Resource>>;
+pub struct AllSubscribesForUser<Id: RowId> {
+    pub companies: HashMap<Id, Vec<Subscribe>>,
+    pub branches: HashMap<Id, Vec<Subscribe>>,
+}
+
+type SubscribedDataForCompany<Id> = HashMap<Id, Vec<Subscribe>>;
+type SubscribedDataForBranch<Id> = HashMap<Id, Vec<Subscribe>>;
+type ResourcesForCompany<Id> = HashMap<Id, Vec<Resource>>;
+type ResourcesForBranch<Id> = HashMap<Id, Vec<Resource>>;
 
 pub enum MessageToBroker<Id: RowId, MPSC: MultiProducerSingleConsumer> {
-    Subscribe(Id, SubscribedData<Id>, MPSC::Sender<Vec<Resource>>),
-    Publish(ResourcesToShare<Id>),
+    Subscribe {
+        user_uuid: Id,
+        list_of_subscribtion_for_company: SubscribedDataForCompany<Id>,
+        list_of_subscribtion_for_branch: SubscribedDataForBranch<Id>,
+        channel_to_send_to_facad: MPSC::Sender<Vec<Resource>>,
+    },
+    Unsubscribe {
+        user_uuid: Id,
+    },
+    Publish {
+        list_of_resources_for_company: ResourcesForCompany<Id>,
+        list_of_resources_for_branch: ResourcesForBranch<Id>,
+    },
 }
 
 pub fn broker_actor<
@@ -164,13 +197,21 @@ pub fn broker_actor<
     receiver_to_broker: MPSC::Receiver<MessageToBroker<Id, MPSC>>,
 ) {
     RT::spawn(async move {
-        let mut pool_of_pubsub: HashMap<
-            CompanyOrBranch<Id>, // company uuid
+        let mut pool_of_pubsub_for_company: HashMap<
+            Id, // company uuid
             HashMap<
                 Id, // user uuid
                 Vec<Subscribe>,
             >,
-        > = HashMap::with_capacity(100000);
+        > = HashMap::with_capacity(1000);
+
+        let mut pool_of_pubsub_for_branch: HashMap<
+            Id, // branch uuid
+            HashMap<
+                Id, // user uuid
+                Vec<Subscribe>,
+            >,
+        > = HashMap::with_capacity(10000);
 
         let mut pool_of_server_facad_channels: HashMap<
             Id,                               // user uuid
@@ -180,13 +221,13 @@ pub fn broker_actor<
         loop {
             let message = receiver_to_broker.recv().await.unwrap();
             match message {
-                MessageToBroker::Subscribe(
+                MessageToBroker::Subscribe {
                     user_uuid,
-                    list_of_subscribtion,
+                    list_of_subscribtion_for_company,
+                    list_of_subscribtion_for_branch,
                     channel_to_send_to_facad,
-                ) => {
+                } => {
                     let channels = pool_of_server_facad_channels.get_mut(&user_uuid);
-
                     match channels {
                         Some(channels) => {
                             channels.insert(channels.len(), channel_to_send_to_facad.clone())
@@ -197,8 +238,8 @@ pub fn broker_actor<
                         }
                     }
 
-                    for (company, subscribes) in list_of_subscribtion {
-                        let user_and_subscribes = pool_of_pubsub.get_mut(&company);
+                    for (company, subscribes) in list_of_subscribtion_for_company {
+                        let user_and_subscribes = pool_of_pubsub_for_company.get_mut(&company);
                         match user_and_subscribes {
                             Some(user_and_subscribes) => {
                                 user_and_subscribes.insert(user_uuid.clone(), subscribes);
@@ -206,19 +247,73 @@ pub fn broker_actor<
                             None => {
                                 let mut user_and_subscribes = HashMap::new();
                                 user_and_subscribes.insert(user_uuid.clone(), subscribes);
-                                pool_of_pubsub.insert(company, user_and_subscribes);
+                                pool_of_pubsub_for_company.insert(company, user_and_subscribes);
+                            }
+                        }
+                    }
+
+                    for (branch, subscribes) in list_of_subscribtion_for_branch {
+                        let user_and_subscribes = pool_of_pubsub_for_branch.get_mut(&branch);
+                        match user_and_subscribes {
+                            Some(user_and_subscribes) => {
+                                user_and_subscribes.insert(user_uuid.clone(), subscribes);
+                            }
+                            None => {
+                                let mut user_and_subscribes = HashMap::new();
+                                user_and_subscribes.insert(user_uuid.clone(), subscribes);
+                                pool_of_pubsub_for_branch.insert(branch, user_and_subscribes);
                             }
                         }
                     }
                 }
-                MessageToBroker::Publish(list_of_resource) => {
+                MessageToBroker::Unsubscribe { user_uuid } => {
+                    pool_of_server_facad_channels.remove(&user_uuid);
+                    // TODO : i have leake here i need to remove the company and branches if empty
+                    for (_, users_and_subs) in pool_of_pubsub_for_company.iter_mut() {
+                        users_and_subs.remove(&user_uuid);
+                    }
+                    for (_, users_and_subs) in pool_of_pubsub_for_branch.iter_mut() {
+                        users_and_subs.remove(&user_uuid);
+                    }
+                }
+                MessageToBroker::Publish {
+                    list_of_resources_for_company,
+                    list_of_resources_for_branch,
+                } => {
                     let mut resource_to_send: HashMap<
                         Id, // user uuid
                         Vec<Resource>,
                     > = HashMap::new();
 
-                    for (company, resource) in list_of_resource {
-                        let user_and_subscribe = pool_of_pubsub.get(&company);
+                    for (company, resource) in list_of_resources_for_company {
+                        let user_and_subscribe = pool_of_pubsub_for_company.get(&company);
+                        match user_and_subscribe {
+                            Some(user_and_subscribe) => {
+                                for (user_uuid, subscribe) in user_and_subscribe {
+                                    let mut resource_for_user =
+                                        resource_filtering_based_on_subscribe(subscribe, &resource);
+
+                                    let resource_to_append = resource_to_send.get_mut(user_uuid);
+                                    match resource_to_append {
+                                        Some(resource_to_append) => {
+                                            resource_to_append.append(&mut resource_for_user)
+                                        }
+                                        None => {
+                                            resource_to_send
+                                                .insert(user_uuid.clone(), resource_for_user);
+                                        }
+                                    }
+                                }
+                            }
+                            None => {
+                                dbg!("there is some problem here this should not happen");
+                                continue;
+                            }
+                        }
+                    }
+
+                    for (branch, resource) in list_of_resources_for_branch {
+                        let user_and_subscribe = pool_of_pubsub_for_branch.get(&branch);
                         match user_and_subscribe {
                             Some(user_and_subscribe) => {
                                 for (user_uuid, subscribe) in user_and_subscribe {

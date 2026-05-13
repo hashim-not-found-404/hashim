@@ -48,7 +48,7 @@ pub trait DBClient {
     async fn read_roles_for_user(
         &mut self,
         user_uuid: &Self::RowId,
-    ) -> Result<Vec<(server_methods::CompanyOrBranch<Self::RowId>, db_types::Role)>, DynamicError>;
+    ) -> Result<server_methods::AllRolesForUser<Self::RowId>, DynamicError>;
 }
 
 pub mod domain_errors {
@@ -93,8 +93,8 @@ pub trait Coding {
 }
 
 pub enum Either<L, R> {
-    Left(L),
-    Right(R),
+    One(L),
+    Two(R),
 }
 
 pub trait Runtime {
@@ -104,10 +104,10 @@ pub trait Runtime {
         fut: F,
     ) -> Result<T, DynamicError>;
     async fn sleep(duration: Duration);
-    async fn select<L, R, F1: Future<Output = L>, F2: Future<Output = R>>(
+    async fn select<R1, R2, F1: Future<Output = R1>, F2: Future<Output = R2>>(
         fut1: F1,
         fut2: F2,
-    ) -> Either<L, R>;
+    ) -> Either<R1, R2>;
 }
 
 pub trait Sender<T>: Clone {

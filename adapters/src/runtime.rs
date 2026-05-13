@@ -72,8 +72,8 @@ pub mod m {
             fut2: F2,
         ) -> Either<L, R> {
             match select(pin!(fut1), pin!(fut2)).await {
-                Eth::Left((result, _)) => Either::Left(result),
-                Eth::Right((result, _)) => Either::Right(result),
+                Eth::Left((result, _)) => Either::One(result),
+                Eth::Right((result, _)) => Either::Two(result),
             }
         }
     }

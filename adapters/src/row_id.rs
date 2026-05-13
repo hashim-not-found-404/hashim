@@ -4,7 +4,7 @@ pub mod m {
     use serde::{Deserialize, Serialize};
     use uuid::Uuid;
 
-    #[derive(Clone, Serialize, Deserialize, Debug, Eq, PartialEq, From)]
+    #[derive(Clone, Serialize, Deserialize, Debug, Eq, PartialEq, From, Hash)]
     pub struct S(Uuid);
 
     impl S {

@@ -15,14 +15,6 @@ pub mod m {
         (Utc::now() + Duration::minutes(30)).timestamp() as u64
     }
 
-    impl Default for S {
-        fn default() -> Self {
-            Self {
-                key: Arc::new("key".into()),
-            }
-        }
-    }
-
     #[derive(Serialize, Deserialize)]
     struct Claims {
         id: row_id::m::S,
@@ -32,6 +24,12 @@ pub mod m {
     impl JWT for S {
         type UserId = row_id::m::S;
         type JsonWebToken = String;
+
+        fn new() -> Self {
+            Self {
+                key: Arc::new("key".into()),
+            }
+        }
 
         fn sign(&self, id: &Self::UserId) -> Self::JsonWebToken {
             let claims = Claims {

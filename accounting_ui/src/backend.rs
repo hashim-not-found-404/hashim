@@ -1,5 +1,5 @@
 use dioxus::{core::ReactiveContext, prelude::*};
-use my_core::prelude::*;
+use my_core::prelude::{Signal, *};
 use std::{
     collections::HashSet,
     sync::{Arc, Mutex, MutexGuard},

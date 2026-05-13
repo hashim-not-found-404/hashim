@@ -57,22 +57,25 @@ async fn ws_handler(req: HttpRequest, stream: web::Payload) -> HttpResponse {
         .aggregate_continuations()
         .max_continuation_size(2_usize.pow(16));
 
+    let state = req.app_data::<web::Data<GG>>().unwrap();
+    // let data = server::server_actor::<
+    //     CockroachDB,
+    //     CockroachClient,
+    //     jwt::m::S,
+    //     authentication::m::S,
+    //     functions::m::S,
+    //     row_id::m::S,
+    //     encode_decode::m::S,
+    //     runtime::m::S,
+    //     actors::m::S,
+    // >(state)
+    // .await;
+
     rt::spawn(async move {
         // Keep the connection alive
         while let Some(msg) = stream.next().await {
             match msg {
                 Ok(AggregatedMessage::Binary(data)) => {
-                    let state = req.app_data::<web::Data<GG>>().unwrap();
-                    let data = server::server::<
-                        CockroachDB,
-                        CockroachClient,
-                        jwt::m::S,
-                        authentication::m::S,
-                        functions::m::S,
-                        row_id::m::S,
-                        encode_decode::m::S,
-                    >(&data.to_vec(), state)
-                    .await;
                     session.binary(data).await.unwrap();
                 }
                 Ok(AggregatedMessage::Text(text)) => {

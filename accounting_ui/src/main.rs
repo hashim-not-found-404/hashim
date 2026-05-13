@@ -3,7 +3,7 @@ use crate::backend::MySignal;
 use adapters::prelude::*;
 use dioxus::prelude::*;
 use dioxus_logger::tracing::Level;
-use my_core::prelude::*;
+use my_core::prelude::{Signal, *};
 use std::sync::Arc;
 
 type TypeMyWAMP = web_socket::MyWAMP<
