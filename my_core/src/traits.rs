@@ -18,12 +18,14 @@ pub trait HashedPassword {
 pub trait JWT {
     type UserId: RowId;
     type JsonWebToken: From<String> + Into<String>;
+    fn new() -> Self;
     fn sign(&self, user_uuid: &Self::UserId) -> Self::JsonWebToken;
     fn validate(&self, token: Self::JsonWebToken) -> Option<Self::UserId>;
 }
 
 pub trait Database {
     type Client: DBClient;
+    async fn new() -> Self;
     async fn get_client(&self) -> Result<Self::Client, DynamicError>;
 }
 

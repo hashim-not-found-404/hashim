@@ -20,7 +20,7 @@ type GG = server_methods::ServerMethods<
 async fn main() {
     println!("started server");
 
-    let actions = GG::new(CockroachDB::default(), jwt::m::S::default());
+    let actions = GG::new().await;
 
     let actions = web::Data::new(actions);
 
