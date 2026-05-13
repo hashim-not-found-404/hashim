@@ -28,7 +28,7 @@ where
     F: Functions,
     Id: RowId,
 {
-    pub fn new(database: DB, jwt: Jwt) -> Self {
+    pub async fn new() -> Self {
         Self {
             database,
             client: PhantomData::<Cli>,
