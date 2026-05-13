@@ -20,9 +20,7 @@ type GG = server_methods::ServerMethods<
 async fn main() {
     println!("started server");
 
-    let actions = GG::new().await;
-
-    let actions = web::Data::new(actions);
+    let actions = web::Data::new(GG::new().await);
 
     HttpServer::new(move || {
         let cors = Cors::default()

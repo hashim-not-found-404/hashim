@@ -28,6 +28,7 @@ where
     F: Functions,
     Id: RowId,
 {
+    // TODO : init broker here
     pub async fn new() -> Self {
         Self {
             database: DB::new().await,
