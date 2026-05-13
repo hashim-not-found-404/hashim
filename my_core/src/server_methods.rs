@@ -30,9 +30,9 @@ where
 {
     pub async fn new() -> Self {
         Self {
-            database,
+            database: DB::new().await,
             client: PhantomData::<Cli>,
-            jwt,
+            jwt: Jwt::new(),
             authentication: PhantomData::<Authentication>,
             functions: PhantomData::<F>,
             rowid: PhantomData::<Id>,
