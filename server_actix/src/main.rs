@@ -1,11 +1,63 @@
 use actix_cors::Cors;
-use actix_web::{App, HttpRequest, HttpResponse, HttpServer, rt, web};
-use actix_ws::AggregatedMessage;
+use actix_web::{App, HttpRequest, HttpResponse, HttpServer, web};
 use adapters::prelude::*;
 use db_client_cockroach::{CockroachClient, CockroachDB};
-use futures_util::StreamExt;
 use my_core::prelude::*;
 use std::{fs::File, io::BufReader};
+
+mod web_socket_server {
+    use actix_ws::{AggregatedMessage, AggregatedMessageStream, Session};
+    use futures_util::StreamExt;
+    use my_core::prelude::*;
+
+    pub struct S {
+        session: Session,
+        stream: AggregatedMessageStream,
+    }
+
+    impl S {
+        pub fn new(session: Session, stream: AggregatedMessageStream) -> Self {
+            Self { session, stream }
+        }
+    }
+
+    impl WSServer for S {
+        async fn send_bin(&mut self, bin: Vec<u8>) -> Result<(), DynamicError> {
+            self.session.binary(bin).await?;
+            Ok(())
+        }
+
+        async fn receive(&mut self) -> Result<server::WSMessage, DynamicError> {
+            match self.stream.next().await {
+                Some(msg) => match msg? {
+                    AggregatedMessage::Binary(data) => {
+                        return Ok(server::WSMessage::Binary(data.to_vec()));
+                    }
+                    AggregatedMessage::Text(_) => {
+                        return Err("we dont use text".into());
+                    }
+                    AggregatedMessage::Ping(data) => {
+                        todo!()
+                    }
+                    AggregatedMessage::Pong(data) => {
+                        todo!()
+                    }
+                    AggregatedMessage::Close(_) => {
+                        return Ok(server::WSMessage::Close);
+                    }
+                },
+                None => {
+                    return Err(dbg!("WebSocket connection closed").into());
+                }
+            }
+        }
+
+        async fn close(self) -> Result<(), DynamicError> {
+            self.session.clone().close(None).await?;
+            Ok(())
+        }
+    }
+}
 
 type GG = server_methods::ServerMethods<
     CockroachDB,
@@ -45,7 +97,7 @@ async fn main() {
 }
 
 async fn ws_handler(req: HttpRequest, stream: web::Payload) -> HttpResponse {
-    let (response, mut session, stream) = match actix_ws::handle(&req, stream) {
+    let (response, session, stream) = match actix_ws::handle(&req, stream) {
         Ok(result) => result,
         Err(e) => {
             eprintln!("Error upgrading to WebSocket: {}", e);
@@ -53,11 +105,11 @@ async fn ws_handler(req: HttpRequest, stream: web::Payload) -> HttpResponse {
         }
     };
 
-    let mut stream = stream
+    let stream = stream
         .aggregate_continuations()
         .max_continuation_size(2_usize.pow(16));
 
-    let session = ws_server_adapter::m::S::new(session, stream);
+    let session = web_socket_server::S::new(session, stream);
 
     let state = req.app_data::<web::Data<GG>>().unwrap();
     server::server_actor::<
@@ -69,7 +121,7 @@ async fn ws_handler(req: HttpRequest, stream: web::Payload) -> HttpResponse {
         row_id::m::S,
         encode_decode::m::S,
         runtime::m::S,
-        ws_server_adapter::m::S,
+        web_socket_server::S,
         actors::m::S,
     >(
         state.clone().into_inner(),

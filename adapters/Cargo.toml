@@ -26,4 +26,3 @@ tokio = { workspace = true , features = ["macros"]}
 argon2 = { workspace = true }
 jsonwebtoken = { workspace = true }
 regex = { workspace = true }
-actix-ws = { workspace = true }

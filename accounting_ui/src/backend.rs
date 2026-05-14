@@ -1,5 +1,5 @@
 use dioxus::{core::ReactiveContext, prelude::*};
-use my_core::prelude::{Signal, *};
+use my_core::prelude::Signal;
 use std::{
     collections::HashSet,
     sync::{Arc, Mutex, MutexGuard},
@@ -78,7 +78,7 @@ impl Default for MySignalForLists {
     }
 }
 
-impl front_end_model_view::Signal for MySignalForLists {
+impl Signal for MySignalForLists {
     type T = String;
     fn read(&self) -> Self::T {
         self.0.read().last().unwrap_or(&String::default()).clone()
