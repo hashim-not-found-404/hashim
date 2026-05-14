@@ -6,9 +6,9 @@ pub enum WSMessage {
 }
 
 pub trait WSServer {
-    async fn send_bin(&self, bin: Vec<u8>) -> Result<(), DynamicError>;
+    async fn send_bin(&mut self, bin: Vec<u8>) -> Result<(), DynamicError>;
     async fn receive(&mut self) -> Result<WSMessage, DynamicError>;
-    async fn close(&self) -> Result<(), DynamicError>;
+    async fn close(self) -> Result<(), DynamicError>;
 }
 
 // TODO : make the server as actor

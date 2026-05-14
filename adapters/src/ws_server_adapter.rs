@@ -16,51 +16,39 @@ pub mod m {
     }
 
     impl WSServer for S {
-        async fn send_bin(&self, bin: Vec<u8>) -> Result<(), DynamicError> {
-            todo!()
+        async fn send_bin(&mut self, bin: Vec<u8>) -> Result<(), DynamicError> {
+            self.session.binary(bin).await?;
+            Ok(())
         }
 
         async fn receive(&mut self) -> Result<server::WSMessage, DynamicError> {
-            if let Some(msg) = self.stream.next().await {
-                match msg {
-                    Ok(AggregatedMessage::Binary(data)) => {
-                        self.session.binary(data).await.unwrap();
+            match self.stream.next().await {
+                Some(msg) => match msg? {
+                    AggregatedMessage::Binary(data) => {
+                        return Ok(server::WSMessage::Binary(data.to_vec()));
                     }
-                    Ok(AggregatedMessage::Text(text)) => {
-                        println!("Received text message: {}", text);
-                        // Echo back
-                        if let Err(e) = self.session.text(text).await {
-                            eprintln!("Error responding: {}", e);
-                        }
+                    AggregatedMessage::Text(_) => {
+                        return Err("we dont use text".into());
                     }
-                    Ok(AggregatedMessage::Ping(data)) => {
-                        // Auto-respond to pings
-                        if let Err(e) = self.session.pong(&data).await {
-                            eprintln!("Error sending pong: {}", e);
-                        }
+                    AggregatedMessage::Ping(data) => {
+                        todo!()
                     }
-                    Ok(AggregatedMessage::Pong(data)) => {
-                        if let Err(e) = self.session.ping(&data).await {
-                            eprintln!("Error sending pong: {}", e);
-                        }
+                    AggregatedMessage::Pong(data) => {
+                        todo!()
                     }
-                    Ok(AggregatedMessage::Close(reason)) => {
-                        println!("Client requested close: {:?}", reason);
-                        if let Err(e) = self.session.clone().close(None).await {
-                            eprintln!("Error closing session: {}", e);
-                        }
+                    AggregatedMessage::Close(reason) => {
+                        return Ok(server::WSMessage::Close);
                     }
-                    Err(e) => {
-                        eprintln!("WebSocket error: {}", e);
-                    }
+                },
+                None => {
+                    return Err(dbg!("WebSocket connection closed").into());
                 }
             }
-            println!("WebSocket connection closed");
-            todo!()
         }
 
-        async fn close(&self) -> Result<(), DynamicError> {
-            todo!()
+        async fn close(self) -> Result<(), DynamicError> {
+            self.session.clone().close(None).await?;
+            Ok(())
         }
     }
 }

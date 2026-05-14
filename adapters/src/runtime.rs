@@ -25,7 +25,14 @@ pub mod m {
             fut1: F1,
             fut2: F2,
         ) -> Either<R1, R2> {
-            todo!()
+            tokio::select! {
+                r1 = fut1 => {
+                    Either::One(r1)
+                }
+                r2 = fut2 => {
+                    Either::Two(r2)
+                }
+            }
         }
     }
 }
