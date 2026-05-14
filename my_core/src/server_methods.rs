@@ -355,8 +355,8 @@ trait DataToResourceMapping {
 }
 
 pub struct AllRolesForUser<Id: RowId> {
-    companies: HashMap<Id, Vec<db_types::Role>>,
-    branches: HashMap<Id, Vec<db_types::Role>>,
+    pub companies: HashMap<Id, Vec<db_types::Role>>,
+    pub branches: HashMap<Id, Vec<db_types::Role>>,
 }
 
 pub struct AllSubscribesForUser<Id: RowId> {

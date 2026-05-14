@@ -109,7 +109,10 @@ pub fn server_actor<DB, Cli, Jwt, Authentication, F, Id, DE, RT, WSS, MPSC>(
                                 web_socket::MessageType::OneWay { path, payload } => todo!(),
                             };
                         }
-                        WSMessage::Close => todo!(),
+                        WSMessage::Close => {
+                            session.close().await.unwrap();
+                            return;
+                        }
                     }
                 }
                 Either::Two(a) => todo!(),

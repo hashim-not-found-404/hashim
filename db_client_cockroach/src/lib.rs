@@ -1,3 +1,5 @@
+use std::{collections::HashMap, str::FromStr};
+
 use adapters::prelude::*;
 use deadpool_postgres::{Config, Pool, Runtime};
 use my_core::prelude::*;
@@ -53,30 +55,19 @@ impl DBClient for CockroachClient {
         &mut self,
         user_id: &String,
     ) -> Result<Option<(Self::RowId, Self::HashedPassword)>, DynamicError> {
-        let query = "SELECT rowid,pass FROM accounting_app.user WHERE id = $1 limit 1;";
+        let query = "SELECT rowid,pass FROM accounting_app.user WHERE id = $1 LIMIT 1;";
         let stmt = self.client.prepare_cached(query).await?;
-        let result = self.client.query_opt(&stmt, &[user_id]).await;
+        let row = self.client.query_opt(&stmt, &[user_id]).await?;
 
-        match result {
-            Ok(Some(row)) => {
-                let row_id = row.try_get::<_, Uuid>(0);
-                let row_id = match row_id {
-                    Ok(o) => o,
-                    Err(e) => unreachable!("{}", e),
-                };
-
-                let hashed_password = row.try_get::<_, String>(1);
-                let hashed_password = match hashed_password {
-                    Ok(o) => o,
-                    Err(e) => unreachable!("{}", e),
-                };
-
+        match row {
+            Some(row) => {
+                let row_id = row.try_get::<_, Uuid>(0)?;
+                let hashed_password = row.try_get::<_, String>(1)?;
                 return Ok(Some((row_id.into(), hashed_password.into())));
             }
-            Ok(None) => {
+            None => {
                 return Ok(None);
             }
-            Err(e) => unreachable!("{}", e),
         }
     }
 
@@ -84,7 +75,59 @@ impl DBClient for CockroachClient {
         &mut self,
         user_uuid: &Self::RowId,
     ) -> Result<server_methods::AllRolesForUser<Self::RowId>, DynamicError> {
-        todo!()
+        let query = r#"
+            SELECT
+                'company' as type,
+                data_group,
+                role
+            FROM accounting_app.access_control_for_company
+            WHERE user_ = $1
+
+            UNION ALL
+
+            SELECT
+                'branch' as type,
+                data_group,
+                role
+            FROM accounting_app.access_control_for_company_branch
+            WHERE user_ = $1
+        "#;
+
+        let stmt = self.client.prepare_cached(query).await?;
+        let rows = self.client.query(&stmt, &[&user_uuid.into_inner()]).await?;
+
+        let mut result = server_methods::AllRolesForUser::<Self::RowId> {
+            companies: HashMap::new(),
+            branches: HashMap::new(),
+        };
+
+        for row in rows {
+            let entity_type: String = row.try_get("type")?;
+            let data_group: Uuid = row.try_get("data_group")?;
+            let role_str: &str = row.try_get("role")?;
+
+            let role = db_types::Role::from_str(role_str)?;
+
+            match entity_type.as_str() {
+                "company" => {
+                    result
+                        .companies
+                        .entry(data_group.into())
+                        .or_insert_with(Vec::new)
+                        .push(role);
+                }
+                "branch" => {
+                    result
+                        .branches
+                        .entry(data_group.into())
+                        .or_insert_with(Vec::new)
+                        .push(role);
+                }
+                _ => {}
+            }
+        }
+
+        Ok(result)
     }
 }
 
@@ -116,18 +159,10 @@ impl DBTransaction for CockroachTxn<'_> {
     async fn read_sign_up(&mut self, user_id: &String) -> Result<bool, DynamicError> {
         let query = "SELECT EXISTS( SELECT 1 FROM accounting_app.user WHERE id = $1 );";
         let stmt = self.txn.prepare_cached(query).await?;
-        let result = self.txn.query_one(&stmt, &[user_id]).await;
+        let row = self.txn.query_one(&stmt, &[user_id]).await?;
 
-        match result {
-            Ok(row) => {
-                let value = row.try_get::<_, bool>(0);
-                match value {
-                    Ok(o) => return Ok(!o),
-                    Err(e) => unreachable!("{}", e),
-                }
-            }
-            Err(e) => unreachable!("{}", e),
-        }
+        let value = row.try_get::<_, bool>(0)?;
+        Ok(!value)
     }
 
     async fn write_sign_up(
@@ -139,24 +174,16 @@ impl DBTransaction for CockroachTxn<'_> {
         let query =
             "INSERT INTO accounting_app.user (id, pass, name) VALUES ($1, $2, $3) RETURNING rowid;";
         let stmt = self.txn.prepare_cached(query).await?;
-        let result = self
+        let row = self
             .txn
             .query_one(
                 &stmt,
                 &[&user_id, &hashed_password.into_inner(), &user_name],
             )
-            .await;
+            .await?;
 
-        match result {
-            Ok(row) => {
-                let value = row.try_get::<_, Uuid>(0);
-                match value {
-                    Ok(o) => return Ok(o.into()),
-                    Err(e) => unreachable!("{}", e),
-                }
-            }
-            Err(e) => unreachable!("{}", e),
-        }
+        let value = row.try_get::<_, Uuid>(0)?;
+        return Ok(value.into());
     }
 }
 

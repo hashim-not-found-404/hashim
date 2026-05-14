@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use crate::prelude::*;
 
 // #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -39,6 +41,25 @@ impl Currency {
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub enum Role {
     Manager,
+}
+
+impl FromStr for Role {
+    type Err = DynamicError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "Manager" => Ok(db_types::Role::Manager),
+            _ => Err("role not exist".into()),
+        }
+    }
+}
+
+impl Role {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Role::Manager => "Manager",
+        }
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
