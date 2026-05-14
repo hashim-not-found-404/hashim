@@ -11,7 +11,6 @@ pub trait WSServer {
     async fn close(self) -> Result<(), DynamicError>;
 }
 
-// TODO : make the server as actor
 pub fn server_actor<DB, Cli, Jwt, Authentication, F, Id, DE, RT, WSS, MPSC>(
     state: Arc<server_methods::ServerMethods<DB, Cli, Jwt, Authentication, F, Id, MPSC, RT>>,
     mut session: WSS,
