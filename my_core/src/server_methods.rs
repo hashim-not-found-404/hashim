@@ -5,7 +5,7 @@ where
     DB: Database<Client = Cli>,
     Cli: DBClient,
     for<'a> Cli::Txn<'a>: DBTransaction<RowId = Id, HashedPassword = Authentication>,
-    Jwt: JWT<UserId = Id>,
+    Jwt: JWT<UserId = Id, JsonWebToken = String>,
     Authentication: HashedPassword,
     F: Functions,
     Id: RowId + 'static,
@@ -29,7 +29,7 @@ where
     DB: Database<Client = Cli>,
     Cli: DBClient<RowId = Id, HashedPassword = Authentication>,
     for<'a> Cli::Txn<'a>: DBTransaction<RowId = Id, HashedPassword = Authentication>,
-    Jwt: JWT<UserId = Id>,
+    Jwt: JWT<UserId = Id, JsonWebToken = String>,
     Authentication: HashedPassword,
     F: Functions,
     Id: RowId + 'static,
@@ -124,6 +124,51 @@ where
                 return Ok(Err(errr));
             }
         };
+    }
+
+    pub async fn create_company(
+        &self,
+        input: &create_company::Input,
+    ) -> Result<Result<(create_company::Ok, Id), create_company::Error>, DynamicError> {
+        let mut errr = create_company::Error {
+            nounc: None,
+            jwt: None,
+        };
+
+        let user_uuid = self.jwt.validate(input.jwt.clone());
+        let user_uuid = match user_uuid {
+            Some(user_uuid) => user_uuid,
+            None => {
+                errr.jwt = Some(JWTError::Invalid);
+                return Ok(Err(errr));
+            }
+        };
+
+        let mut client = self.database.get_client().await?;
+        let mut txn = client.begin_transaction().await?;
+
+        let result = (|| async {
+            let is_nounc_used = txn.read_create_company(&input.nounc).await?;
+
+            if !is_nounc_used {
+                errr.nounc = Some(NouncError::AlreadyUsed);
+                return Ok(Err(errr));
+            }
+
+            txn.write_create_company(&input.nounc, &input.company_name, &input.currency)
+                .await?;
+
+            Ok(Ok((create_company::Ok, user_uuid)))
+        })()
+        .await;
+
+        if let Ok(Ok(_)) = &result {
+            let _ = txn.commit_transaction().await?;
+        } else {
+            let _ = txn.rollback_transaction().await?;
+        }
+
+        return result;
     }
 
     pub async fn get_table_of_subscribed_data(

@@ -185,6 +185,22 @@ impl DBTransaction for CockroachTxn<'_> {
         let value = row.try_get::<_, Uuid>(0)?;
         return Ok(value.into());
     }
+
+    async fn read_create_company(
+        &mut self,
+        nounc: &u64,
+    ) -> Result<bool /* is nounc used */, DynamicError> {
+        todo!()
+    }
+
+    async fn write_create_company(
+        &mut self,
+        nounc: &u64,
+        company_name: &String,
+        currency: &db_types::Currency,
+    ) -> Result<(), DynamicError> {
+        todo!()
+    }
 }
 
 fn get_sql_state(error: tokio_postgres::Error) -> SqlState {

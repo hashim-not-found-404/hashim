@@ -78,7 +78,18 @@ pub trait DBTransaction {
         user_id: &String,
         hashed_password: &Self::HashedPassword,
         user_name: &Option<String>,
-    ) -> Result<Self::RowId /* is uuid of the user */, DynamicError>;
+    ) -> Result<Self::RowId /* user uuid */, DynamicError>;
+
+    async fn read_create_company(
+        &mut self,
+        nounc: &u64,
+    ) -> Result<bool /* is nounc used */, DynamicError>;
+    async fn write_create_company(
+        &mut self,
+        nounc: &u64,
+        company_name: &String,
+        currency: &db_types::Currency,
+    ) -> Result<(), DynamicError>;
 }
 
 pub trait WebSocketOp: Sized {

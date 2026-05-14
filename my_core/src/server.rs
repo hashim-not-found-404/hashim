@@ -19,7 +19,7 @@ pub fn server_actor<DB, Cli, Jwt, Authentication, F, Id, DE, RT, WSS, MPSC>(
     DB: Database<Client = Cli> + 'static,
     Cli: DBClient<RowId = Id, HashedPassword = Authentication> + 'static,
     for<'a> Cli::Txn<'a>: DBTransaction<RowId = Id, HashedPassword = Authentication>,
-    Jwt: JWT<UserId = Id> + 'static,
+    Jwt: JWT<UserId = Id, JsonWebToken = String> + 'static,
     Authentication: HashedPassword + 'static,
     F: Functions + 'static,
     Id: RowId + 'static,
@@ -67,6 +67,42 @@ pub fn server_actor<DB, Cli, Jwt, Authentication, F, Id, DE, RT, WSS, MPSC>(
 
                                             let result = match input {
                                                 Ok(input) => match state.sign_in(&input).await {
+                                                    Ok(o) => match o {
+                                                        Ok((o, user_uuid)) => {
+                                                            let subs = state
+                                                                .get_table_of_subscribed_data(
+                                                                    &user_uuid,
+                                                                )
+                                                                .await
+                                                                .unwrap();
+
+                                                            sender_to_broker.send(server_methods::MessageToBroker::Subscribe {
+                                                                user_uuid: user_uuid,
+                                                                list_of_subscribtion_for_company: subs.companies,
+                                                                list_of_subscribtion_for_branch: subs.branches,
+                                                                channel_to_send_to_facad: sender_to_server.clone()
+                                                            }).await.unwrap();
+
+                                                            Ok(Ok(o))
+                                                        }
+                                                        Err(e) => Ok(Err(e)),
+                                                    },
+                                                    Err(_) => Err(HashimError::InternalServerError),
+                                                },
+                                                Err(_) => Err(HashimError::DecodingErrorAtServer),
+                                            };
+
+                                            DE::encode(&result)
+                                        }
+                                        create_company::PATH => {
+                                            let input =
+                                                DE::decode::<create_company::Input>(&payload);
+
+                                            let result = match input {
+                                                Ok(input) => match state
+                                                    .create_company(&input)
+                                                    .await
+                                                {
                                                     Ok(o) => match o {
                                                         Ok((o, user_uuid)) => {
                                                             let subs = state

@@ -74,6 +74,22 @@ where
         Ok(result)
     }
 
+    pub async fn create_company(
+        self: Arc<Self>,
+        input: &create_company::Input,
+    ) -> Result<create_company::Result, DynamicError> {
+        let result = self
+            .web_socket
+            .send_and_receive::<create_company::Input, Result<create_company::Result, HashimError>>(
+                &create_company::PATH.to_string(),
+                input,
+                TIMEOUT,
+            )
+            .await??;
+
+        Ok(result)
+    }
+
     pub async fn data_receiver(self: Arc<Self>, sender_to_error: MPSC::Sender<DynamicError>) {
         self.clone()
             .web_socket

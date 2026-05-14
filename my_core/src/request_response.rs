@@ -6,6 +6,16 @@ pub const ADDRESS: &str = "127.0.0.1:8081";
 
 // there should be no generic in all the below types
 
+#[derive(Debug, Deserialize, Serialize)]
+pub enum NouncError {
+    AlreadyUsed,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub enum JWTError {
+    Invalid,
+}
+
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
 pub enum HashimError {
     InternalServerError,
@@ -130,7 +140,9 @@ pub mod create_company {
 
     #[derive(Debug, Deserialize, Serialize)]
     pub struct Input {
-        pub name: String,
+        pub jwt: String,
+        pub nounc: u64,
+        pub company_name: String,
         pub currency: db_types::Currency,
     }
 
@@ -138,7 +150,10 @@ pub mod create_company {
     pub struct Ok;
 
     #[derive(Debug, Deserialize, Serialize)]
-    pub struct Error;
+    pub struct Error {
+        pub jwt: Option<JWTError>,
+        pub nounc: Option<NouncError>,
+    }
 
     pub type Result = StdResult<Ok, Error>;
 }

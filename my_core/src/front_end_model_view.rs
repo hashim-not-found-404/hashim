@@ -217,24 +217,31 @@ impl<
     //     }
     // }
 
-    // pub async fn create_company(&self) {
-    //     let input = self.generate_txn(create_company::Input {
-    //         name: self.company_name.read(),
-    //         currency: self.company_currency.read(),
-    //     });
+    pub async fn create_company(self: Arc<Self>) {
+        RT::spawn_local(async move {
+            let input = create_company::Input {
+                jwt: self.jwt.read().unwrap().clone().unwrap_or_default(),
+                nounc: TxnNumGen::generate(),
+                company_name: self.company_name.read(),
+                currency: self.company_currency.read(),
+            };
 
-    //     let result = self.routs.create_company(input).await;
+            let result = self.routs.clone().create_company(&input).await;
 
-    //     match result {
-    //         Ok(Ok(business_output)) => {}
-    //         Ok(Err(business_error)) => match business_error {
-    //             business_layer::Error::InvalidInput(err) => {}
-    //             business_layer::Error::InvalidJWT => self.is_signed_in.set(false),
-    //             _ => todo!(),
-    //         },
-    //         Err(external_error) => {
-    //             self.external_errors.set(external_error.to_string());
-    //         }
-    //     }
-    // }
+            match result {
+                Ok(Ok(business_output)) => {}
+                Ok(Err(business_error)) => {
+                    // self.sign_in_error_for_user_id
+                    //     .set(match business_error.user_id {
+                    //         Some(_) => String::from("user not exist"),
+                    //         None => String::new(),
+                    //     });
+                    self.is_signed_in.set(business_error.jwt.is_some());
+                }
+                Err(external_error) => {
+                    self.external_errors.set(external_error.to_string());
+                }
+            }
+        });
+    }
 }
