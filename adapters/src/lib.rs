@@ -16,11 +16,12 @@ pub mod random_number;
 pub mod row_id;
 pub mod runtime;
 pub mod web_socket_adapter;
+pub mod ws_server_adapter;
 
 pub mod prelude {
     pub use crate::{
         actors, authentication, cache, encode_decode, functions, jwt, mpsc_receiver, mpsc_sender,
-        random_number, row_id, runtime, web_socket_adapter,
+        random_number, row_id, runtime, web_socket_adapter, ws_server_adapter,
     };
 
     // my crates

@@ -20,7 +20,8 @@ pub mod prelude {
         client, client_cache, db_types,
         front_end_model_view::{self, Signal},
         request_response::*,
-        server, server_methods,
+        server::{self, WSServer},
+        server_methods,
         traits::*,
         translations, web_socket,
     };

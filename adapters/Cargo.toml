@@ -15,7 +15,7 @@ postcard = { workspace = true }
 getrandom = { workspace = true }
 chrono = { workspace = true }
 
-# [target.'cfg(target_arch = "wasm32")'.dependencies]
+[target.'cfg(target_arch = "wasm32")'.dependencies]
 gloo-net = { workspace = true }
 gloo-timers = { workspace = true }
 wasm-bindgen-futures = { workspace = true }
@@ -26,3 +26,4 @@ tokio = { workspace = true }
 argon2 = { workspace = true }
 jsonwebtoken = { workspace = true }
 regex = { workspace = true }
+actix-ws = { workspace = true }

@@ -98,16 +98,20 @@ pub enum Either<L, R> {
 }
 
 pub trait Runtime {
-    fn spawn<F: Future + 'static>(fut: F);
-    async fn timeout<T, F: Future<Output = T>>(
-        duration: Duration,
-        fut: F,
-    ) -> Result<T, DynamicError>;
+    fn spawn_local<F>(fut: F)
+    where
+        F: Future + 'static;
+
+    async fn timeout<T, F>(duration: Duration, fut: F) -> Result<T, DynamicError>
+    where
+        F: Future<Output = T>;
+
     async fn sleep(duration: Duration);
-    async fn select<R1, R2, F1: Future<Output = R1>, F2: Future<Output = R2>>(
-        fut1: F1,
-        fut2: F2,
-    ) -> Either<R1, R2>;
+
+    async fn select<R1, R2, F1, F2>(fut1: F1, fut2: F2) -> Either<R1, R2>
+    where
+        F1: Future<Output = R1>,
+        F2: Future<Output = R2>;
 }
 
 pub trait Sender<T>: Clone {

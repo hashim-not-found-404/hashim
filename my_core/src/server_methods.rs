@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-pub struct ServerMethods<DB, Cli, Jwt, Authentication, F, Id>
+pub struct ServerMethods<DB, Cli, Jwt, Authentication, F, Id, MPSC, RT>
 where
     DB: Database<Client = Cli>,
     Cli: DBClient,
@@ -8,7 +8,9 @@ where
     Jwt: JWT<UserId = Id>,
     Authentication: HashedPassword,
     F: Functions,
-    Id: RowId,
+    Id: RowId + 'static,
+    MPSC: MultiProducerSingleConsumer + 'static,
+    RT: Runtime,
 {
     database: DB,
     client: PhantomData<Cli>,
@@ -16,9 +18,13 @@ where
     authentication: PhantomData<Authentication>,
     functions: PhantomData<F>,
     rowid: PhantomData<Id>,
+    mpsc: PhantomData<MPSC>,
+    runtime: PhantomData<RT>,
+    pub sender_to_broker: MPSC::Sender<MessageToBroker<Id, MPSC>>,
 }
 
-impl<DB, Cli, Jwt, Authentication, F, Id> ServerMethods<DB, Cli, Jwt, Authentication, F, Id>
+impl<DB, Cli, Jwt, Authentication, F, Id, MPSC, RT>
+    ServerMethods<DB, Cli, Jwt, Authentication, F, Id, MPSC, RT>
 where
     DB: Database<Client = Cli>,
     Cli: DBClient<RowId = Id, HashedPassword = Authentication>,
@@ -26,10 +32,14 @@ where
     Jwt: JWT<UserId = Id>,
     Authentication: HashedPassword,
     F: Functions,
-    Id: RowId,
+    Id: RowId + 'static,
+    MPSC: MultiProducerSingleConsumer + 'static,
+    RT: Runtime,
 {
-    // TODO : init broker here
     pub async fn new() -> Self {
+        let (sender_to_broker, receiver_to_broker) = MPSC::channel();
+        Self::broker_actor(receiver_to_broker);
+
         Self {
             database: DB::new().await,
             client: PhantomData::<Cli>,
@@ -37,6 +47,9 @@ where
             authentication: PhantomData::<Authentication>,
             functions: PhantomData::<F>,
             rowid: PhantomData::<Id>,
+            mpsc: PhantomData::<MPSC>,
+            runtime: PhantomData::<RT>,
+            sender_to_broker,
         }
     }
 
@@ -137,6 +150,188 @@ where
 
         Ok(subs)
     }
+
+    pub fn broker_actor(receiver_to_broker: MPSC::Receiver<MessageToBroker<Id, MPSC>>) {
+        RT::spawn_local(async move {
+            let mut pool_of_pubsub_for_company: HashMap<
+                Id, // company uuid
+                HashMap<
+                    Id, // user uuid
+                    Vec<Subscribe>,
+                >,
+            > = HashMap::with_capacity(1000);
+
+            let mut pool_of_pubsub_for_branch: HashMap<
+                Id, // branch uuid
+                HashMap<
+                    Id, // user uuid
+                    Vec<Subscribe>,
+                >,
+            > = HashMap::with_capacity(10000);
+
+            let mut pool_of_server_facad_channels: HashMap<
+                Id,                               // user uuid
+                Vec<MPSC::Sender<Vec<Resource>>>, // because user may have multiple web socket connection
+            > = HashMap::with_capacity(10000);
+
+            loop {
+                let message = receiver_to_broker.recv().await.unwrap();
+                match message {
+                    MessageToBroker::Subscribe {
+                        user_uuid,
+                        list_of_subscribtion_for_company,
+                        list_of_subscribtion_for_branch,
+                        channel_to_send_to_facad,
+                    } => {
+                        let channels = pool_of_server_facad_channels.get_mut(&user_uuid);
+                        match channels {
+                            Some(channels) => {
+                                channels.insert(channels.len(), channel_to_send_to_facad.clone())
+                            }
+                            None => {
+                                pool_of_server_facad_channels.insert(
+                                    user_uuid.clone(),
+                                    vec![channel_to_send_to_facad.clone()],
+                                );
+                            }
+                        }
+
+                        for (company, subscribes) in list_of_subscribtion_for_company {
+                            let user_and_subscribes = pool_of_pubsub_for_company.get_mut(&company);
+                            match user_and_subscribes {
+                                Some(user_and_subscribes) => {
+                                    user_and_subscribes.insert(user_uuid.clone(), subscribes);
+                                }
+                                None => {
+                                    let mut user_and_subscribes = HashMap::new();
+                                    user_and_subscribes.insert(user_uuid.clone(), subscribes);
+                                    pool_of_pubsub_for_company.insert(company, user_and_subscribes);
+                                }
+                            }
+                        }
+
+                        for (branch, subscribes) in list_of_subscribtion_for_branch {
+                            let user_and_subscribes = pool_of_pubsub_for_branch.get_mut(&branch);
+                            match user_and_subscribes {
+                                Some(user_and_subscribes) => {
+                                    user_and_subscribes.insert(user_uuid.clone(), subscribes);
+                                }
+                                None => {
+                                    let mut user_and_subscribes = HashMap::new();
+                                    user_and_subscribes.insert(user_uuid.clone(), subscribes);
+                                    pool_of_pubsub_for_branch.insert(branch, user_and_subscribes);
+                                }
+                            }
+                        }
+                    }
+                    MessageToBroker::Unsubscribe { user_uuid } => {
+                        pool_of_server_facad_channels.remove(&user_uuid);
+                        // TODO : i have leake here i need to remove the company and branches if empty
+                        for (_, users_and_subs) in pool_of_pubsub_for_company.iter_mut() {
+                            users_and_subs.remove(&user_uuid);
+                        }
+                        for (_, users_and_subs) in pool_of_pubsub_for_branch.iter_mut() {
+                            users_and_subs.remove(&user_uuid);
+                        }
+                    }
+                    MessageToBroker::Publish {
+                        list_of_resources_for_company,
+                        list_of_resources_for_branch,
+                    } => {
+                        let mut resource_to_send: HashMap<
+                            Id, // user uuid
+                            Vec<Resource>,
+                        > = HashMap::new();
+
+                        for (company, resource) in list_of_resources_for_company {
+                            let user_and_subscribe = pool_of_pubsub_for_company.get(&company);
+                            match user_and_subscribe {
+                                Some(user_and_subscribe) => {
+                                    for (user_uuid, subscribe) in user_and_subscribe {
+                                        let mut resource_for_user =
+                                            resource_filtering_based_on_subscribe(
+                                                subscribe, &resource,
+                                            );
+
+                                        let resource_to_append =
+                                            resource_to_send.get_mut(user_uuid);
+                                        match resource_to_append {
+                                            Some(resource_to_append) => {
+                                                resource_to_append.append(&mut resource_for_user)
+                                            }
+                                            None => {
+                                                resource_to_send
+                                                    .insert(user_uuid.clone(), resource_for_user);
+                                            }
+                                        }
+                                    }
+                                }
+                                None => {
+                                    dbg!("there is some problem here this should not happen");
+                                    continue;
+                                }
+                            }
+                        }
+
+                        for (branch, resource) in list_of_resources_for_branch {
+                            let user_and_subscribe = pool_of_pubsub_for_branch.get(&branch);
+                            match user_and_subscribe {
+                                Some(user_and_subscribe) => {
+                                    for (user_uuid, subscribe) in user_and_subscribe {
+                                        let mut resource_for_user =
+                                            resource_filtering_based_on_subscribe(
+                                                subscribe, &resource,
+                                            );
+
+                                        let resource_to_append =
+                                            resource_to_send.get_mut(user_uuid);
+                                        match resource_to_append {
+                                            Some(resource_to_append) => {
+                                                resource_to_append.append(&mut resource_for_user)
+                                            }
+                                            None => {
+                                                resource_to_send
+                                                    .insert(user_uuid.clone(), resource_for_user);
+                                            }
+                                        }
+                                    }
+                                }
+                                None => {
+                                    dbg!("there is some problem here this should not happen");
+                                    continue;
+                                }
+                            }
+                        }
+
+                        for (user_uuid, resource) in resource_to_send {
+                            let channels = pool_of_server_facad_channels.get_mut(&user_uuid);
+
+                            match channels {
+                                Some(channels) => {
+                                    let mut index = 0;
+                                    while index < channels.len() {
+                                        if channels[index].send(resource.clone()).await.is_err() {
+                                            channels.remove(index);
+                                        } else {
+                                            index += 1;
+                                        }
+                                    }
+
+                                    if channels.len() == 0 {
+                                        pool_of_server_facad_channels.remove(&user_uuid);
+                                    }
+                                }
+                                None => {
+                                    dbg!("there is some problem here this should not happen");
+                                    continue;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
 }
 
 // here dont contain data
@@ -188,184 +383,4 @@ pub enum MessageToBroker<Id: RowId, MPSC: MultiProducerSingleConsumer> {
         list_of_resources_for_company: ResourcesForCompany<Id>,
         list_of_resources_for_branch: ResourcesForBranch<Id>,
     },
-}
-
-pub fn broker_actor<
-    RT: Runtime,
-    MPSC: MultiProducerSingleConsumer + 'static,
-    Id: RowId + 'static,
->(
-    receiver_to_broker: MPSC::Receiver<MessageToBroker<Id, MPSC>>,
-) {
-    RT::spawn(async move {
-        let mut pool_of_pubsub_for_company: HashMap<
-            Id, // company uuid
-            HashMap<
-                Id, // user uuid
-                Vec<Subscribe>,
-            >,
-        > = HashMap::with_capacity(1000);
-
-        let mut pool_of_pubsub_for_branch: HashMap<
-            Id, // branch uuid
-            HashMap<
-                Id, // user uuid
-                Vec<Subscribe>,
-            >,
-        > = HashMap::with_capacity(10000);
-
-        let mut pool_of_server_facad_channels: HashMap<
-            Id,                               // user uuid
-            Vec<MPSC::Sender<Vec<Resource>>>, // because user may have multiple web socket connection
-        > = HashMap::with_capacity(10000);
-
-        loop {
-            let message = receiver_to_broker.recv().await.unwrap();
-            match message {
-                MessageToBroker::Subscribe {
-                    user_uuid,
-                    list_of_subscribtion_for_company,
-                    list_of_subscribtion_for_branch,
-                    channel_to_send_to_facad,
-                } => {
-                    let channels = pool_of_server_facad_channels.get_mut(&user_uuid);
-                    match channels {
-                        Some(channels) => {
-                            channels.insert(channels.len(), channel_to_send_to_facad.clone())
-                        }
-                        None => {
-                            pool_of_server_facad_channels
-                                .insert(user_uuid.clone(), vec![channel_to_send_to_facad.clone()]);
-                        }
-                    }
-
-                    for (company, subscribes) in list_of_subscribtion_for_company {
-                        let user_and_subscribes = pool_of_pubsub_for_company.get_mut(&company);
-                        match user_and_subscribes {
-                            Some(user_and_subscribes) => {
-                                user_and_subscribes.insert(user_uuid.clone(), subscribes);
-                            }
-                            None => {
-                                let mut user_and_subscribes = HashMap::new();
-                                user_and_subscribes.insert(user_uuid.clone(), subscribes);
-                                pool_of_pubsub_for_company.insert(company, user_and_subscribes);
-                            }
-                        }
-                    }
-
-                    for (branch, subscribes) in list_of_subscribtion_for_branch {
-                        let user_and_subscribes = pool_of_pubsub_for_branch.get_mut(&branch);
-                        match user_and_subscribes {
-                            Some(user_and_subscribes) => {
-                                user_and_subscribes.insert(user_uuid.clone(), subscribes);
-                            }
-                            None => {
-                                let mut user_and_subscribes = HashMap::new();
-                                user_and_subscribes.insert(user_uuid.clone(), subscribes);
-                                pool_of_pubsub_for_branch.insert(branch, user_and_subscribes);
-                            }
-                        }
-                    }
-                }
-                MessageToBroker::Unsubscribe { user_uuid } => {
-                    pool_of_server_facad_channels.remove(&user_uuid);
-                    // TODO : i have leake here i need to remove the company and branches if empty
-                    for (_, users_and_subs) in pool_of_pubsub_for_company.iter_mut() {
-                        users_and_subs.remove(&user_uuid);
-                    }
-                    for (_, users_and_subs) in pool_of_pubsub_for_branch.iter_mut() {
-                        users_and_subs.remove(&user_uuid);
-                    }
-                }
-                MessageToBroker::Publish {
-                    list_of_resources_for_company,
-                    list_of_resources_for_branch,
-                } => {
-                    let mut resource_to_send: HashMap<
-                        Id, // user uuid
-                        Vec<Resource>,
-                    > = HashMap::new();
-
-                    for (company, resource) in list_of_resources_for_company {
-                        let user_and_subscribe = pool_of_pubsub_for_company.get(&company);
-                        match user_and_subscribe {
-                            Some(user_and_subscribe) => {
-                                for (user_uuid, subscribe) in user_and_subscribe {
-                                    let mut resource_for_user =
-                                        resource_filtering_based_on_subscribe(subscribe, &resource);
-
-                                    let resource_to_append = resource_to_send.get_mut(user_uuid);
-                                    match resource_to_append {
-                                        Some(resource_to_append) => {
-                                            resource_to_append.append(&mut resource_for_user)
-                                        }
-                                        None => {
-                                            resource_to_send
-                                                .insert(user_uuid.clone(), resource_for_user);
-                                        }
-                                    }
-                                }
-                            }
-                            None => {
-                                dbg!("there is some problem here this should not happen");
-                                continue;
-                            }
-                        }
-                    }
-
-                    for (branch, resource) in list_of_resources_for_branch {
-                        let user_and_subscribe = pool_of_pubsub_for_branch.get(&branch);
-                        match user_and_subscribe {
-                            Some(user_and_subscribe) => {
-                                for (user_uuid, subscribe) in user_and_subscribe {
-                                    let mut resource_for_user =
-                                        resource_filtering_based_on_subscribe(subscribe, &resource);
-
-                                    let resource_to_append = resource_to_send.get_mut(user_uuid);
-                                    match resource_to_append {
-                                        Some(resource_to_append) => {
-                                            resource_to_append.append(&mut resource_for_user)
-                                        }
-                                        None => {
-                                            resource_to_send
-                                                .insert(user_uuid.clone(), resource_for_user);
-                                        }
-                                    }
-                                }
-                            }
-                            None => {
-                                dbg!("there is some problem here this should not happen");
-                                continue;
-                            }
-                        }
-                    }
-
-                    for (user_uuid, resource) in resource_to_send {
-                        let channels = pool_of_server_facad_channels.get_mut(&user_uuid);
-
-                        match channels {
-                            Some(channels) => {
-                                let mut index = 0;
-                                while index < channels.len() {
-                                    if channels[index].send(resource.clone()).await.is_err() {
-                                        channels.remove(index);
-                                    } else {
-                                        index += 1;
-                                    }
-                                }
-
-                                if channels.len() == 0 {
-                                    pool_of_server_facad_channels.remove(&user_uuid);
-                                }
-                            }
-                            None => {
-                                dbg!("there is some problem here this should not happen");
-                                continue;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    });
 }

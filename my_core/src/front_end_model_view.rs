@@ -94,7 +94,7 @@ impl<
     }
 
     pub fn sign_up(self: Arc<Self>) {
-        RT::spawn(async move {
+        RT::spawn_local(async move {
             if self.is_loading_sign_in_or_up.read() == true {
                 return;
             }
@@ -146,7 +146,7 @@ impl<
     }
 
     pub fn sign_in(self: Arc<Self>) {
-        RT::spawn(async move {
+        RT::spawn_local(async move {
             if self.is_loading_sign_in_or_up.read() == true {
                 return;
             }
@@ -189,7 +189,7 @@ impl<
     }
 
     fn listen_to_error(self: Arc<Self>, receiver_to_error: MPSC::Receiver<DynamicError>) {
-        RT::spawn(async move {
+        RT::spawn_local(async move {
             loop {
                 let err = receiver_to_error.recv().await.unwrap();
                 self.external_errors.set(err.to_string());

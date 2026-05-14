@@ -1,36 +1,36 @@
-// #[cfg(not(target_arch = "wasm32"))]
-// pub mod m {
-//     use crate::prelude::*;
-//     use std::time::Duration;
+#[cfg(not(target_arch = "wasm32"))]
+pub mod m {
+    use crate::prelude::*;
+    use std::time::Duration;
 
-//     pub struct S;
+    pub struct S;
 
-//     impl Runtime for S {
-//         fn spawn<F: Future>(fut: F) {
-//             todo!()
-//         }
+    impl Runtime for S {
+        fn spawn_local<F: Future + 'static>(fut: F) {
+            tokio::task::spawn_local(fut);
+        }
 
-//         async fn timeout<T, F: Future<Output = T>>(
-//             duration: Duration,
-//             fut: F,
-//         ) -> Result<T, DynamicError> {
-//             todo!()
-//         }
+        async fn timeout<T, F: Future<Output = T>>(
+            duration: Duration,
+            fut: F,
+        ) -> Result<T, DynamicError> {
+            todo!()
+        }
 
-//         async fn sleep(duration: Duration) {
-//             todo!()
-//         }
+        async fn sleep(duration: Duration) {
+            todo!()
+        }
 
-//         async fn select<L, R, F1: Future<Output = L>, F2: Future<Output = R>>(
-//             fut1: F1,
-//             fut2: F2,
-//         ) -> Eather<L, R> {
-//             todo!()
-//         }
-//     }
-// }
+        async fn select<R1, R2, F1: Future<Output = R1>, F2: Future<Output = R2>>(
+            fut1: F1,
+            fut2: F2,
+        ) -> Either<R1, R2> {
+            todo!()
+        }
+    }
+}
 
-// #[cfg(target_arch = "wasm32")]
+#[cfg(target_arch = "wasm32")]
 pub mod m {
     use crate::prelude::*;
     use futures::future::{Either as Eth, select};
@@ -42,7 +42,7 @@ pub mod m {
     pub struct S;
 
     impl Runtime for S {
-        fn spawn<F: Future + 'static>(fut: F) {
+        fn spawn_local<F: Future + 'static>(fut: F) {
             spawn_local(async {
                 fut.await;
             });

@@ -14,6 +14,8 @@ type GG = server_methods::ServerMethods<
     authentication::m::S,
     functions::m::S,
     row_id::m::S,
+    actors::m::S,
+    runtime::m::S,
 >;
 
 #[actix_web::main]
@@ -55,63 +57,25 @@ async fn ws_handler(req: HttpRequest, stream: web::Payload) -> HttpResponse {
         .aggregate_continuations()
         .max_continuation_size(2_usize.pow(16));
 
-    let state = req.app_data::<web::Data<GG>>().unwrap();
-    // let data = server::server_actor::<
-    //     CockroachDB,
-    //     CockroachClient,
-    //     jwt::m::S,
-    //     authentication::m::S,
-    //     functions::m::S,
-    //     row_id::m::S,
-    //     encode_decode::m::S,
-    //     runtime::m::S,
-    //     actors::m::S,
-    // >(state)
-    // .await;
+    let session = ws_server_adapter::m::S::new(session, stream);
 
-    rt::spawn(async move {
-        // Keep the connection alive
-        while let Some(msg) = stream.next().await {
-            match msg {
-                Ok(AggregatedMessage::Binary(data)) => {
-                    session.binary(data).await.unwrap();
-                }
-                Ok(AggregatedMessage::Text(text)) => {
-                    println!("Received text message: {}", text);
-                    // Echo back
-                    if let Err(e) = session.text(text).await {
-                        eprintln!("Error responding: {}", e);
-                        break;
-                    }
-                }
-                Ok(AggregatedMessage::Ping(data)) => {
-                    // Auto-respond to pings
-                    if let Err(e) = session.pong(&data).await {
-                        eprintln!("Error sending pong: {}", e);
-                        break;
-                    }
-                }
-                Ok(AggregatedMessage::Pong(data)) => {
-                    if let Err(e) = session.ping(&data).await {
-                        eprintln!("Error sending pong: {}", e);
-                        break;
-                    }
-                }
-                Ok(AggregatedMessage::Close(reason)) => {
-                    println!("Client requested close: {:?}", reason);
-                    if let Err(e) = session.close(None).await {
-                        eprintln!("Error closing session: {}", e);
-                    }
-                    break;
-                }
-                Err(e) => {
-                    eprintln!("WebSocket error: {}", e);
-                    break;
-                }
-            }
-        }
-        println!("WebSocket connection closed");
-    });
+    let state = req.app_data::<web::Data<GG>>().unwrap();
+    server::server_actor::<
+        CockroachDB,
+        CockroachClient,
+        jwt::m::S,
+        authentication::m::S,
+        functions::m::S,
+        row_id::m::S,
+        encode_decode::m::S,
+        runtime::m::S,
+        ws_server_adapter::m::S,
+        actors::m::S,
+    >(
+        state.clone().into_inner(),
+        session,
+        state.clone().into_inner().sender_to_broker.clone(),
+    );
 
     response
 }

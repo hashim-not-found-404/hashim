@@ -7,14 +7,14 @@ pub enum WSMessage {
 
 pub trait WSServer {
     async fn send_bin(&self, bin: Vec<u8>) -> Result<(), DynamicError>;
-    async fn receive(&self) -> Result<WSMessage, DynamicError>;
+    async fn receive(&mut self) -> Result<WSMessage, DynamicError>;
     async fn close(&self) -> Result<(), DynamicError>;
 }
 
 // TODO : make the server as actor
 pub fn server_actor<DB, Cli, Jwt, Authentication, F, Id, DE, RT, WSS, MPSC>(
-    state: server_methods::ServerMethods<DB, Cli, Jwt, Authentication, F, Id>,
-    session: WSS,
+    state: Arc<server_methods::ServerMethods<DB, Cli, Jwt, Authentication, F, Id, MPSC, RT>>,
+    mut session: WSS,
     sender_to_broker: MPSC::Sender<server_methods::MessageToBroker<Id, MPSC>>,
 ) where
     DB: Database<Client = Cli> + 'static,
@@ -29,7 +29,7 @@ pub fn server_actor<DB, Cli, Jwt, Authentication, F, Id, DE, RT, WSS, MPSC>(
     WSS: WSServer + 'static,
     MPSC: MultiProducerSingleConsumer + 'static,
 {
-    RT::spawn(async move {
+    RT::spawn_local(async move {
         let (sender_to_server, receiver_to_server) =
             MPSC::channel::<Vec<server_methods::Resource>>();
 

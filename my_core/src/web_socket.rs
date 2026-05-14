@@ -226,7 +226,7 @@ where
             .await
             .unwrap();
 
-        RT::spawn(async move {
+        RT::spawn_local(async move {
             loop {
                 let payload = receiver.recv().await.unwrap();
                 let Ok(payload) = DE::decode::<ReceiveType>(&payload) else {
@@ -251,7 +251,7 @@ where
         receiver_to_connector: MPSC::Receiver<MessageToConnector>,
         sender_to_error: MPSC::Sender<DynamicError>,
     ) {
-        RT::spawn(async move {
+        RT::spawn_local(async move {
             let mut url = None;
             loop {
                 match receiver_to_connector.recv().await.unwrap() {
@@ -278,7 +278,7 @@ where
         receiver_to_broker: MPSC::Receiver<MessageToBroker<MPSC>>,
         sender_to_error: MPSC::Sender<DynamicError>,
     ) {
-        RT::spawn(async move {
+        RT::spawn_local(async move {
             let mut send_and_receive_pool = HashMap::<u64, MPSC::Sender<Payload>>::new();
             let mut receive_and_send_pool = HashMap::<String, MPSC::Sender<(u64, Payload)>>::new();
             let mut receive_only_pool = HashMap::<String, MPSC::Sender<Payload>>::new();
@@ -356,7 +356,7 @@ where
         sender_to_broker: MPSC::Sender<MessageToBroker<MPSC>>,
         sender_to_error: MPSC::Sender<DynamicError>,
     ) {
-        RT::spawn(async move {
+        RT::spawn_local(async move {
             loop {
                 let fut1 = async {
                     let guard = ws.read().unwrap();
@@ -412,7 +412,7 @@ where
         sender_to_connector: MPSC::Sender<MessageToConnector>,
         sender_to_error: MPSC::Sender<DynamicError>,
     ) {
-        RT::spawn(async move {
+        RT::spawn_local(async move {
             loop {
                 match receiver_to_send_bin.recv().await.unwrap() {
                     MessageToSendBin::ShutDown => return,
