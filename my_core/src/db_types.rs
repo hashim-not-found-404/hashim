@@ -29,11 +29,24 @@ pub enum Currency {
     USD,
     IQD,
 }
+
+impl FromStr for Currency {
+    type Err = DynamicError;
+
+    fn from_str(s: &str) -> StdResult<Self, Self::Err> {
+        match s {
+            "USD" => Ok(Currency::USD),
+            "IQD" => Ok(Currency::IQD),
+            _ => Err("not exist".into()),
+        }
+    }
+}
+
 impl Currency {
     pub fn as_str(&self) -> &str {
         match self {
-            Self::IQD => "IQD",
-            _ => todo!(),
+            Currency::USD => "USD",
+            Currency::IQD => "IQD",
         }
     }
 }
@@ -48,8 +61,8 @@ impl FromStr for Role {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "Manager" => Ok(db_types::Role::Manager),
-            _ => Err("role not exist".into()),
+            "Manager" => Ok(Role::Manager),
+            _ => Err("not exist".into()),
         }
     }
 }

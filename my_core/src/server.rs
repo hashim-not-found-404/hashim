@@ -99,32 +99,34 @@ pub fn server_actor<DB, Cli, Jwt, Authentication, F, Id, DE, RT, WSS, MPSC>(
                                                 DE::decode::<create_company::Input>(&payload);
 
                                             let result = match input {
-                                                Ok(input) => match state
-                                                    .create_company(&input)
-                                                    .await
-                                                {
-                                                    Ok(o) => match o {
-                                                        Ok((o, user_uuid)) => {
-                                                            let subs = state
-                                                                .get_table_of_subscribed_data(
-                                                                    &user_uuid,
-                                                                )
-                                                                .await
-                                                                .unwrap();
+                                                Ok(input) => {
+                                                    match state.create_company(&input).await {
+                                                        Ok(o) => match o {
+                                                            Ok((o, user_uuid)) => {
+                                                                let subs = state
+                                                                    .get_table_of_subscribed_data(
+                                                                        &user_uuid,
+                                                                    )
+                                                                    .await
+                                                                    .unwrap();
 
-                                                            sender_to_broker.send(server_methods::MessageToBroker::Subscribe {
+                                                                sender_to_broker.send(server_methods::MessageToBroker::Subscribe {
                                                                 user_uuid: user_uuid,
                                                                 list_of_subscribtion_for_company: subs.companies,
                                                                 list_of_subscribtion_for_branch: subs.branches,
                                                                 channel_to_send_to_facad: sender_to_server.clone()
                                                             }).await.unwrap();
 
-                                                            Ok(Ok(o))
+                                                                Ok(Ok(o))
+                                                            }
+                                                            Err(e) => Ok(Err(e)),
+                                                        },
+                                                        Err(e) => {
+                                                            dbg!(&e.source());
+                                                            Err(HashimError::InternalServerError)
                                                         }
-                                                        Err(e) => Ok(Err(e)),
-                                                    },
-                                                    Err(_) => Err(HashimError::InternalServerError),
-                                                },
+                                                    }
+                                                }
                                                 Err(_) => Err(HashimError::DecodingErrorAtServer),
                                             };
 

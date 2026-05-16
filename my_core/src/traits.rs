@@ -1,6 +1,9 @@
-use crate::prelude::*;
+use crate::{db_types::Role, prelude::*};
 
-pub trait RowId: Clone + Hash + Eq {}
+pub trait RowId: for<'a> TryFrom<&'a String, Error = ()> + ToString + Clone + Hash + Eq {
+    fn generate() -> Self;
+    fn get_time_as_seconds(&self) -> u64;
+}
 
 pub trait Functions {
     fn is_regex(s: &String) -> Result<(), String>;
@@ -82,11 +85,13 @@ pub trait DBTransaction {
 
     async fn read_create_company(
         &mut self,
-        nounc: &u64,
+        nounc: &Self::RowId,
     ) -> Result<bool /* is nounc used */, DynamicError>;
     async fn write_create_company(
         &mut self,
-        nounc: &u64,
+        nounc: &Self::RowId,
+        user_uuid: &Self::RowId,
+        user_role: &Role,
         company_name: &String,
         currency: &db_types::Currency,
     ) -> Result<(), DynamicError>;

@@ -450,7 +450,5 @@ CREATE TABLE IF NOT EXISTS accounting_app.triple_entry_for_package(
 );
 
 CREATE TABLE IF NOT EXISTS accounting_app.transaction_number(
-    rowid                                       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-
-    time                                        TIMESTAMPTZ NOT NULL
+    rowid                                       UUID PRIMARY KEY
 );

@@ -13,9 +13,9 @@ pub mod m {
         }
     }
 
-    impl TryFrom<String> for S {
+    impl TryFrom<&String> for S {
         type Error = ();
-        fn try_from(value: String) -> Result<Self, ()> {
+        fn try_from(value: &String) -> Result<Self, ()> {
             match Uuid::parse_str(value.as_str()) {
                 Ok(o) => return Ok(Self(o)),
                 Err(_) => return Err(()),
@@ -23,5 +23,19 @@ pub mod m {
         }
     }
 
-    impl RowId for S {}
+    impl ToString for S {
+        fn to_string(&self) -> String {
+            self.0.to_string()
+        }
+    }
+
+    impl RowId for S {
+        fn generate() -> Self {
+            Self(Uuid::now_v7())
+        }
+
+        fn get_time_as_seconds(&self) -> u64 {
+            self.0.get_timestamp().unwrap().to_unix().0
+        }
+    }
 }

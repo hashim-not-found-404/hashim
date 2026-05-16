@@ -8,7 +8,7 @@ pub const ADDRESS: &str = "127.0.0.1:8081";
 
 #[derive(Debug, Deserialize, Serialize)]
 pub enum NouncError {
-    AlreadyUsed,
+    Invalid,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -141,7 +141,7 @@ pub mod create_company {
     #[derive(Debug, Deserialize, Serialize)]
     pub struct Input {
         pub jwt: String,
-        pub nounc: u64,
+        pub nounc: String,
         pub company_name: String,
         pub currency: db_types::Currency,
     }

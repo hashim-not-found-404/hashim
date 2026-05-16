@@ -1,5 +1,34 @@
 use crate::prelude::*;
 
+fn check_nonce_if_valid<Id: RowId>(nonce: &Id, is_used: bool) -> bool {
+    if is_used {
+        return false;
+    }
+
+    let nonce = nonce.get_time_as_seconds();
+
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_secs() as u64;
+
+    // 1. Reject future timestamps (more than 5 seconds ahead)
+    let max_future = 5; // 5 seconds tolerance for clock drift
+
+    if nonce > now + max_future {
+        return false; // Future nonce → reject immediately
+    }
+
+    // 2. Reject old timestamps (more than 5 minutes old)
+    let max_age = 300; // 5 minutes
+
+    if now.saturating_sub(nonce) > max_age {
+        return false; // Too old
+    }
+
+    true
+}
+
 pub struct ServerMethods<DB, Cli, Jwt, Authentication, F, Id, MPSC, RT>
 where
     DB: Database<Client = Cli>,
@@ -144,19 +173,33 @@ where
             }
         };
 
+        let nounc = match Id::try_from(&input.nounc) {
+            Ok(nounc) => nounc,
+            Err(_) => {
+                errr.nounc = Some(NouncError::Invalid);
+                return Ok(Err(errr));
+            }
+        };
+
         let mut client = self.database.get_client().await?;
         let mut txn = client.begin_transaction().await?;
 
         let result = (|| async {
-            let is_nounc_used = txn.read_create_company(&input.nounc).await?;
+            let is_nounc_used = txn.read_create_company(&nounc).await?;
 
-            if !is_nounc_used {
-                errr.nounc = Some(NouncError::AlreadyUsed);
+            if !check_nonce_if_valid::<Id>(&nounc, is_nounc_used) {
+                errr.nounc = Some(NouncError::Invalid);
                 return Ok(Err(errr));
             }
 
-            txn.write_create_company(&input.nounc, &input.company_name, &input.currency)
-                .await?;
+            txn.write_create_company(
+                &nounc,
+                &user_uuid,
+                &db_types::Role::Manager,
+                &input.company_name,
+                &input.currency,
+            )
+            .await?;
 
             Ok(Ok((create_company::Ok, user_uuid)))
         })()

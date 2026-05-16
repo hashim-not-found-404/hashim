@@ -4,7 +4,7 @@ use adapters::prelude::*;
 use dioxus::prelude::*;
 use dioxus_logger::tracing::Level;
 use my_core::prelude::{Signal, *};
-use std::sync::Arc;
+use std::{str::FromStr, sync::Arc};
 
 type TypeMyWAMP = web_socket::MyWAMP<
     web_socket_adapter::m::S,
@@ -20,7 +20,7 @@ type StateOfEveryThing = Arc<
         runtime::m::S,
         actors::m::S,
         cache::m::S,
-        random_number::m::S,
+        row_id::m::S,
         MySignal<String>,
         MySignal<bool>,
         MySignal<String>,
@@ -54,7 +54,7 @@ fn main() {
 fn Initializer() -> Element {
     let init_state = use_resource(|| async {
         let state: StateOfEveryThing = front_end_model_view::State::new().await;
-        use_context_provider(|| state.clone());
+        use_context_provider(|| state);
     });
 
     match (init_state.value())() {
@@ -75,6 +75,7 @@ fn App() -> Element {
         // document::Link { rel: "stylesheet", href: MAIN_CSS }
         Router::<Route> {}
         ErrorStack {}
+        CreateCompany {}
     }
 }
 
@@ -206,7 +207,29 @@ pub fn ErrorStack() -> Element {
 
 #[component]
 pub fn CreateCompany() -> Element {
+    let state = consume_context::<StateOfEveryThing>();
+
+    let value1 = state.clone();
+    let value2 = state.clone();
+    let value3 = state.clone();
+
     rsx! {
-        div { "create company page" }
+        div {
+            input {
+                placeholder: "Company Name",
+                oninput: move |event| value1.company_name.set(event.value()),
+                value: state.company_name.read(),
+            }
+            select {
+                value: state.company_currency.read().as_str(),
+                onchange: move |event| value2.company_currency.set(db_types::Currency::from_str(event.value().as_str()).unwrap()),
+                option { value: "USD", "USD" }
+                option { value: "IQD", "IQD" }
+            }
+            button {
+                onclick: move |_| value3.clone().create_company(),
+                "Create"
+            }
+        }
     }
 }

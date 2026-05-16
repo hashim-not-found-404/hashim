@@ -11,7 +11,7 @@ pub struct State<
     RT: Runtime + 'static,
     MPSC: MultiProducerSingleConsumer + 'static,
     CH: CacheIO + 'static,
-    RN: RandomNumber + 'static,
+    Id: RowId + 'static,
     StringSignal: Signal<T = String> + 'static,
     BoolSignal: Signal<T = bool> + 'static,
     ExternalErrorSignal: Signal<T = String> + 'static,
@@ -19,7 +19,7 @@ pub struct State<
     UserRolesSignal: Signal<T = Vec<db_types::Company>> + 'static,
 > {
     // here for the app logic
-    generate_transaction_number: PhantomData<RN>,
+    generate_transaction_number: PhantomData<Id>,
     routs: Arc<client::RoutsForClientSide<WA, RT, MPSC, CH>>,
     jwt: RwLock<Option<String>>,
 
@@ -44,7 +44,7 @@ impl<
     RT: Runtime,
     MPSC: MultiProducerSingleConsumer,
     CH: CacheIO,
-    TxnNumGen: RandomNumber,
+    Id: RowId,
     StringSignal: Signal<T = String>,
     BoolSignal: Signal<T = bool>,
     ExternalErrorSignal: Signal<T = String>,
@@ -56,7 +56,7 @@ impl<
         RT,
         MPSC,
         CH,
-        TxnNumGen,
+        Id,
         StringSignal,
         BoolSignal,
         ExternalErrorSignal,
@@ -70,7 +70,7 @@ impl<
         let routs = client::RoutsForClientSide::<WA, RT, MPSC, CH>::new(sender_to_error).await;
 
         let state = Arc::new(Self {
-            generate_transaction_number: PhantomData::<TxnNumGen>,
+            generate_transaction_number: PhantomData::<Id>,
             routs: routs,
             jwt: RwLock::new(None),
             is_signed_in: BoolSignal::default(),
@@ -221,7 +221,7 @@ impl<
         RT::spawn_local(async move {
             let input = create_company::Input {
                 jwt: self.jwt.read().unwrap().clone().unwrap_or_default(),
-                nounc: TxnNumGen::generate(),
+                nounc: Id::generate().to_string(),
                 company_name: self.company_name.read(),
                 currency: self.company_currency.read(),
             };
@@ -231,11 +231,10 @@ impl<
             match result {
                 Ok(Ok(business_output)) => {}
                 Ok(Err(business_error)) => {
-                    // self.sign_in_error_for_user_id
-                    //     .set(match business_error.user_id {
-                    //         Some(_) => String::from("user not exist"),
-                    //         None => String::new(),
-                    //     });
+                    self.external_errors.set(match business_error.nounc {
+                        Some(s) => String::from("nounc error"),
+                        None => String::new(),
+                    });
                     self.is_signed_in.set(business_error.jwt.is_some());
                 }
                 Err(external_error) => {

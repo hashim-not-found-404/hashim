@@ -186,20 +186,55 @@ impl DBTransaction for CockroachTxn<'_> {
         return Ok(value.into());
     }
 
-    async fn read_create_company(
-        &mut self,
-        nounc: &u64,
-    ) -> Result<bool /* is nounc used */, DynamicError> {
-        todo!()
+    async fn read_create_company(&mut self, nounc: &Self::RowId) -> Result<bool, DynamicError> {
+        let query =
+            "SELECT EXISTS(SELECT 1 FROM accounting_app.transaction_number WHERE rowid = $1)";
+        let stmt = self.txn.prepare_cached(query).await?;
+        let row = self.txn.query_one(&stmt, &[&nounc.into_inner()]).await?;
+
+        let exists: bool = row.try_get(0)?;
+        Ok(exists)
     }
 
     async fn write_create_company(
         &mut self,
-        nounc: &u64,
+        nounc: &Self::RowId,
+        user_uuid: &Self::RowId,
+        user_role: &db_types::Role,
         company_name: &String,
         currency: &db_types::Currency,
     ) -> Result<(), DynamicError> {
-        todo!()
+        let query = "
+            WITH
+
+            nonce_insert AS (
+                INSERT INTO accounting_app.transaction_number (rowid) VALUES ($1)
+                RETURNING 1
+            ),
+            company_insert AS (
+                INSERT INTO accounting_app.company (name, currency) VALUES ($2, $3)
+                RETURNING rowid
+            )
+
+            INSERT INTO accounting_app.access_control_for_company (data_group, user_, role)
+            SELECT company_insert.rowid, $4, $5 FROM company_insert
+            ;";
+
+        let stmt = self.txn.prepare_cached(query).await?;
+        self.txn
+            .execute(
+                &stmt,
+                &[
+                    &nounc.into_inner(),
+                    &company_name,
+                    &currency.as_str(),
+                    &user_uuid.into_inner(),
+                    &user_role.as_str(),
+                ],
+            )
+            .await?;
+
+        Ok(())
     }
 }
 

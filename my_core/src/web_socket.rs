@@ -352,7 +352,7 @@ where
     fn receive_bin_actor(
         ws: Arc<RwLock<Option<WS>>>,
         receiver_to_receive_bin: MPSC::Receiver<MessageToReceiveBin>,
-        sender_to_connector: MPSC::Sender<MessageToConnector>, // TODO : i need to send reconnect
+        sender_to_connector: MPSC::Sender<MessageToConnector>,
         sender_to_broker: MPSC::Sender<MessageToBroker<MPSC>>,
         sender_to_error: MPSC::Sender<DynamicError>,
     ) {
