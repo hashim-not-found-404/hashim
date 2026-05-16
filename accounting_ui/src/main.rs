@@ -87,12 +87,12 @@ pub fn SignIn() -> Element {
         navigator().push(Route::SignUp {});
     };
 
-    let value = state.clone();
+    let state1 = state.clone();
     rsx! {
         div {
             input {
                 placeholder: "User ID",
-                oninput: move |event| value.user_id.set(event.value()),
+                oninput: move |event| state1.user_id.set(event.value()),
                 value: state.user_id.read(),
             }
             label {
@@ -122,13 +122,13 @@ pub fn SignUp() -> Element {
         navigator().push(Route::SignIn {});
     };
 
-    let value = state.clone();
-    let value1 = state.clone();
+    let state1 = state.clone();
+    let state2 = state.clone();
     rsx! {
         div {
             input {
                 placeholder: "Name (Optional)",
-                oninput: move |event| value.user_name.set(event.value()),
+                oninput: move |event| state1.user_name.set(event.value()),
                 value: state.user_name.read(),
             }
             label {
@@ -136,7 +136,7 @@ pub fn SignUp() -> Element {
             }
             input {
                 placeholder: "User Id",
-                oninput: move |event| value1.user_id.set(event.value()),
+                oninput: move |event| state2.user_id.set(event.value()),
                 value: state.user_id.read(),
             }
             label {
@@ -166,13 +166,13 @@ pub fn PasswordInput() -> Element {
         false => ("password", ICONS_HIDE),
     };
 
-    let value = state.clone();
+    let state1 = state.clone();
     rsx! {
         div {
             input {
                 placeholder: "Password",
                 type: input_type,
-                oninput: move |event| value.password.set(event.value()),
+                oninput: move |event| state1.password.set(event.value()),
                 value: state.password.read(),
             }
             button {
@@ -209,25 +209,25 @@ pub fn ErrorStack() -> Element {
 pub fn CreateCompany() -> Element {
     let state = consume_context::<StateOfEveryThing>();
 
-    let value1 = state.clone();
-    let value2 = state.clone();
-    let value3 = state.clone();
+    let state1 = state.clone();
+    let state2 = state.clone();
+    let state3 = state.clone();
 
     rsx! {
         div {
             input {
                 placeholder: "Company Name",
-                oninput: move |event| value1.company_name.set(event.value()),
+                oninput: move |event| state1.company_name.set(event.value()),
                 value: state.company_name.read(),
             }
             select {
                 value: state.company_currency.read().as_str(),
-                onchange: move |event| value2.company_currency.set(db_types::Currency::from_str(event.value().as_str()).unwrap()),
+                onchange: move |event| state2.company_currency.set(db_types::Currency::from_str(event.value().as_str()).unwrap()),
                 option { value: "USD", "USD" }
                 option { value: "IQD", "IQD" }
             }
             button {
-                onclick: move |_| value3.clone().create_company(),
+                onclick: move |_| state3.clone().create_company(),
                 "Create"
             }
         }

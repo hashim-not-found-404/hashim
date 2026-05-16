@@ -423,9 +423,21 @@ where
 }
 
 // here dont contain data
-pub enum Subscribe {}
-pub(crate) fn role_to_subscribe_mapping(role: Vec<db_types::Role>) -> Vec<Subscribe> {
-    todo!()
+pub enum Subscribe {
+    // TODO
+    CompanyCurrancy,
+}
+pub(crate) fn role_to_subscribe_mapping(roles: Vec<db_types::Role>) -> Vec<Subscribe> {
+    let mut subscribes = Vec::with_capacity(200);
+
+    for role in roles {
+        match role {
+            db_types::Role::Manager => subscribes.append(&mut vec![Subscribe::CompanyCurrancy]),
+        }
+    }
+
+    subscribes.shrink_to_fit();
+    subscribes
 }
 
 pub(crate) fn resource_filtering_based_on_subscribe(

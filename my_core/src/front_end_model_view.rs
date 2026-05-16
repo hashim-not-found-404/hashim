@@ -232,7 +232,7 @@ impl<
                 Ok(Ok(business_output)) => {}
                 Ok(Err(business_error)) => {
                     self.external_errors.set(match business_error.nounc {
-                        Some(s) => String::from("nounc error"),
+                        Some(_) => String::from("nounc error"),
                         None => String::new(),
                     });
                     self.is_signed_in.set(business_error.jwt.is_some());

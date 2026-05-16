@@ -121,8 +121,7 @@ pub fn server_actor<DB, Cli, Jwt, Authentication, F, Id, DE, RT, WSS, MPSC>(
                                                             }
                                                             Err(e) => Ok(Err(e)),
                                                         },
-                                                        Err(e) => {
-                                                            dbg!(&e.source());
+                                                        Err(_) => {
                                                             Err(HashimError::InternalServerError)
                                                         }
                                                     }
