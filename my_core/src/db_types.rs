@@ -23,6 +23,13 @@ pub struct Location {
     longitude: f64,
 }
 
+impl Location {
+    pub fn is_valid(&self) -> bool {
+        todo!();
+        false
+    }
+}
+
 #[derive(Debug, Deserialize, Serialize, Clone, Default)]
 pub enum Currency {
     #[default]
@@ -73,20 +80,4 @@ impl Role {
             Role::Manager => "Manager",
         }
     }
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct Branch {
-    pub name: String,
-    pub location: Location,
-    pub currency: Currency,
-    pub role: Vec<Role>,
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct Company {
-    pub name: String,
-    pub currency: Currency,
-    pub branches: Vec<Branch>,
-    pub role: Vec<Role>,
 }

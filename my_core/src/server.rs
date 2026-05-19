@@ -80,7 +80,7 @@ pub fn server_actor<DB, Cli, Jwt, Authentication, F, Id, DE, RT, WSS, MPSC>(
                                                                 user_uuid: user_uuid,
                                                                 list_of_subscribtion_for_company: subs.companies,
                                                                 list_of_subscribtion_for_branch: subs.branches,
-                                                                channel_to_send_to_facad: sender_to_server.clone()
+                                                                sender_to_server: sender_to_server.clone()
                                                             }).await.unwrap();
 
                                                             Ok(Ok(o))
@@ -114,7 +114,7 @@ pub fn server_actor<DB, Cli, Jwt, Authentication, F, Id, DE, RT, WSS, MPSC>(
                                                                 user_uuid: user_uuid,
                                                                 list_of_subscribtion_for_company: subs.companies,
                                                                 list_of_subscribtion_for_branch: subs.branches,
-                                                                channel_to_send_to_facad: sender_to_server.clone()
+                                                                sender_to_server: sender_to_server.clone()
                                                             }).await.unwrap();
 
                                                                 Ok(Ok(o))

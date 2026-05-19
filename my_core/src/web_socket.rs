@@ -93,10 +93,10 @@ where
         );
 
         Self {
-            runtime: PhantomData::<RT>,
-            random_number: PhantomData::<RN>,
-            coding: PhantomData::<DE>,
-            transport: PhantomData::<WS>,
+            runtime: PhantomData,
+            random_number: PhantomData,
+            coding: PhantomData,
+            transport: PhantomData,
             sender_to_connector,
             sender_to_broker,
             sender_to_send_bin,

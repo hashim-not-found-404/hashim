@@ -21,11 +21,12 @@ type StateOfEveryThing = Arc<
         actors::m::S,
         cache::m::S,
         row_id::m::S,
+        random_number::m::S,
         MySignal<String>,
         MySignal<bool>,
         MySignal<String>,
         MySignal<db_types::Currency>,
-        MySignal<Vec<db_types::Company>>,
+        MySignal<db_types::Location>,
     >,
 >;
 
@@ -36,10 +37,14 @@ const MAIN_CSS: Asset = asset!("/assets/main.css");
 #[derive(Clone, PartialEq, Routable)]
 enum Route {
     #[route("/")]
-    SignIn {},
+    AuthenticationPage {}, // This can be a landing page or redirect    #[route("/sign_in")]
 
+    #[layout(AuthenticationPage)] // ← Layout provides AuthFeatureState
+    #[route("/sign_in")]
+    SignIn {},
     #[route("/sign_up")]
     SignUp {},
+    // #[end_layout]
     // #[route("/home")]
     // Home {},
 }
@@ -80,30 +85,54 @@ fn App() -> Element {
 }
 
 #[component]
+pub fn AuthenticationPage() -> Element {
+    let auth_state = Arc::new(front_end_model_view::AuthFeatureState {
+        user_id: MySignal::<String>::default(),
+        user_password: MySignal::<String>::default(),
+        is_loading: MySignal::<bool>::default(),
+    });
+    use_context_provider(|| auth_state);
+
+    rsx! {
+        Outlet::<Route> {}
+    }
+    // SignIn()
+}
+
+#[component]
 pub fn SignIn() -> Element {
     let state = consume_context::<StateOfEveryThing>();
+    let auth_state = consume_context::<
+        Arc<front_end_model_view::AuthFeatureState<MySignal<String>, MySignal<bool>>>,
+    >();
+
+    let local_state = Arc::new(front_end_model_view::SignInState {
+        user_id_error: MySignal::<String>::default(),
+        user_password_error: MySignal::<String>::default(),
+    });
 
     let sign_up = move |_| {
         navigator().push(Route::SignUp {});
     };
 
-    let state1 = state.clone();
+    let auth_state1 = auth_state.clone();
+
     rsx! {
         div {
             input {
                 placeholder: "User ID",
-                oninput: move |event| state1.user_id.set(event.value()),
-                value: state.user_id.read(),
+                oninput: move |event| auth_state1.user_id.set(event.value()),
+                value: auth_state.user_id.read(),
             }
             label {
-                {state.sign_in_error_for_user_id.read()}
+                {local_state.user_id_error.read()}
             }
-            PasswordInput{}
+            PasswordInput{ }
             label {
-                {state.sign_in_error_for_password.read()}
+                {local_state.user_password_error.read()}
             }
             button {
-                onclick: move |_| state.clone().sign_in(),
+                onclick: move |_| state.clone().sign_in(local_state.clone(),auth_state.clone()),
                 "Sign In"
             }
             button {
@@ -117,34 +146,44 @@ pub fn SignIn() -> Element {
 #[component]
 pub fn SignUp() -> Element {
     let state = consume_context::<StateOfEveryThing>();
+    let auth_state = consume_context::<
+        Arc<front_end_model_view::AuthFeatureState<MySignal<String>, MySignal<bool>>>,
+    >();
+
+    let local_state = Arc::new(front_end_model_view::SignUpState {
+        user_name: MySignal::<String>::default(),
+        user_id_error: MySignal::<String>::default(),
+        user_name_error: MySignal::<String>::default(),
+    });
 
     let sign_in = move |_| {
         navigator().push(Route::SignIn {});
     };
 
-    let state1 = state.clone();
-    let state2 = state.clone();
+    let local_state1 = local_state.clone();
+    let auth_state1 = auth_state.clone();
+
     rsx! {
         div {
             input {
                 placeholder: "Name (Optional)",
-                oninput: move |event| state1.user_name.set(event.value()),
-                value: state.user_name.read(),
+                oninput: move |event| local_state1.user_name.set(event.value()),
+                value: local_state.user_name.read(),
             }
             label {
-                {state.sign_up_error_for_user_name.read()}
+                {local_state.user_name_error.read()}
             }
             input {
                 placeholder: "User Id",
-                oninput: move |event| state2.user_id.set(event.value()),
-                value: state.user_id.read(),
+                oninput: move |event| auth_state1.user_id.set(event.value()),
+                value: auth_state.user_id.read(),
             }
             label {
-                {state.sign_up_error_for_user_id.read()}
+                {local_state.user_id_error.read()}
             }
-            PasswordInput{}
+            PasswordInput{ }
             button {
-                onclick: move |_| state.clone().sign_up(),
+                onclick: move |_| state.clone().sign_up(local_state.clone(),auth_state.clone()),
                 "Sign Up"
             }
             button {
@@ -157,7 +196,9 @@ pub fn SignUp() -> Element {
 
 #[component]
 pub fn PasswordInput() -> Element {
-    let state = consume_context::<StateOfEveryThing>();
+    let auth_state = consume_context::<
+        Arc<front_end_model_view::AuthFeatureState<MySignal<String>, MySignal<bool>>>,
+    >();
 
     let mut is_password_visible = use_signal(|| false);
 
@@ -166,14 +207,15 @@ pub fn PasswordInput() -> Element {
         false => ("password", ICONS_HIDE),
     };
 
-    let state1 = state.clone();
+    let password = auth_state.user_password.clone();
+    let password1 = auth_state.user_password.clone();
     rsx! {
         div {
             input {
                 placeholder: "Password",
                 type: input_type,
-                oninput: move |event| state1.password.set(event.value()),
-                value: state.password.read(),
+                oninput: move |event| password1.set(event.value()),
+                value: password.read(),
             }
             button {
                 onclick: move |_| {*is_password_visible.write()^=true;},
@@ -209,25 +251,29 @@ pub fn ErrorStack() -> Element {
 pub fn CreateCompany() -> Element {
     let state = consume_context::<StateOfEveryThing>();
 
-    let state1 = state.clone();
-    let state2 = state.clone();
-    let state3 = state.clone();
+    let local_state = Arc::new(front_end_model_view::CreateCompanyState {
+        company_name: MySignal::<String>::default(),
+        currency: MySignal::<db_types::Currency>::default(),
+    });
+
+    let local_state1 = local_state.clone();
+    let local_state2 = local_state.clone();
 
     rsx! {
         div {
             input {
                 placeholder: "Company Name",
-                oninput: move |event| state1.company_name.set(event.value()),
-                value: state.company_name.read(),
+                oninput: move |event| local_state1.company_name.set(event.value()),
+                value: local_state.company_name.read(),
             }
             select {
-                value: state.company_currency.read().as_str(),
-                onchange: move |event| state2.company_currency.set(db_types::Currency::from_str(event.value().as_str()).unwrap()),
+                value: local_state.currency.read().as_str(),
+                onchange: move |event| local_state2.currency.set(db_types::Currency::from_str(event.value().as_str()).unwrap()),
                 option { value: "USD", "USD" }
                 option { value: "IQD", "IQD" }
             }
             button {
-                onclick: move |_| state3.clone().create_company(),
+                onclick: move |_| state.clone().create_company(local_state.clone()),
                 "Create"
             }
         }

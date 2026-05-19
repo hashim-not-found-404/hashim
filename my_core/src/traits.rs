@@ -1,4 +1,4 @@
-use crate::{db_types::Role, prelude::*};
+use crate::prelude::*;
 
 pub trait RowId: for<'a> TryFrom<&'a String, Error = ()> + ToString + Clone + Hash + Eq {
     fn generate() -> Self;
@@ -59,10 +59,6 @@ pub mod domain_errors {
     pub enum AtCommit {
         DataIsChanged,
     }
-    #[derive(Debug)]
-    pub enum AtInsertUserId {
-        DuplicatedUserId,
-    }
 }
 
 pub trait DBTransaction {
@@ -85,16 +81,40 @@ pub trait DBTransaction {
 
     async fn read_create_company(
         &mut self,
-        nounc: &Self::RowId,
-    ) -> Result<bool /* is nounc used */, DynamicError>;
+        nonce: &Self::RowId,
+    ) -> Result<bool /* is nonce used */, DynamicError>;
     async fn write_create_company(
         &mut self,
-        nounc: &Self::RowId,
+        nonce: &Self::RowId,
         user_uuid: &Self::RowId,
-        user_role: &Role,
+        user_role: &db_types::Role,
         company_name: &String,
         currency: &db_types::Currency,
-    ) -> Result<(), DynamicError>;
+    ) -> Result<Vec<ResourceInfo>, DynamicError>;
+
+    async fn read_create_company_branch(
+        &mut self,
+        nonce: &Self::RowId,
+        company_belong: &Self::RowId,
+        branch_name: &String,
+    ) -> Result<
+        (
+            bool, /* is nonce used */
+            bool, /* is company_belong exist */
+            bool, /* is branch_name used */
+        ),
+        DynamicError,
+    >;
+    async fn write_create_company_branch(
+        &mut self,
+        nonce: &Self::RowId,
+        company_belong: &Self::RowId,
+        branch_name: &String,
+        location: &db_types::Location,
+        currency: &db_types::Currency,
+        user_uuid: &Self::RowId,
+        user_role: &db_types::Role,
+    ) -> Result<Vec<ResourceInfo>, DynamicError>;
 }
 
 pub trait WebSocketOp: Sized {

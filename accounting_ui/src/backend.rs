@@ -42,7 +42,7 @@ impl<T: 'static + Clone + Default> Default for MySignal<T> {
     }
 }
 
-impl<T: 'static + Clone + Default> Signal for MySignal<T> {
+impl<T: 'static + Clone> Signal for MySignal<T> {
     type T = T;
     fn read(&self) -> Self::T {
         // Subscribe the context observing the signal (if any) to updates of its value.

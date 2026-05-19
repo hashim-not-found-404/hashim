@@ -71,13 +71,13 @@ where
 
         Self {
             database: DB::new().await,
-            client: PhantomData::<Cli>,
+            client: PhantomData,
             jwt: Jwt::new(),
-            authentication: PhantomData::<Authentication>,
-            functions: PhantomData::<F>,
-            rowid: PhantomData::<Id>,
-            mpsc: PhantomData::<MPSC>,
-            runtime: PhantomData::<RT>,
+            authentication: PhantomData,
+            functions: PhantomData,
+            rowid: PhantomData,
+            mpsc: PhantomData,
+            runtime: PhantomData,
             sender_to_broker,
         }
     }
@@ -85,10 +85,7 @@ where
     pub async fn sign_up(&self, input: &sign_up::Input) -> Result<sign_up::Result, DynamicError> {
         let hashed_password = Authentication::sign_up(&input.password);
 
-        let mut errr = sign_up::Error {
-            user_id: None,
-            name: None,
-        };
+        let mut errr = sign_up::Error::default();
 
         let mut client = self.database.get_client().await?;
         let mut txn = client.begin_transaction().await?;
@@ -124,10 +121,7 @@ where
         &self,
         input: &sign_in::Input,
     ) -> Result<Result<(sign_in::Ok, Id), sign_in::Error>, DynamicError> {
-        let mut errr = sign_in::Error {
-            user_id: None,
-            password: None,
-        };
+        let mut errr = sign_in::Error::default();
 
         let mut client = self.database.get_client().await?;
 
@@ -159,13 +153,9 @@ where
         &self,
         input: &create_company::Input,
     ) -> Result<Result<(create_company::Ok, Id), create_company::Error>, DynamicError> {
-        let mut errr = create_company::Error {
-            nounc: None,
-            jwt: None,
-        };
+        let mut errr = create_company::Error::default();
 
-        let user_uuid = self.jwt.validate(input.jwt.clone());
-        let user_uuid = match user_uuid {
+        let user_uuid = match self.jwt.validate(input.jwt.clone()) {
             Some(user_uuid) => user_uuid,
             None => {
                 errr.jwt = Some(JWTError::Invalid);
@@ -173,10 +163,10 @@ where
             }
         };
 
-        let nounc = match Id::try_from(&input.nounc) {
-            Ok(nounc) => nounc,
+        let nonce = match Id::try_from(&input.nonce) {
+            Ok(nonce) => nonce,
             Err(_) => {
-                errr.nounc = Some(NouncError::Invalid);
+                errr.nonce = Some(NonceError::Invalid);
                 return Ok(Err(errr));
             }
         };
@@ -185,23 +175,109 @@ where
         let mut txn = client.begin_transaction().await?;
 
         let result = (|| async {
-            let is_nounc_used = txn.read_create_company(&nounc).await?;
+            let is_nonce_used = txn.read_create_company(&nonce).await?;
 
-            if !check_nonce_if_valid::<Id>(&nounc, is_nounc_used) {
-                errr.nounc = Some(NouncError::Invalid);
+            if !check_nonce_if_valid::<Id>(&nonce, is_nonce_used) {
+                errr.nonce = Some(NonceError::Invalid);
                 return Ok(Err(errr));
             }
 
-            txn.write_create_company(
-                &nounc,
-                &user_uuid,
-                &db_types::Role::Manager,
-                &input.company_name,
-                &input.currency,
-            )
-            .await?;
+            let resources = txn
+                .write_create_company(
+                    &nonce,
+                    &user_uuid,
+                    &db_types::Role::Manager,
+                    &input.company_name,
+                    &input.currency,
+                )
+                .await?;
 
-            Ok(Ok((create_company::Ok, user_uuid)))
+            Ok(Ok((create_company::Ok { resources }, user_uuid)))
+        })()
+        .await;
+
+        if let Ok(Ok(_)) = &result {
+            let _ = txn.commit_transaction().await?;
+        } else {
+            let _ = txn.rollback_transaction().await?;
+        }
+
+        return result;
+    }
+
+    pub async fn create_company_branch(
+        &self,
+        input: &create_company_branch::Input,
+    ) -> Result<Result<(create_company_branch::Ok, Id), create_company_branch::Error>, DynamicError>
+    {
+        let mut errr = create_company_branch::Error::default();
+
+        let user_uuid = match self.jwt.validate(input.jwt.clone()) {
+            Some(user_uuid) => user_uuid,
+            None => {
+                errr.jwt = Some(JWTError::Invalid);
+                return Ok(Err(errr));
+            }
+        };
+
+        let nonce = match Id::try_from(&input.nonce) {
+            Ok(nonce) => nonce,
+            Err(_) => {
+                errr.nonce = Some(NonceError::Invalid);
+                return Ok(Err(errr));
+            }
+        };
+
+        let company_belong = match Id::try_from(&input.company_belong) {
+            Ok(company_belong) => company_belong,
+            Err(_) => {
+                errr.company_belong =
+                    Some(create_company_branch::CompanyBelongError::IdInWrongFormat);
+                return Ok(Err(errr));
+            }
+        };
+
+        let mut client = self.database.get_client().await?;
+        let mut txn = client.begin_transaction().await?;
+
+        let result = (|| async {
+            let (is_nonce_used, is_company_exist, is_branch_name_used) = txn
+                .read_create_company_branch(&nonce, &company_belong, &input.branch_name)
+                .await?;
+
+            if !check_nonce_if_valid::<Id>(&nonce, is_nonce_used) {
+                errr.nonce = Some(NonceError::Invalid);
+            }
+
+            if is_company_exist {
+                errr.company_belong = Some(create_company_branch::CompanyBelongError::NotExist);
+            }
+
+            if is_branch_name_used {
+                errr.branch_name = Some(create_company_branch::BranchNameError::Duplicated);
+            }
+
+            if !input.location.is_valid() {
+                errr.location = Some(create_company_branch::LocationError::Invalid);
+            }
+
+            if errr != create_company_branch::Error::default() {
+                return Ok(Err(errr));
+            }
+
+            let resources = txn
+                .write_create_company_branch(
+                    &nonce,
+                    &company_belong,
+                    &input.branch_name,
+                    &input.location,
+                    &input.currency,
+                    &user_uuid,
+                    &db_types::Role::Manager,
+                )
+                .await?;
+
+            Ok(Ok((create_company_branch::Ok { resources }, user_uuid)))
         })()
         .await;
 
@@ -269,18 +345,16 @@ where
                         user_uuid,
                         list_of_subscribtion_for_company,
                         list_of_subscribtion_for_branch,
-                        channel_to_send_to_facad,
+                        sender_to_server,
                     } => {
                         let channels = pool_of_server_facad_channels.get_mut(&user_uuid);
                         match channels {
                             Some(channels) => {
-                                channels.insert(channels.len(), channel_to_send_to_facad.clone())
+                                channels.insert(channels.len(), sender_to_server.clone())
                             }
                             None => {
-                                pool_of_server_facad_channels.insert(
-                                    user_uuid.clone(),
-                                    vec![channel_to_send_to_facad.clone()],
-                                );
+                                pool_of_server_facad_channels
+                                    .insert(user_uuid.clone(), vec![sender_to_server.clone()]);
                             }
                         }
 
@@ -426,13 +500,17 @@ where
 pub enum Subscribe {
     // TODO
     CompanyCurrancy,
+    CompanyName,
 }
 pub(crate) fn role_to_subscribe_mapping(roles: Vec<db_types::Role>) -> Vec<Subscribe> {
     let mut subscribes = Vec::with_capacity(200);
 
     for role in roles {
         match role {
-            db_types::Role::Manager => subscribes.append(&mut vec![Subscribe::CompanyCurrancy]),
+            db_types::Role::Manager => {
+                subscribes.push(Subscribe::CompanyCurrancy);
+                subscribes.push(Subscribe::CompanyName);
+            }
         }
     }
 
@@ -448,8 +526,13 @@ pub(crate) fn resource_filtering_based_on_subscribe(
 }
 
 // here contain data
-#[derive(Clone)]
-pub enum Resource {}
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub enum Resource {
+    CompanyName(String),
+    CompanyCurrency(db_types::Currency),
+    RoleAtCompany(db_types::Role),
+    UserThatHaveRole(db_types::RowIdType),
+}
 trait DataToResourceMapping {
     fn map_to_resource(&self) -> Vec<Resource>;
 }
@@ -474,7 +557,7 @@ pub enum MessageToBroker<Id: RowId, MPSC: MultiProducerSingleConsumer> {
         user_uuid: Id,
         list_of_subscribtion_for_company: SubscribedDataForCompany<Id>,
         list_of_subscribtion_for_branch: SubscribedDataForBranch<Id>,
-        channel_to_send_to_facad: MPSC::Sender<Vec<Resource>>,
+        sender_to_server: MPSC::Sender<Vec<Resource>>,
     },
     Unsubscribe {
         user_uuid: Id,

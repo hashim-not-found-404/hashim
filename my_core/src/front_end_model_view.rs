@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-pub trait Signal: Default {
+pub trait Signal {
     type T;
     fn read(&self) -> Self::T;
     fn set(&self, v: Self::T);
@@ -12,31 +12,28 @@ pub struct State<
     MPSC: MultiProducerSingleConsumer + 'static,
     CH: CacheIO + 'static,
     Id: RowId + 'static,
-    StringSignal: Signal<T = String> + 'static,
-    BoolSignal: Signal<T = bool> + 'static,
-    ExternalErrorSignal: Signal<T = String> + 'static,
-    CurrencySignal: Signal<T = db_types::Currency> + 'static,
-    UserRolesSignal: Signal<T = Vec<db_types::Company>> + 'static,
+    RN: RandomNumber + 'static,
+    SigString: Signal<T = String> + 'static,
+    SigBool: Signal<T = bool> + 'static,
+    SigExternalError: Signal<T = String> + 'static,
+    SigCurrency: Signal<T = db_types::Currency> + 'static,
+    SigLocation: Signal<T = db_types::Location> + 'static,
 > {
     // here for the app logic
-    generate_transaction_number: PhantomData<Id>,
+    id: PhantomData<Id>,
+    random_number: PhantomData<RN>,
+    sig_string: PhantomData<SigString>,
+    sig_currency: PhantomData<SigCurrency>,
+    sig_location: PhantomData<SigLocation>,
+
     routs: Arc<client::RoutsForClientSide<WA, RT, MPSC, CH>>,
     jwt: RwLock<Option<String>>,
 
     // here every field to display
-    pub is_signed_in: BoolSignal,
-    pub is_loading_sign_in_or_up: BoolSignal,
-    pub user_name: StringSignal,
-    pub user_id: StringSignal,
-    pub password: StringSignal,
-    pub sign_in_error_for_user_id: StringSignal,
-    pub sign_in_error_for_password: StringSignal,
-    pub sign_up_error_for_user_id: StringSignal,
-    pub sign_up_error_for_user_name: StringSignal,
-    pub external_errors: ExternalErrorSignal,
-    pub company_name: StringSignal,
-    pub company_currency: CurrencySignal,
-    pub all_user_roles: UserRolesSignal,
+    // here is global state
+    pub is_signed_in: SigBool,
+    // here is feature state
+    pub external_errors: SigExternalError,
 }
 
 impl<
@@ -45,24 +42,14 @@ impl<
     MPSC: MultiProducerSingleConsumer,
     CH: CacheIO,
     Id: RowId,
-    StringSignal: Signal<T = String>,
-    BoolSignal: Signal<T = bool>,
-    ExternalErrorSignal: Signal<T = String>,
-    CurrencySignal: Signal<T = db_types::Currency>,
-    UserRolesSignal: Signal<T = Vec<db_types::Company>>,
->
-    State<
-        WA,
-        RT,
-        MPSC,
-        CH,
-        Id,
-        StringSignal,
-        BoolSignal,
-        ExternalErrorSignal,
-        CurrencySignal,
-        UserRolesSignal,
-    >
+    RN: RandomNumber,
+    // signals
+    SigString: Signal<T = String>,
+    SigBool: Signal<T = bool> + Default,
+    SigExternalError: Signal<T = String> + Default,
+    SigCurrency: Signal<T = db_types::Currency>,
+    SigLocation: Signal<T = db_types::Location>,
+> State<WA, RT, MPSC, CH, Id, RN, SigString, SigBool, SigExternalError, SigCurrency, SigLocation>
 {
     pub async fn new() -> Arc<Self> {
         let (sender_to_error, receiver_to_error) = MPSC::channel();
@@ -70,22 +57,15 @@ impl<
         let routs = client::RoutsForClientSide::<WA, RT, MPSC, CH>::new(sender_to_error).await;
 
         let state = Arc::new(Self {
-            generate_transaction_number: PhantomData::<Id>,
+            id: PhantomData,
+            random_number: PhantomData,
             routs: routs,
             jwt: RwLock::new(None),
-            is_signed_in: BoolSignal::default(),
-            is_loading_sign_in_or_up: BoolSignal::default(),
-            user_name: StringSignal::default(),
-            user_id: StringSignal::default(),
-            password: StringSignal::default(),
-            sign_in_error_for_user_id: StringSignal::default(),
-            sign_in_error_for_password: StringSignal::default(),
-            sign_up_error_for_user_id: StringSignal::default(),
-            sign_up_error_for_user_name: StringSignal::default(),
-            external_errors: ExternalErrorSignal::default(),
-            company_name: StringSignal::default(),
-            company_currency: CurrencySignal::default(),
-            all_user_roles: UserRolesSignal::default(),
+            is_signed_in: SigBool::default(),
+            external_errors: SigExternalError::default(),
+            sig_string: PhantomData,
+            sig_currency: PhantomData,
+            sig_location: PhantomData,
         });
 
         state.clone().listen_to_error(receiver_to_error);
@@ -93,29 +73,30 @@ impl<
         state
     }
 
-    pub fn sign_up(self: Arc<Self>) {
+    pub fn sign_up(
+        self: Arc<Self>,
+        local_state: Arc<SignUpState<SigString>>,
+        feature_state: Arc<AuthFeatureState<SigString, SigBool>>,
+    ) {
         RT::spawn_local(async move {
-            if self.is_loading_sign_in_or_up.read() == true {
+            if feature_state.is_loading.read() == true {
                 return;
             }
-            self.is_loading_sign_in_or_up.set(true);
+            feature_state.is_loading.set(true);
 
-            self.sign_in_error_for_user_id.set(String::new());
-            self.sign_in_error_for_password.set(String::new());
-            self.sign_up_error_for_user_id.set(String::new());
-            self.sign_up_error_for_user_name.set(String::new());
+            local_state.user_id_error.set(String::new());
+            local_state.user_name_error.set(String::new());
 
             let input = sign_up::Input {
                 name: {
-                    let x = self.user_name.read();
-                    if x.as_str() == "" {
-                        None
-                    } else {
-                        Some(x.to_string())
+                    let name = local_state.user_name.read();
+                    match name.is_empty() {
+                        true => None,
+                        false => Some(name.to_string()),
                     }
                 },
-                user_id: self.user_id.read().to_string(),
-                password: self.password.read().to_string(),
+                user_id: feature_state.user_id.read().to_string(),
+                password: feature_state.user_password.read().to_string(),
             };
 
             let result = self.routs.clone().sign_up(&input).await;
@@ -126,38 +107,40 @@ impl<
                     *self.jwt.write().unwrap() = Some(business_output.jwt.clone());
                 }
                 Ok(Err(business_error)) => {
-                    self.sign_up_error_for_user_id
-                        .set(match business_error.user_id {
-                            Some(_) => String::from("duplicated user"),
-                            None => String::new(),
-                        });
-                    self.sign_up_error_for_user_name
-                        .set(match business_error.name {
-                            Some(e) => e,
-                            None => String::new(),
-                        });
+                    local_state.user_id_error.set(match business_error.user_id {
+                        Some(_) => String::from("duplicated user"),
+                        None => String::new(),
+                    });
+                    local_state.user_name_error.set(match business_error.name {
+                        Some(e) => e,
+                        None => String::new(),
+                    });
                 }
                 Err(external_error) => {
                     self.external_errors.set(external_error.to_string());
                 }
             }
-            self.is_loading_sign_in_or_up.set(false);
+            feature_state.is_loading.set(false);
         });
     }
 
-    pub fn sign_in(self: Arc<Self>) {
+    pub fn sign_in(
+        self: Arc<Self>,
+        local_state: Arc<SignInState<SigString>>,
+        feature_state: Arc<AuthFeatureState<SigString, SigBool>>,
+    ) {
         RT::spawn_local(async move {
-            if self.is_loading_sign_in_or_up.read() == true {
+            if feature_state.is_loading.read() == true {
                 return;
             }
-            self.is_loading_sign_in_or_up.set(true);
+            feature_state.is_loading.set(true);
 
-            self.sign_in_error_for_user_id.set(String::new());
-            self.sign_in_error_for_password.set(String::new());
+            local_state.user_id_error.set(String::new());
+            local_state.user_password_error.set(String::new());
 
             let input = sign_in::Input {
-                user_id: self.user_id.read(),
-                password: self.password.read(),
+                user_id: feature_state.user_id.read().to_string(),
+                password: feature_state.user_password.read().to_string(),
             };
 
             let result = self.routs.clone().sign_in(&input).await;
@@ -168,12 +151,12 @@ impl<
                     *self.jwt.write().unwrap() = Some(business_output.jwt.clone());
                 }
                 Ok(Err(business_error)) => {
-                    self.sign_in_error_for_user_id
-                        .set(match business_error.user_id {
-                            Some(_) => String::from("user not exist"),
-                            None => String::new(),
-                        });
-                    self.sign_in_error_for_password
+                    local_state.user_id_error.set(match business_error.user_id {
+                        Some(_) => String::from("user not exist"),
+                        None => String::new(),
+                    });
+                    local_state
+                        .user_password_error
                         .set(match business_error.password {
                             Some(_) => String::from("wrong password"),
                             None => String::new(),
@@ -184,7 +167,7 @@ impl<
                 }
             }
 
-            self.is_loading_sign_in_or_up.set(false);
+            feature_state.is_loading.set(false);
         });
     }
 
@@ -197,33 +180,17 @@ impl<
         });
     }
 
-    // pub async fn get_all_user_roles(&self) {
-    //     let input = self.generate_txn(get_all_user_roles::Input {});
-
-    //     let result = self.routs.get_all_user_roles(input).await;
-
-    //     match result {
-    //         Ok(Ok(business_output)) => {
-    //             self.all_user_roles.set(business_output.all_roles);
-    //         }
-    //         Ok(Err(business_error)) => match business_error {
-    //             business_layer::Error::InvalidInput(err) => {}
-    //             business_layer::Error::InvalidJWT => self.is_signed_in.set(false),
-    //             _ => todo!(),
-    //         },
-    //         Err(external_error) => {
-    //             self.external_errors.set(external_error.to_string());
-    //         }
-    //     }
-    // }
-
-    pub async fn create_company(self: Arc<Self>) {
+    pub async fn create_company(
+        self: Arc<Self>,
+        local_state: Arc<CreateCompanyState<SigString, SigCurrency>>,
+    ) {
         RT::spawn_local(async move {
             let input = create_company::Input {
                 jwt: self.jwt.read().unwrap().clone().unwrap_or_default(),
-                nounc: Id::generate().to_string(),
-                company_name: self.company_name.read(),
-                currency: self.company_currency.read(),
+                nonce: Id::generate().to_string(),
+                txn_number: RN::generate() as u32,
+                company_name: local_state.company_name.read(),
+                currency: local_state.currency.read(),
             };
 
             let result = self.routs.clone().create_company(&input).await;
@@ -231,8 +198,8 @@ impl<
             match result {
                 Ok(Ok(business_output)) => {}
                 Ok(Err(business_error)) => {
-                    self.external_errors.set(match business_error.nounc {
-                        Some(_) => String::from("nounc error"),
+                    self.external_errors.set(match business_error.nonce {
+                        Some(_) => String::from("nonce error"),
                         None => String::new(),
                     });
                     self.is_signed_in.set(business_error.jwt.is_some());
@@ -243,4 +210,86 @@ impl<
             }
         });
     }
+
+    pub async fn create_company_branch(
+        self: Arc<Self>,
+        local_state: CreateCompanyBranchState<SigString, SigCurrency, SigLocation>,
+    ) {
+        RT::spawn_local(async move {
+            let input = create_company_branch::Input {
+                jwt: self.jwt.read().unwrap().clone().unwrap_or_default(),
+                nonce: Id::generate().to_string(),
+                txn_number: RN::generate() as u32,
+                company_belong: local_state.company_belong.read(),
+                currency: local_state.currency.read(),
+                branch_name: local_state.branch_name.read(),
+                location: local_state.location.read(),
+            };
+
+            let result = self.routs.clone().create_company_branch(&input).await;
+
+            match result {
+                Ok(Ok(business_output)) => {}
+                Ok(Err(business_error)) => {
+                    self.external_errors.set(match business_error.nonce {
+                        Some(_) => String::from("nonce error"),
+                        None => String::new(),
+                    });
+                    self.is_signed_in.set(business_error.jwt.is_some());
+                    todo!()
+                }
+                Err(external_error) => {
+                    self.external_errors.set(external_error.to_string());
+                }
+            }
+        });
+    }
+}
+
+pub struct SignInState<SigString>
+where
+    SigString: Signal<T = String>,
+{
+    pub user_id_error: SigString,
+    pub user_password_error: SigString,
+}
+
+pub struct SignUpState<SigString>
+where
+    SigString: Signal<T = String>,
+{
+    pub user_name: SigString,
+    pub user_id_error: SigString,
+    pub user_name_error: SigString,
+}
+
+pub struct AuthFeatureState<SigString, SigBool>
+where
+    SigString: Signal<T = String>,
+    SigBool: Signal<T = bool>,
+{
+    pub user_id: SigString,
+    pub user_password: SigString,
+    pub is_loading: SigBool,
+}
+
+pub struct CreateCompanyState<SigString, SigCurrency>
+where
+    SigString: Signal<T = String>,
+    SigCurrency: Signal<T = db_types::Currency>,
+{
+    pub company_name: SigString,
+    pub currency: SigCurrency,
+}
+
+pub struct CreateCompanyBranchState<SigString, SigCurrency, SigLocation>
+where
+    SigString: Signal<T = String>,
+    SigCurrency: Signal<T = db_types::Currency>,
+    SigLocation: Signal<T = db_types::Location>,
+{
+    pub company_belong: SigString,
+    pub currency: SigCurrency,
+    pub branch_name: SigString,
+    pub location: SigLocation,
 }

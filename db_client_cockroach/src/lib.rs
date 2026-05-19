@@ -1,8 +1,9 @@
-use std::{collections::HashMap, str::FromStr};
-
 use adapters::prelude::*;
 use deadpool_postgres::{Config, Pool, Runtime};
 use my_core::prelude::*;
+use std::time::{SystemTime, UNIX_EPOCH};
+use std::{collections::HashMap, str::FromStr};
+use tokio_postgres::types::Timestamp;
 use tokio_postgres::{NoTls, error::SqlState};
 use uuid::Uuid;
 
@@ -186,11 +187,11 @@ impl DBTransaction for CockroachTxn<'_> {
         return Ok(value.into());
     }
 
-    async fn read_create_company(&mut self, nounc: &Self::RowId) -> Result<bool, DynamicError> {
+    async fn read_create_company(&mut self, nonce: &Self::RowId) -> Result<bool, DynamicError> {
         let query =
             "SELECT EXISTS(SELECT 1 FROM accounting_app.transaction_number WHERE rowid = $1)";
         let stmt = self.txn.prepare_cached(query).await?;
-        let row = self.txn.query_one(&stmt, &[&nounc.into_inner()]).await?;
+        let row = self.txn.query_one(&stmt, &[&nonce.into_inner()]).await?;
 
         let exists: bool = row.try_get(0)?;
         Ok(exists)
@@ -198,12 +199,12 @@ impl DBTransaction for CockroachTxn<'_> {
 
     async fn write_create_company(
         &mut self,
-        nounc: &Self::RowId,
+        nonce: &Self::RowId,
         user_uuid: &Self::RowId,
         user_role: &db_types::Role,
         company_name: &String,
         currency: &db_types::Currency,
-    ) -> Result<(), DynamicError> {
+    ) -> Result<Vec<ResourceInfo>, DynamicError> {
         let query = "
             WITH
 
@@ -211,21 +212,30 @@ impl DBTransaction for CockroachTxn<'_> {
                 INSERT INTO accounting_app.transaction_number (rowid) VALUES ($1)
                 RETURNING 1
             ),
+
             company_insert AS (
                 INSERT INTO accounting_app.company (name, currency) VALUES ($2, $3)
-                RETURNING rowid
+                RETURNING rowid, updated_at
             )
 
             INSERT INTO accounting_app.access_control_for_company (data_group, user_, role)
             SELECT company_insert.rowid, $4, $5 FROM company_insert
-            ;";
+
+            RETURNING
+                (SELECT rowid FROM company_insert) AS company_rowid,
+                (SELECT updated_at FROM company_insert) AS company_updated_at,
+                rowid AS access_control_rowid,
+                updated_at AS access_control_updated_at
+            ;
+            ";
 
         let stmt = self.txn.prepare_cached(query).await?;
-        self.txn
-            .execute(
+        let row = self
+            .txn
+            .query_one(
                 &stmt,
                 &[
-                    &nounc.into_inner(),
+                    &nonce.into_inner(),
                     &company_name,
                     &currency.as_str(),
                     &user_uuid.into_inner(),
@@ -234,7 +244,70 @@ impl DBTransaction for CockroachTxn<'_> {
             )
             .await?;
 
-        Ok(())
+        let company_rowid: Uuid = row.try_get(0)?;
+        let company_updated_at: SystemTime = row.try_get(1)?;
+        let access_control_for_company_rowid: Uuid = row.try_get(2)?;
+        let access_control_for_company_updated_at: SystemTime = row.try_get(3)?;
+
+        let result = vec![
+            ResourceInfo {
+                version: company_updated_at.duration_since(UNIX_EPOCH)?.as_micros() as u64,
+                uuid: company_rowid.to_string(),
+                resource: server_methods::Resource::CompanyName(company_name.clone()),
+            },
+            ResourceInfo {
+                version: company_updated_at.duration_since(UNIX_EPOCH)?.as_micros() as u64,
+                uuid: company_rowid.to_string(),
+                resource: server_methods::Resource::CompanyCurrency(currency.clone()),
+            },
+            ResourceInfo {
+                version: access_control_for_company_updated_at
+                    .duration_since(UNIX_EPOCH)?
+                    .as_micros() as u64,
+                uuid: access_control_for_company_rowid.to_string(),
+                resource: server_methods::Resource::RoleAtCompany(user_role.clone()),
+            },
+            ResourceInfo {
+                version: access_control_for_company_updated_at
+                    .duration_since(UNIX_EPOCH)?
+                    .as_micros() as u64,
+                uuid: access_control_for_company_rowid.to_string(),
+                resource: server_methods::Resource::UserThatHaveRole(
+                    user_uuid.into_inner().to_string(),
+                ),
+            },
+        ];
+
+        Ok(result)
+    }
+
+    async fn read_create_company_branch(
+        &mut self,
+        nonce: &Self::RowId,
+        company_belong: &Self::RowId,
+        branch_name: &String,
+    ) -> Result<
+        (
+            bool, /* is nonce used */
+            bool, /* is company_belong exist */
+            bool, /* is branch_name used */
+        ),
+        DynamicError,
+    > {
+        todo!()
+    }
+
+    async fn write_create_company_branch(
+        &mut self,
+        nonce: &Self::RowId,
+        company_belong: &Self::RowId,
+        branch_name: &String,
+        location: &db_types::Location,
+        currency: &db_types::Currency,
+        user_uuid: &Self::RowId,
+        user_role: &db_types::Role,
+    ) -> Result<Vec<ResourceInfo>, DynamicError> {
+        todo!()
     }
 }
 

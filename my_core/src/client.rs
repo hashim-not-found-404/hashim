@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-const TIMEOUT: u32 = 2;
+const TIMEOUT: u32 = 5;
 
 pub struct RoutsForClientSide<WA, RT, MPSC, CH>
 where
@@ -29,8 +29,8 @@ where
 
         let routs_for_client_side = Arc::new(Self {
             web_socket,
-            runtime: PhantomData::<RT>,
-            mpsc: PhantomData::<MPSC>,
+            runtime: PhantomData,
+            mpsc: PhantomData,
             cache: CH::new().await.unwrap(),
         });
 
@@ -82,6 +82,22 @@ where
             .web_socket
             .send_and_receive::<create_company::Input, Result<create_company::Result, HashimError>>(
                 &create_company::PATH.to_string(),
+                input,
+                TIMEOUT,
+            )
+            .await??;
+
+        Ok(result)
+    }
+
+    pub async fn create_company_branch(
+        self: Arc<Self>,
+        input: &create_company_branch::Input,
+    ) -> Result<create_company_branch::Result, DynamicError> {
+        let result = self
+            .web_socket
+            .send_and_receive::<create_company_branch::Input, Result<create_company_branch::Result, HashimError>>(
+                &create_company_branch::PATH.to_string(),
                 input,
                 TIMEOUT,
             )
