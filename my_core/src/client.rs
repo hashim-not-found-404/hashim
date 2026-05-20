@@ -12,7 +12,7 @@ where
     web_socket: WA,
     runtime: PhantomData<RT>,
     mpsc: PhantomData<MPSC>,
-    cache: CH,
+    pub cache: CH,
 }
 
 impl<WA, RT, MPSC, CH> RoutsForClientSide<WA, RT, MPSC, CH>
@@ -74,45 +74,13 @@ where
         Ok(result)
     }
 
-    pub async fn create_company(
-        self: Arc<Self>,
-        input: &create_company::Input,
-    ) -> Result<create_company::Result, DynamicError> {
-        let result = self
-            .web_socket
-            .send_and_receive::<create_company::Input, Result<create_company::Result, HashimError>>(
-                &create_company::PATH.to_string(),
-                input,
-                TIMEOUT,
-            )
-            .await??;
-
-        Ok(result)
-    }
-
-    pub async fn create_company_branch(
-        self: Arc<Self>,
-        input: &create_company_branch::Input,
-    ) -> Result<create_company_branch::Result, DynamicError> {
-        let result = self
-            .web_socket
-            .send_and_receive::<create_company_branch::Input, Result<create_company_branch::Result, HashimError>>(
-                &create_company_branch::PATH.to_string(),
-                input,
-                TIMEOUT,
-            )
-            .await??;
-
-        Ok(result)
-    }
-
     pub async fn data_receiver(self: Arc<Self>, sender_to_error: MPSC::Sender<DynamicError>) {
         self.clone()
             .web_socket
             .receive_only::<data_receiver::Input>(
                 &data_receiver::PATH.to_string(),
                 async move |data| {
-                    let a = self.cache.write_data(&data).await;
+                    let a = self.cache.write_data(&data.0).await;
                     match a {
                         Ok(_) => return,
                         Err(e) => sender_to_error.send(e).await.unwrap(),

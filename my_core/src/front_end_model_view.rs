@@ -88,6 +88,7 @@ impl<
             local_state.user_name_error.set(String::new());
 
             let input = sign_up::Input {
+                new_uuid: Id::generate().to_string(),
                 name: {
                     let name = local_state.user_name.read();
                     match name.is_empty() {
@@ -186,24 +187,21 @@ impl<
     ) {
         RT::spawn_local(async move {
             let input = create_company::Input {
-                jwt: self.jwt.read().unwrap().clone().unwrap_or_default(),
-                nonce: Id::generate().to_string(),
-                txn_number: RN::generate() as u32,
+                new_uuid: Id::generate().to_string(),
                 company_name: local_state.company_name.read(),
                 currency: local_state.currency.read(),
             };
 
-            let result = self.routs.clone().create_company(&input).await;
+            let txn = push_data::TxnInput {
+                user_uuid: String::new(),
+                txn_number: RN::generate(),
+                operation: push_data::OperationInput::CreateCompany(input),
+            };
+
+            let result = self.routs.cache.write_txn(&txn).await;
 
             match result {
-                Ok(Ok(business_output)) => {}
-                Ok(Err(business_error)) => {
-                    self.external_errors.set(match business_error.nonce {
-                        Some(_) => String::from("nonce error"),
-                        None => String::new(),
-                    });
-                    self.is_signed_in.set(business_error.jwt.is_some());
-                }
+                Ok(_) => {}
                 Err(external_error) => {
                     self.external_errors.set(external_error.to_string());
                 }
@@ -213,31 +211,29 @@ impl<
 
     pub async fn create_company_branch(
         self: Arc<Self>,
-        local_state: CreateCompanyBranchState<SigString, SigCurrency, SigLocation>,
+        local_state: Arc<CreateCompanyBranchState<SigString, SigCurrency, SigLocation>>,
     ) {
         RT::spawn_local(async move {
             let input = create_company_branch::Input {
-                jwt: self.jwt.read().unwrap().clone().unwrap_or_default(),
-                nonce: Id::generate().to_string(),
-                txn_number: RN::generate() as u32,
+                new_uuid: Id::generate().to_string(),
                 company_belong: local_state.company_belong.read(),
                 currency: local_state.currency.read(),
                 branch_name: local_state.branch_name.read(),
                 location: local_state.location.read(),
             };
 
-            let result = self.routs.clone().create_company_branch(&input).await;
+            // TODO : make offline check
+
+            let txn = push_data::TxnInput {
+                user_uuid: String::new(), // TODO
+                txn_number: RN::generate(),
+                operation: push_data::OperationInput::CreateCompanyBranch(input),
+            };
+
+            let result = self.routs.cache.write_txn(&txn).await;
 
             match result {
-                Ok(Ok(business_output)) => {}
-                Ok(Err(business_error)) => {
-                    self.external_errors.set(match business_error.nonce {
-                        Some(_) => String::from("nonce error"),
-                        None => String::new(),
-                    });
-                    self.is_signed_in.set(business_error.jwt.is_some());
-                    todo!()
-                }
+                Ok(_) => {}
                 Err(external_error) => {
                     self.external_errors.set(external_error.to_string());
                 }

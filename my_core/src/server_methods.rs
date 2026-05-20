@@ -82,28 +82,55 @@ where
         }
     }
 
-    pub async fn sign_up(&self, input: &sign_up::Input) -> Result<sign_up::Result, DynamicError> {
-        let hashed_password = Authentication::sign_up(&input.password);
-
+    pub async fn sign_up(
+        &self,
+        user_uuid: &mut Option<Id>,
+        input: &sign_up::Input,
+    ) -> Result<sign_up::Result, DynamicError> {
         let mut errr = sign_up::Error::default();
+
+        let new_uuid = match Id::try_from(&input.new_uuid) {
+            Ok(new_uuid) => Some(new_uuid),
+            Err(_) => {
+                errr.new_uuid = Some(RowIdError::Invalid);
+                None
+            }
+        };
+
+        *user_uuid = new_uuid.clone();
+
+        if errr != sign_up::Error::default() {
+            return Ok(Err(errr));
+        }
+
+        let hashed_password = Authentication::sign_up(&input.password);
 
         let mut client = self.database.get_client().await?;
         let mut txn = client.begin_transaction().await?;
 
         let result = (|| async {
-            let is_new_user = txn.read_sign_up(&input.user_id).await?;
+            let new_uuid = new_uuid.unwrap();
 
-            if !is_new_user {
+            let (is_new_uuid_exist, is_user_id_exist) =
+                txn.read_sign_up(&new_uuid, &input.user_id).await?;
+
+            if is_new_uuid_exist {
+                errr.new_uuid = Some(RowIdError::Duplicated);
+            }
+
+            if is_user_id_exist {
                 errr.user_id = Some(sign_up::UserIdError::Duplicated);
+            }
+
+            if errr != sign_up::Error::default() {
                 return Ok(Err(errr));
             }
 
-            let user_uuid = txn
-                .write_sign_up(&input.user_id, &hashed_password, &input.name)
+            txn.write_sign_up(&new_uuid, &input.user_id, &hashed_password, &input.name)
                 .await?;
 
             Ok(Ok(sign_up::Ok {
-                jwt: self.jwt.sign(&user_uuid).into(),
+                jwt: self.jwt.sign(&new_uuid).into(),
             }))
         })()
         .await;
@@ -119,8 +146,9 @@ where
 
     pub async fn sign_in(
         &self,
+        user_uuid: &mut Option<Id>,
         input: &sign_in::Input,
-    ) -> Result<Result<(sign_in::Ok, Id), sign_in::Error>, DynamicError> {
+    ) -> Result<sign_in::Result, DynamicError> {
         let mut errr = sign_in::Error::default();
 
         let mut client = self.database.get_client().await?;
@@ -135,12 +163,10 @@ where
 
         match Authentication::sign_in(&input.password, &password_hash) {
             true => {
-                return Ok(Ok((
-                    sign_in::Ok {
-                        jwt: self.jwt.sign(&user_rowid).into(),
-                    },
-                    user_rowid,
-                )));
+                *user_uuid = Some(user_rowid.clone());
+                return Ok(Ok(sign_in::Ok {
+                    jwt: self.jwt.sign(&user_rowid).into(),
+                }));
             }
             false => {
                 errr.password = Some(sign_in::PasswordError::WrongPassword);
@@ -151,48 +177,48 @@ where
 
     pub async fn create_company(
         &self,
+        resources: &mut Vec<ResourceInfo>,
+        user_uuid: &Id,
         input: &create_company::Input,
-    ) -> Result<Result<(create_company::Ok, Id), create_company::Error>, DynamicError> {
+    ) -> Result<create_company::Result, DynamicError> {
         let mut errr = create_company::Error::default();
 
-        let user_uuid = match self.jwt.validate(input.jwt.clone()) {
-            Some(user_uuid) => user_uuid,
-            None => {
-                errr.jwt = Some(JWTError::Invalid);
-                return Ok(Err(errr));
+        let new_uuid = match Id::try_from(&input.new_uuid) {
+            Ok(new_uuid) => Some(new_uuid),
+            Err(_) => {
+                errr.new_uuid = Some(RowIdError::Invalid);
+                None
             }
         };
 
-        let nonce = match Id::try_from(&input.nonce) {
-            Ok(nonce) => nonce,
-            Err(_) => {
-                errr.nonce = Some(NonceError::Invalid);
-                return Ok(Err(errr));
-            }
-        };
+        if errr != create_company::Error::default() {
+            return Ok(Err(errr));
+        }
 
         let mut client = self.database.get_client().await?;
         let mut txn = client.begin_transaction().await?;
 
         let result = (|| async {
-            let is_nonce_used = txn.read_create_company(&nonce).await?;
+            let new_uuid = new_uuid.unwrap();
 
-            if !check_nonce_if_valid::<Id>(&nonce, is_nonce_used) {
-                errr.nonce = Some(NonceError::Invalid);
+            let is_new_uuid_used = txn.read_create_company(&new_uuid).await?;
+
+            if is_new_uuid_used {
+                errr.new_uuid = Some(RowIdError::Duplicated);
                 return Ok(Err(errr));
             }
 
-            let resources = txn
-                .write_create_company(
-                    &nonce,
-                    &user_uuid,
-                    &db_types::Role::Manager,
-                    &input.company_name,
-                    &input.currency,
-                )
-                .await?;
+            txn.write_create_company(
+                resources,
+                &new_uuid,
+                user_uuid,
+                &db_types::Role::Manager,
+                &input.company_name,
+                &input.currency,
+            )
+            .await?;
 
-            Ok(Ok((create_company::Ok { resources }, user_uuid)))
+            Ok(Ok(create_company::Ok))
         })()
         .await;
 
@@ -207,46 +233,46 @@ where
 
     pub async fn create_company_branch(
         &self,
+        resources: &mut Vec<ResourceInfo>,
+        user_uuid: &Id,
         input: &create_company_branch::Input,
-    ) -> Result<Result<(create_company_branch::Ok, Id), create_company_branch::Error>, DynamicError>
-    {
+    ) -> Result<create_company_branch::Result, DynamicError> {
         let mut errr = create_company_branch::Error::default();
 
-        let user_uuid = match self.jwt.validate(input.jwt.clone()) {
-            Some(user_uuid) => user_uuid,
-            None => {
-                errr.jwt = Some(JWTError::Invalid);
-                return Ok(Err(errr));
-            }
-        };
-
-        let nonce = match Id::try_from(&input.nonce) {
-            Ok(nonce) => nonce,
+        let new_uuid = match Id::try_from(&input.new_uuid) {
+            Ok(new_uuid) => Some(new_uuid),
             Err(_) => {
-                errr.nonce = Some(NonceError::Invalid);
-                return Ok(Err(errr));
+                errr.new_uuid = Some(RowIdError::Invalid);
+                None
             }
         };
 
         let company_belong = match Id::try_from(&input.company_belong) {
-            Ok(company_belong) => company_belong,
+            Ok(company_belong) => Some(company_belong),
             Err(_) => {
                 errr.company_belong =
                     Some(create_company_branch::CompanyBelongError::IdInWrongFormat);
-                return Ok(Err(errr));
+                None
             }
         };
+
+        if errr != create_company_branch::Error::default() {
+            return Ok(Err(errr));
+        }
+
+        let new_uuid = new_uuid.unwrap();
+        let company_belong = company_belong.unwrap();
 
         let mut client = self.database.get_client().await?;
         let mut txn = client.begin_transaction().await?;
 
         let result = (|| async {
-            let (is_nonce_used, is_company_exist, is_branch_name_used) = txn
-                .read_create_company_branch(&nonce, &company_belong, &input.branch_name)
+            let (is_new_uuid_used, is_company_exist, is_branch_name_used) = txn
+                .read_create_company_branch(&new_uuid, &company_belong, &input.branch_name)
                 .await?;
 
-            if !check_nonce_if_valid::<Id>(&nonce, is_nonce_used) {
-                errr.nonce = Some(NonceError::Invalid);
+            if is_new_uuid_used {
+                errr.new_uuid = Some(RowIdError::Duplicated);
             }
 
             if is_company_exist {
@@ -265,19 +291,19 @@ where
                 return Ok(Err(errr));
             }
 
-            let resources = txn
-                .write_create_company_branch(
-                    &nonce,
-                    &company_belong,
-                    &input.branch_name,
-                    &input.location,
-                    &input.currency,
-                    &user_uuid,
-                    &db_types::Role::Manager,
-                )
-                .await?;
+            txn.write_create_company_branch(
+                resources,
+                &new_uuid,
+                &company_belong,
+                &input.branch_name,
+                &input.location,
+                &input.currency,
+                user_uuid,
+                &db_types::Role::Manager,
+            )
+            .await?;
 
-            Ok(Ok((create_company_branch::Ok { resources }, user_uuid)))
+            Ok(Ok(create_company_branch::Ok))
         })()
         .await;
 
@@ -290,26 +316,166 @@ where
         return result;
     }
 
+    pub async fn push_data(
+        &self, // TODO : simplify the output by &mut input
+        resources: &mut Vec<ResourceInfo>,
+        users_uuids: &mut HashSet<Id>,
+        input: &push_data::Input,
+    ) -> Result<push_data::Result, DynamicError> {
+        let mut the_return_result = push_data::Result {
+            authentications: Vec::with_capacity(input.authentications.len()),
+            nonce: None,
+            transactions: Vec::with_capacity(input.transactions.len()),
+        };
+
+        let mut is_there_error = false;
+
+        for auth in &input.authentications {
+            match auth {
+                push_data::AuthenticationMethodInput::Jwt(jwt) => {
+                    match self.jwt.validate(jwt.clone()) {
+                        Some(user_uuid) => {
+                            users_uuids.insert(user_uuid);
+                        }
+                        None => {
+                            the_return_result.authentications.push(
+                                push_data::AuthenticationMethodResult::Jwt(Some(JWTError::Invalid)),
+                            );
+
+                            is_there_error = true;
+                        }
+                    };
+                }
+                push_data::AuthenticationMethodInput::SignIn(input) => {
+                    let mut user_uuid = None;
+
+                    let result = self.sign_in(&mut user_uuid, &input).await?;
+                    if result.is_err() {
+                        is_there_error = true;
+                    }
+
+                    the_return_result
+                        .authentications
+                        .push(push_data::AuthenticationMethodResult::SignIn(result));
+
+                    if let Some(user_uuid) = user_uuid {
+                        users_uuids.insert(user_uuid);
+                    }
+                }
+                push_data::AuthenticationMethodInput::SignUp(input) => {
+                    let mut user_uuid = None;
+
+                    let result = self.sign_up(&mut user_uuid, &input).await?;
+                    if result.is_err() {
+                        is_there_error = true;
+                    }
+
+                    the_return_result
+                        .authentications
+                        .push(push_data::AuthenticationMethodResult::SignUp(result));
+
+                    if let Some(user_uuid) = user_uuid {
+                        users_uuids.insert(user_uuid);
+                    }
+                }
+            }
+        }
+
+        let nonce = match Id::try_from(&input.nonce) {
+            Ok(nonce) => nonce,
+            Err(_) => {
+                the_return_result.nonce = Some(NonceError::Invalid);
+                return Ok(the_return_result);
+            }
+        };
+
+        let mut client = self.database.get_client().await?;
+        let is_nonce_used = client.write_nonce_if_not_used(&nonce).await?;
+
+        if !check_nonce_if_valid::<Id>(&nonce, is_nonce_used) {
+            the_return_result.nonce = Some(NonceError::Invalid);
+        }
+
+        if is_there_error {
+            return Ok(the_return_result);
+        }
+
+        for transaction in &input.transactions {
+            let user_uuid = match Id::try_from(&transaction.user_uuid) {
+                Ok(user_uuid) => user_uuid,
+                Err(_) => {
+                    the_return_result.transactions.push(push_data::TxnResult {
+                        user_uuid: Err(push_data::UserUuidError::IdInWrongFormat),
+                        operation: None,
+                    });
+                    continue;
+                }
+            };
+
+            if let None = users_uuids.get(&user_uuid) {
+                the_return_result.transactions.push(push_data::TxnResult {
+                    user_uuid: Err(push_data::UserUuidError::NotAuthinticated),
+                    operation: None,
+                });
+                continue;
+            }
+
+            let result = match &transaction.operation {
+                push_data::OperationInput::CreateCompany(input) => {
+                    let result = self.create_company(resources, &user_uuid, input).await?;
+
+                    push_data::OperationResult::CreateCompany(result)
+                }
+                push_data::OperationInput::CreateCompanyBranch(input) => {
+                    let result = self
+                        .create_company_branch(resources, &user_uuid, input)
+                        .await?;
+
+                    push_data::OperationResult::CreateCompanyBranch(result)
+                }
+            };
+
+            the_return_result.transactions.push(push_data::TxnResult {
+                user_uuid: Ok(()),
+                operation: Some(result),
+            });
+        }
+
+        return Ok(the_return_result);
+    }
+
     pub async fn get_table_of_subscribed_data(
         &self,
-        user_uuid: &Id,
-    ) -> Result<AllSubscribesForUser<Id>, DynamicError> {
+        users_uuids: &HashSet<Id>,
+    ) -> Result<AllSubscribes<Id>, DynamicError> {
         let mut client = self.database.get_client().await?;
-        let roles = client.read_roles_for_user(user_uuid).await?;
+        let roles = client.read_roles_for_user(users_uuids).await?;
 
-        let mut subs = AllSubscribesForUser {
+        let mut subs = AllSubscribes {
             companies: HashMap::new(),
             branches: HashMap::new(),
         };
 
-        for (company, role) in roles.companies {
-            subs.companies
-                .insert(company, role_to_subscribe_mapping(role));
+        for (company, users_roles) in roles.companies {
+            let mut users_subscribes = HashMap::new();
+
+            for (user, roles) in users_roles {
+                let subscribes = role_to_subscribe_mapping(roles);
+                users_subscribes.insert(user, subscribes);
+            }
+
+            subs.companies.insert(company, users_subscribes);
         }
 
-        for (branch, role) in roles.branches {
-            subs.branches
-                .insert(branch, role_to_subscribe_mapping(role));
+        for (branch, users_roles) in roles.branches {
+            let mut users_subscribes = HashMap::new();
+
+            for (user, roles) in users_roles {
+                let subscribes = role_to_subscribe_mapping(roles);
+                users_subscribes.insert(user, subscribes);
+            }
+
+            subs.companies.insert(branch, users_subscribes);
         }
 
         Ok(subs)
@@ -317,71 +483,74 @@ where
 
     pub fn broker_actor(receiver_to_broker: MPSC::Receiver<MessageToBroker<Id, MPSC>>) {
         RT::spawn_local(async move {
-            let mut pool_of_pubsub_for_company: HashMap<
-                Id, // company uuid
-                HashMap<
-                    Id, // user uuid
-                    Vec<Subscribe>,
-                >,
-            > = HashMap::with_capacity(1000);
+            let mut pool_of_pubsub_for_company: CompanyUserSubscribes<Id> =
+                HashMap::with_capacity(1000);
 
-            let mut pool_of_pubsub_for_branch: HashMap<
-                Id, // branch uuid
-                HashMap<
-                    Id, // user uuid
-                    Vec<Subscribe>,
-                >,
-            > = HashMap::with_capacity(10000);
+            let mut pool_of_pubsub_for_branch: BranchUserSubscribes<Id> =
+                HashMap::with_capacity(10000);
 
-            let mut pool_of_server_facad_channels: HashMap<
-                Id,                               // user uuid
-                Vec<MPSC::Sender<Vec<Resource>>>, // because user may have multiple web socket connection
-            > = HashMap::with_capacity(10000);
+            let mut pool_of_server_facad_channels: UserSenders<Id, MPSC> =
+                HashMap::with_capacity(10000);
 
             loop {
                 let message = receiver_to_broker.recv().await.unwrap();
                 match message {
                     MessageToBroker::Subscribe {
-                        user_uuid,
-                        list_of_subscribtion_for_company,
-                        list_of_subscribtion_for_branch,
+                        list_of_subscribtion,
+                        users_uuids,
                         sender_to_server,
                     } => {
-                        let channels = pool_of_server_facad_channels.get_mut(&user_uuid);
-                        match channels {
-                            Some(channels) => {
-                                channels.insert(channels.len(), sender_to_server.clone())
-                            }
-                            None => {
-                                pool_of_server_facad_channels
-                                    .insert(user_uuid.clone(), vec![sender_to_server.clone()]);
-                            }
-                        }
+                        let list_of_subscribtion_for_company = list_of_subscribtion.companies;
+                        let list_of_subscribtion_for_branch = list_of_subscribtion.branches;
 
-                        for (company, subscribes) in list_of_subscribtion_for_company {
-                            let user_and_subscribes = pool_of_pubsub_for_company.get_mut(&company);
-                            match user_and_subscribes {
-                                Some(user_and_subscribes) => {
-                                    user_and_subscribes.insert(user_uuid.clone(), subscribes);
-                                }
+                        for user_uuid in users_uuids {
+                            let channels = pool_of_server_facad_channels.get_mut(&user_uuid);
+                            match channels {
+                                Some(channels) => channels.push(sender_to_server.clone()),
                                 None => {
-                                    let mut user_and_subscribes = HashMap::new();
-                                    user_and_subscribes.insert(user_uuid.clone(), subscribes);
-                                    pool_of_pubsub_for_company.insert(company, user_and_subscribes);
+                                    pool_of_server_facad_channels
+                                        .insert(user_uuid, vec![sender_to_server.clone()]);
                                 }
                             }
                         }
 
-                        for (branch, subscribes) in list_of_subscribtion_for_branch {
-                            let user_and_subscribes = pool_of_pubsub_for_branch.get_mut(&branch);
-                            match user_and_subscribes {
-                                Some(user_and_subscribes) => {
-                                    user_and_subscribes.insert(user_uuid.clone(), subscribes);
+                        for (company, users_subscribes) in list_of_subscribtion_for_company {
+                            let users_and_subscribes = pool_of_pubsub_for_company.get_mut(&company);
+                            match users_and_subscribes {
+                                Some(users_and_subscribes) => {
+                                    for (user_uuid, subscribes) in users_subscribes {
+                                        users_and_subscribes.insert(user_uuid.clone(), subscribes);
+                                    }
                                 }
                                 None => {
-                                    let mut user_and_subscribes = HashMap::new();
-                                    user_and_subscribes.insert(user_uuid.clone(), subscribes);
-                                    pool_of_pubsub_for_branch.insert(branch, user_and_subscribes);
+                                    let mut users_and_subscribes = HashMap::new();
+
+                                    for (user_uuid, subscribes) in users_subscribes {
+                                        users_and_subscribes.insert(user_uuid, subscribes);
+                                    }
+
+                                    pool_of_pubsub_for_company
+                                        .insert(company, users_and_subscribes);
+                                }
+                            }
+                        }
+
+                        for (branch, users_subscribes) in list_of_subscribtion_for_branch {
+                            let users_and_subscribes = pool_of_pubsub_for_branch.get_mut(&branch);
+                            match users_and_subscribes {
+                                Some(users_and_subscribes) => {
+                                    for (user_uuid, subscribes) in users_subscribes {
+                                        users_and_subscribes.insert(user_uuid, subscribes);
+                                    }
+                                }
+                                None => {
+                                    let mut users_and_subscribes = HashMap::new();
+
+                                    for (user_uuid, subscribes) in users_subscribes {
+                                        users_and_subscribes.insert(user_uuid, subscribes);
+                                    }
+
+                                    pool_of_pubsub_for_branch.insert(branch, users_and_subscribes);
                                 }
                             }
                         }
@@ -402,7 +571,7 @@ where
                     } => {
                         let mut resource_to_send: HashMap<
                             Id, // user uuid
-                            Vec<Resource>,
+                            Vec<ResourceInfo>,
                         > = HashMap::new();
 
                         for (company, resource) in list_of_resources_for_company {
@@ -497,6 +666,7 @@ where
 }
 
 // here dont contain data
+#[derive(Clone)]
 pub enum Subscribe {
     // TODO
     CompanyCurrancy,
@@ -520,8 +690,8 @@ pub(crate) fn role_to_subscribe_mapping(roles: Vec<db_types::Role>) -> Vec<Subsc
 
 pub(crate) fn resource_filtering_based_on_subscribe(
     subscribe: &Vec<Subscribe>,
-    resource: &Vec<Resource>,
-) -> Vec<Resource> {
+    resource: &Vec<ResourceInfo>,
+) -> Vec<ResourceInfo> {
     todo!()
 }
 
@@ -537,27 +707,57 @@ trait DataToResourceMapping {
     fn map_to_resource(&self) -> Vec<Resource>;
 }
 
-pub struct AllRolesForUser<Id: RowId> {
-    pub companies: HashMap<Id, Vec<db_types::Role>>,
-    pub branches: HashMap<Id, Vec<db_types::Role>>,
+pub struct AllRoles<Id: RowId> {
+    pub companies: HashMap<
+        Id, // company uuid
+        HashMap<
+            Id, // user uuid
+            Vec<db_types::Role>,
+        >,
+    >,
+    pub branches: HashMap<
+        Id, // branch uuid
+        HashMap<
+            Id, // user uuid
+            Vec<db_types::Role>,
+        >,
+    >,
 }
 
-pub struct AllSubscribesForUser<Id: RowId> {
-    pub companies: HashMap<Id, Vec<Subscribe>>,
-    pub branches: HashMap<Id, Vec<Subscribe>>,
+pub struct AllSubscribes<Id: RowId> {
+    pub companies: CompanyUserSubscribes<Id>,
+    pub branches: BranchUserSubscribes<Id>,
 }
 
-type SubscribedDataForCompany<Id> = HashMap<Id, Vec<Subscribe>>;
-type SubscribedDataForBranch<Id> = HashMap<Id, Vec<Subscribe>>;
-type ResourcesForCompany<Id> = HashMap<Id, Vec<Resource>>;
-type ResourcesForBranch<Id> = HashMap<Id, Vec<Resource>>;
+type CompanyUserSubscribes<Id> = HashMap<
+    Id, // company uuid
+    HashMap<
+        Id, // user uuid
+        Vec<Subscribe>,
+    >,
+>;
+
+type BranchUserSubscribes<Id> = HashMap<
+    Id, // branch uuid
+    HashMap<
+        Id, // user uuid
+        Vec<Subscribe>,
+    >,
+>;
+
+type UserSenders<Id, MPSC: MultiProducerSingleConsumer> = HashMap<
+    Id,                                   // user uuid
+    Vec<MPSC::Sender<Vec<ResourceInfo>>>, // because user may have multiple web socket connection
+>;
+
+type ResourcesForCompany<Id> = HashMap<Id, Vec<ResourceInfo>>;
+type ResourcesForBranch<Id> = HashMap<Id, Vec<ResourceInfo>>;
 
 pub enum MessageToBroker<Id: RowId, MPSC: MultiProducerSingleConsumer> {
     Subscribe {
-        user_uuid: Id,
-        list_of_subscribtion_for_company: SubscribedDataForCompany<Id>,
-        list_of_subscribtion_for_branch: SubscribedDataForBranch<Id>,
-        sender_to_server: MPSC::Sender<Vec<Resource>>,
+        list_of_subscribtion: AllSubscribes<Id>,
+        users_uuids: HashSet<Id>,
+        sender_to_server: MPSC::Sender<Vec<ResourceInfo>>,
     },
     Unsubscribe {
         user_uuid: Id,

@@ -29,8 +29,7 @@ pub fn server_actor<DB, Cli, Jwt, Authentication, F, Id, DE, RT, WSS, MPSC>(
     MPSC: MultiProducerSingleConsumer + 'static,
 {
     RT::spawn_local(async move {
-        let (sender_to_server, receiver_to_server) =
-            MPSC::channel::<Vec<server_methods::Resource>>();
+        let (sender_to_server, receiver_to_server) = MPSC::channel::<Vec<ResourceInfo>>();
 
         loop {
             let result = RT::select(session.receive(), receiver_to_server.recv()).await;
@@ -53,7 +52,10 @@ pub fn server_actor<DB, Cli, Jwt, Authentication, F, Id, DE, RT, WSS, MPSC>(
                                             let input = DE::decode::<sign_up::Input>(&payload);
 
                                             let result = match input {
-                                                Ok(input) => match state.sign_up(&input).await {
+                                                Ok(input) => match state
+                                                    .sign_up(&mut None, &input)
+                                                    .await
+                                                {
                                                     Ok(o) => Ok(o),
                                                     Err(_) => Err(HashimError::InternalServerError),
                                                 },
@@ -66,61 +68,73 @@ pub fn server_actor<DB, Cli, Jwt, Authentication, F, Id, DE, RT, WSS, MPSC>(
                                             let input = DE::decode::<sign_in::Input>(&payload);
 
                                             let result = match input {
-                                                Ok(input) => match state.sign_in(&input).await {
-                                                    Ok(o) => match o {
-                                                        Ok((o, user_uuid)) => {
-                                                            let subs = state
-                                                                .get_table_of_subscribed_data(
-                                                                    &user_uuid,
-                                                                )
-                                                                .await
-                                                                .unwrap();
+                                                Ok(input) => {
+                                                    let mut user_uuid = None;
+                                                    let sign_in =
+                                                        state.sign_in(&mut user_uuid, &input).await;
 
-                                                            sender_to_broker.send(server_methods::MessageToBroker::Subscribe {
-                                                                user_uuid: user_uuid,
-                                                                list_of_subscribtion_for_company: subs.companies,
-                                                                list_of_subscribtion_for_branch: subs.branches,
-                                                                sender_to_server: sender_to_server.clone()
-                                                            }).await.unwrap();
+                                                    if let Some(user_uuid) = user_uuid {
+                                                        let mut users = HashSet::new();
+                                                        users.insert(user_uuid);
 
-                                                            Ok(Ok(o))
+                                                        let subs = state
+                                                            .get_table_of_subscribed_data(&users)
+                                                            .await
+                                                            .unwrap();
+
+                                                        sender_to_broker.send(server_methods::MessageToBroker::Subscribe {
+                                                            list_of_subscribtion: subs,
+                                                            users_uuids:users,
+                                                            sender_to_server: sender_to_server.clone(),
+                                                        }).await.unwrap();
+                                                    }
+
+                                                    match sign_in {
+                                                        Ok(o) => Ok(o),
+                                                        Err(_) => {
+                                                            Err(HashimError::InternalServerError)
                                                         }
-                                                        Err(e) => Ok(Err(e)),
-                                                    },
-                                                    Err(_) => Err(HashimError::InternalServerError),
-                                                },
+                                                    }
+                                                }
                                                 Err(_) => Err(HashimError::DecodingErrorAtServer),
                                             };
 
                                             DE::encode(&result)
                                         }
-                                        create_company::PATH => {
-                                            let input =
-                                                DE::decode::<create_company::Input>(&payload);
+                                        push_data::PATH => {
+                                            let input = DE::decode::<push_data::Input>(&payload);
 
                                             let result = match input {
                                                 Ok(input) => {
-                                                    match state.create_company(&input).await {
-                                                        Ok(o) => match o {
-                                                            Ok((o, user_uuid)) => {
-                                                                let subs = state
-                                                                    .get_table_of_subscribed_data(
-                                                                        &user_uuid,
-                                                                    )
-                                                                    .await
-                                                                    .unwrap();
+                                                    let mut resources = Vec::with_capacity(1000);
+                                                    let mut users_uuids =
+                                                        HashSet::with_capacity(10);
 
-                                                                sender_to_broker.send(server_methods::MessageToBroker::Subscribe {
-                                                                user_uuid: user_uuid,
-                                                                list_of_subscribtion_for_company: subs.companies,
-                                                                list_of_subscribtion_for_branch: subs.branches,
-                                                                sender_to_server: sender_to_server.clone()
-                                                            }).await.unwrap();
+                                                    let push_data = state
+                                                        .push_data(
+                                                            &mut resources,
+                                                            &mut users_uuids,
+                                                            &input,
+                                                        )
+                                                        .await;
 
-                                                                Ok(Ok(o))
-                                                            }
-                                                            Err(e) => Ok(Err(e)),
-                                                        },
+                                                    if !users_uuids.is_empty() {
+                                                        let subs = state
+                                                            .get_table_of_subscribed_data(
+                                                                &users_uuids,
+                                                            )
+                                                            .await
+                                                            .unwrap();
+
+                                                        sender_to_broker.send(server_methods::MessageToBroker::Subscribe {
+                                                            list_of_subscribtion: subs,
+                                                            users_uuids,
+                                                            sender_to_server: sender_to_server.clone(),
+                                                        }).await.unwrap();
+                                                    }
+
+                                                    match push_data {
+                                                        Ok(ok) => Ok(ok),
                                                         Err(_) => {
                                                             Err(HashimError::InternalServerError)
                                                         }

@@ -42,6 +42,11 @@ pub trait DBClient {
 
     async fn begin_transaction(&mut self) -> Result<Self::Txn<'_>, DynamicError>;
 
+    async fn write_nonce_if_not_used(
+        &mut self,
+        nonce: &Self::RowId,
+    ) -> Result<bool /* is nonce used */, DynamicError>;
+
     // here we just do read we dont do here any set or check
 
     async fn read_sign_in(
@@ -50,8 +55,8 @@ pub trait DBClient {
     ) -> Result<Option<(Self::RowId, Self::HashedPassword)>, DynamicError>;
     async fn read_roles_for_user(
         &mut self,
-        user_uuid: &Self::RowId,
-    ) -> Result<server_methods::AllRolesForUser<Self::RowId>, DynamicError>;
+        users_uuids: &HashSet<Self::RowId>,
+    ) -> Result<server_methods::AllRoles<Self::RowId>, DynamicError>;
 }
 
 pub mod domain_errors {
@@ -70,36 +75,45 @@ pub trait DBTransaction {
 
     async fn read_sign_up(
         &mut self,
+        new_uuid: &Self::RowId,
         user_id: &String,
-    ) -> Result<bool /* is new user */, DynamicError>;
+    ) -> Result<
+        (
+            bool, /* is new_uuid exist */
+            bool, /* is user_id exist */
+        ),
+        DynamicError,
+    >;
     async fn write_sign_up(
         &mut self,
+        new_uuid: &Self::RowId,
         user_id: &String,
         hashed_password: &Self::HashedPassword,
         user_name: &Option<String>,
-    ) -> Result<Self::RowId /* user uuid */, DynamicError>;
+    ) -> Result<(), DynamicError>;
 
     async fn read_create_company(
         &mut self,
-        nonce: &Self::RowId,
-    ) -> Result<bool /* is nonce used */, DynamicError>;
+        new_uuid: &Self::RowId,
+    ) -> Result<bool /* is new_uuid exist */, DynamicError>;
     async fn write_create_company(
         &mut self,
-        nonce: &Self::RowId,
+        resources: &mut Vec<ResourceInfo>,
+        new_uuid: &Self::RowId,
         user_uuid: &Self::RowId,
         user_role: &db_types::Role,
         company_name: &String,
         currency: &db_types::Currency,
-    ) -> Result<Vec<ResourceInfo>, DynamicError>;
+    ) -> Result<(), DynamicError>;
 
     async fn read_create_company_branch(
         &mut self,
-        nonce: &Self::RowId,
+        new_uuid: &Self::RowId,
         company_belong: &Self::RowId,
         branch_name: &String,
     ) -> Result<
         (
-            bool, /* is nonce used */
+            bool, /* is new_uuid exist */
             bool, /* is company_belong exist */
             bool, /* is branch_name used */
         ),
@@ -107,14 +121,15 @@ pub trait DBTransaction {
     >;
     async fn write_create_company_branch(
         &mut self,
-        nonce: &Self::RowId,
+        resources: &mut Vec<ResourceInfo>,
+        new_uuid: &Self::RowId,
         company_belong: &Self::RowId,
         branch_name: &String,
         location: &db_types::Location,
         currency: &db_types::Currency,
         user_uuid: &Self::RowId,
         user_role: &db_types::Role,
-    ) -> Result<Vec<ResourceInfo>, DynamicError>;
+    ) -> Result<(), DynamicError>;
 }
 
 pub trait WebSocketOp: Sized {
@@ -197,6 +212,19 @@ pub trait WAMP {
 }
 
 pub trait CacheIO: Sized {
+    type RowId: RowId;
+
     async fn new() -> Result<Self, DynamicError>;
-    async fn write_data(&self, data: &data_receiver::Input) -> Result<(), DynamicError>;
+    async fn write_data(&self, data: &Vec<ResourceInfo>) -> Result<(), DynamicError>;
+    async fn write_txn(&self, txn: &push_data::TxnInput) -> Result<(), DynamicError>;
+    async fn get_txn(
+        &self,
+        user_uuid: &Self::RowId,
+        txn_number: &u64,
+    ) -> Result<push_data::TxnInput, DynamicError>;
+    async fn delete_txn(
+        &self,
+        user_uuid: &Self::RowId,
+        txn_number: &u64,
+    ) -> Result<(), DynamicError>;
 }

@@ -36,11 +36,9 @@ const MAIN_CSS: Asset = asset!("/assets/main.css");
 
 #[derive(Clone, PartialEq, Routable)]
 enum Route {
+    #[layout(AuthenticationPage)]
     #[route("/")]
-    AuthenticationPage {}, // This can be a landing page or redirect    #[route("/sign_in")]
-
-    #[layout(AuthenticationPage)] // ← Layout provides AuthFeatureState
-    #[route("/sign_in")]
+    // #[route("/sign_in")]
     SignIn {},
     #[route("/sign_up")]
     SignUp {},
@@ -96,7 +94,6 @@ pub fn AuthenticationPage() -> Element {
     rsx! {
         Outlet::<Route> {}
     }
-    // SignIn()
 }
 
 #[component]
@@ -274,6 +271,41 @@ pub fn CreateCompany() -> Element {
             }
             button {
                 onclick: move |_| state.clone().create_company(local_state.clone()),
+                "Create"
+            }
+        }
+    }
+}
+
+#[component]
+pub fn CreateCompanyBranch() -> Element {
+    let state = consume_context::<StateOfEveryThing>();
+
+    let local_state = Arc::new(front_end_model_view::CreateCompanyBranchState {
+        currency: MySignal::<db_types::Currency>::default(),
+        company_belong: todo!(),
+        branch_name: MySignal::<String>::default(),
+        location: todo!(),
+    });
+
+    let local_state1 = local_state.clone();
+    let local_state2 = local_state.clone();
+
+    rsx! {
+        div {
+            input {
+                placeholder: "Branch Name",
+                oninput: move |event| local_state1.branch_name.set(event.value()),
+                value: local_state.branch_name.read(),
+            }
+            select {
+                value: local_state.currency.read().as_str(),
+                onchange: move |event| local_state2.currency.set(db_types::Currency::from_str(event.value().as_str()).unwrap()),
+                option { value: "USD", "USD" }
+                option { value: "IQD", "IQD" }
+            }
+            button {
+                onclick: move |_| state.clone().create_company_branch(local_state.clone()),
                 "Create"
             }
         }

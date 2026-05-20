@@ -28,7 +28,7 @@ pub mod prelude {
 
     // std
     pub(crate) use std::{
-        collections::HashMap,
+        collections::{HashMap, HashSet},
         error::Error,
         fmt::Display,
         future::Future,
