@@ -500,9 +500,6 @@ where
                         users_uuids,
                         sender_to_server,
                     } => {
-                        let list_of_subscribtion_for_company = list_of_subscribtion.companies;
-                        let list_of_subscribtion_for_branch = list_of_subscribtion.branches;
-
                         for user_uuid in users_uuids {
                             let channels = pool_of_server_facad_channels.get_mut(&user_uuid);
                             match channels {
@@ -514,56 +511,21 @@ where
                             }
                         }
 
-                        for (company, users_subscribes) in list_of_subscribtion_for_company {
-                            let users_and_subscribes = pool_of_pubsub_for_company.get_mut(&company);
-                            match users_and_subscribes {
-                                Some(users_and_subscribes) => {
-                                    for (user_uuid, subscribes) in users_subscribes {
-                                        users_and_subscribes.insert(user_uuid.clone(), subscribes);
-                                    }
-                                }
-                                None => {
-                                    let mut users_and_subscribes = HashMap::new();
+                        merge_subscribes(
+                            &mut pool_of_pubsub_for_company,
+                            list_of_subscribtion.companies,
+                        );
 
-                                    for (user_uuid, subscribes) in users_subscribes {
-                                        users_and_subscribes.insert(user_uuid, subscribes);
-                                    }
-
-                                    pool_of_pubsub_for_company
-                                        .insert(company, users_and_subscribes);
-                                }
-                            }
-                        }
-
-                        for (branch, users_subscribes) in list_of_subscribtion_for_branch {
-                            let users_and_subscribes = pool_of_pubsub_for_branch.get_mut(&branch);
-                            match users_and_subscribes {
-                                Some(users_and_subscribes) => {
-                                    for (user_uuid, subscribes) in users_subscribes {
-                                        users_and_subscribes.insert(user_uuid, subscribes);
-                                    }
-                                }
-                                None => {
-                                    let mut users_and_subscribes = HashMap::new();
-
-                                    for (user_uuid, subscribes) in users_subscribes {
-                                        users_and_subscribes.insert(user_uuid, subscribes);
-                                    }
-
-                                    pool_of_pubsub_for_branch.insert(branch, users_and_subscribes);
-                                }
-                            }
-                        }
+                        merge_subscribes(
+                            &mut pool_of_pubsub_for_branch,
+                            list_of_subscribtion.branches,
+                        );
                     }
                     MessageToBroker::Unsubscribe { user_uuid } => {
                         pool_of_server_facad_channels.remove(&user_uuid);
                         // TODO : i have leake here i need to remove the company and branches if empty
-                        for (_, users_and_subs) in pool_of_pubsub_for_company.iter_mut() {
-                            users_and_subs.remove(&user_uuid);
-                        }
-                        for (_, users_and_subs) in pool_of_pubsub_for_branch.iter_mut() {
-                            users_and_subs.remove(&user_uuid);
-                        }
+                        unsubscribe(&mut pool_of_pubsub_for_company, &user_uuid);
+                        unsubscribe(&mut pool_of_pubsub_for_branch, &user_uuid);
                     }
                     MessageToBroker::Publish {
                         list_of_resources_for_company,
@@ -574,65 +536,17 @@ where
                             Vec<ResourceInfo>,
                         > = HashMap::new();
 
-                        for (company, resource) in list_of_resources_for_company {
-                            let user_and_subscribe = pool_of_pubsub_for_company.get(&company);
-                            match user_and_subscribe {
-                                Some(user_and_subscribe) => {
-                                    for (user_uuid, subscribe) in user_and_subscribe {
-                                        let mut resource_for_user =
-                                            resource_filtering_based_on_subscribe(
-                                                subscribe, &resource,
-                                            );
+                        map_resource_to_subscribes(
+                            &pool_of_pubsub_for_company,
+                            list_of_resources_for_company,
+                            &mut resource_to_send,
+                        );
 
-                                        let resource_to_append =
-                                            resource_to_send.get_mut(user_uuid);
-                                        match resource_to_append {
-                                            Some(resource_to_append) => {
-                                                resource_to_append.append(&mut resource_for_user)
-                                            }
-                                            None => {
-                                                resource_to_send
-                                                    .insert(user_uuid.clone(), resource_for_user);
-                                            }
-                                        }
-                                    }
-                                }
-                                None => {
-                                    dbg!("there is some problem here this should not happen");
-                                    continue;
-                                }
-                            }
-                        }
-
-                        for (branch, resource) in list_of_resources_for_branch {
-                            let user_and_subscribe = pool_of_pubsub_for_branch.get(&branch);
-                            match user_and_subscribe {
-                                Some(user_and_subscribe) => {
-                                    for (user_uuid, subscribe) in user_and_subscribe {
-                                        let mut resource_for_user =
-                                            resource_filtering_based_on_subscribe(
-                                                subscribe, &resource,
-                                            );
-
-                                        let resource_to_append =
-                                            resource_to_send.get_mut(user_uuid);
-                                        match resource_to_append {
-                                            Some(resource_to_append) => {
-                                                resource_to_append.append(&mut resource_for_user)
-                                            }
-                                            None => {
-                                                resource_to_send
-                                                    .insert(user_uuid.clone(), resource_for_user);
-                                            }
-                                        }
-                                    }
-                                }
-                                None => {
-                                    dbg!("there is some problem here this should not happen");
-                                    continue;
-                                }
-                            }
-                        }
+                        map_resource_to_subscribes(
+                            &pool_of_pubsub_for_branch,
+                            list_of_resources_for_branch,
+                            &mut resource_to_send,
+                        );
 
                         for (user_uuid, resource) in resource_to_send {
                             let channels = pool_of_server_facad_channels.get_mut(&user_uuid);
@@ -662,6 +576,72 @@ where
                 }
             }
         });
+    }
+}
+
+fn map_resource_to_subscribes<Id: RowId>(
+    pool_of_pubsub: &HashMap<Id, HashMap<Id, Vec<Subscribe>>>,
+    list_of_resources: HashMap<Id, Vec<ResourceInfo>>,
+    resource_to_send: &mut HashMap<Id, Vec<ResourceInfo>>,
+) {
+    for (company, resource) in list_of_resources {
+        let user_and_subscribe = pool_of_pubsub.get(&company);
+        match user_and_subscribe {
+            Some(user_and_subscribe) => {
+                for (user_uuid, subscribe) in user_and_subscribe {
+                    let mut resource_for_user =
+                        resource_filtering_based_on_subscribe(subscribe, &resource);
+
+                    let resource_to_append = resource_to_send.get_mut(user_uuid);
+                    match resource_to_append {
+                        Some(resource_to_append) => {
+                            resource_to_append.append(&mut resource_for_user)
+                        }
+                        None => {
+                            resource_to_send.insert(user_uuid.clone(), resource_for_user);
+                        }
+                    }
+                }
+            }
+            None => {
+                dbg!("there is some problem here this should not happen");
+                continue;
+            }
+        }
+    }
+}
+
+fn unsubscribe<Id: RowId>(
+    pool_of_pubsub: &mut HashMap<Id, HashMap<Id, Vec<Subscribe>>>,
+    user_uuid: &Id,
+) {
+    for (_, users_and_subs) in pool_of_pubsub.iter_mut() {
+        users_and_subs.remove(user_uuid);
+    }
+}
+
+fn merge_subscribes<Id: RowId>(
+    pool_of_pubsub: &mut HashMap<Id, HashMap<Id, Vec<Subscribe>>>,
+    list_of_subscribtion: HashMap<Id, HashMap<Id, Vec<Subscribe>>>,
+) {
+    for (company, users_subscribes) in list_of_subscribtion {
+        let users_and_subscribes = pool_of_pubsub.get_mut(&company);
+        match users_and_subscribes {
+            Some(users_and_subscribes) => {
+                for (user_uuid, subscribes) in users_subscribes {
+                    users_and_subscribes.insert(user_uuid.clone(), subscribes);
+                }
+            }
+            None => {
+                let mut users_and_subscribes = HashMap::new();
+
+                for (user_uuid, subscribes) in users_subscribes {
+                    users_and_subscribes.insert(user_uuid, subscribes);
+                }
+
+                pool_of_pubsub.insert(company, users_and_subscribes);
+            }
+        }
     }
 }
 
