@@ -11,7 +11,7 @@ my_core = { workspace = true }
 adapters = { workspace = true }
 cache_diesel = { workspace = true }
 
-console_error_panic_hook = "0.1.7"
+# console_error_panic_hook = "0.1.7"
 dioxus = { version = "0.7.4", features = ["router"] }
 dioxus-logger = { workspace = true }
 

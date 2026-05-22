@@ -23,3 +23,4 @@ git push origin main
 
 clear && RUSTFLAGS="-Awarnings" dx serve -p accounting_ui
 clear && RUSTFLAGS="-Awarnings" cargo run -p server_actix
+clear && RUSTFLAGS="-A warnings" cargo +nightly udeps --all-targets
