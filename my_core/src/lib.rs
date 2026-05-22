@@ -28,6 +28,7 @@ pub mod prelude {
         hash::Hash,
         marker::PhantomData,
         result::Result as StdResult,
+        str::FromStr,
         sync::{Arc, RwLock},
         time::{Duration, SystemTime, UNIX_EPOCH},
     };

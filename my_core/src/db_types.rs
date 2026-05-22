@@ -1,21 +1,6 @@
-use std::str::FromStr;
-
 use crate::prelude::*;
 
-// #[derive(Debug, Deserialize, Serialize, Clone)]
-pub enum DataGroup<RowId> {
-    Company(RowId),
-    Branch(RowId),
-}
-
 pub type RowIdType = String;
-
-// maybe i will only check from cache by sync it with the server
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
-pub enum OperationMode {
-    CheckFromCache,
-    SubmitToServer,
-}
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Location {
