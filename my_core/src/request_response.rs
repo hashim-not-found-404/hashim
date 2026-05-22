@@ -132,14 +132,14 @@ pub mod push_data {
     pub struct Input {
         pub authentications: Vec<AuthenticationMethodInput>,
         pub nonce: db_types::RowIdType,
-        pub transactions: Vec<TxnInput>,
+        pub write_transactions: Vec<TxnInput>,
     }
 
     #[derive(Debug, Deserialize, Serialize)]
     pub struct Result {
         pub authentications: Vec<AuthenticationMethodResult>,
-        pub nonce: Option<NonceError>,
-        pub transactions: Vec<TxnResult>,
+        pub nonce: StdResult<(), NonceError>,
+        pub write_transactions: Vec<TxnResult>,
     }
 
     // utility types
@@ -152,7 +152,7 @@ pub mod push_data {
 
     #[derive(Debug, Deserialize, Serialize)]
     pub enum AuthenticationMethodResult {
-        Jwt(Option<JWTError>),
+        Jwt(StdResult<(), JWTError>),
         SignIn(sign_in::Result),
         SignUp(sign_up::Result),
     }
@@ -162,12 +162,6 @@ pub mod push_data {
         pub user_uuid: db_types::RowIdType,
         pub txn_number: u64,
         pub operation: OperationInput,
-    }
-
-    #[derive(Debug, Deserialize, Serialize)]
-    pub enum UserUuidError {
-        IdInWrongFormat,
-        NotAuthinticated,
     }
 
     #[derive(Debug, Deserialize, Serialize)]
@@ -186,6 +180,13 @@ pub mod push_data {
     pub enum OperationResult {
         CreateCompany(create_company::Result),
         CreateCompanyBranch(create_company_branch::Result),
+    }
+
+    // error types
+    #[derive(Debug, Deserialize, Serialize)]
+    pub enum UserUuidError {
+        IdInWrongFormat,
+        NotAuthinticated,
     }
 }
 

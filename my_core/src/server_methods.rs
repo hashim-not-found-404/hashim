@@ -324,8 +324,8 @@ where
     ) -> Result<push_data::Result, DynamicError> {
         let mut the_return_result = push_data::Result {
             authentications: Vec::with_capacity(input.authentications.len()),
-            nonce: None,
-            transactions: Vec::with_capacity(input.transactions.len()),
+            nonce: Ok(()),
+            write_transactions: Vec::with_capacity(input.write_transactions.len()),
         };
 
         let mut is_there_error = false;
@@ -340,7 +340,7 @@ where
                         }
                         None => {
                             the_return_result.authentications.push(
-                                push_data::AuthenticationMethodResult::Jwt(Some(JWTError::Invalid)),
+                                push_data::AuthenticationMethodResult::Jwt(Err(JWTError::Invalid)),
                             );
 
                             is_there_error = true;
@@ -386,7 +386,7 @@ where
         let nonce = match Id::try_from(&input.nonce) {
             Ok(nonce) => nonce,
             Err(_) => {
-                the_return_result.nonce = Some(NonceError::Invalid);
+                the_return_result.nonce = Err(NonceError::Invalid);
                 return Ok(the_return_result);
             }
         };
@@ -395,30 +395,34 @@ where
         let is_nonce_used = client.write_nonce_if_not_used(&nonce).await?;
 
         if !check_nonce_if_valid::<Id>(&nonce, is_nonce_used) {
-            the_return_result.nonce = Some(NonceError::Invalid);
+            the_return_result.nonce = Err(NonceError::Invalid);
         }
 
         if is_there_error {
             return Ok(the_return_result);
         }
 
-        for transaction in &input.transactions {
+        for transaction in &input.write_transactions {
             let user_uuid = match Id::try_from(&transaction.user_uuid) {
                 Ok(user_uuid) => user_uuid,
                 Err(_) => {
-                    the_return_result.transactions.push(push_data::TxnResult {
-                        user_uuid: Err(push_data::UserUuidError::IdInWrongFormat),
-                        operation: None,
-                    });
+                    the_return_result
+                        .write_transactions
+                        .push(push_data::TxnResult {
+                            user_uuid: Err(push_data::UserUuidError::IdInWrongFormat),
+                            operation: None,
+                        });
                     continue;
                 }
             };
 
             if let None = authenticated_users.get(&user_uuid) {
-                the_return_result.transactions.push(push_data::TxnResult {
-                    user_uuid: Err(push_data::UserUuidError::NotAuthinticated),
-                    operation: None,
-                });
+                the_return_result
+                    .write_transactions
+                    .push(push_data::TxnResult {
+                        user_uuid: Err(push_data::UserUuidError::NotAuthinticated),
+                        operation: None,
+                    });
                 continue;
             }
 
@@ -437,10 +441,12 @@ where
                 }
             };
 
-            the_return_result.transactions.push(push_data::TxnResult {
-                user_uuid: Ok(()),
-                operation: Some(result),
-            });
+            the_return_result
+                .write_transactions
+                .push(push_data::TxnResult {
+                    user_uuid: Ok(()),
+                    operation: Some(result),
+                });
         }
 
         return Ok(the_return_result);
