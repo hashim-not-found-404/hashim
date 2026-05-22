@@ -52,7 +52,7 @@ pub mod sign_up {
     use super::*;
     pub const PATH: &str = "sign_up";
 
-    #[derive(Debug, Deserialize, Serialize)]
+    #[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Hash)]
     pub struct Input {
         pub new_uuid: db_types::RowIdType,
         pub name: Option<String>,
@@ -85,7 +85,7 @@ pub mod sign_in {
     use super::*;
     pub const PATH: &str = "sign_in";
 
-    #[derive(Debug, Deserialize, Serialize)]
+    #[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Hash)]
     pub struct Input {
         pub user_id: db_types::RowIdType,
         pub password: String,
@@ -130,9 +130,10 @@ pub mod push_data {
 
     #[derive(Debug, Deserialize, Serialize)]
     pub struct Input {
-        pub authentications: Vec<AuthenticationMethodInput>,
+        pub authentications: HashSet<AuthenticationMethodInput>,
         pub nonce: db_types::RowIdType,
         pub write_transactions: Vec<TxnInput>,
+        // pub read_transactions: Vec<TxnInput>,
     }
 
     #[derive(Debug, Deserialize, Serialize)]
@@ -140,10 +141,11 @@ pub mod push_data {
         pub authentications: Vec<AuthenticationMethodResult>,
         pub nonce: StdResult<(), NonceError>,
         pub write_transactions: Vec<TxnResult>,
+        // pub read_transactions: Vec<TxnResult>,
     }
 
     // utility types
-    #[derive(Debug, Deserialize, Serialize)]
+    #[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Hash)]
     pub enum AuthenticationMethodInput {
         Jwt(String),
         SignIn(sign_in::Input),
