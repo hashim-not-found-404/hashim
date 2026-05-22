@@ -410,6 +410,7 @@ where
                         .write_transactions
                         .push(push_data::TxnResult {
                             user_uuid: Err(push_data::UserUuidError::IdInWrongFormat),
+                            txn_number: transaction.txn_number,
                             operation: None,
                         });
                     continue;
@@ -421,6 +422,7 @@ where
                     .write_transactions
                     .push(push_data::TxnResult {
                         user_uuid: Err(push_data::UserUuidError::NotAuthinticated),
+                        txn_number: transaction.txn_number,
                         operation: None,
                     });
                 continue;
@@ -445,6 +447,7 @@ where
                 .write_transactions
                 .push(push_data::TxnResult {
                     user_uuid: Ok(()),
+                    txn_number: transaction.txn_number,
                     operation: Some(result),
                 });
         }

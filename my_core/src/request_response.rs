@@ -169,6 +169,7 @@ pub mod push_data {
     #[derive(Debug, Deserialize, Serialize)]
     pub struct TxnResult {
         pub user_uuid: StdResult<(), UserUuidError>,
+        pub txn_number: u64,
         pub operation: Option<OperationResult>,
     }
 
