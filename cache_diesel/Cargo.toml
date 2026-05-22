@@ -1,0 +1,9 @@
+[package]
+name = "cache_diesel"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+my_core = { workspace = true }
+
+diesel = "2.3.9"

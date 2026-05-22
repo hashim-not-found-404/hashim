@@ -19,7 +19,7 @@ type StateOfEveryThing = Arc<
         TypeMyWAMP,
         runtime::m::S,
         actors::m::S,
-        cache::m::S,
+        cache_diesel::S,
         row_id::m::S,
         random_number::m::S,
         MySignal<String>,

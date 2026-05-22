@@ -6,27 +6,20 @@ members = [
     "my_core",
     "db_client_cockroach",
     "server_actix",
-    "adapters",
+    "adapters", "cache_diesel",
 ]
 
 [workspace.dependencies]
 # my crates
 my_core = {path = "./my_core"}
 adapters = {path = "./adapters"}
+cache_diesel = {path = "./cache_diesel"}
 db_client_cockroach = {path = "./db_client_cockroach"}
 
-# database
-deadpool-postgres = "0.14.1"
-tokio-postgres = { version = "0.7.16", features = ["with-uuid-1"]}
-
 # ui
-dioxus = { version = "0.7.4", features = ["router"] }
 dioxus-logger = "0.7.4"
 
 # web
-actix-web = { version = "4.12.1" , features = ["rustls-0_23"]}
-actix-cors = "0.7.1"
-actix-ws = "0.4.0"
 futures = "0.3.32"
 futures-util = "0.3.32"
 wasm-bindgen-futures = "0.4.70"
@@ -57,8 +50,6 @@ uuid ={version = "1.23.0",features = ["v7","serde","js"]}
 # regex
 regex = "1.12.2"
 
-# tools
-console_error_panic_hook = "0.1.7"
 
 paste = "1.0.15"
 derive_more ={version = "2.0.1",features = ["full"]}

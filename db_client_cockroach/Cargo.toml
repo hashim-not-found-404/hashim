@@ -7,7 +7,7 @@ edition = "2024"
 adapters = { workspace = true }
 my_core = { workspace = true }
 
-tokio-postgres = { workspace = true }
-deadpool-postgres = { workspace = true }
+deadpool-postgres = "0.14.1"
+tokio-postgres = { version = "0.7.16", features = ["with-uuid-1"]}
 tokio = { workspace = true }
 uuid = { workspace = true }

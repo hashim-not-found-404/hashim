@@ -6,7 +6,6 @@
 
 pub mod actors;
 pub mod authentication;
-pub mod cache;
 pub mod encode_decode;
 pub mod functions;
 pub mod jwt;
@@ -19,7 +18,7 @@ pub mod web_socket_adapter;
 
 pub mod prelude {
     pub use crate::{
-        actors, authentication, cache, encode_decode, functions, jwt, mpsc_receiver, mpsc_sender,
+        actors, authentication, encode_decode, functions, jwt, mpsc_receiver, mpsc_sender,
         random_number, row_id, runtime, web_socket_adapter,
     };
 

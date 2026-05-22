@@ -8,9 +8,9 @@ my_core = { workspace = true }
 adapters = { workspace = true }
 db_client_cockroach = { workspace = true }
 
-actix-web = { workspace = true }
-actix-cors = { workspace = true }
-actix-ws = { workspace = true }
+actix-web = { version = "4.12.1" , features = ["rustls-0_23"]}
+actix-cors = "0.7.1"
+actix-ws = "0.4.0"
 futures-util = { workspace = true }
 rustls = { workspace = true }
 rustls-pemfile = { workspace = true }

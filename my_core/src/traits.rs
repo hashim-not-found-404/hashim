@@ -212,19 +212,17 @@ pub trait WAMP {
 }
 
 pub trait CacheIO: Sized {
-    type RowId: RowId;
-
     async fn new() -> Result<Self, DynamicError>;
     async fn write_data(&self, data: &Vec<ResourceInfo>) -> Result<(), DynamicError>;
     async fn write_txn(&self, txn: &push_data::TxnInput) -> Result<(), DynamicError>;
     async fn get_txn(
         &self,
-        user_uuid: &Self::RowId,
+        user_uuid: &db_types::RowIdType,
         txn_number: &u64,
     ) -> Result<push_data::TxnInput, DynamicError>;
     async fn delete_txn(
         &self,
-        user_uuid: &Self::RowId,
+        user_uuid: &db_types::RowIdType,
         txn_number: &u64,
     ) -> Result<(), DynamicError>;
 }
