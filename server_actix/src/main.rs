@@ -1,7 +1,7 @@
 use actix_cors::Cors;
 use actix_web::{App, HttpRequest, HttpResponse, HttpServer, web};
 use adapters::prelude::*;
-use db_client_cockroach::{CockroachClient, CockroachDB};
+use db_client_cockroach::prelude::*;
 use my_core::prelude::*;
 use std::{fs::File, io::BufReader};
 
@@ -60,8 +60,8 @@ mod web_socket_server {
 }
 
 type GG = server_methods::ServerMethods<
-    CockroachDB,
-    CockroachClient,
+    db::S,
+    db_client::S,
     jwt::m::S,
     authentication::m::S,
     functions::m::S,
@@ -113,8 +113,8 @@ async fn ws_handler(req: HttpRequest, stream: web::Payload) -> HttpResponse {
 
     let state = req.app_data::<web::Data<GG>>().unwrap();
     server::server_actor::<
-        CockroachDB,
-        CockroachClient,
+        db::S,
+        db_client::S,
         jwt::m::S,
         authentication::m::S,
         functions::m::S,
