@@ -329,7 +329,7 @@ where
         };
 
         let mut is_there_error = false;
-        let mut authenticated_users = HashSet::new();
+        let mut authenticated_users = HashSet::with_capacity(input.authentications.len());
 
         for auth in &input.authentications {
             match auth {
