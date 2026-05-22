@@ -317,7 +317,7 @@ where
     }
 
     pub async fn push_data(
-        &self, // TODO : simplify the output by &mut input
+        &self,
         resources: &mut Vec<ResourceInfo>,
         users_uuids: &mut HashSet<Id>,
         input: &push_data::Input,
@@ -329,13 +329,14 @@ where
         };
 
         let mut is_there_error = false;
+        let mut authenticated_users = HashSet::new();
 
         for auth in &input.authentications {
             match auth {
                 push_data::AuthenticationMethodInput::Jwt(jwt) => {
                     match self.jwt.validate(jwt.clone()) {
                         Some(user_uuid) => {
-                            users_uuids.insert(user_uuid);
+                            authenticated_users.insert(user_uuid);
                         }
                         None => {
                             the_return_result.authentications.push(
@@ -359,6 +360,7 @@ where
                         .push(push_data::AuthenticationMethodResult::SignIn(result));
 
                     if let Some(user_uuid) = user_uuid {
+                        authenticated_users.insert(user_uuid.clone());
                         users_uuids.insert(user_uuid);
                     }
                 }
@@ -375,7 +377,7 @@ where
                         .push(push_data::AuthenticationMethodResult::SignUp(result));
 
                     if let Some(user_uuid) = user_uuid {
-                        users_uuids.insert(user_uuid);
+                        authenticated_users.insert(user_uuid);
                     }
                 }
             }
@@ -412,7 +414,7 @@ where
                 }
             };
 
-            if let None = users_uuids.get(&user_uuid) {
+            if let None = authenticated_users.get(&user_uuid) {
                 the_return_result.transactions.push(push_data::TxnResult {
                     user_uuid: Err(push_data::UserUuidError::NotAuthinticated),
                     operation: None,
@@ -423,14 +425,14 @@ where
             let result = match &transaction.operation {
                 push_data::OperationInput::CreateCompany(input) => {
                     let result = self.create_company(resources, &user_uuid, input).await?;
-
+                    users_uuids.insert(user_uuid);
                     push_data::OperationResult::CreateCompany(result)
                 }
                 push_data::OperationInput::CreateCompanyBranch(input) => {
                     let result = self
                         .create_company_branch(resources, &user_uuid, input)
                         .await?;
-
+                    users_uuids.insert(user_uuid);
                     push_data::OperationResult::CreateCompanyBranch(result)
                 }
             };
