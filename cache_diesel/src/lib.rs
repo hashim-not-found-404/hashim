@@ -11,15 +11,15 @@ impl CacheIO for S {
         todo!()
     }
 
-    async fn write_txn(&self, txn: &push_data::TxnInput) -> Result<(), DynamicError> {
+    async fn write_txn<T>(&self, txn: &push_data::TxnInput<T>) -> Result<(), DynamicError> {
         todo!()
     }
 
-    async fn get_txn(
+    async fn get_txn<T>(
         &self,
         user_uuid: &db_types::RowIdType,
         txn_number: &u64,
-    ) -> Result<push_data::TxnInput, DynamicError> {
+    ) -> Result<push_data::TxnInput<T>, DynamicError> {
         todo!()
     }
 

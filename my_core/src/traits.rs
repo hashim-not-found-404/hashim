@@ -98,7 +98,7 @@ pub trait DBTransaction {
     ) -> Result<bool /* is new_uuid exist */, DynamicError>;
     async fn write_create_company(
         &mut self,
-        resources: &mut Vec<ResourceInfo>,
+        resources: &mut HashSet<ResourceInfo>,
         new_uuid: &Self::RowId,
         user_uuid: &Self::RowId,
         user_role: &db_types::Role,
@@ -121,7 +121,7 @@ pub trait DBTransaction {
     >;
     async fn write_create_company_branch(
         &mut self,
-        resources: &mut Vec<ResourceInfo>,
+        resources: &mut HashSet<ResourceInfo>,
         new_uuid: &Self::RowId,
         company_belong: &Self::RowId,
         branch_name: &String,
@@ -214,12 +214,12 @@ pub trait WAMP {
 pub trait CacheIO: Sized {
     async fn new() -> Result<Self, DynamicError>;
     async fn write_data(&self, data: &Vec<ResourceInfo>) -> Result<(), DynamicError>;
-    async fn write_txn(&self, txn: &push_data::TxnInput) -> Result<(), DynamicError>;
-    async fn get_txn(
+    async fn write_txn<T>(&self, txn: &push_data::TxnInput<T>) -> Result<(), DynamicError>;
+    async fn get_txn<T>(
         &self,
         user_uuid: &db_types::RowIdType,
         txn_number: &u64,
-    ) -> Result<push_data::TxnInput, DynamicError>;
+    ) -> Result<push_data::TxnInput<T>, DynamicError>;
     async fn delete_txn(
         &self,
         user_uuid: &db_types::RowIdType,

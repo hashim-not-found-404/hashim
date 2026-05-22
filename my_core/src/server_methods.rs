@@ -177,7 +177,7 @@ where
 
     pub async fn create_company(
         &self,
-        resources: &mut Vec<ResourceInfo>,
+        resources: &mut HashSet<ResourceInfo>,
         user_uuid: &Id,
         input: &create_company::Input,
     ) -> Result<create_company::Result, DynamicError> {
@@ -233,7 +233,7 @@ where
 
     pub async fn create_company_branch(
         &self,
-        resources: &mut Vec<ResourceInfo>,
+        resources: &mut HashSet<ResourceInfo>,
         user_uuid: &Id,
         input: &create_company_branch::Input,
     ) -> Result<create_company_branch::Result, DynamicError> {
@@ -318,7 +318,7 @@ where
 
     pub async fn push_data(
         &self,
-        resources: &mut Vec<ResourceInfo>,
+        resources: &mut HashSet<ResourceInfo>,
         users_uuids: &mut HashSet<Id>,
         input: &push_data::Input,
     ) -> Result<push_data::Result, DynamicError> {
@@ -326,6 +326,7 @@ where
             authentications: Vec::with_capacity(input.authentications.len()),
             nonce: Ok(()),
             write_transactions: Vec::with_capacity(input.write_transactions.len()),
+            read_transactions: Vec::with_capacity(input.read_transactions.len()),
         };
 
         let mut is_there_error = false;
@@ -429,17 +430,17 @@ where
             }
 
             let result = match &transaction.operation {
-                push_data::OperationInput::CreateCompany(input) => {
+                push_data::WriteOperationInput::CreateCompany(input) => {
                     let result = self.create_company(resources, &user_uuid, input).await?;
                     users_uuids.insert(user_uuid);
-                    push_data::OperationResult::CreateCompany(result)
+                    push_data::WriteOperationResult::CreateCompany(result)
                 }
-                push_data::OperationInput::CreateCompanyBranch(input) => {
+                push_data::WriteOperationInput::CreateCompanyBranch(input) => {
                     let result = self
                         .create_company_branch(resources, &user_uuid, input)
                         .await?;
                     users_uuids.insert(user_uuid);
-                    push_data::OperationResult::CreateCompanyBranch(result)
+                    push_data::WriteOperationResult::CreateCompanyBranch(result)
                 }
             };
 

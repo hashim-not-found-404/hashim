@@ -195,7 +195,7 @@ impl<
             let txn = push_data::TxnInput {
                 user_uuid: String::new(),
                 txn_number: RN::generate(),
-                operation: push_data::OperationInput::CreateCompany(input),
+                operation: push_data::WriteOperationInput::CreateCompany(input),
             };
 
             let result = self.routs.cache.write_txn(&txn).await;
@@ -227,7 +227,7 @@ impl<
             let txn = push_data::TxnInput {
                 user_uuid: String::new(), // TODO
                 txn_number: RN::generate(),
-                operation: push_data::OperationInput::CreateCompanyBranch(input),
+                operation: push_data::WriteOperationInput::CreateCompanyBranch(input),
             };
 
             let result = self.routs.cache.write_txn(&txn).await;

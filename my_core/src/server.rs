@@ -106,7 +106,8 @@ pub fn server_actor<DB, Cli, Jwt, Authentication, F, Id, DE, RT, WSS, MPSC>(
 
                                             let result = match input {
                                                 Ok(input) => {
-                                                    let mut resources = Vec::with_capacity(1000);
+                                                    let mut resources =
+                                                        HashSet::with_capacity(1000);
                                                     let mut users_uuids =
                                                         HashSet::with_capacity(10);
 

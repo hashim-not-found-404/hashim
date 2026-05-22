@@ -132,16 +132,16 @@ pub mod push_data {
     pub struct Input {
         pub authentications: HashSet<AuthenticationMethodInput>,
         pub nonce: db_types::RowIdType,
-        pub write_transactions: Vec<TxnInput>,
-        // pub read_transactions: Vec<TxnInput>,
+        pub write_transactions: Vec<TxnInput<WriteOperationInput>>,
+        pub read_transactions: Vec<TxnInput<ReadOperationInput>>,
     }
 
     #[derive(Debug, Deserialize, Serialize)]
     pub struct Result {
         pub authentications: Vec<AuthenticationMethodResult>,
         pub nonce: StdResult<(), NonceError>,
-        pub write_transactions: Vec<TxnResult>,
-        // pub read_transactions: Vec<TxnResult>,
+        pub write_transactions: Vec<TxnResult<WriteOperationResult>>,
+        pub read_transactions: Vec<TxnResult<ReadOperationResult>>,
     }
 
     // utility types
@@ -160,30 +160,36 @@ pub mod push_data {
     }
 
     #[derive(Debug, Deserialize, Serialize)]
-    pub struct TxnInput {
+    pub struct TxnInput<T> {
         pub user_uuid: db_types::RowIdType,
         pub txn_number: u64,
-        pub operation: OperationInput,
+        pub operation: T,
     }
 
     #[derive(Debug, Deserialize, Serialize)]
-    pub struct TxnResult {
+    pub struct TxnResult<T> {
         pub user_uuid: StdResult<(), UserUuidError>,
         pub txn_number: u64,
-        pub operation: Option<OperationResult>,
+        pub operation: Option<T>,
     }
 
     #[derive(Debug, Deserialize, Serialize)]
-    pub enum OperationInput {
+    pub enum WriteOperationInput {
         CreateCompany(create_company::Input),
         CreateCompanyBranch(create_company_branch::Input),
     }
 
     #[derive(Debug, Deserialize, Serialize)]
-    pub enum OperationResult {
+    pub enum WriteOperationResult {
         CreateCompany(create_company::Result),
         CreateCompanyBranch(create_company_branch::Result),
     }
+
+    #[derive(Debug, Deserialize, Serialize)]
+    pub enum ReadOperationInput {}
+
+    #[derive(Debug, Deserialize, Serialize)]
+    pub enum ReadOperationResult {}
 
     // error types
     #[derive(Debug, Deserialize, Serialize)]

@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use std::collections::HashSet;
 use tokio_postgres::error::SqlState;
 
 pub struct S<'a> {
@@ -96,7 +97,7 @@ impl DBTransaction for S<'_> {
 
     async fn write_create_company(
         &mut self,
-        resources: &mut Vec<ResourceInfo>,
+        resources: &mut HashSet<ResourceInfo>,
         new_uuid: &Self::RowId,
         user_uuid: &Self::RowId,
         user_role: &db_types::Role,
@@ -196,7 +197,7 @@ impl DBTransaction for S<'_> {
 
     async fn write_create_company_branch(
         &mut self,
-        resources: &mut Vec<ResourceInfo>,
+        resources: &mut HashSet<ResourceInfo>,
         new_uuid: &Self::RowId,
         company_belong: &Self::RowId,
         branch_name: &String,
