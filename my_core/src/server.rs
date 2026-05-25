@@ -37,137 +37,58 @@ pub fn server_actor<DB, Cli, Jwt, Authentication, F, Id, DE, RT, WSS, MPSC>(
                 Either::One(msg) => {
                     let msg = match msg {
                         Ok(msg) => msg,
-                        Err(_) => continue,
+                        Err(_) => break,
                     };
 
                     match msg {
                         WSMessage::Binary(received_data) => {
-                            let recived_msg =
-                                DE::decode::<web_socket::MessageType>(&received_data).unwrap();
+                            let input = DE::decode::<messages::FromClient>(&received_data);
 
-                            match recived_msg {
-                                web_socket::MessageType::TwoWay { id, path, payload } => {
-                                    let payload = match path.as_str() {
-                                        sign_up::PATH => {
-                                            let input = DE::decode::<sign_up::Input>(&payload);
+                            let mut resources = HashSet::with_capacity(1000);
+                            let mut users_uuids = HashSet::with_capacity(10);
+                            // TODO : get db client here
 
-                                            let result = match input {
-                                                Ok(input) => match state
-                                                    .sign_up(&mut None, &input)
-                                                    .await
-                                                {
-                                                    Ok(o) => Ok(o),
-                                                    Err(_) => Err(HashimError::InternalServerError),
-                                                },
-                                                Err(_) => Err(HashimError::DecodingErrorAtServer),
-                                            };
-
-                                            DE::encode(&result)
-                                        }
-                                        sign_in::PATH => {
-                                            let input = DE::decode::<sign_in::Input>(&payload);
-
-                                            let result = match input {
-                                                Ok(input) => {
-                                                    let mut user_uuid = None;
-                                                    let sign_in =
-                                                        state.sign_in(&mut user_uuid, &input).await;
-
-                                                    if let Some(user_uuid) = user_uuid {
-                                                        let mut users = HashSet::new();
-                                                        users.insert(user_uuid);
-
-                                                        let subs = state
-                                                            .get_table_of_subscribed_data(&users)
-                                                            .await
-                                                            .unwrap();
-
-                                                        sender_to_broker.send(server_methods::MessageToBroker::Subscribe {
-                                                            list_of_subscribtion: subs,
-                                                            users_uuids:users,
-                                                            sender_to_server: sender_to_server.clone(),
-                                                        }).await.unwrap();
-                                                    }
-
-                                                    match sign_in {
-                                                        Ok(o) => Ok(o),
-                                                        Err(_) => {
-                                                            Err(HashimError::InternalServerError)
-                                                        }
-                                                    }
-                                                }
-                                                Err(_) => Err(HashimError::DecodingErrorAtServer),
-                                            };
-
-                                            DE::encode(&result)
-                                        }
-                                        push_data::PATH => {
-                                            let input = DE::decode::<push_data::Input>(&payload);
-
-                                            let result = match input {
-                                                Ok(input) => {
-                                                    let mut resources =
-                                                        HashSet::with_capacity(1000);
-                                                    let mut users_uuids =
-                                                        HashSet::with_capacity(10);
-
-                                                    let push_data = state
-                                                        .push_data(
-                                                            &mut resources,
-                                                            &mut users_uuids,
-                                                            &input,
-                                                        )
-                                                        .await;
-
-                                                    if !users_uuids.is_empty() {
-                                                        let subs = state
-                                                            .get_table_of_subscribed_data(
-                                                                &users_uuids,
-                                                            )
-                                                            .await
-                                                            .unwrap();
-
-                                                        sender_to_broker.send(server_methods::MessageToBroker::Subscribe {
-                                                            list_of_subscribtion: subs,
-                                                            users_uuids,
-                                                            sender_to_server: sender_to_server.clone(),
-                                                        }).await.unwrap();
-                                                    }
-
-                                                    match push_data {
-                                                        Ok(ok) => Ok(ok),
-                                                        Err(_) => {
-                                                            Err(HashimError::InternalServerError)
-                                                        }
-                                                    }
-                                                }
-                                                Err(_) => Err(HashimError::DecodingErrorAtServer),
-                                            };
-
-                                            DE::encode(&result)
-                                        }
-                                        _ => todo!(),
-                                    };
-
-                                    let msg_to_send =
-                                        web_socket::MessageType::TwoWay { id, path, payload };
-                                    let msg_to_send = DE::encode(&msg_to_send);
-                                    match session.send_bin(msg_to_send).await {
-                                        Ok(_) => continue,
-                                        Err(_) => break,
-                                    }
-                                }
-                                web_socket::MessageType::OneWay { path, payload } => todo!(),
+                            let result = match input {
+                                Ok(input) => state
+                                    .push_data(&mut resources, &mut users_uuids, &input)
+                                    .await
+                                    .map_err(|e| {
+                                        dbg!(e);
+                                        HashimError::InternalServerError
+                                    }),
+                                Err(_) => Err(HashimError::InvalidDataFormat),
                             };
+
+                            if let Err(_) = session
+                                .send_bin(DE::encode(&messages::FromServer::PushData(result)))
+                                .await
+                            {
+                                break;
+                            }
+
+                            if !users_uuids.is_empty() {
+                                let subs = state
+                                    .get_table_of_subscribed_data(&users_uuids)
+                                    .await
+                                    .unwrap();
+
+                                sender_to_broker
+                                    .send(server_methods::MessageToBroker::Subscribe {
+                                        list_of_subscribtion: subs,
+                                        users_uuids,
+                                        sender_to_server: sender_to_server.clone(),
+                                    })
+                                    .await
+                                    .unwrap();
+                            }
                         }
-                        WSMessage::Close => {
-                            session.close().await.unwrap();
-                            return;
-                        }
+                        WSMessage::Close => break,
                     }
                 }
                 Either::Two(a) => todo!(),
             }
         }
+
+        session.close().await.unwrap();
     });
 }

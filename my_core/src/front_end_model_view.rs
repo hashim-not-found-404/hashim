@@ -7,12 +7,13 @@ pub trait Signal {
 }
 
 pub struct State<
-    WA: WAMP<Sender<DynamicError> = MPSC::Sender<DynamicError>> + 'static,
-    RT: Runtime + 'static,
-    MPSC: MultiProducerSingleConsumer + 'static,
-    CH: CacheIO + 'static,
-    Id: RowId + 'static,
     RN: RandomNumber + 'static,
+    WS: WebSocketOp + 'static,
+    DE: Coding + 'static,
+    RT: Runtime + 'static,
+    CH: CacheIO + 'static,
+    MPSC: MultiProducerSingleConsumer + 'static,
+    Id: RowId + 'static,
     SigString: Signal<T = String> + 'static,
     SigBool: Signal<T = bool> + 'static,
     SigExternalError: Signal<T = String> + 'static,
@@ -20,13 +21,8 @@ pub struct State<
     SigLocation: Signal<T = db_types::Location> + 'static,
 > {
     // here for the app logic
-    id: PhantomData<Id>,
-    random_number: PhantomData<RN>,
-    sig_string: PhantomData<SigString>,
-    sig_currency: PhantomData<SigCurrency>,
-    sig_location: PhantomData<SigLocation>,
-
-    routs: Arc<client::RoutsForClientSide<WA, RT, MPSC, CH>>,
+    _ph: PhantomData<(Id, RN, SigString, SigCurrency, SigLocation)>,
+    routs: client::RoutsForClientSide<WS, DE, RN, RT, CH, Id, MPSC>,
     jwt: RwLock<Option<String>>,
 
     // here every field to display
@@ -37,35 +33,47 @@ pub struct State<
 }
 
 impl<
-    WA: WAMP<Sender<DynamicError> = MPSC::Sender<DynamicError>> + 'static,
-    RT: Runtime,
-    MPSC: MultiProducerSingleConsumer,
-    CH: CacheIO,
-    Id: RowId,
-    RN: RandomNumber,
+    RN: RandomNumber + 'static,
+    WS: WebSocketOp + 'static,
+    DE: Coding + 'static,
+    RT: Runtime + 'static,
+    CH: CacheIO + 'static,
+    MPSC: MultiProducerSingleConsumer + 'static,
     // signals
+    Id: RowId + 'static,
     SigString: Signal<T = String>,
     SigBool: Signal<T = bool> + Default,
     SigExternalError: Signal<T = String> + Default,
     SigCurrency: Signal<T = db_types::Currency>,
     SigLocation: Signal<T = db_types::Location>,
-> State<WA, RT, MPSC, CH, Id, RN, SigString, SigBool, SigExternalError, SigCurrency, SigLocation>
+>
+    State<
+        RN,
+        WS,
+        DE,
+        RT,
+        CH,
+        MPSC,
+        Id,
+        SigString,
+        SigBool,
+        SigExternalError,
+        SigCurrency,
+        SigLocation,
+    >
 {
     pub async fn new() -> Arc<Self> {
         let (sender_to_error, receiver_to_error) = MPSC::channel();
 
-        let routs = client::RoutsForClientSide::<WA, RT, MPSC, CH>::new(sender_to_error).await;
+        let routs =
+            client::RoutsForClientSide::<WS, DE, RN, RT, CH, Id, MPSC>::new(sender_to_error).await;
 
         let state = Arc::new(Self {
-            id: PhantomData,
-            random_number: PhantomData,
+            _ph: PhantomData,
             routs: routs,
             jwt: RwLock::new(None),
             is_signed_in: SigBool::default(),
             external_errors: SigExternalError::default(),
-            sig_string: PhantomData,
-            sig_currency: PhantomData,
-            sig_location: PhantomData,
         });
 
         state.clone().listen_to_error(receiver_to_error);
@@ -100,7 +108,7 @@ impl<
                 password: feature_state.user_password.read().to_string(),
             };
 
-            let result = self.routs.clone().sign_up(&input).await;
+            let result = self.routs.sign_up(&input).await;
 
             match result {
                 Ok(Ok(business_output)) => {
@@ -144,7 +152,7 @@ impl<
                 password: feature_state.user_password.read().to_string(),
             };
 
-            let result = self.routs.clone().sign_in(&input).await;
+            let result = self.routs.sign_in(&input).await;
 
             match result {
                 Ok(Ok(business_output)) => {
@@ -198,14 +206,14 @@ impl<
                 operation: push_data::WriteOperationInput::CreateCompany(input),
             };
 
-            let result = self.routs.cache.write_txn(&txn).await;
+            // let result = self.routs.cache.write_txn(&txn).await;
 
-            match result {
-                Ok(_) => {}
-                Err(external_error) => {
-                    self.external_errors.set(external_error.to_string());
-                }
-            }
+            // match result {
+            //     Ok(_) => {}
+            //     Err(external_error) => {
+            //         self.external_errors.set(external_error.to_string());
+            //     }
+            // }
         });
     }
 
@@ -230,14 +238,14 @@ impl<
                 operation: push_data::WriteOperationInput::CreateCompanyBranch(input),
             };
 
-            let result = self.routs.cache.write_txn(&txn).await;
+            // let result = self.routs.cache.write_txn(&txn).await;
 
-            match result {
-                Ok(_) => {}
-                Err(external_error) => {
-                    self.external_errors.set(external_error.to_string());
-                }
-            }
+            // match result {
+            //     Ok(_) => {}
+            //     Err(external_error) => {
+            //         self.external_errors.set(external_error.to_string());
+            //     }
+            // }
         });
     }
 }

@@ -179,40 +179,10 @@ pub trait MultiProducerSingleConsumer {
     fn channel<T>() -> (Self::Sender<T>, Self::Receiver<T>);
 }
 
-pub trait WAMP {
-    type Sender<T>: Sender<T>;
-    fn new(sender_to_error: Self::Sender<DynamicError>) -> Self;
-    async fn connect_to_url(&self, url: &String);
-    async fn close(self);
-
-    async fn send_and_receive<SendType: Serialize, ReceiveType: for<'de> Deserialize<'de>>(
-        &self,
-        path: &String,
-        payload: &SendType,
-        timeout_in_secs: u32,
-    ) -> Result<ReceiveType, DynamicError>;
-
-    async fn receive_and_send<SendType: Serialize, ReceiveType: for<'de> Deserialize<'de>>(
-        &self,
-        path: &String,
-        operation: impl AsyncFn(ReceiveType) -> SendType,
-    ) -> Result<(), DynamicError>;
-
-    async fn send_only<SendType: Serialize>(
-        &self,
-        path: &String,
-        payload: &SendType,
-    ) -> Result<(), DynamicError>;
-
-    async fn receive_only<ReceiveType: for<'de> Deserialize<'de>>(
-        &self,
-        path: &String,
-        operation: impl AsyncFn(ReceiveType) + 'static,
-    );
-}
-
 pub trait CacheIO: Sized {
     async fn new() -> Result<Self, DynamicError>;
+    async fn get_all_write_txns(&self) -> Vec<push_data::TxnInput<push_data::WriteOperationInput>>;
+    async fn get_jwt(&self, user_uuid: &db_types::RowIdType) -> String;
     async fn write_data(&self, data: &Vec<ResourceInfo>) -> Result<(), DynamicError>;
     async fn write_txn<T>(&self, txn: &push_data::TxnInput<T>) -> Result<(), DynamicError>;
     async fn get_txn<T>(

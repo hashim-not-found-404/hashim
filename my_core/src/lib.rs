@@ -1,3 +1,4 @@
+pub mod cache;
 pub mod client;
 pub mod db_types;
 pub mod front_end_model_view;

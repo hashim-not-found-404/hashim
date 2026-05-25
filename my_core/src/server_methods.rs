@@ -41,14 +41,9 @@ where
     MPSC: MultiProducerSingleConsumer + 'static,
     RT: Runtime,
 {
+    _ph: PhantomData<(Cli, Authentication, F, Id, MPSC, RT)>,
     database: DB,
-    client: PhantomData<Cli>,
     jwt: Jwt,
-    authentication: PhantomData<Authentication>,
-    functions: PhantomData<F>,
-    rowid: PhantomData<Id>,
-    mpsc: PhantomData<MPSC>,
-    runtime: PhantomData<RT>,
     pub sender_to_broker: MPSC::Sender<MessageToBroker<Id, MPSC>>,
 }
 
@@ -70,14 +65,9 @@ where
         Self::broker_actor(receiver_to_broker);
 
         Self {
+            _ph: PhantomData,
             database: DB::new().await,
-            client: PhantomData,
             jwt: Jwt::new(),
-            authentication: PhantomData,
-            functions: PhantomData,
-            rowid: PhantomData,
-            mpsc: PhantomData,
-            runtime: PhantomData,
             sender_to_broker,
         }
     }
@@ -658,7 +648,7 @@ fn merge_subscribes<Id: RowId>(
 }
 
 // here dont contain data
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub enum Subscribe {
     // TODO
     CompanyCurrancy,

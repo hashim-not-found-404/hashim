@@ -6,22 +6,15 @@ use dioxus_logger::tracing::Level;
 use my_core::prelude::{Signal, *};
 use std::{str::FromStr, sync::Arc};
 
-type TypeMyWAMP = web_socket::MyWAMP<
-    web_socket_adapter::m::S,
-    encode_decode::m::S,
-    random_number::m::S,
-    runtime::m::S,
-    actors::m::S,
->;
-
 type StateOfEveryThing = Arc<
     front_end_model_view::State<
-        TypeMyWAMP,
-        runtime::m::S,
-        actors::m::S,
-        cache_diesel::S,
-        row_id::m::S,
         random_number::m::S,
+        web_socket_adapter::m::S,
+        encode_decode::m::S,
+        runtime::m::S,
+        cache_diesel::S,
+        actors::m::S,
+        row_id::m::S,
         MySignal<String>,
         MySignal<bool>,
         MySignal<String>,

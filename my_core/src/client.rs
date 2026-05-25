@@ -1,92 +1,116 @@
-use crate::prelude::*;
+use crate::{prelude::*, web_socket::AuthenticationOperations};
 
 const TIMEOUT: u32 = 5;
 
-pub struct RoutsForClientSide<WA, RT, MPSC, CH>
+pub struct RoutsForClientSide<WS, DE, RN, RT, CH, Id, MPSC>
 where
-    WA: WAMP + 'static,
+    RN: RandomNumber + 'static,
+    WS: WebSocketOp + 'static,
+    DE: Coding + 'static,
     RT: Runtime + 'static,
-    MPSC: MultiProducerSingleConsumer + 'static,
     CH: CacheIO + 'static,
+    Id: RowId + 'static,
+    MPSC: MultiProducerSingleConsumer + 'static,
 {
-    web_socket: WA,
-    runtime: PhantomData<RT>,
-    mpsc: PhantomData<MPSC>,
-    pub cache: CH,
+    _ph: PhantomData<(WS, DE, RN, RT, CH, Id, MPSC)>,
+    my_wamp: web_socket::MyWAMP<WS, DE, RN, RT, CH, Id, MPSC>,
 }
 
-impl<WA, RT, MPSC, CH> RoutsForClientSide<WA, RT, MPSC, CH>
+impl<WS, DE, RN, RT, CH, Id, MPSC> RoutsForClientSide<WS, DE, RN, RT, CH, Id, MPSC>
 where
-    WA: WAMP<Sender<DynamicError> = MPSC::Sender<DynamicError>> + 'static,
+    RN: RandomNumber + 'static,
+    WS: WebSocketOp + 'static,
+    DE: Coding + 'static,
     RT: Runtime + 'static,
-    MPSC: MultiProducerSingleConsumer + 'static,
     CH: CacheIO + 'static,
+    Id: RowId + 'static,
+    MPSC: MultiProducerSingleConsumer + 'static,
 {
-    pub async fn new(sender_to_error: MPSC::Sender<DynamicError>) -> Arc<Self> {
+    pub async fn new(sender_to_error: MPSC::Sender<DynamicError>) -> Self {
+        let web_socket =
+            web_socket::MyWAMP::<WS, DE, RN, RT, CH, Id, MPSC>::new(sender_to_error.clone());
         let url = format!("ws://{}/ws", ADDRESS);
-        let web_socket = WA::new(sender_to_error.clone());
         web_socket.connect_to_url(&url).await;
 
-        let routs_for_client_side = Arc::new(Self {
-            web_socket,
-            runtime: PhantomData,
-            mpsc: PhantomData,
-            cache: CH::new().await.unwrap(),
-        });
-
-        routs_for_client_side
-            .clone()
-            .data_receiver(sender_to_error)
-            .await;
-
-        routs_for_client_side
+        Self {
+            _ph: PhantomData,
+            my_wamp: web_socket,
+        }
     }
 
-    pub async fn sign_up(
-        self: Arc<Self>,
-        input: &sign_up::Input,
-    ) -> Result<sign_up::Result, DynamicError> {
-        let result = self
-            .web_socket
-            .send_and_receive::<sign_up::Input, Result<sign_up::Result, HashimError>>(
-                &sign_up::PATH.to_string(),
-                input,
-                TIMEOUT,
-            )
-            .await??;
+    pub async fn sign_up(&self, input: &sign_up::Input) -> Result<sign_up::Result, DynamicError> {
+        let (sender, receiver) = MPSC::channel();
 
+        self.my_wamp
+            .send_to_cache_actor(web_socket::Query::Authentication {
+                sender: sender,
+                data: input.clone().map_input(),
+            })
+            .await;
+
+        let result = receiver.recv().await.unwrap();
+        let result = sign_up::Input::unwrap(result);
         Ok(result)
     }
 
-    pub async fn sign_in(
-        self: Arc<Self>,
-        input: &sign_in::Input,
-    ) -> Result<sign_in::Result, DynamicError> {
-        let result = self
-            .web_socket
-            .send_and_receive::<sign_in::Input, Result<sign_in::Result, HashimError>>(
-                &sign_in::PATH.to_string(),
-                input,
-                TIMEOUT,
-            )
-            .await??;
+    pub async fn sign_in(&self, input: &sign_in::Input) -> Result<sign_in::Result, DynamicError> {
+        todo!()
+    }
+}
 
-        Ok(result)
+impl AuthenticationOperations for sign_up::Input {
+    type Ok = sign_up::Ok;
+    type Err = sign_up::Error;
+
+    async fn state_full_check<CH: CacheIO>(
+        &self,
+        state: &cache::State<CH>,
+    ) -> Result<Self::Ok, Self::Err> {
+        let mut err = Self::Err {
+            new_uuid: None,
+            user_id: None,
+            name: None,
+        };
+
+        for (uuid, user) in &state.state_of_pending_txn.user {
+            if user.user_id == self.user_id {
+                err.user_id = Some(sign_up::UserIdError::Duplicated);
+            }
+            if uuid == &self.new_uuid {
+                err.new_uuid = Some(RowIdError::Duplicated);
+            }
+        }
+
+        if err != sign_up::Error::default() {
+            return Err(err);
+        }
+
+        return Ok(sign_up::Ok { jwt: String::new() });
     }
 
-    pub async fn data_receiver(self: Arc<Self>, sender_to_error: MPSC::Sender<DynamicError>) {
-        self.clone()
-            .web_socket
-            .receive_only::<data_receiver::Input>(
-                &data_receiver::PATH.to_string(),
-                async move |data| {
-                    let a = self.cache.write_data(&data.0).await;
-                    match a {
-                        Ok(_) => return,
-                        Err(e) => sender_to_error.send(e).await.unwrap(),
-                    };
-                },
-            )
-            .await;
+    fn apply_change<CH: CacheIO>(&self, state: &mut cache::State<CH>) {
+        state.state_of_pending_txn.user.insert(
+            self.new_uuid.clone(),
+            cache::tables::User {
+                user_name: self.name.clone(),
+                user_id: self.user_id.clone(),
+                password: self.password.clone(),
+            },
+        );
+    }
+
+    fn map_input(self) -> push_data::AuthenticationMethodInput {
+        push_data::AuthenticationMethodInput::SignUp(self)
+    }
+
+    fn map_result(result: Result<Self::Ok, Self::Err>) -> push_data::AuthenticationMethodResult {
+        push_data::AuthenticationMethodResult::SignUp(result)
+    }
+
+    fn unwrap(result: push_data::AuthenticationMethodResult) -> Result<Self::Ok, Self::Err> {
+        if let push_data::AuthenticationMethodResult::SignUp(result) = result {
+            return result;
+        }
+        unreachable!()
     }
 }

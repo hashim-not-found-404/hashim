@@ -32,7 +32,7 @@ pub enum JWTError {
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
 pub enum HashimError {
     InternalServerError,
-    DecodingErrorAtServer,
+    InvalidDataFormat,
     ConnectionClosed,
 }
 
@@ -42,91 +42,26 @@ impl Display for HashimError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             HashimError::InternalServerError => write!(f, "Internal Server Error"),
-            HashimError::DecodingErrorAtServer => write!(f, "Decoding Error at Server"),
+            HashimError::InvalidDataFormat => write!(f, "Invalid Data Format"),
             HashimError::ConnectionClosed => write!(f, "Connection Closed"),
         }
     }
 }
 
-pub mod sign_up {
+pub mod messages {
     use super::*;
-    pub const PATH: &str = "sign_up";
-
-    #[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Hash)]
-    pub struct Input {
-        pub new_uuid: db_types::RowIdType,
-        pub name: Option<String>,
-        pub user_id: String,
-        pub password: String,
-    }
 
     #[derive(Debug, Deserialize, Serialize)]
-    pub struct Ok {
-        pub jwt: String,
+    pub enum FromServer {
+        PushData(Result<push_data::Result, HashimError>),
+        Resources(Vec<ResourceInfo>),
     }
 
-    #[derive(Debug, Deserialize, Serialize, Default, PartialEq)]
-    pub struct Error {
-        pub new_uuid: Option<RowIdError>,
-        pub user_id: Option<UserIdError>,
-        pub name: Option<String>,
-    }
-
-    pub type Result = StdResult<Ok, Error>;
-
-    // utility types
-    #[derive(Debug, Deserialize, Serialize, PartialEq)]
-    pub enum UserIdError {
-        Duplicated,
-    }
-}
-
-pub mod sign_in {
-    use super::*;
-    pub const PATH: &str = "sign_in";
-
-    #[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Hash)]
-    pub struct Input {
-        pub user_id: db_types::RowIdType,
-        pub password: String,
-    }
-
-    #[derive(Debug, Deserialize, Serialize)]
-    pub struct Ok {
-        pub jwt: String,
-    }
-
-    #[derive(Debug, Deserialize, Serialize, Default, PartialEq)]
-    pub struct Error {
-        pub user_id: Option<UserIdError>,
-        pub password: Option<PasswordError>,
-    }
-
-    pub type Result = StdResult<Ok, Error>;
-
-    // utility types
-    #[derive(Debug, Deserialize, Serialize, PartialEq)]
-    pub enum UserIdError {
-        NotExist,
-    }
-
-    #[derive(Debug, Deserialize, Serialize, PartialEq)]
-    pub enum PasswordError {
-        WrongPassword,
-    }
-}
-
-pub mod data_receiver {
-    use super::*;
-    pub const PATH: &str = "data_receiver";
-
-    #[derive(Debug, Deserialize, Serialize)]
-    pub struct Input(pub Vec<ResourceInfo>);
+    pub type FromClient = push_data::Input;
 }
 
 pub mod push_data {
     use super::*;
-    pub const PATH: &str = "push_data";
 
     #[derive(Debug, Deserialize, Serialize)]
     pub struct Input {
@@ -199,10 +134,76 @@ pub mod push_data {
     }
 }
 
+pub mod sign_up {
+    use super::*;
+
+    #[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Hash, Clone)]
+    pub struct Input {
+        pub new_uuid: db_types::RowIdType,
+        pub name: Option<String>,
+        pub user_id: String,
+        pub password: String,
+    }
+
+    #[derive(Debug, Deserialize, Serialize)]
+    pub struct Ok {
+        pub jwt: String,
+    }
+
+    #[derive(Debug, Deserialize, Serialize, Default, PartialEq)]
+    pub struct Error {
+        pub new_uuid: Option<RowIdError>,
+        pub user_id: Option<UserIdError>,
+        pub name: Option<String>,
+    }
+
+    pub type Result = StdResult<Ok, Error>;
+
+    // utility types
+    #[derive(Debug, Deserialize, Serialize, PartialEq)]
+    pub enum UserIdError {
+        Duplicated,
+    }
+}
+
+pub mod sign_in {
+    use super::*;
+
+    #[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Hash)]
+    pub struct Input {
+        pub user_id: db_types::RowIdType,
+        pub password: String,
+    }
+
+    #[derive(Debug, Deserialize, Serialize)]
+    pub struct Ok {
+        pub jwt: String,
+    }
+
+    #[derive(Debug, Deserialize, Serialize, Default, PartialEq)]
+    pub struct Error {
+        pub user_id: Option<UserIdError>,
+        pub password: Option<PasswordError>,
+    }
+
+    pub type Result = StdResult<Ok, Error>;
+
+    // utility types
+    #[derive(Debug, Deserialize, Serialize, PartialEq)]
+    pub enum UserIdError {
+        NotExist,
+    }
+
+    #[derive(Debug, Deserialize, Serialize, PartialEq)]
+    pub enum PasswordError {
+        WrongPassword,
+    }
+}
+
 pub mod create_company {
     use super::*;
 
-    #[derive(Debug, Deserialize, Serialize)]
+    #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Input {
         pub new_uuid: db_types::RowIdType,
         pub company_name: String,
@@ -223,7 +224,7 @@ pub mod create_company {
 pub mod create_company_branch {
     use super::*;
 
-    #[derive(Debug, Deserialize, Serialize)]
+    #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Input {
         pub new_uuid: db_types::RowIdType,
         pub company_belong: db_types::RowIdType,

@@ -1,292 +1,216 @@
 use crate::prelude::*;
 
-type Payload = Vec<u8>;
+pub struct Poke;
 
-#[derive(Debug, Serialize, Deserialize)]
-pub enum MessageType {
-    TwoWay {
-        id: u64,
-        path: String,
-        payload: Payload,
-    },
-    OneWay {
-        path: String,
-        payload: Payload,
-    },
-}
-
-enum MessageToConnector {
+enum MessageToNetwork {
     ShutDown,
     Url(String),
-    Reconnect,
+    Bytes(Vec<u8>),
 }
 
-enum MessageToBroker<MPSC: MultiProducerSingleConsumer> {
+pub enum Query<MPSC: MultiProducerSingleConsumer> {
+    Authentication {
+        sender: MPSC::Sender<push_data::AuthenticationMethodResult>,
+        data: push_data::AuthenticationMethodInput,
+    },
+    WriteTransactions {
+        sender: MPSC::Sender<push_data::TxnResult<push_data::WriteOperationResult>>,
+        data: push_data::TxnInput<push_data::WriteOperationInput>,
+    },
+    ReadTransactions {
+        sender: MPSC::Sender<push_data::TxnResult<push_data::ReadOperationResult>>,
+        data: push_data::TxnInput<push_data::ReadOperationInput>,
+    },
+}
+
+enum MessageToCache<MPSC: MultiProducerSingleConsumer> {
     ShutDown,
-    FromRadar(Vec<u8>),
-    FromSendAndReceive(u64, MPSC::Sender<Payload>),
-    FromReceiveAndSend(String, MPSC::Sender<(u64, Payload)>),
-    FromReceiveOnly(String, MPSC::Sender<Payload>),
+    WeAreOnline,
+    WeAreOffline,
+    DataFromServer(Vec<u8>),
+    Query(Query<MPSC>),
+    Subscribe {
+        component_id: u64,
+        list_of_subscribtion: Vec<server_methods::Subscribe>,
+        sender_to_component: MPSC::Sender<Poke>,
+    },
+    UnSubscribe {
+        component_id: u64,
+    },
 }
 
-enum MessageToReceiveBin {
-    ShutDown,
-}
-
-enum MessageToSendBin {
-    ShutDown,
-    Bin(Vec<u8>),
-}
-
-pub struct MyWAMP<WS, DE, RN, RT, MPSC>
+pub struct MyWAMP<WS, DE, RN, RT, CH, Id, MPSC>
 where
     RN: RandomNumber + 'static,
     WS: WebSocketOp + 'static,
     DE: Coding + 'static,
     RT: Runtime + 'static,
+    CH: CacheIO + 'static,
+    Id: RowId + 'static,
     MPSC: MultiProducerSingleConsumer + 'static,
 {
-    runtime: PhantomData<RT>,
-    random_number: PhantomData<RN>,
-    coding: PhantomData<DE>,
-    transport: PhantomData<WS>,
-
-    sender_to_connector: MPSC::Sender<MessageToConnector>,
-    sender_to_broker: MPSC::Sender<MessageToBroker<MPSC>>,
-    sender_to_send_bin: MPSC::Sender<MessageToSendBin>,
-    sender_to_receive_bin: MPSC::Sender<MessageToReceiveBin>,
+    _ph: PhantomData<(WS, DE, RN, RT, CH, Id, MPSC)>,
+    sender_to_network: MPSC::Sender<MessageToNetwork>,
+    sender_to_cache: MPSC::Sender<MessageToCache<MPSC>>,
 }
 
-impl<WS, DE, RN, RT, MPSC> WAMP for MyWAMP<WS, DE, RN, RT, MPSC>
+impl<WS, DE, RN, RT, CH, Id, MPSC> MyWAMP<WS, DE, RN, RT, CH, Id, MPSC>
 where
     RN: RandomNumber + 'static,
     WS: WebSocketOp + 'static,
     DE: Coding + 'static,
     RT: Runtime + 'static,
+    CH: CacheIO + 'static,
+    Id: RowId + 'static,
     MPSC: MultiProducerSingleConsumer + 'static,
 {
-    type Sender<T> = MPSC::Sender<T>;
+    pub fn new(sender_to_error: MPSC::Sender<DynamicError>) -> Self {
+        let (sender_to_network, receiver_to_network) = MPSC::channel();
+        let (sender_to_cache, receiver_to_cache) = MPSC::channel();
 
-    fn new(sender_to_error: Self::Sender<DynamicError>) -> Self {
-        let (sender_to_connector, receiver_to_connector) = MPSC::channel();
-        let (sender_to_broker, receiver_to_broker) = MPSC::channel();
-        let (sender_to_send_bin, receiver_to_send_bin) = MPSC::channel();
-        let (sender_to_receive_bin, receiver_to_receive_bin) = MPSC::channel();
-
-        let ws = Arc::new(RwLock::new(None));
-
-        Self::connector_actor(ws.clone(), receiver_to_connector, sender_to_error.clone());
-        Self::broker_actor(receiver_to_broker, sender_to_error.clone());
-        Self::receive_bin_actor(
-            ws.clone(),
-            receiver_to_receive_bin,
-            sender_to_connector.clone(),
-            sender_to_broker.clone(),
+        Self::network_actor(
+            receiver_to_network,
+            sender_to_cache.clone(),
             sender_to_error.clone(),
         );
-        Self::send_bin_actor(
-            ws.clone(),
-            receiver_to_send_bin,
-            sender_to_send_bin.clone(),
-            sender_to_connector.clone(),
+        Self::cache_actor(
+            receiver_to_cache,
+            sender_to_network.clone(),
             sender_to_error.clone(),
         );
 
         Self {
-            runtime: PhantomData,
-            random_number: PhantomData,
-            coding: PhantomData,
-            transport: PhantomData,
-            sender_to_connector,
-            sender_to_broker,
-            sender_to_send_bin,
-            sender_to_receive_bin,
+            _ph: PhantomData,
+            sender_to_network,
+            sender_to_cache,
         }
     }
 
-    async fn connect_to_url(&self, url: &String) {
-        self.sender_to_connector
-            .send(MessageToConnector::Url(url.clone()))
+    pub async fn connect_to_url(&self, url: &String) {
+        self.sender_to_network
+            .send(MessageToNetwork::Url(url.clone()))
             .await
             .unwrap();
     }
 
-    async fn close(self) {
-        self.sender_to_connector
-            .send(MessageToConnector::ShutDown)
+    pub async fn close(self) {
+        self.sender_to_network
+            .send(MessageToNetwork::ShutDown)
             .await
             .unwrap();
-        self.sender_to_broker
-            .send(MessageToBroker::ShutDown)
-            .await
-            .unwrap();
-        self.sender_to_receive_bin
-            .send(MessageToReceiveBin::ShutDown)
-            .await
-            .unwrap();
-        self.sender_to_send_bin
-            .send(MessageToSendBin::ShutDown)
+        self.sender_to_cache
+            .send(MessageToCache::ShutDown)
             .await
             .unwrap();
     }
 
-    async fn send_and_receive<SendType: Serialize, ReceiveType: for<'de> Deserialize<'de>>(
-        &self,
-        path: &String,
-        payload: &SendType,
-        timeout_in_secs: u32,
-    ) -> Result<ReceiveType, DynamicError> {
-        let id = RN::generate();
-
-        let payload = DE::encode(payload);
-        let text = MessageType::TwoWay {
-            id,
-            path: path.clone(),
-            payload,
-        };
-        let data = DE::encode(&text);
-        self.sender_to_send_bin
-            .send(MessageToSendBin::Bin(data))
-            .await?;
-
-        let (sender, receiver) = MPSC::channel();
-        self.sender_to_broker
-            .send(MessageToBroker::<MPSC>::FromSendAndReceive(id, sender))
-            .await?;
-
-        let result =
-            RT::timeout(Duration::from_secs(timeout_in_secs as u64), receiver.recv()).await??;
-
-        return DE::decode::<ReceiveType>(&result);
+    pub async fn send_to_cache_actor(&self, msg: Query<MPSC>) {
+        self.sender_to_cache
+            .send(MessageToCache::Query(msg))
+            .await
+            .unwrap();
     }
 
-    async fn receive_and_send<SendType: Serialize, ReceiveType: for<'de> Deserialize<'de>>(
-        &self,
-        path: &String,
-        operation: impl AsyncFn(ReceiveType) -> SendType,
-    ) -> Result<(), DynamicError> {
-        let (sender, receiver) = MPSC::channel();
-        self.sender_to_broker
-            .send(MessageToBroker::<MPSC>::FromReceiveAndSend(
-                path.clone(),
-                sender,
-            ))
-            .await?;
-
-        loop {
-            let (id, payload) = receiver.recv().await.unwrap();
-
-            let Ok(payload) = DE::decode::<ReceiveType>(&payload) else {
-                continue;
-            };
-
-            let payload_to_send = operation(payload).await;
-            let payload_to_send = DE::encode(&payload_to_send);
-
-            let text = MessageType::TwoWay {
-                id: id,
-                path: path.clone(),
-                payload: payload_to_send,
-            };
-            let text = DE::encode(&text);
-            self.sender_to_send_bin
-                .send(MessageToSendBin::Bin(text))
-                .await?;
+    async fn network_radar(ws: &Option<WS>) -> Result<Vec<u8>, DynamicError> {
+        match &ws {
+            Some(ws) => ws.receive_bin().await,
+            None => Err(HashimError::ConnectionClosed.into()),
         }
     }
 
-    async fn send_only<SendType: Serialize>(
-        &self,
-        path: &String,
-        payload: &SendType,
-    ) -> Result<(), DynamicError> {
-        let payload = DE::encode(payload);
-        let text = MessageType::OneWay {
-            path: path.clone(),
-            payload: payload,
-        };
-        let text = DE::encode(&text);
-        self.sender_to_send_bin
-            .send(MessageToSendBin::Bin(text))
-            .await?;
-        Ok(())
-    }
-
-    async fn receive_only<ReceiveType: for<'de> Deserialize<'de>>(
-        &self,
-        path: &String,
-        operation: impl AsyncFn(ReceiveType) + 'static,
+    async fn connect(
+        sender_to_cache: &MPSC::Sender<MessageToCache<MPSC>>,
+        url: &Option<String>,
+        ws: &mut Option<WS>,
     ) {
-        let (sender, receiver) = MPSC::channel();
-        self.sender_to_broker
-            .send(MessageToBroker::<MPSC>::FromReceiveOnly(
-                path.clone(),
-                sender,
-            ))
-            .await
-            .unwrap();
+        if let Some(ur) = url {
+            sender_to_cache
+                .send(MessageToCache::WeAreOffline)
+                .await
+                .unwrap();
 
-        RT::spawn_local(async move {
-            loop {
-                let payload = receiver.recv().await.unwrap();
-                let Ok(payload) = DE::decode::<ReceiveType>(&payload) else {
-                    continue;
-                };
-                operation(payload).await;
+            if let Ok(ok) = WS::connect(ur.as_str()).await {
+                *ws = Some(ok);
+                sender_to_cache
+                    .send(MessageToCache::WeAreOnline)
+                    .await
+                    .unwrap();
+
+                return;
             }
-        })
+        }
+        RT::sleep(Duration::from_secs(5)).await;
     }
-}
 
-impl<WS, DE, RN, RT, MPSC> MyWAMP<WS, DE, RN, RT, MPSC>
-where
-    RN: RandomNumber + 'static,
-    WS: WebSocketOp + 'static,
-    DE: Coding + 'static,
-    RT: Runtime + 'static,
-    MPSC: MultiProducerSingleConsumer + 'static,
-{
-    fn connector_actor(
-        ws: Arc<RwLock<Option<WS>>>,
-        receiver_to_connector: MPSC::Receiver<MessageToConnector>,
+    fn network_actor(
+        receiver_to_network: MPSC::Receiver<MessageToNetwork>,
+        sender_to_cache: MPSC::Sender<MessageToCache<MPSC>>,
         sender_to_error: MPSC::Sender<DynamicError>,
     ) {
         RT::spawn_local(async move {
-            let mut url = None;
-            loop {
-                match receiver_to_connector.recv().await.unwrap() {
-                    MessageToConnector::ShutDown => return,
-                    MessageToConnector::Url(ur) => url = Some(ur),
-                    MessageToConnector::Reconnect => {}
-                };
+            let mut ws: Option<WS> = None;
+            let mut url: Option<String> = None;
 
-                if let Some(ref ur) = url {
-                    let result = WS::connect(ur.as_str()).await;
-                    match result {
-                        Ok(o) => {
-                            let mut guard = ws.write().unwrap();
-                            *guard = Some(o);
+            loop {
+                match RT::select(Self::network_radar(&ws), receiver_to_network.recv()).await {
+                    Either::One(from_network) => match from_network {
+                        Ok(data) => {
+                            sender_to_cache
+                                .send(MessageToCache::DataFromServer(data))
+                                .await
+                                .unwrap();
                         }
-                        Err(e) => sender_to_error.send(e).await.unwrap(),
-                    }
+                        Err(err) => {
+                            sender_to_error.send(err).await.unwrap();
+                            Self::connect(&sender_to_cache, &url, &mut ws).await;
+                        }
+                    },
+                    Either::Two(r) => match r.unwrap() {
+                        MessageToNetwork::ShutDown => return,
+                        MessageToNetwork::Url(ur) => {
+                            url = Some(ur);
+                            Self::connect(&sender_to_cache, &url, &mut ws).await;
+                        }
+                        MessageToNetwork::Bytes(data) => match &ws {
+                            Some(ws1) => {
+                                let result = ws1.send_bin(&data).await;
+                                if result.is_err() {
+                                    Self::connect(&sender_to_cache, &url, &mut ws).await;
+                                }
+                            }
+                            None => RT::sleep(Duration::from_secs(5)).await,
+                        },
+                    },
                 }
             }
         })
     }
 
-    fn broker_actor(
-        receiver_to_broker: MPSC::Receiver<MessageToBroker<MPSC>>,
+    fn cache_actor(
+        receiver_to_cache: MPSC::Receiver<MessageToCache<MPSC>>,
+        sender_to_network: MPSC::Sender<MessageToNetwork>,
         sender_to_error: MPSC::Sender<DynamicError>,
     ) {
         RT::spawn_local(async move {
-            let mut send_and_receive_pool = HashMap::<u64, MPSC::Sender<Payload>>::new();
-            let mut receive_and_send_pool = HashMap::<String, MPSC::Sender<(u64, Payload)>>::new();
-            let mut receive_only_pool = HashMap::<String, MPSC::Sender<Payload>>::new();
+            let mut state = cache::State::<CH>::new().await;
+
+            let mut is_online = false;
+            let mut pool_of_subscribes =
+                HashMap::<server_methods::Subscribe, HashSet<u64>>::with_capacity(1000);
+            let mut pool_of_senders = HashMap::<u64, MPSC::Sender<Poke>>::with_capacity(1000);
 
             loop {
-                match receiver_to_broker.recv().await.unwrap() {
-                    MessageToBroker::FromRadar(raw_data) => {
-                        let message_type = match DE::decode::<MessageType>(&raw_data) {
+                match receiver_to_cache.recv().await.unwrap() {
+                    MessageToCache::ShutDown => return,
+                    MessageToCache::WeAreOnline => {
+                        is_online = true;
+
+                        todo!("TODO read from cache");
+                        // sender_to_network.send(t).await.unwrap();
+                    }
+                    MessageToCache::WeAreOffline => is_online = false,
+                    MessageToCache::DataFromServer(raw_data) => {
+                        let message_type = match DE::decode::<messages::FromServer>(&raw_data) {
                             Ok(message_type) => message_type,
                             Err(err) => {
                                 sender_to_error.send(err).await.unwrap();
@@ -295,171 +219,189 @@ where
                         };
 
                         match message_type {
-                            MessageType::TwoWay { id, path, payload } => {
-                                if let Some(sender) = send_and_receive_pool.remove(&id) {
-                                    if let Ok(_) = sender.send(payload.clone()).await {
-                                        continue;
-                                    }
+                            messages::FromServer::PushData(e) => {
+                                todo!("TODO write to cache")
+                            }
+                            messages::FromServer::Resources(resource_infos) => {
+                                // state.write_txn(&resource_infos).await.unwrap();
+                                todo!("TODO update the pub/sub")
+                            }
+                        }
+                    }
+                    MessageToCache::Query(input) => match input {
+                        Query::Authentication { sender, data } => {
+                            let result = data.run_txn_first_time(&mut state).await;
 
-                                    if let Some(sender) = receive_only_pool.get_mut(&path) {
-                                        sender.send(payload).await.unwrap();
-                                        continue;
-                                    }
+                            let _ = sender.send(result).await;
 
-                                    continue;
-                                }
+                            let mut auths = HashSet::with_capacity(1);
+                            auths.insert(data);
 
-                                if let Some(sender) = receive_and_send_pool.get_mut(&path) {
-                                    sender.send((id, payload)).await.unwrap();
-                                    continue;
-                                }
-
-                                sender_to_error
-                                .send(
-                                    "there is data received in wrong path or maybe timeout there was".into(),
+                            if is_online {
+                                Self::prepare_txn_and_send_to_network(
+                                    sender_to_network.clone(),
+                                    auths,
+                                    Vec::new(),
+                                    Vec::new(),
                                 )
-                                .await
-                                .unwrap();
-                            }
-                            MessageType::OneWay { path, payload } => {
-                                if let Some(sender) = receive_only_pool.get_mut(&path) {
-                                    sender.send(payload).await.unwrap();
-                                    continue;
-                                }
-
-                                sender_to_error
-                                    .send("there is data received in wrong path".into())
-                                    .await
-                                    .unwrap();
-                            }
-                        }
-                    }
-                    MessageToBroker::FromSendAndReceive(id, sender) => {
-                        send_and_receive_pool.insert(id, sender);
-                    }
-                    MessageToBroker::FromReceiveAndSend(path, sender) => {
-                        receive_and_send_pool.insert(path, sender);
-                    }
-                    MessageToBroker::FromReceiveOnly(path, sender) => {
-                        receive_only_pool.insert(path, sender);
-                    }
-                    MessageToBroker::ShutDown => return,
-                }
-            }
-        })
-    }
-
-    fn receive_bin_actor(
-        ws: Arc<RwLock<Option<WS>>>,
-        receiver_to_receive_bin: MPSC::Receiver<MessageToReceiveBin>,
-        sender_to_connector: MPSC::Sender<MessageToConnector>,
-        sender_to_broker: MPSC::Sender<MessageToBroker<MPSC>>,
-        sender_to_error: MPSC::Sender<DynamicError>,
-    ) {
-        RT::spawn_local(async move {
-            loop {
-                let fut1 = async {
-                    let guard = ws.read().unwrap();
-                    let guard = guard.as_ref();
-
-                    match guard {
-                        Some(ws) => ws.receive_bin().await,
-                        None => Err("error he is at init".into()),
-                    }
-                };
-
-                match RT::select(fut1, receiver_to_receive_bin.recv()).await {
-                    Either::One(l) => match l {
-                        Ok(data) => {
-                            sender_to_broker
-                                .send(MessageToBroker::FromRadar(data))
-                                .await
-                                .unwrap();
-                        }
-
-                        Err(err) => {
-                            let result = err.downcast::<HashimError>();
-                            let err = match result {
-                                Ok(my_error) => {
-                                    if *my_error.as_ref() == HashimError::ConnectionClosed {
-                                        sender_to_connector
-                                            .send(MessageToConnector::Reconnect)
-                                            .await
-                                            .unwrap();
-                                    }
-
-                                    my_error
-                                }
-                                Err(other_error) => other_error,
+                                .await;
                             };
-                            sender_to_error.send(err).await.unwrap();
-                            RT::sleep(Duration::from_secs(1)).await;
                         }
+                        Query::WriteTransactions { sender, data } => {
+                            let result = data.run_txn_first_time(&mut state).await;
+
+                            let _ = sender.send(result).await;
+
+                            let jwt = state.get_jwt(&data.user_uuid).await;
+                            let mut auths = HashSet::with_capacity(1);
+                            auths.insert(push_data::AuthenticationMethodInput::Jwt(jwt));
+
+                            if is_online {
+                                Self::prepare_txn_and_send_to_network(
+                                    sender_to_network.clone(),
+                                    auths,
+                                    vec![data],
+                                    Vec::new(),
+                                )
+                                .await;
+                            };
+                        }
+                        Query::ReadTransactions { sender, data } => todo!(),
                     },
-                    Either::Two(r) => {
-                        r.unwrap();
-                        return;
+                    MessageToCache::Subscribe {
+                        component_id,
+                        list_of_subscribtion,
+                        sender_to_component,
+                    } => {
+                        pool_of_senders.insert(component_id, sender_to_component);
+                        for subscribe in list_of_subscribtion {
+                            pool_of_subscribes
+                                .entry(subscribe)
+                                .or_insert(HashSet::with_capacity(10))
+                                .insert(component_id);
+                        }
+                    }
+                    MessageToCache::UnSubscribe { component_id } => {
+                        pool_of_senders.remove(&component_id);
+
+                        for (_, component_id_gg) in &mut pool_of_subscribes {
+                            component_id_gg.remove(&component_id);
+                        }
+
+                        pool_of_subscribes.retain(|_, component_ids| !component_ids.is_empty());
                     }
                 }
             }
         })
     }
 
-    fn send_bin_actor(
-        ws: Arc<RwLock<Option<WS>>>,
-        receiver_to_send_bin: MPSC::Receiver<MessageToSendBin>,
-        sender_to_send_bin: MPSC::Sender<MessageToSendBin>,
-        sender_to_connector: MPSC::Sender<MessageToConnector>,
-        sender_to_error: MPSC::Sender<DynamicError>,
+    async fn prepare_txn_and_send_to_network(
+        sender_to_network: MPSC::Sender<MessageToNetwork>,
+        auths: HashSet<push_data::AuthenticationMethodInput>,
+        writes: Vec<push_data::TxnInput<push_data::WriteOperationInput>>,
+        reades: Vec<push_data::TxnInput<push_data::ReadOperationInput>>,
     ) {
-        RT::spawn_local(async move {
-            loop {
-                match receiver_to_send_bin.recv().await.unwrap() {
-                    MessageToSendBin::ShutDown => return,
-                    MessageToSendBin::Bin(bin) => {
-                        let guard = ws.read().unwrap();
-                        let guard = guard.as_ref();
+        let t = push_data::Input {
+            authentications: auths,
+            nonce: Id::generate().to_string(),
+            write_transactions: writes,
+            read_transactions: reades,
+        };
 
-                        match guard {
-                            Some(ws) => {
-                                if let Err(err) = ws.send_bin(&bin).await {
-                                    sender_to_send_bin
-                                        .send(MessageToSendBin::Bin(bin))
-                                        .await
-                                        .unwrap();
+        let t = DE::encode(&t);
 
-                                    let result = err.downcast::<HashimError>();
-                                    let err = match result {
-                                        Ok(my_error) => {
-                                            if *my_error.as_ref() == HashimError::ConnectionClosed {
-                                                sender_to_connector
-                                                    .send(MessageToConnector::Reconnect)
-                                                    .await
-                                                    .unwrap();
-                                            }
+        sender_to_network
+            .send(MessageToNetwork::Bytes(t))
+            .await
+            .unwrap();
+    }
+}
 
-                                            my_error
-                                        }
-                                        Err(other_error) => other_error,
-                                    };
+pub trait AuthenticationOperations: Clone {
+    type Ok;
+    type Err;
+    // async fn state_less_check(&self) -> Result<Self::Ok, Self::Err>;
+    async fn state_full_check<CH: CacheIO>(
+        &self,
+        state: &cache::State<CH>,
+    ) -> Result<Self::Ok, Self::Err>;
+    fn apply_change<CH: CacheIO>(&self, state: &mut cache::State<CH>);
+    fn map_input(self) -> push_data::AuthenticationMethodInput;
+    fn map_result(result: Result<Self::Ok, Self::Err>) -> push_data::AuthenticationMethodResult;
+    fn unwrap(result: push_data::AuthenticationMethodResult) -> Result<Self::Ok, Self::Err>;
+}
 
-                                    sender_to_error.send(err).await.unwrap();
-                                    RT::sleep(Duration::from_secs(1)).await;
-                                }
-                            }
+pub trait WriteOperations {
+    type Ok;
+    type Err;
+    async fn state_full_check<CH: CacheIO>(
+        &self,
+        state: &cache::State<CH>,
+    ) -> Result<Self::Ok, Self::Err>;
+    fn apply_change<CH: CacheIO>(&self, state: &mut cache::State<CH>);
+    fn map_input(self) -> push_data::WriteOperationInput;
+    fn map_result(result: Result<Self::Ok, Self::Err>) -> push_data::WriteOperationResult;
+    fn unwrap(result: push_data::WriteOperationResult) -> Result<Self::Ok, Self::Err>;
+}
 
-                            None => {
-                                sender_to_send_bin
-                                    .send(MessageToSendBin::Bin(bin))
-                                    .await
-                                    .unwrap();
+pub trait ReadOperations {
+    type Ok;
+    type Err;
+    async fn state_full_check<CH: CacheIO>(
+        &self,
+        state: &cache::State<CH>,
+    ) -> Result<Self::Ok, Self::Err>;
+    fn map_input(self) -> push_data::ReadOperationInput;
+    fn map_result(result: Result<Self::Ok, Self::Err>) -> push_data::ReadOperationResult;
+    fn unwrap(result: push_data::ReadOperationResult) -> Result<Self::Ok, Self::Err>;
+}
 
-                                RT::sleep(Duration::from_secs(1)).await;
-                            }
-                        };
-                    }
-                }
-            }
-        })
+impl push_data::AuthenticationMethodInput {
+    async fn run_txn_first_time<CH: CacheIO>(
+        &self,
+        state: &mut cache::State<CH>,
+    ) -> push_data::AuthenticationMethodResult {
+        match self {
+            push_data::AuthenticationMethodInput::Jwt(_) => todo!(),
+            push_data::AuthenticationMethodInput::SignIn(input) => todo!(),
+            push_data::AuthenticationMethodInput::SignUp(input) => fun_name(input, state).await,
+        }
+    }
+}
+
+async fn fun_name<T: AuthenticationOperations, CH: CacheIO>(
+    input: &T,
+    state: &mut cache::State<CH>,
+) -> push_data::AuthenticationMethodResult {
+    let result = input.state_full_check(state).await;
+
+    if result.is_ok() {
+        input.apply_change(state);
+        state.write_auth_to_cache(&input.clone().map_input()).await;
+    }
+
+    return T::map_result(result);
+}
+
+impl push_data::TxnInput<push_data::WriteOperationInput> {
+    pub(crate) async fn run_txn_first_time<CH: CacheIO>(
+        &self,
+        state: &mut cache::State<CH>,
+    ) -> push_data::TxnResult<push_data::WriteOperationResult> {
+        match &self.operation {
+            push_data::WriteOperationInput::CreateCompany(input) => todo!(),
+            push_data::WriteOperationInput::CreateCompanyBranch(input) => todo!(),
+        }
+    }
+}
+
+impl push_data::TxnInput<push_data::ReadOperationInput> {
+    async fn run_txn_first_time<CH: CacheIO>(
+        &self,
+        state: &mut cache::State<CH>,
+    ) -> push_data::TxnResult<push_data::ReadOperationResult> {
+        match &self.operation {
+            _ => todo!(),
+        }
     }
 }
