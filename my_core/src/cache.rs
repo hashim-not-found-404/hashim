@@ -28,7 +28,7 @@ pub struct State<CH: CacheIO> {
 impl<CH: CacheIO> State<CH> {
     pub async fn new() -> Self {
         let cache = CH::new().await.unwrap();
-        let txns = cache.get_all_write_txns().await;
+        let txns = cache.get_all_write_txns().await.unwrap();
 
         let mut state = Self {
             state_of_pending_txn: StateOfPendingTxn::new(),
