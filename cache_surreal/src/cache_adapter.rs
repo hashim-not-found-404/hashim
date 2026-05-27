@@ -1,9 +1,12 @@
 use crate::prelude::*;
+use surrealdb::Surreal;
+use surrealdb::engine::local::Mem;
 
 pub struct S;
 
 impl CacheIO for S {
     async fn new() -> Result<Self, DynamicError> {
+        let db = Surreal::new::<Mem>(()).await?;
         todo!()
     }
 
