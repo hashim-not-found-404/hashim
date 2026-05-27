@@ -1,6 +1,7 @@
 mod backend;
 use crate::backend::MySignal;
 use adapters::prelude::*;
+use cache_surreal::prelude::*;
 use dioxus::prelude::*;
 use dioxus_logger::tracing::Level;
 use my_core::prelude::{Signal, *};
@@ -12,7 +13,7 @@ type StateOfEveryThing = Arc<
         web_socket_adapter::m::S,
         encode_decode::m::S,
         runtime::m::S,
-        cache_diesel::S,
+        cache_adapter::S,
         actors::m::S,
         row_id::m::S,
         MySignal<String>,
