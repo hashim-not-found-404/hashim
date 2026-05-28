@@ -6,4 +6,5 @@ edition = "2024"
 [dependencies]
 my_core = { workspace = true }
 
-rusqlite = "0.40.0"
+rusqlite = { version = "0.40.0", features = ["bundled"] }
+# sqlite-wasm-rs = "0.4"

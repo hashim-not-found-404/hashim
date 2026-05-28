@@ -23,7 +23,7 @@ pub struct State<
     // here for the app logic
     _ph: PhantomData<(Id, RN, SigString, SigCurrency, SigLocation)>,
     routs: client::RoutsForClientSide<WS, DE, RN, RT, CH, Id, MPSC>,
-    jwt: RwLock<Option<String>>,
+    jwt: RwLock<Option<String>>, // TODO : should be removed and amke the cache actor responsable for it
 
     // here every field to display
     // here is global state
