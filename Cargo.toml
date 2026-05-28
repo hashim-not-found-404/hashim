@@ -7,13 +7,13 @@ members = [
     "db_client_cockroach",
     "server_actix",
     "adapters",
-    "cache_surreal",
+    "cache_rusqlite",
 ]
 
 [workspace.dependencies]
 my_core = {path = "./my_core"}
 adapters = {path = "./adapters"}
-cache_surreal = {path = "./cache_surreal"}
+cache_rusqlite = {path = "./cache_rusqlite"}
 db_client_cockroach = {path = "./db_client_cockroach"}
 
 dioxus-logger = "0.7.4"

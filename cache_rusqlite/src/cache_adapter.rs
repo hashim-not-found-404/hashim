@@ -1,13 +1,14 @@
 use crate::prelude::*;
-use surrealdb::Surreal;
-use surrealdb::engine::local::Mem;
+use rusqlite::Connection;
 
-pub struct S;
+pub struct S {
+    db: Connection,
+}
 
 impl CacheIO for S {
     async fn new() -> Result<Self, DynamicError> {
-        let db = Surreal::new::<Mem>(()).await?;
-        todo!()
+        let conn = Connection::open_in_memory()?;
+        Ok(Self { db: conn })
     }
 
     async fn get_all_write_txns(

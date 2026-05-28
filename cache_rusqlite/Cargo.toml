@@ -1,0 +1,9 @@
+[package]
+name = "cache_rusqlite"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+my_core = { workspace = true }
+
+rusqlite = "0.40.0"
