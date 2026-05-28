@@ -8,7 +8,6 @@ pub const ADDRESS: &str = "127.0.0.1:8081";
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ResourceInfo {
-    pub version: u64,
     pub uuid: String,
     pub resource: server_methods::Resource,
 }
