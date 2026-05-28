@@ -16,14 +16,14 @@ adapters = {path = "./adapters"}
 cache_rusqlite = {path = "./cache_rusqlite"}
 db_client_cockroach = {path = "./db_client_cockroach"}
 
-dioxus-logger = "0.7.4"
+dioxus-logger = "0.7.9"
 futures-util = "0.3.32"
-rustls = "0.23.35"
+rustls = "0.23.40"
 rustls-pemfile = "2.2.0"
 serde = { version = "1.0.228", features = ["derive"] }
-tokio = "1.51.0"
-uuid ={version = "1.23.0",features = ["v7","serde","js"]}
-derive_more ={version = "2.0.1",features = ["full"]}
+tokio = "1.52.3"
+uuid ={version = "1.23.1",features = ["v7","serde","js"]}
+derive_more ={version = "2.1.1",features = ["full"]}
 
 [profile.dev]
 opt-level = 0
