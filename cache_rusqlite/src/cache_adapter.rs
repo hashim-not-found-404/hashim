@@ -18,7 +18,27 @@ impl CacheIO for S {
     async fn get_all_write_txns(
         &self,
     ) -> Result<Vec<push_data::TxnInput<push_data::WriteOperationInput>>, DynamicError> {
-        todo!()
+        let mut stmt = self
+            .db
+            .prepare("SELECT txn_number, user_, txn FROM write_cache_write_transactions")
+            .unwrap();
+
+        let rows = stmt
+            .query_map([], |row| {
+                Ok(push_data::TxnInput {
+                    user_uuid: row.get(1).unwrap(),
+                    txn_number: row.get::<usize, i64>(0).unwrap() as u64,
+                    operation: encode_decode::m::S::decode(&row.get::<usize, Vec<u8>>(2).unwrap())
+                        .unwrap(),
+                })
+            })
+            .unwrap();
+
+        let mut transactions = Vec::new();
+        for row in rows {
+            transactions.push(row.unwrap());
+        }
+        Ok(transactions)
     }
 
     async fn get_jwt(

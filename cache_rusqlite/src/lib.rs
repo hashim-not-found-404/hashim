@@ -1,7 +1,8 @@
 pub mod cache_adapter;
 
-pub mod prelude{
+pub mod prelude {
     pub use crate::cache_adapter;
 
-    pub (crate) use my_core::prelude::*;
+    pub(crate) use adapters::prelude::*;
+    pub(crate) use my_core::prelude::*;
 }
