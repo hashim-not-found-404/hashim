@@ -8,6 +8,10 @@ pub struct S {
 impl CacheIO for S {
     async fn new() -> Result<Self, DynamicError> {
         let conn = Connection::open("opfs-sahpool://my_persistent_database.db").unwrap();
+
+        const SCHEMA: &str = include_str!("../schema/tables.sql");
+        conn.execute_batch(SCHEMA).unwrap();
+
         Ok(Self { db: conn })
     }
 
