@@ -205,12 +205,23 @@ where
                     MessageToCache::WeAreOnline => {
                         is_online = true;
 
-                        let a = state.before_apply_txn.get_all_auth_txns().await.unwrap();
-                        let a = state.before_apply_txn.get_all_write_txns().await.unwrap();
-                        let a = state.before_apply_txn.get_all_read_txns().await.unwrap();
+                        let auths = state.before_apply_txn.get_all_auth_txns().await.unwrap();
+                        let writes = state.before_apply_txn.get_all_write_txns().await.unwrap();
+                        let reads = state.before_apply_txn.get_all_read_txns().await.unwrap();
 
-                        todo!()
-                        // sender_to_network.send(t).await.unwrap();
+                        let data = push_data::Input {
+                            authentications: auths,
+                            nonce: Id::generate().to_string(),
+                            write_transactions: writes,
+                            read_transactions: reads,
+                        };
+
+                        let data = DE::encode(&data);
+
+                        sender_to_network
+                            .send(MessageToNetwork::Bytes(data))
+                            .await
+                            .unwrap();
                     }
                     MessageToCache::WeAreOffline => is_online = false,
                     MessageToCache::DataFromServer(raw_data) => {
@@ -223,8 +234,13 @@ where
                         };
 
                         match message_type {
-                            messages::FromServer::PushData(e) => {
-                                todo!("TODO write to cache")
+                            messages::FromServer::PushData(result) => {
+                                match result {
+                                    Ok(results) => {
+                                        todo!("TODO write to cache and delete any succesful txn");
+                                    } // TODO
+                                    Err(err) => sender_to_error.send(err.into()).await.unwrap(),
+                                }
                             }
                             messages::FromServer::Resources(resource_infos) => {
                                 todo!("TODO update the pub/sub")
@@ -237,8 +253,10 @@ where
 
                             let _ = sender.send(result).await;
 
-                            let mut auths = HashSet::with_capacity(1);
-                            auths.insert(data);
+                            let auths = vec![push_data::AuthenticationTxnInput {
+                                txn_number: RN::generate(),
+                                operation: data,
+                            }];
 
                             if is_online {
                                 Self::prepare_txn_and_send_to_network(
@@ -256,8 +274,10 @@ where
                             let _ = sender.send(result).await;
 
                             let jwt = state.get_jwt(&data.user_uuid).await;
-                            let mut auths = HashSet::with_capacity(1);
-                            auths.insert(push_data::AuthenticationMethodInput::Jwt(jwt));
+                            let auths = vec![push_data::AuthenticationTxnInput {
+                                txn_number: RN::generate(),
+                                operation: push_data::AuthenticationMethodInput::Jwt(jwt),
+                            }];
 
                             if is_online {
                                 Self::prepare_txn_and_send_to_network(
@@ -300,7 +320,7 @@ where
 
     async fn prepare_txn_and_send_to_network(
         sender_to_network: MPSC::Sender<MessageToNetwork>,
-        auths: HashSet<push_data::AuthenticationMethodInput>,
+        auths: Vec<push_data::AuthenticationTxnInput>,
         writes: Vec<push_data::TxnInput<push_data::WriteOperationInput>>,
         reades: Vec<push_data::TxnInput<push_data::ReadOperationInput>>,
     ) {

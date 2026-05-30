@@ -101,6 +101,17 @@ impl DBClient for S {
         &mut self,
         nonce: &Self::RowId,
     ) -> Result<bool /* is nonce used */, DynamicError> {
-        todo!()
+        let row = self
+            .client
+            .query_one(
+                "INSERT INTO accounting_app.transaction_number (rowid) VALUES ($1)
+                 ON CONFLICT (rowid) DO NOTHING
+                 RETURNING false",
+                &[&nonce.into_inner()],
+            )
+            .await?;
+
+        let inserted: Option<uuid::Uuid> = row.try_get(0).ok();
+        Ok(inserted.is_none()) // true if already existed
     }
 }

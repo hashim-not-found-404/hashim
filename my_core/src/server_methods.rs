@@ -323,7 +323,7 @@ where
         let mut authenticated_users = HashSet::with_capacity(input.authentications.len());
 
         for auth in &input.authentications {
-            match auth {
+            match &auth.operation {
                 push_data::AuthenticationMethodInput::Jwt(jwt) => {
                     match self.jwt.validate(jwt.clone()) {
                         Some(user_uuid) => {
@@ -331,7 +331,12 @@ where
                         }
                         None => {
                             the_return_result.authentications.push(
-                                push_data::AuthenticationMethodResult::Jwt(Err(JWTError::Invalid)),
+                                push_data::AuthenticationTxnResult {
+                                    txn_number: auth.txn_number,
+                                    operation: push_data::AuthenticationMethodResult::Jwt(Err(
+                                        JWTError::Invalid,
+                                    )),
+                                },
                             );
 
                             is_there_error = true;
@@ -348,7 +353,10 @@ where
 
                     the_return_result
                         .authentications
-                        .push(push_data::AuthenticationMethodResult::SignIn(result));
+                        .push(push_data::AuthenticationTxnResult {
+                            txn_number: auth.txn_number,
+                            operation: push_data::AuthenticationMethodResult::SignIn(result),
+                        });
 
                     if let Some(user_uuid) = user_uuid {
                         authenticated_users.insert(user_uuid.clone());
@@ -365,7 +373,10 @@ where
 
                     the_return_result
                         .authentications
-                        .push(push_data::AuthenticationMethodResult::SignUp(result));
+                        .push(push_data::AuthenticationTxnResult {
+                            txn_number: auth.txn_number,
+                            operation: push_data::AuthenticationMethodResult::SignUp(result),
+                        });
 
                     if let Some(user_uuid) = user_uuid {
                         authenticated_users.insert(user_uuid);
