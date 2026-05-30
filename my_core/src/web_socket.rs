@@ -209,6 +209,7 @@ where
                         let writes = state.before_apply_txn.get_all_write_txns().await.unwrap();
                         let reads = state.before_apply_txn.get_all_read_txns().await.unwrap();
 
+                        // TODO you need to check if the data is empty or not
                         let data = push_data::Input {
                             authentications: auths,
                             nonce: Id::generate().to_string(),
@@ -340,45 +341,6 @@ where
     }
 }
 
-pub trait AuthenticationOperations: Clone {
-    type Ok;
-    type Err;
-    // async fn state_less_check(&self) -> Result<Self::Ok, Self::Err>;
-    async fn state_full_check<CH: CacheIO>(
-        &self,
-        state: &cache::State<CH>,
-    ) -> Result<Self::Ok, Self::Err>;
-    fn apply_change<CH: CacheIO>(&self, state: &mut cache::State<CH>);
-    fn map_input(self) -> push_data::AuthenticationMethodInput;
-    fn map_result(result: Result<Self::Ok, Self::Err>) -> push_data::AuthenticationMethodResult;
-    fn unwrap(result: push_data::AuthenticationMethodResult) -> Result<Self::Ok, Self::Err>;
-}
-
-pub trait WriteOperations {
-    type Ok;
-    type Err;
-    async fn state_full_check<CH: CacheIO>(
-        &self,
-        state: &cache::State<CH>,
-    ) -> Result<Self::Ok, Self::Err>;
-    fn apply_change<CH: CacheIO>(&self, state: &mut cache::State<CH>);
-    fn map_input(self) -> push_data::WriteOperationInput;
-    fn map_result(result: Result<Self::Ok, Self::Err>) -> push_data::WriteOperationResult;
-    fn unwrap(result: push_data::WriteOperationResult) -> Result<Self::Ok, Self::Err>;
-}
-
-pub trait ReadOperations {
-    type Ok;
-    type Err;
-    async fn state_full_check<CH: CacheIO>(
-        &self,
-        state: &cache::State<CH>,
-    ) -> Result<Self::Ok, Self::Err>;
-    fn map_input(self) -> push_data::ReadOperationInput;
-    fn map_result(result: Result<Self::Ok, Self::Err>) -> push_data::ReadOperationResult;
-    fn unwrap(result: push_data::ReadOperationResult) -> Result<Self::Ok, Self::Err>;
-}
-
 impl push_data::AuthenticationMethodInput {
     async fn run_txn_first_time<CH: CacheIO, RN: RandomNumber>(
         &self,
@@ -394,7 +356,7 @@ impl push_data::AuthenticationMethodInput {
     }
 }
 
-async fn fun_name<T: AuthenticationOperations, CH: CacheIO, RN: RandomNumber>(
+async fn fun_name<T: operations::AuthenticationOperations, CH: CacheIO, RN: RandomNumber>(
     input: &T,
     state: &mut cache::State<CH>,
 ) -> push_data::AuthenticationMethodResult {

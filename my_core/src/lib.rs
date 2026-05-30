@@ -2,6 +2,7 @@ pub mod cache;
 pub mod client;
 pub mod db_types;
 pub mod front_end_model_view;
+pub mod operations;
 pub mod request_response;
 pub mod server;
 pub mod server_methods;
@@ -19,6 +20,8 @@ pub mod prelude {
     pub use crate::{
         front_end_model_view::Signal, request_response::*, server::WSServer, traits::*, *,
     };
+
+    pub(crate) use crate::operations::*;
 
     // std
     pub(crate) use std::{
