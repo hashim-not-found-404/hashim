@@ -41,6 +41,22 @@ impl CacheIO for S {
         Ok(transactions)
     }
 
+    async fn write_auth_to_cache(
+        &self,
+        txn_number: &u64,
+        txn: &push_data::AuthenticationMethodInput,
+    ) -> Result<(), DynamicError> {
+        let txn_data = encode_decode::m::S::encode(txn);
+        self.db
+            .execute(
+                "INSERT OR REPLACE INTO write_cache_auth_transactions (txn_number, txn) VALUES (?1, ?2)",
+                rusqlite::params![*txn_number as i64, txn_data],
+            )
+            .unwrap();
+
+        Ok(())
+    }
+
     async fn get_jwt(
         &self,
         user_uuid: &db_types::RowIdType,

@@ -22,7 +22,7 @@ impl StateOfPendingTxn {
 
 pub struct State<CH: CacheIO> {
     pub state_of_pending_txn: StateOfPendingTxn,
-    before_apply_txn: CH,
+    pub before_apply_txn: CH,
 }
 
 impl<CH: CacheIO> State<CH> {
@@ -44,10 +44,6 @@ impl<CH: CacheIO> State<CH> {
 
     pub async fn get_jwt(&self, user_uuid: &db_types::RowIdType) -> String {
         todo!()
-    }
-
-    pub async fn write_auth_to_cache(&self, txn: &push_data::AuthenticationMethodInput) {
-        todo!() // TODO
     }
 
     pub async fn write_txn_to_cache(

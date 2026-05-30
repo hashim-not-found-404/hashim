@@ -152,20 +152,8 @@ where
             let mut url: Option<String> = None;
 
             loop {
-                match RT::select(Self::network_radar(&ws), receiver_to_network.recv()).await {
-                    Either::One(from_network) => match from_network {
-                        Ok(data) => {
-                            sender_to_cache
-                                .send(MessageToCache::DataFromServer(data))
-                                .await
-                                .unwrap();
-                        }
-                        Err(err) => {
-                            sender_to_error.send(err).await.unwrap();
-                            Self::connect(&sender_to_cache, &url, &mut ws).await;
-                        }
-                    },
-                    Either::Two(r) => match r.unwrap() {
+                match RT::select(receiver_to_network.recv(), Self::network_radar(&ws)).await {
+                    Either::One(r) => match r.unwrap() {
                         MessageToNetwork::ShutDown => return,
                         MessageToNetwork::Url(ur) => {
                             url = Some(ur);
@@ -180,6 +168,18 @@ where
                             }
                             None => RT::sleep(Duration::from_secs(5)).await,
                         },
+                    },
+                    Either::Two(from_network) => match from_network {
+                        Ok(data) => {
+                            sender_to_cache
+                                .send(MessageToCache::DataFromServer(data))
+                                .await
+                                .unwrap();
+                        }
+                        Err(err) => {
+                            sender_to_error.send(err).await.unwrap();
+                            Self::connect(&sender_to_cache, &url, &mut ws).await;
+                        }
                     },
                 }
             }
@@ -205,7 +205,11 @@ where
                     MessageToCache::WeAreOnline => {
                         is_online = true;
 
-                        todo!("TODO read from cache");
+                        let a = state.before_apply_txn.get_all_auth_txns().await.unwrap();
+                        let a = state.before_apply_txn.get_all_write_txns().await.unwrap();
+                        let a = state.before_apply_txn.get_all_read_txns().await.unwrap();
+
+                        todo!()
                         // sender_to_network.send(t).await.unwrap();
                     }
                     MessageToCache::WeAreOffline => is_online = false,
@@ -223,14 +227,13 @@ where
                                 todo!("TODO write to cache")
                             }
                             messages::FromServer::Resources(resource_infos) => {
-                                // state.write_txn(&resource_infos).await.unwrap();
                                 todo!("TODO update the pub/sub")
                             }
                         }
                     }
                     MessageToCache::Query(input) => match input {
                         Query::Authentication { sender, data } => {
-                            let result = data.run_txn_first_time(&mut state).await;
+                            let result = data.run_txn_first_time::<_, RN>(&mut state).await;
 
                             let _ = sender.send(result).await;
 
@@ -357,19 +360,21 @@ pub trait ReadOperations {
 }
 
 impl push_data::AuthenticationMethodInput {
-    async fn run_txn_first_time<CH: CacheIO>(
+    async fn run_txn_first_time<CH: CacheIO, RN: RandomNumber>(
         &self,
         state: &mut cache::State<CH>,
     ) -> push_data::AuthenticationMethodResult {
         match self {
             push_data::AuthenticationMethodInput::Jwt(_) => todo!(),
             push_data::AuthenticationMethodInput::SignIn(input) => todo!(),
-            push_data::AuthenticationMethodInput::SignUp(input) => fun_name(input, state).await,
+            push_data::AuthenticationMethodInput::SignUp(input) => {
+                fun_name::<_, _, RN>(input, state).await
+            }
         }
     }
 }
 
-async fn fun_name<T: AuthenticationOperations, CH: CacheIO>(
+async fn fun_name<T: AuthenticationOperations, CH: CacheIO, RN: RandomNumber>(
     input: &T,
     state: &mut cache::State<CH>,
 ) -> push_data::AuthenticationMethodResult {
@@ -377,7 +382,11 @@ async fn fun_name<T: AuthenticationOperations, CH: CacheIO>(
 
     if result.is_ok() {
         input.apply_change(state);
-        state.write_auth_to_cache(&input.clone().map_input()).await;
+        state
+            .before_apply_txn
+            .write_auth_to_cache(&RN::generate(), &input.clone().map_input())
+            .await
+            .unwrap();
     }
 
     return T::map_result(result);
