@@ -21,12 +21,8 @@ impl push_data::OperationsInput {
         match self {
             push_data::OperationsInput::SignUp(input) => input.apply_change(state),
             push_data::OperationsInput::SignIn(input) => input.apply_change(state),
-            push_data::OperationsInput::CreateCompany(input) => {
-                todo!()
-            }
-            push_data::OperationsInput::CreateCompanyBranch(input) => {
-                todo!()
-            }
+            push_data::OperationsInput::CreateCompany(input) => input.apply_change(state),
+            push_data::OperationsInput::CreateCompanyBranch(input) => input.apply_change(state),
         }
     }
 
@@ -42,10 +38,10 @@ impl push_data::OperationsInput {
                 operation_check_handler(input, state).await
             }
             push_data::OperationsInput::CreateCompany(input) => {
-                todo!()
+                operation_check_handler(input, state).await
             }
             push_data::OperationsInput::CreateCompanyBranch(input) => {
-                todo!()
+                operation_check_handler(input, state).await
             }
         }
     }
@@ -59,10 +55,10 @@ impl push_data::OperationsInput {
                 operation_check_apply_handler(input, state).await
             }
             push_data::OperationsInput::CreateCompany(input) => {
-                todo!()
+                operation_check_apply_handler(input, state).await
             }
             push_data::OperationsInput::CreateCompanyBranch(input) => {
-                todo!()
+                operation_check_apply_handler(input, state).await
             }
         }
     }
@@ -80,10 +76,10 @@ impl push_data::OperationsInput {
                 operation_check_apply_write_handler(txn_number, input, state).await
             }
             push_data::OperationsInput::CreateCompany(input) => {
-                todo!()
+                operation_check_apply_write_handler(txn_number, input, state).await
             }
             push_data::OperationsInput::CreateCompanyBranch(input) => {
-                todo!()
+                operation_check_apply_write_handler(txn_number, input, state).await
             }
         }
     }
@@ -232,5 +228,53 @@ impl Operations for sign_in::Input {
             return result;
         }
         unreachable!()
+    }
+}
+
+impl Operations for create_company::Input {
+    type Ok = create_company::Ok;
+    type Err = create_company::Error;
+
+    async fn state_full_check<CH: CacheIO>(
+        &self,
+        state: &cache::State<CH>,
+    ) -> StdResult<Self::Ok, Self::Err> {
+        todo!()
+    }
+
+    fn map_input(self) -> push_data::OperationsInput {
+        todo!()
+    }
+
+    fn map_result(result: StdResult<Self::Ok, Self::Err>) -> push_data::OperationsResult {
+        todo!()
+    }
+
+    fn unwrap(result: push_data::OperationsResult) -> StdResult<Self::Ok, Self::Err> {
+        todo!()
+    }
+}
+
+impl Operations for create_company_branch::Input {
+    type Ok = create_company_branch::Ok;
+    type Err = create_company_branch::Error;
+
+    async fn state_full_check<CH: CacheIO>(
+        &self,
+        state: &cache::State<CH>,
+    ) -> StdResult<Self::Ok, Self::Err> {
+        todo!()
+    }
+
+    fn map_input(self) -> push_data::OperationsInput {
+        todo!()
+    }
+
+    fn map_result(result: StdResult<Self::Ok, Self::Err>) -> push_data::OperationsResult {
+        todo!()
+    }
+
+    fn unwrap(result: push_data::OperationsResult) -> StdResult<Self::Ok, Self::Err> {
+        todo!()
     }
 }
