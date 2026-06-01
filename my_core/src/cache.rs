@@ -41,8 +41,4 @@ impl<CH: CacheIO> State<CH> {
 
         state
     }
-
-    pub async fn get_jwt(&self, user_uuid: &db_types::RowIdType) -> String {
-        todo!()
-    }
 }
