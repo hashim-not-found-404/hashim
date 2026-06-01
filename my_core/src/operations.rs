@@ -19,15 +19,16 @@ pub(crate) trait Operations: Clone {
 impl push_data::OperationsInput {
     pub async fn run_operation<CH: CacheIO, RN: RandomNumber>(
         &self,
+        txn_number: u64,
         state: &mut cache::State<CH>,
         store_txn: bool,
     ) -> push_data::OperationsResult {
         match self {
             push_data::OperationsInput::SignUp(input) => {
-                operation_handler::<_, _, RN>(input, state, store_txn).await
+                operation_handler::<_, _, RN>(txn_number, input, state, store_txn).await
             }
             push_data::OperationsInput::SignIn(input) => {
-                operation_handler::<_, _, RN>(input, state, store_txn).await
+                operation_handler::<_, _, RN>(txn_number, input, state, store_txn).await
             }
             push_data::OperationsInput::CreateCompany(input) => {
                 // operation_handler::<_, _, RN>(input, state, store_txn).await
@@ -42,6 +43,7 @@ impl push_data::OperationsInput {
 }
 
 async fn operation_handler<T: operations::Operations, CH: CacheIO, RN: RandomNumber>(
+    txn_number: u64,
     input: &T,
     state: &mut cache::State<CH>,
     store_txn: bool,
@@ -55,7 +57,7 @@ async fn operation_handler<T: operations::Operations, CH: CacheIO, RN: RandomNum
             state
                 .cache
                 .write_txn_input(&push_data::Txn {
-                    txn_number: RN::generate(),
+                    txn_number,
                     operation: input.clone().map_input(),
                 })
                 .await;

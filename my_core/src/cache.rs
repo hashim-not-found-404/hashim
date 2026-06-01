@@ -36,7 +36,9 @@ impl<CH: CacheIO> State<CH> {
         };
 
         for op in txns {
-            op.operation.run_operation::<_, RN>(&mut state, false).await;
+            op.operation
+                .run_operation::<_, RN>(0, &mut state, false)
+                .await;
         }
 
         state

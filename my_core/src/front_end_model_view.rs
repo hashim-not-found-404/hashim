@@ -106,7 +106,7 @@ impl<
                 password: feature_state.user_password.read().to_string(),
             };
 
-            let result = self.routs.sign_up(&input).await;
+            let result = self.routs.sign_up(false, &input).await;
 
             match result {
                 Ok(business_output) => {
@@ -146,7 +146,7 @@ impl<
                 password: feature_state.user_password.read().to_string(),
             };
 
-            let result = self.routs.sign_in(&input).await;
+            let result = self.routs.sign_in(false, &input).await;
 
             match result {
                 Ok(business_output) => {

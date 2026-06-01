@@ -38,11 +38,16 @@ where
         }
     }
 
-    pub async fn sign_up(&self, input: &sign_up::Input) -> sign_up::Result {
+    pub async fn sign_up(
+        &self,
+        check_from_cache_only: bool,
+        input: &sign_up::Input,
+    ) -> sign_up::Result {
         let (sender, receiver) = MPSC::channel();
 
         self.my_wamp
             .send_to_cache_actor(web_socket::Query {
+                check_from_cache_only,
                 sender: sender,
                 data: input.clone().map_input(),
             })
@@ -53,11 +58,16 @@ where
         result
     }
 
-    pub async fn sign_in(&self, input: &sign_in::Input) -> sign_in::Result {
+    pub async fn sign_in(
+        &self,
+        check_from_cache_only: bool,
+        input: &sign_in::Input,
+    ) -> sign_in::Result {
         let (sender, receiver) = MPSC::channel();
 
         self.my_wamp
             .send_to_cache_actor(web_socket::Query {
+                check_from_cache_only,
                 sender: sender,
                 data: input.clone().map_input(),
             })

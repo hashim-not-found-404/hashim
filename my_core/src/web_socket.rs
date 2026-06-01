@@ -9,6 +9,7 @@ enum MessageToNetwork {
 }
 
 pub struct Query<MPSC: MultiProducerSingleConsumer> {
+    pub check_from_cache_only: bool,
     pub sender: MPSC::Sender<push_data::OperationsResult>,
     pub data: push_data::OperationsInput,
 }
@@ -197,22 +198,11 @@ where
 
                         let operations = state.cache.get_all_txn_input().await;
 
-                        if operations.is_empty() {
-                            continue;
-                        }
-
-                        let data = push_data::Input {
-                            jwts: Vec::new(), // TODO
-                            nonce: Id::generate().to_string(),
+                        Self::prepare_txn_and_send_to_network(
+                            sender_to_network.clone(),
                             operations,
-                        };
-
-                        let data = DE::encode(&data);
-
-                        sender_to_network
-                            .send(MessageToNetwork::Bytes(data))
-                            .await
-                            .unwrap();
+                        )
+                        .await;
                     }
                     MessageToCache::WeAreOffline => is_online = false,
                     MessageToCache::DataFromServer(raw_data) => {
@@ -238,7 +228,7 @@ where
 
                                     for op in txns {
                                         op.operation
-                                            .run_operation::<_, RN>(&mut state, false)
+                                            .run_operation::<_, RN>(0, &mut state, false)
                                             .await;
                                     }
                                 }
@@ -249,22 +239,30 @@ where
                             }
                         }
                     }
-                    MessageToCache::Query(Query { sender, data }) => {
-                        let result = data.run_operation::<_, RN>(&mut state, true).await;
+                    MessageToCache::Query(Query {
+                        check_from_cache_only,
+                        sender,
+                        data,
+                    }) => {
+                        todo!(
+                            "you need to return the result to the component after it came from server"
+                        );
+
+                        let txn_number = RN::generate();
+                        let result = data
+                            .run_operation::<_, RN>(txn_number, &mut state, true)
+                            .await;
 
                         let _ = sender.send(result).await;
 
-                        let txn = push_data::Txn {
-                            txn_number: RN::generate(),
+                        let operations = vec![push_data::Txn {
+                            txn_number,
                             operation: data,
-                        };
+                        }];
 
-                        let operations = vec![txn];
-
-                        if is_online {
+                        if !check_from_cache_only && is_online {
                             Self::prepare_txn_and_send_to_network(
                                 sender_to_network.clone(),
-                                Vec::new(),
                                 operations,
                             )
                             .await;
@@ -299,9 +297,14 @@ where
 
     async fn prepare_txn_and_send_to_network(
         sender_to_network: MPSC::Sender<MessageToNetwork>,
-        jwts: Vec<String>,
         operations: Vec<push_data::Txn<push_data::OperationsInput>>,
     ) {
+        if operations.is_empty() {
+            return;
+        }
+
+        let jwts = Vec::new(); // TODO get the jwt that needed for user
+
         let t = push_data::Input {
             jwts,
             nonce: Id::generate().to_string(),
