@@ -14,6 +14,58 @@ pub(crate) trait Operations: Clone {
     fn unwrap(result: push_data::OperationsResult) -> Result<Self::Ok, Self::Err>;
 }
 
+impl push_data::OperationsInput {
+    pub async fn run_operation<CH: CacheIO, RN: RandomNumber>(
+        &self,
+        state: &mut cache::State<CH>,
+        store_txn: bool,
+    ) -> push_data::OperationsResult {
+        match self {
+            push_data::OperationsInput::SignUp(input) => {
+                operation_handler::<_, _, RN>(input, state, store_txn).await
+            }
+            push_data::OperationsInput::SignIn(input) => {
+                // fun_name::<_, _, RN>(input, state, store_txn).await
+                todo!()
+            }
+            push_data::OperationsInput::CreateCompany(input) => {
+                // fun_name::<_, _, RN>(input, state, store_txn).await
+                todo!()
+            }
+            push_data::OperationsInput::CreateCompanyBranch(input) => {
+                // fun_name::<_, _, RN>(input, state, store_txn).await
+                todo!()
+            }
+        }
+    }
+}
+
+async fn operation_handler<T: operations::Operations, CH: CacheIO, RN: RandomNumber>(
+    input: &T,
+    state: &mut cache::State<CH>,
+    store_txn: bool,
+) -> push_data::OperationsResult {
+    let result = input.state_full_check(state).await;
+
+    if result.is_ok() {
+        input.apply_change(state);
+
+        if store_txn {
+            state
+                .cache
+                .write_txn_input(&push_data::Txn {
+                    txn_number: RN::generate(),
+                    operation: input.clone().map_input(),
+                })
+                .await;
+        }
+    }
+
+    return T::map_result(result);
+}
+
+// all imples down
+
 impl Operations for sign_up::Input {
     type Ok = sign_up::Ok;
     type Err = sign_up::Error;
