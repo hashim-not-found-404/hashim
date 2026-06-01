@@ -10,3 +10,4 @@ clear && RUSTFLAGS="-A warnings" cargo check
 clear && RUSTFLAGS="-A warnings" cargo check -p my_core
 clear && RUSTFLAGS="-A warnings" cargo run -p server_actix
 clear && RUSTFLAGS="-A warnings" cargo +nightly udeps --all-targets
+clear && cargo upgrade --verbose
