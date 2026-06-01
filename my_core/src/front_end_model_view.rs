@@ -109,10 +109,10 @@ impl<
             let result = self.routs.sign_up(&input).await;
 
             match result {
-                Ok(Ok(business_output)) => {
+                Ok(business_output) => {
                     self.is_signed_in.set(true);
                 }
-                Ok(Err(business_error)) => {
+                Err(business_error) => {
                     local_state.user_id_error.set(match business_error.user_id {
                         Some(_) => String::from("duplicated user"),
                         None => String::new(),
@@ -121,9 +121,6 @@ impl<
                         Some(e) => e,
                         None => String::new(),
                     });
-                }
-                Err(external_error) => {
-                    self.external_errors.set(external_error.to_string());
                 }
             }
             feature_state.is_loading.set(false);
@@ -152,10 +149,10 @@ impl<
             let result = self.routs.sign_in(&input).await;
 
             match result {
-                Ok(Ok(business_output)) => {
+                Ok(business_output) => {
                     self.is_signed_in.set(true);
                 }
-                Ok(Err(business_error)) => {
+                Err(business_error) => {
                     local_state.user_id_error.set(match business_error.user_id {
                         Some(_) => String::from("user not exist"),
                         None => String::new(),
@@ -166,9 +163,6 @@ impl<
                             Some(_) => String::from("wrong password"),
                             None => String::new(),
                         });
-                }
-                Err(external_error) => {
-                    self.external_errors.set(external_error.to_string());
                 }
             }
 

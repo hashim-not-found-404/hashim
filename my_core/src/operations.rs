@@ -27,15 +27,14 @@ impl push_data::OperationsInput {
                 operation_handler::<_, _, RN>(input, state, store_txn).await
             }
             push_data::OperationsInput::SignIn(input) => {
-                // fun_name::<_, _, RN>(input, state, store_txn).await
-                todo!()
+                operation_handler::<_, _, RN>(input, state, store_txn).await
             }
             push_data::OperationsInput::CreateCompany(input) => {
-                // fun_name::<_, _, RN>(input, state, store_txn).await
+                // operation_handler::<_, _, RN>(input, state, store_txn).await
                 todo!()
             }
             push_data::OperationsInput::CreateCompanyBranch(input) => {
-                // fun_name::<_, _, RN>(input, state, store_txn).await
+                // operation_handler::<_, _, RN>(input, state, store_txn).await
                 todo!()
             }
         }
@@ -119,6 +118,37 @@ impl Operations for sign_up::Input {
 
     fn unwrap(result: push_data::OperationsResult) -> Result<Self::Ok, Self::Err> {
         if let push_data::OperationsResult::SignUp(result) = result {
+            return result;
+        }
+        unreachable!()
+    }
+}
+
+impl Operations for sign_in::Input {
+    type Ok = sign_in::Ok;
+    type Err = sign_in::Error;
+
+    async fn state_full_check<CH: CacheIO>(
+        &self,
+        state: &cache::State<CH>,
+    ) -> Result<Self::Ok, Self::Err> {
+        todo!() // TODO
+    }
+
+    fn apply_change<CH: CacheIO>(&self, state: &mut cache::State<CH>) {
+        todo!()
+    }
+
+    fn map_input(self) -> push_data::OperationsInput {
+        push_data::OperationsInput::SignIn(self)
+    }
+
+    fn map_result(result: Result<Self::Ok, Self::Err>) -> push_data::OperationsResult {
+        push_data::OperationsResult::SignIn(result)
+    }
+
+    fn unwrap(result: push_data::OperationsResult) -> Result<Self::Ok, Self::Err> {
+        if let push_data::OperationsResult::SignIn(result) = result {
             return result;
         }
         unreachable!()
