@@ -291,6 +291,7 @@ where
         let mut txn = client.begin_transaction().await?;
 
         let result = (|| async {
+            todo!("get the role of the user to check it");
             let (is_new_uuid_used, is_company_exist, is_branch_name_used) = txn
                 .read_create_company_branch(&new_uuid, &company_belong, &input.branch_name)
                 .await?;

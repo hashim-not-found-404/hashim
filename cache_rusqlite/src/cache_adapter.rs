@@ -25,7 +25,7 @@ impl CacheIO for S {
             .query_map([], |row| {
                 Ok(push_data::Txn {
                     txn_number: row.get::<usize, i64>(0).unwrap() as u64,
-                    operation: encode_decode::m::S::decode(&row.get::<usize, Vec<u8>>(2).unwrap())
+                    operation: encode_decode::m::S::decode(&row.get::<usize, Vec<u8>>(1).unwrap())
                         .unwrap(),
                 })
             })
@@ -39,7 +39,7 @@ impl CacheIO for S {
     }
 
     async fn write_txn_input(&self, txn: &push_data::Txn<push_data::OperationsInput>) -> () {
-        let txn_data = encode_decode::m::S::encode(txn);
+        let txn_data = encode_decode::m::S::encode(&txn.operation);
         self.db
             .execute(
                 "INSERT OR REPLACE INTO write_cache_auth_transactions (txn_number, txn) VALUES (?1, ?2)",
@@ -53,7 +53,7 @@ impl CacheIO for S {
     }
 
     async fn delete_txn_input(&self, txn_number: &u64) {
-        todo!()
+        todo!() // TODO
     }
 
     async fn delete_txn_result(&self, txn_number: &u64) {
