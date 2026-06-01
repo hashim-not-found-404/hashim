@@ -227,7 +227,7 @@ where
                                     state.state_of_pending_txn = cache::StateOfPendingTxn::new();
 
                                     for op in txns {
-                                        op.operation.run_operation_check(&mut state).await;
+                                        op.operation.run_operation_check_apply(&mut state).await;
                                     }
                                 }
                                 Err(err) => sender_to_error.send(err.into()).await.unwrap(),

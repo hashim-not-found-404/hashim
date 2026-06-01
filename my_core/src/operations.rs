@@ -17,6 +17,19 @@ pub(crate) trait Operations: Clone {
 }
 
 impl push_data::OperationsInput {
+    pub fn run_operation_apply<CH: CacheIO>(&self, state: &mut cache::State<CH>) {
+        match self {
+            push_data::OperationsInput::SignUp(input) => input.apply_change(state),
+            push_data::OperationsInput::SignIn(input) => input.apply_change(state),
+            push_data::OperationsInput::CreateCompany(input) => {
+                todo!()
+            }
+            push_data::OperationsInput::CreateCompanyBranch(input) => {
+                todo!()
+            }
+        }
+    }
+
     pub async fn run_operation_check<CH: CacheIO>(
         &self,
         state: &mut cache::State<CH>,
@@ -36,17 +49,24 @@ impl push_data::OperationsInput {
             }
         }
     }
-}
 
-async fn operation_check_handler<T: Operations, CH: CacheIO>(
-    input: &T,
-    state: &mut cache::State<CH>,
-) -> push_data::OperationsResult {
-    let result = input.state_full_check(state).await;
-    return T::map_result(result);
-}
+    pub async fn run_operation_check_apply<CH: CacheIO>(&self, state: &mut cache::State<CH>) {
+        match self {
+            push_data::OperationsInput::SignUp(input) => {
+                operation_check_apply_handler(input, state).await
+            }
+            push_data::OperationsInput::SignIn(input) => {
+                operation_check_apply_handler(input, state).await
+            }
+            push_data::OperationsInput::CreateCompany(input) => {
+                todo!()
+            }
+            push_data::OperationsInput::CreateCompanyBranch(input) => {
+                todo!()
+            }
+        }
+    }
 
-impl push_data::OperationsInput {
     pub async fn run_operation_check_apply_write<CH: CacheIO>(
         &self,
         txn_number: u64,
@@ -66,6 +86,25 @@ impl push_data::OperationsInput {
                 todo!()
             }
         }
+    }
+}
+
+async fn operation_check_handler<T: Operations, CH: CacheIO>(
+    input: &T,
+    state: &mut cache::State<CH>,
+) -> push_data::OperationsResult {
+    let result = input.state_full_check(state).await;
+    return T::map_result(result);
+}
+
+async fn operation_check_apply_handler<T: Operations, CH: CacheIO>(
+    input: &T,
+    state: &mut cache::State<CH>,
+) {
+    let result = input.state_full_check(state).await;
+
+    if result.is_ok() {
+        input.apply_change(state);
     }
 }
 
@@ -89,21 +128,6 @@ async fn operation_check_apply_write_handler<T: Operations, CH: CacheIO>(
     }
 
     return T::map_result(result);
-}
-
-impl push_data::OperationsInput {
-    pub fn run_operation_apply<CH: CacheIO>(&self, state: &mut cache::State<CH>) {
-        match self {
-            push_data::OperationsInput::SignUp(input) => input.apply_change(state),
-            push_data::OperationsInput::SignIn(input) => input.apply_change(state),
-            push_data::OperationsInput::CreateCompany(input) => {
-                todo!()
-            }
-            push_data::OperationsInput::CreateCompanyBranch(input) => {
-                todo!()
-            }
-        }
-    }
 }
 
 // all imples down
