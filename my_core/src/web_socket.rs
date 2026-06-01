@@ -318,12 +318,21 @@ impl push_data::OperationsInput {
         store_txn: bool,
     ) -> push_data::OperationsResult {
         match self {
-            push_data::OperationsInput::SignIn(input) => todo!(),
             push_data::OperationsInput::SignUp(input) => {
                 fun_name::<_, _, RN>(input, state, store_txn).await
             }
-            push_data::OperationsInput::CreateCompany(input) => todo!(),
-            push_data::OperationsInput::CreateCompanyBranch(input) => todo!(),
+            push_data::OperationsInput::SignIn(input) => {
+                // fun_name::<_, _, RN>(input, state, store_txn).await
+                todo!()
+            }
+            push_data::OperationsInput::CreateCompany(input) => {
+                // fun_name::<_, _, RN>(input, state, store_txn).await
+                todo!()
+            }
+            push_data::OperationsInput::CreateCompanyBranch(input) => {
+                // fun_name::<_, _, RN>(input, state, store_txn).await
+                todo!()
+            }
         }
     }
 }

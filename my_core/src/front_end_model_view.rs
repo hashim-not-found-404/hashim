@@ -23,7 +23,6 @@ pub struct State<
     // here for the app logic
     _ph: PhantomData<(Id, RN, SigString, SigCurrency, SigLocation)>,
     routs: client::RoutsForClientSide<WS, DE, RN, RT, CH, Id, MPSC>,
-    jwt: RwLock<Option<String>>, // TODO : should be removed and amke the cache actor responsable for it
 
     // here every field to display
     // here is global state
@@ -71,7 +70,6 @@ impl<
         let state = Arc::new(Self {
             _ph: PhantomData,
             routs: routs,
-            jwt: RwLock::new(None),
             is_signed_in: SigBool::default(),
             external_errors: SigExternalError::default(),
         });
@@ -113,7 +111,6 @@ impl<
             match result {
                 Ok(Ok(business_output)) => {
                     self.is_signed_in.set(true);
-                    *self.jwt.write().unwrap() = Some(business_output.jwt.clone());
                 }
                 Ok(Err(business_error)) => {
                     local_state.user_id_error.set(match business_error.user_id {
@@ -157,7 +154,6 @@ impl<
             match result {
                 Ok(Ok(business_output)) => {
                     self.is_signed_in.set(true);
-                    *self.jwt.write().unwrap() = Some(business_output.jwt.clone());
                 }
                 Ok(Err(business_error)) => {
                     local_state.user_id_error.set(match business_error.user_id {
