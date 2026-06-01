@@ -227,9 +227,7 @@ where
                                     state.state_of_pending_txn = cache::StateOfPendingTxn::new();
 
                                     for op in txns {
-                                        op.operation
-                                            .run_operation::<_, RN>(0, &mut state, false)
-                                            .await;
+                                        op.operation.run_operation_check(&mut state).await;
                                     }
                                 }
                                 Err(err) => sender_to_error.send(err.into()).await.unwrap(),
@@ -249,9 +247,12 @@ where
                         );
 
                         let txn_number = RN::generate();
-                        let result = data
-                            .run_operation::<_, RN>(txn_number, &mut state, !check_from_cache_only)
-                            .await;
+                        let result = if check_from_cache_only {
+                            data.run_operation_check(&mut state).await
+                        } else {
+                            data.run_operation_check_apply_write(txn_number, &mut state)
+                                .await
+                        };
 
                         let _ = sender.send(result).await;
 
