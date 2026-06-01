@@ -50,18 +50,16 @@ async fn operation_handler<T: operations::Operations, CH: CacheIO, RN: RandomNum
 ) -> push_data::OperationsResult {
     let result = input.state_full_check(state).await;
 
-    if result.is_ok() {
+    if store_txn && result.is_ok() {
         input.apply_change(state);
 
-        if store_txn {
-            state
-                .cache
-                .write_txn_input(&push_data::Txn {
-                    txn_number,
-                    operation: input.clone().map_input(),
-                })
-                .await;
-        }
+        state
+            .cache
+            .write_txn_input(&push_data::Txn {
+                txn_number,
+                operation: input.clone().map_input(),
+            })
+            .await;
     }
 
     return T::map_result(result);
