@@ -250,7 +250,7 @@ where
 
                         let txn_number = RN::generate();
                         let result = data
-                            .run_operation::<_, RN>(txn_number, &mut state, true)
+                            .run_operation::<_, RN>(txn_number, &mut state, !check_from_cache_only)
                             .await;
 
                         let _ = sender.send(result).await;
