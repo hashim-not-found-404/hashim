@@ -3,7 +3,9 @@ use crate::prelude::*;
 pub(crate) trait Operations: Clone {
     type Ok;
     type Err;
-    // async fn state_less_check(&self) -> Result<Self::Ok, Self::Err>;
+    fn state_less_check(&self) -> StdResult<Self::Ok, Self::Err> {
+        unreachable!("we dont have here state less check")
+    }
     async fn state_full_check<CH: CacheIO>(
         &self,
         state: &cache::State<CH>,

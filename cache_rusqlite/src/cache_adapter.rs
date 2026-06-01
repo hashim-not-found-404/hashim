@@ -1,5 +1,5 @@
 use crate::prelude::*;
-use rusqlite::Connection;
+use rusqlite::{Connection, OptionalExtension};
 
 pub struct S {
     db: Connection,
@@ -68,6 +68,12 @@ impl CacheIO for S {
     }
 
     async fn get_jwt(&self, user_uuid: &db_types::RowIdType) -> Option<String> {
-        todo!()
+        let mut stmt = self
+            .db
+            .prepare("SELECT jwt FROM user WHERE row_id = ?1")
+            .unwrap();
+
+        stmt.query_one([user_uuid], |row| row.get(0).optional())
+            .unwrap()
     }
 }

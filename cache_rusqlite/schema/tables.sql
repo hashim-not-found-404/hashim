@@ -3,7 +3,7 @@ CREATE TABLE IF NOT EXISTS user(
 
     name                                        TEXT,
     id                                          TEXT  UNIQUE,
-    pass                                        TEXT
+    jwt                                         TEXT
 );
 
 CREATE TABLE IF NOT EXISTS person_out_side_the_system(
