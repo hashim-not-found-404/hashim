@@ -205,9 +205,9 @@ where
                     MessageToCache::WeAreOnline => {
                         is_online = true;
 
-                        let auths = state.before_apply_txn.get_all_auth_txns().await.unwrap();
-                        let writes = state.before_apply_txn.get_all_write_txns().await.unwrap();
-                        let reads = state.before_apply_txn.get_all_read_txns().await.unwrap();
+                        let auths = state.cache.get_all_auth_input().await.unwrap();
+                        let writes = state.cache.get_all_write_input().await.unwrap();
+                        let reads = state.cache.get_all_read_input().await.unwrap();
 
                         // TODO you need to check if the data is empty or not
                         let data = push_data::Input {
@@ -238,6 +238,42 @@ where
                             messages::FromServer::PushData(result) => {
                                 match result {
                                     Ok(results) => {
+                                        for txn in results.authentications {
+                                            state
+                                                .cache
+                                                .delete_auth_input(&txn.txn_number)
+                                                .await
+                                                .unwrap();
+                                            state
+                                                .cache
+                                                .write_auth_result(&txn.txn_number, &txn.operation)
+                                                .await
+                                                .unwrap();
+                                        }
+                                        for txn in results.write_transactions {
+                                            state
+                                                .cache
+                                                .delete_write_input(&txn.txn_number)
+                                                .await
+                                                .unwrap();
+                                            // state
+                                            //     .cache
+                                            //     .write_write_result(&txn.operation)
+                                            //     .await
+                                            //     .unwrap();
+                                        }
+                                        for txn in results.read_transactions {
+                                            state
+                                                .cache
+                                                .delete_read_input(&txn.txn_number)
+                                                .await
+                                                .unwrap();
+                                            // state
+                                            //     .cache
+                                            //     .write_read_result(&txn.operation)
+                                            //     .await
+                                            //     .unwrap();
+                                        }
                                         todo!("TODO write to cache and delete any succesful txn");
                                     } // TODO
                                     Err(err) => sender_to_error.send(err.into()).await.unwrap(),
@@ -365,8 +401,8 @@ async fn fun_name<T: operations::AuthenticationOperations, CH: CacheIO, RN: Rand
     if result.is_ok() {
         input.apply_change(state);
         state
-            .before_apply_txn
-            .write_auth_to_cache(&RN::generate(), &input.clone().map_input())
+            .cache
+            .write_auth_input(&RN::generate(), &input.clone().map_input())
             .await
             .unwrap();
     }

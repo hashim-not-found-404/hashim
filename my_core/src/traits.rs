@@ -182,27 +182,55 @@ pub trait MultiProducerSingleConsumer {
 pub trait CacheIO: Sized {
     async fn new() -> Result<Self, DynamicError>;
 
-    async fn get_all_auth_txns(
+    async fn get_all_auth_input(
         &self,
     ) -> Result<Vec<push_data::AuthenticationTxnInput>, DynamicError>;
-    async fn get_all_write_txns(
-        &self,
-    ) -> Result<Vec<push_data::TxnInput<push_data::WriteOperationInput>>, DynamicError>;
-    async fn get_all_read_txns(
-        &self,
-    ) -> Result<Vec<push_data::TxnInput<push_data::ReadOperationInput>>, DynamicError>;
-
-    async fn write_auth_to_cache(
+    async fn write_auth_input(
         &self,
         txn_number: &u64,
         txn: &push_data::AuthenticationMethodInput,
     ) -> Result<(), DynamicError>;
+    async fn write_auth_result(
+        &self,
+        txn_number: &u64,
+        txn: &push_data::AuthenticationMethodResult,
+    ) -> Result<(), DynamicError>;
+    async fn delete_auth_input(&self, txn_number: &u64) -> Result<(), DynamicError>;
+    async fn delete_auth_result(&self, txn_number: &u64) -> Result<(), DynamicError>;
+
+    async fn get_all_write_input(
+        &self,
+    ) -> Result<Vec<push_data::TxnInput<push_data::WriteOperationInput>>, DynamicError>;
+    async fn write_write_input(
+        &self,
+        txn: &push_data::TxnInput<push_data::WriteOperationInput>,
+    ) -> Result<(), DynamicError>;
+    async fn write_write_result(
+        &self,
+        txn: &push_data::TxnResult<push_data::WriteOperationResult>,
+    ) -> Result<(), DynamicError>;
+    async fn delete_write_input(&self, txn_number: &u64) -> Result<(), DynamicError>;
+    async fn delete_write_result(&self, txn_number: &u64) -> Result<(), DynamicError>;
+
+    async fn get_all_read_input(
+        &self,
+    ) -> Result<Vec<push_data::TxnInput<push_data::ReadOperationInput>>, DynamicError>;
+    async fn write_read_input(
+        &self,
+        txn: &push_data::TxnInput<push_data::ReadOperationInput>,
+    ) -> Result<(), DynamicError>;
+    async fn write_read_result(
+        &self,
+        txn: &push_data::TxnResult<push_data::ReadOperationResult>,
+    ) -> Result<(), DynamicError>;
+    async fn delete_read_input(&self, txn_number: &u64) -> Result<(), DynamicError>;
+    async fn delete_read_result(&self, txn_number: &u64) -> Result<(), DynamicError>;
+
     async fn get_jwt(
         &self,
         user_uuid: &db_types::RowIdType,
     ) -> Result<Option<String>, DynamicError>;
     async fn write_data(&self, data: &Vec<ResourceInfo>) -> Result<(), DynamicError>;
-    async fn write_txn<T>(&self, txn: &push_data::TxnInput<T>) -> Result<(), DynamicError>;
     async fn get_txn<T>(
         &self,
         user_uuid: &db_types::RowIdType,

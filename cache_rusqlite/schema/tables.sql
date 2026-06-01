@@ -451,6 +451,12 @@ CREATE TABLE IF NOT EXISTS write_cache_auth_transactions(
     txn                                         BLOB
 );
 
+CREATE TABLE IF NOT EXISTS write_cache_auth_transactions_result(
+    txn_number                                  INTEGER PRIMARY KEY,
+
+    txn                                         BLOB
+);
+
 CREATE TABLE IF NOT EXISTS write_cache_write_transactions(
     txn_number                                  INTEGER PRIMARY KEY,
 
@@ -458,7 +464,21 @@ CREATE TABLE IF NOT EXISTS write_cache_write_transactions(
     txn                                         BLOB
 );
 
+CREATE TABLE IF NOT EXISTS write_cache_write_transactions_result(
+    txn_number                                  INTEGER PRIMARY KEY,
+
+    user_                                       TEXT REFERENCES user(rowid) ON DELETE CASCADE ,
+    txn                                         BLOB
+);
+
 CREATE TABLE IF NOT EXISTS write_cache_read_transactions(
+    txn_number                                  INTEGER PRIMARY KEY,
+
+    user_                                       TEXT REFERENCES user(rowid) ON DELETE CASCADE ,
+    txn                                         BLOB
+);
+
+CREATE TABLE IF NOT EXISTS write_cache_read_transactions_result(
     txn_number                                  INTEGER PRIMARY KEY,
 
     user_                                       TEXT REFERENCES user(rowid) ON DELETE CASCADE ,

@@ -22,17 +22,17 @@ impl StateOfPendingTxn {
 
 pub struct State<CH: CacheIO> {
     pub state_of_pending_txn: StateOfPendingTxn,
-    pub before_apply_txn: CH,
+    pub cache: CH,
 }
 
 impl<CH: CacheIO> State<CH> {
     pub async fn new() -> Self {
         let cache = CH::new().await.unwrap();
-        let txns = cache.get_all_write_txns().await.unwrap();
+        let txns = cache.get_all_write_input().await.unwrap();
 
         let mut state = Self {
             state_of_pending_txn: StateOfPendingTxn::new(),
-            before_apply_txn: cache,
+            cache,
         };
 
         for op in txns {

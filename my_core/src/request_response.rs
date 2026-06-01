@@ -64,7 +64,7 @@ pub mod push_data {
 
     #[derive(Debug, Deserialize, Serialize)]
     pub struct Input {
-        pub authentications: Vec<AuthenticationTxnInput>,
+        pub authentications: HashSet<AuthenticationMethodInput>,
         pub nonce: db_types::RowIdType,
         pub write_transactions: Vec<TxnInput<WriteOperationInput>>,
         pub read_transactions: Vec<TxnInput<ReadOperationInput>>,
@@ -72,30 +72,18 @@ pub mod push_data {
 
     #[derive(Debug, Deserialize, Serialize)]
     pub struct Result {
-        pub authentications: Vec<AuthenticationTxnResult>,
+        pub authentications: Vec<AuthenticationMethodResult>,
         pub nonce: StdResult<(), NonceError>,
         pub write_transactions: Vec<TxnResult<WriteOperationResult>>,
         pub read_transactions: Vec<TxnResult<ReadOperationResult>>,
     }
 
     // utility types
-    #[derive(Debug, Deserialize, Serialize)]
-    pub struct AuthenticationTxnInput {
-        pub txn_number: u64,
-        pub operation: AuthenticationMethodInput,
-    }
-
-    #[derive(Debug, Deserialize, Serialize)]
+    #[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Hash)]
     pub enum AuthenticationMethodInput {
         Jwt(String),
         SignIn(sign_in::Input),
         SignUp(sign_up::Input),
-    }
-
-    #[derive(Debug, Deserialize, Serialize)]
-    pub struct AuthenticationTxnResult {
-        pub txn_number: u64,
-        pub operation: AuthenticationMethodResult,
     }
 
     #[derive(Debug, Deserialize, Serialize)]
@@ -148,7 +136,7 @@ pub mod push_data {
 pub mod sign_up {
     use super::*;
 
-    #[derive(Debug, Deserialize, Serialize, Clone)]
+    #[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Hash, Clone)]
     pub struct Input {
         pub new_uuid: db_types::RowIdType,
         pub name: Option<String>,
@@ -180,7 +168,7 @@ pub mod sign_up {
 pub mod sign_in {
     use super::*;
 
-    #[derive(Debug, Deserialize, Serialize)]
+    #[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Hash)]
     pub struct Input {
         pub user_id: db_types::RowIdType,
         pub password: String,
