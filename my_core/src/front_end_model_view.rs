@@ -195,16 +195,13 @@ impl<
     ) {
         RT::spawn_local(async move {
             let input = create_company::Input {
+                user_uuid: String::new(),
                 new_uuid: Id::generate().to_string(),
                 company_name: local_state.company_name.read(),
                 currency: local_state.currency.read(),
             };
 
-            let txn = push_data::TxnInput {
-                user_uuid: String::new(),
-                txn_number: RN::generate(),
-                operation: push_data::WriteOperationInput::CreateCompany(input),
-            };
+            let txn = push_data::OperationsInput::CreateCompany(input);
 
             // let result = self.routs.cache.write_txn(&txn).await;
 
@@ -223,6 +220,7 @@ impl<
     ) {
         RT::spawn_local(async move {
             let input = create_company_branch::Input {
+                user_uuid: String::new(),
                 new_uuid: Id::generate().to_string(),
                 company_belong: local_state.company_belong.read(),
                 currency: local_state.currency.read(),
@@ -232,11 +230,7 @@ impl<
 
             // TODO : make offline check
 
-            let txn = push_data::TxnInput {
-                user_uuid: String::new(), // TODO
-                txn_number: RN::generate(),
-                operation: push_data::WriteOperationInput::CreateCompanyBranch(input),
-            };
+            let txn = push_data::OperationsInput::CreateCompanyBranch(input);
 
             // let result = self.routs.cache.write_txn(&txn).await;
 

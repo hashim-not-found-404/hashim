@@ -10,16 +10,8 @@ enum MessageToNetwork {
 
 pub enum Query<MPSC: MultiProducerSingleConsumer> {
     Authentication {
-        sender: MPSC::Sender<push_data::AuthenticationMethodResult>,
-        data: push_data::AuthenticationMethodInput,
-    },
-    WriteTransactions {
-        sender: MPSC::Sender<push_data::TxnResult<push_data::WriteOperationResult>>,
-        data: push_data::TxnInput<push_data::WriteOperationInput>,
-    },
-    ReadTransactions {
-        sender: MPSC::Sender<push_data::TxnResult<push_data::ReadOperationResult>>,
-        data: push_data::TxnInput<push_data::ReadOperationInput>,
+        sender: MPSC::Sender<push_data::OperationsResult>,
+        data: push_data::OperationsInput,
     },
 }
 
@@ -192,7 +184,7 @@ where
         sender_to_error: MPSC::Sender<DynamicError>,
     ) {
         RT::spawn_local(async move {
-            let mut state = cache::State::<CH>::new().await;
+            let mut state = cache::State::<CH>::new::<RN>().await;
 
             let mut is_online = false;
             let mut pool_of_subscribes =
@@ -205,16 +197,16 @@ where
                     MessageToCache::WeAreOnline => {
                         is_online = true;
 
-                        let auths = state.cache.get_all_auth_input().await.unwrap();
-                        let writes = state.cache.get_all_write_input().await.unwrap();
-                        let reads = state.cache.get_all_read_input().await.unwrap();
+                        let operations = state.cache.get_all_txn_input().await;
 
-                        // TODO you need to check if the data is empty or not
+                        if operations.is_empty() {
+                            continue;
+                        }
+
                         let data = push_data::Input {
-                            authentications: auths,
+                            jwts: Vec::new(),
                             nonce: Id::generate().to_string(),
-                            write_transactions: writes,
-                            read_transactions: reads,
+                            operations,
                         };
 
                         let data = DE::encode(&data);
@@ -235,50 +227,15 @@ where
                         };
 
                         match message_type {
-                            messages::FromServer::PushData(result) => {
-                                match result {
-                                    Ok(results) => {
-                                        for txn in results.authentications {
-                                            state
-                                                .cache
-                                                .delete_auth_input(&txn.txn_number)
-                                                .await
-                                                .unwrap();
-                                            state
-                                                .cache
-                                                .write_auth_result(&txn.txn_number, &txn.operation)
-                                                .await
-                                                .unwrap();
-                                        }
-                                        for txn in results.write_transactions {
-                                            state
-                                                .cache
-                                                .delete_write_input(&txn.txn_number)
-                                                .await
-                                                .unwrap();
-                                            // state
-                                            //     .cache
-                                            //     .write_write_result(&txn.operation)
-                                            //     .await
-                                            //     .unwrap();
-                                        }
-                                        for txn in results.read_transactions {
-                                            state
-                                                .cache
-                                                .delete_read_input(&txn.txn_number)
-                                                .await
-                                                .unwrap();
-                                            // state
-                                            //     .cache
-                                            //     .write_read_result(&txn.operation)
-                                            //     .await
-                                            //     .unwrap();
-                                        }
-                                        todo!("TODO write to cache and delete any succesful txn");
-                                    } // TODO
-                                    Err(err) => sender_to_error.send(err.into()).await.unwrap(),
+                            messages::FromServer::PushData(result) => match result {
+                                Ok(results) => {
+                                    for txn in results.operations {
+                                        state.cache.delete_txn_input(&txn.txn_number).await;
+                                        state.cache.write_txn_result(&txn).await;
+                                    }
                                 }
-                            }
+                                Err(err) => sender_to_error.send(err.into()).await.unwrap(),
+                            },
                             messages::FromServer::Resources(resource_infos) => {
                                 todo!("TODO update the pub/sub")
                             }
@@ -286,47 +243,26 @@ where
                     }
                     MessageToCache::Query(input) => match input {
                         Query::Authentication { sender, data } => {
-                            let result = data.run_txn_first_time::<_, RN>(&mut state).await;
+                            let result = data.run_txn_first_time::<_, RN>(&mut state, true).await;
 
                             let _ = sender.send(result).await;
 
-                            let auths = vec![push_data::AuthenticationTxnInput {
+                            let txn = push_data::Txn {
                                 txn_number: RN::generate(),
                                 operation: data,
-                            }];
+                            };
+
+                            let operations = vec![txn];
 
                             if is_online {
                                 Self::prepare_txn_and_send_to_network(
                                     sender_to_network.clone(),
-                                    auths,
                                     Vec::new(),
-                                    Vec::new(),
+                                    operations,
                                 )
                                 .await;
                             };
                         }
-                        Query::WriteTransactions { sender, data } => {
-                            let result = data.run_txn_first_time(&mut state).await;
-
-                            let _ = sender.send(result).await;
-
-                            let jwt = state.get_jwt(&data.user_uuid).await;
-                            let auths = vec![push_data::AuthenticationTxnInput {
-                                txn_number: RN::generate(),
-                                operation: push_data::AuthenticationMethodInput::Jwt(jwt),
-                            }];
-
-                            if is_online {
-                                Self::prepare_txn_and_send_to_network(
-                                    sender_to_network.clone(),
-                                    auths,
-                                    vec![data],
-                                    Vec::new(),
-                                )
-                                .await;
-                            };
-                        }
-                        Query::ReadTransactions { sender, data } => todo!(),
                     },
                     MessageToCache::Subscribe {
                         component_id,
@@ -357,15 +293,13 @@ where
 
     async fn prepare_txn_and_send_to_network(
         sender_to_network: MPSC::Sender<MessageToNetwork>,
-        auths: Vec<push_data::AuthenticationTxnInput>,
-        writes: Vec<push_data::TxnInput<push_data::WriteOperationInput>>,
-        reades: Vec<push_data::TxnInput<push_data::ReadOperationInput>>,
+        jwts: Vec<String>,
+        operations: Vec<push_data::Txn<push_data::OperationsInput>>,
     ) {
         let t = push_data::Input {
-            authentications: auths,
+            jwts,
             nonce: Id::generate().to_string(),
-            write_transactions: writes,
-            read_transactions: reades,
+            operations,
         };
 
         let t = DE::encode(&t);
@@ -377,58 +311,43 @@ where
     }
 }
 
-impl push_data::AuthenticationMethodInput {
-    async fn run_txn_first_time<CH: CacheIO, RN: RandomNumber>(
+impl push_data::OperationsInput {
+    pub async fn run_txn_first_time<CH: CacheIO, RN: RandomNumber>(
         &self,
         state: &mut cache::State<CH>,
-    ) -> push_data::AuthenticationMethodResult {
+        store_txn: bool,
+    ) -> push_data::OperationsResult {
         match self {
-            push_data::AuthenticationMethodInput::Jwt(_) => todo!(),
-            push_data::AuthenticationMethodInput::SignIn(input) => todo!(),
-            push_data::AuthenticationMethodInput::SignUp(input) => {
-                fun_name::<_, _, RN>(input, state).await
+            push_data::OperationsInput::SignIn(input) => todo!(),
+            push_data::OperationsInput::SignUp(input) => {
+                fun_name::<_, _, RN>(input, state, store_txn).await
             }
+            push_data::OperationsInput::CreateCompany(input) => todo!(),
+            push_data::OperationsInput::CreateCompanyBranch(input) => todo!(),
         }
     }
 }
 
-async fn fun_name<T: operations::AuthenticationOperations, CH: CacheIO, RN: RandomNumber>(
+async fn fun_name<T: operations::Operations, CH: CacheIO, RN: RandomNumber>(
     input: &T,
     state: &mut cache::State<CH>,
-) -> push_data::AuthenticationMethodResult {
+    store_txn: bool,
+) -> push_data::OperationsResult {
     let result = input.state_full_check(state).await;
 
     if result.is_ok() {
         input.apply_change(state);
-        state
-            .cache
-            .write_auth_input(&RN::generate(), &input.clone().map_input())
-            .await
-            .unwrap();
+
+        if store_txn {
+            state
+                .cache
+                .write_txn_input(&push_data::Txn {
+                    txn_number: RN::generate(),
+                    operation: input.clone().map_input(),
+                })
+                .await;
+        }
     }
 
     return T::map_result(result);
-}
-
-impl push_data::TxnInput<push_data::WriteOperationInput> {
-    pub(crate) async fn run_txn_first_time<CH: CacheIO>(
-        &self,
-        state: &mut cache::State<CH>,
-    ) -> push_data::TxnResult<push_data::WriteOperationResult> {
-        match &self.operation {
-            push_data::WriteOperationInput::CreateCompany(input) => todo!(),
-            push_data::WriteOperationInput::CreateCompanyBranch(input) => todo!(),
-        }
-    }
-}
-
-impl push_data::TxnInput<push_data::ReadOperationInput> {
-    async fn run_txn_first_time<CH: CacheIO>(
-        &self,
-        state: &mut cache::State<CH>,
-    ) -> push_data::TxnResult<push_data::ReadOperationResult> {
-        match &self.operation {
-            _ => todo!(),
-        }
-    }
 }

@@ -26,9 +26,9 @@ pub struct State<CH: CacheIO> {
 }
 
 impl<CH: CacheIO> State<CH> {
-    pub async fn new() -> Self {
-        let cache = CH::new().await.unwrap();
-        let txns = cache.get_all_write_input().await.unwrap();
+    pub async fn new<RN: RandomNumber>() -> Self {
+        let cache = CH::new().await;
+        let txns = cache.get_all_txn_input().await;
 
         let mut state = Self {
             state_of_pending_txn: StateOfPendingTxn::new(),
@@ -36,20 +36,15 @@ impl<CH: CacheIO> State<CH> {
         };
 
         for op in txns {
-            op.run_txn_first_time(&mut state).await;
+            op.operation
+                .run_txn_first_time::<_, RN>(&mut state, false)
+                .await;
         }
 
         state
     }
 
     pub async fn get_jwt(&self, user_uuid: &db_types::RowIdType) -> String {
-        todo!()
-    }
-
-    pub async fn write_txn_to_cache(
-        &self,
-        txn: &push_data::TxnInput<push_data::WriteOperationInput>,
-    ) {
         todo!()
     }
 }

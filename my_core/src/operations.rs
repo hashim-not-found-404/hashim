@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-pub(crate) trait AuthenticationOperations: Clone {
+pub(crate) trait Operations: Clone {
     type Ok;
     type Err;
     // async fn state_less_check(&self) -> Result<Self::Ok, Self::Err>;
@@ -9,37 +9,12 @@ pub(crate) trait AuthenticationOperations: Clone {
         state: &cache::State<CH>,
     ) -> Result<Self::Ok, Self::Err>;
     fn apply_change<CH: CacheIO>(&self, state: &mut cache::State<CH>);
-    fn map_input(self) -> push_data::AuthenticationMethodInput;
-    fn map_result(result: Result<Self::Ok, Self::Err>) -> push_data::AuthenticationMethodResult;
-    fn unwrap(result: push_data::AuthenticationMethodResult) -> Result<Self::Ok, Self::Err>;
+    fn map_input(self) -> push_data::OperationsInput;
+    fn map_result(result: Result<Self::Ok, Self::Err>) -> push_data::OperationsResult;
+    fn unwrap(result: push_data::OperationsResult) -> Result<Self::Ok, Self::Err>;
 }
 
-pub(crate) trait WriteOperations {
-    type Ok;
-    type Err;
-    async fn state_full_check<CH: CacheIO>(
-        &self,
-        state: &cache::State<CH>,
-    ) -> Result<Self::Ok, Self::Err>;
-    fn apply_change<CH: CacheIO>(&self, state: &mut cache::State<CH>);
-    fn map_input(self) -> push_data::WriteOperationInput;
-    fn map_result(result: Result<Self::Ok, Self::Err>) -> push_data::WriteOperationResult;
-    fn unwrap(result: push_data::WriteOperationResult) -> Result<Self::Ok, Self::Err>;
-}
-
-pub(crate) trait ReadOperations {
-    type Ok;
-    type Err;
-    async fn state_full_check<CH: CacheIO>(
-        &self,
-        state: &cache::State<CH>,
-    ) -> Result<Self::Ok, Self::Err>;
-    fn map_input(self) -> push_data::ReadOperationInput;
-    fn map_result(result: Result<Self::Ok, Self::Err>) -> push_data::ReadOperationResult;
-    fn unwrap(result: push_data::ReadOperationResult) -> Result<Self::Ok, Self::Err>;
-}
-
-impl AuthenticationOperations for sign_up::Input {
+impl Operations for sign_up::Input {
     type Ok = sign_up::Ok;
     type Err = sign_up::Error;
 
@@ -80,16 +55,16 @@ impl AuthenticationOperations for sign_up::Input {
         );
     }
 
-    fn map_input(self) -> push_data::AuthenticationMethodInput {
-        push_data::AuthenticationMethodInput::SignUp(self)
+    fn map_input(self) -> push_data::OperationsInput {
+        push_data::OperationsInput::SignUp(self)
     }
 
-    fn map_result(result: Result<Self::Ok, Self::Err>) -> push_data::AuthenticationMethodResult {
-        push_data::AuthenticationMethodResult::SignUp(result)
+    fn map_result(result: Result<Self::Ok, Self::Err>) -> push_data::OperationsResult {
+        push_data::OperationsResult::SignUp(result)
     }
 
-    fn unwrap(result: push_data::AuthenticationMethodResult) -> Result<Self::Ok, Self::Err> {
-        if let push_data::AuthenticationMethodResult::SignUp(result) = result {
+    fn unwrap(result: push_data::OperationsResult) -> Result<Self::Ok, Self::Err> {
+        if let push_data::OperationsResult::SignUp(result) = result {
             return result;
         }
         unreachable!()

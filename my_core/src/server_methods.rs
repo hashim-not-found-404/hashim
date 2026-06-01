@@ -74,20 +74,21 @@ where
 
     pub async fn sign_up(
         &self,
-        user_uuid: &mut Option<Id>,
+        authenticated_users: &mut HashSet<Id>,
         input: &sign_up::Input,
     ) -> Result<sign_up::Result, DynamicError> {
         let mut errr = sign_up::Error::default();
 
         let new_uuid = match Id::try_from(&input.new_uuid) {
-            Ok(new_uuid) => Some(new_uuid),
+            Ok(new_uuid) => {
+                authenticated_users.insert(new_uuid.clone());
+                Some(new_uuid)
+            }
             Err(_) => {
                 errr.new_uuid = Some(RowIdError::Invalid);
                 None
             }
         };
-
-        *user_uuid = new_uuid.clone();
 
         if errr != sign_up::Error::default() {
             return Ok(Err(errr));
@@ -136,7 +137,8 @@ where
 
     pub async fn sign_in(
         &self,
-        user_uuid: &mut Option<Id>,
+        authenticated_users: &mut HashSet<Id>,
+        users_to_resubscribe: &mut HashSet<Id>,
         input: &sign_in::Input,
     ) -> Result<sign_in::Result, DynamicError> {
         let mut errr = sign_in::Error::default();
@@ -153,7 +155,8 @@ where
 
         match Authentication::sign_in(&input.password, &password_hash) {
             true => {
-                *user_uuid = Some(user_rowid.clone());
+                authenticated_users.insert(user_rowid.clone());
+                users_to_resubscribe.insert(user_rowid.clone());
                 return Ok(Ok(sign_in::Ok {
                     jwt: self.jwt.sign(&user_rowid).into(),
                 }));
@@ -168,7 +171,8 @@ where
     pub async fn create_company(
         &self,
         resources: &mut HashSet<ResourceInfo>,
-        user_uuid: &Id,
+        authenticated_users: &mut HashSet<Id>,
+        users_to_resubscribe: &mut HashSet<Id>,
         input: &create_company::Input,
     ) -> Result<create_company::Result, DynamicError> {
         let mut errr = create_company::Error::default();
@@ -177,6 +181,19 @@ where
             Ok(new_uuid) => Some(new_uuid),
             Err(_) => {
                 errr.new_uuid = Some(RowIdError::Invalid);
+                None
+            }
+        };
+
+        let user_uuid = match Id::try_from(&input.user_uuid) {
+            Ok(user_uuid) => {
+                if authenticated_users.get(&user_uuid).is_none() {
+                    errr.user_uuid = Some(UserUuidError::NotAuthenticated);
+                };
+                Some(user_uuid)
+            }
+            Err(_) => {
+                errr.user_uuid = Some(UserUuidError::Invalid);
                 None
             }
         };
@@ -190,6 +207,7 @@ where
 
         let result = (|| async {
             let new_uuid = new_uuid.unwrap();
+            let user_uuid = user_uuid.unwrap();
 
             let is_new_uuid_used = txn.read_create_company(&new_uuid).await?;
 
@@ -201,13 +219,14 @@ where
             txn.write_create_company(
                 resources,
                 &new_uuid,
-                user_uuid,
+                &user_uuid,
                 &db_types::Role::Manager,
                 &input.company_name,
                 &input.currency,
             )
             .await?;
 
+            users_to_resubscribe.insert(user_uuid);
             Ok(Ok(create_company::Ok))
         })()
         .await;
@@ -224,7 +243,8 @@ where
     pub async fn create_company_branch(
         &self,
         resources: &mut HashSet<ResourceInfo>,
-        user_uuid: &Id,
+        authenticated_users: &mut HashSet<Id>,
+        users_to_resubscribe: &mut HashSet<Id>,
         input: &create_company_branch::Input,
     ) -> Result<create_company_branch::Result, DynamicError> {
         let mut errr = create_company_branch::Error::default();
@@ -233,6 +253,19 @@ where
             Ok(new_uuid) => Some(new_uuid),
             Err(_) => {
                 errr.new_uuid = Some(RowIdError::Invalid);
+                None
+            }
+        };
+
+        let user_uuid = match Id::try_from(&input.user_uuid) {
+            Ok(user_uuid) => {
+                if authenticated_users.get(&user_uuid).is_none() {
+                    errr.user_uuid = Some(UserUuidError::NotAuthenticated);
+                };
+                Some(user_uuid)
+            }
+            Err(_) => {
+                errr.user_uuid = Some(UserUuidError::Invalid);
                 None
             }
         };
@@ -251,6 +284,7 @@ where
         }
 
         let new_uuid = new_uuid.unwrap();
+        let user_uuid = user_uuid.unwrap();
         let company_belong = company_belong.unwrap();
 
         let mut client = self.database.get_client().await?;
@@ -288,11 +322,12 @@ where
                 &input.branch_name,
                 &input.location,
                 &input.currency,
-                user_uuid,
+                &user_uuid,
                 &db_types::Role::Manager,
             )
             .await?;
 
+            users_to_resubscribe.insert(user_uuid);
             Ok(Ok(create_company_branch::Ok))
         })()
         .await;
@@ -309,78 +344,27 @@ where
     pub async fn push_data(
         &self,
         resources: &mut HashSet<ResourceInfo>,
-        users_uuids: &mut HashSet<Id>,
+        users_to_resubscribe: &mut HashSet<Id>,
         input: &push_data::Input,
     ) -> Result<push_data::Result, DynamicError> {
         let mut the_return_result = push_data::Result {
-            authentications: Vec::with_capacity(input.authentications.len()),
+            jwts: Vec::with_capacity(input.jwts.len()),
             nonce: Ok(()),
-            write_transactions: Vec::with_capacity(input.write_transactions.len()),
-            read_transactions: Vec::with_capacity(input.read_transactions.len()),
+            operations: Vec::with_capacity(input.operations.len()),
         };
 
         let mut is_there_error = false;
-        let mut authenticated_users = HashSet::with_capacity(input.authentications.len());
+        let mut authenticated_users = HashSet::with_capacity(input.jwts.len());
 
-        for auth in &input.authentications {
-            match &auth.operation {
-                push_data::AuthenticationMethodInput::Jwt(jwt) => {
-                    match self.jwt.validate(jwt.clone()) {
-                        Some(user_uuid) => {
-                            authenticated_users.insert(user_uuid);
-                        }
-                        None => {
-                            the_return_result.authentications.push(
-                                push_data::AuthenticationTxnResult {
-                                    txn_number: auth.txn_number,
-                                    operation: push_data::AuthenticationMethodResult::Jwt(Err(
-                                        JWTError::Invalid,
-                                    )),
-                                },
-                            );
-
-                            is_there_error = true;
-                        }
-                    };
+        for jwt in &input.jwts {
+            match self.jwt.validate(jwt.clone()) {
+                Some(user_uuid) => {
+                    authenticated_users.insert(user_uuid);
                 }
-                push_data::AuthenticationMethodInput::SignIn(input) => {
-                    let mut user_uuid = None;
+                None => {
+                    the_return_result.jwts.push(Err(JWTError::Invalid));
 
-                    let result = self.sign_in(&mut user_uuid, &input).await?;
-                    if result.is_err() {
-                        is_there_error = true;
-                    }
-
-                    the_return_result
-                        .authentications
-                        .push(push_data::AuthenticationTxnResult {
-                            txn_number: auth.txn_number,
-                            operation: push_data::AuthenticationMethodResult::SignIn(result),
-                        });
-
-                    if let Some(user_uuid) = user_uuid {
-                        authenticated_users.insert(user_uuid.clone());
-                        users_uuids.insert(user_uuid);
-                    }
-                }
-                push_data::AuthenticationMethodInput::SignUp(input) => {
-                    let mut user_uuid = None;
-
-                    let result = self.sign_up(&mut user_uuid, &input).await?;
-                    if result.is_err() {
-                        is_there_error = true;
-                    }
-
-                    the_return_result
-                        .authentications
-                        .push(push_data::AuthenticationTxnResult {
-                            txn_number: auth.txn_number,
-                            operation: push_data::AuthenticationMethodResult::SignUp(result),
-                        });
-
-                    if let Some(user_uuid) = user_uuid {
-                        authenticated_users.insert(user_uuid);
-                    }
+                    is_there_error = true;
                 }
             }
         }
@@ -404,54 +388,46 @@ where
             return Ok(the_return_result);
         }
 
-        for transaction in &input.write_transactions {
-            let user_uuid = match Id::try_from(&transaction.user_uuid) {
-                Ok(user_uuid) => user_uuid,
-                Err(_) => {
-                    the_return_result
-                        .write_transactions
-                        .push(push_data::TxnResult {
-                            user_uuid: Err(push_data::UserUuidError::IdInWrongFormat),
-                            txn_number: transaction.txn_number,
-                            operation: None,
-                        });
-                    continue;
-                }
-            };
-
-            if let None = authenticated_users.get(&user_uuid) {
-                the_return_result
-                    .write_transactions
-                    .push(push_data::TxnResult {
-                        user_uuid: Err(push_data::UserUuidError::NotAuthinticated),
-                        txn_number: transaction.txn_number,
-                        operation: None,
-                    });
-                continue;
-            }
-
+        for transaction in &input.operations {
             let result = match &transaction.operation {
-                push_data::WriteOperationInput::CreateCompany(input) => {
-                    let result = self.create_company(resources, &user_uuid, input).await?;
-                    users_uuids.insert(user_uuid);
-                    push_data::WriteOperationResult::CreateCompany(result)
+                push_data::OperationsInput::SignUp(input) => {
+                    let result = self.sign_up(&mut authenticated_users, input).await?;
+                    push_data::OperationsResult::SignUp(result)
                 }
-                push_data::WriteOperationInput::CreateCompanyBranch(input) => {
+                push_data::OperationsInput::SignIn(input) => {
                     let result = self
-                        .create_company_branch(resources, &user_uuid, input)
+                        .sign_in(&mut authenticated_users, users_to_resubscribe, input)
                         .await?;
-                    users_uuids.insert(user_uuid);
-                    push_data::WriteOperationResult::CreateCompanyBranch(result)
+                    push_data::OperationsResult::SignIn(result)
+                }
+                push_data::OperationsInput::CreateCompany(input) => {
+                    let result = self
+                        .create_company(
+                            resources,
+                            &mut authenticated_users,
+                            users_to_resubscribe,
+                            input,
+                        )
+                        .await?;
+                    push_data::OperationsResult::CreateCompany(result)
+                }
+                push_data::OperationsInput::CreateCompanyBranch(input) => {
+                    let result = self
+                        .create_company_branch(
+                            resources,
+                            &mut authenticated_users,
+                            users_to_resubscribe,
+                            input,
+                        )
+                        .await?;
+                    push_data::OperationsResult::CreateCompanyBranch(result)
                 }
             };
 
-            the_return_result
-                .write_transactions
-                .push(push_data::TxnResult {
-                    user_uuid: Ok(()),
-                    txn_number: transaction.txn_number,
-                    operation: Some(result),
-                });
+            the_return_result.operations.push(push_data::Txn {
+                txn_number: transaction.txn_number,
+                operation: result,
+            });
         }
 
         return Ok(the_return_result);

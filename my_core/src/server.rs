@@ -45,12 +45,12 @@ pub fn server_actor<DB, Cli, Jwt, Authentication, F, Id, DE, RT, WSS, MPSC>(
                             let input = DE::decode::<messages::FromClient>(&received_data);
 
                             let mut resources = HashSet::with_capacity(1000);
-                            let mut users_uuids = HashSet::with_capacity(10);
+                            let mut users_to_resubscribe = HashSet::with_capacity(10);
                             // TODO : get db client here
 
                             let result = match input {
                                 Ok(input) => state
-                                    .push_data(&mut resources, &mut users_uuids, &input)
+                                    .push_data(&mut resources, &mut users_to_resubscribe, &input)
                                     .await
                                     .map_err(|e| {
                                         dbg!(e);
@@ -66,16 +66,16 @@ pub fn server_actor<DB, Cli, Jwt, Authentication, F, Id, DE, RT, WSS, MPSC>(
                                 break;
                             }
 
-                            if !users_uuids.is_empty() {
+                            if !users_to_resubscribe.is_empty() {
                                 let subs = state
-                                    .get_table_of_subscribed_data(&users_uuids)
+                                    .get_table_of_subscribed_data(&users_to_resubscribe)
                                     .await
                                     .unwrap();
 
                                 sender_to_broker
                                     .send(server_methods::MessageToBroker::Subscribe {
                                         list_of_subscribtion: subs,
-                                        users_uuids,
+                                        users_uuids: users_to_resubscribe,
                                         sender_to_server: sender_to_server.clone(),
                                     })
                                     .await

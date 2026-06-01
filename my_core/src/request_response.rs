@@ -6,6 +6,13 @@ pub const ADDRESS: &str = "127.0.0.1:8081";
 
 // there should be no generic in all the below types
 
+#[derive(Debug, Deserialize, Serialize, PartialEq)]
+pub enum UserUuidError {
+    Invalid,
+    NotAuthenticated,
+    YouDontHavePermissionToDoThat,
+}
+
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ResourceInfo {
     pub uuid: String,
@@ -64,79 +71,52 @@ pub mod push_data {
 
     #[derive(Debug, Deserialize, Serialize)]
     pub struct Input {
-        pub authentications: HashSet<AuthenticationMethodInput>,
+        pub jwts: Vec<String>,
         pub nonce: db_types::RowIdType,
-        pub write_transactions: Vec<TxnInput<WriteOperationInput>>,
-        pub read_transactions: Vec<TxnInput<ReadOperationInput>>,
+        pub operations: Vec<Txn<OperationsInput>>,
     }
 
     #[derive(Debug, Deserialize, Serialize)]
     pub struct Result {
-        pub authentications: Vec<AuthenticationMethodResult>,
+        pub jwts: Vec<StdResult<(), JWTError>>,
         pub nonce: StdResult<(), NonceError>,
-        pub write_transactions: Vec<TxnResult<WriteOperationResult>>,
-        pub read_transactions: Vec<TxnResult<ReadOperationResult>>,
+        pub operations: Vec<Txn<OperationsResult>>,
     }
 
     // utility types
-    #[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Hash)]
-    pub enum AuthenticationMethodInput {
-        Jwt(String),
-        SignIn(sign_in::Input),
-        SignUp(sign_up::Input),
-    }
-
     #[derive(Debug, Deserialize, Serialize)]
-    pub enum AuthenticationMethodResult {
-        Jwt(StdResult<(), JWTError>),
-        SignIn(sign_in::Result),
-        SignUp(sign_up::Result),
-    }
-
-    #[derive(Debug, Deserialize, Serialize)]
-    pub struct TxnInput<T> {
-        pub user_uuid: db_types::RowIdType,
+    pub struct Txn<T> {
         pub txn_number: u64,
         pub operation: T,
     }
 
     #[derive(Debug, Deserialize, Serialize)]
-    pub struct TxnResult<T> {
-        pub user_uuid: StdResult<(), UserUuidError>,
-        pub txn_number: u64,
-        pub operation: Option<T>,
-    }
-
-    #[derive(Debug, Deserialize, Serialize)]
-    pub enum WriteOperationInput {
+    pub enum OperationsInput {
+        // auth
+        SignUp(sign_up::Input),
+        SignIn(sign_in::Input),
+        // write
         CreateCompany(create_company::Input),
         CreateCompanyBranch(create_company_branch::Input),
+        // read
     }
 
     #[derive(Debug, Deserialize, Serialize)]
-    pub enum WriteOperationResult {
+    pub enum OperationsResult {
+        // auth
+        SignUp(sign_up::Result),
+        SignIn(sign_in::Result),
+        // write
         CreateCompany(create_company::Result),
         CreateCompanyBranch(create_company_branch::Result),
-    }
-
-    #[derive(Debug, Deserialize, Serialize)]
-    pub enum ReadOperationInput {}
-
-    #[derive(Debug, Deserialize, Serialize)]
-    pub enum ReadOperationResult {}
-
-    // error types
-    #[derive(Debug, Deserialize, Serialize)]
-    pub enum UserUuidError {
-        IdInWrongFormat,
-        NotAuthinticated,
+        // read
     }
 }
 
 pub mod sign_up {
     use super::*;
 
-    #[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Hash, Clone)]
+    #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Input {
         pub new_uuid: db_types::RowIdType,
         pub name: Option<String>,
@@ -168,7 +148,7 @@ pub mod sign_up {
 pub mod sign_in {
     use super::*;
 
-    #[derive(Debug, Deserialize, Serialize, PartialEq, Eq, Hash)]
+    #[derive(Debug, Deserialize, Serialize)]
     pub struct Input {
         pub user_id: db_types::RowIdType,
         pub password: String,
@@ -204,6 +184,7 @@ pub mod create_company {
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Input {
+        pub user_uuid: db_types::RowIdType,
         pub new_uuid: db_types::RowIdType,
         pub company_name: String,
         pub currency: db_types::Currency,
@@ -214,6 +195,7 @@ pub mod create_company {
 
     #[derive(Debug, Deserialize, Serialize, Default, PartialEq)]
     pub struct Error {
+        pub user_uuid: Option<UserUuidError>,
         pub new_uuid: Option<RowIdError>,
     }
 
@@ -225,6 +207,7 @@ pub mod create_company_branch {
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Input {
+        pub user_uuid: db_types::RowIdType,
         pub new_uuid: db_types::RowIdType,
         pub company_belong: db_types::RowIdType,
         pub branch_name: String,
@@ -237,8 +220,8 @@ pub mod create_company_branch {
 
     #[derive(Debug, Deserialize, Serialize, Default, PartialEq)]
     pub struct Error {
+        pub user_uuid: Option<UserUuidError>,
         pub new_uuid: Option<RowIdError>,
-        pub authorization: Option<AuthorizationError>,
         pub company_belong: Option<CompanyBelongError>,
         pub branch_name: Option<BranchNameError>,
         pub location: Option<LocationError>,
@@ -261,10 +244,5 @@ pub mod create_company_branch {
     #[derive(Debug, Deserialize, Serialize, PartialEq)]
     pub enum LocationError {
         Invalid,
-    }
-
-    #[derive(Debug, Deserialize, Serialize, PartialEq)]
-    pub enum AuthorizationError {
-        YouDontHavePermissionToDoThat,
     }
 }

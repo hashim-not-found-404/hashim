@@ -1,23 +1,21 @@
 use crate::prelude::*;
-use rusqlite::{Connection, Result};
+use rusqlite::Connection;
 
 pub struct S {
     db: Connection,
 }
 
 impl CacheIO for S {
-    async fn new() -> Result<Self, DynamicError> {
+    async fn new() -> Self {
         let conn = Connection::open("opfs-sahpool://my_persistent_database.db").unwrap();
 
         const SCHEMA: &str = include_str!("../schema/tables.sql");
         conn.execute_batch(SCHEMA).unwrap();
 
-        Ok(Self { db: conn })
+        Self { db: conn }
     }
 
-    async fn get_all_auth_input(
-        &self,
-    ) -> Result<Vec<push_data::AuthenticationTxnInput>, DynamicError> {
+    async fn get_all_txn_input(&self) -> Vec<push_data::Txn<push_data::OperationsInput>> {
         let mut stmt = self
             .db
             .prepare("SELECT txn_number, txn FROM write_cache_auth_transactions")
@@ -25,7 +23,7 @@ impl CacheIO for S {
 
         let rows = stmt
             .query_map([], |row| {
-                Ok(push_data::AuthenticationTxnInput {
+                Ok(push_data::Txn {
                     txn_number: row.get::<usize, i64>(0).unwrap() as u64,
                     operation: encode_decode::m::S::decode(&row.get::<usize, Vec<u8>>(2).unwrap())
                         .unwrap(),
@@ -37,89 +35,36 @@ impl CacheIO for S {
         for row in rows {
             transactions.push(row.unwrap());
         }
-        Ok(transactions)
+        transactions
     }
 
-    async fn get_all_write_input(
-        &self,
-    ) -> Result<Vec<push_data::TxnInput<push_data::WriteOperationInput>>, DynamicError> {
-        let mut stmt = self
-            .db
-            .prepare("SELECT txn_number, user_, txn FROM write_cache_write_transactions")
-            .unwrap();
-
-        let rows = stmt
-            .query_map([], |row| {
-                Ok(push_data::TxnInput {
-                    user_uuid: row.get(1).unwrap(),
-                    txn_number: row.get::<usize, i64>(0).unwrap() as u64,
-                    operation: encode_decode::m::S::decode(&row.get::<usize, Vec<u8>>(2).unwrap())
-                        .unwrap(),
-                })
-            })
-            .unwrap();
-
-        let mut transactions = Vec::new();
-        for row in rows {
-            transactions.push(row.unwrap());
-        }
-        Ok(transactions)
-    }
-
-    async fn get_all_read_input(
-        &self,
-    ) -> Result<Vec<push_data::TxnInput<push_data::ReadOperationInput>>, DynamicError> {
-        let mut stmt = self
-            .db
-            .prepare("SELECT txn_number, user_, txn FROM write_cache_read_transactions")
-            .unwrap();
-
-        let rows = stmt
-            .query_map([], |row| {
-                Ok(push_data::TxnInput {
-                    user_uuid: row.get(1).unwrap(),
-                    txn_number: row.get::<usize, i64>(0).unwrap() as u64,
-                    operation: encode_decode::m::S::decode(&row.get::<usize, Vec<u8>>(2).unwrap())
-                        .unwrap(),
-                })
-            })
-            .unwrap();
-
-        let mut transactions = Vec::new();
-        for row in rows {
-            transactions.push(row.unwrap());
-        }
-        Ok(transactions)
-    }
-
-    async fn write_auth_input(
-        &self,
-        txn_number: &u64,
-        txn: &push_data::AuthenticationMethodInput,
-    ) -> Result<(), DynamicError> {
+    async fn write_txn_input(&self, txn: &push_data::Txn<push_data::OperationsInput>) -> () {
         let txn_data = encode_decode::m::S::encode(txn);
         self.db
             .execute(
                 "INSERT OR REPLACE INTO write_cache_auth_transactions (txn_number, txn) VALUES (?1, ?2)",
-                rusqlite::params![*txn_number as i64, txn_data],
+                rusqlite::params![txn.txn_number as i64, txn_data],
             )
             .unwrap();
-
-        Ok(())
     }
 
-    async fn get_jwt(
-        &self,
-        user_uuid: &db_types::RowIdType,
-    ) -> Result<Option<String>, DynamicError> {
+    async fn write_txn_result(&self, txn: &push_data::Txn<push_data::OperationsResult>) {
         todo!()
     }
 
-    async fn write_data(&self, data: &Vec<ResourceInfo>) -> Result<(), DynamicError> {
+    async fn delete_txn_input(&self, txn_number: &u64) {
         todo!()
     }
 
-    async fn write_txn<T>(&self, txn: &push_data::TxnInput<T>) -> Result<(), DynamicError> {
+    async fn delete_txn_result(&self, txn_number: &u64) {
+        todo!()
+    }
+
+    async fn get_jwt(&self, user_uuid: &db_types::RowIdType) -> Option<String> {
+        todo!()
+    }
+
+    async fn write_data(&self, data: &Vec<ResourceInfo>) -> () {
         todo!()
     }
 
@@ -127,15 +72,11 @@ impl CacheIO for S {
         &self,
         user_uuid: &db_types::RowIdType,
         txn_number: &u64,
-    ) -> Result<push_data::TxnInput<T>, DynamicError> {
+    ) -> push_data::Txn<T> {
         todo!()
     }
 
-    async fn delete_txn(
-        &self,
-        user_uuid: &db_types::RowIdType,
-        txn_number: &u64,
-    ) -> Result<(), DynamicError> {
+    async fn delete_txn(&self, user_uuid: &db_types::RowIdType, txn_number: &u64) -> () {
         todo!()
     }
 }
