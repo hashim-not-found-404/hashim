@@ -10,7 +10,7 @@ pub(crate) trait Operations: Clone {
         &self,
         state: &cache::State<CH>,
     ) -> Result<Self::Ok, Self::Err>;
-    fn apply_change<CH: CacheIO>(&self, state: &mut cache::State<CH>);
+    fn apply_change<CH: CacheIO>(&self, state: &mut cache::State<CH>) {}
     fn map_input(self) -> push_data::OperationsInput;
     fn map_result(result: Result<Self::Ok, Self::Err>) -> push_data::OperationsResult;
     fn unwrap(result: push_data::OperationsResult) -> Result<Self::Ok, Self::Err>;
@@ -132,11 +132,26 @@ impl Operations for sign_in::Input {
         &self,
         state: &cache::State<CH>,
     ) -> Result<Self::Ok, Self::Err> {
-        todo!() // TODO
-    }
+        let mut password = None;
 
-    fn apply_change<CH: CacheIO>(&self, state: &mut cache::State<CH>) {
-        todo!()
+        for (_, user) in &state.state_of_pending_txn.user {
+            if user.user_id == self.user_id {
+                password = Some(user.password.clone());
+            }
+        }
+        match password {
+            Some(password) => {
+                if password == self.password {
+                    return Ok(sign_in::Ok { jwt: String::new() });
+                } else {
+                    return Err(sign_in::Error {
+                        user_id: None,
+                        password: Some(sign_in::PasswordError::WrongPassword),
+                    });
+                }
+            }
+            None => Ok(sign_in::Ok { jwt: String::new() }),
+        }
     }
 
     fn map_input(self) -> push_data::OperationsInput {
