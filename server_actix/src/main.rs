@@ -27,11 +27,11 @@ mod web_socket_server {
             Ok(())
         }
 
-        async fn receive(&mut self) -> Result<server::WSMessage, DynamicError> {
+        async fn receive(&mut self) -> Result<server_methods::WSMessage, DynamicError> {
             match self.stream.next().await {
                 Some(msg) => match msg? {
                     AggregatedMessage::Binary(data) => {
-                        return Ok(server::WSMessage::Binary(data.to_vec()));
+                        return Ok(server_methods::WSMessage::Binary(data.to_vec()));
                     }
                     AggregatedMessage::Text(_) => {
                         return Err("we dont use text".into());
@@ -43,7 +43,7 @@ mod web_socket_server {
                         todo!()
                     }
                     AggregatedMessage::Close(_) => {
-                        return Ok(server::WSMessage::Close);
+                        return Ok(server_methods::WSMessage::Close);
                     }
                 },
                 None => {
@@ -68,6 +68,7 @@ type GG = server_methods::ServerMethods<
     row_id::m::S,
     actors::m::S,
     runtime::m::S,
+    encode_decode::m::S,
 >;
 
 #[actix_web::main]
@@ -112,18 +113,7 @@ async fn ws_handler(req: HttpRequest, stream: web::Payload) -> HttpResponse {
     let session = web_socket_server::S::new(session, stream);
 
     let state = req.app_data::<web::Data<GG>>().unwrap();
-    server::server_actor::<
-        db::S,
-        db_client::S,
-        jwt::m::S,
-        authentication::m::S,
-        functions::m::S,
-        row_id::m::S,
-        encode_decode::m::S,
-        runtime::m::S,
-        web_socket_server::S,
-        actors::m::S,
-    >(
+    GG::server_actor(
         state.clone().into_inner(),
         session,
         state.clone().into_inner().sender_to_broker.clone(),

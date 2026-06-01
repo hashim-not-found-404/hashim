@@ -186,14 +186,6 @@ pub trait CacheIO: Sized {
     async fn write_txn_input(&self, txn: &push_data::Txn<push_data::OperationsInput>);
     async fn write_txn_result(&self, txn: &push_data::Txn<push_data::OperationsResult>);
     async fn delete_txn_input(&self, txn_number: &u64);
-    async fn delete_txn_result(&self, txn_number: &u64);
 
     async fn get_jwt(&self, user_uuid: &db_types::RowIdType) -> Option<String>;
-    async fn write_data(&self, data: &Vec<ResourceInfo>);
-    async fn get_txn<T>(
-        &self,
-        user_uuid: &db_types::RowIdType,
-        txn_number: &u64,
-    ) -> push_data::Txn<T>;
-    async fn delete_txn(&self, user_uuid: &db_types::RowIdType, txn_number: &u64);
 }

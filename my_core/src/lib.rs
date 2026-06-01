@@ -4,7 +4,6 @@ pub mod db_types;
 pub mod front_end_model_view;
 pub mod operations;
 pub mod request_response;
-pub mod server;
 pub mod server_methods;
 pub mod traits;
 pub mod translations;
@@ -18,7 +17,7 @@ pub mod prelude {
 
     pub use crate::mbg; // this macro for dev only
     pub use crate::{
-        front_end_model_view::Signal, request_response::*, server::WSServer, traits::*, *,
+        front_end_model_view::Signal, request_response::*, server_methods::WSServer, traits::*, *,
     };
 
     pub(crate) use crate::operations::*;

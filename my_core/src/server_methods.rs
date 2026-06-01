@@ -29,7 +29,7 @@ fn check_nonce_if_valid<Id: RowId>(nonce: &Id, is_used: bool) -> bool {
     true
 }
 
-pub struct ServerMethods<DB, Cli, Jwt, Authentication, F, Id, MPSC, RT>
+pub struct ServerMethods<DB, Cli, Jwt, Authentication, F, Id, MPSC, RT, DE>
 where
     DB: Database<Client = Cli>,
     Cli: DBClient,
@@ -40,25 +40,27 @@ where
     Id: RowId + 'static,
     MPSC: MultiProducerSingleConsumer + 'static,
     RT: Runtime,
+    DE: Coding + 'static,
 {
-    _ph: PhantomData<(Cli, Authentication, F, Id, MPSC, RT)>,
+    _ph: PhantomData<(Cli, Authentication, F, Id, MPSC, RT, DE)>,
     database: DB,
     jwt: Jwt,
     pub sender_to_broker: MPSC::Sender<MessageToBroker<Id, MPSC>>,
 }
 
-impl<DB, Cli, Jwt, Authentication, F, Id, MPSC, RT>
-    ServerMethods<DB, Cli, Jwt, Authentication, F, Id, MPSC, RT>
+impl<DB, Cli, Jwt, Authentication, F, Id, MPSC, RT, DE>
+    ServerMethods<DB, Cli, Jwt, Authentication, F, Id, MPSC, RT, DE>
 where
-    DB: Database<Client = Cli>,
-    Cli: DBClient<RowId = Id, HashedPassword = Authentication>,
+    DB: Database<Client = Cli> + 'static,
+    Cli: DBClient<RowId = Id, HashedPassword = Authentication> + 'static,
     for<'a> Cli::Txn<'a>: DBTransaction<RowId = Id, HashedPassword = Authentication>,
-    Jwt: JWT<UserId = Id, JsonWebToken = String>,
-    Authentication: HashedPassword,
-    F: Functions,
+    Jwt: JWT<UserId = Id, JsonWebToken = String> + 'static,
+    Authentication: HashedPassword + 'static,
+    F: Functions + 'static,
     Id: RowId + 'static,
     MPSC: MultiProducerSingleConsumer + 'static,
-    RT: Runtime,
+    RT: Runtime + 'static,
+    DE: Coding + 'static,
 {
     pub async fn new() -> Self {
         let (sender_to_broker, receiver_to_broker) = MPSC::channel();
@@ -567,6 +569,91 @@ where
             }
         });
     }
+
+    pub fn server_actor<WSS: WSServer + 'static>(
+        state: Arc<Self>,
+        mut session: WSS,
+        sender_to_broker: MPSC::Sender<server_methods::MessageToBroker<Id, MPSC>>,
+    ) {
+        RT::spawn_local(async move {
+            let (sender_to_server, receiver_to_server) = MPSC::channel::<Vec<ResourceInfo>>();
+
+            loop {
+                let result = RT::select(session.receive(), receiver_to_server.recv()).await;
+                match result {
+                    Either::One(msg) => {
+                        let msg = match msg {
+                            Ok(msg) => msg,
+                            Err(_) => break,
+                        };
+
+                        match msg {
+                            WSMessage::Binary(received_data) => {
+                                let input = DE::decode::<messages::FromClient>(&received_data);
+
+                                let mut resources = HashSet::with_capacity(1000);
+                                let mut users_to_resubscribe = HashSet::with_capacity(10);
+                                // TODO : get db client here
+
+                                let result = match input {
+                                    Ok(input) => state
+                                        .push_data(
+                                            &mut resources,
+                                            &mut users_to_resubscribe,
+                                            &input,
+                                        )
+                                        .await
+                                        .map_err(|e| {
+                                            dbg!(e);
+                                            HashimError::InternalServerError
+                                        }),
+                                    Err(_) => Err(HashimError::InvalidDataFormat),
+                                };
+
+                                if let Err(_) = session
+                                    .send_bin(DE::encode(&messages::FromServer::PushData(result)))
+                                    .await
+                                {
+                                    break;
+                                }
+
+                                if !users_to_resubscribe.is_empty() {
+                                    let subs = state
+                                        .get_table_of_subscribed_data(&users_to_resubscribe)
+                                        .await
+                                        .unwrap();
+
+                                    sender_to_broker
+                                        .send(server_methods::MessageToBroker::Subscribe {
+                                            list_of_subscribtion: subs,
+                                            users_uuids: users_to_resubscribe,
+                                            sender_to_server: sender_to_server.clone(),
+                                        })
+                                        .await
+                                        .unwrap();
+                                }
+                            }
+                            WSMessage::Close => break,
+                        }
+                    }
+                    Either::Two(a) => todo!(),
+                }
+            }
+
+            session.close().await.unwrap();
+        });
+    }
+}
+
+pub enum WSMessage {
+    Binary(Vec<u8>),
+    Close,
+}
+
+pub trait WSServer {
+    async fn send_bin(&mut self, bin: Vec<u8>) -> Result<(), DynamicError>;
+    async fn receive(&mut self) -> Result<WSMessage, DynamicError>;
+    async fn close(self) -> Result<(), DynamicError>;
 }
 
 fn map_resource_to_subscribes<Id: RowId>(

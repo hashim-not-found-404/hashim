@@ -18,7 +18,7 @@ impl CacheIO for S {
     async fn get_all_txn_input(&self) -> Vec<push_data::Txn<push_data::OperationsInput>> {
         let mut stmt = self
             .db
-            .prepare("SELECT txn_number, txn FROM write_cache_auth_transactions")
+            .prepare("SELECT txn_number, txn FROM write_cache_transactions_input")
             .unwrap();
 
         let rows = stmt
@@ -42,41 +42,32 @@ impl CacheIO for S {
         let txn_data = encode_decode::m::S::encode(&txn.operation);
         self.db
             .execute(
-                "INSERT OR REPLACE INTO write_cache_auth_transactions (txn_number, txn) VALUES (?1, ?2)",
+                "INSERT OR REPLACE INTO write_cache_transactions_input (txn_number, txn) VALUES (?1, ?2)",
                 rusqlite::params![txn.txn_number as i64, txn_data],
             )
             .unwrap();
     }
 
     async fn write_txn_result(&self, txn: &push_data::Txn<push_data::OperationsResult>) {
-        todo!()
+        let txn_data = encode_decode::m::S::encode(&txn.operation);
+        self.db
+            .execute(
+                "INSERT OR REPLACE INTO write_cache_transactions_result (txn_number, txn) VALUES (?1, ?2)",
+                rusqlite::params![txn.txn_number as i64, txn_data],
+            )
+            .unwrap();
     }
 
     async fn delete_txn_input(&self, txn_number: &u64) {
-        todo!() // TODO
-    }
-
-    async fn delete_txn_result(&self, txn_number: &u64) {
-        todo!()
+        self.db
+            .execute(
+                "DELETE FROM write_cache_transactions_input WHERE txn_number = ?1",
+                rusqlite::params![*txn_number as i64],
+            )
+            .unwrap();
     }
 
     async fn get_jwt(&self, user_uuid: &db_types::RowIdType) -> Option<String> {
-        todo!()
-    }
-
-    async fn write_data(&self, data: &Vec<ResourceInfo>) -> () {
-        todo!()
-    }
-
-    async fn get_txn<T>(
-        &self,
-        user_uuid: &db_types::RowIdType,
-        txn_number: &u64,
-    ) -> push_data::Txn<T> {
-        todo!()
-    }
-
-    async fn delete_txn(&self, user_uuid: &db_types::RowIdType, txn_number: &u64) -> () {
         todo!()
     }
 }
