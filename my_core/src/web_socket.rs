@@ -8,11 +8,9 @@ enum MessageToNetwork {
     Bytes(Vec<u8>),
 }
 
-pub enum Query<MPSC: MultiProducerSingleConsumer> {
-    Authentication {
-        sender: MPSC::Sender<push_data::OperationsResult>,
-        data: push_data::OperationsInput,
-    },
+pub struct Query<MPSC: MultiProducerSingleConsumer> {
+    pub sender: MPSC::Sender<push_data::OperationsResult>,
+    pub data: push_data::OperationsInput,
 }
 
 enum MessageToCache<MPSC: MultiProducerSingleConsumer> {
@@ -233,6 +231,16 @@ where
                                         state.cache.delete_txn_input(&txn.txn_number).await;
                                         state.cache.write_txn_result(&txn).await;
                                     }
+
+                                    let txns = state.cache.get_all_txn_input().await;
+
+                                    state.state_of_pending_txn = cache::StateOfPendingTxn::new();
+
+                                    for op in txns {
+                                        op.operation
+                                            .run_operation::<_, RN>(&mut state, false)
+                                            .await;
+                                    }
                                 }
                                 Err(err) => sender_to_error.send(err.into()).await.unwrap(),
                             },
@@ -241,29 +249,27 @@ where
                             }
                         }
                     }
-                    MessageToCache::Query(input) => match input {
-                        Query::Authentication { sender, data } => {
-                            let result = data.run_operation::<_, RN>(&mut state, true).await;
+                    MessageToCache::Query(Query { sender, data }) => {
+                        let result = data.run_operation::<_, RN>(&mut state, true).await;
 
-                            let _ = sender.send(result).await;
+                        let _ = sender.send(result).await;
 
-                            let txn = push_data::Txn {
-                                txn_number: RN::generate(),
-                                operation: data,
-                            };
+                        let txn = push_data::Txn {
+                            txn_number: RN::generate(),
+                            operation: data,
+                        };
 
-                            let operations = vec![txn];
+                        let operations = vec![txn];
 
-                            if is_online {
-                                Self::prepare_txn_and_send_to_network(
-                                    sender_to_network.clone(),
-                                    Vec::new(),
-                                    operations,
-                                )
-                                .await;
-                            };
-                        }
-                    },
+                        if is_online {
+                            Self::prepare_txn_and_send_to_network(
+                                sender_to_network.clone(),
+                                Vec::new(),
+                                operations,
+                            )
+                            .await;
+                        };
+                    }
                     MessageToCache::Subscribe {
                         component_id,
                         list_of_subscribtion,

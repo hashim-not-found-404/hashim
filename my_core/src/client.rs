@@ -42,7 +42,7 @@ where
         let (sender, receiver) = MPSC::channel();
 
         self.my_wamp
-            .send_to_cache_actor(web_socket::Query::Authentication {
+            .send_to_cache_actor(web_socket::Query {
                 sender: sender,
                 data: input.clone().map_input(),
             })

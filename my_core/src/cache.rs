@@ -13,7 +13,7 @@ pub struct StateOfPendingTxn {
 }
 
 impl StateOfPendingTxn {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             user: HashMap::with_capacity(20),
         }
