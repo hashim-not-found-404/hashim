@@ -243,15 +243,18 @@ impl Operations for create_company::Input {
     }
 
     fn map_input(self) -> push_data::OperationsInput {
-        todo!()
+        push_data::OperationsInput::CreateCompany(self)
     }
 
-    fn map_result(result: StdResult<Self::Ok, Self::Err>) -> push_data::OperationsResult {
-        todo!()
+    fn map_result(result: Result<Self::Ok, Self::Err>) -> push_data::OperationsResult {
+        push_data::OperationsResult::CreateCompany(result)
     }
 
-    fn unwrap(result: push_data::OperationsResult) -> StdResult<Self::Ok, Self::Err> {
-        todo!()
+    fn unwrap(result: push_data::OperationsResult) -> Result<Self::Ok, Self::Err> {
+        if let push_data::OperationsResult::CreateCompany(result) = result {
+            return result;
+        }
+        unreachable!()
     }
 }
 
@@ -267,14 +270,17 @@ impl Operations for create_company_branch::Input {
     }
 
     fn map_input(self) -> push_data::OperationsInput {
-        todo!()
+        push_data::OperationsInput::CreateCompanyBranch(self)
     }
 
-    fn map_result(result: StdResult<Self::Ok, Self::Err>) -> push_data::OperationsResult {
-        todo!()
+    fn map_result(result: Result<Self::Ok, Self::Err>) -> push_data::OperationsResult {
+        push_data::OperationsResult::CreateCompanyBranch(result)
     }
 
-    fn unwrap(result: push_data::OperationsResult) -> StdResult<Self::Ok, Self::Err> {
-        todo!()
+    fn unwrap(result: push_data::OperationsResult) -> Result<Self::Ok, Self::Err> {
+        if let push_data::OperationsResult::CreateCompanyBranch(result) = result {
+            return result;
+        }
+        unreachable!()
     }
 }
