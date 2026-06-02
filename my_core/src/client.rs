@@ -38,43 +38,43 @@ where
         }
     }
 
-    pub async fn sign_up(
-        &self,
-        check_from_cache_only: bool,
-        input: &sign_up::Input,
-    ) -> sign_up::Result {
-        let (sender, receiver) = MPSC::channel();
+    // pub async fn sign_up(
+    //     &self,
+    //     check_from_cache_only: bool,
+    //     input: &sign_up::Input,
+    // ) -> sign_up::Result {
+    //     let (sender, receiver) = MPSC::channel();
 
-        self.my_wamp
-            .send_to_cache_actor(web_socket::Query {
-                check_from_cache_only,
-                sender: sender,
-                data: input.clone().map_input(),
-            })
-            .await;
+    //     self.my_wamp
+    //         .send_to_cache_actor(web_socket::Query {
+    //             check_from_cache_only,
+    //             sender: sender,
+    //             data: input.clone().map_input(),
+    //         })
+    //         .await;
 
-        let result = receiver.recv().await.unwrap();
-        let result = sign_up::Input::unwrap(result);
-        result
-    }
+    //     let result = receiver.recv().await.unwrap();
+    //     let result = sign_up::Input::unwrap(result);
+    //     result
+    // }
 
-    pub async fn sign_in(
-        &self,
-        check_from_cache_only: bool,
-        input: &sign_in::Input,
-    ) -> sign_in::Result {
-        let (sender, receiver) = MPSC::channel();
+    // pub async fn sign_in(
+    //     &self,
+    //     check_from_cache_only: bool,
+    //     input: &sign_in::Input,
+    // ) -> sign_in::Result {
+    //     let (sender, receiver) = MPSC::channel();
 
-        self.my_wamp
-            .send_to_cache_actor(web_socket::Query {
-                check_from_cache_only,
-                sender: sender,
-                data: input.clone().map_input(),
-            })
-            .await;
+    //     self.my_wamp
+    //         .send_to_cache_actor(web_socket::Query {
+    //             check_from_cache_only,
+    //             sender: sender,
+    //             data: input.clone().map_input(),
+    //         })
+    //         .await;
 
-        let result = receiver.recv().await.unwrap();
-        let result = sign_in::Input::unwrap(result);
-        result
-    }
+    //     let result = receiver.recv().await.unwrap();
+    //     let result = sign_in::Input::unwrap(result);
+    //     result
+    // }
 }

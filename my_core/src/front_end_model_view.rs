@@ -22,7 +22,7 @@ pub struct State<
 > {
     // here for the app logic
     _ph: PhantomData<(Id, RN, SigString, SigCurrency, SigLocation)>,
-    routs: client::RoutsForClientSide<WS, DE, RN, RT, CH, Id, MPSC>,
+    routs: web_socket::MyWAMP<WS, DE, RN, RT, CH, Id, MPSC>,
 
     // here every field to display
     // here is global state
@@ -64,12 +64,14 @@ impl<
     pub async fn new() -> Arc<Self> {
         let (sender_to_error, receiver_to_error) = MPSC::channel();
 
-        let routs =
-            client::RoutsForClientSide::<WS, DE, RN, RT, CH, Id, MPSC>::new(sender_to_error).await;
+        let web_socket =
+            web_socket::MyWAMP::<WS, DE, RN, RT, CH, Id, MPSC>::new(sender_to_error.clone());
+        let url = format!("ws://{}/ws", ADDRESS);
+        web_socket.connect_to_url(&url).await;
 
         let state = Arc::new(Self {
             _ph: PhantomData,
-            routs: routs,
+            routs: web_socket,
             is_signed_in: SigBool::default(),
             external_errors: SigExternalError::default(),
         });
@@ -81,6 +83,7 @@ impl<
 
     pub fn sign_up(
         self: Arc<Self>,
+        check_from_cache_only: bool,
         local_state: Arc<SignUpState<SigString>>,
         feature_state: Arc<AuthFeatureState<SigString, SigBool>>,
     ) {
@@ -106,29 +109,47 @@ impl<
                 password: feature_state.user_password.read().to_string(),
             };
 
-            let result = self.routs.sign_up(false, &input).await;
+            let (sender, receiver) = MPSC::channel();
+            self.routs
+                .send_to_cache_actor(web_socket::Query {
+                    check_from_cache_only,
+                    sender: sender,
+                    data: input.clone().map_input(),
+                })
+                .await;
 
-            match result {
-                Ok(business_output) => {
-                    self.is_signed_in.set(true);
-                }
-                Err(business_error) => {
-                    local_state.user_id_error.set(match business_error.user_id {
-                        Some(_) => String::from("duplicated user"),
-                        None => String::new(),
-                    });
-                    local_state.user_name_error.set(match business_error.name {
-                        Some(e) => e,
-                        None => String::new(),
-                    });
+            loop {
+                let result = receiver.recv().await.unwrap();
+                let result = match result {
+                    Some(result) => result,
+                    None => break,
+                };
+                let result = sign_up::Input::unwrap(result);
+
+                match result {
+                    Ok(business_output) => {
+                        self.is_signed_in.set(true);
+                    }
+                    Err(business_error) => {
+                        local_state.user_id_error.set(match business_error.user_id {
+                            Some(_) => String::from("duplicated user"),
+                            None => String::new(),
+                        });
+                        local_state.user_name_error.set(match business_error.name {
+                            Some(e) => e,
+                            None => String::new(),
+                        });
+                    }
                 }
             }
+
             feature_state.is_loading.set(false);
         });
     }
 
     pub fn sign_in(
         self: Arc<Self>,
+        check_from_cache_only: bool,
         local_state: Arc<SignInState<SigString>>,
         feature_state: Arc<AuthFeatureState<SigString, SigBool>>,
     ) {
@@ -146,23 +167,39 @@ impl<
                 password: feature_state.user_password.read().to_string(),
             };
 
-            let result = self.routs.sign_in(false, &input).await;
+            let (sender, receiver) = MPSC::channel();
+            self.routs
+                .send_to_cache_actor(web_socket::Query {
+                    check_from_cache_only,
+                    sender: sender,
+                    data: input.clone().map_input(),
+                })
+                .await;
 
-            match result {
-                Ok(business_output) => {
-                    self.is_signed_in.set(true);
-                }
-                Err(business_error) => {
-                    local_state.user_id_error.set(match business_error.user_id {
-                        Some(_) => String::from("user not exist"),
-                        None => String::new(),
-                    });
-                    local_state
-                        .user_password_error
-                        .set(match business_error.password {
-                            Some(_) => String::from("wrong password"),
+            loop {
+                let result = receiver.recv().await.unwrap();
+                let result = match result {
+                    Some(result) => result,
+                    None => break,
+                };
+                let result = sign_in::Input::unwrap(result);
+
+                match result {
+                    Ok(business_output) => {
+                        self.is_signed_in.set(true);
+                    }
+                    Err(business_error) => {
+                        local_state.user_id_error.set(match business_error.user_id {
+                            Some(_) => String::from("user not exist"),
                             None => String::new(),
                         });
+                        local_state
+                            .user_password_error
+                            .set(match business_error.password {
+                                Some(_) => String::from("wrong password"),
+                                None => String::new(),
+                            });
+                    }
                 }
             }
 
@@ -181,6 +218,7 @@ impl<
 
     pub async fn create_company(
         self: Arc<Self>,
+        check_from_cache_only: bool,
         local_state: Arc<CreateCompanyState<SigString, SigCurrency>>,
     ) {
         RT::spawn_local(async move {
@@ -206,6 +244,7 @@ impl<
 
     pub async fn create_company_branch(
         self: Arc<Self>,
+        check_from_cache_only: bool,
         local_state: Arc<CreateCompanyBranchState<SigString, SigCurrency, SigLocation>>,
     ) {
         RT::spawn_local(async move {

@@ -106,13 +106,18 @@ pub fn SignIn() -> Element {
         navigator().push(Route::SignUp {});
     };
 
+    let state1 = state.clone();
+    let local_state1 = local_state.clone();
     let auth_state1 = auth_state.clone();
 
     rsx! {
         div {
             input {
                 placeholder: "User ID",
-                oninput: move |event| auth_state1.user_id.set(event.value()),
+                oninput: move |event| {
+                    auth_state1.user_id.set(event.value());
+                    state1.clone().sign_in(true,local_state1.clone(),auth_state1.clone());
+                },
                 value: auth_state.user_id.read(),
             }
             label {
@@ -123,7 +128,7 @@ pub fn SignIn() -> Element {
                 {local_state.user_password_error.read()}
             }
             button {
-                onclick: move |_| state.clone().sign_in(local_state.clone(),auth_state.clone()),
+                onclick: move |_| state.clone().sign_in(false,local_state.clone(),auth_state.clone()),
                 "Sign In"
             }
             button {
@@ -151,14 +156,21 @@ pub fn SignUp() -> Element {
         navigator().push(Route::SignIn {});
     };
 
+    let state1 = state.clone();
+    let state2 = state.clone();
     let local_state1 = local_state.clone();
+    let local_state2 = local_state.clone();
     let auth_state1 = auth_state.clone();
+    let auth_state2 = auth_state.clone();
 
     rsx! {
         div {
             input {
                 placeholder: "Name (Optional)",
-                oninput: move |event| local_state1.user_name.set(event.value()),
+                oninput: move |event| {
+                    local_state1.user_name.set(event.value());
+                    state1.clone().sign_up(true,local_state1.clone(),auth_state1.clone());
+                },
                 value: local_state.user_name.read(),
             }
             label {
@@ -166,7 +178,10 @@ pub fn SignUp() -> Element {
             }
             input {
                 placeholder: "User Id",
-                oninput: move |event| auth_state1.user_id.set(event.value()),
+                oninput: move |event| {
+                    auth_state2.user_id.set(event.value());
+                    state2.clone().sign_up(true,local_state2.clone(),auth_state2.clone());
+                },
                 value: auth_state.user_id.read(),
             }
             label {
@@ -174,7 +189,7 @@ pub fn SignUp() -> Element {
             }
             PasswordInput{ }
             button {
-                onclick: move |_| state.clone().sign_up(local_state.clone(),auth_state.clone()),
+                onclick: move |_| state.clone().sign_up(false,local_state.clone(),auth_state.clone()),
                 "Sign Up"
             }
             button {
@@ -247,6 +262,7 @@ pub fn CreateCompany() -> Element {
         currency: MySignal::<db_types::Currency>::default(),
     });
 
+    let state1 = state.clone();
     let local_state1 = local_state.clone();
     let local_state2 = local_state.clone();
 
@@ -254,7 +270,10 @@ pub fn CreateCompany() -> Element {
         div {
             input {
                 placeholder: "Company Name",
-                oninput: move |event| local_state1.company_name.set(event.value()),
+                oninput: move |event| {
+                    local_state1.company_name.set(event.value());
+                    state1.clone().create_company(true,local_state1.clone());
+                },
                 value: local_state.company_name.read(),
             }
             select {
@@ -264,7 +283,7 @@ pub fn CreateCompany() -> Element {
                 option { value: "IQD", "IQD" }
             }
             button {
-                onclick: move |_| state.clone().create_company(local_state.clone()),
+                onclick: move |_| state.clone().create_company(false,local_state.clone()),
                 "Create"
             }
         }
@@ -282,6 +301,7 @@ pub fn CreateCompanyBranch() -> Element {
         location: todo!(),
     });
 
+    let state1 = state.clone();
     let local_state1 = local_state.clone();
     let local_state2 = local_state.clone();
 
@@ -289,7 +309,10 @@ pub fn CreateCompanyBranch() -> Element {
         div {
             input {
                 placeholder: "Branch Name",
-                oninput: move |event| local_state1.branch_name.set(event.value()),
+                oninput: move |event| {
+                    local_state1.branch_name.set(event.value());
+                    state1.clone().create_company_branch(true,local_state.clone());
+                },
                 value: local_state.branch_name.read(),
             }
             select {
@@ -299,7 +322,7 @@ pub fn CreateCompanyBranch() -> Element {
                 option { value: "IQD", "IQD" }
             }
             button {
-                onclick: move |_| state.clone().create_company_branch(local_state.clone()),
+                onclick: move |_| state.clone().create_company_branch(false,local_state.clone()),
                 "Create"
             }
         }

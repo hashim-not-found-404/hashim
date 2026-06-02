@@ -10,7 +10,7 @@ enum MessageToNetwork {
 
 pub struct Query<MPSC: MultiProducerSingleConsumer> {
     pub check_from_cache_only: bool,
-    pub sender: MPSC::Sender<push_data::OperationsResult>,
+    pub sender: MPSC::Sender<Option<push_data::OperationsResult>>,
     pub data: push_data::OperationsInput,
 }
 
@@ -184,11 +184,12 @@ where
     ) {
         RT::spawn_local(async move {
             let mut state = cache::State::<CH>::new::<RN>().await;
-
             let mut is_online = false;
-            let mut pool_of_subscribes =
-                HashMap::<server_methods::Subscribe, HashSet<u64>>::with_capacity(1000);
-            let mut pool_of_senders = HashMap::<u64, MPSC::Sender<Poke>>::with_capacity(1000);
+
+            let mut pool_of_senders = HashMap::<
+                u64,
+                MPSC::Sender<Option<push_data::OperationsResult>>,
+            >::with_capacity(1000);
 
             loop {
                 match receiver_to_cache.recv().await.unwrap() {
@@ -220,12 +221,17 @@ where
                                     for txn in results.operations {
                                         state.cache.delete_txn_input(&txn.txn_number).await;
                                         state.cache.write_txn_result(&txn).await;
-                                    }
 
-                                    let txns = state.cache.get_all_txn_input().await;
+                                        let sender = pool_of_senders.remove(&txn.txn_number);
+                                        if let Some(sender) = sender {
+                                            let _ = sender.send(Some(txn.operation)).await;
+                                            let _ = sender.send(None).await;
+                                        }
+                                    }
 
                                     state.state_of_pending_txn = cache::StateOfPendingTxn::new();
 
+                                    let txns = state.cache.get_all_txn_input().await;
                                     for op in txns {
                                         op.operation.run_operation_check_apply(&mut state).await;
                                     }
@@ -242,11 +248,8 @@ where
                         sender,
                         data,
                     }) => {
-                        todo!(
-                            "you need to return the result to the component after it came from server"
-                        );
-
                         let txn_number = RN::generate();
+
                         let result = if check_from_cache_only {
                             data.run_operation_check(&mut state).await
                         } else {
@@ -254,7 +257,7 @@ where
                                 .await
                         };
 
-                        let _ = sender.send(result).await;
+                        let _ = sender.send(Some(result)).await;
 
                         let operations = vec![push_data::Txn {
                             txn_number,
@@ -267,6 +270,10 @@ where
                                 operations,
                             )
                             .await;
+
+                            pool_of_senders.insert(txn_number, sender);
+                        } else {
+                            let _ = sender.send(None).await;
                         };
                     }
                     MessageToCache::Subscribe {
@@ -274,22 +281,22 @@ where
                         list_of_subscribtion,
                         sender_to_component,
                     } => {
-                        pool_of_senders.insert(component_id, sender_to_component);
-                        for subscribe in list_of_subscribtion {
-                            pool_of_subscribes
-                                .entry(subscribe)
-                                .or_insert(HashSet::with_capacity(10))
-                                .insert(component_id);
-                        }
+                        // pool_of_senders.insert(component_id, sender_to_component);
+                        // for subscribe in list_of_subscribtion {
+                        //     pool_of_subscribes
+                        //         .entry(subscribe)
+                        //         .or_insert(HashSet::with_capacity(10))
+                        //         .insert(component_id);
+                        // }
                     }
                     MessageToCache::UnSubscribe { component_id } => {
-                        pool_of_senders.remove(&component_id);
+                        // pool_of_senders.remove(&component_id);
 
-                        for (_, component_id_gg) in &mut pool_of_subscribes {
-                            component_id_gg.remove(&component_id);
-                        }
+                        // for (_, component_id_gg) in &mut pool_of_subscribes {
+                        //     component_id_gg.remove(&component_id);
+                        // }
 
-                        pool_of_subscribes.retain(|_, component_ids| !component_ids.is_empty());
+                        // pool_of_subscribes.retain(|_, component_ids| !component_ids.is_empty());
                     }
                 }
             }
