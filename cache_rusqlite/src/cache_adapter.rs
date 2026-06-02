@@ -68,7 +68,42 @@ impl CacheIO for S {
     }
 
     async fn write_resource(&self, resource: &Vec<ResourceInfo>) {
-        todo!()
+        let mut stmts = Vec::with_capacity(resource.len());
+
+        for reso in resource {
+            let uuid = &reso.uuid;
+
+            let stmt = match &reso.resource {
+                server_methods::Resource::Jwt(value) => {
+                    make_sql_statment("user", "jwt", uuid, value)
+                }
+                server_methods::Resource::UserName(value) => {
+                    make_sql_statment("user", "name", uuid, value)
+                }
+                server_methods::Resource::UserId(value) => {
+                    make_sql_statment("user", "id", uuid, value)
+                }
+                server_methods::Resource::CompanyName(value) => {
+                    make_sql_statment("company", "name", uuid, value)
+                }
+                server_methods::Resource::CompanyCurrency(value) => {
+                    make_sql_statment("company", "currency", uuid, &value.as_str().to_string())
+                }
+                server_methods::Resource::RoleAtCompany(value) => {
+                    todo!();
+                    make_sql_statment("", "", uuid, &value.as_str().to_string())
+                }
+                server_methods::Resource::UserThatHaveRole(value) => {
+                    todo!();
+                    make_sql_statment("", "", uuid, value)
+                }
+            };
+
+            stmts.push(stmt);
+        }
+
+        let stmts = stmts.concat();
+        self.db.execute_batch(stmts.as_str()).unwrap();
     }
 
     async fn get_jwt(&self, user_uuid: &db_types::RowIdType) -> Option<String> {
@@ -80,4 +115,10 @@ impl CacheIO for S {
         stmt.query_one([user_uuid], |row| row.get(0).optional())
             .unwrap()
     }
+}
+
+fn make_sql_statment(table_name: &str, field_name: &str, uuid: &String, value: &String) -> String {
+    format!(
+        "INSERT OR REPLACE INTO {table_name} (rowid, {field_name}) VALUES ('{uuid}', '{value}');"
+    )
 }

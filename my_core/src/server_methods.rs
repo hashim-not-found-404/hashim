@@ -127,6 +127,18 @@ where
                 uuid: new_uuid.to_string(),
                 resource: Resource::Jwt(self.jwt.sign(&new_uuid)),
             });
+            resource_to_return.push(ResourceInfo {
+                uuid: new_uuid.to_string(),
+                resource: Resource::UserId(input.user_id.clone()),
+            });
+
+            if let Some(name) = &input.name {
+                resource_to_return.push(ResourceInfo {
+                    uuid: new_uuid.to_string(),
+                    resource: Resource::UserName(name.clone()),
+                });
+            }
+
             Ok(Ok(sign_up::Ok))
         })()
         .await;
@@ -789,6 +801,8 @@ pub(crate) fn resource_filtering_based_on_subscribe(
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub enum Resource {
     Jwt(String),
+    UserName(String),
+    UserId(String),
     CompanyName(String),
     CompanyCurrency(db_types::Currency),
     RoleAtCompany(db_types::Role),
