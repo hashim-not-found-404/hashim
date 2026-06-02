@@ -155,7 +155,7 @@ impl Operations for sign_up::Input {
             return Err(err);
         }
 
-        return Ok(sign_up::Ok { jwt: String::new() });
+        return Ok(sign_up::Ok);
     }
 
     fn apply_change<CH: CacheIO>(&self, state: &mut cache::State<CH>) {
@@ -203,7 +203,7 @@ impl Operations for sign_in::Input {
         match password {
             Some(password) => {
                 if password == self.password {
-                    return Ok(sign_in::Ok { jwt: String::new() });
+                    return Ok(sign_in::Ok);
                 } else {
                     return Err(sign_in::Error {
                         user_id: None,
@@ -211,7 +211,7 @@ impl Operations for sign_in::Input {
                     });
                 }
             }
-            None => Ok(sign_in::Ok { jwt: String::new() }),
+            None => Ok(sign_in::Ok),
         }
     }
 

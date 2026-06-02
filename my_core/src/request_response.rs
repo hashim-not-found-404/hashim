@@ -15,7 +15,7 @@ pub enum UserUuidError {
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ResourceInfo {
-    pub uuid: String,
+    pub uuid: db_types::RowIdType,
     pub resource: server_methods::Resource,
 }
 
@@ -125,9 +125,7 @@ pub mod sign_up {
     }
 
     #[derive(Debug, Deserialize, Serialize)]
-    pub struct Ok {
-        pub jwt: String,
-    }
+    pub struct Ok;
 
     #[derive(Debug, Deserialize, Serialize, Default, PartialEq)]
     pub struct Error {
@@ -155,9 +153,7 @@ pub mod sign_in {
     }
 
     #[derive(Debug, Deserialize, Serialize)]
-    pub struct Ok {
-        pub jwt: String,
-    }
+    pub struct Ok;
 
     #[derive(Debug, Deserialize, Serialize, Default, PartialEq)]
     pub struct Error {

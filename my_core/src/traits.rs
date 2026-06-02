@@ -98,7 +98,7 @@ pub trait DBTransaction {
     ) -> Result<bool /* is new_uuid exist */, DynamicError>;
     async fn write_create_company(
         &mut self,
-        resources: &mut HashSet<ResourceInfo>,
+        resource_to_broadcast: &mut Vec<ResourceInfo>,
         new_uuid: &Self::RowId,
         user_uuid: &Self::RowId,
         user_role: &db_types::Role,
@@ -121,7 +121,7 @@ pub trait DBTransaction {
     >;
     async fn write_create_company_branch(
         &mut self,
-        resources: &mut HashSet<ResourceInfo>,
+        resource_to_broadcast: &mut Vec<ResourceInfo>,
         new_uuid: &Self::RowId,
         company_belong: &Self::RowId,
         branch_name: &String,
@@ -187,5 +187,6 @@ pub trait CacheIO: Sized {
     async fn write_txn_result(&self, txn: &push_data::Txn<push_data::OperationsResult>);
     async fn delete_txn_input(&self, txn_number: &u64);
 
+    async fn write_resource(&self, resource: &Vec<ResourceInfo>);
     async fn get_jwt(&self, user_uuid: &db_types::RowIdType) -> Option<String>;
 }

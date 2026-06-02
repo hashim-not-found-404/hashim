@@ -238,8 +238,8 @@ where
                                 }
                                 Err(err) => sender_to_error.send(err.into()).await.unwrap(),
                             },
-                            messages::FromServer::Resources(resource_infos) => {
-                                todo!("TODO update the pub/sub")
+                            messages::FromServer::Resources(resource) => {
+                                state.cache.write_resource(&resource).await;
                             }
                         }
                     }

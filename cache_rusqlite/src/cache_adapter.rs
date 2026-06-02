@@ -67,6 +67,10 @@ impl CacheIO for S {
             .unwrap();
     }
 
+    async fn write_resource(&self, resource: &Vec<ResourceInfo>) {
+        todo!()
+    }
+
     async fn get_jwt(&self, user_uuid: &db_types::RowIdType) -> Option<String> {
         let mut stmt = self
             .db

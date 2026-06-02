@@ -76,6 +76,7 @@ where
 
     pub async fn sign_up(
         &self,
+        resource_to_return: &mut Vec<ResourceInfo>,
         authenticated_users: &mut HashSet<Id>,
         input: &sign_up::Input,
     ) -> Result<sign_up::Result, DynamicError> {
@@ -122,9 +123,11 @@ where
             txn.write_sign_up(&new_uuid, &input.user_id, &hashed_password, &input.name)
                 .await?;
 
-            Ok(Ok(sign_up::Ok {
-                jwt: self.jwt.sign(&new_uuid).into(),
-            }))
+            resource_to_return.push(ResourceInfo {
+                uuid: new_uuid.to_string(),
+                resource: Resource::Jwt(self.jwt.sign(&new_uuid)),
+            });
+            Ok(Ok(sign_up::Ok))
         })()
         .await;
 
@@ -139,6 +142,7 @@ where
 
     pub async fn sign_in(
         &self,
+        resource_to_return: &mut Vec<ResourceInfo>,
         authenticated_users: &mut HashSet<Id>,
         users_to_resubscribe: &mut HashSet<Id>,
         input: &sign_in::Input,
@@ -159,9 +163,11 @@ where
             true => {
                 authenticated_users.insert(user_rowid.clone());
                 users_to_resubscribe.insert(user_rowid.clone());
-                return Ok(Ok(sign_in::Ok {
-                    jwt: self.jwt.sign(&user_rowid).into(),
-                }));
+                resource_to_return.push(ResourceInfo {
+                    uuid: user_rowid.to_string(),
+                    resource: Resource::Jwt(self.jwt.sign(&user_rowid)),
+                });
+                return Ok(Ok(sign_in::Ok));
             }
             false => {
                 errr.password = Some(sign_in::PasswordError::WrongPassword);
@@ -172,7 +178,7 @@ where
 
     pub async fn create_company(
         &self,
-        resources: &mut HashSet<ResourceInfo>,
+        resource_to_broadcast: &mut Vec<ResourceInfo>,
         authenticated_users: &mut HashSet<Id>,
         users_to_resubscribe: &mut HashSet<Id>,
         input: &create_company::Input,
@@ -219,7 +225,7 @@ where
             }
 
             txn.write_create_company(
-                resources,
+                resource_to_broadcast,
                 &new_uuid,
                 &user_uuid,
                 &db_types::Role::Manager,
@@ -244,7 +250,7 @@ where
 
     pub async fn create_company_branch(
         &self,
-        resources: &mut HashSet<ResourceInfo>,
+        resource_to_broadcast: &mut Vec<ResourceInfo>,
         authenticated_users: &mut HashSet<Id>,
         users_to_resubscribe: &mut HashSet<Id>,
         input: &create_company_branch::Input,
@@ -319,7 +325,7 @@ where
             }
 
             txn.write_create_company_branch(
-                resources,
+                resource_to_broadcast,
                 &new_uuid,
                 &company_belong,
                 &input.branch_name,
@@ -346,7 +352,8 @@ where
 
     pub async fn push_data(
         &self,
-        resources: &mut HashSet<ResourceInfo>,
+        resource_to_broadcast: &mut Vec<ResourceInfo>,
+        resource_to_return: &mut Vec<ResourceInfo>,
         users_to_resubscribe: &mut HashSet<Id>,
         input: &push_data::Input,
     ) -> Result<push_data::Result, DynamicError> {
@@ -394,19 +401,26 @@ where
         for transaction in &input.operations {
             let result = match &transaction.operation {
                 push_data::OperationsInput::SignUp(input) => {
-                    let result = self.sign_up(&mut authenticated_users, input).await?;
+                    let result = self
+                        .sign_up(resource_to_return, &mut authenticated_users, input)
+                        .await?;
                     push_data::OperationsResult::SignUp(result)
                 }
                 push_data::OperationsInput::SignIn(input) => {
                     let result = self
-                        .sign_in(&mut authenticated_users, users_to_resubscribe, input)
+                        .sign_in(
+                            resource_to_return,
+                            &mut authenticated_users,
+                            users_to_resubscribe,
+                            input,
+                        )
                         .await?;
                     push_data::OperationsResult::SignIn(result)
                 }
                 push_data::OperationsInput::CreateCompany(input) => {
                     let result = self
                         .create_company(
-                            resources,
+                            resource_to_broadcast,
                             &mut authenticated_users,
                             users_to_resubscribe,
                             input,
@@ -417,7 +431,7 @@ where
                 push_data::OperationsInput::CreateCompanyBranch(input) => {
                     let result = self
                         .create_company_branch(
-                            resources,
+                            resource_to_broadcast,
                             &mut authenticated_users,
                             users_to_resubscribe,
                             input,
@@ -591,14 +605,16 @@ where
                             WSMessage::Binary(received_data) => {
                                 let input = DE::decode::<messages::FromClient>(&received_data);
 
-                                let mut resources = HashSet::with_capacity(1000);
+                                let mut resource_to_broadcast = Vec::with_capacity(1000);
+                                let mut resource_to_return = Vec::with_capacity(1000);
                                 let mut users_to_resubscribe = HashSet::with_capacity(10);
                                 // TODO : get db client here
 
                                 let result = match input {
                                     Ok(input) => state
                                         .push_data(
-                                            &mut resources,
+                                            &mut resource_to_broadcast,
+                                            &mut resource_to_return,
                                             &mut users_to_resubscribe,
                                             &input,
                                         )
@@ -610,11 +626,28 @@ where
                                     Err(_) => Err(HashimError::InvalidDataFormat),
                                 };
 
-                                if let Err(_) = session
+                                if session
                                     .send_bin(DE::encode(&messages::FromServer::PushData(result)))
                                     .await
+                                    .is_err()
                                 {
                                     break;
+                                }
+
+                                if !resource_to_return.is_empty() {
+                                    if session
+                                        .send_bin(DE::encode(&messages::FromServer::Resources(
+                                            resource_to_return,
+                                        )))
+                                        .await
+                                        .is_err()
+                                    {
+                                        break;
+                                    }
+                                }
+
+                                if !resource_to_broadcast.is_empty() {
+                                    todo!("send to broker");
                                 }
 
                                 if !users_to_resubscribe.is_empty() {
@@ -755,6 +788,7 @@ pub(crate) fn resource_filtering_based_on_subscribe(
 // here contain data
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub enum Resource {
+    Jwt(String),
     CompanyName(String),
     CompanyCurrency(db_types::Currency),
     RoleAtCompany(db_types::Role),
