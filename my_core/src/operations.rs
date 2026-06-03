@@ -136,19 +136,31 @@ impl Operations for sign_up::Input {
         &self,
         state: &cache::State<CH>,
     ) -> Result<Self::Ok, Self::Err> {
+        let (mut is_new_uuid_exist, mut is_user_id_exist) = state
+            .cache
+            .read_sign_up(&self.new_uuid, &self.user_id)
+            .await;
+
+        for (uuid, user) in &state.state_of_pending_txn.user {
+            if user.user_id == self.user_id {
+                is_user_id_exist = true;
+            }
+            if uuid == &self.new_uuid {
+                is_new_uuid_exist = true;
+            }
+        }
+
         let mut err = Self::Err {
             new_uuid: None,
             user_id: None,
             name: None,
         };
 
-        for (uuid, user) in &state.state_of_pending_txn.user {
-            if user.user_id == self.user_id {
-                err.user_id = Some(sign_up::UserIdError::Duplicated);
-            }
-            if uuid == &self.new_uuid {
-                err.new_uuid = Some(RowIdError::Duplicated);
-            }
+        if is_user_id_exist {
+            err.user_id = Some(sign_up::UserIdError::Duplicated);
+        }
+        if is_new_uuid_exist {
+            err.new_uuid = Some(RowIdError::Duplicated);
         }
 
         if err != sign_up::Error::default() {

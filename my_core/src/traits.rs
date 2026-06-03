@@ -189,4 +189,13 @@ pub trait CacheIO: Sized {
 
     async fn write_resource(&self, resource: &Vec<ResourceInfo>);
     async fn get_jwt(&self, user_uuid: &db_types::RowIdType) -> Option<String>;
+
+    async fn read_sign_up(
+        &self,
+        new_uuid: &db_types::RowIdType,
+        user_id: &db_types::RowIdType,
+    ) -> (
+        bool, /* is new_uuid exist */
+        bool, /* is user_id exist */
+    );
 }

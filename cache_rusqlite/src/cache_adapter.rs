@@ -1,5 +1,5 @@
 use crate::prelude::*;
-use rusqlite::{Connection, OptionalExtension};
+use rusqlite::{Connection, OptionalExtension, params};
 
 pub struct S {
     db: Connection,
@@ -113,6 +113,27 @@ impl CacheIO for S {
             .unwrap();
 
         stmt.query_one([user_uuid], |row| row.get(0).optional())
+            .unwrap()
+    }
+
+    async fn read_sign_up(
+        &self,
+        new_uuid: &db_types::RowIdType,
+        user_id: &db_types::RowIdType,
+    ) -> (
+        bool, /* is new_uuid exist */
+        bool, /* is user_id exist */
+    ) {
+        let query = "
+            SELECT
+                EXISTS(SELECT 1 FROM user WHERE rowid = ?1),
+                EXISTS(SELECT 1 FROM user WHERE id = ?2)
+        ";
+
+        self.db
+            .query_one(query, params![new_uuid, user_id], |row| {
+                Ok((row.get(0).unwrap(), row.get(1).unwrap()))
+            })
             .unwrap()
     }
 }
