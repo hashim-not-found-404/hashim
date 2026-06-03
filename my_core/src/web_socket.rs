@@ -8,9 +8,14 @@ enum MessageToNetwork {
     Bytes(Vec<u8>),
 }
 
+pub struct Response {
+    pub is_it_from_server: bool,
+    pub data: push_data::OperationsResult,
+}
+
 pub struct Query<MPSC: MultiProducerSingleConsumer> {
     pub check_from_cache_only: bool,
-    pub sender: MPSC::Sender<Option<push_data::OperationsResult>>,
+    pub sender: MPSC::Sender<Option<Response>>,
     pub data: push_data::OperationsInput,
 }
 
@@ -186,10 +191,8 @@ where
             let mut state = cache::State::<CH>::new::<RN>().await;
             let mut is_online = false;
 
-            let mut pool_of_senders = HashMap::<
-                u64,
-                MPSC::Sender<Option<push_data::OperationsResult>>,
-            >::with_capacity(1000);
+            let mut pool_of_senders =
+                HashMap::<u64, MPSC::Sender<Option<Response>>>::with_capacity(1000);
 
             loop {
                 match receiver_to_cache.recv().await.unwrap() {
@@ -224,7 +227,12 @@ where
 
                                         let sender = pool_of_senders.remove(&txn.txn_number);
                                         if let Some(sender) = sender {
-                                            let _ = sender.send(Some(txn.operation)).await;
+                                            let _ = sender
+                                                .send(Some(Response {
+                                                    is_it_from_server: true,
+                                                    data: txn.operation,
+                                                }))
+                                                .await;
                                             let _ = sender.send(None).await;
                                         }
                                     }
@@ -257,7 +265,12 @@ where
                                 .await
                         };
 
-                        let _ = sender.send(Some(result)).await;
+                        let _ = sender
+                            .send(Some(Response {
+                                is_it_from_server: false,
+                                data: result,
+                            }))
+                            .await;
 
                         let operations = vec![push_data::Txn {
                             txn_number,

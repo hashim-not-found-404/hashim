@@ -120,15 +120,17 @@ impl<
 
             loop {
                 let result = receiver.recv().await.unwrap();
-                let result = match result {
+                let response = match result {
                     Some(result) => result,
                     None => break,
                 };
-                let result = sign_up::Input::unwrap(result);
+                let result = sign_up::Input::unwrap(response.data);
 
                 match result {
                     Ok(business_output) => {
-                        self.is_signed_in.set(true);
+                        if !check_from_cache_only && response.is_it_from_server {
+                            self.is_signed_in.set(true);
+                        }
                     }
                     Err(business_error) => {
                         local_state.user_id_error.set(match business_error.user_id {
@@ -178,15 +180,17 @@ impl<
 
             loop {
                 let result = receiver.recv().await.unwrap();
-                let result = match result {
+                let response = match result {
                     Some(result) => result,
                     None => break,
                 };
-                let result = sign_in::Input::unwrap(result);
+                let result = sign_in::Input::unwrap(response.data);
 
                 match result {
                     Ok(business_output) => {
-                        self.is_signed_in.set(true);
+                        if !check_from_cache_only && response.is_it_from_server {
+                            self.is_signed_in.set(true);
+                        }
                     }
                     Err(business_error) => {
                         local_state.user_id_error.set(match business_error.user_id {

@@ -42,7 +42,6 @@ enum Route {
 
 fn main() {
     dioxus_logger::init(Level::INFO).unwrap();
-    // console_error_panic_hook::set_once();
     dioxus::launch(Initializer);
 }
 
@@ -71,7 +70,6 @@ fn App() -> Element {
         // document::Link { rel: "stylesheet", href: MAIN_CSS }
         Router::<Route> {}
         ErrorStack {}
-        CreateCompany {}
     }
 }
 
@@ -83,6 +81,11 @@ pub fn AuthenticationPage() -> Element {
         is_loading: MySignal::<bool>::default(),
     });
     use_context_provider(|| auth_state);
+
+    let state = consume_context::<StateOfEveryThing>();
+    if state.is_signed_in.read() {
+        navigator().push(Route::Home {});
+    }
 
     rsx! {
         Outlet::<Route> {}
@@ -254,7 +257,9 @@ pub fn ErrorStack() -> Element {
 
 #[component]
 pub fn Home() -> Element {
-    rsx! {}
+    rsx! {
+        CreateCompany {}
+    } // TODO display after sign
 }
 
 #[component]
