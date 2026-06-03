@@ -14,7 +14,7 @@ pub mod m {
 
     impl WebSocketOp for S {
         async fn connect(url: &str) -> Result<Self, DynamicError> {
-            let (ws_stream, _) = connect_async(url).await.log(ln!())?;
+            let (ws_stream, _) = connect_async(url).await.log()?;
             let (write, read) = ws_stream.split();
 
             Ok(Self {
@@ -29,7 +29,7 @@ pub mod m {
                 .unwrap()
                 .send(Message::Binary(data.clone().into()))
                 .await
-                .log(ln!())?;
+                .log()?;
 
             Ok(())
         }
@@ -70,7 +70,7 @@ pub mod m {
 
     impl WebSocketOp for S {
         async fn connect(url: &str) -> Result<Self, DynamicError> {
-            let ws = WebSocket::open(url).log(ln!())?;
+            let ws = WebSocket::open(url).log()?;
 
             // Split into write and read halves
             let (write, read) = ws.split();
@@ -87,7 +87,7 @@ pub mod m {
                 .unwrap()
                 .send(Message::Bytes(data.clone().into()))
                 .await
-                .log(ln!())?;
+                .log()?;
 
             Ok(())
         }

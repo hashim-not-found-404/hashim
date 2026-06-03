@@ -22,7 +22,7 @@ impl DBTransaction for S<'_> {
     }
 
     async fn rollback_transaction(self) -> Result<(), DynamicError> {
-        self.txn.rollback().await.log(ln!())?;
+        self.txn.rollback().await.log()?;
         Ok(())
     }
 
@@ -43,15 +43,15 @@ impl DBTransaction for S<'_> {
                  EXISTS(SELECT 1 FROM accounting_app.user WHERE id = $2) AS user_id_exists
          ";
 
-        let stmt = self.txn.prepare_cached(query).await.log(ln!())?;
+        let stmt = self.txn.prepare_cached(query).await.log()?;
         let row = self
             .txn
             .query_one(&stmt, &[&new_uuid.into_inner(), user_id])
             .await
-            .log(ln!())?;
+            .log()?;
 
-        let uuid_exists: bool = row.try_get("uuid_exists").log(ln!())?;
-        let user_id_exists: bool = row.try_get("user_id_exists").log(ln!())?;
+        let uuid_exists: bool = row.try_get("uuid_exists").log()?;
+        let user_id_exists: bool = row.try_get("user_id_exists").log()?;
 
         Ok((uuid_exists, user_id_exists))
     }
@@ -66,7 +66,7 @@ impl DBTransaction for S<'_> {
         let query =
             "INSERT INTO accounting_app.user (rowid, id, pass, name) VALUES ($1, $2, $3, $4)";
 
-        let stmt = self.txn.prepare_cached(query).await.log(ln!())?;
+        let stmt = self.txn.prepare_cached(query).await.log()?;
 
         self.txn
             .execute(
@@ -79,7 +79,7 @@ impl DBTransaction for S<'_> {
                 ],
             )
             .await
-            .log(ln!())?;
+            .log()?;
 
         Ok(())
     }
@@ -88,10 +88,10 @@ impl DBTransaction for S<'_> {
         todo!();
         // let query =
         //     "SELECT EXISTS(SELECT 1 FROM accounting_app.transaction_number WHERE rowid = $1)";
-        // let stmt = self.txn.prepare_cached(query).await.log(ln!())?;
-        // let row = self.txn.query_one(&stmt, &[&nonce.into_inner()]).await.log(ln!())?;
+        // let stmt = self.txn.prepare_cached(query).await.log()?;
+        // let row = self.txn.query_one(&stmt, &[&nonce.into_inner()]).await.log()?;
 
-        // let exists: bool = row.try_get(0).log(ln!())?;
+        // let exists: bool = row.try_get(0).log()?;
         // Ok(exists)
     }
 
@@ -129,7 +129,7 @@ impl DBTransaction for S<'_> {
         //     ;
         //     ";
 
-        // let stmt = self.txn.prepare_cached(query).await.log(ln!())?;
+        // let stmt = self.txn.prepare_cached(query).await.log()?;
         // let row = self
         //     .txn
         //     .query_one(
@@ -142,33 +142,33 @@ impl DBTransaction for S<'_> {
         //             &user_role.as_str(),
         //         ],
         //     )
-        //     .await.log(ln!())?;
+        //     .await.log()?;
 
-        // let company_rowid: Uuid = row.try_get(0).log(ln!())?;
-        // let company_updated_at: SystemTime = row.try_get(1).log(ln!())?;
-        // let access_control_for_company_rowid: Uuid = row.try_get(2).log(ln!())?;
-        // let access_control_for_company_updated_at: SystemTime = row.try_get(3).log(ln!())?;
+        // let company_rowid: Uuid = row.try_get(0).log()?;
+        // let company_updated_at: SystemTime = row.try_get(1).log()?;
+        // let access_control_for_company_rowid: Uuid = row.try_get(2).log()?;
+        // let access_control_for_company_updated_at: SystemTime = row.try_get(3).log()?;
 
         // resources.push(ResourceInfo {
-        //     version: company_updated_at.duration_since(UNIX_EPOCH).log(ln!())?.as_micros() as u64,
+        //     version: company_updated_at.duration_since(UNIX_EPOCH).log()?.as_micros() as u64,
         //     uuid: company_rowid.to_string(),
         //     resource: server_methods::Resource::CompanyName(company_name.clone()),
         // });
         // resources.push(ResourceInfo {
-        //     version: company_updated_at.duration_since(UNIX_EPOCH).log(ln!())?.as_micros() as u64,
+        //     version: company_updated_at.duration_since(UNIX_EPOCH).log()?.as_micros() as u64,
         //     uuid: company_rowid.to_string(),
         //     resource: server_methods::Resource::CompanyCurrency(currency.clone()),
         // });
         // resources.push(ResourceInfo {
         //     version: access_control_for_company_updated_at
-        //         .duration_since(UNIX_EPOCH).log(ln!())?
+        //         .duration_since(UNIX_EPOCH).log()?
         //         .as_micros() as u64,
         //     uuid: access_control_for_company_rowid.to_string(),
         //     resource: server_methods::Resource::RoleAtCompany(user_role.clone()),
         // });
         // resources.push(ResourceInfo {
         //     version: access_control_for_company_updated_at
-        //         .duration_since(UNIX_EPOCH).log(ln!())?
+        //         .duration_since(UNIX_EPOCH).log()?
         //         .as_micros() as u64,
         //     uuid: access_control_for_company_rowid.to_string(),
         //     resource: server_methods::Resource::UserThatHaveRole(

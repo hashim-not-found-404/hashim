@@ -25,7 +25,7 @@ impl Database for S {
 
     async fn get_client(&self) -> Result<Self::Client, DynamicError> {
         Ok(db_client::S {
-            client: self.pool.get().await.log(ln!())?,
+            client: self.pool.get().await.log()?,
         })
     }
 }

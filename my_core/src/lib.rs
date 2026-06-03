@@ -14,7 +14,6 @@ pub mod prelude {
     #[cfg(target_arch = "wasm32")]
     pub use dioxus_logger;
 
-    pub use crate::ln;
     pub use crate::mbg; // this macro for dev only
     pub use crate::{
         front_end_model_view::Signal, request_response::*, server_methods::WSServer, traits::*, *,
@@ -56,27 +55,25 @@ macro_rules! mbg {
     };
 }
 
-pub struct FileAndLine(pub &'static str);
 pub trait LogError {
-    fn log(self, line: FileAndLine) -> Self;
+    #[must_use = "this `Result` may be an `Err` variant, which should be handled"]
+    fn log(self) -> Self;
 }
 
 impl<T, E: core::fmt::Debug> LogError for Result<T, E> {
     #[inline(always)]
-    fn log(self, line: FileAndLine) -> Self {
+    #[track_caller]
+    fn log(self) -> Self {
         if let Err(err) = &self {
+            let location = std::panic::Location::caller();
             eprintln!(
-                "called `Result::log()` on an `Err` value {:?}\nat {}",
-                err, line.0
+                "called `Result::log()` on an `Err` value {:?}\nat {}:{}:{}",
+                err,
+                location.file(),
+                location.line(),
+                location.column()
             );
         }
         self
     }
-}
-
-#[macro_export]
-macro_rules! ln {
-    () => {
-        FileAndLine(concat!(file!(), ":", line!()))
-    };
 }
