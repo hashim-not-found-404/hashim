@@ -216,7 +216,7 @@ impl<
         });
     }
 
-    pub async fn create_company(
+    pub fn create_company(
         self: Arc<Self>,
         check_from_cache_only: bool,
         local_state: Arc<CreateCompanyState<SigString, SigCurrency>>,
@@ -242,7 +242,7 @@ impl<
         });
     }
 
-    pub async fn create_company_branch(
+    pub fn create_company_branch(
         self: Arc<Self>,
         check_from_cache_only: bool,
         local_state: Arc<CreateCompanyBranchState<SigString, SigCurrency, SigLocation>>,
