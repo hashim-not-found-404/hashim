@@ -631,10 +631,7 @@ where
                                             &input,
                                         )
                                         .await
-                                        .map_err(|e| {
-                                            dbg!(e);
-                                            HashimError::InternalServerError
-                                        }),
+                                        .map_err(|_| HashimError::InternalServerError),
                                     Err(_) => Err(HashimError::InvalidDataFormat),
                                 };
 

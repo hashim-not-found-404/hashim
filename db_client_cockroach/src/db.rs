@@ -18,16 +18,14 @@ impl Database for S {
         cfg.user = Some("root".to_string());
         cfg.dbname = Some("accounting_app".to_string());
 
-        let pool = cfg
-            .create_pool(Some(Runtime::Tokio1), NoTls)
-            .expect("Failed to create database pool");
+        let pool = cfg.create_pool(Some(Runtime::Tokio1), NoTls).unwrap();
 
         S { pool: pool }
     }
 
     async fn get_client(&self) -> Result<Self::Client, DynamicError> {
         Ok(db_client::S {
-            client: self.pool.get().await?,
+            client: self.pool.get().await.log(ln!())?,
         })
     }
 }

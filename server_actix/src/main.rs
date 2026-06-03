@@ -23,13 +23,13 @@ mod web_socket_server {
 
     impl WSServer for S {
         async fn send_bin(&mut self, bin: Vec<u8>) -> Result<(), DynamicError> {
-            self.session.binary(bin).await?;
+            self.session.binary(bin).await.log(ln!())?;
             Ok(())
         }
 
         async fn receive(&mut self) -> Result<server_methods::WSMessage, DynamicError> {
             match self.stream.next().await {
-                Some(msg) => match msg? {
+                Some(msg) => match msg.log(ln!())? {
                     AggregatedMessage::Binary(data) => {
                         return Ok(server_methods::WSMessage::Binary(data.to_vec()));
                     }
@@ -53,7 +53,7 @@ mod web_socket_server {
         }
 
         async fn close(self) -> Result<(), DynamicError> {
-            self.session.clone().close(None).await?;
+            self.session.clone().close(None).await.log(ln!())?;
             Ok(())
         }
     }

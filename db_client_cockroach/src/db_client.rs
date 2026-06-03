@@ -16,7 +16,7 @@ impl DBClient for S {
 
     async fn begin_transaction(&mut self) -> Result<Self::Txn<'_>, DynamicError> {
         Ok(db_transaction::S {
-            txn: self.client.transaction().await?,
+            txn: self.client.transaction().await.log(ln!())?,
         })
     }
 
@@ -25,13 +25,13 @@ impl DBClient for S {
         user_id: &String,
     ) -> Result<Option<(Self::RowId, Self::HashedPassword)>, DynamicError> {
         let query = "SELECT rowid,pass FROM accounting_app.user WHERE id = $1 LIMIT 1;";
-        let stmt = self.client.prepare_cached(query).await?;
-        let row = self.client.query_opt(&stmt, &[user_id]).await?;
+        let stmt = self.client.prepare_cached(query).await.log(ln!())?;
+        let row = self.client.query_opt(&stmt, &[user_id]).await.log(ln!())?;
 
         match row {
             Some(row) => {
-                let row_id = row.try_get::<_, Uuid>(0)?;
-                let hashed_password = row.try_get::<_, String>(1)?;
+                let row_id = row.try_get::<_, Uuid>(0).log(ln!())?;
+                let hashed_password = row.try_get::<_, String>(1).log(ln!())?;
                 return Ok(Some((row_id.into(), hashed_password.into())));
             }
             None => {
@@ -64,7 +64,7 @@ impl DBClient for S {
             WHERE user_ = $1
         "#;
 
-        let stmt = self.client.prepare_cached(query).await?;
+        let stmt = self.client.prepare_cached(query).await.log(ln!())?;
 
         let mut result = server_methods::AllRoles::<Self::RowId> {
             companies: HashMap::new(),
@@ -75,16 +75,20 @@ impl DBClient for S {
             // Convert RowId to the actual UUID type expected by the database
             let user_id_param = user_uuid.clone().into_inner();
 
-            let rows = self.client.query(&stmt, &[&user_id_param]).await?;
+            let rows = self
+                .client
+                .query(&stmt, &[&user_id_param])
+                .await
+                .log(ln!())?;
 
             for row in rows {
-                let entity_type: String = row.try_get("type")?;
-                let data_group: Uuid = row.try_get("data_group")?;
-                let role_str: String = row.try_get("role")?;
-                let user_id: Uuid = row.try_get("user_")?;
+                let entity_type: String = row.try_get("type").log(ln!())?;
+                let data_group: Uuid = row.try_get("data_group").log(ln!())?;
+                let role_str: String = row.try_get("role").log(ln!())?;
+                let user_id: Uuid = row.try_get("user_").log(ln!())?;
 
                 // Parse role from string
-                let role = db_types::Role::from_str(&role_str)?;
+                let role = db_types::Role::from_str(&role_str).log(ln!())?;
 
                 // Convert Uuid to your RowId type
                 let data_group_id = Self::RowId::from(data_group);
@@ -129,7 +133,8 @@ impl DBClient for S {
                  RETURNING false",
                 &[&nonce.into_inner()],
             )
-            .await?;
+            .await
+            .log(ln!())?;
 
         let inserted: Option<Uuid> = row.try_get(0).ok();
         Ok(inserted.is_none()) // true if already existed

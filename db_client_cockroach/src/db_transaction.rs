@@ -1,5 +1,4 @@
 use crate::prelude::*;
-use std::collections::HashSet;
 use tokio_postgres::error::SqlState;
 
 pub struct S<'a> {
@@ -14,16 +13,16 @@ impl DBTransaction for S<'_> {
         match self.txn.commit().await {
             Ok(_) => return Ok(Ok(())),
             Err(e) => {
-                if get_sql_state(e) == SqlState::T_R_SERIALIZATION_FAILURE {
+                if get_sql_state(&e) == SqlState::T_R_SERIALIZATION_FAILURE {
                     return Ok(Err(domain_errors::AtCommit::DataIsChanged));
                 }
-                unreachable!()
+                return Err(e.into());
             }
         }
     }
 
     async fn rollback_transaction(self) -> Result<(), DynamicError> {
-        self.txn.rollback().await?;
+        self.txn.rollback().await.log(ln!())?;
         Ok(())
     }
 
@@ -38,21 +37,21 @@ impl DBTransaction for S<'_> {
         ),
         DynamicError,
     > {
-        // Query for both existence checks in one go
         let query = "
              SELECT
                  EXISTS(SELECT 1 FROM accounting_app.user WHERE rowid = $1) AS uuid_exists,
                  EXISTS(SELECT 1 FROM accounting_app.user WHERE id = $2) AS user_id_exists
          ";
 
-        let stmt = self.txn.prepare_cached(query).await?;
+        let stmt = self.txn.prepare_cached(query).await.log(ln!())?;
         let row = self
             .txn
             .query_one(&stmt, &[&new_uuid.into_inner(), user_id])
-            .await?;
+            .await
+            .log(ln!())?;
 
-        let uuid_exists: bool = row.try_get("uuid_exists")?;
-        let user_id_exists: bool = row.try_get("user_id_exists")?;
+        let uuid_exists: bool = row.try_get("uuid_exists").log(ln!())?;
+        let user_id_exists: bool = row.try_get("user_id_exists").log(ln!())?;
 
         Ok((uuid_exists, user_id_exists))
     }
@@ -67,7 +66,7 @@ impl DBTransaction for S<'_> {
         let query =
             "INSERT INTO accounting_app.user (rowid, id, pass, name) VALUES ($1, $2, $3, $4)";
 
-        let stmt = self.txn.prepare_cached(query).await?;
+        let stmt = self.txn.prepare_cached(query).await.log(ln!())?;
 
         self.txn
             .execute(
@@ -79,7 +78,8 @@ impl DBTransaction for S<'_> {
                     user_name,
                 ],
             )
-            .await?;
+            .await
+            .log(ln!())?;
 
         Ok(())
     }
@@ -88,10 +88,10 @@ impl DBTransaction for S<'_> {
         todo!();
         // let query =
         //     "SELECT EXISTS(SELECT 1 FROM accounting_app.transaction_number WHERE rowid = $1)";
-        // let stmt = self.txn.prepare_cached(query).await?;
-        // let row = self.txn.query_one(&stmt, &[&nonce.into_inner()]).await?;
+        // let stmt = self.txn.prepare_cached(query).await.log(ln!())?;
+        // let row = self.txn.query_one(&stmt, &[&nonce.into_inner()]).await.log(ln!())?;
 
-        // let exists: bool = row.try_get(0)?;
+        // let exists: bool = row.try_get(0).log(ln!())?;
         // Ok(exists)
     }
 
@@ -129,7 +129,7 @@ impl DBTransaction for S<'_> {
         //     ;
         //     ";
 
-        // let stmt = self.txn.prepare_cached(query).await?;
+        // let stmt = self.txn.prepare_cached(query).await.log(ln!())?;
         // let row = self
         //     .txn
         //     .query_one(
@@ -142,33 +142,33 @@ impl DBTransaction for S<'_> {
         //             &user_role.as_str(),
         //         ],
         //     )
-        //     .await?;
+        //     .await.log(ln!())?;
 
-        // let company_rowid: Uuid = row.try_get(0)?;
-        // let company_updated_at: SystemTime = row.try_get(1)?;
-        // let access_control_for_company_rowid: Uuid = row.try_get(2)?;
-        // let access_control_for_company_updated_at: SystemTime = row.try_get(3)?;
+        // let company_rowid: Uuid = row.try_get(0).log(ln!())?;
+        // let company_updated_at: SystemTime = row.try_get(1).log(ln!())?;
+        // let access_control_for_company_rowid: Uuid = row.try_get(2).log(ln!())?;
+        // let access_control_for_company_updated_at: SystemTime = row.try_get(3).log(ln!())?;
 
         // resources.push(ResourceInfo {
-        //     version: company_updated_at.duration_since(UNIX_EPOCH)?.as_micros() as u64,
+        //     version: company_updated_at.duration_since(UNIX_EPOCH).log(ln!())?.as_micros() as u64,
         //     uuid: company_rowid.to_string(),
         //     resource: server_methods::Resource::CompanyName(company_name.clone()),
         // });
         // resources.push(ResourceInfo {
-        //     version: company_updated_at.duration_since(UNIX_EPOCH)?.as_micros() as u64,
+        //     version: company_updated_at.duration_since(UNIX_EPOCH).log(ln!())?.as_micros() as u64,
         //     uuid: company_rowid.to_string(),
         //     resource: server_methods::Resource::CompanyCurrency(currency.clone()),
         // });
         // resources.push(ResourceInfo {
         //     version: access_control_for_company_updated_at
-        //         .duration_since(UNIX_EPOCH)?
+        //         .duration_since(UNIX_EPOCH).log(ln!())?
         //         .as_micros() as u64,
         //     uuid: access_control_for_company_rowid.to_string(),
         //     resource: server_methods::Resource::RoleAtCompany(user_role.clone()),
         // });
         // resources.push(ResourceInfo {
         //     version: access_control_for_company_updated_at
-        //         .duration_since(UNIX_EPOCH)?
+        //         .duration_since(UNIX_EPOCH).log(ln!())?
         //         .as_micros() as u64,
         //     uuid: access_control_for_company_rowid.to_string(),
         //     resource: server_methods::Resource::UserThatHaveRole(
@@ -210,6 +210,6 @@ impl DBTransaction for S<'_> {
     }
 }
 
-fn get_sql_state(error: tokio_postgres::Error) -> SqlState {
+fn get_sql_state(error: &tokio_postgres::Error) -> SqlState {
     return error.as_db_error().unwrap().code().clone();
 }
