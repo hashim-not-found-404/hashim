@@ -32,13 +32,12 @@ const MAIN_CSS: Asset = asset!("/assets/main.css");
 enum Route {
     #[layout(AuthenticationPage)]
     #[route("/")]
-    // #[route("/sign_in")]
     SignIn {},
     #[route("/sign_up")]
     SignUp {},
-    // #[end_layout]
-    // #[route("/home")]
-    // Home {},
+    #[end_layout]
+    #[route("/home")]
+    Home {},
 }
 
 fn main() {
@@ -251,6 +250,11 @@ pub fn ErrorStack() -> Element {
             }
         }
     }
+}
+
+#[component]
+pub fn Home() -> Element {
+    rsx! {}
 }
 
 #[component]
