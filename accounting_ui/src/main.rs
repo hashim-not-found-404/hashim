@@ -1,5 +1,5 @@
 mod backend;
-use crate::backend::MySignal;
+use crate::backend::{MyAllSignals, MySignal};
 use adapters::prelude::*;
 use cache_rusqlite::prelude::*;
 use dioxus::prelude::*;
@@ -16,11 +16,7 @@ type StateOfEveryThing = Arc<
         cache_adapter::S,
         actors::m::S,
         row_id::m::S,
-        MySignal<String>,
-        MySignal<bool>,
-        MySignal<String>,
-        MySignal<db_types::Currency>,
-        MySignal<db_types::Location>,
+        MyAllSignals,
     >,
 >;
 
@@ -83,10 +79,7 @@ pub fn Dialog(operation_name: &'static str, show_dialog: MySignal<bool>) -> Elem
 #[component]
 pub fn AuthenticationPage() -> Element {
     let state = consume_context::<StateOfEveryThing>();
-    let auth_state = Arc::new(front_end_model_view::AuthFeatureState::<
-        MySignal<String>,
-        MySignal<bool>,
-    >::default());
+    let auth_state = Arc::new(front_end_model_view::AuthFeatureState::<MyAllSignals>::default());
     use_context_provider(|| auth_state);
 
     if state.is_signed_in.read() {
@@ -101,10 +94,8 @@ pub fn AuthenticationPage() -> Element {
 #[component]
 pub fn SignIn() -> Element {
     let state = consume_context::<StateOfEveryThing>();
-    let auth_state = consume_context::<
-        Arc<front_end_model_view::AuthFeatureState<MySignal<String>, MySignal<bool>>>,
-    >();
-    let local_state = Arc::new(front_end_model_view::SignInState::<MySignal<String>>::default());
+    let auth_state = consume_context::<Arc<front_end_model_view::AuthFeatureState<MyAllSignals>>>();
+    let local_state = Arc::new(front_end_model_view::SignInState::<MyAllSignals>::default());
 
     let sign_up = move |_| {
         navigator().push(Route::SignUp {});
@@ -146,13 +137,8 @@ pub fn SignIn() -> Element {
 #[component]
 pub fn SignUp() -> Element {
     let state = consume_context::<StateOfEveryThing>();
-    let auth_state = consume_context::<
-        Arc<front_end_model_view::AuthFeatureState<MySignal<String>, MySignal<bool>>>,
-    >();
-    let local_state = Arc::new(front_end_model_view::SignUpState::<
-        MySignal<bool>,
-        MySignal<String>,
-    >::default());
+    let auth_state = consume_context::<Arc<front_end_model_view::AuthFeatureState<MyAllSignals>>>();
+    let local_state = Arc::new(front_end_model_view::SignUpState::<MyAllSignals>::default());
 
     let sign_in = move |_| {
         navigator().push(Route::SignIn {});
@@ -264,10 +250,7 @@ pub fn Home() -> Element {
 #[component]
 pub fn CreateCompany() -> Element {
     let state = consume_context::<StateOfEveryThing>();
-    let local_state = Arc::new(front_end_model_view::CreateCompanyState::<
-        MySignal<String>,
-        MySignal<db_types::Currency>,
-    >::default());
+    let local_state = Arc::new(front_end_model_view::CreateCompanyState::<MyAllSignals>::default());
 
     let state1 = state.clone();
     let local_state1 = local_state.clone();
@@ -300,11 +283,8 @@ pub fn CreateCompany() -> Element {
 #[component]
 pub fn CreateCompanyBranch() -> Element {
     let state = consume_context::<StateOfEveryThing>();
-    let local_state = Arc::new(front_end_model_view::CreateCompanyBranchState::<
-        MySignal<String>,
-        MySignal<db_types::Currency>,
-        MySignal<db_types::Location>,
-    >::default());
+    let local_state =
+        Arc::new(front_end_model_view::CreateCompanyBranchState::<MyAllSignals>::default());
 
     let state1 = state.clone();
     let local_state1 = local_state.clone();

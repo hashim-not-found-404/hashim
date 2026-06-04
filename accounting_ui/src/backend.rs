@@ -1,5 +1,5 @@
 use dioxus::{core::ReactiveContext, prelude::*};
-use my_core::prelude::Signal;
+use my_core::prelude::{AllSignals, Signal, *};
 use std::{
     collections::HashSet,
     sync::{Arc, Mutex, MutexGuard},
@@ -106,4 +106,14 @@ impl Signal<String> for MySignalForLists {
     fn set(&self, v: String) {
         self.0.write().push(v);
     }
+}
+
+#[derive(Default)]
+pub struct MyAllSignals;
+impl AllSignals for MyAllSignals {
+    type SigString = MySignal<String>;
+    type SigBool = MySignal<bool>;
+    type SigExternalError = MySignal<String>;
+    type SigCurrency = MySignal<db_types::Currency>;
+    type SigLocation = MySignal<db_types::Location>;
 }
