@@ -42,30 +42,14 @@ enum Route {
 
 fn main() {
     dioxus_logger::init(Level::INFO).unwrap();
-    dioxus::launch(Initializer);
-}
-
-#[component]
-fn Initializer() -> Element {
-    let init_state = use_resource(|| async {
-        let state: StateOfEveryThing = front_end_model_view::State::new().await;
-        use_context_provider(|| state);
-    });
-
-    match (init_state.value())() {
-        Some(_) => {
-            rsx! {
-                App {}
-            }
-        }
-        None => rsx! {
-            div { "Initializing application..." }
-        },
-    }
+    dioxus::launch(App);
 }
 
 #[component]
 fn App() -> Element {
+    let state: StateOfEveryThing = front_end_model_view::State::new();
+    use_context_provider(|| state);
+
     rsx! {
         // document::Link { rel: "stylesheet", href: MAIN_CSS }
         Router::<Route> {}

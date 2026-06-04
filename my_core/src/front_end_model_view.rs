@@ -61,19 +61,20 @@ impl<
         SigLocation,
     >
 {
-    pub async fn new() -> Arc<Self> {
+    pub fn new() -> Arc<Self> {
         let (sender_to_error, receiver_to_error) = MPSC::channel();
-
-        let web_socket =
-            web_socket::MyWAMP::<WS, DE, RN, RT, CH, Id, MPSC>::new(sender_to_error.clone());
-        let url = format!("ws://{}/ws", ADDRESS);
-        web_socket.connect_to_url(&url).await;
 
         let state = Arc::new(Self {
             _ph: PhantomData,
-            routs: web_socket,
+            routs: web_socket::MyWAMP::<WS, DE, RN, RT, CH, Id, MPSC>::new(sender_to_error.clone()),
             is_signed_in: SigBool::default(),
             external_errors: SigExternalError::default(),
+        });
+
+        let state1 = state.clone();
+        RT::spawn_local(async move {
+            let url = format!("ws://{}/ws", ADDRESS);
+            state1.routs.connect_to_url(&url).await;
         });
 
         state.clone().listen_to_error(receiver_to_error);
