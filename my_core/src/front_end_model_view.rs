@@ -323,6 +323,7 @@ impl<
     }
 }
 
+#[derive(Default)]
 pub struct SignInState<SigString>
 where
     SigString: Signal<T = String>,
@@ -331,6 +332,7 @@ where
     pub user_password_error: SigString,
 }
 
+#[derive(Default)]
 pub struct SignUpState<SigBool, SigString>
 where
     SigBool: Signal<T = bool>,
@@ -342,6 +344,7 @@ where
     pub user_name_error: SigString,
 }
 
+#[derive(Default)]
 pub struct AuthFeatureState<SigString, SigBool>
 where
     SigString: Signal<T = String>,
@@ -352,6 +355,7 @@ where
     pub is_loading: SigBool,
 }
 
+#[derive(Default)]
 pub struct CreateCompanyState<SigString, SigCurrency>
 where
     SigString: Signal<T = String>,
@@ -361,6 +365,7 @@ where
     pub currency: SigCurrency,
 }
 
+#[derive(Default)]
 pub struct CreateCompanyBranchState<SigString, SigCurrency, SigLocation>
 where
     SigString: Signal<T = String>,
