@@ -148,7 +148,7 @@ pub fn SignIn() -> Element {
             label {
                 {local_state.user_id_error.read()}
             }
-            PasswordInput{ }
+            PasswordInput{ password: auth_state.user_password.clone() }
             label {
                 {local_state.user_password_error.read()}
             }
@@ -220,7 +220,7 @@ pub fn SignUp() -> Element {
             label {
                 {local_state.user_id_error.read()}
             }
-            PasswordInput{ }
+            PasswordInput{ password: auth_state.user_password.clone() }
             button {
                 onclick: move |_| state.clone().sign_up(true,local_state.clone(),auth_state.clone()),
                 "Sign Up"
@@ -234,11 +234,7 @@ pub fn SignUp() -> Element {
 }
 
 #[component]
-pub fn PasswordInput() -> Element {
-    let auth_state = consume_context::<
-        Arc<front_end_model_view::AuthFeatureState<MySignal<String>, MySignal<bool>>>,
-    >();
-
+pub fn PasswordInput(password: MySignal<String>) -> Element {
     let mut is_password_visible = use_signal(|| false);
 
     let (input_type, icon_type) = match is_password_visible.read().clone() {
@@ -246,8 +242,7 @@ pub fn PasswordInput() -> Element {
         false => ("password", ICONS_HIDE),
     };
 
-    let password = auth_state.user_password.clone();
-    let password1 = auth_state.user_password.clone();
+    let password1 = password.clone();
     rsx! {
         div {
             input {
