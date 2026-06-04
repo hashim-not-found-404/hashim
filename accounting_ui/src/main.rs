@@ -83,7 +83,10 @@ pub fn Dialog(operation_name: &'static str, show_dialog: MySignal<bool>) -> Elem
 #[component]
 pub fn AuthenticationPage() -> Element {
     let state = consume_context::<StateOfEveryThing>();
-    let auth_state = Arc::new(front_end_model_view::AuthFeatureState::default());
+    let auth_state = Arc::new(front_end_model_view::AuthFeatureState::<
+        MySignal<String>,
+        MySignal<bool>,
+    >::default());
     use_context_provider(|| auth_state);
 
     if state.is_signed_in.read() {
@@ -101,7 +104,7 @@ pub fn SignIn() -> Element {
     let auth_state = consume_context::<
         Arc<front_end_model_view::AuthFeatureState<MySignal<String>, MySignal<bool>>>,
     >();
-    let local_state = Arc::new(front_end_model_view::SignInState::default());
+    let local_state = Arc::new(front_end_model_view::SignInState::<MySignal<String>>::default());
 
     let sign_up = move |_| {
         navigator().push(Route::SignUp {});
@@ -146,7 +149,10 @@ pub fn SignUp() -> Element {
     let auth_state = consume_context::<
         Arc<front_end_model_view::AuthFeatureState<MySignal<String>, MySignal<bool>>>,
     >();
-    let local_state = Arc::new(front_end_model_view::SignUpState::default());
+    let local_state = Arc::new(front_end_model_view::SignUpState::<
+        MySignal<bool>,
+        MySignal<String>,
+    >::default());
 
     let sign_in = move |_| {
         navigator().push(Route::SignIn {});
@@ -258,7 +264,10 @@ pub fn Home() -> Element {
 #[component]
 pub fn CreateCompany() -> Element {
     let state = consume_context::<StateOfEveryThing>();
-    let local_state = Arc::new(front_end_model_view::CreateCompanyState::default());
+    let local_state = Arc::new(front_end_model_view::CreateCompanyState::<
+        MySignal<String>,
+        MySignal<db_types::Currency>,
+    >::default());
 
     let state1 = state.clone();
     let local_state1 = local_state.clone();
@@ -291,7 +300,11 @@ pub fn CreateCompany() -> Element {
 #[component]
 pub fn CreateCompanyBranch() -> Element {
     let state = consume_context::<StateOfEveryThing>();
-    let local_state = Arc::new(front_end_model_view::CreateCompanyBranchState::default());
+    let local_state = Arc::new(front_end_model_view::CreateCompanyBranchState::<
+        MySignal<String>,
+        MySignal<db_types::Currency>,
+        MySignal<db_types::Location>,
+    >::default());
 
     let state1 = state.clone();
     let local_state1 = local_state.clone();
@@ -303,7 +316,7 @@ pub fn CreateCompanyBranch() -> Element {
                 placeholder: "Branch Name",
                 oninput: move |event| {
                     local_state1.branch_name.set(event.value());
-                    state1.clone().create_company_branch(false,local_state.clone());
+                    state1.clone().create_company_branch(false,local_state1.clone());
                 },
                 value: local_state.branch_name.read(),
             }
@@ -320,3 +333,12 @@ pub fn CreateCompanyBranch() -> Element {
         }
     }
 }
+
+// #[derive(Clone, Copy)]
+// struct Ar<T>(Arc<T>);
+
+// impl<T> Ar<T> {
+//     fn new(data: T) -> Self {
+//         Self(Arc::new(data))
+//     }
+// }

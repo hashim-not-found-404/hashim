@@ -2,7 +2,7 @@ use crate::prelude::*;
 
 pub type RowIdType = String;
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone, Default)]
 pub struct Location {
     latitude: f64,
     longitude: f64,
