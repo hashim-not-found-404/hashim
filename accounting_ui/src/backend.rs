@@ -64,9 +64,8 @@ impl<T: 'static + Clone + Default> Default for MySignal<T> {
     }
 }
 
-impl<T: 'static + Clone> Signal for MySignal<T> {
-    type T = T;
-    fn read(&self) -> Self::T {
+impl<T: 'static + Clone> Signal<T> for MySignal<T> {
+    fn read(&self) -> T {
         // Subscribe the context observing the signal (if any) to updates of its value.
         if let Some(reactive_context) = ReactiveContext::current() {
             reactive_context.subscribe(self.subscribers.clone());
@@ -75,7 +74,7 @@ impl<T: 'static + Clone> Signal for MySignal<T> {
         self.value.lock().unwrap().clone()
     }
 
-    fn set(&self, value: Self::T) {
+    fn set(&self, value: T) {
         // Update the state
         *self.value.lock().unwrap() = value;
         // Trigger a re-render of the components that observed the signal's previous value
@@ -100,12 +99,11 @@ impl Default for MySignalForLists {
     }
 }
 
-impl Signal for MySignalForLists {
-    type T = String;
-    fn read(&self) -> Self::T {
+impl Signal<String> for MySignalForLists {
+    fn read(&self) -> String {
         self.0.read().last().unwrap_or(&String::default()).clone()
     }
-    fn set(&self, v: Self::T) {
+    fn set(&self, v: String) {
         self.0.write().push(v);
     }
 }

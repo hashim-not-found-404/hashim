@@ -1,9 +1,8 @@
 use crate::prelude::*;
 
-pub trait Signal {
-    type T;
-    fn read(&self) -> Self::T;
-    fn set(&self, v: Self::T);
+pub trait Signal<T> {
+    fn read(&self) -> T;
+    fn set(&self, v: T);
 }
 
 pub struct State<
@@ -14,11 +13,11 @@ pub struct State<
     CH: CacheIO + 'static,
     MPSC: MultiProducerSingleConsumer + 'static,
     Id: RowId + 'static,
-    SigString: Signal<T = String> + 'static,
-    SigBool: Signal<T = bool> + 'static,
-    SigExternalError: Signal<T = String> + 'static,
-    SigCurrency: Signal<T = db_types::Currency> + 'static,
-    SigLocation: Signal<T = db_types::Location> + 'static,
+    SigString: Signal<String> + 'static,
+    SigBool: Signal<bool> + 'static,
+    SigExternalError: Signal<String> + 'static,
+    SigCurrency: Signal<db_types::Currency> + 'static,
+    SigLocation: Signal<db_types::Location> + 'static,
 > {
     // here for the app logic
     _ph: PhantomData<(Id, RN, SigString, SigCurrency, SigLocation)>,
@@ -40,11 +39,11 @@ impl<
     MPSC: MultiProducerSingleConsumer + 'static,
     // signals
     Id: RowId + 'static,
-    SigString: Signal<T = String>,
-    SigBool: Signal<T = bool> + Default,
-    SigExternalError: Signal<T = String> + Default,
-    SigCurrency: Signal<T = db_types::Currency>,
-    SigLocation: Signal<T = db_types::Location>,
+    SigString: Signal<String>,
+    SigBool: Signal<bool> + Default,
+    SigExternalError: Signal<String> + Default,
+    SigCurrency: Signal<db_types::Currency>,
+    SigLocation: Signal<db_types::Location>,
 >
     State<
         RN,
@@ -326,7 +325,7 @@ impl<
 #[derive(Default)]
 pub struct SignInState<SigString>
 where
-    SigString: Signal<T = String>,
+    SigString: Signal<String>,
 {
     pub user_id_error: SigString,
     pub user_password_error: SigString,
@@ -335,8 +334,8 @@ where
 #[derive(Default)]
 pub struct SignUpState<SigBool, SigString>
 where
-    SigBool: Signal<T = bool>,
-    SigString: Signal<T = String>,
+    SigBool: Signal<bool>,
+    SigString: Signal<String>,
 {
     pub show_dialog: SigBool,
     pub user_name: SigString,
@@ -347,8 +346,8 @@ where
 #[derive(Default)]
 pub struct AuthFeatureState<SigString, SigBool>
 where
-    SigString: Signal<T = String>,
-    SigBool: Signal<T = bool>,
+    SigString: Signal<String>,
+    SigBool: Signal<bool>,
 {
     pub user_id: SigString,
     pub user_password: SigString,
@@ -358,8 +357,8 @@ where
 #[derive(Default)]
 pub struct CreateCompanyState<SigString, SigCurrency>
 where
-    SigString: Signal<T = String>,
-    SigCurrency: Signal<T = db_types::Currency>,
+    SigString: Signal<String>,
+    SigCurrency: Signal<db_types::Currency>,
 {
     pub company_name: SigString,
     pub currency: SigCurrency,
@@ -368,9 +367,9 @@ where
 #[derive(Default)]
 pub struct CreateCompanyBranchState<SigString, SigCurrency, SigLocation>
 where
-    SigString: Signal<T = String>,
-    SigCurrency: Signal<T = db_types::Currency>,
-    SigLocation: Signal<T = db_types::Location>,
+    SigString: Signal<String>,
+    SigCurrency: Signal<db_types::Currency>,
+    SigLocation: Signal<db_types::Location>,
 {
     pub company_belong: SigString,
     pub currency: SigCurrency,
