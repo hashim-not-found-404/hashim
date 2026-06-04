@@ -21,16 +21,16 @@ pub struct State<
     CH: CacheIO + 'static,
     MPSC: MultiProducerSingleConsumer + 'static,
     Id: RowId + 'static,
-    MySig: AllSignals + 'static,
+    AllSigs: AllSignals + 'static,
 > {
     // here for the app logic
-    _ph: PhantomData<(Id, RN, MySig)>,
+    _ph: PhantomData<(Id, RN, AllSigs)>,
     routs: web_socket::MyWAMP<WS, DE, RN, RT, CH, Id, MPSC>,
 
     // here every field is to display
     // here is global state
-    pub is_signed_in: MySig::SigBool,
-    pub external_errors: MySig::SigExternalError,
+    pub is_signed_in: AllSigs::SigBool,
+    pub external_errors: AllSigs::SigExternalError,
 }
 
 impl<
@@ -42,8 +42,8 @@ impl<
     MPSC: MultiProducerSingleConsumer + 'static,
     Id: RowId + 'static,
     // signals
-    MySig: AllSignals,
-> State<RN, WS, DE, RT, CH, MPSC, Id, MySig>
+    AllSigs: AllSignals,
+> State<RN, WS, DE, RT, CH, MPSC, Id, AllSigs>
 {
     pub fn new() -> Arc<Self> {
         let (sender_to_error, receiver_to_error) = MPSC::channel();
@@ -51,8 +51,8 @@ impl<
         let state = Arc::new(Self {
             _ph: PhantomData,
             routs: web_socket::MyWAMP::<WS, DE, RN, RT, CH, Id, MPSC>::new(sender_to_error.clone()),
-            is_signed_in: MySig::SigBool::default(),
-            external_errors: MySig::SigExternalError::default(),
+            is_signed_in: AllSigs::SigBool::default(),
+            external_errors: AllSigs::SigExternalError::default(),
         });
 
         let state1 = state.clone();
@@ -69,8 +69,8 @@ impl<
     pub fn sign_up(
         self: Arc<Self>, // TODO pass reciever
         is_submit: bool,
-        local_state: Arc<SignUpState<MySig>>,
-        feature_state: Arc<AuthFeatureState<MySig>>,
+        local_state: Arc<SignUpState<AllSigs>>,
+        feature_state: Arc<AuthFeatureState<AllSigs>>,
     ) {
         RT::spawn_local(async move {
             if feature_state.is_loading.read() == true {
@@ -170,8 +170,8 @@ impl<
     pub fn sign_in(
         self: Arc<Self>,
         is_submit: bool,
-        local_state: Arc<SignInState<MySig>>,
-        feature_state: Arc<AuthFeatureState<MySig>>,
+        local_state: Arc<SignInState<AllSigs>>,
+        feature_state: Arc<AuthFeatureState<AllSigs>>,
     ) {
         RT::spawn_local(async move {
             if feature_state.is_loading.read() == true {
@@ -253,7 +253,7 @@ impl<
     pub fn create_company(
         self: Arc<Self>,
         is_submit: bool,
-        local_state: Arc<CreateCompanyState<MySig>>,
+        local_state: Arc<CreateCompanyState<AllSigs>>,
     ) {
         RT::spawn_local(async move {
             let input = create_company::Input {
@@ -279,7 +279,7 @@ impl<
     pub fn create_company_branch(
         self: Arc<Self>,
         is_submit: bool,
-        local_state: Arc<CreateCompanyBranchState<MySig>>,
+        local_state: Arc<CreateCompanyBranchState<AllSigs>>,
     ) {
         RT::spawn_local(async move {
             let input = create_company_branch::Input {
@@ -308,38 +308,38 @@ impl<
 }
 
 #[derive(Default)]
-pub struct SignInState<MySig: AllSignals> {
-    pub user_id_error: MySig::SigString,
-    pub user_password_error: MySig::SigString,
+pub struct SignInState<AllSigs: AllSignals> {
+    pub user_id_error: AllSigs::SigString,
+    pub user_password_error: AllSigs::SigString,
 }
 
 #[derive(Default)]
-pub struct SignUpState<MySig: AllSignals> {
-    pub show_dialog: MySig::SigBool,
-    pub user_name: MySig::SigString,
-    pub user_id_error: MySig::SigString,
-    pub user_name_error: MySig::SigString,
+pub struct SignUpState<AllSigs: AllSignals> {
+    pub show_dialog: AllSigs::SigBool,
+    pub user_name: AllSigs::SigString,
+    pub user_id_error: AllSigs::SigString,
+    pub user_name_error: AllSigs::SigString,
 }
 
 #[derive(Default)]
-pub struct AuthFeatureState<MySig: AllSignals> {
-    pub user_id: MySig::SigString,
-    pub user_password: MySig::SigString,
-    pub is_loading: MySig::SigBool,
+pub struct AuthFeatureState<AllSigs: AllSignals> {
+    pub user_id: AllSigs::SigString,
+    pub user_password: AllSigs::SigString,
+    pub is_loading: AllSigs::SigBool,
 }
 
 #[derive(Default)]
-pub struct CreateCompanyState<MySig: AllSignals> {
-    pub company_name: MySig::SigString,
-    pub currency: MySig::SigCurrency,
+pub struct CreateCompanyState<AllSigs: AllSignals> {
+    pub company_name: AllSigs::SigString,
+    pub currency: AllSigs::SigCurrency,
 }
 
 #[derive(Default)]
-pub struct CreateCompanyBranchState<MySig: AllSignals> {
-    pub company_belong: MySig::SigString,
-    pub currency: MySig::SigCurrency,
-    pub branch_name: MySig::SigString,
-    pub location: MySig::SigLocation,
+pub struct CreateCompanyBranchState<AllSigs: AllSignals> {
+    pub company_belong: AllSigs::SigString,
+    pub currency: AllSigs::SigCurrency,
+    pub branch_name: AllSigs::SigString,
+    pub location: AllSigs::SigLocation,
 }
 
 fn is_proceed(
