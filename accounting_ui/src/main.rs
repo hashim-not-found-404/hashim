@@ -333,12 +333,3 @@ pub fn CreateCompanyBranch() -> Element {
         }
     }
 }
-
-// #[derive(Clone, Copy)]
-// struct Ar<T>(Arc<T>);
-
-// impl<T> Ar<T> {
-//     fn new(data: T) -> Self {
-//         Self(Arc::new(data))
-//     }
-// }
