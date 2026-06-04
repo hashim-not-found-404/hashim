@@ -59,9 +59,7 @@ pub mod m {
         stream::{SplitSink, SplitStream},
     };
     use gloo_net::websocket::{Message, futures::WebSocket};
-    use gloo_timers::future::TimeoutFuture;
     use std::sync::Mutex;
-    use wasm_bindgen_futures::spawn_local;
 
     pub struct S {
         write: Mutex<SplitSink<WebSocket, Message>>,
@@ -71,9 +69,8 @@ pub mod m {
     impl WebSocketOp for S {
         async fn connect(url: &str) -> Result<Self, DynamicError> {
             let ws = WebSocket::open(url).log()?;
-
-            // Split into write and read halves
-            let (write, read) = ws.split();
+            let (mut write, read) = ws.split();
+            write.send(Message::Bytes(Vec::new())).await.log()?;
 
             Ok(Self {
                 write: Mutex::new(write),

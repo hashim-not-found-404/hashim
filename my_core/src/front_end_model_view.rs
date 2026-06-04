@@ -83,7 +83,7 @@ impl<
 
     pub fn sign_up(
         self: Arc<Self>,
-        check_from_cache_only: bool,
+        is_submit: bool,
         local_state: Arc<SignUpState<SigString>>,
         feature_state: Arc<AuthFeatureState<SigString, SigBool>>,
     ) {
@@ -112,35 +112,65 @@ impl<
             let (sender, receiver) = MPSC::channel();
             self.routs
                 .send_to_cache_actor(web_socket::Query {
-                    check_from_cache_only,
+                    is_submit,
                     sender: sender,
                     data: input.clone().map_input(),
                 })
                 .await;
 
+            // RT::spawn_local(async move {
+            //     loop {
+            //         RT::sleep(Duration::from_secs(2)).await;
+            //         // send to diolog actor send to him if he want to proceed
+            //         // and the diolog actor send to the actor down to proceed or not
+            //         // but send to diolog multiple times
+            //     }
+            // });
+
+            // i think here i need to spawn time out and if the time out is reached
+            // it send the diolog actor the the question to proceed
+            // if the user acept the actor send to here signal to proceed
+            // if the timeout dont reach the spawn will cancel
+            let mut response = None;
+            let mut is_user_want_to_proceed = false;
             loop {
+                // todo!("i need to add timeout and ask to proceed offline");
                 let result = receiver.recv().await.unwrap();
-                let response = match result {
-                    Some(result) => result,
+                response = match result {
+                    Some(result) => Some(result),
                     None => break,
                 };
-                let result = sign_up::Input::unwrap(response.data);
 
-                match result {
-                    Ok(business_output) => {
-                        if !check_from_cache_only && response.is_it_from_server {
-                            self.is_signed_in.set(true);
+                if let Some(response) = response {
+                    let result = sign_up::Input::unwrap(response.data);
+
+                    let is_ok = result.is_ok();
+                    match result {
+                        Ok(business_output) => {}
+                        Err(business_error) => {
+                            local_state.user_id_error.set(match business_error.user_id {
+                                Some(_) => String::from("duplicated user"),
+                                None => String::new(),
+                            });
+                            local_state.user_name_error.set(match business_error.name {
+                                Some(e) => e,
+                                None => String::new(),
+                            });
                         }
                     }
-                    Err(business_error) => {
-                        local_state.user_id_error.set(match business_error.user_id {
-                            Some(_) => String::from("duplicated user"),
-                            None => String::new(),
-                        });
-                        local_state.user_name_error.set(match business_error.name {
-                            Some(e) => e,
-                            None => String::new(),
-                        });
+
+                    if is_submit {
+                        if is_proceed(
+                            is_ok,
+                            self.routs.is_online(),
+                            response.is_response_from_server,
+                            is_user_want_to_proceed,
+                        ) {
+                            self.is_signed_in.set(true);
+                            break;
+                        }
+                    } else {
+                        break;
                     }
                 }
             }
@@ -151,7 +181,7 @@ impl<
 
     pub fn sign_in(
         self: Arc<Self>,
-        check_from_cache_only: bool,
+        is_submit: bool,
         local_state: Arc<SignInState<SigString>>,
         feature_state: Arc<AuthFeatureState<SigString, SigBool>>,
     ) {
@@ -172,12 +202,13 @@ impl<
             let (sender, receiver) = MPSC::channel();
             self.routs
                 .send_to_cache_actor(web_socket::Query {
-                    check_from_cache_only,
+                    is_submit,
                     sender: sender,
                     data: input.clone().map_input(),
                 })
                 .await;
 
+            let mut is_user_want_to_proceed = false;
             loop {
                 let result = receiver.recv().await.unwrap();
                 let response = match result {
@@ -186,12 +217,9 @@ impl<
                 };
                 let result = sign_in::Input::unwrap(response.data);
 
+                let is_ok = result.is_ok();
                 match result {
-                    Ok(business_output) => {
-                        if !check_from_cache_only && response.is_it_from_server {
-                            self.is_signed_in.set(true);
-                        }
-                    }
+                    Ok(business_output) => {}
                     Err(business_error) => {
                         local_state.user_id_error.set(match business_error.user_id {
                             Some(_) => String::from("user not exist"),
@@ -204,6 +232,20 @@ impl<
                                 None => String::new(),
                             });
                     }
+                }
+
+                if is_submit {
+                    if is_proceed(
+                        is_ok,
+                        self.routs.is_online(),
+                        response.is_response_from_server,
+                        is_user_want_to_proceed,
+                    ) {
+                        self.is_signed_in.set(true);
+                        break;
+                    }
+                } else {
+                    break;
                 }
             }
 
@@ -222,7 +264,7 @@ impl<
 
     pub fn create_company(
         self: Arc<Self>,
-        check_from_cache_only: bool,
+        is_submit: bool,
         local_state: Arc<CreateCompanyState<SigString, SigCurrency>>,
     ) {
         RT::spawn_local(async move {
@@ -248,7 +290,7 @@ impl<
 
     pub fn create_company_branch(
         self: Arc<Self>,
-        check_from_cache_only: bool,
+        is_submit: bool,
         local_state: Arc<CreateCompanyBranchState<SigString, SigCurrency, SigLocation>>,
     ) {
         RT::spawn_local(async move {
@@ -323,4 +365,35 @@ where
     pub currency: SigCurrency,
     pub branch_name: SigString,
     pub location: SigLocation,
+}
+
+fn is_proceed(
+    is_ok: bool,
+    is_online: bool,
+    is_response_from_server: bool,
+    is_user_want_to_proceed: bool,
+) -> bool {
+    match (
+        is_ok,
+        is_online,
+        is_response_from_server,
+        is_user_want_to_proceed,
+    ) {
+        (true, true, true, true) => true,
+        (true, true, true, false) => true,
+        (true, true, false, true) => true,
+        (true, true, false, false) => false,
+        (true, false, true, true) => unreachable!(),
+        (true, false, true, false) => unreachable!(),
+        (true, false, false, true) => true,
+        (true, false, false, false) => true,
+        (false, true, true, true) => false,
+        (false, true, true, false) => false,
+        (false, true, false, true) => true,
+        (false, true, false, false) => false,
+        (false, false, true, true) => unreachable!(),
+        (false, false, true, false) => unreachable!(),
+        (false, false, false, true) => true,
+        (false, false, false, false) => true,
+    }
 }

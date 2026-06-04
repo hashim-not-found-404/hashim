@@ -1,38 +1,35 @@
 use crate::prelude::*;
 
-pub struct Poke;
+// pub struct Poke;
 
 enum MessageToNetwork {
-    ShutDown,
     Url(String),
     Bytes(Vec<u8>),
 }
 
 pub struct Response {
-    pub is_it_from_server: bool,
+    pub is_response_from_server: bool,
     pub data: push_data::OperationsResult,
 }
 
 pub struct Query<MPSC: MultiProducerSingleConsumer> {
-    pub check_from_cache_only: bool,
+    pub is_submit: bool,
     pub sender: MPSC::Sender<Option<Response>>,
     pub data: push_data::OperationsInput,
 }
 
 enum MessageToCache<MPSC: MultiProducerSingleConsumer> {
-    ShutDown,
-    WeAreOnline,
-    WeAreOffline,
+    WeAreBackOnline,
     DataFromServer(Vec<u8>),
     Query(Query<MPSC>),
-    Subscribe {
-        component_id: u64,
-        list_of_subscribtion: Vec<server_methods::Subscribe>,
-        sender_to_component: MPSC::Sender<Poke>,
-    },
-    UnSubscribe {
-        component_id: u64,
-    },
+    // Subscribe {
+    //     component_id: u64,
+    //     list_of_subscribtion: Vec<server_methods::Subscribe>,
+    //     sender_to_component: MPSC::Sender<Poke>,
+    // },
+    // UnSubscribe {
+    //     component_id: u64,
+    // },
 }
 
 pub struct MyWAMP<WS, DE, RN, RT, CH, Id, MPSC>
@@ -48,6 +45,7 @@ where
     _ph: PhantomData<(WS, DE, RN, RT, CH, Id, MPSC)>,
     sender_to_network: MPSC::Sender<MessageToNetwork>,
     sender_to_cache: MPSC::Sender<MessageToCache<MPSC>>,
+    is_online: Arc<RwLock<bool>>,
 }
 
 impl<WS, DE, RN, RT, CH, Id, MPSC> MyWAMP<WS, DE, RN, RT, CH, Id, MPSC>
@@ -64,38 +62,32 @@ where
         let (sender_to_network, receiver_to_network) = MPSC::channel();
         let (sender_to_cache, receiver_to_cache) = MPSC::channel();
 
+        let is_online = Arc::new(RwLock::new(false));
+
         Self::network_actor(
             receiver_to_network,
             sender_to_cache.clone(),
             sender_to_error.clone(),
+            is_online.clone(),
         );
         Self::cache_actor(
             receiver_to_cache,
             sender_to_network.clone(),
             sender_to_error.clone(),
+            is_online.clone(),
         );
 
         Self {
             _ph: PhantomData,
             sender_to_network,
             sender_to_cache,
+            is_online,
         }
     }
 
     pub async fn connect_to_url(&self, url: &String) {
         self.sender_to_network
             .send(MessageToNetwork::Url(url.clone()))
-            .await
-            .unwrap();
-    }
-
-    pub async fn close(self) {
-        self.sender_to_network
-            .send(MessageToNetwork::ShutDown)
-            .await
-            .unwrap();
-        self.sender_to_cache
-            .send(MessageToCache::ShutDown)
             .await
             .unwrap();
     }
@@ -107,6 +99,10 @@ where
             .unwrap();
     }
 
+    pub fn is_online(&self) -> bool {
+        get(self.is_online.clone())
+    }
+
     async fn network_radar(ws: &Option<WS>) -> Result<Vec<u8>, DynamicError> {
         match &ws {
             Some(ws) => ws.receive_bin().await,
@@ -115,22 +111,23 @@ where
     }
 
     async fn connect(
+        is_online: Arc<RwLock<bool>>,
         sender_to_cache: &MPSC::Sender<MessageToCache<MPSC>>,
         url: &Option<String>,
         ws: &mut Option<WS>,
     ) {
         if let Some(ur) = url {
-            sender_to_cache
-                .send(MessageToCache::WeAreOffline)
-                .await
-                .unwrap();
+            set(is_online.clone(), false);
 
             if let Ok(ok) = WS::connect(ur.as_str()).await {
                 *ws = Some(ok);
+
                 sender_to_cache
-                    .send(MessageToCache::WeAreOnline)
+                    .send(MessageToCache::WeAreBackOnline)
                     .await
                     .unwrap();
+
+                set(is_online.clone(), true);
 
                 return;
             }
@@ -142,6 +139,7 @@ where
         receiver_to_network: MPSC::Receiver<MessageToNetwork>,
         sender_to_cache: MPSC::Sender<MessageToCache<MPSC>>,
         sender_to_error: MPSC::Sender<DynamicError>,
+        is_online: Arc<RwLock<bool>>,
     ) {
         RT::spawn_local(async move {
             let mut ws: Option<WS> = None;
@@ -150,16 +148,21 @@ where
             loop {
                 match RT::select(receiver_to_network.recv(), Self::network_radar(&ws)).await {
                     Either::One(r) => match r.unwrap() {
-                        MessageToNetwork::ShutDown => return,
                         MessageToNetwork::Url(ur) => {
                             url = Some(ur);
-                            Self::connect(&sender_to_cache, &url, &mut ws).await;
+                            Self::connect(is_online.clone(), &sender_to_cache, &url, &mut ws).await;
                         }
                         MessageToNetwork::Bytes(data) => match &ws {
                             Some(ws1) => {
                                 let result = ws1.send_bin(&data).await;
                                 if result.is_err() {
-                                    Self::connect(&sender_to_cache, &url, &mut ws).await;
+                                    Self::connect(
+                                        is_online.clone(),
+                                        &sender_to_cache,
+                                        &url,
+                                        &mut ws,
+                                    )
+                                    .await;
                                 }
                             }
                             None => RT::sleep(Duration::from_secs(5)).await,
@@ -174,7 +177,7 @@ where
                         }
                         Err(err) => {
                             sender_to_error.send(err).await.unwrap();
-                            Self::connect(&sender_to_cache, &url, &mut ws).await;
+                            Self::connect(is_online.clone(), &sender_to_cache, &url, &mut ws).await;
                         }
                     },
                 }
@@ -186,20 +189,16 @@ where
         receiver_to_cache: MPSC::Receiver<MessageToCache<MPSC>>,
         sender_to_network: MPSC::Sender<MessageToNetwork>,
         sender_to_error: MPSC::Sender<DynamicError>,
+        is_online: Arc<RwLock<bool>>,
     ) {
         RT::spawn_local(async move {
             let mut state = cache::State::<CH>::new::<RN>().await;
-            let mut is_online = false;
-
             let mut pool_of_senders =
-                HashMap::<u64, MPSC::Sender<Option<Response>>>::with_capacity(1000);
+                HashMap::<u64, MPSC::Sender<Option<Response>>>::with_capacity(100);
 
             loop {
                 match receiver_to_cache.recv().await.unwrap() {
-                    MessageToCache::ShutDown => return,
-                    MessageToCache::WeAreOnline => {
-                        is_online = true;
-
+                    MessageToCache::WeAreBackOnline => {
                         let operations = state.cache.get_all_txn_input().await;
 
                         Self::prepare_txn_and_send_to_network(
@@ -208,7 +207,6 @@ where
                         )
                         .await;
                     }
-                    MessageToCache::WeAreOffline => is_online = false,
                     MessageToCache::DataFromServer(raw_data) => {
                         let message_type = match DE::decode::<messages::FromServer>(&raw_data) {
                             Ok(message_type) => message_type,
@@ -229,7 +227,7 @@ where
                                         if let Some(sender) = sender {
                                             let _ = sender
                                                 .send(Some(Response {
-                                                    is_it_from_server: true,
+                                                    is_response_from_server: true,
                                                     data: txn.operation,
                                                 }))
                                                 .await;
@@ -252,22 +250,22 @@ where
                         }
                     }
                     MessageToCache::Query(Query {
-                        check_from_cache_only,
+                        is_submit,
                         sender,
                         data,
                     }) => {
                         let txn_number = RN::generate();
 
-                        let result = if check_from_cache_only {
-                            data.run_operation_check(&mut state).await
-                        } else {
+                        let result = if is_submit {
                             data.run_operation_check_apply_write(txn_number, &mut state)
                                 .await
+                        } else {
+                            data.run_operation_check(&mut state).await
                         };
 
                         let _ = sender
                             .send(Some(Response {
-                                is_it_from_server: false,
+                                is_response_from_server: false,
                                 data: result,
                             }))
                             .await;
@@ -277,7 +275,7 @@ where
                             operation: data,
                         }];
 
-                        if !check_from_cache_only && is_online {
+                        if is_submit && get(is_online.clone()) {
                             Self::prepare_txn_and_send_to_network(
                                 sender_to_network.clone(),
                                 operations,
@@ -288,29 +286,28 @@ where
                         } else {
                             let _ = sender.send(None).await;
                         };
-                    }
-                    MessageToCache::Subscribe {
-                        component_id,
-                        list_of_subscribtion,
-                        sender_to_component,
-                    } => {
-                        // pool_of_senders.insert(component_id, sender_to_component);
-                        // for subscribe in list_of_subscribtion {
-                        //     pool_of_subscribes
-                        //         .entry(subscribe)
-                        //         .or_insert(HashSet::with_capacity(10))
-                        //         .insert(component_id);
-                        // }
-                    }
-                    MessageToCache::UnSubscribe { component_id } => {
-                        // pool_of_senders.remove(&component_id);
+                    } // MessageToCache::Subscribe {
+                      //     component_id,
+                      //     list_of_subscribtion,
+                      //     sender_to_component,
+                      // } => {
+                      // pool_of_senders.insert(component_id, sender_to_component);
+                      // for subscribe in list_of_subscribtion {
+                      //     pool_of_subscribes
+                      //         .entry(subscribe)
+                      //         .or_insert(HashSet::with_capacity(10))
+                      //         .insert(component_id);
+                      // }
+                      // }
+                      // MessageToCache::UnSubscribe { component_id } => {
+                      // pool_of_senders.remove(&component_id);
 
-                        // for (_, component_id_gg) in &mut pool_of_subscribes {
-                        //     component_id_gg.remove(&component_id);
-                        // }
+                      // for (_, component_id_gg) in &mut pool_of_subscribes {
+                      //     component_id_gg.remove(&component_id);
+                      // }
 
-                        // pool_of_subscribes.retain(|_, component_ids| !component_ids.is_empty());
-                    }
+                      // pool_of_subscribes.retain(|_, component_ids| !component_ids.is_empty());
+                      // }
                 }
             }
         })
@@ -339,4 +336,11 @@ where
             .await
             .unwrap();
     }
+}
+
+fn set<T>(a: Arc<RwLock<T>>, v: T) {
+    *a.write().unwrap() = v;
+}
+fn get<T: Clone>(a: Arc<RwLock<T>>) -> T {
+    a.read().unwrap().clone()
 }
