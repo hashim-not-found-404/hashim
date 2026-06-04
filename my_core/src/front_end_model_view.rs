@@ -82,7 +82,7 @@ impl<
     }
 
     pub fn sign_up(
-        self: Arc<Self>,
+        self: Arc<Self>, // TODO pass reciever
         is_submit: bool,
         local_state: Arc<SignUpState<SigBool, SigString>>,
         feature_state: Arc<AuthFeatureState<SigString, SigBool>>,
@@ -388,16 +388,16 @@ fn is_proceed(
         (true, true, true, false) => true,
         (true, true, false, true) => true,
         (true, true, false, false) => false,
-        (true, false, true, true) => unreachable!(),
-        (true, false, true, false) => unreachable!(),
+        (true, false, true, true) => true,
+        (true, false, true, false) => true,
         (true, false, false, true) => true,
         (true, false, false, false) => false,
         (false, true, true, true) => false,
         (false, true, true, false) => false,
         (false, true, false, true) => true,
         (false, true, false, false) => false,
-        (false, false, true, true) => unreachable!(),
-        (false, false, true, false) => unreachable!(),
+        (false, false, true, true) => false,
+        (false, false, true, false) => false,
         (false, false, false, true) => true,
         (false, false, false, false) => false,
     }
