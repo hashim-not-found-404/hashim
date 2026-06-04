@@ -36,6 +36,28 @@ impl<T> Clone for MySignal<T> {
     }
 }
 
+impl<T: PartialEq + Clone> PartialEq for MySignal<T> {
+    fn eq(&self, other: &Self) -> bool {
+        let value_eq = {
+            let s = { self.value.try_lock().unwrap().clone() };
+            let o = { other.value.try_lock().unwrap().clone() };
+            s == o
+        };
+
+        if !value_eq {
+            return false;
+        }
+
+        let subscribers_eq = {
+            let s = { self.subscribers.try_lock().unwrap().clone() };
+            let o = { other.subscribers.try_lock().unwrap().clone() };
+            s == o
+        };
+
+        subscribers_eq
+    }
+}
+
 impl<T: 'static + Clone + Default> Default for MySignal<T> {
     fn default() -> Self {
         my_use_signal(|| T::default())

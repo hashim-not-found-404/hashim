@@ -84,7 +84,7 @@ impl<
     pub fn sign_up(
         self: Arc<Self>,
         is_submit: bool,
-        local_state: Arc<SignUpState<SigString>>,
+        local_state: Arc<SignUpState<SigBool, SigString>>,
         feature_state: Arc<AuthFeatureState<SigString, SigBool>>,
     ) {
         RT::spawn_local(async move {
@@ -118,19 +118,22 @@ impl<
                 })
                 .await;
 
-            // RT::spawn_local(async move {
-            //     loop {
-            //         RT::sleep(Duration::from_secs(2)).await;
-            //         // send to diolog actor send to him if he want to proceed
-            //         // and the diolog actor send to the actor down to proceed or not
-            //         // but send to diolog multiple times
-            //     }
-            // });
+            if is_submit {
+                let self1 = self.clone();
+                let local_state1 = local_state.clone();
+                RT::spawn_local(async move {
+                    loop {
+                        if self1.routs.is_online() {
+                            RT::sleep(Duration::from_secs(10)).await;
+                        } else {
+                            RT::sleep(Duration::from_secs(1)).await;
+                        }
 
-            // i think here i need to spawn time out and if the time out is reached
-            // it send the diolog actor the the question to proceed
-            // if the user acept the actor send to here signal to proceed
-            // if the timeout dont reach the spawn will cancel
+                        local_state1.show_dialog.set(true);
+                    }
+                });
+            }
+
             let mut response = None;
             let mut is_user_want_to_proceed = false;
             loop {
@@ -327,10 +330,12 @@ where
     pub user_password_error: SigString,
 }
 
-pub struct SignUpState<SigString>
+pub struct SignUpState<SigBool, SigString>
 where
+    SigBool: Signal<T = bool>,
     SigString: Signal<T = String>,
 {
+    pub show_dialog: SigBool,
     pub user_name: SigString,
     pub user_id_error: SigString,
     pub user_name_error: SigString,
@@ -386,7 +391,7 @@ fn is_proceed(
         (true, false, true, true) => unreachable!(),
         (true, false, true, false) => unreachable!(),
         (true, false, false, true) => true,
-        (true, false, false, false) => true,
+        (true, false, false, false) => false,
         (false, true, true, true) => false,
         (false, true, true, false) => false,
         (false, true, false, true) => true,
@@ -394,6 +399,6 @@ fn is_proceed(
         (false, false, true, true) => unreachable!(),
         (false, false, true, false) => unreachable!(),
         (false, false, false, true) => true,
-        (false, false, false, false) => true,
+        (false, false, false, false) => false,
     }
 }

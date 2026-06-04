@@ -4,7 +4,7 @@ use adapters::prelude::*;
 use cache_rusqlite::prelude::*;
 use dioxus::prelude::*;
 use dioxus_logger::tracing::Level;
-use my_core::prelude::{Signal, *};
+use my_core::prelude::{Signal as HashimSignal, *};
 use std::{str::FromStr, sync::Arc};
 
 type StateOfEveryThing = Arc<
@@ -71,6 +71,29 @@ fn App() -> Element {
         Router::<Route> {}
         ErrorStack {}
     }
+}
+
+#[component]
+pub fn Dialog(operation_name: &'static str, show_dialog: MySignal<bool>) -> Element {
+    let show_dialog1 = show_dialog.clone();
+
+    if show_dialog.read() {
+        return rsx! {
+            div {
+                label { "do you want to proceed operation {operation_name} offline" }
+                button {
+                    onclick: move |_| show_dialog.set(false),
+                    "Yes"
+                }
+                button {
+                    onclick: move |_| show_dialog1.set(false),
+                    "No"
+                }
+            }
+
+        };
+    }
+    rsx! {}
 }
 
 #[component]
@@ -149,6 +172,7 @@ pub fn SignUp() -> Element {
     >();
 
     let local_state = Arc::new(front_end_model_view::SignUpState {
+        show_dialog: MySignal::<bool>::default(),
         user_name: MySignal::<String>::default(),
         user_id_error: MySignal::<String>::default(),
         user_name_error: MySignal::<String>::default(),
@@ -165,8 +189,15 @@ pub fn SignUp() -> Element {
     let auth_state1 = auth_state.clone();
     let auth_state2 = auth_state.clone();
 
+    // if local_state.show_dialog.read(){
+    // TODO make it work
+    // }
     rsx! {
         div {
+            Dialog {
+                operation_name:"sign up",
+                show_dialog:local_state.show_dialog.clone()
+            }
             input {
                 placeholder: "Name (Optional)",
                 oninput: move |event| {
