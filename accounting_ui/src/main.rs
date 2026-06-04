@@ -189,9 +189,6 @@ pub fn SignUp() -> Element {
     let auth_state1 = auth_state.clone();
     let auth_state2 = auth_state.clone();
 
-    // if local_state.show_dialog.read(){
-    // TODO make it work
-    // }
     rsx! {
         div {
             Dialog {
