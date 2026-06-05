@@ -94,6 +94,9 @@ impl<
                 })
                 .await;
 
+            let (sender_for_loop, receiver_for_loop) = Mpsc::channel();
+
+            let sender_for_loop1 = sender_for_loop.clone();
             let is_user_want_to_proceed = Arc::new(Mutex::new(false));
             let is_user_want_to_proceed1 = is_user_want_to_proceed.clone();
             if is_submit {
@@ -103,6 +106,7 @@ impl<
                 At::Rt::spawn_local(async move {
                     receiver.recv().await.unwrap();
                     *is_user_want_to_proceed.lock().unwrap() = true;
+                    sender_for_loop1.send(()).await.unwrap();
                 });
 
                 let self1 = self.clone();
@@ -120,16 +124,24 @@ impl<
                 });
             }
 
-            let mut response = None;
+            let response = Arc::new(Mutex::new(None));
+
+            let response1 = response.clone();
+            At::Rt::spawn_local(async move {
+                loop {
+                    let result = receiver.recv().await.unwrap();
+                    *response1.lock().unwrap() = match result {
+                        Some(result) => Some(result),
+                        None => break,
+                    };
+                    sender_for_loop.send(()).await.unwrap();
+                }
+            });
             // TODO this should rerun on consent
             loop {
-                let result = receiver.recv().await.unwrap();
-                response = match result {
-                    Some(result) => Some(result),
-                    None => break,
-                };
-
-                if let Some(response) = response {
+                receiver_for_loop.recv().await.unwrap();
+                let mutex_guard = response.lock().unwrap();
+                if let Some(response) = mutex_guard.clone() {
                     let result = sign_up::Input::unwrap(response.data);
 
                     let is_ok = result.is_ok();

@@ -7,6 +7,7 @@ enum MessageToNetwork {
     Bytes(Vec<u8>),
 }
 
+#[derive(Clone)]
 pub struct Response {
     pub is_response_from_server: bool,
     pub data: push_data::OperationsResult,

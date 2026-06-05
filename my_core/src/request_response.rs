@@ -6,7 +6,7 @@ pub const ADDRESS: &str = "127.0.0.1:8081";
 
 // there should be no generic in all the below types
 
-#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
 pub enum UserUuidError {
     Invalid,
     NotAuthenticated,
@@ -19,7 +19,7 @@ pub struct ResourceInfo {
     pub resource: server_methods::Resource,
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
 pub enum RowIdError {
     Invalid,
     Duplicated,
@@ -101,7 +101,7 @@ pub mod push_data {
         // read
     }
 
-    #[derive(Debug, Deserialize, Serialize)]
+    #[derive(Debug, Deserialize, Serialize, Clone)]
     pub enum OperationsResult {
         // auth
         SignUp(sign_up::Result),
@@ -124,10 +124,10 @@ pub mod sign_up {
         pub password: String,
     }
 
-    #[derive(Debug, Deserialize, Serialize)]
+    #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Ok;
 
-    #[derive(Debug, Deserialize, Serialize, Default, PartialEq)]
+    #[derive(Debug, Deserialize, Serialize, Clone, Default, PartialEq)]
     pub struct Error {
         pub new_uuid: Option<RowIdError>,
         pub user_id: Option<UserIdError>,
@@ -137,7 +137,7 @@ pub mod sign_up {
     pub type Result = StdResult<Ok, Error>;
 
     // utility types
-    #[derive(Debug, Deserialize, Serialize, PartialEq)]
+    #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
     pub enum UserIdError {
         Duplicated,
     }
@@ -152,10 +152,10 @@ pub mod sign_in {
         pub password: String,
     }
 
-    #[derive(Debug, Deserialize, Serialize)]
+    #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Ok;
 
-    #[derive(Debug, Deserialize, Serialize, Default, PartialEq)]
+    #[derive(Debug, Deserialize, Serialize, Clone, Default, PartialEq)]
     pub struct Error {
         pub user_id: Option<UserIdError>,
         pub password: Option<PasswordError>,
@@ -164,12 +164,12 @@ pub mod sign_in {
     pub type Result = StdResult<Ok, Error>;
 
     // utility types
-    #[derive(Debug, Deserialize, Serialize, PartialEq)]
+    #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
     pub enum UserIdError {
         NotExist,
     }
 
-    #[derive(Debug, Deserialize, Serialize, PartialEq)]
+    #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
     pub enum PasswordError {
         WrongPassword,
     }
@@ -186,10 +186,10 @@ pub mod create_company {
         pub currency: db_types::Currency,
     }
 
-    #[derive(Debug, Deserialize, Serialize)]
+    #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Ok;
 
-    #[derive(Debug, Deserialize, Serialize, Default, PartialEq)]
+    #[derive(Debug, Deserialize, Serialize, Clone, Default, PartialEq)]
     pub struct Error {
         pub user_uuid: Option<UserUuidError>,
         pub new_uuid: Option<RowIdError>,
@@ -211,10 +211,10 @@ pub mod create_company_branch {
         pub currency: db_types::Currency,
     }
 
-    #[derive(Debug, Deserialize, Serialize)]
+    #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Ok;
 
-    #[derive(Debug, Deserialize, Serialize, Default, PartialEq)]
+    #[derive(Debug, Deserialize, Serialize, Clone, Default, PartialEq)]
     pub struct Error {
         pub user_uuid: Option<UserUuidError>,
         pub new_uuid: Option<RowIdError>,
@@ -226,18 +226,18 @@ pub mod create_company_branch {
     pub type Result = StdResult<Ok, Error>;
 
     // utility types
-    #[derive(Debug, Deserialize, Serialize, PartialEq)]
+    #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
     pub enum CompanyBelongError {
         IdInWrongFormat,
         NotExist,
     }
 
-    #[derive(Debug, Deserialize, Serialize, PartialEq)]
+    #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
     pub enum BranchNameError {
         Duplicated,
     }
 
-    #[derive(Debug, Deserialize, Serialize, PartialEq)]
+    #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
     pub enum LocationError {
         Invalid,
     }
