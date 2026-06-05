@@ -1,6 +1,7 @@
 use crate::prelude::*;
 
-pub type RowIdType = String;
+#[derive(PartialEq, Clone, Hash, Eq, Debug, Deserialize, Serialize)]
+pub struct RowIdType(pub String);
 
 #[derive(Debug, Deserialize, Serialize, Clone, Default)]
 pub struct Location {

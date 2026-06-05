@@ -13,10 +13,10 @@ pub mod m {
         }
     }
 
-    impl TryFrom<&String> for S {
+    impl TryFrom<&db_types::RowIdType> for S {
         type Error = ();
-        fn try_from(value: &String) -> Result<Self, ()> {
-            match Uuid::parse_str(value.as_str()) {
+        fn try_from(value: &db_types::RowIdType) -> Result<Self, ()> {
+            match Uuid::parse_str(value.0.as_str()) {
                 Ok(o) => return Ok(Self(o)),
                 Err(_) => return Err(()),
             }

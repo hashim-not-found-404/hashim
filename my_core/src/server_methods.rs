@@ -124,17 +124,17 @@ where
                 .await?;
 
             resource_to_return.push(ResourceInfo {
-                uuid: new_uuid.to_string(),
+                uuid: new_uuid.to_row_id(),
                 resource: Resource::Jwt(self.jwt.sign(&new_uuid)),
             });
             resource_to_return.push(ResourceInfo {
-                uuid: new_uuid.to_string(),
+                uuid: new_uuid.to_row_id(),
                 resource: Resource::UserId(input.user_id.clone()),
             });
 
             if let Some(name) = &input.name {
                 resource_to_return.push(ResourceInfo {
-                    uuid: new_uuid.to_string(),
+                    uuid: new_uuid.to_row_id(),
                     resource: Resource::UserName(name.clone()),
                 });
             }
@@ -176,7 +176,7 @@ where
                 authenticated_users.insert(user_rowid.clone());
                 users_to_resubscribe.insert(user_rowid.clone());
                 resource_to_return.push(ResourceInfo {
-                    uuid: user_rowid.to_string(),
+                    uuid: user_rowid.to_row_id(),
                     resource: Resource::Jwt(self.jwt.sign(&user_rowid)),
                 });
                 return Ok(Ok(sign_in::Ok));

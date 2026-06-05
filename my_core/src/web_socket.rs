@@ -315,7 +315,7 @@ where
 
         let t = push_data::Input {
             jwts,
-            nonce: At::Id::generate().to_string(),
+            nonce: At::Id::generate().to_row_id(),
             operations,
         };
 

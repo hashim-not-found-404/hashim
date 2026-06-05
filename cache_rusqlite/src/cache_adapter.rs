@@ -71,7 +71,7 @@ impl CacheIO for S {
         let mut stmts = Vec::with_capacity(resource.len());
 
         for reso in resource {
-            let uuid = &reso.uuid;
+            let uuid = &reso.uuid.0;
 
             let stmt = match &reso.resource {
                 server_methods::Resource::Jwt(value) => {
@@ -95,7 +95,7 @@ impl CacheIO for S {
                 }
                 server_methods::Resource::UserThatHaveRole(value) => {
                     todo!();
-                    make_sql_statment("", "", uuid, value)
+                    make_sql_statment("", "", uuid, &value.0)
                 }
             };
 
@@ -112,14 +112,14 @@ impl CacheIO for S {
             .prepare("SELECT jwt FROM user WHERE row_id = ?1")
             .unwrap();
 
-        stmt.query_one([user_uuid], |row| row.get(0).optional())
+        stmt.query_one([&user_uuid.0], |row| row.get(0).optional())
             .unwrap()
     }
 
     async fn read_sign_up(
         &self,
         new_uuid: &db_types::RowIdType,
-        user_id: &db_types::RowIdType,
+        user_id: &String,
     ) -> (
         bool, /* is new_uuid exist */
         bool, /* is user_id exist */
@@ -131,7 +131,7 @@ impl CacheIO for S {
         ";
 
         self.db
-            .query_one(query, params![new_uuid, user_id], |row| {
+            .query_one(query, params![new_uuid.0, user_id], |row| {
                 Ok((row.get(0).unwrap(), row.get(1).unwrap()))
             })
             .unwrap()

@@ -1,6 +1,11 @@
 use crate::prelude::*;
 
-pub trait RowId: for<'a> TryFrom<&'a String, Error = ()> + ToString + Clone + Hash + Eq {
+pub trait RowId:
+    for<'a> TryFrom<&'a db_types::RowIdType, Error = ()> + ToString + Clone + Hash + Eq
+{
+    fn to_row_id(&self) -> db_types::RowIdType {
+        db_types::RowIdType(self.to_string())
+    }
     fn generate() -> Self;
     fn get_time_as_seconds(&self) -> u64;
 }
@@ -193,7 +198,7 @@ pub trait CacheIO: Sized {
     async fn read_sign_up(
         &self,
         new_uuid: &db_types::RowIdType,
-        user_id: &db_types::RowIdType,
+        user_id: &String,
     ) -> (
         bool, /* is new_uuid exist */
         bool, /* is user_id exist */

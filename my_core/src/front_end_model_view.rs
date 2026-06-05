@@ -69,7 +69,7 @@ impl<
             local_state.user_name_error.set(String::new());
 
             let input = sign_up::Input {
-                new_uuid: At::Id::generate().to_string(),
+                new_uuid: At::Id::generate().to_row_id(),
                 name: {
                     let name = local_state.user_name.read();
                     match name.is_empty() {
@@ -170,7 +170,7 @@ impl<
             local_state.user_password_error.set(String::new());
 
             let input = sign_in::Input {
-                user_id: feature_state.user_id.read().to_string(),
+                user_id: feature_state.user_id.read().into(),
                 password: feature_state.user_password.read().to_string(),
             };
 
@@ -244,8 +244,8 @@ impl<
     ) {
         At::Rt::spawn_local(async move {
             let input = create_company::Input {
-                user_uuid: String::new(),
-                new_uuid: At::Id::generate().to_string(),
+                user_uuid: todo!(),
+                new_uuid: At::Id::generate().to_row_id(),
                 company_name: local_state.company_name.read(),
                 currency: local_state.currency.read(),
             };
@@ -270,9 +270,9 @@ impl<
     ) {
         At::Rt::spawn_local(async move {
             let input = create_company_branch::Input {
-                user_uuid: String::new(),
-                new_uuid: At::Id::generate().to_string(),
-                company_belong: local_state.company_belong.read(),
+                user_uuid: todo!(),
+                new_uuid: At::Id::generate().to_row_id(),
+                company_belong: todo!("local_state.company_belong.read()"),
                 currency: local_state.currency.read(),
                 branch_name: local_state.branch_name.read(),
                 location: local_state.location.read(),

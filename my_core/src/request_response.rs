@@ -148,7 +148,7 @@ pub mod sign_in {
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Input {
-        pub user_id: db_types::RowIdType,
+        pub user_id: String,
         pub password: String,
     }
 
