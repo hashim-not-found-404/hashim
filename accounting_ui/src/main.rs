@@ -5,7 +5,10 @@ use cache_rusqlite::prelude::*;
 use dioxus::prelude::*;
 use dioxus_logger::tracing::Level;
 use my_core::prelude::{Signal as HashimSignal, *};
-use std::{str::FromStr, sync::Arc};
+use std::{
+    str::FromStr,
+    sync::{Arc, Mutex},
+};
 
 struct MyAllClientTypes;
 impl AllClientTypes for MyAllClientTypes {
@@ -17,8 +20,14 @@ impl AllClientTypes for MyAllClientTypes {
     type Id = row_id::m::S;
 }
 
-type StateOfEveryThing =
-    Arc<front_end_model_view::State<MyAllSignalTypes, MyAllClientTypes, actors::m::S>>;
+type StateOfEveryThing = Arc<
+    front_end_model_view::State<
+        MyAllSignalTypes,
+        MyAllClientTypes,
+        actors::m::S,
+        MySignal<Option<mpsc_sender::m::S<()>>>,
+    >,
+>;
 
 const ICONS_SHOW: Asset = asset!("/assets/icons/show.png");
 const ICONS_HIDE: Asset = asset!("/assets/icons/hide.png");
@@ -54,15 +63,27 @@ fn App() -> Element {
 }
 
 #[component]
-pub fn Dialog(operation_name: &'static str, show_dialog: MySignal<bool>) -> Element {
+pub fn Dialog(
+    sender: MySignal<Option<mpsc_sender::m::S<()>>>,
+    operation_name: &'static str,
+    show_dialog: MySignal<bool>,
+) -> Element {
     let show_dialog1 = show_dialog.clone();
 
-    if show_dialog.read() {
+    let click = move |_| {
+        show_dialog.set(false);
+        let sender = sender.read().unwrap();
+        spawn(async move {
+            sender.send(()).await.unwrap();
+        });
+    };
+
+    if show_dialog1.read() {
         return rsx! {
             div {
                 label { "do you want to proceed operation {operation_name} offline" }
                 button {
-                    onclick: move |_| show_dialog.set(false),
+                    onclick: click,
                     "Yes"
                 }
                 button {
@@ -138,6 +159,8 @@ pub fn SignIn() -> Element {
 
 #[component]
 pub fn SignUp() -> Element {
+    let sender = MySignal::default();
+
     let state = consume_context::<StateOfEveryThing>();
     let auth_state =
         consume_context::<Arc<front_end_model_view::AuthFeatureState<MyAllSignalTypes>>>();
@@ -157,14 +180,15 @@ pub fn SignUp() -> Element {
     rsx! {
         div {
             Dialog {
-                operation_name:"sign up",
-                show_dialog:local_state.show_dialog.clone()
+                sender: sender.clone(),
+                operation_name: "sign up",
+                show_dialog: local_state.show_dialog.clone()
             }
             input {
                 placeholder: "Name (Optional)",
                 oninput: move |event| {
                     local_state1.user_name.set(event.value());
-                    state1.clone().sign_up(false,local_state1.clone(),auth_state1.clone());
+                    state1.clone().sign_up(MySignal::default(),false,local_state1.clone(),auth_state1.clone());
                 },
                 value: local_state.user_name.read(),
             }
@@ -175,7 +199,7 @@ pub fn SignUp() -> Element {
                 placeholder: "User Id",
                 oninput: move |event| {
                     auth_state2.user_id.set(event.value());
-                    state2.clone().sign_up(false,local_state2.clone(),auth_state2.clone());
+                    state2.clone().sign_up(MySignal::default(),false,local_state2.clone(),auth_state2.clone());
                 },
                 value: auth_state.user_id.read(),
             }
@@ -184,7 +208,7 @@ pub fn SignUp() -> Element {
             }
             PasswordInput{ password: auth_state.user_password.clone() }
             button {
-                onclick: move |_| state.clone().sign_up(true,local_state.clone(),auth_state.clone()),
+                onclick: move |_| state.clone().sign_up(sender.clone(),true,local_state.clone(),auth_state.clone()),
                 "Sign Up"
             }
             button {

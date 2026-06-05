@@ -1,3 +1,5 @@
+use std::sync::Mutex;
+
 use crate::prelude::*;
 
 pub trait Signal<T>: Default {
@@ -17,7 +19,9 @@ pub struct State<
     As: AllSignalTypes + 'static,
     At: AllClientTypes + 'static,
     Mpsc: MultiProducerSingleConsumer + 'static,
+    ConsentSender: Signal<Option<Mpsc::Sender<()>>> + 'static,
 > {
+    _ph: PhantomData<ConsentSender>,
     // here for the app logic
     routs: web_socket::MyWAMP<At, Mpsc>,
 
@@ -26,13 +30,18 @@ pub struct State<
     pub external_errors: As::StringVec,
 }
 
-impl<As: AllSignalTypes, At: AllClientTypes + 'static, Mpsc: MultiProducerSingleConsumer + 'static>
-    State<As, At, Mpsc>
+impl<
+    As: AllSignalTypes,
+    At: AllClientTypes + 'static,
+    Mpsc: MultiProducerSingleConsumer + 'static,
+    ConsentSender: Signal<Option<Mpsc::Sender<()>>> + 'static,
+> State<As, At, Mpsc, ConsentSender>
 {
     pub fn new() -> Arc<Self> {
         let (sender_to_error, receiver_to_error) = Mpsc::channel();
 
         let state = Arc::new(Self {
+            _ph: PhantomData,
             routs: web_socket::MyWAMP::<At, Mpsc>::new(sender_to_error.clone()),
             is_signed_in: As::Bool::default(),
             external_errors: As::StringVec::default(),
@@ -50,7 +59,8 @@ impl<As: AllSignalTypes, At: AllClientTypes + 'static, Mpsc: MultiProducerSingle
     }
 
     pub fn sign_up(
-        self: Arc<Self>, // TODO pass reciever
+        self: Arc<Self>,
+        sender_to_dialog: ConsentSender,
         is_submit: bool,
         local_state: Arc<SignUpState<As>>,
         feature_state: Arc<AuthFeatureState<As>>,
@@ -80,13 +90,23 @@ impl<As: AllSignalTypes, At: AllClientTypes + 'static, Mpsc: MultiProducerSingle
             let (sender, receiver) = Mpsc::channel();
             self.routs
                 .send_to_cache_actor(web_socket::Query {
-                    is_submit,
+                    is_submit: is_submit,
                     sender: sender,
                     data: input.clone().map_input(),
                 })
                 .await;
 
+            let is_user_want_to_proceed = Arc::new(Mutex::new(false));
+            let is_user_want_to_proceed1 = is_user_want_to_proceed.clone();
             if is_submit {
+                let (sender, receiver) = Mpsc::channel();
+                sender_to_dialog.set(Some(sender));
+
+                At::Rt::spawn_local(async move {
+                    receiver.recv().await.unwrap();
+                    *is_user_want_to_proceed.lock().unwrap() = true;
+                });
+
                 let self1 = self.clone();
                 let local_state1 = local_state.clone();
                 At::Rt::spawn_local(async move {
@@ -103,7 +123,7 @@ impl<As: AllSignalTypes, At: AllClientTypes + 'static, Mpsc: MultiProducerSingle
             }
 
             let mut response = None;
-            let mut is_user_want_to_proceed = false;
+            // TODO this should rerun on consent
             loop {
                 // todo!("i need to add timeout and ask to proceed offline");
                 let result = receiver.recv().await.unwrap();
@@ -135,7 +155,7 @@ impl<As: AllSignalTypes, At: AllClientTypes + 'static, Mpsc: MultiProducerSingle
                             is_ok,
                             self.routs.is_online(),
                             response.is_response_from_server,
-                            is_user_want_to_proceed,
+                            *is_user_want_to_proceed1.lock().unwrap(),
                         ) {
                             self.is_signed_in.set(true);
                             break;
