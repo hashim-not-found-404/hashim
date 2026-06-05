@@ -123,7 +123,6 @@ impl<
             let mut response = None;
             // TODO this should rerun on consent
             loop {
-                // todo!("i need to add timeout and ask to proceed offline");
                 let result = receiver.recv().await.unwrap();
                 response = match result {
                     Some(result) => Some(result),
