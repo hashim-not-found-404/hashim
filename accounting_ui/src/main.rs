@@ -18,7 +18,7 @@ impl AllClientTypes for MyAllClientTypes {
 }
 
 type StateOfEveryThing =
-    Arc<front_end_model_view::State<MyAllClientTypes, actors::m::S, MyAllSignalTypes>>;
+    Arc<front_end_model_view::State<MyAllSignalTypes, MyAllClientTypes, actors::m::S>>;
 
 const ICONS_SHOW: Asset = asset!("/assets/icons/show.png");
 const ICONS_HIDE: Asset = asset!("/assets/icons/hide.png");

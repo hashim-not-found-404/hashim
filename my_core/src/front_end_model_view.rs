@@ -14,9 +14,9 @@ pub trait AllSignalTypes: Default {
 }
 
 pub struct State<
+    As: AllSignalTypes + 'static,
     At: AllClientTypes + 'static,
     MPSC: MultiProducerSingleConsumer + 'static,
-    As: AllSignalTypes + 'static,
 > {
     // here for the app logic
     routs: web_socket::MyWAMP<At, MPSC>,
@@ -26,12 +26,8 @@ pub struct State<
     pub external_errors: As::StringVec,
 }
 
-impl<
-    At: AllClientTypes + 'static,
-    MPSC: MultiProducerSingleConsumer + 'static,
-    // signals
-    As: AllSignalTypes,
-> State<At, MPSC, As>
+impl<As: AllSignalTypes, At: AllClientTypes + 'static, MPSC: MultiProducerSingleConsumer + 'static>
+    State<As, At, MPSC>
 {
     pub fn new() -> Arc<Self> {
         let (sender_to_error, receiver_to_error) = MPSC::channel();
