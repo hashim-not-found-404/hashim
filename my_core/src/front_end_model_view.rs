@@ -24,7 +24,7 @@ pub struct State<
     AllSigs: AllSignals + 'static,
 > {
     // here for the app logic
-    _ph: PhantomData<(Id, RN, AllSigs)>,
+    _ph: PhantomData<AllSigs>,
     routs: web_socket::MyWAMP<WS, DE, RN, RT, CH, Id, MPSC>,
 
     // here every field is to display
