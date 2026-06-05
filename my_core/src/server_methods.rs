@@ -29,46 +29,46 @@ fn check_nonce_if_valid<Id: RowId>(nonce: &Id, is_used: bool) -> bool {
     true
 }
 
-pub struct ServerMethods<DB, Cli, Jwt, Authentication, F, Id, MPSC, RT, DE>
+pub struct ServerMethods<Db, Cli, Jwt, Auth, Rg, Id, Mpsc, Rt, De>
 where
-    DB: Database<Client = Cli>,
+    Db: Database<Client = Cli>,
     Cli: DBClient,
-    for<'a> Cli::Txn<'a>: DBTransaction<RowId = Id, HashedPassword = Authentication>,
+    for<'a> Cli::Txn<'a>: DBTransaction<RowId = Id, HashedPassword = Auth>,
     Jwt: JWT<UserId = Id, JsonWebToken = String>,
-    Authentication: HashedPassword,
-    F: Functions,
-    Id: RowId + 'static,
-    MPSC: MultiProducerSingleConsumer + 'static,
-    RT: Runtime,
-    DE: Coding + 'static,
+    Auth: HashedPassword,
+    Rg: Regex,
+    Id: RowId,
+    Mpsc: MultiProducerSingleConsumer,
+    Rt: Runtime,
+    De: Coding,
 {
-    _ph: PhantomData<(Cli, Authentication, F, Id, MPSC, RT, DE)>,
-    database: DB,
+    _ph: PhantomData<(Cli, Auth, Rg, Id, Mpsc, Rt, De)>,
+    database: Db,
     jwt: Jwt,
-    pub sender_to_broker: MPSC::Sender<MessageToBroker<Id, MPSC>>,
+    pub sender_to_broker: Mpsc::Sender<MessageToBroker<Id, Mpsc>>,
 }
 
-impl<DB, Cli, Jwt, Authentication, F, Id, MPSC, RT, DE>
-    ServerMethods<DB, Cli, Jwt, Authentication, F, Id, MPSC, RT, DE>
+impl<Db, Cli, Jwt, Auth, Rg, Id, Mpsc, Rt, De>
+    ServerMethods<Db, Cli, Jwt, Auth, Rg, Id, Mpsc, Rt, De>
 where
-    DB: Database<Client = Cli> + 'static,
-    Cli: DBClient<RowId = Id, HashedPassword = Authentication> + 'static,
-    for<'a> Cli::Txn<'a>: DBTransaction<RowId = Id, HashedPassword = Authentication>,
+    Db: Database<Client = Cli> + 'static,
+    Cli: DBClient<RowId = Id, HashedPassword = Auth> + 'static,
+    for<'a> Cli::Txn<'a>: DBTransaction<RowId = Id, HashedPassword = Auth>,
     Jwt: JWT<UserId = Id, JsonWebToken = String> + 'static,
-    Authentication: HashedPassword + 'static,
-    F: Functions + 'static,
+    Auth: HashedPassword + 'static,
+    Rg: Regex + 'static,
     Id: RowId + 'static,
-    MPSC: MultiProducerSingleConsumer + 'static,
-    RT: Runtime + 'static,
-    DE: Coding + 'static,
+    Mpsc: MultiProducerSingleConsumer + 'static,
+    Rt: Runtime + 'static,
+    De: Coding + 'static,
 {
     pub async fn new() -> Self {
-        let (sender_to_broker, receiver_to_broker) = MPSC::channel();
+        let (sender_to_broker, receiver_to_broker) = Mpsc::channel();
         Self::broker_actor(receiver_to_broker);
 
         Self {
             _ph: PhantomData,
-            database: DB::new().await,
+            database: Db::new().await,
             jwt: Jwt::new(),
             sender_to_broker,
         }
@@ -97,7 +97,7 @@ where
             return Ok(Err(errr));
         }
 
-        let hashed_password = Authentication::sign_up(&input.password);
+        let hashed_password = Auth::sign_up(&input.password);
 
         let mut client = self.database.get_client().await?;
         let mut txn = client.begin_transaction().await?;
@@ -171,7 +171,7 @@ where
             }
         };
 
-        match Authentication::sign_in(&input.password, &password_hash) {
+        match Auth::sign_in(&input.password, &password_hash) {
             true => {
                 authenticated_users.insert(user_rowid.clone());
                 users_to_resubscribe.insert(user_rowid.clone());
@@ -499,15 +499,15 @@ where
         Ok(subs)
     }
 
-    pub fn broker_actor(receiver_to_broker: MPSC::Receiver<MessageToBroker<Id, MPSC>>) {
-        RT::spawn_local(async move {
+    pub fn broker_actor(receiver_to_broker: Mpsc::Receiver<MessageToBroker<Id, Mpsc>>) {
+        Rt::spawn_local(async move {
             let mut pool_of_pubsub_for_company: CompanyUserSubscribes<Id> =
                 HashMap::with_capacity(1000);
 
             let mut pool_of_pubsub_for_branch: BranchUserSubscribes<Id> =
                 HashMap::with_capacity(10000);
 
-            let mut pool_of_server_facad_channels: UserSenders<Id, MPSC> =
+            let mut pool_of_server_facad_channels: UserSenders<Id, Mpsc> =
                 HashMap::with_capacity(10000);
 
             loop {
@@ -596,16 +596,16 @@ where
         });
     }
 
-    pub fn server_actor<WSS: WSServer + 'static>(
+    pub fn server_actor<Ws: WSServer + 'static>(
         state: Arc<Self>,
-        mut session: WSS,
-        sender_to_broker: MPSC::Sender<server_methods::MessageToBroker<Id, MPSC>>,
+        mut session: Ws,
+        sender_to_broker: Mpsc::Sender<server_methods::MessageToBroker<Id, Mpsc>>,
     ) {
-        RT::spawn_local(async move {
-            let (sender_to_server, receiver_to_server) = MPSC::channel::<Vec<ResourceInfo>>();
+        Rt::spawn_local(async move {
+            let (sender_to_server, receiver_to_server) = Mpsc::channel::<Vec<ResourceInfo>>();
 
             loop {
-                let result = RT::select(session.receive(), receiver_to_server.recv()).await;
+                let result = Rt::select(session.receive(), receiver_to_server.recv()).await;
                 match result {
                     Either::One(msg) => {
                         let msg = match msg {
@@ -615,7 +615,7 @@ where
 
                         match msg {
                             WSMessage::Binary(received_data) => {
-                                let input = DE::decode::<messages::FromClient>(&received_data);
+                                let input = De::decode::<messages::FromClient>(&received_data);
 
                                 let mut resource_to_broadcast = Vec::with_capacity(1000);
                                 let mut resource_to_return = Vec::with_capacity(1000);
@@ -636,7 +636,7 @@ where
                                 };
 
                                 if session
-                                    .send_bin(DE::encode(&messages::FromServer::PushData(result)))
+                                    .send_bin(De::encode(&messages::FromServer::PushData(result)))
                                     .await
                                     .is_err()
                                 {
@@ -645,7 +645,7 @@ where
 
                                 if !resource_to_return.is_empty() {
                                     if session
-                                        .send_bin(DE::encode(&messages::FromServer::Resources(
+                                        .send_bin(De::encode(&messages::FromServer::Resources(
                                             resource_to_return,
                                         )))
                                         .await
@@ -847,19 +847,19 @@ type BranchUserSubscribes<Id> = HashMap<
     >,
 >;
 
-type UserSenders<Id, MPSC: MultiProducerSingleConsumer> = HashMap<
+type UserSenders<Id, Mpsc: MultiProducerSingleConsumer> = HashMap<
     Id,                                   // user uuid
-    Vec<MPSC::Sender<Vec<ResourceInfo>>>, // because user may have multiple web socket connection
+    Vec<Mpsc::Sender<Vec<ResourceInfo>>>, // because user may have multiple web socket connection
 >;
 
 type ResourcesForCompany<Id> = HashMap<Id, Vec<ResourceInfo>>;
 type ResourcesForBranch<Id> = HashMap<Id, Vec<ResourceInfo>>;
 
-pub enum MessageToBroker<Id: RowId, MPSC: MultiProducerSingleConsumer> {
+pub enum MessageToBroker<Id: RowId, Mpsc: MultiProducerSingleConsumer> {
     Subscribe {
         list_of_subscribtion: AllSubscribes<Id>,
         users_uuids: HashSet<Id>,
-        sender_to_server: MPSC::Sender<Vec<ResourceInfo>>,
+        sender_to_server: Mpsc::Sender<Vec<ResourceInfo>>,
     },
     Unsubscribe {
         user_uuid: Id,

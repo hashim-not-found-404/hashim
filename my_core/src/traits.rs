@@ -10,7 +10,7 @@ pub trait RowId:
     fn get_time_as_seconds(&self) -> u64;
 }
 
-pub trait Functions {
+pub trait Regex {
     fn is_regex(s: &String) -> Result<(), String>;
 }
 

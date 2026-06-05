@@ -12,45 +12,45 @@ pub struct Response {
     pub data: push_data::OperationsResult,
 }
 
-pub struct Query<MPSC: MultiProducerSingleConsumer> {
+pub struct Query<Mpsc: MultiProducerSingleConsumer> {
     pub is_submit: bool,
-    pub sender: MPSC::Sender<Option<Response>>,
+    pub sender: Mpsc::Sender<Option<Response>>,
     pub data: push_data::OperationsInput,
 }
 
-enum MessageToCache<MPSC: MultiProducerSingleConsumer> {
+enum MessageToCache<Mpsc: MultiProducerSingleConsumer> {
     WeAreBackOnline,
     DataFromServer(Vec<u8>),
-    Query(Query<MPSC>),
+    Query(Query<Mpsc>),
     // Subscribe {
     //     component_id: u64,
     //     list_of_subscribtion: Vec<server_methods::Subscribe>,
-    //     sender_to_component: MPSC::Sender<Poke>,
+    //     sender_to_component: Mpsc::Sender<Poke>,
     // },
     // UnSubscribe {
     //     component_id: u64,
     // },
 }
 
-pub struct MyWAMP<At, MPSC>
+pub struct MyWAMP<At, Mpsc>
 where
     At: AllClientTypes + 'static,
-    MPSC: MultiProducerSingleConsumer + 'static,
+    Mpsc: MultiProducerSingleConsumer + 'static,
 {
-    _ph: PhantomData<(At, MPSC)>,
-    sender_to_network: MPSC::Sender<MessageToNetwork>,
-    sender_to_cache: MPSC::Sender<MessageToCache<MPSC>>,
+    _ph: PhantomData<(At, Mpsc)>,
+    sender_to_network: Mpsc::Sender<MessageToNetwork>,
+    sender_to_cache: Mpsc::Sender<MessageToCache<Mpsc>>,
     is_online: Arc<RwLock<bool>>,
 }
 
-impl<At, MPSC> MyWAMP<At, MPSC>
+impl<At, Mpsc> MyWAMP<At, Mpsc>
 where
     At: AllClientTypes + 'static,
-    MPSC: MultiProducerSingleConsumer + 'static,
+    Mpsc: MultiProducerSingleConsumer + 'static,
 {
-    pub fn new(sender_to_error: MPSC::Sender<DynamicError>) -> Self {
-        let (sender_to_network, receiver_to_network) = MPSC::channel();
-        let (sender_to_cache, receiver_to_cache) = MPSC::channel();
+    pub fn new(sender_to_error: Mpsc::Sender<DynamicError>) -> Self {
+        let (sender_to_network, receiver_to_network) = Mpsc::channel();
+        let (sender_to_cache, receiver_to_cache) = Mpsc::channel();
 
         let is_online = Arc::new(RwLock::new(false));
 
@@ -82,7 +82,7 @@ where
             .unwrap();
     }
 
-    pub async fn send_to_cache_actor(&self, msg: Query<MPSC>) {
+    pub async fn send_to_cache_actor(&self, msg: Query<Mpsc>) {
         self.sender_to_cache
             .send(MessageToCache::Query(msg))
             .await
@@ -102,7 +102,7 @@ where
 
     async fn connect(
         is_online: Arc<RwLock<bool>>,
-        sender_to_cache: &MPSC::Sender<MessageToCache<MPSC>>,
+        sender_to_cache: &Mpsc::Sender<MessageToCache<Mpsc>>,
         url: &Option<String>,
         ws: &mut Option<At::Ws>,
     ) {
@@ -126,9 +126,9 @@ where
     }
 
     fn network_actor(
-        receiver_to_network: MPSC::Receiver<MessageToNetwork>,
-        sender_to_cache: MPSC::Sender<MessageToCache<MPSC>>,
-        sender_to_error: MPSC::Sender<DynamicError>,
+        receiver_to_network: Mpsc::Receiver<MessageToNetwork>,
+        sender_to_cache: Mpsc::Sender<MessageToCache<Mpsc>>,
+        sender_to_error: Mpsc::Sender<DynamicError>,
         is_online: Arc<RwLock<bool>>,
     ) {
         At::Rt::spawn_local(async move {
@@ -176,15 +176,15 @@ where
     }
 
     fn cache_actor(
-        receiver_to_cache: MPSC::Receiver<MessageToCache<MPSC>>,
-        sender_to_network: MPSC::Sender<MessageToNetwork>,
-        sender_to_error: MPSC::Sender<DynamicError>,
+        receiver_to_cache: Mpsc::Receiver<MessageToCache<Mpsc>>,
+        sender_to_network: Mpsc::Sender<MessageToNetwork>,
+        sender_to_error: Mpsc::Sender<DynamicError>,
         is_online: Arc<RwLock<bool>>,
     ) {
         At::Rt::spawn_local(async move {
             let mut state = cache::State::<At::Ch>::new::<At::Rn>().await;
             let mut pool_of_senders =
-                HashMap::<u64, MPSC::Sender<Option<Response>>>::with_capacity(100);
+                HashMap::<u64, Mpsc::Sender<Option<Response>>>::with_capacity(100);
 
             loop {
                 match receiver_to_cache.recv().await.unwrap() {
@@ -304,7 +304,7 @@ where
     }
 
     async fn prepare_txn_and_send_to_network(
-        sender_to_network: MPSC::Sender<MessageToNetwork>,
+        sender_to_network: Mpsc::Sender<MessageToNetwork>,
         operations: Vec<push_data::Txn<push_data::OperationsInput>>,
     ) {
         if operations.is_empty() {

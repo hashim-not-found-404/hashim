@@ -16,24 +16,24 @@ pub trait AllSignalTypes: Default {
 pub struct State<
     As: AllSignalTypes + 'static,
     At: AllClientTypes + 'static,
-    MPSC: MultiProducerSingleConsumer + 'static,
+    Mpsc: MultiProducerSingleConsumer + 'static,
 > {
     // here for the app logic
-    routs: web_socket::MyWAMP<At, MPSC>,
+    routs: web_socket::MyWAMP<At, Mpsc>,
 
     // here every field is to display , here is global state
     pub is_signed_in: As::Bool,
     pub external_errors: As::StringVec,
 }
 
-impl<As: AllSignalTypes, At: AllClientTypes + 'static, MPSC: MultiProducerSingleConsumer + 'static>
-    State<As, At, MPSC>
+impl<As: AllSignalTypes, At: AllClientTypes + 'static, Mpsc: MultiProducerSingleConsumer + 'static>
+    State<As, At, Mpsc>
 {
     pub fn new() -> Arc<Self> {
-        let (sender_to_error, receiver_to_error) = MPSC::channel();
+        let (sender_to_error, receiver_to_error) = Mpsc::channel();
 
         let state = Arc::new(Self {
-            routs: web_socket::MyWAMP::<At, MPSC>::new(sender_to_error.clone()),
+            routs: web_socket::MyWAMP::<At, Mpsc>::new(sender_to_error.clone()),
             is_signed_in: As::Bool::default(),
             external_errors: As::StringVec::default(),
         });
@@ -77,7 +77,7 @@ impl<As: AllSignalTypes, At: AllClientTypes + 'static, MPSC: MultiProducerSingle
                 password: feature_state.user_password.read().to_string(),
             };
 
-            let (sender, receiver) = MPSC::channel();
+            let (sender, receiver) = Mpsc::channel();
             self.routs
                 .send_to_cache_actor(web_socket::Query {
                     is_submit,
@@ -170,7 +170,7 @@ impl<As: AllSignalTypes, At: AllClientTypes + 'static, MPSC: MultiProducerSingle
                 password: feature_state.user_password.read().to_string(),
             };
 
-            let (sender, receiver) = MPSC::channel();
+            let (sender, receiver) = Mpsc::channel();
             self.routs
                 .send_to_cache_actor(web_socket::Query {
                     is_submit,
@@ -224,7 +224,7 @@ impl<As: AllSignalTypes, At: AllClientTypes + 'static, MPSC: MultiProducerSingle
         });
     }
 
-    fn listen_to_error(self: Arc<Self>, receiver_to_error: MPSC::Receiver<DynamicError>) {
+    fn listen_to_error(self: Arc<Self>, receiver_to_error: Mpsc::Receiver<DynamicError>) {
         At::Rt::spawn_local(async move {
             loop {
                 let err = receiver_to_error.recv().await.unwrap();
