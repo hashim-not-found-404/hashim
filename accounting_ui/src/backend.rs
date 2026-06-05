@@ -111,9 +111,9 @@ impl Signal<String> for MySignalForLists {
 #[derive(Default)]
 pub struct MyAllSignalTypes;
 impl AllSignalTypes for MyAllSignalTypes {
-    type SigString = MySignal<String>;
-    type SigBool = MySignal<bool>;
-    type SigExternalError = MySignal<String>;
-    type SigCurrency = MySignal<db_types::Currency>;
-    type SigLocation = MySignal<db_types::Location>;
+    type String = MySignal<String>;
+    type Bool = MySignal<bool>;
+    type StringVec = MySignal<String>;
+    type Currency = MySignal<db_types::Currency>;
+    type Location = MySignal<db_types::Location>;
 }

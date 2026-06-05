@@ -6,11 +6,11 @@ pub trait Signal<T>: Default {
 }
 
 pub trait AllSignalTypes: Default {
-    type SigString: Signal<String>;
-    type SigBool: Signal<bool>;
-    type SigExternalError: Signal<String>;
-    type SigCurrency: Signal<db_types::Currency>;
-    type SigLocation: Signal<db_types::Location>;
+    type String: Signal<String>;
+    type Bool: Signal<bool>;
+    type StringVec: Signal<String>;
+    type Currency: Signal<db_types::Currency>;
+    type Location: Signal<db_types::Location>;
 }
 
 pub struct State<
@@ -22,8 +22,8 @@ pub struct State<
     routs: web_socket::MyWAMP<At, MPSC>,
 
     // here every field is to display , here is global state
-    pub is_signed_in: As::SigBool,
-    pub external_errors: As::SigExternalError,
+    pub is_signed_in: As::Bool,
+    pub external_errors: As::StringVec,
 }
 
 impl<
@@ -38,8 +38,8 @@ impl<
 
         let state = Arc::new(Self {
             routs: web_socket::MyWAMP::<At, MPSC>::new(sender_to_error.clone()),
-            is_signed_in: As::SigBool::default(),
-            external_errors: As::SigExternalError::default(),
+            is_signed_in: As::Bool::default(),
+            external_errors: As::StringVec::default(),
         });
 
         let state1 = state.clone();
@@ -296,37 +296,37 @@ impl<
 
 #[derive(Default)]
 pub struct SignInState<As: AllSignalTypes> {
-    pub user_id_error: As::SigString,
-    pub user_password_error: As::SigString,
+    pub user_id_error: As::String,
+    pub user_password_error: As::String,
 }
 
 #[derive(Default)]
 pub struct SignUpState<As: AllSignalTypes> {
-    pub show_dialog: As::SigBool,
-    pub user_name: As::SigString,
-    pub user_id_error: As::SigString,
-    pub user_name_error: As::SigString,
+    pub show_dialog: As::Bool,
+    pub user_name: As::String,
+    pub user_id_error: As::String,
+    pub user_name_error: As::String,
 }
 
 #[derive(Default)]
 pub struct AuthFeatureState<As: AllSignalTypes> {
-    pub user_id: As::SigString,
-    pub user_password: As::SigString,
-    pub is_loading: As::SigBool,
+    pub user_id: As::String,
+    pub user_password: As::String,
+    pub is_loading: As::Bool,
 }
 
 #[derive(Default)]
 pub struct CreateCompanyState<As: AllSignalTypes> {
-    pub company_name: As::SigString,
-    pub currency: As::SigCurrency,
+    pub company_name: As::String,
+    pub currency: As::Currency,
 }
 
 #[derive(Default)]
 pub struct CreateCompanyBranchState<As: AllSignalTypes> {
-    pub company_belong: As::SigString,
-    pub currency: As::SigCurrency,
-    pub branch_name: As::SigString,
-    pub location: As::SigLocation,
+    pub company_belong: As::String,
+    pub currency: As::Currency,
+    pub branch_name: As::String,
+    pub location: As::Location,
 }
 
 fn is_proceed(
