@@ -1,4 +1,3 @@
-use adapters::mpsc_sender;
 use dioxus::{core::ReactiveContext, prelude::*};
 use my_core::prelude::{AllSignalTypes, Signal, *};
 use std::{
@@ -37,27 +36,27 @@ impl<T> Clone for MySignal<T> {
     }
 }
 
-// impl<T: PartialEq + Clone> PartialEq for MySignal<T> {
-//     fn eq(&self, other: &Self) -> bool {
-//         let value_eq = {
-//             let s = { self.value.try_lock().unwrap().clone() };
-//             let o = { other.value.try_lock().unwrap().clone() };
-//             s == o
-//         };
+impl<T: PartialEq + Clone> PartialEq for MySignal<T> {
+    fn eq(&self, other: &Self) -> bool {
+        let value_eq = {
+            let s = { self.value.try_lock().unwrap().clone() };
+            let o = { other.value.try_lock().unwrap().clone() };
+            s == o
+        };
 
-//         if !value_eq {
-//             return false;
-//         }
+        if !value_eq {
+            return false;
+        }
 
-//         let subscribers_eq = {
-//             let s = { self.subscribers.try_lock().unwrap().clone() };
-//             let o = { other.subscribers.try_lock().unwrap().clone() };
-//             s == o
-//         };
+        let subscribers_eq = {
+            let s = { self.subscribers.try_lock().unwrap().clone() };
+            let o = { other.subscribers.try_lock().unwrap().clone() };
+            s == o
+        };
 
-//         subscribers_eq
-//     }
-// }
+        subscribers_eq
+    }
+}
 
 impl<T: 'static + Clone + Default> Default for MySignal<T> {
     fn default() -> Self {
@@ -117,11 +116,4 @@ impl AllSignalTypes for MyAllSignalTypes {
     type StringVec = MySignal<String>;
     type Currency = MySignal<db_types::Currency>;
     type Location = MySignal<db_types::Location>;
-}
-
-// TODO make new signal that work for senders mpsc
-impl<T> PartialEq for MySignal<T> {
-    fn eq(&self, other: &Self) -> bool {
-        false
-    }
 }

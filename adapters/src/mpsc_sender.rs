@@ -25,4 +25,10 @@ pub mod m {
             Self(Arc::new(Mutex::new(t)))
         }
     }
+
+    impl<T> PartialEq for S<T> {
+        fn eq(&self, other: &Self) -> bool {
+            Arc::ptr_eq(&self.0, &other.0)
+        }
+    }
 }

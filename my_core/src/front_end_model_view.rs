@@ -1,5 +1,3 @@
-use std::sync::Mutex;
-
 use crate::prelude::*;
 
 pub trait Signal<T>: Default {
