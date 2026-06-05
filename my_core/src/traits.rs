@@ -199,3 +199,12 @@ pub trait CacheIO: Sized {
         bool, /* is user_id exist */
     );
 }
+
+pub trait AllClientTypes {
+    type Rn: RandomNumber;
+    type Ws: WebSocketOp;
+    type Ed: Coding;
+    type Rt: Runtime;
+    type Ch: CacheIO;
+    type Id: RowId;
+}

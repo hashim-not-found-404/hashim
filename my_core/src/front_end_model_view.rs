@@ -1,62 +1,49 @@
 use crate::prelude::*;
 
-pub trait Signal<T> {
+pub trait Signal<T>: Default {
     fn read(&self) -> T;
     fn set(&self, v: T);
 }
 
-pub trait AllSignals: Default {
-    type SigString: Signal<String> + Default;
-    type SigBool: Signal<bool> + Default;
-    type SigExternalError: Signal<String> + Default;
-    type SigCurrency: Signal<db_types::Currency> + Default;
-    type SigLocation: Signal<db_types::Location> + Default;
+pub trait AllSignalTypes: Default {
+    type SigString: Signal<String>;
+    type SigBool: Signal<bool>;
+    type SigExternalError: Signal<String>;
+    type SigCurrency: Signal<db_types::Currency>;
+    type SigLocation: Signal<db_types::Location>;
 }
 
 pub struct State<
-    RN: RandomNumber + 'static,
-    WS: WebSocketOp + 'static,
-    DE: Coding + 'static,
-    RT: Runtime + 'static,
-    CH: CacheIO + 'static,
+    At: AllClientTypes + 'static,
     MPSC: MultiProducerSingleConsumer + 'static,
-    Id: RowId + 'static,
-    AllSigs: AllSignals + 'static,
+    As: AllSignalTypes + 'static,
 > {
     // here for the app logic
-    _ph: PhantomData<AllSigs>,
-    routs: web_socket::MyWAMP<WS, DE, RN, RT, CH, Id, MPSC>,
+    routs: web_socket::MyWAMP<At, MPSC>,
 
-    // here every field is to display
-    // here is global state
-    pub is_signed_in: AllSigs::SigBool,
-    pub external_errors: AllSigs::SigExternalError,
+    // here every field is to display , here is global state
+    pub is_signed_in: As::SigBool,
+    pub external_errors: As::SigExternalError,
 }
 
 impl<
-    RN: RandomNumber + 'static,
-    WS: WebSocketOp + 'static,
-    DE: Coding + 'static,
-    RT: Runtime + 'static,
-    CH: CacheIO + 'static,
+    At: AllClientTypes + 'static,
     MPSC: MultiProducerSingleConsumer + 'static,
-    Id: RowId + 'static,
     // signals
-    AllSigs: AllSignals,
-> State<RN, WS, DE, RT, CH, MPSC, Id, AllSigs>
+    As: AllSignalTypes,
+> State<At, MPSC, As>
 {
     pub fn new() -> Arc<Self> {
         let (sender_to_error, receiver_to_error) = MPSC::channel();
 
         let state = Arc::new(Self {
-            _ph: PhantomData,
-            routs: web_socket::MyWAMP::<WS, DE, RN, RT, CH, Id, MPSC>::new(sender_to_error.clone()),
-            is_signed_in: AllSigs::SigBool::default(),
-            external_errors: AllSigs::SigExternalError::default(),
+            routs: web_socket::MyWAMP::<At, MPSC>::new(sender_to_error.clone()),
+            is_signed_in: As::SigBool::default(),
+            external_errors: As::SigExternalError::default(),
         });
 
         let state1 = state.clone();
-        RT::spawn_local(async move {
+        At::Rt::spawn_local(async move {
             let url = format!("ws://{}/ws", ADDRESS);
             state1.routs.connect_to_url(&url).await;
         });
@@ -69,10 +56,10 @@ impl<
     pub fn sign_up(
         self: Arc<Self>, // TODO pass reciever
         is_submit: bool,
-        local_state: Arc<SignUpState<AllSigs>>,
-        feature_state: Arc<AuthFeatureState<AllSigs>>,
+        local_state: Arc<SignUpState<As>>,
+        feature_state: Arc<AuthFeatureState<As>>,
     ) {
-        RT::spawn_local(async move {
+        At::Rt::spawn_local(async move {
             if feature_state.is_loading.read() == true {
                 return;
             }
@@ -82,7 +69,7 @@ impl<
             local_state.user_name_error.set(String::new());
 
             let input = sign_up::Input {
-                new_uuid: Id::generate().to_string(),
+                new_uuid: At::Id::generate().to_string(),
                 name: {
                     let name = local_state.user_name.read();
                     match name.is_empty() {
@@ -106,12 +93,12 @@ impl<
             if is_submit {
                 let self1 = self.clone();
                 let local_state1 = local_state.clone();
-                RT::spawn_local(async move {
+                At::Rt::spawn_local(async move {
                     loop {
                         if self1.routs.is_online() {
-                            RT::sleep(Duration::from_secs(10)).await;
+                            At::Rt::sleep(Duration::from_secs(10)).await;
                         } else {
-                            RT::sleep(Duration::from_secs(1)).await;
+                            At::Rt::sleep(Duration::from_secs(1)).await;
                         }
 
                         local_state1.show_dialog.set(true);
@@ -170,10 +157,10 @@ impl<
     pub fn sign_in(
         self: Arc<Self>,
         is_submit: bool,
-        local_state: Arc<SignInState<AllSigs>>,
-        feature_state: Arc<AuthFeatureState<AllSigs>>,
+        local_state: Arc<SignInState<As>>,
+        feature_state: Arc<AuthFeatureState<As>>,
     ) {
-        RT::spawn_local(async move {
+        At::Rt::spawn_local(async move {
             if feature_state.is_loading.read() == true {
                 return;
             }
@@ -242,7 +229,7 @@ impl<
     }
 
     fn listen_to_error(self: Arc<Self>, receiver_to_error: MPSC::Receiver<DynamicError>) {
-        RT::spawn_local(async move {
+        At::Rt::spawn_local(async move {
             loop {
                 let err = receiver_to_error.recv().await.unwrap();
                 self.external_errors.set(err.to_string());
@@ -253,12 +240,12 @@ impl<
     pub fn create_company(
         self: Arc<Self>,
         is_submit: bool,
-        local_state: Arc<CreateCompanyState<AllSigs>>,
+        local_state: Arc<CreateCompanyState<As>>,
     ) {
-        RT::spawn_local(async move {
+        At::Rt::spawn_local(async move {
             let input = create_company::Input {
                 user_uuid: String::new(),
-                new_uuid: Id::generate().to_string(),
+                new_uuid: At::Id::generate().to_string(),
                 company_name: local_state.company_name.read(),
                 currency: local_state.currency.read(),
             };
@@ -279,12 +266,12 @@ impl<
     pub fn create_company_branch(
         self: Arc<Self>,
         is_submit: bool,
-        local_state: Arc<CreateCompanyBranchState<AllSigs>>,
+        local_state: Arc<CreateCompanyBranchState<As>>,
     ) {
-        RT::spawn_local(async move {
+        At::Rt::spawn_local(async move {
             let input = create_company_branch::Input {
                 user_uuid: String::new(),
-                new_uuid: Id::generate().to_string(),
+                new_uuid: At::Id::generate().to_string(),
                 company_belong: local_state.company_belong.read(),
                 currency: local_state.currency.read(),
                 branch_name: local_state.branch_name.read(),
@@ -308,38 +295,38 @@ impl<
 }
 
 #[derive(Default)]
-pub struct SignInState<AllSigs: AllSignals> {
-    pub user_id_error: AllSigs::SigString,
-    pub user_password_error: AllSigs::SigString,
+pub struct SignInState<As: AllSignalTypes> {
+    pub user_id_error: As::SigString,
+    pub user_password_error: As::SigString,
 }
 
 #[derive(Default)]
-pub struct SignUpState<AllSigs: AllSignals> {
-    pub show_dialog: AllSigs::SigBool,
-    pub user_name: AllSigs::SigString,
-    pub user_id_error: AllSigs::SigString,
-    pub user_name_error: AllSigs::SigString,
+pub struct SignUpState<As: AllSignalTypes> {
+    pub show_dialog: As::SigBool,
+    pub user_name: As::SigString,
+    pub user_id_error: As::SigString,
+    pub user_name_error: As::SigString,
 }
 
 #[derive(Default)]
-pub struct AuthFeatureState<AllSigs: AllSignals> {
-    pub user_id: AllSigs::SigString,
-    pub user_password: AllSigs::SigString,
-    pub is_loading: AllSigs::SigBool,
+pub struct AuthFeatureState<As: AllSignalTypes> {
+    pub user_id: As::SigString,
+    pub user_password: As::SigString,
+    pub is_loading: As::SigBool,
 }
 
 #[derive(Default)]
-pub struct CreateCompanyState<AllSigs: AllSignals> {
-    pub company_name: AllSigs::SigString,
-    pub currency: AllSigs::SigCurrency,
+pub struct CreateCompanyState<As: AllSignalTypes> {
+    pub company_name: As::SigString,
+    pub currency: As::SigCurrency,
 }
 
 #[derive(Default)]
-pub struct CreateCompanyBranchState<AllSigs: AllSignals> {
-    pub company_belong: AllSigs::SigString,
-    pub currency: AllSigs::SigCurrency,
-    pub branch_name: AllSigs::SigString,
-    pub location: AllSigs::SigLocation,
+pub struct CreateCompanyBranchState<As: AllSignalTypes> {
+    pub company_belong: As::SigString,
+    pub currency: As::SigCurrency,
+    pub branch_name: As::SigString,
+    pub location: As::SigLocation,
 }
 
 fn is_proceed(

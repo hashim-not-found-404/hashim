@@ -32,30 +32,20 @@ enum MessageToCache<MPSC: MultiProducerSingleConsumer> {
     // },
 }
 
-pub struct MyWAMP<WS, DE, RN, RT, CH, Id, MPSC>
+pub struct MyWAMP<At, MPSC>
 where
-    RN: RandomNumber + 'static,
-    WS: WebSocketOp + 'static,
-    DE: Coding + 'static,
-    RT: Runtime + 'static,
-    CH: CacheIO + 'static,
-    Id: RowId + 'static,
+    At: AllClientTypes + 'static,
     MPSC: MultiProducerSingleConsumer + 'static,
 {
-    _ph: PhantomData<(WS, DE, RN, RT, CH, Id, MPSC)>,
+    _ph: PhantomData<(At, MPSC)>,
     sender_to_network: MPSC::Sender<MessageToNetwork>,
     sender_to_cache: MPSC::Sender<MessageToCache<MPSC>>,
     is_online: Arc<RwLock<bool>>,
 }
 
-impl<WS, DE, RN, RT, CH, Id, MPSC> MyWAMP<WS, DE, RN, RT, CH, Id, MPSC>
+impl<At, MPSC> MyWAMP<At, MPSC>
 where
-    RN: RandomNumber + 'static,
-    WS: WebSocketOp + 'static,
-    DE: Coding + 'static,
-    RT: Runtime + 'static,
-    CH: CacheIO + 'static,
-    Id: RowId + 'static,
+    At: AllClientTypes + 'static,
     MPSC: MultiProducerSingleConsumer + 'static,
 {
     pub fn new(sender_to_error: MPSC::Sender<DynamicError>) -> Self {
@@ -103,7 +93,7 @@ where
         get(self.is_online.clone())
     }
 
-    async fn network_radar(ws: &Option<WS>) -> Result<Vec<u8>, DynamicError> {
+    async fn network_radar(ws: &Option<At::Ws>) -> Result<Vec<u8>, DynamicError> {
         match &ws {
             Some(ws) => ws.receive_bin().await,
             None => Err(HashimError::ConnectionClosed.into()),
@@ -114,12 +104,12 @@ where
         is_online: Arc<RwLock<bool>>,
         sender_to_cache: &MPSC::Sender<MessageToCache<MPSC>>,
         url: &Option<String>,
-        ws: &mut Option<WS>,
+        ws: &mut Option<At::Ws>,
     ) {
         if let Some(ur) = url {
             set(is_online.clone(), false);
 
-            if let Ok(ok) = WS::connect(ur.as_str()).await {
+            if let Ok(ok) = At::Ws::connect(ur.as_str()).await {
                 *ws = Some(ok);
 
                 sender_to_cache
@@ -132,7 +122,7 @@ where
                 return;
             }
         }
-        RT::sleep(Duration::from_secs(5)).await;
+        At::Rt::sleep(Duration::from_secs(5)).await;
     }
 
     fn network_actor(
@@ -141,12 +131,12 @@ where
         sender_to_error: MPSC::Sender<DynamicError>,
         is_online: Arc<RwLock<bool>>,
     ) {
-        RT::spawn_local(async move {
-            let mut ws: Option<WS> = None;
+        At::Rt::spawn_local(async move {
+            let mut ws: Option<At::Ws> = None;
             let mut url: Option<String> = None;
 
             loop {
-                match RT::select(receiver_to_network.recv(), Self::network_radar(&ws)).await {
+                match At::Rt::select(receiver_to_network.recv(), Self::network_radar(&ws)).await {
                     Either::One(r) => match r.unwrap() {
                         MessageToNetwork::Url(ur) => {
                             url = Some(ur);
@@ -165,7 +155,7 @@ where
                                     .await;
                                 }
                             }
-                            None => RT::sleep(Duration::from_secs(5)).await,
+                            None => At::Rt::sleep(Duration::from_secs(5)).await,
                         },
                     },
                     Either::Two(from_network) => match from_network {
@@ -191,8 +181,8 @@ where
         sender_to_error: MPSC::Sender<DynamicError>,
         is_online: Arc<RwLock<bool>>,
     ) {
-        RT::spawn_local(async move {
-            let mut state = cache::State::<CH>::new::<RN>().await;
+        At::Rt::spawn_local(async move {
+            let mut state = cache::State::<At::Ch>::new::<At::Rn>().await;
             let mut pool_of_senders =
                 HashMap::<u64, MPSC::Sender<Option<Response>>>::with_capacity(100);
 
@@ -208,7 +198,7 @@ where
                         .await;
                     }
                     MessageToCache::DataFromServer(raw_data) => {
-                        let message_type = match DE::decode::<messages::FromServer>(&raw_data) {
+                        let message_type = match At::Ed::decode::<messages::FromServer>(&raw_data) {
                             Ok(message_type) => message_type,
                             Err(err) => {
                                 sender_to_error.send(err).await.unwrap();
@@ -254,7 +244,7 @@ where
                         sender,
                         data,
                     }) => {
-                        let txn_number = RN::generate();
+                        let txn_number = At::Rn::generate();
 
                         let result = if is_submit {
                             data.run_operation_check_apply_write(txn_number, &mut state)
@@ -325,11 +315,11 @@ where
 
         let t = push_data::Input {
             jwts,
-            nonce: Id::generate().to_string(),
+            nonce: At::Id::generate().to_string(),
             operations,
         };
 
-        let t = DE::encode(&t);
+        let t = At::Ed::encode(&t);
 
         sender_to_network
             .send(MessageToNetwork::Bytes(t))

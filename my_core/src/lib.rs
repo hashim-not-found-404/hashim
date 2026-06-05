@@ -16,7 +16,7 @@ pub mod prelude {
 
     pub use crate::mbg; // this macro for dev only
     pub use crate::{
-        front_end_model_view::{AllSignals, Signal},
+        front_end_model_view::{AllSignalTypes, Signal},
         request_response::*,
         server_methods::WSServer,
         traits::*,
