@@ -131,7 +131,7 @@ impl<
 
                     let is_ok = result.is_ok();
                     match result {
-                        Ok(business_output) => {}
+                        Ok(_) => {}
                         Err(business_error) => {
                             local_state.user_id_error.set(match business_error.user_id {
                                 Some(_) => String::from("duplicated user"),
@@ -231,7 +231,7 @@ impl<
 
                     let is_ok = result.is_ok();
                     match result {
-                        Ok(business_output) => {}
+                        Ok(_) => {}
                         Err(business_error) => {
                             local_state.user_id_error.set(match business_error.user_id {
                                 Some(_) => String::from("user not exist"),
