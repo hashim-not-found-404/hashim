@@ -1,4 +1,5 @@
 pub mod cache;
+pub mod cache_query_operations;
 pub mod db_types;
 pub mod front_end_model_view;
 pub mod operations;

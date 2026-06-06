@@ -13,16 +13,22 @@ pub struct Response {
     pub data: push_data::OperationsResult,
 }
 
-pub struct Query<Mpsc: MultiProducerSingleConsumer> {
+pub struct QueryFromCacheAndServer<Mpsc: MultiProducerSingleConsumer> {
     pub is_submit: bool,
     pub sender: Mpsc::Sender<Option<Response>>,
     pub data: push_data::OperationsInput,
 }
 
+pub struct QueryFromCacheOnly<Mpsc: MultiProducerSingleConsumer> {
+    pub sender: Mpsc::Sender<cache_query_operations::CacheQueryOutput>,
+    pub data: cache_query_operations::CacheQueryInput,
+}
+
 enum MessageToCache<Mpsc: MultiProducerSingleConsumer> {
     WeAreBackOnline,
     DataFromServer(Vec<u8>),
-    Query(Query<Mpsc>),
+    QueryFromCacheAndServer(QueryFromCacheAndServer<Mpsc>),
+    QueryFromCacheOnly(QueryFromCacheOnly<Mpsc>),
     // Subscribe {
     //     component_id: u64,
     //     list_of_subscribtion: Vec<server_methods::Subscribe>,
@@ -85,13 +91,32 @@ where
             .unwrap();
     }
 
-    pub async fn send_to_cache_actor(&self, msg: Query<Mpsc>) {
+    pub async fn send_to_cache_actor(&self, msg: QueryFromCacheAndServer<Mpsc>) {
+        // TODO make it return receiver
         self.sender_to_cache
             .lock()
             .unwrap()
-            .send(MessageToCache::Query(msg))
+            .send(MessageToCache::QueryFromCacheAndServer(msg))
             .await
             .unwrap();
+    }
+
+    pub async fn send_query_to_cache_actor(
+        &self,
+        msg: cache_query_operations::CacheQueryInput,
+    ) -> cache_query_operations::CacheQueryOutput {
+        let (sender, mut receiver) = Mpsc::channel();
+        self.sender_to_cache
+            .lock()
+            .unwrap()
+            .send(MessageToCache::QueryFromCacheOnly(QueryFromCacheOnly {
+                sender,
+                data: msg,
+            }))
+            .await
+            .unwrap();
+
+        receiver.recv().await.unwrap()
     }
 
     pub fn is_online(&self) -> bool {
@@ -243,7 +268,7 @@ where
                             }
                         }
                     }
-                    MessageToCache::Query(Query {
+                    MessageToCache::QueryFromCacheAndServer(QueryFromCacheAndServer {
                         is_submit,
                         mut sender,
                         data,
@@ -280,28 +305,30 @@ where
                         } else {
                             let _ = sender.send(None).await;
                         };
-                    } // MessageToCache::Subscribe {
-                      //     component_id,
-                      //     list_of_subscribtion,
-                      //     sender_to_component,
-                      // } => {
-                      // pool_of_senders.insert(component_id, sender_to_component);
-                      // for subscribe in list_of_subscribtion {
-                      //     pool_of_subscribes
-                      //         .entry(subscribe)
-                      //         .or_insert(HashSet::with_capacity(10))
-                      //         .insert(component_id);
-                      // }
-                      // }
-                      // MessageToCache::UnSubscribe { component_id } => {
-                      // pool_of_senders.remove(&component_id);
+                    }
+                    MessageToCache::QueryFromCacheOnly(_) => todo!(),
+                    // MessageToCache::Subscribe {
+                    //     component_id,
+                    //     list_of_subscribtion,
+                    //     sender_to_component,
+                    // } => {
+                    // pool_of_senders.insert(component_id, sender_to_component);
+                    // for subscribe in list_of_subscribtion {
+                    //     pool_of_subscribes
+                    //         .entry(subscribe)
+                    //         .or_insert(HashSet::with_capacity(10))
+                    //         .insert(component_id);
+                    // }
+                    // }
+                    // MessageToCache::UnSubscribe { component_id } => {
+                    // pool_of_senders.remove(&component_id);
 
-                      // for (_, component_id_gg) in &mut pool_of_subscribes {
-                      //     component_id_gg.remove(&component_id);
-                      // }
+                    // for (_, component_id_gg) in &mut pool_of_subscribes {
+                    //     component_id_gg.remove(&component_id);
+                    // }
 
-                      // pool_of_subscribes.retain(|_, component_ids| !component_ids.is_empty());
-                      // }
+                    // pool_of_subscribes.retain(|_, component_ids| !component_ids.is_empty());
+                    // }
                 }
             }
         });

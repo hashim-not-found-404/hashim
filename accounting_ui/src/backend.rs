@@ -111,6 +111,7 @@ impl Signal<String> for MySignalForLists {
 #[derive(Default)]
 pub struct MyAllSignalTypes;
 impl AllSignalTypes for MyAllSignalTypes {
+    type OptionRowId = MySignal<Option<db_types::RowIdType>>;
     type String = MySignal<String>;
     type Bool = MySignal<bool>;
     type StringVec = MySignal<String>;

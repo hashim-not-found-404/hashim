@@ -101,7 +101,7 @@ pub fn AuthenticationPage() -> Element {
         Arc::new(front_end_model_view::AuthFeatureState::<MyAllSignalTypes>::default());
     use_context_provider(|| auth_state);
 
-    if state.is_signed_in.read() {
+    if state.is_signed_in.read().is_some() {
         navigator().push(Route::Home {});
     }
 

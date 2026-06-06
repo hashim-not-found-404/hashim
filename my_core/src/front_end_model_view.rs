@@ -1,4 +1,7 @@
-use crate::prelude::*;
+use crate::{
+    cache_query_operations::{GetUserUuidInput, QueryOperations},
+    prelude::*,
+};
 
 pub trait Signal<T>: Default {
     fn read(&self) -> T;
@@ -7,6 +10,7 @@ pub trait Signal<T>: Default {
 
 pub trait AllSignalTypes: Default {
     type String: Signal<String>;
+    type OptionRowId: Signal<Option<db_types::RowIdType>>;
     type Bool: Signal<bool>;
     type StringVec: Signal<String>;
     type Currency: Signal<db_types::Currency>;
@@ -24,7 +28,7 @@ pub struct State<
     routs: web_socket::MyWAMP<At, Mpsc>,
 
     // here every field is to display , here is global state
-    pub is_signed_in: As::Bool,
+    pub is_signed_in: As::OptionRowId,
     pub external_errors: As::StringVec,
 }
 
@@ -41,7 +45,7 @@ impl<
         let state = Arc::new(Self {
             _ph: PhantomData,
             routs: web_socket::MyWAMP::<At, Mpsc>::new(sender_to_error.clone()),
-            is_signed_in: As::Bool::default(),
+            is_signed_in: As::OptionRowId::default(),
             external_errors: As::StringVec::default(),
         });
 
@@ -72,8 +76,9 @@ impl<
             local_state.user_id_error.set(String::new());
             local_state.user_name_error.set(String::new());
 
+            let new_uuid = At::Id::generate().to_row_id();
             let input = sign_up::Input {
-                new_uuid: At::Id::generate().to_row_id(),
+                new_uuid: new_uuid.clone(),
                 name: {
                     let name = local_state.user_name.read();
                     match name.is_empty() {
@@ -81,13 +86,13 @@ impl<
                         false => Some(name.to_string()),
                     }
                 },
-                user_id: feature_state.user_id.read().to_string(),
-                password: feature_state.user_password.read().to_string(),
+                user_id: feature_state.user_id.read(),
+                password: feature_state.user_password.read(),
             };
 
             let (sender_to_response, mut receiver_to_response) = Mpsc::channel();
             self.routs
-                .send_to_cache_actor(web_socket::Query {
+                .send_to_cache_actor(web_socket::QueryFromCacheAndServer {
                     is_submit,
                     sender: sender_to_response,
                     data: input.clone().map_input(),
@@ -151,7 +156,7 @@ impl<
                             response.is_response_from_server,
                             is_user_want_to_proceed,
                         ) {
-                            self.is_signed_in.set(true);
+                            self.is_signed_in.set(Some(new_uuid));
                             break;
                         }
                     } else {
@@ -180,14 +185,15 @@ impl<
             local_state.user_id_error.set(String::new());
             local_state.user_password_error.set(String::new());
 
+            let user_id = feature_state.user_id.read();
             let input = sign_in::Input {
-                user_id: feature_state.user_id.read().into(),
-                password: feature_state.user_password.read().to_string(),
+                user_id: user_id.clone(),
+                password: feature_state.user_password.read(),
             };
 
             let (sender_to_response, mut receiver_to_response) = Mpsc::channel();
             self.routs
-                .send_to_cache_actor(web_socket::Query {
+                .send_to_cache_actor(web_socket::QueryFromCacheAndServer {
                     is_submit,
                     sender: sender_to_response,
                     data: input.clone().map_input(),
@@ -253,7 +259,18 @@ impl<
                             response.is_response_from_server,
                             is_user_want_to_proceed,
                         ) {
-                            self.is_signed_in.set(true);
+                            let result = self
+                                .routs
+                                .send_query_to_cache_actor(
+                                    cache_query_operations::CacheQueryInput::GetUserUuid(
+                                        GetUserUuidInput { user_id },
+                                    ),
+                                )
+                                .await;
+
+                            let result = cache_query_operations::GetUserUuidInput::unwrap(result);
+                            // TODO unwrap the (a)
+                            self.is_signed_in.set(Some(result.user_uuid));
                             break;
                         }
                     } else {
