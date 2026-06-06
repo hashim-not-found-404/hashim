@@ -7,4 +7,4 @@ edition = "2024"
 my_core = { workspace = true }
 adapters = { workspace = true }
 
-rusqlite = { version = "0.40.0", features = ["bundled"] }
+rusqlite = { version = "0.40.1", features = ["bundled"] }
