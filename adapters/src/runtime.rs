@@ -60,7 +60,7 @@ pub mod m {
         type JoinHandel<T> = join_handel::m::S<T>;
 
         fn abortable_spawn_local<F: Future + 'static>(fut: F) -> Self::JoinHandel<F::Output> {
-            let (sender_to_abort, receiver_to_abort) = actors::m::S::channel();
+            let (sender_to_abort, mut receiver_to_abort) = actors::m::S::channel();
             let join_handel = Self::JoinHandel::new(sender_to_abort);
 
             let output_place = join_handel.output.clone();

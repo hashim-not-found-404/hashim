@@ -180,11 +180,11 @@ pub trait Runtime {
 }
 
 pub trait Sender<T>: Clone {
-    async fn send(&self, t: T) -> Result<(), DynamicError>;
+    async fn send(&mut self, t: T) -> Result<(), DynamicError>;
 }
 
 pub trait Receiver<T> {
-    async fn recv(&self) -> Result<T, DynamicError>;
+    async fn recv(&mut self) -> Result<T, DynamicError>;
 }
 
 pub trait MultiProducerSingleConsumer {

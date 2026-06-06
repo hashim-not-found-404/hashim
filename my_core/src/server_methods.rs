@@ -499,7 +499,7 @@ where
         Ok(subs)
     }
 
-    pub fn broker_actor(receiver_to_broker: Mpsc::Receiver<MessageToBroker<Id, Mpsc>>) {
+    pub fn broker_actor(mut receiver_to_broker: Mpsc::Receiver<MessageToBroker<Id, Mpsc>>) {
         Rt::spawn_local(async move {
             let mut pool_of_pubsub_for_company: CompanyUserSubscribes<Id> =
                 HashMap::with_capacity(1000);
@@ -599,10 +599,10 @@ where
     pub fn server_actor<Ws: WSServer + 'static>(
         state: Arc<Self>,
         mut session: Ws,
-        sender_to_broker: Mpsc::Sender<server_methods::MessageToBroker<Id, Mpsc>>,
+        mut sender_to_broker: Mpsc::Sender<server_methods::MessageToBroker<Id, Mpsc>>,
     ) {
         Rt::spawn_local(async move {
-            let (sender_to_server, receiver_to_server) = Mpsc::channel::<Vec<ResourceInfo>>();
+            let (sender_to_server, mut receiver_to_server) = Mpsc::channel::<Vec<ResourceInfo>>();
 
             loop {
                 let result = Rt::select(session.receive(), receiver_to_server.recv()).await;

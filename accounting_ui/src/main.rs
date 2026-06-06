@@ -69,7 +69,7 @@ pub fn Dialog(
 
     let click = move |_| {
         show_dialog.set(false);
-        let sender = sender.read().unwrap();
+        let mut sender = sender.read().unwrap();
         spawn(async move {
             sender.send(()).await.unwrap();
         });

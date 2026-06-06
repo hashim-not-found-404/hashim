@@ -32,7 +32,8 @@ pub mod m {
     impl<T> JoinHandel for S<T> {
         fn abort(self) {
             spawn_local(async move {
-                self.aborter.send(()).await;
+                let mut aborter = self.aborter;
+                aborter.send(()).await;
             });
         }
     }

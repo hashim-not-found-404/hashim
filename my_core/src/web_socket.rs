@@ -1,3 +1,5 @@
+use std::sync::Mutex;
+
 use crate::prelude::*;
 
 // pub struct Poke;
@@ -39,8 +41,8 @@ where
     Mpsc: MultiProducerSingleConsumer + 'static,
 {
     _ph: PhantomData<(At, Mpsc)>,
-    sender_to_network: Mpsc::Sender<MessageToNetwork>,
-    sender_to_cache: Mpsc::Sender<MessageToCache<Mpsc>>,
+    sender_to_network: Mutex<Mpsc::Sender<MessageToNetwork>>,
+    sender_to_cache: Mutex<Mpsc::Sender<MessageToCache<Mpsc>>>,
     is_online: Arc<RwLock<bool>>,
 }
 
@@ -70,14 +72,16 @@ where
 
         Self {
             _ph: PhantomData,
-            sender_to_network,
-            sender_to_cache,
+            sender_to_network: Mutex::new(sender_to_network),
+            sender_to_cache: Mutex::new(sender_to_cache),
             is_online,
         }
     }
 
     pub async fn connect_to_url(&self, url: &String) {
         self.sender_to_network
+            .lock()
+            .unwrap()
             .send(MessageToNetwork::Url(url.clone()))
             .await
             .unwrap();
@@ -85,6 +89,8 @@ where
 
     pub async fn send_to_cache_actor(&self, msg: Query<Mpsc>) {
         self.sender_to_cache
+            .lock()
+            .unwrap()
             .send(MessageToCache::Query(msg))
             .await
             .unwrap();
@@ -103,7 +109,7 @@ where
 
     async fn connect(
         is_online: Arc<RwLock<bool>>,
-        sender_to_cache: &Mpsc::Sender<MessageToCache<Mpsc>>,
+        sender_to_cache: &mut Mpsc::Sender<MessageToCache<Mpsc>>,
         url: &Option<String>,
         ws: &mut Option<At::Ws>,
     ) {
@@ -127,9 +133,9 @@ where
     }
 
     fn network_actor(
-        receiver_to_network: Mpsc::Receiver<MessageToNetwork>,
-        sender_to_cache: Mpsc::Sender<MessageToCache<Mpsc>>,
-        sender_to_error: Mpsc::Sender<DynamicError>,
+        mut receiver_to_network: Mpsc::Receiver<MessageToNetwork>,
+        mut sender_to_cache: Mpsc::Sender<MessageToCache<Mpsc>>,
+        mut sender_to_error: Mpsc::Sender<DynamicError>,
         is_online: Arc<RwLock<bool>>,
     ) {
         At::Rt::spawn_local(async move {
@@ -141,7 +147,8 @@ where
                     Either::One(r) => match r.unwrap() {
                         MessageToNetwork::Url(ur) => {
                             url = Some(ur);
-                            Self::connect(is_online.clone(), &sender_to_cache, &url, &mut ws).await;
+                            Self::connect(is_online.clone(), &mut sender_to_cache, &url, &mut ws)
+                                .await;
                         }
                         MessageToNetwork::Bytes(data) => match &ws {
                             Some(ws1) => {
@@ -149,7 +156,7 @@ where
                                 if result.is_err() {
                                     Self::connect(
                                         is_online.clone(),
-                                        &sender_to_cache,
+                                        &mut sender_to_cache,
                                         &url,
                                         &mut ws,
                                     )
@@ -168,7 +175,8 @@ where
                         }
                         Err(err) => {
                             sender_to_error.send(err).await.unwrap();
-                            Self::connect(is_online.clone(), &sender_to_cache, &url, &mut ws).await;
+                            Self::connect(is_online.clone(), &mut sender_to_cache, &url, &mut ws)
+                                .await;
                         }
                     },
                 }
@@ -177,9 +185,9 @@ where
     }
 
     fn cache_actor(
-        receiver_to_cache: Mpsc::Receiver<MessageToCache<Mpsc>>,
-        sender_to_network: Mpsc::Sender<MessageToNetwork>,
-        sender_to_error: Mpsc::Sender<DynamicError>,
+        mut receiver_to_cache: Mpsc::Receiver<MessageToCache<Mpsc>>,
+        mut sender_to_network: Mpsc::Sender<MessageToNetwork>,
+        mut sender_to_error: Mpsc::Sender<DynamicError>,
         is_online: Arc<RwLock<bool>>,
     ) {
         At::Rt::spawn_local(async move {
@@ -192,11 +200,8 @@ where
                     MessageToCache::WeAreBackOnline => {
                         let operations = state.cache.get_all_txn_input().await;
 
-                        Self::prepare_txn_and_send_to_network(
-                            sender_to_network.clone(),
-                            operations,
-                        )
-                        .await;
+                        Self::prepare_txn_and_send_to_network(&mut sender_to_network, operations)
+                            .await;
                     }
                     MessageToCache::DataFromServer(raw_data) => {
                         let message_type = match At::Ed::decode::<messages::FromServer>(&raw_data) {
@@ -215,7 +220,7 @@ where
                                         state.cache.write_txn_result(&txn).await;
 
                                         let sender = pool_of_senders.remove(&txn.txn_number);
-                                        if let Some(sender) = sender {
+                                        if let Some(mut sender) = sender {
                                             let _ = sender
                                                 .send(Some(Response {
                                                     is_response_from_server: true,
@@ -242,7 +247,7 @@ where
                     }
                     MessageToCache::Query(Query {
                         is_submit,
-                        sender,
+                        mut sender,
                         data,
                     }) => {
                         let txn_number = At::Rn::generate();
@@ -268,7 +273,7 @@ where
 
                         if is_submit && get(is_online.clone()) {
                             Self::prepare_txn_and_send_to_network(
-                                sender_to_network.clone(),
+                                &mut sender_to_network,
                                 operations,
                             )
                             .await;
@@ -305,7 +310,7 @@ where
     }
 
     async fn prepare_txn_and_send_to_network(
-        sender_to_network: Mpsc::Sender<MessageToNetwork>,
+        sender_to_network: &mut Mpsc::Sender<MessageToNetwork>,
         operations: Vec<push_data::Txn<push_data::OperationsInput>>,
     ) {
         if operations.is_empty() {

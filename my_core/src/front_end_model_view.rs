@@ -85,7 +85,7 @@ impl<
                 password: feature_state.user_password.read().to_string(),
             };
 
-            let (sender_to_response, receiver_to_response) = Mpsc::channel();
+            let (sender_to_response, mut receiver_to_response) = Mpsc::channel();
             self.routs
                 .send_to_cache_actor(web_socket::Query {
                     is_submit: is_submit,
@@ -110,7 +110,7 @@ impl<
                 }
             });
 
-            let (sender_to_consent, receiver_to_consent) = Mpsc::channel();
+            let (sender_to_consent, mut receiver_to_consent) = Mpsc::channel();
             sender_to_dialog.set(Some(sender_to_consent));
             let mut is_user_want_to_proceed = false;
             let mut response = None;
@@ -184,7 +184,7 @@ impl<
                 password: feature_state.user_password.read().to_string(),
             };
 
-            let (sender, receiver) = Mpsc::channel();
+            let (sender, mut receiver) = Mpsc::channel();
             self.routs
                 .send_to_cache_actor(web_socket::Query {
                     is_submit,
@@ -238,7 +238,7 @@ impl<
         });
     }
 
-    fn listen_to_error(self: Arc<Self>, receiver_to_error: Mpsc::Receiver<DynamicError>) {
+    fn listen_to_error(self: Arc<Self>, mut receiver_to_error: Mpsc::Receiver<DynamicError>) {
         At::Rt::spawn_local(async move {
             loop {
                 let err = receiver_to_error.recv().await.unwrap();
