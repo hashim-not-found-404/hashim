@@ -159,6 +159,8 @@ pub trait JoinHandel {
 
 pub trait Runtime {
     type JoinHandel<T>: JoinHandel;
+
+    #[must_use = "this `output` you may want to abort"]
     fn abortable_spawn_local<F>(fut: F) -> Self::JoinHandel<F::Output>
     where
         F: Future + 'static;
