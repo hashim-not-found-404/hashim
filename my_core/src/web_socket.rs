@@ -318,29 +318,30 @@ where
                             let _ = sender.send(None).await;
                         };
                     }
-                    MessageToCache::QueryFromCacheOnly(_) => todo!(),
-                    // MessageToCache::Subscribe {
-                    //     component_id,
-                    //     list_of_subscribtion,
-                    //     sender_to_component,
-                    // } => {
-                    // pool_of_senders.insert(component_id, sender_to_component);
-                    // for subscribe in list_of_subscribtion {
-                    //     pool_of_subscribes
-                    //         .entry(subscribe)
-                    //         .or_insert(HashSet::with_capacity(10))
-                    //         .insert(component_id);
-                    // }
-                    // }
-                    // MessageToCache::UnSubscribe { component_id } => {
-                    // pool_of_senders.remove(&component_id);
+                    MessageToCache::QueryFromCacheOnly(op) => {
+                        todo!()
+                    } // MessageToCache::Subscribe {
+                      //     component_id,
+                      //     list_of_subscribtion,
+                      //     sender_to_component,
+                      // } => {
+                      // pool_of_senders.insert(component_id, sender_to_component);
+                      // for subscribe in list_of_subscribtion {
+                      //     pool_of_subscribes
+                      //         .entry(subscribe)
+                      //         .or_insert(HashSet::with_capacity(10))
+                      //         .insert(component_id);
+                      // }
+                      // }
+                      // MessageToCache::UnSubscribe { component_id } => {
+                      // pool_of_senders.remove(&component_id);
 
-                    // for (_, component_id_gg) in &mut pool_of_subscribes {
-                    //     component_id_gg.remove(&component_id);
-                    // }
+                      // for (_, component_id_gg) in &mut pool_of_subscribes {
+                      //     component_id_gg.remove(&component_id);
+                      // }
 
-                    // pool_of_subscribes.retain(|_, component_ids| !component_ids.is_empty());
-                    // }
+                      // pool_of_subscribes.retain(|_, component_ids| !component_ids.is_empty());
+                      // }
                 }
             }
         });

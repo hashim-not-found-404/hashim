@@ -16,6 +16,8 @@ pub enum CacheQueryOutput {
     GetUserUuid(GetUserUuidOutput),
 }
 
+// impls
+
 pub struct GetUserUuidInput {
     pub user_id: String,
 }
