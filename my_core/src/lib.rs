@@ -35,7 +35,7 @@ pub mod prelude {
         marker::PhantomData,
         result::Result as StdResult,
         str::FromStr,
-        sync::{Arc, Mutex, RwLock},
+        sync::{Arc, RwLock},
         time::{Duration, SystemTime, UNIX_EPOCH},
     };
 

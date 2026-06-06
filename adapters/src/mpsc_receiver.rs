@@ -6,11 +6,7 @@ pub mod m {
     pub struct S<T>(pub Mutex<UnboundedReceiver<T>>);
     impl<T> Receiver<T> for S<T> {
         async fn recv(&self) -> Result<T, DynamicError> {
-            let r = self.0.lock().unwrap().recv().await;
-            match r {
-                Ok(o) => Ok(o),
-                Err(e) => Err(e.into()),
-            }
+            Ok(self.0.lock().unwrap().recv().await?)
         }
     }
 

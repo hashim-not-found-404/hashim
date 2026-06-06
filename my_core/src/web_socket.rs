@@ -173,7 +173,7 @@ where
                     },
                 }
             }
-        })
+        });
     }
 
     fn cache_actor(
@@ -301,7 +301,7 @@ where
                       // }
                 }
             }
-        })
+        });
     }
 
     async fn prepare_txn_and_send_to_network(

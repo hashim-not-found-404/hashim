@@ -85,63 +85,48 @@ impl<
                 password: feature_state.user_password.read().to_string(),
             };
 
-            let (sender, receiver) = Mpsc::channel();
+            let (sender_to_response, receiver_to_response) = Mpsc::channel();
             self.routs
                 .send_to_cache_actor(web_socket::Query {
                     is_submit: is_submit,
-                    sender: sender,
+                    sender: sender_to_response,
                     data: input.clone().map_input(),
                 })
                 .await;
 
-            let (sender_for_loop, receiver_for_loop) = Mpsc::channel();
-
-            let sender_for_loop1 = sender_for_loop.clone();
-            let is_user_want_to_proceed = Arc::new(Mutex::new(false));
-            let is_user_want_to_proceed1 = is_user_want_to_proceed.clone();
-            if is_submit {
-                let (sender, receiver) = Mpsc::channel();
-                sender_to_dialog.set(Some(sender));
-
-                At::Rt::spawn_local(async move {
-                    receiver.recv().await.unwrap();
-                    *is_user_want_to_proceed.lock().unwrap() = true;
-                    sender_for_loop1.send(()).await.unwrap();
-                });
-
-                let self1 = self.clone();
-                let local_state1 = local_state.clone();
-                At::Rt::spawn_local(async move {
+            let self1 = self.clone();
+            let local_state1 = local_state.clone();
+            let handel = At::Rt::abortable_spawn_local(async move {
+                if is_submit {
                     loop {
                         if self1.routs.is_online() {
-                            At::Rt::sleep(Duration::from_secs(10)).await;
+                            At::Rt::sleep(Duration::from_secs(3)).await;
                         } else {
                             At::Rt::sleep(Duration::from_secs(1)).await;
                         }
 
                         local_state1.show_dialog.set(true);
                     }
-                });
-            }
-
-            let response = Arc::new(Mutex::new(None));
-
-            let response1 = response.clone();
-            At::Rt::spawn_local(async move {
-                loop {
-                    let result = receiver.recv().await.unwrap();
-                    *response1.lock().unwrap() = match result {
-                        Some(result) => Some(result),
-                        None => break,
-                    };
-                    sender_for_loop.send(()).await.unwrap();
                 }
             });
-            // TODO this should rerun on consent
+
+            let (sender_to_consent, receiver_to_consent) = Mpsc::channel();
+            sender_to_dialog.set(Some(sender_to_consent));
+            let mut is_user_want_to_proceed = false;
+            let mut response = None;
             loop {
-                receiver_for_loop.recv().await.unwrap();
-                let mutex_guard = response.lock().unwrap();
-                if let Some(response) = mutex_guard.clone() {
+                match At::Rt::select(receiver_to_consent.recv(), receiver_to_response.recv()).await
+                {
+                    Either::One(_) => is_user_want_to_proceed = true,
+                    Either::Two(result) => {
+                        response = match result.unwrap() {
+                            Some(result) => Some(result),
+                            None => break,
+                        }
+                    }
+                };
+
+                if let Some(response) = response.clone() {
                     let result = sign_up::Input::unwrap(response.data);
 
                     let is_ok = result.is_ok();
@@ -164,7 +149,7 @@ impl<
                             is_ok,
                             self.routs.is_online(),
                             response.is_response_from_server,
-                            *is_user_want_to_proceed1.lock().unwrap(),
+                            is_user_want_to_proceed,
                         ) {
                             self.is_signed_in.set(true);
                             break;
@@ -174,8 +159,8 @@ impl<
                     }
                 }
             }
-
             feature_state.is_loading.set(false);
+            handel.abort();
         });
     }
 

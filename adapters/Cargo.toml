@@ -15,14 +15,14 @@ postcard = { version = "1.1.3", features = ["alloc"] }
 getrandom = { version = "0.4.2", features = ["wasm_js"] }
 chrono = "0.4.44"
 
-[target.'cfg(target_arch = "wasm32")'.dependencies]
-gloo-timers = { version = "0.4.0" , features = ["futures"]}
-gloo-net = "0.7.0"
-wasm-bindgen-futures = "0.4.72"
-
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tokio-tungstenite = "0.29.0"
 tokio = { workspace = true , features = ["macros"]}
 argon2 = "0.5.3"
 jsonwebtoken = { version = "10.4.0", features = ["rust_crypto"] }
 regex = "1.12.3"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+gloo-timers = { version = "0.4.0" , features = ["futures"]}
+gloo-net = "0.7.0"
+wasm-bindgen-futures = "0.4.72"
