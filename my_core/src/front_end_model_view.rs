@@ -90,13 +90,9 @@ impl<
                 password: feature_state.user_password.read(),
             };
 
-            let (sender_to_response, mut receiver_to_response) = Mpsc::channel();
-            self.routs
-                .send_to_cache_actor(web_socket::QueryFromCacheAndServer {
-                    is_submit,
-                    sender: sender_to_response,
-                    data: input.clone().map_input(),
-                })
+            let mut receiver_to_response = self
+                .routs
+                .send_to_cache_actor(is_submit, input.clone().map_input())
                 .await;
 
             let self1 = self.clone();
@@ -191,13 +187,9 @@ impl<
                 password: feature_state.user_password.read(),
             };
 
-            let (sender_to_response, mut receiver_to_response) = Mpsc::channel();
-            self.routs
-                .send_to_cache_actor(web_socket::QueryFromCacheAndServer {
-                    is_submit,
-                    sender: sender_to_response,
-                    data: input.clone().map_input(),
-                })
+            let mut receiver_to_response = self
+                .routs
+                .send_to_cache_actor(is_submit, input.clone().map_input())
                 .await;
 
             let self1 = self.clone();
@@ -269,7 +261,6 @@ impl<
                                 .await;
 
                             let result = cache_query_operations::GetUserUuidInput::unwrap(result);
-                            // TODO unwrap the (a)
                             self.is_signed_in.set(Some(result.user_uuid));
                             break;
                         }

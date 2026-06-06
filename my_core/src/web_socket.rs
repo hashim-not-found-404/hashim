@@ -91,14 +91,26 @@ where
             .unwrap();
     }
 
-    pub async fn send_to_cache_actor(&self, msg: QueryFromCacheAndServer<Mpsc>) {
-        // TODO make it return receiver
+    pub async fn send_to_cache_actor(
+        &self,
+        is_submit: bool,
+        data: push_data::OperationsInput,
+    ) -> Mpsc::Receiver<Option<Response>> {
+        let (sender, receiver) = Mpsc::channel();
         self.sender_to_cache
             .lock()
             .unwrap()
-            .send(MessageToCache::QueryFromCacheAndServer(msg))
+            .send(MessageToCache::QueryFromCacheAndServer(
+                QueryFromCacheAndServer {
+                    is_submit,
+                    sender,
+                    data,
+                },
+            ))
             .await
             .unwrap();
+
+        receiver
     }
 
     pub async fn send_query_to_cache_actor(
