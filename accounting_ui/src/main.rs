@@ -125,13 +125,20 @@ pub fn SignIn() -> Element {
     let local_state1 = local_state.clone();
     let auth_state1 = auth_state.clone();
 
+    let sender = MySignal::default();
+
     rsx! {
         div {
+            Dialog {
+                sender: sender.clone(),
+                operation_name: "sign in",
+                show_dialog: local_state.show_dialog.clone()
+            }
             input {
                 placeholder: "User ID",
                 oninput: move |event| {
                     auth_state1.user_id.set(event.value());
-                    state1.clone().sign_in(false,local_state1.clone(),auth_state1.clone());
+                    state1.clone().sign_in(MySignal::default(),false,local_state1.clone(),auth_state1.clone());
                 },
                 value: auth_state.user_id.read(),
             }
@@ -143,7 +150,7 @@ pub fn SignIn() -> Element {
                 {local_state.user_password_error.read()}
             }
             button {
-                onclick: move |_| state.clone().sign_in(true,local_state.clone(),auth_state.clone()),
+                onclick: move |_| state.clone().sign_in(sender.clone(),true,local_state.clone(),auth_state.clone()),
                 "Sign In"
             }
             button {
@@ -156,8 +163,6 @@ pub fn SignIn() -> Element {
 
 #[component]
 pub fn SignUp() -> Element {
-    let sender = MySignal::default();
-
     let state = consume_context::<StateOfEveryThing>();
     let auth_state =
         consume_context::<Arc<front_end_model_view::AuthFeatureState<MyAllSignalTypes>>>();
@@ -173,6 +178,8 @@ pub fn SignUp() -> Element {
     let local_state2 = local_state.clone();
     let auth_state1 = auth_state.clone();
     let auth_state2 = auth_state.clone();
+
+    let sender = MySignal::default();
 
     rsx! {
         div {

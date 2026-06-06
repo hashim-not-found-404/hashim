@@ -58,7 +58,7 @@ impl<
 
     pub fn sign_up(
         self: Arc<Self>,
-        sender_to_dialog: ConsentSender,
+        sender_to_consent_from_dialog: ConsentSender,
         is_submit: bool,
         local_state: Arc<SignUpState<As>>,
         feature_state: Arc<AuthFeatureState<As>>,
@@ -88,7 +88,7 @@ impl<
             let (sender_to_response, mut receiver_to_response) = Mpsc::channel();
             self.routs
                 .send_to_cache_actor(web_socket::Query {
-                    is_submit: is_submit,
+                    is_submit,
                     sender: sender_to_response,
                     data: input.clone().map_input(),
                 })
@@ -111,7 +111,7 @@ impl<
             });
 
             let (sender_to_consent, mut receiver_to_consent) = Mpsc::channel();
-            sender_to_dialog.set(Some(sender_to_consent));
+            sender_to_consent_from_dialog.set(Some(sender_to_consent));
             let mut is_user_want_to_proceed = false;
             let mut response = None;
             loop {
@@ -159,13 +159,14 @@ impl<
                     }
                 }
             }
-            feature_state.is_loading.set(false);
             handel.abort();
+            feature_state.is_loading.set(false);
         });
     }
 
     pub fn sign_in(
         self: Arc<Self>,
+        sender_to_consent_from_dialog: ConsentSender,
         is_submit: bool,
         local_state: Arc<SignInState<As>>,
         feature_state: Arc<AuthFeatureState<As>>,
@@ -184,56 +185,83 @@ impl<
                 password: feature_state.user_password.read().to_string(),
             };
 
-            let (sender, mut receiver) = Mpsc::channel();
+            let (sender_to_response, mut receiver_to_response) = Mpsc::channel();
             self.routs
                 .send_to_cache_actor(web_socket::Query {
                     is_submit,
-                    sender: sender,
+                    sender: sender_to_response,
                     data: input.clone().map_input(),
                 })
                 .await;
 
-            let mut is_user_want_to_proceed = false;
-            loop {
-                let result = receiver.recv().await.unwrap();
-                let response = match result {
-                    Some(result) => result,
-                    None => break,
-                };
-                let result = sign_in::Input::unwrap(response.data);
+            let self1 = self.clone();
+            let local_state1 = local_state.clone();
+            let handel = At::Rt::abortable_spawn_local(async move {
+                if is_submit {
+                    loop {
+                        if self1.routs.is_online() {
+                            At::Rt::sleep(Duration::from_secs(3)).await;
+                        } else {
+                            At::Rt::sleep(Duration::from_secs(1)).await;
+                        }
 
-                let is_ok = result.is_ok();
-                match result {
-                    Ok(business_output) => {}
-                    Err(business_error) => {
-                        local_state.user_id_error.set(match business_error.user_id {
-                            Some(_) => String::from("user not exist"),
-                            None => String::new(),
-                        });
-                        local_state
-                            .user_password_error
-                            .set(match business_error.password {
-                                Some(_) => String::from("wrong password"),
+                        local_state1.show_dialog.set(true);
+                    }
+                }
+            });
+
+            let (sender_to_consent, mut receiver_to_consent) = Mpsc::channel();
+            sender_to_consent_from_dialog.set(Some(sender_to_consent));
+            let mut is_user_want_to_proceed = false;
+            let mut response = None;
+            loop {
+                match At::Rt::select(receiver_to_consent.recv(), receiver_to_response.recv()).await
+                {
+                    Either::One(_) => is_user_want_to_proceed = true,
+                    Either::Two(result) => {
+                        response = match result.unwrap() {
+                            Some(result) => Some(result),
+                            None => break,
+                        }
+                    }
+                };
+
+                if let Some(response) = response.clone() {
+                    let result = sign_in::Input::unwrap(response.data);
+
+                    let is_ok = result.is_ok();
+                    match result {
+                        Ok(business_output) => {}
+                        Err(business_error) => {
+                            local_state.user_id_error.set(match business_error.user_id {
+                                Some(_) => String::from("user not exist"),
                                 None => String::new(),
                             });
+                            local_state
+                                .user_password_error
+                                .set(match business_error.password {
+                                    Some(_) => String::from("wrong password"),
+                                    None => String::new(),
+                                });
+                        }
                     }
-                }
 
-                if is_submit {
-                    if is_proceed(
-                        is_ok,
-                        self.routs.is_online(),
-                        response.is_response_from_server,
-                        is_user_want_to_proceed,
-                    ) {
-                        self.is_signed_in.set(true);
+                    if is_submit {
+                        if is_proceed(
+                            is_ok,
+                            self.routs.is_online(),
+                            response.is_response_from_server,
+                            is_user_want_to_proceed,
+                        ) {
+                            self.is_signed_in.set(true);
+                            break;
+                        }
+                    } else {
                         break;
                     }
-                } else {
-                    break;
                 }
             }
-
+            handel.abort();
             feature_state.is_loading.set(false);
         });
     }
@@ -306,6 +334,7 @@ impl<
 
 #[derive(Default)]
 pub struct SignInState<As: AllSignalTypes> {
+    pub show_dialog: As::Bool,
     pub user_id_error: As::String,
     pub user_password_error: As::String,
 }
