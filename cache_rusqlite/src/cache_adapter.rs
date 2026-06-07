@@ -136,6 +136,21 @@ impl CacheIO for S {
             })
             .unwrap()
     }
+
+    async fn read_get_user_uuid(&self, user_id: &String) -> Option<db_types::RowIdType> {
+        let query = "SELECT 1 FROM user WHERE id = ?1";
+
+        let user_uuid: Option<String> = self
+            .db
+            .query_one(query, params![user_id], |row| Ok(row.get(0).unwrap()))
+            .optional()
+            .unwrap();
+
+        match user_uuid {
+            Some(user_uuid) => Some(db_types::RowIdType(user_uuid)),
+            None => None,
+        }
+    }
 }
 
 fn make_sql_statment(table_name: &str, field_name: &str, uuid: &String, value: &String) -> String {

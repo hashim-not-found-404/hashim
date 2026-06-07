@@ -20,14 +20,14 @@ impl StateOfPendingTxn {
     }
 }
 
-pub struct State<CH: CacheIO> {
+pub struct State<Ch: CacheIO> {
     pub state_of_pending_txn: StateOfPendingTxn,
-    pub cache: CH,
+    pub cache: Ch,
 }
 
-impl<CH: CacheIO> State<CH> {
+impl<Ch: CacheIO> State<Ch> {
     pub async fn new<RN: RandomNumber>() -> Self {
-        let cache = CH::new().await;
+        let cache = Ch::new().await;
         let txns = cache.get_all_txn_input().await;
 
         let mut state = Self {

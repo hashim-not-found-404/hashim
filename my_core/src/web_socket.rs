@@ -318,8 +318,9 @@ where
                             let _ = sender.send(None).await;
                         };
                     }
-                    MessageToCache::QueryFromCacheOnly(op) => {
-                        todo!()
+                    MessageToCache::QueryFromCacheOnly(QueryFromCacheOnly { mut sender, data }) => {
+                        let data = data.run_query(&state).await;
+                        sender.send(data).await.unwrap();
                     } // MessageToCache::Subscribe {
                       //     component_id,
                       //     list_of_subscribtion,

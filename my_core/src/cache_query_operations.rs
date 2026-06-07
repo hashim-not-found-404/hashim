@@ -2,7 +2,7 @@ use crate::prelude::*;
 
 pub(crate) trait QueryOperations {
     type Output;
-    async fn read<CH: CacheIO>(&self, state: &cache::State<CH>) -> Self::Output;
+    async fn read<Ch: CacheIO>(&self, state: &cache::State<Ch>) -> Self::Output;
     fn map_input(self) -> CacheQueryInput;
     fn map_output(result: Self::Output) -> CacheQueryOutput;
     fn unwrap(result: CacheQueryOutput) -> Self::Output;
@@ -14,6 +14,17 @@ pub enum CacheQueryInput {
 
 pub enum CacheQueryOutput {
     GetUserUuid(GetUserUuidOutput),
+}
+
+impl CacheQueryInput {
+    pub(crate) async fn run_query<Ch: CacheIO>(
+        &self,
+        state: &cache::State<Ch>,
+    ) -> CacheQueryOutput {
+        match self {
+            CacheQueryInput::GetUserUuid(q) => GetUserUuidInput::map_output(q.read(state).await),
+        }
+    }
 }
 
 // impls
@@ -29,7 +40,7 @@ pub struct GetUserUuidOutput {
 impl QueryOperations for GetUserUuidInput {
     type Output = GetUserUuidOutput;
 
-    async fn read<CH: CacheIO>(&self, state: &cache::State<CH>) -> Self::Output {
+    async fn read<Ch: CacheIO>(&self, state: &cache::State<Ch>) -> Self::Output {
         for (rowid, user) in &state.state_of_pending_txn.user {
             if user.user_id == self.user_id {
                 return Self::Output {
@@ -38,10 +49,20 @@ impl QueryOperations for GetUserUuidInput {
             }
         }
 
-        todo!("make the query from cache");
-        return Self::Output {
-            user_uuid: db_types::RowIdType("todo".to_string()),
-        };
+        let user_uuid = state.cache.read_get_user_uuid(&self.user_id).await;
+
+        match user_uuid {
+            Some(user_uuid) => {
+                return Self::Output {
+                    user_uuid: user_uuid,
+                };
+            }
+            None => {
+                return Self::Output {
+                    user_uuid: db_types::RowIdType(self.user_id.clone()),
+                };
+            }
+        }
     }
 
     fn map_input(self) -> CacheQueryInput {

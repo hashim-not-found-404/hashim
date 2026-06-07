@@ -214,6 +214,7 @@ pub trait CacheIO: Sized {
         bool, /* is new_uuid exist */
         bool, /* is user_id exist */
     );
+    async fn read_get_user_uuid(&self, user_id: &String) -> Option<db_types::RowIdType>;
 }
 
 pub trait AllClientTypes {

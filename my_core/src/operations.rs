@@ -6,18 +6,18 @@ pub(crate) trait Operations: Clone {
     fn state_less_check(&self) -> StdResult<Self::Ok, Self::Err> {
         unreachable!("we dont have here state less check")
     }
-    async fn state_full_check<CH: CacheIO>(
+    async fn state_full_check<Ch: CacheIO>(
         &self,
-        state: &cache::State<CH>,
+        state: &cache::State<Ch>,
     ) -> Result<Self::Ok, Self::Err>;
-    fn apply_change<CH: CacheIO>(&self, state: &mut cache::State<CH>) {}
+    fn apply_change<Ch: CacheIO>(&self, state: &mut cache::State<Ch>) {}
     fn map_input(self) -> push_data::OperationsInput;
     fn map_result(result: Result<Self::Ok, Self::Err>) -> push_data::OperationsResult;
     fn unwrap(result: push_data::OperationsResult) -> Result<Self::Ok, Self::Err>;
 }
 
 impl push_data::OperationsInput {
-    pub fn run_operation_apply<CH: CacheIO>(&self, state: &mut cache::State<CH>) {
+    pub(crate) fn run_operation_apply<Ch: CacheIO>(&self, state: &mut cache::State<Ch>) {
         match self {
             push_data::OperationsInput::SignUp(input) => input.apply_change(state),
             push_data::OperationsInput::SignIn(input) => input.apply_change(state),
@@ -26,9 +26,9 @@ impl push_data::OperationsInput {
         }
     }
 
-    pub async fn run_operation_check<CH: CacheIO>(
+    pub(crate) async fn run_operation_check<Ch: CacheIO>(
         &self,
-        state: &mut cache::State<CH>,
+        state: &mut cache::State<Ch>,
     ) -> push_data::OperationsResult {
         match self {
             push_data::OperationsInput::SignUp(input) => {
@@ -46,7 +46,10 @@ impl push_data::OperationsInput {
         }
     }
 
-    pub async fn run_operation_check_apply<CH: CacheIO>(&self, state: &mut cache::State<CH>) {
+    pub(crate) async fn run_operation_check_apply<Ch: CacheIO>(
+        &self,
+        state: &mut cache::State<Ch>,
+    ) {
         match self {
             push_data::OperationsInput::SignUp(input) => {
                 operation_check_apply_handler(input, state).await
@@ -63,10 +66,10 @@ impl push_data::OperationsInput {
         }
     }
 
-    pub async fn run_operation_check_apply_write<CH: CacheIO>(
+    pub(crate) async fn run_operation_check_apply_write<Ch: CacheIO>(
         &self,
         txn_number: u64,
-        state: &mut cache::State<CH>,
+        state: &mut cache::State<Ch>,
     ) -> push_data::OperationsResult {
         match self {
             push_data::OperationsInput::SignUp(input) => {
@@ -85,17 +88,17 @@ impl push_data::OperationsInput {
     }
 }
 
-async fn operation_check_handler<T: Operations, CH: CacheIO>(
+async fn operation_check_handler<T: Operations, Ch: CacheIO>(
     input: &T,
-    state: &mut cache::State<CH>,
+    state: &mut cache::State<Ch>,
 ) -> push_data::OperationsResult {
     let result = input.state_full_check(state).await;
     return T::map_result(result);
 }
 
-async fn operation_check_apply_handler<T: Operations, CH: CacheIO>(
+async fn operation_check_apply_handler<T: Operations, Ch: CacheIO>(
     input: &T,
-    state: &mut cache::State<CH>,
+    state: &mut cache::State<Ch>,
 ) {
     let result = input.state_full_check(state).await;
 
@@ -104,10 +107,10 @@ async fn operation_check_apply_handler<T: Operations, CH: CacheIO>(
     }
 }
 
-async fn operation_check_apply_write_handler<T: Operations, CH: CacheIO>(
+async fn operation_check_apply_write_handler<T: Operations, Ch: CacheIO>(
     txn_number: u64,
     input: &T,
-    state: &mut cache::State<CH>,
+    state: &mut cache::State<Ch>,
 ) -> push_data::OperationsResult {
     let result = input.state_full_check(state).await;
 
@@ -132,9 +135,9 @@ impl Operations for sign_up::Input {
     type Ok = sign_up::Ok;
     type Err = sign_up::Error;
 
-    async fn state_full_check<CH: CacheIO>(
+    async fn state_full_check<Ch: CacheIO>(
         &self,
-        state: &cache::State<CH>,
+        state: &cache::State<Ch>,
     ) -> Result<Self::Ok, Self::Err> {
         let (mut is_new_uuid_exist, mut is_user_id_exist) = state
             .cache
@@ -170,7 +173,7 @@ impl Operations for sign_up::Input {
         return Ok(sign_up::Ok);
     }
 
-    fn apply_change<CH: CacheIO>(&self, state: &mut cache::State<CH>) {
+    fn apply_change<Ch: CacheIO>(&self, state: &mut cache::State<Ch>) {
         state.state_of_pending_txn.user.insert(
             self.new_uuid.clone(),
             cache::tables::User {
@@ -201,9 +204,9 @@ impl Operations for sign_in::Input {
     type Ok = sign_in::Ok;
     type Err = sign_in::Error;
 
-    async fn state_full_check<CH: CacheIO>(
+    async fn state_full_check<Ch: CacheIO>(
         &self,
-        state: &cache::State<CH>,
+        state: &cache::State<Ch>,
     ) -> Result<Self::Ok, Self::Err> {
         let mut password = None;
 
@@ -247,9 +250,9 @@ impl Operations for create_company::Input {
     type Ok = create_company::Ok;
     type Err = create_company::Error;
 
-    async fn state_full_check<CH: CacheIO>(
+    async fn state_full_check<Ch: CacheIO>(
         &self,
-        state: &cache::State<CH>,
+        state: &cache::State<Ch>,
     ) -> StdResult<Self::Ok, Self::Err> {
         todo!()
     }
@@ -274,9 +277,9 @@ impl Operations for create_company_branch::Input {
     type Ok = create_company_branch::Ok;
     type Err = create_company_branch::Error;
 
-    async fn state_full_check<CH: CacheIO>(
+    async fn state_full_check<Ch: CacheIO>(
         &self,
-        state: &cache::State<CH>,
+        state: &cache::State<Ch>,
     ) -> StdResult<Self::Ok, Self::Err> {
         todo!()
     }
