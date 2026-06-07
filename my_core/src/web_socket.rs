@@ -250,6 +250,7 @@ where
                         match message_type {
                             messages::FromServer::PushData(result) => match result {
                                 Ok(results) => {
+                                    mbg!(&results);
                                     for txn in results.operations {
                                         state.cache.delete_txn_input(&txn.txn_number).await;
                                         state.cache.write_txn_result(&txn).await;
@@ -356,7 +357,7 @@ where
             return;
         }
 
-        let jwts = Vec::new(); // TODO get the jwt that needed for user
+        let jwts = todo!("i need to get jwt for the user"); // TODO get the jwt that needed for user
 
         let t = push_data::Input {
             jwts,

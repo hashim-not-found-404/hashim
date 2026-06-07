@@ -284,7 +284,6 @@ pub fn CreateCompany() -> Element {
     let local_state =
         Arc::new(front_end_model_view::CreateCompanyState::<MyAllSignalTypes>::default());
 
-    let state1 = state.clone();
     let local_state1 = local_state.clone();
     let local_state2 = local_state.clone();
 
@@ -294,7 +293,6 @@ pub fn CreateCompany() -> Element {
                 placeholder: "Company Name",
                 oninput: move |event| {
                     local_state1.company_name.set(event.value());
-                    state1.clone().create_company(false,local_state1.clone());
                 },
                 value: local_state.company_name.read(),
             }
@@ -305,7 +303,7 @@ pub fn CreateCompany() -> Element {
                 option { value: "IQD", "IQD" }
             }
             button {
-                onclick: move |_| state.clone().create_company(true,local_state.clone()),
+                onclick: move |_| state.clone().create_company(local_state.clone()),
                 "Create"
             }
         }

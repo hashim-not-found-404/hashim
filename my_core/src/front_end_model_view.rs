@@ -60,6 +60,15 @@ impl<
         state
     }
 
+    fn listen_to_error(self: Arc<Self>, mut receiver_to_error: Mpsc::Receiver<DynamicError>) {
+        At::Rt::spawn_local(async move {
+            loop {
+                let err = receiver_to_error.recv().await.unwrap();
+                self.external_errors.set(err.to_string());
+            }
+        });
+    }
+
     pub fn sign_up(
         self: Arc<Self>,
         sender_to_consent_from_dialog: ConsentSender,
@@ -274,38 +283,18 @@ impl<
         });
     }
 
-    fn listen_to_error(self: Arc<Self>, mut receiver_to_error: Mpsc::Receiver<DynamicError>) {
-        At::Rt::spawn_local(async move {
-            loop {
-                let err = receiver_to_error.recv().await.unwrap();
-                self.external_errors.set(err.to_string());
-            }
-        });
-    }
-
-    pub fn create_company(
-        self: Arc<Self>,
-        is_submit: bool,
-        local_state: Arc<CreateCompanyState<As>>,
-    ) {
+    pub fn create_company(self: Arc<Self>, local_state: Arc<CreateCompanyState<As>>) {
         At::Rt::spawn_local(async move {
             let input = create_company::Input {
-                user_uuid: todo!(),
+                user_uuid: self.is_signed_in.read().unwrap(),
                 new_uuid: At::Id::generate().to_row_id(),
                 company_name: local_state.company_name.read(),
                 currency: local_state.currency.read(),
             };
 
-            let txn = push_data::OperationsInput::CreateCompany(input);
-
-            // let result = self.routs.cache.write_txn(&txn).await;
-
-            // match result {
-            //     Ok(_) => {}
-            //     Err(external_error) => {
-            //         self.external_errors.set(external_error.to_string());
-            //     }
-            // }
+            self.routs
+                .send_to_cache_actor(true, input.clone().map_input())
+                .await;
         });
     }
 

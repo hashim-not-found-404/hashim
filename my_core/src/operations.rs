@@ -254,7 +254,7 @@ impl Operations for create_company::Input {
         &self,
         state: &cache::State<Ch>,
     ) -> StdResult<Self::Ok, Self::Err> {
-        todo!()
+        Ok(create_company::Ok)
     }
 
     fn map_input(self) -> push_data::OperationsInput {

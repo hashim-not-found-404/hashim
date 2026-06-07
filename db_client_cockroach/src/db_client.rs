@@ -126,13 +126,13 @@ impl DBClient for S {
             .query_one(
                 "INSERT INTO accounting_app.transaction_number (rowid) VALUES ($1)
                  ON CONFLICT (rowid) DO NOTHING
-                 RETURNING false",
+                 RETURNING true",
                 &[&nonce.into_inner()],
             )
             .await
             .log()?;
 
         let inserted: Option<Uuid> = row.try_get(0).ok();
-        Ok(inserted.is_none()) // true if already existed
+        Ok(inserted.is_some())
     }
 }
