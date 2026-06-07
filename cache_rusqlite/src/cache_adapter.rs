@@ -106,7 +106,7 @@ impl CacheIO for S {
         self.db.execute_batch(stmts.as_str()).unwrap();
     }
 
-    async fn get_jwt(&self, user_uuid: &db_types::RowIdType) -> Option<String> {
+    async fn get_jwt(&self, user_uuid: &db_types::UuidType) -> Option<String> {
         let mut stmt = self
             .db
             .prepare("SELECT jwt FROM user WHERE row_id = ?1")
@@ -118,7 +118,7 @@ impl CacheIO for S {
 
     async fn read_sign_up(
         &self,
-        new_uuid: &db_types::RowIdType,
+        new_uuid: &db_types::UuidType,
         user_id: &String,
     ) -> (
         bool, /* is new_uuid exist */
@@ -137,7 +137,7 @@ impl CacheIO for S {
             .unwrap()
     }
 
-    async fn read_get_user_uuid(&self, user_id: &String) -> Option<db_types::RowIdType> {
+    async fn read_get_user_uuid(&self, user_id: &String) -> Option<db_types::UuidType> {
         let query = "SELECT 1 FROM user WHERE id = ?1";
 
         let user_uuid: Option<String> = self
@@ -147,7 +147,7 @@ impl CacheIO for S {
             .unwrap();
 
         match user_uuid {
-            Some(user_uuid) => Some(db_types::RowIdType(user_uuid)),
+            Some(user_uuid) => Some(db_types::UuidType(user_uuid)),
             None => None,
         }
     }

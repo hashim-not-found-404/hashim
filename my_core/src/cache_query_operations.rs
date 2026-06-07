@@ -34,7 +34,7 @@ pub struct GetUserUuidInput {
 }
 
 pub struct GetUserUuidOutput {
-    pub user_uuid: db_types::RowIdType,
+    pub user_uuid: db_types::UuidType,
 }
 
 impl QueryOperations for GetUserUuidInput {
@@ -59,7 +59,7 @@ impl QueryOperations for GetUserUuidInput {
             }
             None => {
                 return Self::Output {
-                    user_uuid: db_types::RowIdType(self.user_id.clone()),
+                    user_uuid: db_types::UuidType(self.user_id.clone()),
                 };
             }
         }

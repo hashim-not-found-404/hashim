@@ -124,17 +124,17 @@ where
                 .await?;
 
             resource_to_return.push(ResourceInfo {
-                uuid: new_uuid.to_row_id(),
+                uuid: new_uuid.to_uuid(),
                 resource: Resource::Jwt(self.jwt.sign(&new_uuid)),
             });
             resource_to_return.push(ResourceInfo {
-                uuid: new_uuid.to_row_id(),
+                uuid: new_uuid.to_uuid(),
                 resource: Resource::UserId(input.user_id.clone()),
             });
 
             if let Some(name) = &input.name {
                 resource_to_return.push(ResourceInfo {
-                    uuid: new_uuid.to_row_id(),
+                    uuid: new_uuid.to_uuid(),
                     resource: Resource::UserName(name.clone()),
                 });
             }
@@ -176,7 +176,7 @@ where
                 authenticated_users.insert(user_rowid.clone());
                 users_to_resubscribe.insert(user_rowid.clone());
                 resource_to_return.push(ResourceInfo {
-                    uuid: user_rowid.to_row_id(),
+                    uuid: user_rowid.to_uuid(),
                     resource: Resource::Jwt(self.jwt.sign(&user_rowid)),
                 });
                 return Ok(Ok(sign_in::Ok));
@@ -803,7 +803,7 @@ pub enum Resource {
     CompanyName(String),
     CompanyCurrency(db_types::Currency),
     RoleAtCompany(db_types::Role),
-    UserThatHaveRole(db_types::RowIdType),
+    UserThatHaveRole(db_types::UuidType),
 }
 trait DataToResourceMapping {
     fn map_to_resource(&self) -> Vec<Resource>;

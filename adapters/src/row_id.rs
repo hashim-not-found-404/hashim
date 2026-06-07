@@ -13,9 +13,9 @@ pub mod m {
         }
     }
 
-    impl TryFrom<&db_types::RowIdType> for S {
+    impl TryFrom<&db_types::UuidType> for S {
         type Error = ();
-        fn try_from(value: &db_types::RowIdType) -> Result<Self, ()> {
+        fn try_from(value: &db_types::UuidType) -> Result<Self, ()> {
             match Uuid::parse_str(value.0.as_str()) {
                 Ok(o) => return Ok(Self(o)),
                 Err(_) => return Err(()),

@@ -1,10 +1,10 @@
 use crate::prelude::*;
 
 pub trait RowId:
-    for<'a> TryFrom<&'a db_types::RowIdType, Error = ()> + ToString + Clone + Hash + Eq
+    for<'a> TryFrom<&'a db_types::UuidType, Error = ()> + ToString + Clone + Hash + Eq
 {
-    fn to_row_id(&self) -> db_types::RowIdType {
-        db_types::RowIdType(self.to_string())
+    fn to_uuid(&self) -> db_types::UuidType {
+        db_types::UuidType(self.to_string())
     }
     fn generate() -> Self;
     fn get_time_as_seconds(&self) -> u64;
@@ -204,17 +204,17 @@ pub trait CacheIO: Sized {
     async fn delete_txn_input(&self, txn_number: &u64);
 
     async fn write_resource(&self, resource: &Vec<ResourceInfo>);
-    async fn get_jwt(&self, user_uuid: &db_types::RowIdType) -> Option<String>;
+    async fn get_jwt(&self, user_uuid: &db_types::UuidType) -> Option<String>;
 
     async fn read_sign_up(
         &self,
-        new_uuid: &db_types::RowIdType,
+        new_uuid: &db_types::UuidType,
         user_id: &String,
     ) -> (
         bool, /* is new_uuid exist */
         bool, /* is user_id exist */
     );
-    async fn read_get_user_uuid(&self, user_id: &String) -> Option<db_types::RowIdType>;
+    async fn read_get_user_uuid(&self, user_id: &String) -> Option<db_types::UuidType>;
 }
 
 pub trait AllClientTypes {

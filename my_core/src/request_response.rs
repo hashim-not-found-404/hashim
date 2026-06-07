@@ -15,7 +15,7 @@ pub enum UserUuidError {
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ResourceInfo {
-    pub uuid: db_types::RowIdType,
+    pub uuid: db_types::UuidType,
     pub resource: server_methods::Resource,
 }
 
@@ -72,7 +72,7 @@ pub mod push_data {
     #[derive(Debug, Deserialize, Serialize)]
     pub struct Input {
         pub jwts: Vec<String>,
-        pub nonce: db_types::RowIdType,
+        pub nonce: db_types::UuidType,
         pub operations: Vec<Txn<OperationsInput>>,
     }
 
@@ -118,7 +118,7 @@ pub mod sign_up {
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Input {
-        pub new_uuid: db_types::RowIdType,
+        pub new_uuid: db_types::UuidType,
         pub name: Option<String>,
         pub user_id: String,
         pub password: String,
@@ -180,8 +180,8 @@ pub mod create_company {
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Input {
-        pub user_uuid: db_types::RowIdType,
-        pub new_uuid: db_types::RowIdType,
+        pub user_uuid: db_types::UuidType,
+        pub new_uuid: db_types::UuidType,
         pub company_name: String,
         pub currency: db_types::Currency,
     }
@@ -203,9 +203,9 @@ pub mod create_company_branch {
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Input {
-        pub user_uuid: db_types::RowIdType,
-        pub new_uuid: db_types::RowIdType,
-        pub company_belong: db_types::RowIdType,
+        pub user_uuid: db_types::UuidType,
+        pub new_uuid: db_types::UuidType,
+        pub company_belong: db_types::UuidType,
         pub branch_name: String,
         pub location: db_types::Location,
         pub currency: db_types::Currency,

@@ -9,7 +9,7 @@ pub mod tables {
 }
 
 pub struct StateOfPendingTxn {
-    pub user: HashMap<db_types::RowIdType, tables::User>,
+    pub user: HashMap<db_types::UuidType, tables::User>,
 }
 
 impl StateOfPendingTxn {

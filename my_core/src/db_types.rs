@@ -1,7 +1,7 @@
 use crate::prelude::*;
 
 #[derive(PartialEq, Clone, Hash, Eq, Debug, Deserialize, Serialize)]
-pub struct RowIdType(pub String);
+pub struct UuidType(pub String);
 
 #[derive(Debug, Deserialize, Serialize, Clone, Default)]
 pub struct Location {

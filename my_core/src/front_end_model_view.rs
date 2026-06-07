@@ -10,7 +10,7 @@ pub trait Signal<T>: Default {
 
 pub trait AllSignalTypes: Default {
     type String: Signal<String>;
-    type OptionRowId: Signal<Option<db_types::RowIdType>>;
+    type OptionRowId: Signal<Option<db_types::UuidType>>;
     type Bool: Signal<bool>;
     type StringVec: Signal<String>;
     type Currency: Signal<db_types::Currency>;
@@ -85,7 +85,7 @@ impl<
             local_state.user_id_error.set(String::new());
             local_state.user_name_error.set(String::new());
 
-            let new_uuid = At::Id::generate().to_row_id();
+            let new_uuid = At::Id::generate().to_uuid();
             let input = sign_up::Input {
                 new_uuid: new_uuid.clone(),
                 name: {
@@ -287,7 +287,7 @@ impl<
         At::Rt::spawn_local(async move {
             let input = create_company::Input {
                 user_uuid: self.is_signed_in.read().unwrap(),
-                new_uuid: At::Id::generate().to_row_id(),
+                new_uuid: At::Id::generate().to_uuid(),
                 company_name: local_state.company_name.read(),
                 currency: local_state.currency.read(),
             };
@@ -306,7 +306,7 @@ impl<
         At::Rt::spawn_local(async move {
             let input = create_company_branch::Input {
                 user_uuid: todo!(),
-                new_uuid: At::Id::generate().to_row_id(),
+                new_uuid: At::Id::generate().to_uuid(),
                 company_belong: todo!("local_state.company_belong.read()"),
                 currency: local_state.currency.read(),
                 branch_name: local_state.branch_name.read(),

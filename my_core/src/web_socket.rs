@@ -357,11 +357,11 @@ where
             return;
         }
 
-        let jwts = todo!("i need to get jwt for the user"); // TODO get the jwt that needed for user
+        let jwts = todo!("i need to get jwt for the user");
 
         let t = push_data::Input {
             jwts,
-            nonce: At::Id::generate().to_row_id(),
+            nonce: At::Id::generate().to_uuid(),
             operations,
         };
 
