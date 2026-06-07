@@ -235,8 +235,12 @@ where
                     MessageToCache::WeAreBackOnline => {
                         let operations = state.cache.get_all_txn_input().await;
 
-                        Self::prepare_txn_and_send_to_network(&mut sender_to_network, operations)
-                            .await;
+                        Self::prepare_txn_and_send_to_network(
+                            &mut sender_to_network,
+                            operations,
+                            &state,
+                        )
+                        .await;
                     }
                     MessageToCache::DataFromServer(raw_data) => {
                         let message_type = match At::Ed::decode::<messages::FromServer>(&raw_data) {
@@ -311,6 +315,7 @@ where
                             Self::prepare_txn_and_send_to_network(
                                 &mut sender_to_network,
                                 operations,
+                                &state,
                             )
                             .await;
 
@@ -349,21 +354,31 @@ where
         });
     }
 
-    async fn prepare_txn_and_send_to_network(
+    async fn prepare_txn_and_send_to_network<Ch: CacheIO>(
         sender_to_network: &mut Mpsc::Sender<MessageToNetwork>,
         operations: Vec<push_data::Txn<push_data::OperationsInput>>,
+        state: &cache::State<Ch>,
     ) {
         if operations.is_empty() {
             return;
         }
 
-        let jwts = todo!("i need to get jwt for the user");
+        let mut jwts = Vec::new();
+        for operation in &operations {
+            if let Some(user_uuid) = operation.operation.get_user_uuid() {
+                if let Some(jwt) = state.cache.get_jwt(user_uuid).await {
+                    jwts.push(jwt)
+                }
+            }
+        }
 
         let t = push_data::Input {
             jwts,
             nonce: At::Id::generate().to_uuid(),
             operations,
         };
+
+        mbg!(&t);
 
         let t = At::Ed::encode(&t);
 

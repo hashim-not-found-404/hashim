@@ -269,6 +269,10 @@ impl<
                                 )
                                 .await;
 
+                            todo!(
+                                "here is a bug i need to jet the uuid that is exist and if not i need place holder"
+                            );
+
                             let result = cache_query_operations::GetUserUuidInput::unwrap(result);
                             self.is_signed_in.set(Some(result.user_uuid));
                             break;

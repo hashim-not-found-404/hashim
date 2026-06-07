@@ -86,6 +86,15 @@ impl push_data::OperationsInput {
             }
         }
     }
+
+    pub(crate) fn get_user_uuid(&self) -> Option<&db_types::UuidType> {
+        match self {
+            push_data::OperationsInput::SignUp(input) => Some(&input.new_uuid),
+            push_data::OperationsInput::SignIn(_) => None,
+            push_data::OperationsInput::CreateCompany(input) => Some(&input.user_uuid),
+            push_data::OperationsInput::CreateCompanyBranch(input) => Some(&input.user_uuid),
+        }
+    }
 }
 
 async fn operation_check_handler<T: Operations, Ch: CacheIO>(

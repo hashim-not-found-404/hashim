@@ -50,6 +50,7 @@ impl QueryOperations for GetUserUuidInput {
         }
 
         let user_uuid = state.cache.read_get_user_uuid(&self.user_id).await;
+        mbg!(&user_uuid);
 
         match user_uuid {
             Some(user_uuid) => {

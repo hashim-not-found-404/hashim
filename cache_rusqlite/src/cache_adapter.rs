@@ -68,6 +68,7 @@ impl CacheIO for S {
     }
 
     async fn write_resource(&self, resource: &Vec<ResourceInfo>) {
+        mbg!(resource);
         let mut stmts = Vec::with_capacity(resource.len());
 
         for reso in resource {
@@ -109,11 +110,13 @@ impl CacheIO for S {
     async fn get_jwt(&self, user_uuid: &db_types::UuidType) -> Option<String> {
         let mut stmt = self
             .db
-            .prepare("SELECT jwt FROM user WHERE row_id = ?1")
+            .prepare("SELECT jwt FROM user WHERE rowid = ?1")
             .unwrap();
 
-        stmt.query_one([&user_uuid.0], |row| row.get(0).optional())
-            .unwrap()
+        match stmt.query_one([&user_uuid.0], |row| row.get(0)) {
+            Ok(jwt) => Some(jwt),
+            Err(_) => None,
+        }
     }
 
     async fn read_sign_up(
@@ -138,13 +141,12 @@ impl CacheIO for S {
     }
 
     async fn read_get_user_uuid(&self, user_id: &String) -> Option<db_types::UuidType> {
-        let query = "SELECT 1 FROM user WHERE id = ?1";
+        let query = "SELECT rowid FROM user WHERE id = ?1";
 
         let user_uuid: Option<String> = self
             .db
-            .query_one(query, params![user_id], |row| Ok(row.get(0).unwrap()))
-            .optional()
-            .unwrap();
+            .query_one(query, params![user_id], |row| row.get(0))
+            .ok();
 
         match user_uuid {
             Some(user_uuid) => Some(db_types::UuidType(user_uuid)),
