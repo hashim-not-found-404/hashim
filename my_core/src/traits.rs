@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-pub trait RowId:
+pub trait Uuid:
     for<'a> TryFrom<&'a db_types::UuidType, Error = ()> + ToString + Clone + Hash + Eq
 {
     fn to_uuid(&self) -> db_types::UuidType {
@@ -24,7 +24,7 @@ pub trait HashedPassword {
 }
 
 pub trait JWT {
-    type UserId: RowId;
+    type UserId: Uuid;
     type JsonWebToken: From<String> + Into<String>;
     fn new() -> Self;
     fn sign(&self, user_uuid: &Self::UserId) -> Self::JsonWebToken;
@@ -38,7 +38,7 @@ pub trait Database {
 }
 
 pub trait DBClient {
-    type RowId: RowId;
+    type RowId: Uuid;
     type HashedPassword: HashedPassword;
 
     type Txn<'a>: DBTransaction
@@ -72,7 +72,7 @@ pub mod domain_errors {
 }
 
 pub trait DBTransaction {
-    type RowId: RowId;
+    type RowId: Uuid;
     type HashedPassword: HashedPassword;
 
     async fn commit_transaction(self) -> Result<Result<(), domain_errors::AtCommit>, DynamicError>;
@@ -223,5 +223,5 @@ pub trait AllClientTypes {
     type Ed: Coding;
     type Rt: Runtime;
     type Ch: CacheIO;
-    type Id: RowId;
+    type Id: Uuid;
 }

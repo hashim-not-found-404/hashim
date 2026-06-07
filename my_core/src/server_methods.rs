@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-fn check_nonce_if_valid<Id: RowId>(nonce: &Id, is_used: bool) -> bool {
+fn check_nonce_if_valid<Id: Uuid>(nonce: &Id, is_used: bool) -> bool {
     if is_used {
         return false;
     }
@@ -37,7 +37,7 @@ where
     Jwt: JWT<UserId = Id, JsonWebToken = String>,
     Auth: HashedPassword,
     Rg: Regex,
-    Id: RowId,
+    Id: Uuid,
     Mpsc: MultiProducerSingleConsumer,
     Rt: Runtime,
     De: Coding,
@@ -57,7 +57,7 @@ where
     Jwt: JWT<UserId = Id, JsonWebToken = String> + 'static,
     Auth: HashedPassword + 'static,
     Rg: Regex + 'static,
-    Id: RowId + 'static,
+    Id: Uuid + 'static,
     Mpsc: MultiProducerSingleConsumer + 'static,
     Rt: Runtime + 'static,
     De: Coding + 'static,
@@ -698,7 +698,7 @@ pub trait WSServer {
     async fn close(self) -> Result<(), DynamicError>;
 }
 
-fn map_resource_to_subscribes<Id: RowId>(
+fn map_resource_to_subscribes<Id: Uuid>(
     pool_of_pubsub: &HashMap<Id, HashMap<Id, Vec<Subscribe>>>,
     list_of_resources: HashMap<Id, Vec<ResourceInfo>>,
     resource_to_send: &mut HashMap<Id, Vec<ResourceInfo>>,
@@ -730,7 +730,7 @@ fn map_resource_to_subscribes<Id: RowId>(
     }
 }
 
-fn unsubscribe<Id: RowId>(
+fn unsubscribe<Id: Uuid>(
     pool_of_pubsub: &mut HashMap<Id, HashMap<Id, Vec<Subscribe>>>,
     user_uuid: &Id,
 ) {
@@ -739,7 +739,7 @@ fn unsubscribe<Id: RowId>(
     }
 }
 
-fn merge_subscribes<Id: RowId>(
+fn merge_subscribes<Id: Uuid>(
     pool_of_pubsub: &mut HashMap<Id, HashMap<Id, Vec<Subscribe>>>,
     list_of_subscribtion: HashMap<Id, HashMap<Id, Vec<Subscribe>>>,
 ) {
@@ -809,7 +809,7 @@ trait DataToResourceMapping {
     fn map_to_resource(&self) -> Vec<Resource>;
 }
 
-pub struct AllRoles<Id: RowId> {
+pub struct AllRoles<Id: Uuid> {
     pub companies: HashMap<
         Id, // company uuid
         HashMap<
@@ -826,7 +826,7 @@ pub struct AllRoles<Id: RowId> {
     >,
 }
 
-pub struct AllSubscribes<Id: RowId> {
+pub struct AllSubscribes<Id: Uuid> {
     pub companies: CompanyUserSubscribes<Id>,
     pub branches: BranchUserSubscribes<Id>,
 }
@@ -855,7 +855,7 @@ type UserSenders<Id, Mpsc: MultiProducerSingleConsumer> = HashMap<
 type ResourcesForCompany<Id> = HashMap<Id, Vec<ResourceInfo>>;
 type ResourcesForBranch<Id> = HashMap<Id, Vec<ResourceInfo>>;
 
-pub enum MessageToBroker<Id: RowId, Mpsc: MultiProducerSingleConsumer> {
+pub enum MessageToBroker<Id: Uuid, Mpsc: MultiProducerSingleConsumer> {
     Subscribe {
         list_of_subscribtion: AllSubscribes<Id>,
         users_uuids: HashSet<Id>,

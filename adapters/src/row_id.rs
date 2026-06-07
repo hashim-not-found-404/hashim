@@ -29,7 +29,7 @@ pub mod m {
         }
     }
 
-    impl RowId for S {
+    impl Uuid for S {
         fn generate() -> Self {
             Self(Uuid::now_v7())
         }
