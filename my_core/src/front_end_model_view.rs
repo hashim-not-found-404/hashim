@@ -95,7 +95,7 @@ impl<
         });
     }
 
-    fn spawn_timeout(
+    fn timeout_dialog_actor(
         self,
         is_submit: bool,
         show_dialog: As::Dialog,
@@ -153,7 +153,7 @@ impl<
 
             let mut handel = self
                 .clone()
-                .spawn_timeout(is_submit, local_state.show_dialog.clone());
+                .timeout_dialog_actor(is_submit, local_state.show_dialog.clone());
 
             let (sender_to_consent, mut receiver_to_consent) = Mpsc::channel();
             sender_to_consent_from_dialog.set(Some(sender_to_consent));
@@ -242,7 +242,7 @@ impl<
 
             let mut handel = self
                 .clone()
-                .spawn_timeout(is_submit, local_state.show_dialog.clone());
+                .timeout_dialog_actor(is_submit, local_state.show_dialog.clone());
 
             let (sender_to_consent, mut receiver_to_consent) = Mpsc::channel();
             sender_to_consent_from_dialog.set(Some(sender_to_consent));
