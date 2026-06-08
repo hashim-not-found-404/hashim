@@ -254,7 +254,6 @@ where
                         match message_type {
                             messages::FromServer::PushData(result) => match result {
                                 Ok(results) => {
-                                    mbg!(&results);
                                     for txn in results.operations {
                                         state.cache.delete_txn_input(&txn.txn_number).await;
                                         state.cache.write_txn_result(&txn).await;
@@ -377,8 +376,6 @@ where
             nonce: At::Id::generate().to_uuid(),
             operations,
         };
-
-        mbg!(&t);
 
         let t = At::Ed::encode(&t);
 

@@ -221,7 +221,7 @@ impl<
             sender_to_consent_from_dialog.set(Some(sender_to_consent));
             let mut is_user_want_to_proceed = false;
             let mut response = None;
-            loop {
+            'outer_loop: loop {
                 match At::Rt::select(receiver_to_consent.recv(), receiver_to_response.recv()).await
                 {
                     Either::One(_) => is_user_want_to_proceed = true,
@@ -260,22 +260,30 @@ impl<
                             response.is_response_from_server,
                             is_user_want_to_proceed,
                         ) {
-                            let result = self
-                                .routs
-                                .send_query_to_cache_actor(
-                                    cache_query_operations::CacheQueryInput::GetUserUuid(
-                                        GetUserUuidInput { user_id },
-                                    ),
-                                )
-                                .await;
+                            loop {
+                                let result = self
+                                    .routs
+                                    .send_query_to_cache_actor(
+                                        cache_query_operations::CacheQueryInput::GetUserUuid(
+                                            GetUserUuidInput {
+                                                user_id: user_id.clone(),
+                                            },
+                                        ),
+                                    )
+                                    .await;
 
-                            todo!(
-                                "here is a bug i need to jet the uuid that is exist and if not i need place holder"
-                            );
+                                let result =
+                                    cache_query_operations::GetUserUuidInput::unwrap(result);
 
-                            let result = cache_query_operations::GetUserUuidInput::unwrap(result);
-                            self.is_signed_in.set(Some(result.user_uuid));
-                            break;
+                                if result.is_none() {
+                                    self.external_errors.set("may be you cant sign in because because you dont have your uuid".to_string());
+                                    At::Rt::sleep(Duration::from_secs(1)).await;
+                                    continue;
+                                }
+
+                                self.is_signed_in.set(result);
+                                break 'outer_loop;
+                            }
                         }
                     } else {
                         break;

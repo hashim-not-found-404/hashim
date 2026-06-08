@@ -68,7 +68,6 @@ impl CacheIO for S {
     }
 
     async fn write_resource(&self, resource: &Vec<ResourceInfo>) {
-        mbg!(resource);
         let mut stmts = Vec::with_capacity(resource.len());
 
         for reso in resource {
@@ -141,12 +140,15 @@ impl CacheIO for S {
     }
 
     async fn read_get_user_uuid(&self, user_id: &String) -> Option<db_types::UuidType> {
-        let query = "SELECT rowid FROM user WHERE id = ?1";
+        let query = "SELECT rowid FROM user WHERE id = ?1;";
 
-        let user_uuid: Option<String> = self
+        let user_uuid = self
             .db
-            .query_one(query, params![user_id], |row| row.get(0))
-            .ok();
+            .query_row(query, params![user_id], |row| {
+                Ok(row.get::<_, String>(0).unwrap())
+            })
+            .optional()
+            .unwrap();
 
         match user_uuid {
             Some(user_uuid) => Some(db_types::UuidType(user_uuid)),
@@ -155,8 +157,30 @@ impl CacheIO for S {
     }
 }
 
+impl S {
+    fn debug_query(&self, q: &str) {
+        let mut stmt = self.db.prepare(q).unwrap();
+        let columns: Vec<String> = stmt.column_names().iter().map(|c| c.to_string()).collect();
+
+        // Print column headers
+        mbg!("{}", columns.join(" | "));
+        mbg!("{}", "-".repeat(50));
+
+        // Print rows
+        let mut rows = stmt.query([]).unwrap();
+        while let Some(row) = rows.next().unwrap() {
+            let mut values = Vec::new();
+            for i in 0..columns.len() {
+                let value: String = row.get(i).unwrap_or_else(|_| "NULL".to_string());
+                values.push(value);
+            }
+            mbg!("{}", values.join(" | "));
+        }
+    }
+}
 fn make_sql_statment(table_name: &str, field_name: &str, uuid: &String, value: &String) -> String {
     format!(
-        "INSERT OR REPLACE INTO {table_name} (rowid, {field_name}) VALUES ('{uuid}', '{value}');"
+        "INSERT OR IGNORE INTO {table_name} (rowid) VALUES ('{uuid}');
+         UPDATE {table_name} SET {field_name} = '{value}' WHERE rowid = '{uuid}';"
     )
 }

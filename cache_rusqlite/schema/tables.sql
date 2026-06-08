@@ -2,7 +2,7 @@ CREATE TABLE IF NOT EXISTS user(
     rowid                                       TEXT PRIMARY KEY,
 
     name                                        TEXT,
-    id                                          TEXT  UNIQUE,
+    id                                          TEXT,
     jwt                                         TEXT
 );
 

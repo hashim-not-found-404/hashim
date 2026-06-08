@@ -177,6 +177,10 @@ where
                 users_to_resubscribe.insert(user_rowid.clone());
                 resource_to_return.push(ResourceInfo {
                     uuid: user_rowid.to_uuid(),
+                    resource: Resource::UserId(input.user_id.clone()),
+                });
+                resource_to_return.push(ResourceInfo {
+                    uuid: user_rowid.to_uuid(),
                     resource: Resource::Jwt(self.jwt.sign(&user_rowid)),
                 });
                 return Ok(Ok(sign_in::Ok));

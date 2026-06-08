@@ -33,9 +33,7 @@ pub struct GetUserUuidInput {
     pub user_id: String,
 }
 
-pub struct GetUserUuidOutput {
-    pub user_uuid: db_types::UuidType,
-}
+pub type GetUserUuidOutput = Option<db_types::UuidType>;
 
 impl QueryOperations for GetUserUuidInput {
     type Output = GetUserUuidOutput;
@@ -43,27 +41,11 @@ impl QueryOperations for GetUserUuidInput {
     async fn read<Ch: CacheIO>(&self, state: &cache::State<Ch>) -> Self::Output {
         for (rowid, user) in &state.state_of_pending_txn.user {
             if user.user_id == self.user_id {
-                return Self::Output {
-                    user_uuid: rowid.clone(),
-                };
+                return Some(rowid.clone());
             }
         }
 
-        let user_uuid = state.cache.read_get_user_uuid(&self.user_id).await;
-        mbg!(&user_uuid);
-
-        match user_uuid {
-            Some(user_uuid) => {
-                return Self::Output {
-                    user_uuid: user_uuid,
-                };
-            }
-            None => {
-                return Self::Output {
-                    user_uuid: db_types::UuidType(self.user_id.clone()),
-                };
-            }
-        }
+        state.cache.read_get_user_uuid(&self.user_id).await
     }
 
     fn map_input(self) -> CacheQueryInput {
