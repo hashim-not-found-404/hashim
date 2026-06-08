@@ -103,7 +103,6 @@ pub trait DBTransaction {
     ) -> Result<bool /* is new_uuid exist */, DynamicError>;
     async fn write_create_company(
         &mut self,
-        resource_to_broadcast: &mut Vec<ResourceInfo>,
         new_uuid: &Self::RowId,
         user_uuid: &Self::RowId,
         user_role: &db_types::Role,

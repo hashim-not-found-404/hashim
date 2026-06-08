@@ -89,13 +89,17 @@ impl CacheIO for S {
                 server_methods::Resource::CompanyCurrency(value) => {
                     make_sql_statment("company", "currency", uuid, &value.as_str().to_string())
                 }
-                server_methods::Resource::RoleAtCompany(value) => {
-                    todo!();
-                    make_sql_statment("", "", uuid, &value.as_str().to_string())
-                }
+                server_methods::Resource::RoleAtCompany(value) => make_sql_statment(
+                    "access_control_for_company",
+                    "role",
+                    uuid,
+                    &value.as_str().to_string(),
+                ),
                 server_methods::Resource::UserThatHaveRole(value) => {
-                    todo!();
-                    make_sql_statment("", "", uuid, &value.0)
+                    make_sql_statment("access_control_for_company", "user_", uuid, &value.0)
+                }
+                server_methods::Resource::CompanyThatHaveUserRole(value) => {
+                    make_sql_statment("access_control_for_company", "data_group", uuid, &value.0)
                 }
             };
 

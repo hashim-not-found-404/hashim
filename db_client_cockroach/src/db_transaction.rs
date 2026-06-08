@@ -84,99 +84,56 @@ impl DBTransaction for S<'_> {
         Ok(())
     }
 
-    async fn read_create_company(&mut self, nonce: &Self::RowId) -> Result<bool, DynamicError> {
-        todo!();
-        // let query =
-        //     "SELECT EXISTS(SELECT 1 FROM accounting_app.transaction_number WHERE rowid = $1)";
-        // let stmt = self.txn.prepare_cached(query).await.log()?;
-        // let row = self.txn.query_one(&stmt, &[&nonce.into_inner()]).await.log()?;
+    async fn read_create_company(
+        &mut self,
+        new_uuid: &Self::RowId,
+    ) -> Result<bool /* is new_uuid exist */, DynamicError> {
+        let query = "SELECT EXISTS(SELECT 1 FROM accounting_app.company WHERE rowid = $1)";
+        let stmt = self.txn.prepare_cached(query).await.log()?;
+        let row = self
+            .txn
+            .query_one(&stmt, &[&new_uuid.into_inner()])
+            .await
+            .log()?;
 
-        // let exists: bool = row.try_get(0).log()?;
-        // Ok(exists)
+        let exists: bool = row.try_get(0).log()?;
+        Ok(exists)
     }
 
     async fn write_create_company(
         &mut self,
-        resource_to_broadcast: &mut Vec<ResourceInfo>,
         new_uuid: &Self::RowId,
         user_uuid: &Self::RowId,
         user_role: &db_types::Role,
         company_name: &String,
         currency: &db_types::Currency,
     ) -> Result<(), DynamicError> {
-        todo!();
-        // let query = "
-        //     WITH
+        let query = "
+            WITH company_insert AS (
+                INSERT INTO accounting_app.company (rowid, name, currency)
+                VALUES ($1, $2, $3)
+                RETURNING 1
+            )
+            INSERT INTO accounting_app.access_control_for_company (rowid, data_group, user_, role)
+            VALUES ($1, $1, $4, $5)
+            ;";
 
-        //     nonce_insert AS (
-        //         INSERT INTO accounting_app.transaction_number (rowid) VALUES ($1)
-        //         RETURNING 1
-        //     ),
-
-        //     company_insert AS (
-        //         INSERT INTO accounting_app.company (name, currency) VALUES ($2, $3)
-        //         RETURNING rowid, updated_at
-        //     )
-
-        //     INSERT INTO accounting_app.access_control_for_company (data_group, user_, role)
-        //     SELECT company_insert.rowid, $4, $5 FROM company_insert
-
-        //     RETURNING
-        //         (SELECT rowid FROM company_insert) AS company_rowid,
-        //         (SELECT updated_at FROM company_insert) AS company_updated_at,
-        //         rowid AS access_control_rowid,
-        //         updated_at AS access_control_updated_at
-        //     ;
-        //     ";
-
-        // let stmt = self.txn.prepare_cached(query).await.log()?;
-        // let row = self
-        //     .txn
-        //     .query_one(
-        //         &stmt,
-        //         &[
-        //             &nonce.into_inner(),
-        //             &company_name,
-        //             &currency.as_str(),
-        //             &user_uuid.into_inner(),
-        //             &user_role.as_str(),
-        //         ],
-        //     )
-        //     .await.log()?;
-
-        // let company_rowid: Uuid = row.try_get(0).log()?;
-        // let company_updated_at: SystemTime = row.try_get(1).log()?;
-        // let access_control_for_company_rowid: Uuid = row.try_get(2).log()?;
-        // let access_control_for_company_updated_at: SystemTime = row.try_get(3).log()?;
-
-        // resources.push(ResourceInfo {
-        //     version: company_updated_at.duration_since(UNIX_EPOCH).log()?.as_micros() as u64,
-        //     uuid: company_rowid.to_string(),
-        //     resource: server_methods::Resource::CompanyName(company_name.clone()),
-        // });
-        // resources.push(ResourceInfo {
-        //     version: company_updated_at.duration_since(UNIX_EPOCH).log()?.as_micros() as u64,
-        //     uuid: company_rowid.to_string(),
-        //     resource: server_methods::Resource::CompanyCurrency(currency.clone()),
-        // });
-        // resources.push(ResourceInfo {
-        //     version: access_control_for_company_updated_at
-        //         .duration_since(UNIX_EPOCH).log()?
-        //         .as_micros() as u64,
-        //     uuid: access_control_for_company_rowid.to_string(),
-        //     resource: server_methods::Resource::RoleAtCompany(user_role.clone()),
-        // });
-        // resources.push(ResourceInfo {
-        //     version: access_control_for_company_updated_at
-        //         .duration_since(UNIX_EPOCH).log()?
-        //         .as_micros() as u64,
-        //     uuid: access_control_for_company_rowid.to_string(),
-        //     resource: server_methods::Resource::UserThatHaveRole(
-        //         user_uuid.into_inner().to_string(),
-        //     ),
-        // });
-
-        // Ok(())
+        let stmt = self.txn.prepare_cached(query).await.log()?;
+        let row = self
+            .txn
+            .execute(
+                &stmt,
+                &[
+                    &new_uuid.into_inner(),
+                    &company_name,
+                    &currency.as_str(),
+                    &user_uuid.into_inner(),
+                    &user_role.as_str(),
+                ],
+            )
+            .await
+            .log()?;
+        Ok(())
     }
 
     async fn read_create_company_branch(

@@ -240,17 +240,40 @@ where
                 return Ok(Err(errr));
             }
 
+            const ROLE: db_types::Role = db_types::Role::Manager;
+
             txn.write_create_company(
-                resource_to_broadcast,
                 &new_uuid,
                 &user_uuid,
-                &db_types::Role::Manager,
+                &ROLE,
                 &input.company_name,
                 &input.currency,
             )
             .await?;
 
             users_to_resubscribe.insert(user_uuid);
+
+            resource_to_broadcast.push(ResourceInfo {
+                uuid: new_uuid.to_uuid(),
+                resource: server_methods::Resource::CompanyName(input.company_name.clone()),
+            });
+            resource_to_broadcast.push(ResourceInfo {
+                uuid: new_uuid.to_uuid(),
+                resource: server_methods::Resource::CompanyCurrency(input.currency.clone()),
+            });
+            resource_to_broadcast.push(ResourceInfo {
+                uuid: new_uuid.to_uuid(),
+                resource: server_methods::Resource::RoleAtCompany(ROLE),
+            });
+            resource_to_broadcast.push(ResourceInfo {
+                uuid: new_uuid.to_uuid(),
+                resource: server_methods::Resource::UserThatHaveRole(input.user_uuid.clone()),
+            });
+            resource_to_broadcast.push(ResourceInfo {
+                uuid: new_uuid.to_uuid(),
+                resource: server_methods::Resource::CompanyThatHaveUserRole(new_uuid.to_uuid()),
+            });
+
             Ok(Ok(create_company::Ok))
         })()
         .await;
@@ -808,6 +831,7 @@ pub enum Resource {
     CompanyCurrency(db_types::Currency),
     RoleAtCompany(db_types::Role),
     UserThatHaveRole(db_types::UuidType),
+    CompanyThatHaveUserRole(db_types::UuidType),
 }
 trait DataToResourceMapping {
     fn map_to_resource(&self) -> Vec<Resource>;
