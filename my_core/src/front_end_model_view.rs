@@ -83,6 +83,7 @@ impl<
             }
             feature_state.is_loading.set(true);
 
+            local_state.show_dialog.set(Dialog::Hide);
             local_state.user_id_error.set(String::new());
             local_state.user_name_error.set(String::new());
 
