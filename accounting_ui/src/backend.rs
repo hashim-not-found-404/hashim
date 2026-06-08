@@ -85,6 +85,7 @@ impl<T: 'static + Clone + Default> Signal<T> for MySignal<T> {
     }
 }
 
+#[derive(Clone)]
 struct MySignalForLists(MySignal<Vec<String>>);
 
 impl MySignalForLists {

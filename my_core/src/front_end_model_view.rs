@@ -3,7 +3,7 @@ use crate::{
     prelude::*,
 };
 
-pub trait Signal<T: Default>: Default {
+pub trait Signal<T: Default>: Default + Clone {
     fn reset(&self) {
         self.set(T::default());
     }
@@ -73,6 +73,26 @@ impl<
         });
     }
 
+    fn spawn_timeout(
+        self: Arc<Self>,
+        is_submit: bool,
+        show_dialog: As::Dialog,
+    ) -> <<At as AllClientTypes>::Rt as Runtime>::JoinHandel<()> {
+        At::Rt::abortable_spawn_local(async move {
+            if is_submit {
+                loop {
+                    if self.routs.is_online() {
+                        At::Rt::sleep(Duration::from_secs(3)).await;
+                    } else {
+                        At::Rt::sleep(Duration::from_secs(1)).await;
+                    }
+
+                    show_dialog.set(Dialog::Show);
+                }
+            }
+        })
+    }
+
     pub fn sign_up(
         self: Arc<Self>,
         sender_to_consent_from_dialog: ConsentSender,
@@ -109,21 +129,9 @@ impl<
                 .send_to_cache_actor(is_submit, input.clone().map_input())
                 .await;
 
-            let self1 = self.clone();
-            let local_state1 = local_state.clone();
-            let mut handel = At::Rt::abortable_spawn_local(async move {
-                if is_submit {
-                    loop {
-                        if self1.routs.is_online() {
-                            At::Rt::sleep(Duration::from_secs(3)).await;
-                        } else {
-                            At::Rt::sleep(Duration::from_secs(1)).await;
-                        }
-
-                        local_state1.show_dialog.set(Dialog::Show);
-                    }
-                }
-            });
+            let mut handel = self
+                .clone()
+                .spawn_timeout(is_submit, local_state.show_dialog.clone());
 
             let (sender_to_consent, mut receiver_to_consent) = Mpsc::channel();
             sender_to_consent_from_dialog.set(Some(sender_to_consent));
@@ -210,21 +218,9 @@ impl<
                 .send_to_cache_actor(is_submit, input.clone().map_input())
                 .await;
 
-            let self1 = self.clone();
-            let local_state1 = local_state.clone();
-            let mut handel = At::Rt::abortable_spawn_local(async move {
-                if is_submit {
-                    loop {
-                        if self1.routs.is_online() {
-                            At::Rt::sleep(Duration::from_secs(3)).await;
-                        } else {
-                            At::Rt::sleep(Duration::from_secs(1)).await;
-                        }
-
-                        local_state1.show_dialog.set(Dialog::Show);
-                    }
-                }
-            });
+            let mut handel = self
+                .clone()
+                .spawn_timeout(is_submit, local_state.show_dialog.clone());
 
             let (sender_to_consent, mut receiver_to_consent) = Mpsc::channel();
             sender_to_consent_from_dialog.set(Some(sender_to_consent));
