@@ -10,7 +10,7 @@ pub(crate) trait Operations: Clone {
         &self,
         state: &cache::State<Ch>,
     ) -> Result<Self::Ok, Self::Err>;
-    fn apply_change<Ch: CacheIO>(&self, state: &mut cache::State<Ch>) {}
+    fn apply_change<Ch: CacheIO>(&self, state: &mut cache::State<Ch>);
     fn map_input(self) -> push_data::OperationsInput;
     fn map_result(result: Result<Self::Ok, Self::Err>) -> push_data::OperationsResult;
     fn unwrap(result: push_data::OperationsResult) -> Result<Self::Ok, Self::Err>;
@@ -239,6 +239,8 @@ impl Operations for sign_in::Input {
         }
     }
 
+    fn apply_change<Ch: CacheIO>(&self, state: &mut cache::State<Ch>) {}
+
     fn map_input(self) -> push_data::OperationsInput {
         push_data::OperationsInput::SignIn(self)
     }
@@ -266,6 +268,10 @@ impl Operations for create_company::Input {
         Ok(create_company::Ok)
     }
 
+    fn apply_change<Ch: CacheIO>(&self, state: &mut cache::State<Ch>) {
+        todo!("add to table company and table access control");
+    }
+
     fn map_input(self) -> push_data::OperationsInput {
         push_data::OperationsInput::CreateCompany(self)
     }
@@ -291,6 +297,10 @@ impl Operations for create_company_branch::Input {
         state: &cache::State<Ch>,
     ) -> StdResult<Self::Ok, Self::Err> {
         todo!()
+    }
+
+    fn apply_change<Ch: CacheIO>(&self, state: &mut cache::State<Ch>) {
+        todo!("add to table company branch and table access control");
     }
 
     fn map_input(self) -> push_data::OperationsInput {
