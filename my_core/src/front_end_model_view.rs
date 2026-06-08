@@ -10,6 +10,7 @@ pub trait Signal<T>: Default {
 
 pub trait AllSignalTypes: Default {
     type String: Signal<String>;
+    type Dialog: Signal<Dialog>;
     type OptionRowId: Signal<Option<db_types::UuidType>>;
     type Bool: Signal<bool>;
     type StringVec: Signal<String>;
@@ -115,7 +116,7 @@ impl<
                             At::Rt::sleep(Duration::from_secs(1)).await;
                         }
 
-                        local_state1.show_dialog.set(true);
+                        local_state1.show_dialog.set(Dialog::Show);
                     }
                 }
             });
@@ -215,7 +216,7 @@ impl<
                             At::Rt::sleep(Duration::from_secs(1)).await;
                         }
 
-                        local_state1.show_dialog.set(true);
+                        local_state1.show_dialog.set(Dialog::Show);
                     }
                 }
             });
@@ -283,7 +284,7 @@ impl<
                                     cache_query_operations::GetUserUuidInput::unwrap(result);
 
                                 if result.is_none() {
-                                    self.external_errors.set("may be you cant sign in because because you dont have your uuid".to_string());
+                                    local_state.show_dialog.set(Dialog::Error);
                                     At::Rt::sleep(Duration::from_secs(1)).await;
                                     continue;
                                 }
@@ -348,16 +349,24 @@ impl<
     }
 }
 
+#[derive(Default, Clone, PartialEq)]
+pub enum Dialog {
+    #[default]
+    Hide,
+    Show,
+    Error,
+}
+
 #[derive(Default)]
 pub struct SignInState<As: AllSignalTypes> {
-    pub show_dialog: As::Bool,
+    pub show_dialog: As::Dialog,
     pub user_id_error: As::String,
     pub user_password_error: As::String,
 }
 
 #[derive(Default)]
 pub struct SignUpState<As: AllSignalTypes> {
-    pub show_dialog: As::Bool,
+    pub show_dialog: As::Dialog,
     pub user_name: As::String,
     pub user_id_error: As::String,
     pub user_name_error: As::String,

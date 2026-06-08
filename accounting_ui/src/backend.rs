@@ -112,6 +112,7 @@ impl Signal<String> for MySignalForLists {
 pub struct MyAllSignalTypes;
 impl AllSignalTypes for MyAllSignalTypes {
     type OptionRowId = MySignal<Option<db_types::UuidType>>;
+    type Dialog = MySignal<front_end_model_view::Dialog>;
     type String = MySignal<String>;
     type Bool = MySignal<bool>;
     type StringVec = MySignal<String>;

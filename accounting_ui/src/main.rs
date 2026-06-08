@@ -63,35 +63,42 @@ fn App() -> Element {
 pub fn Dialog(
     sender: MySignal<Option<mpsc_sender::m::S<()>>>,
     operation_name: &'static str,
-    show_dialog: MySignal<bool>,
+    show_dialog: <MyAllSignalTypes as AllSignalTypes>::Dialog,
 ) -> Element {
     let show_dialog1 = show_dialog.clone();
 
     let click = move |_| {
-        show_dialog.set(false);
+        show_dialog.set(front_end_model_view::Dialog::Hide);
         let mut sender = sender.read().unwrap();
         spawn(async move {
             sender.send(()).await.unwrap();
         });
     };
 
-    if show_dialog1.read() {
-        return rsx! {
-            div {
-                label { "do you want to proceed operation {operation_name} offline" }
-                button {
-                    onclick: click,
-                    "Yes"
+    match show_dialog1.read() {
+        front_end_model_view::Dialog::Hide => rsx! {},
+        front_end_model_view::Dialog::Show => {
+            rsx! {
+                div {
+                    label { "do you want to proceed operation {operation_name} offline" }
+                    button {
+                        onclick: click,
+                        "Yes"
+                    }
+                    button {
+                        onclick: move |_| show_dialog1.set(front_end_model_view::Dialog::Hide),
+                        "No"
+                    }
                 }
-                button {
-                    onclick: move |_| show_dialog1.set(false),
-                    "No"
-                }
-            }
 
-        };
+            }
+        }
+        front_end_model_view::Dialog::Error => {
+            rsx! {
+                label { "sorry you can't proceed now" }
+            }
+        }
     }
-    rsx! {}
 }
 
 #[component]
