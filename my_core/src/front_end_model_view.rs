@@ -3,7 +3,10 @@ use crate::{
     prelude::*,
 };
 
-pub trait Signal<T>: Default {
+pub trait Signal<T: Default>: Default {
+    fn reset(&self) {
+        self.set(T::default());
+    }
     fn read(&self) -> T;
     fn set(&self, v: T);
 }
@@ -83,9 +86,9 @@ impl<
             }
             feature_state.is_loading.set(true);
 
-            local_state.show_dialog.set(Dialog::Hide);
-            local_state.user_id_error.set(String::new());
-            local_state.user_name_error.set(String::new());
+            local_state.show_dialog.reset();
+            local_state.user_id_error.reset();
+            local_state.user_name_error.reset();
 
             let new_uuid = At::Id::generate().to_uuid();
             let input = sign_up::Input {
@@ -175,7 +178,7 @@ impl<
                 }
             }
             handel.abort().await;
-            feature_state.is_loading.set(false);
+            feature_state.is_loading.reset();
         });
     }
 
@@ -192,9 +195,9 @@ impl<
             }
             feature_state.is_loading.set(true);
 
-            local_state.show_dialog.set(Dialog::Hide);
-            local_state.user_id_error.set(String::new());
-            local_state.user_password_error.set(String::new());
+            local_state.show_dialog.reset();
+            local_state.user_id_error.reset();
+            local_state.user_password_error.reset();
 
             let user_id = feature_state.user_id.read();
             let input = sign_in::Input {
@@ -297,7 +300,7 @@ impl<
                 }
             }
             handel.abort().await;
-            feature_state.is_loading.set(false);
+            feature_state.is_loading.reset();
         });
     }
 
@@ -313,6 +316,9 @@ impl<
             self.routs
                 .send_to_cache_actor(true, input.clone().map_input())
                 .await;
+
+            local_state.company_name.reset();
+            local_state.currency.reset();
         });
     }
 
