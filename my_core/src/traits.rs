@@ -154,7 +154,7 @@ pub enum Either<L, R> {
 }
 
 pub trait JoinHandel {
-    fn abort(self);
+    async fn abort(&mut self);
 }
 
 pub trait Runtime {

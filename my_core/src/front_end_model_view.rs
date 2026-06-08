@@ -106,7 +106,7 @@ impl<
 
             let self1 = self.clone();
             let local_state1 = local_state.clone();
-            let handel = At::Rt::abortable_spawn_local(async move {
+            let mut handel = At::Rt::abortable_spawn_local(async move {
                 if is_submit {
                     loop {
                         if self1.routs.is_online() {
@@ -127,7 +127,10 @@ impl<
             loop {
                 match At::Rt::select(receiver_to_consent.recv(), receiver_to_response.recv()).await
                 {
-                    Either::One(_) => is_user_want_to_proceed = true,
+                    Either::One(_) => {
+                        is_user_want_to_proceed = true;
+                        handel.abort().await;
+                    }
                     Either::Two(result) => {
                         response = match result.unwrap() {
                             Some(result) => Some(result),
@@ -169,7 +172,7 @@ impl<
                     }
                 }
             }
-            handel.abort();
+            handel.abort().await;
             feature_state.is_loading.set(false);
         });
     }
@@ -203,7 +206,7 @@ impl<
 
             let self1 = self.clone();
             let local_state1 = local_state.clone();
-            let handel = At::Rt::abortable_spawn_local(async move {
+            let mut handel = At::Rt::abortable_spawn_local(async move {
                 if is_submit {
                     loop {
                         if self1.routs.is_online() {
@@ -224,7 +227,10 @@ impl<
             'outer_loop: loop {
                 match At::Rt::select(receiver_to_consent.recv(), receiver_to_response.recv()).await
                 {
-                    Either::One(_) => is_user_want_to_proceed = true,
+                    Either::One(_) => {
+                        is_user_want_to_proceed = true;
+                        handel.abort().await;
+                    }
                     Either::Two(result) => {
                         response = match result.unwrap() {
                             Some(result) => Some(result),
@@ -261,6 +267,7 @@ impl<
                             is_user_want_to_proceed,
                         ) {
                             loop {
+                                handel.abort().await;
                                 let result = self
                                     .routs
                                     .send_query_to_cache_actor(
@@ -290,7 +297,7 @@ impl<
                     }
                 }
             }
-            handel.abort();
+            handel.abort().await;
             feature_state.is_loading.set(false);
         });
     }

@@ -5,7 +5,7 @@ pub mod m {
     pub struct S<T>(pub tokio::task::JoinHandle<T>);
 
     impl<T> JoinHandel for S<T> {
-        fn abort(self) {
+        async fn abort(&mut self) {
             self.0.abort();
         }
     }
@@ -22,7 +22,6 @@ pub mod m {
     use crate::prelude::*;
     use futures::lock::Mutex;
     use std::sync::Arc;
-    use wasm_bindgen_futures::spawn_local;
 
     pub struct S<T> {
         pub output: Arc<Mutex<Option<T>>>,
@@ -30,11 +29,8 @@ pub mod m {
     }
 
     impl<T> JoinHandel for S<T> {
-        fn abort(self) {
-            spawn_local(async move {
-                let mut aborter = self.aborter;
-                aborter.send(()).await;
-            });
+        async fn abort(&mut self) {
+            self.aborter.send(()).await;
         }
     }
 

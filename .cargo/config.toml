@@ -1,0 +1,4 @@
+[target.wasm32-unknown-unknown]
+rustflags = ["--cfg", "target_arch=\"wasm32\""]
+
+[build]
