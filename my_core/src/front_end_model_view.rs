@@ -267,8 +267,9 @@ impl<
                             response.is_response_from_server,
                             is_user_want_to_proceed,
                         ) {
+                            handel.abort().await;
                             loop {
-                                handel.abort().await;
+                                At::Rt::sleep(Duration::from_secs(1)).await;
                                 let result = self
                                     .routs
                                     .send_query_to_cache_actor(
@@ -285,7 +286,6 @@ impl<
 
                                 if result.is_none() {
                                     local_state.show_dialog.set(Dialog::Error);
-                                    At::Rt::sleep(Duration::from_secs(1)).await;
                                     continue;
                                 }
 
