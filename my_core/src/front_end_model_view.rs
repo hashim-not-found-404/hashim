@@ -29,7 +29,7 @@ pub struct State<
 > {
     _ph: PhantomData<ConsentSender>,
     // here for the app logic
-    routs: web_socket::MyWAMP<At, Mpsc>,
+    routs: Arc<web_socket::MyWAMP<At, Mpsc>>,
 
     // here every field is to display , here is global state
     pub is_signed_in: As::OptionRowId,
@@ -41,40 +41,62 @@ impl<
     At: AllClientTypes + 'static,
     Mpsc: MultiProducerSingleConsumer + 'static,
     ConsentSender: Signal<Option<Mpsc::Sender<()>>> + 'static,
+> Clone for State<As, At, Mpsc, ConsentSender>
+{
+    fn clone(&self) -> Self {
+        Self {
+            _ph: self._ph.clone(),
+            routs: self.routs.clone(),
+            is_signed_in: self.is_signed_in.clone(),
+            external_errors: self.external_errors.clone(),
+        }
+    }
+}
+
+impl<
+    As: AllSignalTypes,
+    At: AllClientTypes + 'static,
+    Mpsc: MultiProducerSingleConsumer + 'static,
+    ConsentSender: Signal<Option<Mpsc::Sender<()>>> + 'static,
 > State<As, At, Mpsc, ConsentSender>
 {
-    pub fn new() -> Arc<Self> {
+    pub fn new() -> Self {
         let (sender_to_error, receiver_to_error) = Mpsc::channel();
 
-        let state = Arc::new(Self {
-            _ph: PhantomData,
-            routs: web_socket::MyWAMP::<At, Mpsc>::new(sender_to_error.clone()),
-            is_signed_in: As::OptionRowId::default(),
-            external_errors: As::StringVec::default(),
-        });
+        let external_errors = As::StringVec::default();
+        Self::listen_to_error_actor(receiver_to_error, external_errors.clone());
 
-        let state1 = state.clone();
+        let routs = Arc::new(web_socket::MyWAMP::<At, Mpsc>::new(sender_to_error.clone()));
+        let routs1 = routs.clone();
         At::Rt::spawn_local(async move {
             let url = format!("ws://{}/ws", ADDRESS);
-            state1.routs.connect_to_url(&url).await;
+            routs1.connect_to_url(&url).await;
         });
 
-        state.clone().listen_to_error(receiver_to_error);
+        let state = Self {
+            _ph: PhantomData,
+            routs,
+            is_signed_in: As::OptionRowId::default(),
+            external_errors,
+        };
 
         state
     }
 
-    fn listen_to_error(self: Arc<Self>, mut receiver_to_error: Mpsc::Receiver<DynamicError>) {
+    fn listen_to_error_actor(
+        mut receiver_to_error: Mpsc::Receiver<DynamicError>,
+        external_errors_signal: As::StringVec,
+    ) {
         At::Rt::spawn_local(async move {
             loop {
                 let err = receiver_to_error.recv().await.unwrap();
-                self.external_errors.set(err.to_string());
+                external_errors_signal.set(err.to_string());
             }
         });
     }
 
     fn spawn_timeout(
-        self: Arc<Self>,
+        self,
         is_submit: bool,
         show_dialog: As::Dialog,
     ) -> <<At as AllClientTypes>::Rt as Runtime>::JoinHandel<()> {
@@ -94,7 +116,7 @@ impl<
     }
 
     pub fn sign_up(
-        self: Arc<Self>,
+        self,
         sender_to_consent_from_dialog: ConsentSender,
         is_submit: bool,
         local_state: SignUpState<As>,
@@ -191,7 +213,7 @@ impl<
     }
 
     pub fn sign_in(
-        self: Arc<Self>,
+        self,
         sender_to_consent_from_dialog: ConsentSender,
         is_submit: bool,
         local_state: SignInState<As>,
@@ -300,7 +322,7 @@ impl<
         });
     }
 
-    pub fn create_company(self: Arc<Self>, local_state: CreateCompanyState<As>) {
+    pub fn create_company(self, local_state: CreateCompanyState<As>) {
         At::Rt::spawn_local(async move {
             let input = create_company::Input {
                 user_uuid: self.is_signed_in.read().unwrap(),
@@ -318,11 +340,7 @@ impl<
         });
     }
 
-    pub fn create_company_branch(
-        self: Arc<Self>,
-        is_submit: bool,
-        local_state: CreateCompanyBranchState<As>,
-    ) {
+    pub fn create_company_branch(self, is_submit: bool, local_state: CreateCompanyBranchState<As>) {
         At::Rt::spawn_local(async move {
             let input = create_company_branch::Input {
                 user_uuid: todo!(),

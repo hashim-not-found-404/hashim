@@ -17,13 +17,11 @@ impl AllClientTypes for MyAllClientTypes {
     type Id = row_id::m::S;
 }
 
-type StateOfEveryThing = Arc<
-    front_end_model_view::State<
-        MyAllSignalTypes,
-        MyAllClientTypes,
-        actors::m::S,
-        MySignal<Option<mpsc_sender::m::S<()>>>,
-    >,
+type StateOfEveryThing = front_end_model_view::State<
+    MyAllSignalTypes,
+    MyAllClientTypes,
+    actors::m::S,
+    MySignal<Option<mpsc_sender::m::S<()>>>,
 >;
 
 const ICONS_SHOW: Asset = asset!("/assets/icons/show.png");
