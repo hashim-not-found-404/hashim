@@ -191,6 +191,7 @@ impl<
             }
             feature_state.is_loading.set(true);
 
+            local_state.show_dialog.set(Dialog::Hide);
             local_state.user_id_error.set(String::new());
             local_state.user_password_error.set(String::new());
 
@@ -225,7 +226,7 @@ impl<
             sender_to_consent_from_dialog.set(Some(sender_to_consent));
             let mut is_user_want_to_proceed = false;
             let mut response = None;
-            'outer_loop: loop {
+            loop {
                 match At::Rt::select(receiver_to_consent.recv(), receiver_to_response.recv()).await
                 {
                     Either::One(_) => {
@@ -268,30 +269,26 @@ impl<
                             is_user_want_to_proceed,
                         ) {
                             handel.abort().await;
-                            loop {
-                                At::Rt::sleep(Duration::from_secs(1)).await;
-                                let result = self
-                                    .routs
-                                    .send_query_to_cache_actor(
-                                        cache_query_operations::CacheQueryInput::GetUserUuid(
-                                            GetUserUuidInput {
-                                                user_id: user_id.clone(),
-                                            },
-                                        ),
-                                    )
-                                    .await;
+                            At::Rt::sleep(Duration::from_secs(3)).await;
+                            let result = self
+                                .routs
+                                .send_query_to_cache_actor(
+                                    cache_query_operations::CacheQueryInput::GetUserUuid(
+                                        GetUserUuidInput {
+                                            user_id: user_id.clone(),
+                                        },
+                                    ),
+                                )
+                                .await;
 
-                                let result =
-                                    cache_query_operations::GetUserUuidInput::unwrap(result);
+                            let result = cache_query_operations::GetUserUuidInput::unwrap(result);
 
-                                if result.is_none() {
-                                    local_state.show_dialog.set(Dialog::Error);
-                                    continue;
-                                }
-
-                                self.is_signed_in.set(result);
-                                break 'outer_loop;
+                            if result.is_none() {
+                                local_state.show_dialog.set(Dialog::Error);
                             }
+
+                            self.is_signed_in.set(result);
+                            break;
                         }
                     } else {
                         break;
