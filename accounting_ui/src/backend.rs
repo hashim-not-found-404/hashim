@@ -109,7 +109,7 @@ impl Signal<String> for MySignalForLists {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct MyAllSignalTypes;
 impl AllSignalTypes for MyAllSignalTypes {
     type OptionRowId = MySignal<Option<db_types::UuidType>>;

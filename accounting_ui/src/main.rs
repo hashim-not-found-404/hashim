@@ -104,8 +104,7 @@ pub fn Dialog(
 #[component]
 pub fn AuthenticationPage() -> Element {
     let state = consume_context::<StateOfEveryThing>();
-    let auth_state =
-        Arc::new(front_end_model_view::AuthFeatureState::<MyAllSignalTypes>::default());
+    let auth_state = front_end_model_view::AuthFeatureState::<MyAllSignalTypes>::default();
     use_context_provider(|| auth_state);
 
     if state.is_signed_in.read().is_some() {
@@ -120,9 +119,8 @@ pub fn AuthenticationPage() -> Element {
 #[component]
 pub fn SignIn() -> Element {
     let state = consume_context::<StateOfEveryThing>();
-    let auth_state =
-        consume_context::<Arc<front_end_model_view::AuthFeatureState<MyAllSignalTypes>>>();
-    let local_state = Arc::new(front_end_model_view::SignInState::<MyAllSignalTypes>::default());
+    let auth_state = consume_context::<front_end_model_view::AuthFeatureState<MyAllSignalTypes>>();
+    let local_state = front_end_model_view::SignInState::<MyAllSignalTypes>::default();
 
     let sign_up = move |_| {
         navigator().push(Route::SignUp {});
@@ -171,9 +169,8 @@ pub fn SignIn() -> Element {
 #[component]
 pub fn SignUp() -> Element {
     let state = consume_context::<StateOfEveryThing>();
-    let auth_state =
-        consume_context::<Arc<front_end_model_view::AuthFeatureState<MyAllSignalTypes>>>();
-    let local_state = Arc::new(front_end_model_view::SignUpState::<MyAllSignalTypes>::default());
+    let auth_state = consume_context::<front_end_model_view::AuthFeatureState<MyAllSignalTypes>>();
+    let local_state = front_end_model_view::SignUpState::<MyAllSignalTypes>::default();
 
     let sign_in = move |_| {
         navigator().push(Route::SignIn {});
@@ -288,8 +285,7 @@ pub fn Home() -> Element {
 #[component]
 pub fn CreateCompany() -> Element {
     let state = consume_context::<StateOfEveryThing>();
-    let local_state =
-        Arc::new(front_end_model_view::CreateCompanyState::<MyAllSignalTypes>::default());
+    let local_state = front_end_model_view::CreateCompanyState::<MyAllSignalTypes>::default();
 
     let local_state1 = local_state.clone();
     let local_state2 = local_state.clone();
@@ -320,9 +316,7 @@ pub fn CreateCompany() -> Element {
 #[component]
 pub fn CreateCompanyBranch() -> Element {
     let state = consume_context::<StateOfEveryThing>();
-    let local_state = Arc::new(front_end_model_view::CreateCompanyBranchState::<
-        MyAllSignalTypes,
-    >::default());
+    let local_state = front_end_model_view::CreateCompanyBranchState::<MyAllSignalTypes>::default();
 
     let state1 = state.clone();
     let local_state1 = local_state.clone();

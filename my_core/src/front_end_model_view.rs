@@ -97,8 +97,8 @@ impl<
         self: Arc<Self>,
         sender_to_consent_from_dialog: ConsentSender,
         is_submit: bool,
-        local_state: Arc<SignUpState<As>>,
-        feature_state: Arc<AuthFeatureState<As>>,
+        local_state: SignUpState<As>,
+        feature_state: AuthFeatureState<As>,
     ) {
         At::Rt::spawn_local(async move {
             if feature_state.is_loading.read() == true {
@@ -194,8 +194,8 @@ impl<
         self: Arc<Self>,
         sender_to_consent_from_dialog: ConsentSender,
         is_submit: bool,
-        local_state: Arc<SignInState<As>>,
-        feature_state: Arc<AuthFeatureState<As>>,
+        local_state: SignInState<As>,
+        feature_state: AuthFeatureState<As>,
     ) {
         At::Rt::spawn_local(async move {
             if feature_state.is_loading.read() == true {
@@ -300,7 +300,7 @@ impl<
         });
     }
 
-    pub fn create_company(self: Arc<Self>, local_state: Arc<CreateCompanyState<As>>) {
+    pub fn create_company(self: Arc<Self>, local_state: CreateCompanyState<As>) {
         At::Rt::spawn_local(async move {
             let input = create_company::Input {
                 user_uuid: self.is_signed_in.read().unwrap(),
@@ -321,7 +321,7 @@ impl<
     pub fn create_company_branch(
         self: Arc<Self>,
         is_submit: bool,
-        local_state: Arc<CreateCompanyBranchState<As>>,
+        local_state: CreateCompanyBranchState<As>,
     ) {
         At::Rt::spawn_local(async move {
             let input = create_company_branch::Input {
@@ -357,14 +357,14 @@ pub enum Dialog {
     Error,
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct SignInState<As: AllSignalTypes> {
     pub show_dialog: As::Dialog,
     pub user_id_error: As::String,
     pub user_password_error: As::String,
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct SignUpState<As: AllSignalTypes> {
     pub show_dialog: As::Dialog,
     pub user_name: As::String,
@@ -372,20 +372,20 @@ pub struct SignUpState<As: AllSignalTypes> {
     pub user_name_error: As::String,
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct AuthFeatureState<As: AllSignalTypes> {
     pub user_id: As::String,
     pub user_password: As::String,
     pub is_loading: As::Bool,
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct CreateCompanyState<As: AllSignalTypes> {
     pub company_name: As::String,
     pub currency: As::Currency,
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct CreateCompanyBranchState<As: AllSignalTypes> {
     pub company_belong: As::String,
     pub currency: As::Currency,
