@@ -522,103 +522,6 @@ where
         Ok(subs)
     }
 
-    pub fn broker_actor(mut receiver_to_broker: Mpsc::Receiver<MessageToBroker<Id, Mpsc>>) {
-        Rt::spawn_local(async move {
-            let mut pool_of_pubsub_for_company: CompanyUserSubscribes<Id> =
-                HashMap::with_capacity(1000);
-
-            let mut pool_of_pubsub_for_branch: BranchUserSubscribes<Id> =
-                HashMap::with_capacity(10000);
-
-            let mut pool_of_server_facad_channels: UserSenders<Id, Mpsc> =
-                HashMap::with_capacity(10000);
-
-            loop {
-                let message = receiver_to_broker.recv().await.unwrap();
-                match message {
-                    MessageToBroker::Subscribe {
-                        list_of_subscribtion,
-                        users_uuids,
-                        sender_to_server,
-                    } => {
-                        for user_uuid in users_uuids {
-                            let channels = pool_of_server_facad_channels.get_mut(&user_uuid);
-                            match channels {
-                                Some(channels) => channels.push(sender_to_server.clone()),
-                                None => {
-                                    pool_of_server_facad_channels
-                                        .insert(user_uuid, vec![sender_to_server.clone()]);
-                                }
-                            }
-                        }
-
-                        merge_subscribes(
-                            &mut pool_of_pubsub_for_company,
-                            list_of_subscribtion.companies,
-                        );
-
-                        merge_subscribes(
-                            &mut pool_of_pubsub_for_branch,
-                            list_of_subscribtion.branches,
-                        );
-                    }
-                    MessageToBroker::Unsubscribe { user_uuid } => {
-                        pool_of_server_facad_channels.remove(&user_uuid);
-                        // TODO : i have leake here i need to remove the company and branches if empty
-                        unsubscribe(&mut pool_of_pubsub_for_company, &user_uuid);
-                        unsubscribe(&mut pool_of_pubsub_for_branch, &user_uuid);
-                    }
-                    MessageToBroker::Publish {
-                        list_of_resources_for_company,
-                        list_of_resources_for_branch,
-                    } => {
-                        let mut resource_to_send: HashMap<
-                            Id, // user uuid
-                            Vec<ResourceInfo>,
-                        > = HashMap::new();
-
-                        map_resource_to_subscribes(
-                            &pool_of_pubsub_for_company,
-                            list_of_resources_for_company,
-                            &mut resource_to_send,
-                        );
-
-                        map_resource_to_subscribes(
-                            &pool_of_pubsub_for_branch,
-                            list_of_resources_for_branch,
-                            &mut resource_to_send,
-                        );
-
-                        for (user_uuid, resource) in resource_to_send {
-                            let channels = pool_of_server_facad_channels.get_mut(&user_uuid);
-
-                            match channels {
-                                Some(channels) => {
-                                    let mut index = 0;
-                                    while index < channels.len() {
-                                        if channels[index].send(resource.clone()).await.is_err() {
-                                            channels.remove(index);
-                                        } else {
-                                            index += 1;
-                                        }
-                                    }
-
-                                    if channels.len() == 0 {
-                                        pool_of_server_facad_channels.remove(&user_uuid);
-                                    }
-                                }
-                                None => {
-                                    dbg!("there is some problem here this should not happen");
-                                    continue;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        });
-    }
-
     pub fn server_actor<Ws: WSServer + 'static>(
         state: Arc<Self>,
         mut session: Ws,
@@ -720,6 +623,103 @@ where
             }
 
             session.close().await.unwrap();
+        });
+    }
+
+    pub fn broker_actor(mut receiver_to_broker: Mpsc::Receiver<MessageToBroker<Id, Mpsc>>) {
+        Rt::spawn_local(async move {
+            let mut pool_of_pubsub_for_company: CompanyUserSubscribes<Id> =
+                HashMap::with_capacity(1000);
+
+            let mut pool_of_pubsub_for_branch: BranchUserSubscribes<Id> =
+                HashMap::with_capacity(10000);
+
+            let mut pool_of_server_facad_channels: UserSenders<Id, Mpsc> =
+                HashMap::with_capacity(10000);
+
+            loop {
+                let message = receiver_to_broker.recv().await.unwrap();
+                match message {
+                    MessageToBroker::Subscribe {
+                        list_of_subscribtion,
+                        users_uuids,
+                        sender_to_server,
+                    } => {
+                        for user_uuid in users_uuids {
+                            let channels = pool_of_server_facad_channels.get_mut(&user_uuid);
+                            match channels {
+                                Some(channels) => channels.push(sender_to_server.clone()),
+                                None => {
+                                    pool_of_server_facad_channels
+                                        .insert(user_uuid, vec![sender_to_server.clone()]);
+                                }
+                            }
+                        }
+
+                        merge_subscribes(
+                            &mut pool_of_pubsub_for_company,
+                            list_of_subscribtion.companies,
+                        );
+
+                        merge_subscribes(
+                            &mut pool_of_pubsub_for_branch,
+                            list_of_subscribtion.branches,
+                        );
+                    }
+                    MessageToBroker::Unsubscribe { user_uuid } => {
+                        pool_of_server_facad_channels.remove(&user_uuid);
+                        // TODO : i have leake here i need to remove the company and branches if empty
+                        unsubscribe(&mut pool_of_pubsub_for_company, &user_uuid);
+                        unsubscribe(&mut pool_of_pubsub_for_branch, &user_uuid);
+                    }
+                    MessageToBroker::Publish {
+                        list_of_resources_for_company,
+                        list_of_resources_for_branch,
+                    } => {
+                        let mut resource_to_send: HashMap<
+                            Id, // user uuid
+                            Vec<ResourceInfo>,
+                        > = HashMap::new();
+
+                        map_resource_to_subscribes(
+                            &pool_of_pubsub_for_company,
+                            list_of_resources_for_company,
+                            &mut resource_to_send,
+                        );
+
+                        map_resource_to_subscribes(
+                            &pool_of_pubsub_for_branch,
+                            list_of_resources_for_branch,
+                            &mut resource_to_send,
+                        );
+
+                        for (user_uuid, resource) in resource_to_send {
+                            let channels = pool_of_server_facad_channels.get_mut(&user_uuid);
+
+                            match channels {
+                                Some(channels) => {
+                                    let mut index = 0;
+                                    while index < channels.len() {
+                                        if channels[index].send(resource.clone()).await.is_err() {
+                                            channels.remove(index);
+                                        } else {
+                                            index += 1;
+                                        }
+                                    }
+
+                                    if channels.len() == 0 {
+                                        pool_of_server_facad_channels.remove(&user_uuid);
+                                    }
+                                }
+                                None => {
+                                    dbg!("there is some problem here this should not happen");
+                                    continue;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         });
     }
 }
