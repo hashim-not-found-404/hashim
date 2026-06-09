@@ -252,34 +252,33 @@ where
                         };
 
                         match message_type {
-                            messages::FromServer::PushData(result) => match result {
-                                Ok(results) => {
-                                    for txn in results.operations {
-                                        state.cache.delete_txn_input(&txn.txn_number).await;
-                                        state.cache.write_txn_result(&txn).await;
+                            messages::FromServer::Error(err) => {
+                                sender_to_error.send(err.into()).await.unwrap()
+                            }
+                            messages::FromServer::PushData(results) => {
+                                for txn in results.operations {
+                                    state.cache.delete_txn_input(&txn.txn_number).await;
+                                    state.cache.write_txn_result(&txn).await;
 
-                                        let sender = pool_of_senders.remove(&txn.txn_number);
-                                        if let Some(mut sender) = sender {
-                                            let _ = sender
-                                                .send(Some(Response {
-                                                    is_response_from_server: true,
-                                                    data: txn.operation,
-                                                }))
-                                                .await;
-                                            let _ = sender.send(None).await;
-                                        }
-                                    }
-
-                                    state.state_of_pending_txn =
-                                        cache::StateOfPendingTxn::default();
-
-                                    let txns = state.cache.get_all_txn_input().await;
-                                    for op in txns {
-                                        op.operation.run_operation_check_apply(&mut state).await;
+                                    let sender = pool_of_senders.remove(&txn.txn_number);
+                                    if let Some(mut sender) = sender {
+                                        let _ = sender
+                                            .send(Some(Response {
+                                                is_response_from_server: true,
+                                                data: txn.operation,
+                                            }))
+                                            .await;
+                                        let _ = sender.send(None).await;
                                     }
                                 }
-                                Err(err) => sender_to_error.send(err.into()).await.unwrap(),
-                            },
+
+                                state.state_of_pending_txn = cache::StateOfPendingTxn::default();
+
+                                let txns = state.cache.get_all_txn_input().await;
+                                for op in txns {
+                                    op.operation.run_operation_check_apply(&mut state).await;
+                                }
+                            }
                             messages::FromServer::Resources(resource) => {
                                 state.cache.write_resource(&resource).await;
                             }

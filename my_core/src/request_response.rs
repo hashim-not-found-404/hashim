@@ -59,7 +59,8 @@ pub mod messages {
 
     #[derive(Debug, Deserialize, Serialize)]
     pub enum FromServer {
-        PushData(Result<push_data::Result, HashimError>),
+        Error(HashimError),
+        PushData(push_data::Result),
         Resources(Vec<ResourceInfo>),
     }
 

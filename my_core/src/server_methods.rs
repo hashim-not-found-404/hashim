@@ -76,6 +76,7 @@ where
 
     async fn sign_up(
         &self,
+        client: &mut Cli,
         side_effects: &mut SideEffects<Id>,
         authenticated_users: &mut HashSet<Id>,
         input: &sign_up::Input,
@@ -99,7 +100,6 @@ where
 
         let hashed_password = Auth::sign_up(&input.password);
 
-        let mut client = self.database.get_client().await?;
         let mut txn = client.begin_transaction().await?;
 
         let result = (|| async {
@@ -154,13 +154,12 @@ where
 
     async fn sign_in(
         &self,
+        client: &mut Cli,
         side_effects: &mut SideEffects<Id>,
         authenticated_users: &mut HashSet<Id>,
         input: &sign_in::Input,
     ) -> Result<sign_in::Result, DynamicError> {
         let mut errr = sign_in::Error::default();
-
-        let mut client = self.database.get_client().await?;
 
         let (user_rowid, password_hash) = match client.read_sign_in(&input.user_id).await? {
             Some(p) => p,
@@ -193,6 +192,7 @@ where
 
     async fn create_company(
         &self,
+        client: &mut Cli,
         side_effects: &mut SideEffects<Id>,
         authenticated_users: &mut HashSet<Id>,
         input: &create_company::Input,
@@ -224,7 +224,6 @@ where
             return Ok(Err(errr));
         }
 
-        let mut client = self.database.get_client().await?;
         let mut txn = client.begin_transaction().await?;
 
         let result = (|| async {
@@ -302,6 +301,7 @@ where
 
     pub async fn create_company_branch(
         &self,
+        client: &mut Cli,
         side_effects: &mut SideEffects<Id>,
         authenticated_users: &mut HashSet<Id>,
         input: &create_company_branch::Input,
@@ -346,7 +346,6 @@ where
         let user_uuid = user_uuid.unwrap();
         let company_belong = company_belong.unwrap();
 
-        let mut client = self.database.get_client().await?;
         let mut txn = client.begin_transaction().await?;
 
         let result = (|| async {
@@ -404,6 +403,7 @@ where
 
     async fn push_data(
         &self,
+        client: &mut Cli,
         side_effects: &mut SideEffects<Id>,
         input: &push_data::Input,
     ) -> Result<push_data::Result, DynamicError> {
@@ -437,7 +437,6 @@ where
             }
         };
 
-        let mut client = self.database.get_client().await?;
         let is_nonce_used = client.write_nonce_if_not_used(&nonce).await?;
 
         if !check_nonce_if_valid::<Id>(&nonce, is_nonce_used) {
@@ -452,25 +451,30 @@ where
             let result = match &transaction.operation {
                 push_data::OperationsInput::SignUp(input) => {
                     let result = self
-                        .sign_up(side_effects, &mut authenticated_users, input)
+                        .sign_up(client, side_effects, &mut authenticated_users, input)
                         .await?;
                     push_data::OperationsResult::SignUp(result)
                 }
                 push_data::OperationsInput::SignIn(input) => {
                     let result = self
-                        .sign_in(side_effects, &mut authenticated_users, input)
+                        .sign_in(client, side_effects, &mut authenticated_users, input)
                         .await?;
                     push_data::OperationsResult::SignIn(result)
                 }
                 push_data::OperationsInput::CreateCompany(input) => {
                     let result = self
-                        .create_company(side_effects, &mut authenticated_users, input)
+                        .create_company(client, side_effects, &mut authenticated_users, input)
                         .await?;
                     push_data::OperationsResult::CreateCompany(result)
                 }
                 push_data::OperationsInput::CreateCompanyBranch(input) => {
                     let result = self
-                        .create_company_branch(side_effects, &mut authenticated_users, input)
+                        .create_company_branch(
+                            client,
+                            side_effects,
+                            &mut authenticated_users,
+                            input,
+                        )
                         .await?;
                     push_data::OperationsResult::CreateCompanyBranch(result)
                 }
@@ -487,9 +491,9 @@ where
 
     pub async fn get_table_of_subscribed_data(
         &self,
+        client: &mut Cli,
         users_uuids: &HashSet<Id>,
     ) -> Result<AllSubscribes<Id>, DynamicError> {
-        let mut client = self.database.get_client().await?;
         let roles = client.read_roles_for_user(users_uuids).await?;
 
         let mut subs = AllSubscribes {
@@ -538,26 +542,65 @@ where
                         };
 
                         match msg {
+                            WSMessage::Close => break,
                             WSMessage::Binary(received_data) => {
-                                let input = De::decode::<messages::FromClient>(&received_data);
-
-                                let mut side_effects = SideEffects::<Id>::default();
-                                // TODO : get db client here
-
-                                let result = match input {
-                                    Ok(input) => self
-                                        .push_data(&mut side_effects, &input)
-                                        .await
-                                        .map_err(|_| HashimError::InternalServerError),
-                                    Err(_) => Err(HashimError::InvalidDataFormat),
+                                let input = match De::decode::<messages::FromClient>(&received_data)
+                                {
+                                    Ok(ok) => ok,
+                                    Err(_) => {
+                                        if session
+                                            .send_bin(De::encode(&messages::FromServer::Error(
+                                                HashimError::InvalidDataFormat,
+                                            )))
+                                            .await
+                                            .is_err()
+                                        {
+                                            break;
+                                        }
+                                        continue;
+                                    }
                                 };
 
-                                if session
-                                    .send_bin(De::encode(&messages::FromServer::PushData(result)))
-                                    .await
-                                    .is_err()
-                                {
-                                    break;
+                                let mut client = match self.database.get_client().await {
+                                    Ok(ok) => ok,
+                                    Err(_) => {
+                                        if session
+                                            .send_bin(De::encode(&messages::FromServer::Error(
+                                                HashimError::InternalServerError,
+                                            )))
+                                            .await
+                                            .is_err()
+                                        {
+                                            break;
+                                        }
+                                        continue;
+                                    }
+                                };
+
+                                let mut side_effects = SideEffects::<Id>::default();
+                                match self.push_data(&mut client, &mut side_effects, &input).await {
+                                    Ok(ok) => {
+                                        if session
+                                            .send_bin(De::encode(&messages::FromServer::PushData(
+                                                ok,
+                                            )))
+                                            .await
+                                            .is_err()
+                                        {
+                                            break;
+                                        }
+                                    }
+                                    Err(_) => {
+                                        if session
+                                            .send_bin(De::encode(&messages::FromServer::Error(
+                                                HashimError::InternalServerError,
+                                            )))
+                                            .await
+                                            .is_err()
+                                        {
+                                            break;
+                                        }
+                                    }
                                 }
 
                                 if !side_effects.resource_to_return.is_empty() {
@@ -573,12 +616,27 @@ where
                                 }
 
                                 if !side_effects.users_to_resubscribe.is_empty() {
-                                    let subs = self
+                                    let subs = match self
                                         .get_table_of_subscribed_data(
+                                            &mut client,
                                             &side_effects.users_to_resubscribe,
                                         )
                                         .await
-                                        .unwrap();
+                                    {
+                                        Ok(ok) => ok,
+                                        Err(_) => {
+                                            if session
+                                                .send_bin(De::encode(&messages::FromServer::Error(
+                                                    HashimError::InternalServerError,
+                                                )))
+                                                .await
+                                                .is_err()
+                                            {
+                                                break;
+                                            }
+                                            continue;
+                                        }
+                                    };
 
                                     sender_to_broker
                                         .send(server_methods::MessageToBroker::Subscribe {
@@ -604,7 +662,6 @@ where
                                         .unwrap();
                                 }
                             }
-                            WSMessage::Close => break,
                         }
                     }
                     Either::Two(wraped_resource) => {
