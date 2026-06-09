@@ -1,23 +1,12 @@
 use crate::prelude::*;
 use dioxus::prelude::*;
-use dioxus_logger::tracing::Level;
 use std::str::FromStr;
 
-struct MyAllClientTypes;
-impl AllClientTypes for MyAllClientTypes {
-    type Rn = random_number::m::S;
-    type Ws = web_socket_adapter::m::S;
-    type Ed = encode_decode::m::S;
-    type Rt = runtime::m::S;
-    type Ch = cache_adapter::S;
-    type Id = row_id::m::S;
-}
-
 type StateOfEveryThing = front_end_model_view::State<
-    MyAllSignalTypes,
-    MyAllClientTypes,
+    my_signals::m::S,
+    my_types::m::S,
     actors::m::S,
-    MySignal<Option<mpsc_sender::m::S<()>>>,
+    my_signal::m::S<Option<mpsc_sender::m::S<()>>>,
 >;
 
 const ICONS_SHOW: Asset = asset!("/assets/icons/show.png");
@@ -50,9 +39,9 @@ pub fn App() -> Element {
 
 #[component]
 fn Dialog(
-    sender: MySignal<Option<mpsc_sender::m::S<()>>>,
+    sender: my_signal::m::S<Option<mpsc_sender::m::S<()>>>,
     operation_name: &'static str,
-    show_dialog: <MyAllSignalTypes as AllSignalTypes>::Dialog,
+    show_dialog: <my_signals::m::S as AllSignalTypes>::Dialog,
 ) -> Element {
     let show_dialog1 = show_dialog.clone();
 
@@ -93,7 +82,7 @@ fn Dialog(
 #[component]
 fn AuthenticationPage() -> Element {
     let state = consume_context::<StateOfEveryThing>();
-    let auth_state = front_end_model_view::AuthFeatureState::<MyAllSignalTypes>::default();
+    let auth_state = front_end_model_view::AuthFeatureState::<my_signals::m::S>::default();
     use_context_provider(|| auth_state);
 
     if state.is_signed_in.read().is_some() {
@@ -108,8 +97,8 @@ fn AuthenticationPage() -> Element {
 #[component]
 fn SignIn() -> Element {
     let state = consume_context::<StateOfEveryThing>();
-    let auth_state = consume_context::<front_end_model_view::AuthFeatureState<MyAllSignalTypes>>();
-    let local_state = front_end_model_view::SignInState::<MyAllSignalTypes>::default();
+    let auth_state = consume_context::<front_end_model_view::AuthFeatureState<my_signals::m::S>>();
+    let local_state = front_end_model_view::SignInState::<my_signals::m::S>::default();
 
     let sign_up = move |_| {
         navigator().push(Route::SignUp {});
@@ -119,7 +108,7 @@ fn SignIn() -> Element {
     let local_state1 = local_state.clone();
     let auth_state1 = auth_state.clone();
 
-    let sender = MySignal::default();
+    let sender = my_signal::m::S::default();
 
     rsx! {
         div {
@@ -132,7 +121,7 @@ fn SignIn() -> Element {
                 placeholder: "User ID",
                 oninput: move |event| {
                     auth_state1.user_id.set(event.value());
-                    state1.clone().sign_in(MySignal::default(),false,local_state1.clone(),auth_state1.clone());
+                    state1.clone().sign_in(my_signal::m::S::default(),false,local_state1.clone(),auth_state1.clone());
                 },
                 value: auth_state.user_id.read(),
             }
@@ -158,8 +147,8 @@ fn SignIn() -> Element {
 #[component]
 fn SignUp() -> Element {
     let state = consume_context::<StateOfEveryThing>();
-    let auth_state = consume_context::<front_end_model_view::AuthFeatureState<MyAllSignalTypes>>();
-    let local_state = front_end_model_view::SignUpState::<MyAllSignalTypes>::default();
+    let auth_state = consume_context::<front_end_model_view::AuthFeatureState<my_signals::m::S>>();
+    let local_state = front_end_model_view::SignUpState::<my_signals::m::S>::default();
 
     let sign_in = move |_| {
         navigator().push(Route::SignIn {});
@@ -172,7 +161,7 @@ fn SignUp() -> Element {
     let auth_state1 = auth_state.clone();
     let auth_state2 = auth_state.clone();
 
-    let sender = MySignal::default();
+    let sender = my_signal::m::S::default();
 
     rsx! {
         div {
@@ -185,7 +174,7 @@ fn SignUp() -> Element {
                 placeholder: "Name (Optional)",
                 oninput: move |event| {
                     local_state1.user_name.set(event.value());
-                    state1.clone().sign_up(MySignal::default(),false,local_state1.clone(),auth_state1.clone());
+                    state1.clone().sign_up(my_signal::m::S::default(),false,local_state1.clone(),auth_state1.clone());
                 },
                 value: local_state.user_name.read(),
             }
@@ -196,7 +185,7 @@ fn SignUp() -> Element {
                 placeholder: "User Id",
                 oninput: move |event| {
                     auth_state2.user_id.set(event.value());
-                    state2.clone().sign_up(MySignal::default(),false,local_state2.clone(),auth_state2.clone());
+                    state2.clone().sign_up(my_signal::m::S::default(),false,local_state2.clone(),auth_state2.clone());
                 },
                 value: auth_state.user_id.read(),
             }
@@ -217,7 +206,7 @@ fn SignUp() -> Element {
 }
 
 #[component]
-fn PasswordInput(password: MySignal<String>) -> Element {
+fn PasswordInput(password: my_signal::m::S<String>) -> Element {
     let mut is_password_visible = use_signal(|| false);
 
     let (input_type, icon_type) = match is_password_visible.read().clone() {
@@ -274,7 +263,7 @@ fn Home() -> Element {
 #[component]
 fn CreateCompany() -> Element {
     let state = consume_context::<StateOfEveryThing>();
-    let local_state = front_end_model_view::CreateCompanyState::<MyAllSignalTypes>::default();
+    let local_state = front_end_model_view::CreateCompanyState::<my_signals::m::S>::default();
 
     let local_state1 = local_state.clone();
     let local_state2 = local_state.clone();
@@ -305,7 +294,7 @@ fn CreateCompany() -> Element {
 #[component]
 fn CreateCompanyBranch() -> Element {
     let state = consume_context::<StateOfEveryThing>();
-    let local_state = front_end_model_view::CreateCompanyBranchState::<MyAllSignalTypes>::default();
+    let local_state = front_end_model_view::CreateCompanyBranchState::<my_signals::m::S>::default();
 
     let state1 = state.clone();
     let local_state1 = local_state.clone();
