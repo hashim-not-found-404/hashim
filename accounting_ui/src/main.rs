@@ -5,7 +5,7 @@ use cache_rusqlite::prelude::*;
 use dioxus::prelude::*;
 use dioxus_logger::tracing::Level;
 use my_core::prelude::{Signal as HashimSignal, *};
-use std::{str::FromStr, sync::Arc};
+use std::str::FromStr;
 
 struct MyAllClientTypes;
 impl AllClientTypes for MyAllClientTypes {

@@ -154,7 +154,6 @@ impl DBTransaction for S<'_> {
 
     async fn write_create_company_branch(
         &mut self,
-        resource_to_broadcast: &mut Vec<ResourceInfo>,
         new_uuid: &Self::RowId,
         company_belong: &Self::RowId,
         branch_name: &String,

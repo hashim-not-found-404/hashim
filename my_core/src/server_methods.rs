@@ -76,7 +76,7 @@ where
 
     pub async fn sign_up(
         &self,
-        resource_to_return: &mut Vec<ResourceInfo>,
+        side_effects: &mut SideEffects<Id>,
         authenticated_users: &mut HashSet<Id>,
         input: &sign_up::Input,
     ) -> Result<sign_up::Result, DynamicError> {
@@ -123,17 +123,17 @@ where
             txn.write_sign_up(&new_uuid, &input.user_id, &hashed_password, &input.name)
                 .await?;
 
-            resource_to_return.push(ResourceInfo {
+            side_effects.resource_to_return.push(ResourceInfo {
                 uuid: new_uuid.to_uuid(),
                 resource: Resource::Jwt(self.jwt.sign(&new_uuid)),
             });
-            resource_to_return.push(ResourceInfo {
+            side_effects.resource_to_return.push(ResourceInfo {
                 uuid: new_uuid.to_uuid(),
                 resource: Resource::UserId(input.user_id.clone()),
             });
 
             if let Some(name) = &input.name {
-                resource_to_return.push(ResourceInfo {
+                side_effects.resource_to_return.push(ResourceInfo {
                     uuid: new_uuid.to_uuid(),
                     resource: Resource::UserName(name.clone()),
                 });
@@ -154,9 +154,8 @@ where
 
     pub async fn sign_in(
         &self,
-        resource_to_return: &mut Vec<ResourceInfo>,
+        side_effects: &mut SideEffects<Id>,
         authenticated_users: &mut HashSet<Id>,
-        users_to_resubscribe: &mut HashSet<Id>,
         input: &sign_in::Input,
     ) -> Result<sign_in::Result, DynamicError> {
         let mut errr = sign_in::Error::default();
@@ -174,12 +173,12 @@ where
         match Auth::sign_in(&input.password, &password_hash) {
             true => {
                 authenticated_users.insert(user_rowid.clone());
-                users_to_resubscribe.insert(user_rowid.clone());
-                resource_to_return.push(ResourceInfo {
+                side_effects.users_to_resubscribe.insert(user_rowid.clone());
+                side_effects.resource_to_return.push(ResourceInfo {
                     uuid: user_rowid.to_uuid(),
                     resource: Resource::UserId(input.user_id.clone()),
                 });
-                resource_to_return.push(ResourceInfo {
+                side_effects.resource_to_return.push(ResourceInfo {
                     uuid: user_rowid.to_uuid(),
                     resource: Resource::Jwt(self.jwt.sign(&user_rowid)),
                 });
@@ -194,9 +193,8 @@ where
 
     pub async fn create_company(
         &self,
-        resource_to_broadcast: &mut Vec<ResourceInfo>,
+        side_effects: &mut SideEffects<Id>,
         authenticated_users: &mut HashSet<Id>,
-        users_to_resubscribe: &mut HashSet<Id>,
         input: &create_company::Input,
     ) -> Result<create_company::Result, DynamicError> {
         let mut errr = create_company::Error::default();
@@ -251,28 +249,43 @@ where
             )
             .await?;
 
-            users_to_resubscribe.insert(user_uuid);
+            side_effects.users_to_resubscribe.insert(user_uuid);
 
-            resource_to_broadcast.push(ResourceInfo {
-                uuid: new_uuid.to_uuid(),
-                resource: server_methods::Resource::CompanyName(input.company_name.clone()),
-            });
-            resource_to_broadcast.push(ResourceInfo {
-                uuid: new_uuid.to_uuid(),
-                resource: server_methods::Resource::CompanyCurrency(input.currency.clone()),
-            });
-            resource_to_broadcast.push(ResourceInfo {
-                uuid: new_uuid.to_uuid(),
-                resource: server_methods::Resource::RoleAtCompany(ROLE),
-            });
-            resource_to_broadcast.push(ResourceInfo {
-                uuid: new_uuid.to_uuid(),
-                resource: server_methods::Resource::UserThatHaveRole(input.user_uuid.clone()),
-            });
-            resource_to_broadcast.push(ResourceInfo {
-                uuid: new_uuid.to_uuid(),
-                resource: server_methods::Resource::CompanyThatHaveUserRole(new_uuid.to_uuid()),
-            });
+            side_effects.resource_to_broadcast_for_company.insert_push(
+                new_uuid.clone(),
+                ResourceInfo {
+                    uuid: new_uuid.to_uuid(),
+                    resource: server_methods::Resource::CompanyName(input.company_name.clone()),
+                },
+            );
+            side_effects.resource_to_broadcast_for_company.insert_push(
+                new_uuid.clone(),
+                ResourceInfo {
+                    uuid: new_uuid.to_uuid(),
+                    resource: server_methods::Resource::CompanyCurrency(input.currency.clone()),
+                },
+            );
+            side_effects.resource_to_broadcast_for_company.insert_push(
+                new_uuid.clone(),
+                ResourceInfo {
+                    uuid: new_uuid.to_uuid(),
+                    resource: server_methods::Resource::RoleAtCompany(ROLE),
+                },
+            );
+            side_effects.resource_to_broadcast_for_company.insert_push(
+                new_uuid.clone(),
+                ResourceInfo {
+                    uuid: new_uuid.to_uuid(),
+                    resource: server_methods::Resource::UserThatHaveRole(input.user_uuid.clone()),
+                },
+            );
+            side_effects.resource_to_broadcast_for_company.insert_push(
+                new_uuid.clone(),
+                ResourceInfo {
+                    uuid: new_uuid.to_uuid(),
+                    resource: server_methods::Resource::CompanyThatHaveUserRole(new_uuid.to_uuid()),
+                },
+            );
 
             Ok(Ok(create_company::Ok))
         })()
@@ -289,9 +302,8 @@ where
 
     pub async fn create_company_branch(
         &self,
-        resource_to_broadcast: &mut Vec<ResourceInfo>,
+        side_effects: &mut SideEffects<Id>,
         authenticated_users: &mut HashSet<Id>,
-        users_to_resubscribe: &mut HashSet<Id>,
         input: &create_company_branch::Input,
     ) -> Result<create_company_branch::Result, DynamicError> {
         let mut errr = create_company_branch::Error::default();
@@ -364,7 +376,6 @@ where
             }
 
             txn.write_create_company_branch(
-                resource_to_broadcast,
                 &new_uuid,
                 &company_belong,
                 &input.branch_name,
@@ -375,7 +386,9 @@ where
             )
             .await?;
 
-            users_to_resubscribe.insert(user_uuid);
+            side_effects.users_to_resubscribe.insert(user_uuid);
+
+            todo!("add to the resource");
             Ok(Ok(create_company_branch::Ok))
         })()
         .await;
@@ -391,9 +404,7 @@ where
 
     pub async fn push_data(
         &self,
-        resource_to_broadcast: &mut Vec<ResourceInfo>,
-        resource_to_return: &mut Vec<ResourceInfo>,
-        users_to_resubscribe: &mut HashSet<Id>,
+        side_effects: &mut SideEffects<Id>,
         input: &push_data::Input,
     ) -> Result<push_data::Result, DynamicError> {
         let mut the_return_result = push_data::Result {
@@ -441,40 +452,25 @@ where
             let result = match &transaction.operation {
                 push_data::OperationsInput::SignUp(input) => {
                     let result = self
-                        .sign_up(resource_to_return, &mut authenticated_users, input)
+                        .sign_up(side_effects, &mut authenticated_users, input)
                         .await?;
                     push_data::OperationsResult::SignUp(result)
                 }
                 push_data::OperationsInput::SignIn(input) => {
                     let result = self
-                        .sign_in(
-                            resource_to_return,
-                            &mut authenticated_users,
-                            users_to_resubscribe,
-                            input,
-                        )
+                        .sign_in(side_effects, &mut authenticated_users, input)
                         .await?;
                     push_data::OperationsResult::SignIn(result)
                 }
                 push_data::OperationsInput::CreateCompany(input) => {
                     let result = self
-                        .create_company(
-                            resource_to_broadcast,
-                            &mut authenticated_users,
-                            users_to_resubscribe,
-                            input,
-                        )
+                        .create_company(side_effects, &mut authenticated_users, input)
                         .await?;
                     push_data::OperationsResult::CreateCompany(result)
                 }
                 push_data::OperationsInput::CreateCompanyBranch(input) => {
                     let result = self
-                        .create_company_branch(
-                            resource_to_broadcast,
-                            &mut authenticated_users,
-                            users_to_resubscribe,
-                            input,
-                        )
+                        .create_company_branch(side_effects, &mut authenticated_users, input)
                         .await?;
                     push_data::OperationsResult::CreateCompanyBranch(result)
                 }
@@ -644,19 +640,12 @@ where
                             WSMessage::Binary(received_data) => {
                                 let input = De::decode::<messages::FromClient>(&received_data);
 
-                                let mut resource_to_broadcast = Vec::with_capacity(1000);
-                                let mut resource_to_return = Vec::with_capacity(1000);
-                                let mut users_to_resubscribe = HashSet::with_capacity(10);
+                                let mut side_effects = SideEffects::<Id>::default();
                                 // TODO : get db client here
 
                                 let result = match input {
                                     Ok(input) => state
-                                        .push_data(
-                                            &mut resource_to_broadcast,
-                                            &mut resource_to_return,
-                                            &mut users_to_resubscribe,
-                                            &input,
-                                        )
+                                        .push_data(&mut side_effects, &input)
                                         .await
                                         .map_err(|_| HashimError::InternalServerError),
                                     Err(_) => Err(HashimError::InvalidDataFormat),
@@ -670,10 +659,10 @@ where
                                     break;
                                 }
 
-                                if !resource_to_return.is_empty() {
+                                if !side_effects.resource_to_return.is_empty() {
                                     if session
                                         .send_bin(De::encode(&messages::FromServer::Resources(
-                                            resource_to_return,
+                                            side_effects.resource_to_return,
                                         )))
                                         .await
                                         .is_err()
@@ -682,21 +671,33 @@ where
                                     }
                                 }
 
-                                if !resource_to_broadcast.is_empty() {
-                                    todo!("send to broker");
-                                }
-
-                                if !users_to_resubscribe.is_empty() {
+                                if !side_effects.users_to_resubscribe.is_empty() {
                                     let subs = state
-                                        .get_table_of_subscribed_data(&users_to_resubscribe)
+                                        .get_table_of_subscribed_data(
+                                            &side_effects.users_to_resubscribe,
+                                        )
                                         .await
                                         .unwrap();
 
                                     sender_to_broker
                                         .send(server_methods::MessageToBroker::Subscribe {
                                             list_of_subscribtion: subs,
-                                            users_uuids: users_to_resubscribe,
+                                            users_uuids: side_effects.users_to_resubscribe,
                                             sender_to_server: sender_to_server.clone(),
+                                        })
+                                        .await
+                                        .unwrap();
+                                }
+
+                                if !side_effects.resource_to_broadcast_for_company.is_empty()
+                                    || !side_effects.resource_to_broadcast_for_branch.is_empty()
+                                {
+                                    sender_to_broker
+                                        .send(MessageToBroker::Publish {
+                                            list_of_resources_for_company: side_effects
+                                                .resource_to_broadcast_for_company,
+                                            list_of_resources_for_branch: side_effects
+                                                .resource_to_broadcast_for_branch,
                                         })
                                         .await
                                         .unwrap();
@@ -705,7 +706,16 @@ where
                             WSMessage::Close => break,
                         }
                     }
-                    Either::Two(a) => todo!(),
+                    Either::Two(wraped_resource) => {
+                        let resource = wraped_resource.unwrap();
+                        if session
+                            .send_bin(De::encode(&messages::FromServer::Resources(resource)))
+                            .await
+                            .is_err()
+                        {
+                            break;
+                        }
+                    }
                 }
             }
 
@@ -794,18 +804,28 @@ fn merge_subscribes<Id: RowId>(
 // here dont contain data
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub enum Subscribe {
-    // TODO
-    CompanyCurrancy,
+    UserName,
+    UserId,
     CompanyName,
+    CompanyCurrency,
+    RoleAtCompany,
+    UserThatHaveRole,
+    CompanyThatHaveUserRole,
 }
+
 pub(crate) fn role_to_subscribe_mapping(roles: Vec<db_types::Role>) -> Vec<Subscribe> {
     let mut subscribes = Vec::with_capacity(200);
 
     for role in roles {
         match role {
             db_types::Role::Manager => {
-                subscribes.push(Subscribe::CompanyCurrancy);
+                subscribes.push(Subscribe::UserName);
+                subscribes.push(Subscribe::UserId);
                 subscribes.push(Subscribe::CompanyName);
+                subscribes.push(Subscribe::CompanyCurrency);
+                subscribes.push(Subscribe::RoleAtCompany);
+                subscribes.push(Subscribe::UserThatHaveRole);
+                subscribes.push(Subscribe::CompanyThatHaveUserRole);
             }
         }
     }
@@ -818,7 +838,50 @@ pub(crate) fn resource_filtering_based_on_subscribe(
     subscribe: &Vec<Subscribe>,
     resource: &Vec<ResourceInfo>,
 ) -> Vec<ResourceInfo> {
-    todo!()
+    let mut new_resource = Vec::new();
+
+    for one_resource in resource {
+        match one_resource.resource {
+            Resource::Jwt(_) => {}
+            Resource::UserName(_) => {
+                if subscribe.contains(&Subscribe::UserName) {
+                    new_resource.push(one_resource.clone());
+                }
+            }
+            Resource::UserId(_) => {
+                if subscribe.contains(&Subscribe::UserId) {
+                    new_resource.push(one_resource.clone());
+                }
+            }
+            Resource::CompanyName(_) => {
+                if subscribe.contains(&Subscribe::CompanyName) {
+                    new_resource.push(one_resource.clone());
+                }
+            }
+            Resource::CompanyCurrency(_) => {
+                if subscribe.contains(&Subscribe::CompanyCurrency) {
+                    new_resource.push(one_resource.clone());
+                }
+            }
+            Resource::RoleAtCompany(_) => {
+                if subscribe.contains(&Subscribe::RoleAtCompany) {
+                    new_resource.push(one_resource.clone());
+                }
+            }
+            Resource::UserThatHaveRole(_) => {
+                if subscribe.contains(&Subscribe::UserThatHaveRole) {
+                    new_resource.push(one_resource.clone());
+                }
+            }
+            Resource::CompanyThatHaveUserRole(_) => {
+                if subscribe.contains(&Subscribe::CompanyThatHaveUserRole) {
+                    new_resource.push(one_resource.clone());
+                }
+            }
+        }
+    }
+
+    new_resource
 }
 
 // here contain data
@@ -832,9 +895,6 @@ pub enum Resource {
     RoleAtCompany(db_types::Role),
     UserThatHaveRole(db_types::UuidType),
     CompanyThatHaveUserRole(db_types::UuidType),
-}
-trait DataToResourceMapping {
-    fn map_to_resource(&self) -> Vec<Resource>;
 }
 
 pub struct AllRoles<Id: RowId> {
@@ -896,4 +956,32 @@ pub enum MessageToBroker<Id: RowId, Mpsc: MultiProducerSingleConsumer> {
         list_of_resources_for_company: ResourcesForCompany<Id>,
         list_of_resources_for_branch: ResourcesForBranch<Id>,
     },
+}
+
+pub trait ExtendHashMap<K, V> {
+    fn insert_push(&mut self, k: K, v: V);
+}
+
+impl<K: Eq + Hash, V> ExtendHashMap<K, V> for HashMap<K, Vec<V>> {
+    fn insert_push(&mut self, k: K, v: V) {
+        self.entry(k).or_insert_with(Vec::new).push(v);
+    }
+}
+
+pub(crate) struct SideEffects<Id: RowId> {
+    resource_to_broadcast_for_company: HashMap<Id, Vec<ResourceInfo>>,
+    resource_to_broadcast_for_branch: HashMap<Id, Vec<ResourceInfo>>,
+    resource_to_return: Vec<ResourceInfo>,
+    users_to_resubscribe: HashSet<Id>,
+}
+
+impl<Id: RowId> Default for SideEffects<Id> {
+    fn default() -> Self {
+        Self {
+            resource_to_broadcast_for_company: Default::default(),
+            resource_to_broadcast_for_branch: Default::default(),
+            resource_to_return: Default::default(),
+            users_to_resubscribe: Default::default(),
+        }
+    }
 }
