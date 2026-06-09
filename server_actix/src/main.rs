@@ -113,11 +113,7 @@ async fn ws_handler(req: HttpRequest, stream: web::Payload) -> HttpResponse {
     let session = web_socket_server::S::new(session, stream);
 
     let state = req.app_data::<web::Data<GG>>().unwrap();
-    GG::server_actor(
-        state.clone().into_inner(),
-        session,
-        state.clone().into_inner().sender_to_broker.clone(),
-    );
+    state.clone().into_inner().server_actor(session);
 
     response
 }

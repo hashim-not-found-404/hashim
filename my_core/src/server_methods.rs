@@ -522,12 +522,10 @@ where
         Ok(subs)
     }
 
-    pub fn server_actor<Ws: WSServer + 'static>(
-        state: Arc<Self>,
-        mut session: Ws,
-        mut sender_to_broker: Mpsc::Sender<server_methods::MessageToBroker<Id, Mpsc>>,
-    ) {
+    pub fn server_actor<Ws: WSServer + 'static>(self: Arc<Self>, mut session: Ws) {
         Rt::spawn_local(async move {
+            let mut sender_to_broker = self.sender_to_broker.clone();
+
             let (sender_to_server, mut receiver_to_server) = Mpsc::channel::<Vec<ResourceInfo>>();
 
             loop {
@@ -547,7 +545,7 @@ where
                                 // TODO : get db client here
 
                                 let result = match input {
-                                    Ok(input) => state
+                                    Ok(input) => self
                                         .push_data(&mut side_effects, &input)
                                         .await
                                         .map_err(|_| HashimError::InternalServerError),
@@ -575,7 +573,7 @@ where
                                 }
 
                                 if !side_effects.users_to_resubscribe.is_empty() {
-                                    let subs = state
+                                    let subs = self
                                         .get_table_of_subscribed_data(
                                             &side_effects.users_to_resubscribe,
                                         )
