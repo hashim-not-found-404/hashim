@@ -346,27 +346,15 @@ impl<
 
     pub fn create_company_branch(self, is_submit: bool, local_state: CreateCompanyBranchState<As>) {
         At::Rt::spawn_local(async move {
-            let input = create_company_branch::Input {
-                user_uuid: todo!(),
-                new_uuid: At::Id::generate().to_uuid(),
-                company_belong: todo!("local_state.company_belong.read()"),
-                currency: local_state.currency.read(),
-                branch_name: local_state.branch_name.read(),
-                location: local_state.location.read(),
-            };
-
-            // TODO : make offline check
-
-            let txn = push_data::OperationsInput::CreateCompanyBranch(input);
-
-            // let result = self.routs.cache.write_txn(&txn).await;
-
-            // match result {
-            //     Ok(_) => {}
-            //     Err(external_error) => {
-            //         self.external_errors.set(external_error.to_string());
-            //     }
-            // }
+            todo!();
+            // let input = create_company_branch::Input {
+            //     user_uuid: self.is_signed_in.read().unwrap(),
+            //     new_uuid: At::Id::generate().to_uuid(),
+            //     company_belong: local_state.company_belong.read(),
+            //     currency: local_state.currency.read(),
+            //     branch_name: local_state.branch_name.read(),
+            //     location: local_state.location.read(),
+            // };
         });
     }
 }
