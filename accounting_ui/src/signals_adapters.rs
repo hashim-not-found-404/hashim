@@ -1,5 +1,5 @@
+use crate::prelude::*;
 use dioxus::{core::ReactiveContext, prelude::*};
-use my_core::prelude::{AllSignalTypes, Signal, *};
 use std::{
     collections::HashSet,
     sync::{Arc, Mutex, MutexGuard},
@@ -64,7 +64,7 @@ impl<T: 'static + Clone + Default> Default for MySignal<T> {
     }
 }
 
-impl<T: 'static + Clone + Default> Signal<T> for MySignal<T> {
+impl<T: 'static + Clone + Default> HashimSignal<T> for MySignal<T> {
     fn read(&self) -> T {
         // Subscribe the context observing the signal (if any) to updates of its value.
         if let Some(reactive_context) = ReactiveContext::current() {
@@ -100,7 +100,7 @@ impl Default for MySignalForLists {
     }
 }
 
-impl Signal<String> for MySignalForLists {
+impl HashimSignal<String> for MySignalForLists {
     fn read(&self) -> String {
         self.0.read().last().unwrap_or(&String::default()).clone()
     }
