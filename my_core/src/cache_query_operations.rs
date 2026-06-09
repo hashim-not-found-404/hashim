@@ -40,7 +40,7 @@ impl QueryOperations for GetUserUuidInput {
 
     async fn read<Ch: CacheIO>(&self, state: &cache::State<Ch>) -> Self::Output {
         for (rowid, user) in &state.state_of_pending_txn.user {
-            if user.user_id == self.user_id {
+            if user.id == self.user_id {
                 return Some(rowid.clone());
             }
         }

@@ -270,7 +270,8 @@ where
                                         }
                                     }
 
-                                    state.state_of_pending_txn = cache::StateOfPendingTxn::new();
+                                    state.state_of_pending_txn =
+                                        cache::StateOfPendingTxn::default();
 
                                     let txns = state.cache.get_all_txn_input().await;
                                     for op in txns {

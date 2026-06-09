@@ -10,14 +10,14 @@ pub(crate) trait Operations: Clone {
         &self,
         state: &cache::State<Ch>,
     ) -> Result<Self::Ok, Self::Err>;
-    fn apply_change<Ch: CacheIO>(&self, state: &mut cache::State<Ch>);
+    fn apply_change(&self, state: &mut cache::StateOfPendingTxn);
     fn map_input(self) -> push_data::OperationsInput;
     fn map_result(result: Result<Self::Ok, Self::Err>) -> push_data::OperationsResult;
     fn unwrap(result: push_data::OperationsResult) -> Result<Self::Ok, Self::Err>;
 }
 
 impl push_data::OperationsInput {
-    pub(crate) fn run_operation_apply<Ch: CacheIO>(&self, state: &mut cache::State<Ch>) {
+    pub(crate) fn run_operation_apply(&self, state: &mut cache::StateOfPendingTxn) {
         match self {
             push_data::OperationsInput::SignUp(input) => input.apply_change(state),
             push_data::OperationsInput::SignIn(input) => input.apply_change(state),
@@ -112,7 +112,7 @@ async fn operation_check_apply_handler<T: Operations, Ch: CacheIO>(
     let result = input.state_full_check(state).await;
 
     if result.is_ok() {
-        input.apply_change(state);
+        input.apply_change(&mut state.state_of_pending_txn);
     }
 }
 
@@ -124,7 +124,7 @@ async fn operation_check_apply_write_handler<T: Operations, Ch: CacheIO>(
     let result = input.state_full_check(state).await;
 
     if result.is_ok() {
-        input.apply_change(state);
+        input.apply_change(&mut state.state_of_pending_txn);
 
         state
             .cache
@@ -154,7 +154,7 @@ impl Operations for sign_up::Input {
             .await;
 
         for (uuid, user) in &state.state_of_pending_txn.user {
-            if user.user_id == self.user_id {
+            if user.id == self.user_id {
                 is_user_id_exist = true;
             }
             if uuid == &self.new_uuid {
@@ -182,12 +182,12 @@ impl Operations for sign_up::Input {
         return Ok(sign_up::Ok);
     }
 
-    fn apply_change<Ch: CacheIO>(&self, state: &mut cache::State<Ch>) {
-        state.state_of_pending_txn.user.insert(
+    fn apply_change(&self, state: &mut cache::StateOfPendingTxn) {
+        state.user.insert(
             self.new_uuid.clone(),
             cache::tables::User {
-                user_name: self.name.clone(),
-                user_id: self.user_id.clone(),
+                name: self.name.clone(),
+                id: self.user_id.clone(),
                 password: self.password.clone(),
             },
         );
@@ -220,7 +220,7 @@ impl Operations for sign_in::Input {
         let mut password = None;
 
         for (_, user) in &state.state_of_pending_txn.user {
-            if user.user_id == self.user_id {
+            if user.id == self.user_id {
                 password = Some(user.password.clone());
             }
         }
@@ -239,7 +239,7 @@ impl Operations for sign_in::Input {
         }
     }
 
-    fn apply_change<Ch: CacheIO>(&self, state: &mut cache::State<Ch>) {}
+    fn apply_change(&self, state: &mut cache::StateOfPendingTxn) {}
 
     fn map_input(self) -> push_data::OperationsInput {
         push_data::OperationsInput::SignIn(self)
@@ -268,8 +268,23 @@ impl Operations for create_company::Input {
         Ok(create_company::Ok)
     }
 
-    fn apply_change<Ch: CacheIO>(&self, state: &mut cache::State<Ch>) {
-        todo!("add to table company and table access control");
+    fn apply_change(&self, state: &mut cache::StateOfPendingTxn) {
+        state.company.insert(
+            self.new_uuid.clone(),
+            cache::tables::Company {
+                name: self.company_name.clone(),
+                currency: self.currency.clone(),
+            },
+        );
+
+        state.access_control_for_company.insert(
+            self.new_uuid.clone(),
+            cache::tables::AccessControlForCompany {
+                data_group: self.new_uuid.clone(),
+                user_: self.user_uuid.clone(),
+                role: db_types::Role::Manager,
+            },
+        );
     }
 
     fn map_input(self) -> push_data::OperationsInput {
@@ -299,7 +314,7 @@ impl Operations for create_company_branch::Input {
         todo!()
     }
 
-    fn apply_change<Ch: CacheIO>(&self, state: &mut cache::State<Ch>) {
+    fn apply_change(&self, state: &mut cache::StateOfPendingTxn) {
         todo!("add to table company branch and table access control");
     }
 
