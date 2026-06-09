@@ -74,7 +74,7 @@ where
         }
     }
 
-    pub async fn sign_up(
+    async fn sign_up(
         &self,
         side_effects: &mut SideEffects<Id>,
         authenticated_users: &mut HashSet<Id>,
@@ -152,7 +152,7 @@ where
         return result;
     }
 
-    pub async fn sign_in(
+    async fn sign_in(
         &self,
         side_effects: &mut SideEffects<Id>,
         authenticated_users: &mut HashSet<Id>,
@@ -191,7 +191,7 @@ where
         };
     }
 
-    pub async fn create_company(
+    async fn create_company(
         &self,
         side_effects: &mut SideEffects<Id>,
         authenticated_users: &mut HashSet<Id>,
@@ -402,7 +402,7 @@ where
         return result;
     }
 
-    pub async fn push_data(
+    async fn push_data(
         &self,
         side_effects: &mut SideEffects<Id>,
         input: &push_data::Input,
@@ -968,7 +968,7 @@ impl<K: Eq + Hash, V> ExtendHashMap<K, V> for HashMap<K, Vec<V>> {
     }
 }
 
-pub(crate) struct SideEffects<Id: RowId> {
+pub struct SideEffects<Id: RowId> {
     resource_to_broadcast_for_company: HashMap<Id, Vec<ResourceInfo>>,
     resource_to_broadcast_for_branch: HashMap<Id, Vec<ResourceInfo>>,
     resource_to_return: Vec<ResourceInfo>,
