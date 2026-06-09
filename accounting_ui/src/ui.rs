@@ -49,7 +49,7 @@ pub fn App() -> Element {
 }
 
 #[component]
-pub fn Dialog(
+fn Dialog(
     sender: MySignal<Option<mpsc_sender::m::S<()>>>,
     operation_name: &'static str,
     show_dialog: <MyAllSignalTypes as AllSignalTypes>::Dialog,
@@ -91,7 +91,7 @@ pub fn Dialog(
 }
 
 #[component]
-pub fn AuthenticationPage() -> Element {
+fn AuthenticationPage() -> Element {
     let state = consume_context::<StateOfEveryThing>();
     let auth_state = front_end_model_view::AuthFeatureState::<MyAllSignalTypes>::default();
     use_context_provider(|| auth_state);
@@ -106,7 +106,7 @@ pub fn AuthenticationPage() -> Element {
 }
 
 #[component]
-pub fn SignIn() -> Element {
+fn SignIn() -> Element {
     let state = consume_context::<StateOfEveryThing>();
     let auth_state = consume_context::<front_end_model_view::AuthFeatureState<MyAllSignalTypes>>();
     let local_state = front_end_model_view::SignInState::<MyAllSignalTypes>::default();
@@ -156,7 +156,7 @@ pub fn SignIn() -> Element {
 }
 
 #[component]
-pub fn SignUp() -> Element {
+fn SignUp() -> Element {
     let state = consume_context::<StateOfEveryThing>();
     let auth_state = consume_context::<front_end_model_view::AuthFeatureState<MyAllSignalTypes>>();
     let local_state = front_end_model_view::SignUpState::<MyAllSignalTypes>::default();
@@ -217,7 +217,7 @@ pub fn SignUp() -> Element {
 }
 
 #[component]
-pub fn PasswordInput(password: MySignal<String>) -> Element {
+fn PasswordInput(password: MySignal<String>) -> Element {
     let mut is_password_visible = use_signal(|| false);
 
     let (input_type, icon_type) = match is_password_visible.read().clone() {
@@ -243,7 +243,7 @@ pub fn PasswordInput(password: MySignal<String>) -> Element {
 }
 
 #[component]
-pub fn ErrorStack() -> Element {
+fn ErrorStack() -> Element {
     let state = consume_context::<StateOfEveryThing>();
 
     let err = state.external_errors.read();
@@ -265,14 +265,14 @@ pub fn ErrorStack() -> Element {
 }
 
 #[component]
-pub fn Home() -> Element {
+fn Home() -> Element {
     rsx! {
         CreateCompany {}
     }
 }
 
 #[component]
-pub fn CreateCompany() -> Element {
+fn CreateCompany() -> Element {
     let state = consume_context::<StateOfEveryThing>();
     let local_state = front_end_model_view::CreateCompanyState::<MyAllSignalTypes>::default();
 
@@ -303,7 +303,7 @@ pub fn CreateCompany() -> Element {
 }
 
 #[component]
-pub fn CreateCompanyBranch() -> Element {
+fn CreateCompanyBranch() -> Element {
     let state = consume_context::<StateOfEveryThing>();
     let local_state = front_end_model_view::CreateCompanyBranchState::<MyAllSignalTypes>::default();
 

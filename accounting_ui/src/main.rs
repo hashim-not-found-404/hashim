@@ -10,9 +10,8 @@ pub mod prelude {
     pub(crate) use cache_rusqlite::prelude::*;
     pub(crate) use my_core::prelude::{Signal as HashimSignal, *};
 }
-use dioxus_logger::tracing::Level;
 
 fn main() {
-    dioxus_logger::init(Level::INFO).unwrap();
+    dioxus_logger::init(dioxus_logger::tracing::Level::INFO).unwrap();
     dioxus::launch(crate::ui::App);
 }

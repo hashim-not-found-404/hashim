@@ -10,20 +10,12 @@ pub struct MySignal<T> {
     subscribers: Arc<Mutex<HashSet<ReactiveContext>>>,
 }
 
-pub fn my_use_signal<T: 'static>(init: impl FnOnce() -> T) -> MySignal<T> {
-    use_hook(|| {
-        // A set of subscribers to notify about changes to this signals value
-        let subscribers = Default::default();
-        // Create the initial state
-        let value = Arc::new(Mutex::new(init()));
-
-        MySignal { value, subscribers }
-    })
-}
-
-impl<T> MySignal<T> {
-    pub fn write(&self) -> MutexGuard<'_, T> {
-        self.value.lock().unwrap()
+impl<T: 'static + Default> Default for MySignal<T> {
+    fn default() -> Self {
+        use_hook(|| MySignal {
+            value: Arc::new(Mutex::new(T::default())),
+            subscribers: Default::default(),
+        })
     }
 }
 
@@ -58,12 +50,6 @@ impl<T: PartialEq + Clone> PartialEq for MySignal<T> {
     }
 }
 
-impl<T: 'static + Clone + Default> Default for MySignal<T> {
-    fn default() -> Self {
-        my_use_signal(|| T::default())
-    }
-}
-
 impl<T: 'static + Clone + Default> HashimSignal<T> for MySignal<T> {
     fn read(&self) -> T {
         // Subscribe the context observing the signal (if any) to updates of its value.
@@ -82,30 +68,6 @@ impl<T: 'static + Clone + Default> HashimSignal<T> for MySignal<T> {
         subscribers.retain(|reactive_context| reactive_context.mark_dirty());
         // Extend the subscribers list instead of overwriting it in case a subscriber is added while reactive contexts are marked dirty
         self.subscribers.lock().unwrap().extend(subscribers);
-    }
-}
-
-#[derive(Clone)]
-struct MySignalForLists(MySignal<Vec<String>>);
-
-impl MySignalForLists {
-    fn read_all(&self) -> Vec<String> {
-        self.0.read()
-    }
-}
-
-impl Default for MySignalForLists {
-    fn default() -> Self {
-        Self(my_use_signal(|| Vec::new()))
-    }
-}
-
-impl HashimSignal<String> for MySignalForLists {
-    fn read(&self) -> String {
-        self.0.read().last().unwrap_or(&String::default()).clone()
-    }
-    fn set(&self, v: String) {
-        self.0.write().push(v);
     }
 }
 
