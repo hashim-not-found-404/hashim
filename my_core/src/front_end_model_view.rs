@@ -96,14 +96,14 @@ impl<
     }
 
     fn timeout_dialog_actor(
-        self,
+        routs: Arc<web_socket::MyWAMP<At, Mpsc>>,
         is_submit: bool,
         show_dialog: As::Dialog,
     ) -> <<At as AllClientTypes>::Rt as Runtime>::JoinHandel<()> {
         At::Rt::abortable_spawn_local(async move {
             if is_submit {
                 loop {
-                    if self.routs.is_online() {
+                    if routs.is_online() {
                         At::Rt::sleep(Duration::from_secs(3)).await;
                     } else {
                         At::Rt::sleep(Duration::from_secs(1)).await;
@@ -151,9 +151,11 @@ impl<
                 .send_to_cache_actor(is_submit, input.clone().map_input())
                 .await;
 
-            let mut handel = self
-                .clone()
-                .timeout_dialog_actor(is_submit, local_state.show_dialog.clone());
+            let mut handel = Self::timeout_dialog_actor(
+                self.routs.clone(),
+                is_submit,
+                local_state.show_dialog.clone(),
+            );
 
             let (sender_to_consent, mut receiver_to_consent) = Mpsc::channel();
             sender_to_consent_from_dialog.set(Some(sender_to_consent));
@@ -240,9 +242,11 @@ impl<
                 .send_to_cache_actor(is_submit, input.clone().map_input())
                 .await;
 
-            let mut handel = self
-                .clone()
-                .timeout_dialog_actor(is_submit, local_state.show_dialog.clone());
+            let mut handel = Self::timeout_dialog_actor(
+                self.routs.clone(),
+                is_submit,
+                local_state.show_dialog.clone(),
+            );
 
             let (sender_to_consent, mut receiver_to_consent) = Mpsc::channel();
             sender_to_consent_from_dialog.set(Some(sender_to_consent));
