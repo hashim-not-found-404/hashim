@@ -277,7 +277,7 @@ pub fn ErrorStack() -> Element {
 pub fn Home() -> Element {
     rsx! {
         CreateCompany {}
-    } // TODO display after sign
+    }
 }
 
 #[component]
