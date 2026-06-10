@@ -313,6 +313,7 @@ impl<
 
                                 if result.is_none() {
                                     local_state.show_dialog.set(Dialog::Error);
+                                    continue;
                                 }
                                 self.is_signed_in.set(result);
                                 break;
