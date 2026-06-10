@@ -12,7 +12,6 @@ pub struct Location {
 impl Location {
     pub fn is_valid(&self) -> bool {
         todo!();
-        false
     }
 }
 
