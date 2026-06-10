@@ -3,7 +3,7 @@ use crate::{
     prelude::*,
 };
 
-pub trait Signal<T: Default>: Default + Clone {
+pub trait HashimSignal<T: Default>: Default + Clone {
     fn reset(&self) {
         self.set(T::default());
     }
@@ -12,20 +12,20 @@ pub trait Signal<T: Default>: Default + Clone {
 }
 
 pub trait AllSignalTypes: Default {
-    type String: Signal<String>;
-    type Dialog: Signal<Dialog>;
-    type OptionRowId: Signal<Option<db_types::UuidType>>;
-    type Bool: Signal<bool>;
-    type StringVec: Signal<String>;
-    type Currency: Signal<db_types::Currency>;
-    type Location: Signal<db_types::Location>;
+    type String: HashimSignal<String>;
+    type Dialog: HashimSignal<Dialog>;
+    type OptionRowId: HashimSignal<Option<db_types::UuidType>>;
+    type Bool: HashimSignal<bool>;
+    type StringVec: HashimSignal<String>;
+    type Currency: HashimSignal<db_types::Currency>;
+    type Location: HashimSignal<db_types::Location>;
 }
 
 pub struct State<
     As: AllSignalTypes + 'static,
     At: AllClientTypes + 'static,
     Mpsc: MultiProducerSingleConsumer + 'static,
-    ConsentSender: Signal<Option<Mpsc::Sender<()>>> + 'static,
+    ConsentSender: HashimSignal<Option<Mpsc::Sender<()>>> + 'static,
 > {
     _ph: PhantomData<ConsentSender>,
     // here for the app logic
@@ -40,7 +40,7 @@ impl<
     As: AllSignalTypes,
     At: AllClientTypes + 'static,
     Mpsc: MultiProducerSingleConsumer + 'static,
-    ConsentSender: Signal<Option<Mpsc::Sender<()>>> + 'static,
+    ConsentSender: HashimSignal<Option<Mpsc::Sender<()>>> + 'static,
 > Clone for State<As, At, Mpsc, ConsentSender>
 {
     fn clone(&self) -> Self {
@@ -57,7 +57,7 @@ impl<
     As: AllSignalTypes,
     At: AllClientTypes + 'static,
     Mpsc: MultiProducerSingleConsumer + 'static,
-    ConsentSender: Signal<Option<Mpsc::Sender<()>>> + 'static,
+    ConsentSender: HashimSignal<Option<Mpsc::Sender<()>>> + 'static,
 > State<As, At, Mpsc, ConsentSender>
 {
     pub fn new() -> Self {

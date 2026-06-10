@@ -7,7 +7,7 @@ pub mod prelude {
     pub(crate) use crate::*;
     pub(crate) use adapters::prelude::*;
     pub(crate) use cache_rusqlite::prelude::*;
-    pub(crate) use my_core::prelude::{Signal as HashimSignal, *};
+    pub(crate) use my_core::prelude::*;
 }
 
 fn main() {

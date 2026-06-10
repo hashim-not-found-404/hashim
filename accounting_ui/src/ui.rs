@@ -21,6 +21,9 @@ enum Route {
     #[route("/sign_up")]
     SignUp {},
     #[end_layout]
+    #[route("/company_and_branch_selection")]
+    CompanyAndBranchSelection {},
+
     #[route("/home")]
     Home {},
 }
@@ -59,12 +62,8 @@ fn Dialog(
             rsx! {
                 div {
                     label { "do you want to proceed operation {operation_name} offline" }
-                    button {
-                        onclick: click,
-                        "Yes"
-                    }
-                    button {
-                        onclick: move |_| show_dialog1.set(front_end_model_view::Dialog::Hide),
+                    button { onclick: click, "Yes" }
+                    button { onclick: move |_| show_dialog1.set(front_end_model_view::Dialog::Hide),
                         "No"
                     }
                 }
@@ -86,7 +85,7 @@ fn AuthenticationPage() -> Element {
     use_context_provider(|| auth_state);
 
     if state.is_signed_in.read().is_some() {
-        navigator().push(Route::Home {});
+        navigator().push(Route::CompanyAndBranchSelection {});
     }
 
     rsx! {
@@ -115,31 +114,35 @@ fn SignIn() -> Element {
             Dialog {
                 sender: sender.clone(),
                 operation_name: "sign in",
-                show_dialog: local_state.show_dialog.clone()
+                show_dialog: local_state.show_dialog.clone(),
             }
             input {
                 placeholder: "User ID",
                 oninput: move |event| {
                     auth_state1.user_id.set(event.value());
-                    state1.clone().sign_in(my_signal::m::S::default(),false,local_state1.clone(),auth_state1.clone());
+                    state1
+                        .clone()
+                        .sign_in(
+                            my_signal::m::S::default(),
+                            false,
+                            local_state1.clone(),
+                            auth_state1.clone(),
+                        );
                 },
                 value: auth_state.user_id.read(),
             }
-            label {
-                {local_state.user_id_error.read()}
-            }
-            PasswordInput{ password: auth_state.user_password.clone() }
-            label {
-                {local_state.user_password_error.read()}
-            }
+            label { {local_state.user_id_error.read()} }
+            PasswordInput { password: auth_state.user_password.clone() }
+            label { {local_state.user_password_error.read()} }
             button {
-                onclick: move |_| state.clone().sign_in(sender.clone(),true,local_state.clone(),auth_state.clone()),
+                onclick: move |_| {
+                    state
+                        .clone()
+                        .sign_in(sender.clone(), true, local_state.clone(), auth_state.clone())
+                },
                 "Sign In"
             }
-            button {
-                onclick: sign_up,
-                "Sign Up"
-            }
+            button { onclick: sign_up, "Sign Up" }
         }
     }
 }
@@ -168,39 +171,50 @@ fn SignUp() -> Element {
             Dialog {
                 sender: sender.clone(),
                 operation_name: "sign up",
-                show_dialog: local_state.show_dialog.clone()
+                show_dialog: local_state.show_dialog.clone(),
             }
             input {
                 placeholder: "Name (Optional)",
                 oninput: move |event| {
                     local_state1.user_name.set(event.value());
-                    state1.clone().sign_up(my_signal::m::S::default(),false,local_state1.clone(),auth_state1.clone());
+                    state1
+                        .clone()
+                        .sign_up(
+                            my_signal::m::S::default(),
+                            false,
+                            local_state1.clone(),
+                            auth_state1.clone(),
+                        );
                 },
                 value: local_state.user_name.read(),
             }
-            label {
-                {local_state.user_name_error.read()}
-            }
+            label { {local_state.user_name_error.read()} }
             input {
                 placeholder: "User Id",
                 oninput: move |event| {
                     auth_state2.user_id.set(event.value());
-                    state2.clone().sign_up(my_signal::m::S::default(),false,local_state2.clone(),auth_state2.clone());
+                    state2
+                        .clone()
+                        .sign_up(
+                            my_signal::m::S::default(),
+                            false,
+                            local_state2.clone(),
+                            auth_state2.clone(),
+                        );
                 },
                 value: auth_state.user_id.read(),
             }
-            label {
-                {local_state.user_id_error.read()}
-            }
-            PasswordInput{ password: auth_state.user_password.clone() }
+            label { {local_state.user_id_error.read()} }
+            PasswordInput { password: auth_state.user_password.clone() }
             button {
-                onclick: move |_| state.clone().sign_up(sender.clone(),true,local_state.clone(),auth_state.clone()),
+                onclick: move |_| {
+                    state
+                        .clone()
+                        .sign_up(sender.clone(), true, local_state.clone(), auth_state.clone())
+                },
                 "Sign Up"
             }
-            button {
-                onclick: sign_in,
-                "Back"
-            }
+            button { onclick: sign_in, "Back" }
         }
     }
 }
@@ -219,13 +233,15 @@ fn PasswordInput(password: my_signal::m::S<String>) -> Element {
         div {
             input {
                 placeholder: "Password",
-                type: input_type,
+                r#type: input_type,
                 oninput: move |event| password1.set(event.value()),
                 value: password.read(),
             }
             button {
-                onclick: move |_| {*is_password_visible.write()^=true;},
-                img {src:icon_type},
+                onclick: move |_| {
+                    *is_password_visible.write() ^= true;
+                },
+                img { src: icon_type }
             }
         }
     }
@@ -242,26 +258,31 @@ fn ErrorStack() -> Element {
 
     rsx! {
         div {
-            button {
-                onclick: move |_| {state.external_errors.set(String::new())},
-                "X"
-            }
-            label {
-                {err}
-            }
+            button { onclick: move |_| { state.external_errors.set(String::new()) }, "X" }
+            label { {err} }
         }
     }
 }
 
 #[component]
 fn Home() -> Element {
+    rsx! {}
+}
+
+#[component]
+fn CompanyAndBranchSelection() -> Element {
+    let mut show_create_company = use_signal(|| false);
+
     rsx! {
-        CreateCompany {}
+        if *show_create_company.read() {
+            CreateCompany { show_form: show_create_company }
+        }
+        button { onclick: move |_| show_create_company.set(true), "add company" }
     }
 }
 
 #[component]
-fn CreateCompany() -> Element {
+fn CreateCompany(show_form: Signal<bool>) -> Element {
     let state = consume_context::<StateOfEveryThing>();
     let local_state = front_end_model_view::CreateCompanyState::<my_signals::m::S>::default();
 
@@ -279,13 +300,26 @@ fn CreateCompany() -> Element {
             }
             select {
                 value: local_state.currency.read().as_str(),
-                onchange: move |event| local_state2.currency.set(db_types::Currency::from_str(event.value().as_str()).unwrap()),
+                onchange: move |event| {
+                    local_state2
+                        .currency
+                        .set(db_types::Currency::from_str(event.value().as_str()).unwrap())
+                },
                 option { value: "USD", "USD" }
                 option { value: "IQD", "IQD" }
             }
             button {
-                onclick: move |_| state.clone().create_company(local_state.clone()),
+                onclick: move |_| {
+                    state.clone().create_company(local_state.clone());
+                    show_form.set(false);
+                },
                 "Create"
+            }
+            button {
+                onclick: move |_| {
+                    show_form.set(false);
+                },
+                "X"
             }
         }
     }
@@ -306,18 +340,21 @@ fn CreateCompanyBranch() -> Element {
                 placeholder: "Branch Name",
                 oninput: move |event| {
                     local_state1.branch_name.set(event.value());
-                    state1.clone().create_company_branch(false,local_state1.clone());
+                    state1.clone().create_company_branch(false, local_state1.clone());
                 },
                 value: local_state.branch_name.read(),
             }
             select {
                 value: local_state.currency.read().as_str(),
-                onchange: move |event| local_state2.currency.set(db_types::Currency::from_str(event.value().as_str()).unwrap()),
+                onchange: move |event| {
+                    local_state2
+                        .currency
+                        .set(db_types::Currency::from_str(event.value().as_str()).unwrap())
+                },
                 option { value: "USD", "USD" }
                 option { value: "IQD", "IQD" }
             }
-            button {
-                onclick: move |_| state.clone().create_company_branch(true,local_state.clone()),
+            button { onclick: move |_| state.clone().create_company_branch(true, local_state.clone()),
                 "Create"
             }
         }

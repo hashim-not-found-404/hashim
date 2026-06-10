@@ -602,7 +602,6 @@ where
                                         }
                                     }
                                 }
-                                todo!("make the server send all data to user");
 
                                 if !side_effects.resource_to_return.is_empty() {
                                     if session
