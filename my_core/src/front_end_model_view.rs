@@ -300,11 +300,10 @@ impl<
                                 let result = self
                                     .routs
                                     .send_query_to_cache_actor(
-                                        cache_query_operations::CacheQueryInput::GetUserUuid(
-                                            GetUserUuidInput {
-                                                user_id: user_id.clone(),
-                                            },
-                                        ),
+                                        GetUserUuidInput {
+                                            user_id: user_id.clone(),
+                                        }
+                                        .map_input(),
                                     )
                                     .await;
 

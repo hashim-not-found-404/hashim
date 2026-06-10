@@ -773,9 +773,9 @@ pub enum WSMessage {
 }
 
 pub trait WSServer {
-    async fn send_bin(&mut self, bin: Vec<u8>) -> Result<(), DynamicError>;
-    async fn receive(&mut self) -> Result<WSMessage, DynamicError>;
-    async fn close(self) -> Result<(), DynamicError>;
+    fn send_bin(&mut self, bin: Vec<u8>) -> impl Future<Output = Result<(), DynamicError>>;
+    fn receive(&mut self) -> impl Future<Output = Result<WSMessage, DynamicError>>;
+    fn close(self) -> impl Future<Output = Result<(), DynamicError>>;
 }
 
 fn map_resource_to_subscribes<Id: RowId>(

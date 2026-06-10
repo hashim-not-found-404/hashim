@@ -33,8 +33,8 @@ pub trait JWT {
 
 pub trait Database {
     type Client: DBClient;
-    async fn new() -> Self;
-    async fn get_client(&self) -> Result<Self::Client, DynamicError>;
+    fn new() -> impl Future<Output = Self>;
+    fn get_client(&self) -> impl Future<Output = Result<Self::Client, DynamicError>>;
 }
 
 pub trait DBClient {
@@ -45,23 +45,23 @@ pub trait DBClient {
     where
         Self: 'a;
 
-    async fn begin_transaction(&mut self) -> Result<Self::Txn<'_>, DynamicError>;
+    fn begin_transaction(&mut self) -> impl Future<Output = Result<Self::Txn<'_>, DynamicError>>;
 
-    async fn write_nonce_if_not_used(
+    fn write_nonce_if_not_used(
         &mut self,
         nonce: &Self::RowId,
-    ) -> Result<bool /* is nonce used */, DynamicError>;
+    ) -> impl Future<Output = Result<bool /* is nonce used */, DynamicError>>;
 
     // here we just do read we dont do here any set or check
 
-    async fn read_sign_in(
+    fn read_sign_in(
         &mut self,
         user_id: &String,
-    ) -> Result<Option<(Self::RowId, Self::HashedPassword)>, DynamicError>;
-    async fn read_roles_for_user(
+    ) -> impl Future<Output = Result<Option<(Self::RowId, Self::HashedPassword)>, DynamicError>>;
+    fn read_roles_for_user(
         &mut self,
         users_uuids: &HashSet<Self::RowId>,
-    ) -> Result<server_methods::AllRoles<Self::RowId>, DynamicError>;
+    ) -> impl Future<Output = Result<server_methods::AllRoles<Self::RowId>, DynamicError>>;
 }
 
 pub mod domain_errors {
@@ -75,55 +75,61 @@ pub trait DBTransaction {
     type RowId: RowId;
     type HashedPassword: HashedPassword;
 
-    async fn commit_transaction(self) -> Result<Result<(), domain_errors::AtCommit>, DynamicError>;
-    async fn rollback_transaction(self) -> Result<(), DynamicError>;
+    fn commit_transaction(
+        self,
+    ) -> impl Future<Output = Result<Result<(), domain_errors::AtCommit>, DynamicError>>;
+    fn rollback_transaction(self) -> impl Future<Output = Result<(), DynamicError>>;
 
-    async fn read_sign_up(
+    fn read_sign_up(
         &mut self,
         new_uuid: &Self::RowId,
         user_id: &String,
-    ) -> Result<
-        (
-            bool, /* is new_uuid exist */
-            bool, /* is user_id exist */
-        ),
-        DynamicError,
+    ) -> impl Future<
+        Output = Result<
+            (
+                bool, /* is new_uuid exist */
+                bool, /* is user_id exist */
+            ),
+            DynamicError,
+        >,
     >;
-    async fn write_sign_up(
+    fn write_sign_up(
         &mut self,
         new_uuid: &Self::RowId,
         user_id: &String,
         hashed_password: &Self::HashedPassword,
         user_name: &Option<String>,
-    ) -> Result<(), DynamicError>;
+    ) -> impl Future<Output = Result<(), DynamicError>>;
 
-    async fn read_create_company(
+    fn read_create_company(
         &mut self,
         new_uuid: &Self::RowId,
-    ) -> Result<bool /* is new_uuid exist */, DynamicError>;
-    async fn write_create_company(
+    ) -> impl Future<Output = Result<bool /* is new_uuid exist */, DynamicError>>;
+    fn write_create_company(
         &mut self,
         new_uuid: &Self::RowId,
         user_uuid: &Self::RowId,
         user_role: &db_types::Role,
         company_name: &String,
         currency: &db_types::Currency,
-    ) -> Result<(), DynamicError>;
+    ) -> impl Future<Output = Result<(), DynamicError>>;
 
-    async fn read_create_company_branch(
+    fn read_create_company_branch(
         &mut self,
         new_uuid: &Self::RowId,
         company_belong: &Self::RowId,
         branch_name: &String,
-    ) -> Result<
-        (
-            bool, /* is new_uuid exist */
-            bool, /* is company_belong exist */
-            bool, /* is branch_name used */
-        ),
-        DynamicError,
+    ) -> impl Future<
+        Output = Result<
+            (
+                bool, /* is new_uuid exist */
+                bool, /* is company_belong exist */
+                bool, /* is branch_name used */
+            ),
+            DynamicError,
+        >,
     >;
-    async fn write_create_company_branch(
+    fn write_create_company_branch(
         &mut self,
         new_uuid: &Self::RowId,
         company_belong: &Self::RowId,
@@ -132,13 +138,13 @@ pub trait DBTransaction {
         currency: &db_types::Currency,
         user_uuid: &Self::RowId,
         user_role: &db_types::Role,
-    ) -> Result<(), DynamicError>;
+    ) -> impl Future<Output = Result<(), DynamicError>>;
 }
 
 pub trait WebSocketOp: Sized {
-    async fn connect(url: &str) -> Result<Self, DynamicError>;
-    async fn send_bin(&self, data: &Vec<u8>) -> Result<(), DynamicError>;
-    async fn receive_bin(&self) -> Result<Vec<u8>, DynamicError>;
+    fn connect(url: &str) -> impl Future<Output = Result<Self, DynamicError>>;
+    fn send_bin(&self, data: &Vec<u8>) -> impl Future<Output = Result<(), DynamicError>>;
+    fn receive_bin(&self) -> impl Future<Output = Result<Vec<u8>, DynamicError>>;
 }
 
 pub trait Coding {
@@ -152,7 +158,7 @@ pub enum Either<L, R> {
 }
 
 pub trait JoinHandel {
-    async fn abort(&mut self);
+    fn abort(&mut self) -> impl Future<Output = ()>;
 }
 
 pub trait Runtime {
@@ -167,24 +173,24 @@ pub trait Runtime {
     where
         F: Future + 'static;
 
-    async fn timeout<T, F>(duration: Duration, fut: F) -> Result<T, DynamicError>
+    fn timeout<T, F>(duration: Duration, fut: F) -> impl Future<Output = Result<T, DynamicError>>
     where
         F: Future<Output = T>;
 
-    async fn sleep(duration: Duration);
+    fn sleep(duration: Duration) -> impl Future<Output = ()>;
 
-    async fn select<R1, R2, F1, F2>(fut1: F1, fut2: F2) -> Either<R1, R2>
+    fn select<R1, R2, F1, F2>(fut1: F1, fut2: F2) -> impl Future<Output = Either<R1, R2>>
     where
         F1: Future<Output = R1>,
         F2: Future<Output = R2>;
 }
 
 pub trait Sender<T>: Clone {
-    async fn send(&mut self, t: T) -> Result<(), DynamicError>;
+    fn send(&mut self, t: T) -> impl Future<Output = Result<(), DynamicError>>;
 }
 
 pub trait Receiver<T> {
-    async fn recv(&mut self) -> Result<T, DynamicError>;
+    fn recv(&mut self) -> impl Future<Output = Result<T, DynamicError>>;
 }
 
 pub trait MultiProducerSingleConsumer {
@@ -194,25 +200,38 @@ pub trait MultiProducerSingleConsumer {
 }
 
 pub trait CacheIO: Sized {
-    async fn new() -> Self;
+    fn new() -> impl Future<Output = Self>;
 
-    async fn get_all_txn_input(&self) -> Vec<push_data::Txn<push_data::OperationsInput>>;
-    async fn write_txn_input(&self, txn: &push_data::Txn<push_data::OperationsInput>);
-    async fn write_txn_result(&self, txn: &push_data::Txn<push_data::OperationsResult>);
-    async fn delete_txn_input(&self, txn_number: &u64);
+    fn get_all_txn_input(
+        &self,
+    ) -> impl Future<Output = Vec<push_data::Txn<push_data::OperationsInput>>>;
+    fn write_txn_input(
+        &self,
+        txn: &push_data::Txn<push_data::OperationsInput>,
+    ) -> impl Future<Output = ()>;
+    fn write_txn_result(
+        &self,
+        txn: &push_data::Txn<push_data::OperationsResult>,
+    ) -> impl Future<Output = ()>;
+    fn delete_txn_input(&self, txn_number: &u64) -> impl Future<Output = ()>;
 
-    async fn write_resource(&self, resource: &Vec<ResourceInfo>);
-    async fn get_jwt(&self, user_uuid: &db_types::UuidType) -> Option<String>;
+    fn write_resource(&self, resource: &Vec<ResourceInfo>) -> impl Future<Output = ()>;
+    fn get_jwt(&self, user_uuid: &db_types::UuidType) -> impl Future<Output = Option<String>>;
 
-    async fn read_sign_up(
+    fn read_sign_up(
         &self,
         new_uuid: &db_types::UuidType,
         user_id: &String,
-    ) -> (
-        bool, /* is new_uuid exist */
-        bool, /* is user_id exist */
-    );
-    async fn read_get_user_uuid(&self, user_id: &String) -> Option<db_types::UuidType>;
+    ) -> impl Future<
+        Output = (
+            bool, /* is new_uuid exist */
+            bool, /* is user_id exist */
+        ),
+    >;
+    fn read_get_user_uuid(
+        &self,
+        user_id: &String,
+    ) -> impl Future<Output = Option<db_types::UuidType>>;
 }
 
 pub trait AllClientTypes {
