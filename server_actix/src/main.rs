@@ -1,15 +1,17 @@
-mod web_socket_server;
+pub mod web_socket_server;
 
 pub mod prelude {
+    pub use crate::web_socket_server;
     pub(crate) use adapters::prelude::*;
     pub(crate) use db_client_cockroach::prelude::*;
     pub(crate) use my_core::prelude::*;
 }
 
 use crate::prelude::*;
-use actix_cors::Cors;
-use actix_web::{App, HttpRequest, HttpResponse, HttpServer, web};
-use std::{fs::File, io::BufReader};
+use actix_web::{
+    App, HttpRequest, HttpResponse, HttpServer,
+    web::{self, Data, Payload},
+};
 
 type ServerMethodsType = server_methods::ServerMethods<
     db::S,
@@ -26,11 +28,10 @@ type ServerMethodsType = server_methods::ServerMethods<
 #[actix_web::main]
 async fn main() {
     println!("started server");
-
-    let actions = web::Data::new(ServerMethodsType::new().await);
+    let actions = Data::new(ServerMethodsType::new().await);
 
     HttpServer::new(move || {
-        let cors = Cors::default()
+        let cors = actix_cors::Cors::default()
             .allow_any_origin()
             .allow_any_method()
             .allow_any_header()
@@ -49,7 +50,7 @@ async fn main() {
     .unwrap()
 }
 
-async fn ws_handler(req: HttpRequest, stream: web::Payload) -> HttpResponse {
+async fn ws_handler(req: HttpRequest, stream: Payload) -> HttpResponse {
     let (response, session, stream) = match actix_ws::handle(&req, stream) {
         Ok(result) => result,
         Err(e) => {
@@ -63,7 +64,7 @@ async fn ws_handler(req: HttpRequest, stream: web::Payload) -> HttpResponse {
         .max_continuation_size(2_usize.pow(16));
 
     let session = web_socket_server::m::S::new(session, stream);
-    let state = req.app_data::<web::Data<ServerMethodsType>>().unwrap();
+    let state = req.app_data::<Data<ServerMethodsType>>().unwrap();
     state.clone().into_inner().server_actor(session);
 
     response
@@ -74,14 +75,19 @@ fn get_tls_config() -> rustls::ServerConfig {
         .install_default()
         .unwrap();
 
-    let mut certs_file = BufReader::new(File::open("privet/cert.pem").unwrap());
-    let mut key_file = BufReader::new(File::open("privet/key.pem").unwrap());
+    const CERT_PEM: &[u8] = include_bytes!("../../privet/cert.pem");
+    const KEY_PEM: &[u8] = include_bytes!("../../privet/key.pem");
+
+    use std::io::BufReader;
+
+    let mut certs_file = BufReader::new(CERT_PEM);
+    let mut key_file = BufReader::new(KEY_PEM);
 
     // load TLS certs and key
     // to create a self-signed temporary cert for testing:
     // `openssl req -x509 -newkey rsa:4096 -nodes -keyout key.pem -out cert.pem -days 365 -subj '/CN=localhost'`
     let tls_certs = rustls_pemfile::certs(&mut certs_file)
-        .collect::<Result<Vec<_>, _>>()
+        .collect::<Result<_, _>>()
         .unwrap();
     let tls_key = rustls_pemfile::pkcs8_private_keys(&mut key_file)
         .next()
@@ -89,7 +95,6 @@ fn get_tls_config() -> rustls::ServerConfig {
         .unwrap();
 
     // set up TLS config options
-
     rustls::ServerConfig::builder()
         .with_no_client_auth()
         .with_single_cert(tls_certs, rustls::pki_types::PrivateKeyDer::Pkcs8(tls_key))
