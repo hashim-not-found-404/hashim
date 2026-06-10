@@ -138,10 +138,10 @@ fn get_tls_config() -> rustls::ServerConfig {
         .unwrap();
 
     // set up TLS config options
-    let tls_config = rustls::ServerConfig::builder()
+    
+
+    rustls::ServerConfig::builder()
         .with_no_client_auth()
         .with_single_cert(tls_certs, rustls::pki_types::PrivateKeyDer::Pkcs8(tls_key))
-        .unwrap();
-
-    tls_config
+        .unwrap()
 }
