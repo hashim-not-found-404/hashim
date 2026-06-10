@@ -1,65 +1,17 @@
-use actix_cors::Cors;
-use actix_web::{App, HttpRequest, HttpResponse, HttpServer, web};
-use adapters::prelude::*;
-use db_client_cockroach::prelude::*;
-use my_core::prelude::*;
-use std::{fs::File, io::BufReader};
+mod web_socket_server;
 
-mod web_socket_server {
-    use actix_ws::{AggregatedMessage, AggregatedMessageStream, Session};
-    use futures_util::StreamExt;
-    use my_core::prelude::*;
-
-    pub struct S {
-        session: Session,
-        stream: AggregatedMessageStream,
-    }
-
-    impl S {
-        pub fn new(session: Session, stream: AggregatedMessageStream) -> Self {
-            Self { session, stream }
-        }
-    }
-
-    impl WSServer for S {
-        async fn send_bin(&mut self, bin: Vec<u8>) -> Result<(), DynamicError> {
-            self.session.binary(bin).await.log()?;
-            Ok(())
-        }
-
-        async fn receive(&mut self) -> Result<server_methods::WSMessage, DynamicError> {
-            match self.stream.next().await {
-                Some(msg) => match msg.log()? {
-                    AggregatedMessage::Binary(data) => {
-                        Ok(server_methods::WSMessage::Binary(data.to_vec()))
-                    }
-                    AggregatedMessage::Text(_) => {
-                        Err("we dont use text".into())
-                    }
-                    AggregatedMessage::Ping(data) => {
-                        todo!()
-                    }
-                    AggregatedMessage::Pong(data) => {
-                        todo!()
-                    }
-                    AggregatedMessage::Close(_) => {
-                        Ok(server_methods::WSMessage::Close)
-                    }
-                },
-                None => {
-                    Err(dbg!("WebSocket connection closed").into())
-                }
-            }
-        }
-
-        async fn close(self) -> Result<(), DynamicError> {
-            self.session.clone().close(None).await.log()?;
-            Ok(())
-        }
-    }
+pub mod prelude {
+    pub(crate) use adapters::prelude::*;
+    pub(crate) use db_client_cockroach::prelude::*;
+    pub(crate) use my_core::prelude::*;
 }
 
-type GG = server_methods::ServerMethods<
+use crate::prelude::*;
+use actix_cors::Cors;
+use actix_web::{App, HttpRequest, HttpResponse, HttpServer, web};
+use std::{fs::File, io::BufReader};
+
+type ServerMethodsType = server_methods::ServerMethods<
     db::S,
     db_client::S,
     jwt::m::S,
@@ -75,7 +27,7 @@ type GG = server_methods::ServerMethods<
 async fn main() {
     println!("started server");
 
-    let actions = web::Data::new(GG::new().await);
+    let actions = web::Data::new(ServerMethodsType::new().await);
 
     HttpServer::new(move || {
         let cors = Cors::default()
@@ -110,9 +62,8 @@ async fn ws_handler(req: HttpRequest, stream: web::Payload) -> HttpResponse {
         .aggregate_continuations()
         .max_continuation_size(2_usize.pow(16));
 
-    let session = web_socket_server::S::new(session, stream);
-
-    let state = req.app_data::<web::Data<GG>>().unwrap();
+    let session = web_socket_server::m::S::new(session, stream);
+    let state = req.app_data::<web::Data<ServerMethodsType>>().unwrap();
     state.clone().into_inner().server_actor(session);
 
     response
@@ -138,7 +89,6 @@ fn get_tls_config() -> rustls::ServerConfig {
         .unwrap();
 
     // set up TLS config options
-    
 
     rustls::ServerConfig::builder()
         .with_no_client_auth()
