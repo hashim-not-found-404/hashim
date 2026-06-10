@@ -32,10 +32,10 @@ impl DBClient for S {
             Some(row) => {
                 let row_id = row.try_get::<_, Uuid>(0).log()?;
                 let hashed_password = row.try_get::<_, String>(1).log()?;
-                return Ok(Some((row_id.into(), hashed_password.into())));
+                Ok(Some((row_id.into(), hashed_password.into())))
             }
             None => {
-                return Ok(None);
+                Ok(None)
             }
         }
     }

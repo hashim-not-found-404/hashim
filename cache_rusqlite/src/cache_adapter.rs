@@ -116,10 +116,7 @@ impl CacheIO for S {
             .prepare("SELECT jwt FROM user WHERE rowid = ?1")
             .unwrap();
 
-        match stmt.query_one([&user_uuid.0], |row| row.get(0)) {
-            Ok(jwt) => Some(jwt),
-            Err(_) => None,
-        }
+        stmt.query_one([&user_uuid.0], |row| row.get(0)).ok()
     }
 
     async fn read_sign_up(
@@ -154,10 +151,7 @@ impl CacheIO for S {
             .optional()
             .unwrap();
 
-        match user_uuid {
-            Some(user_uuid) => Some(db_types::UuidType(user_uuid)),
-            None => None,
-        }
+        user_uuid.map(db_types::UuidType)
     }
 }
 

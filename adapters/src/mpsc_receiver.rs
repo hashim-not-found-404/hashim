@@ -1,7 +1,7 @@
 pub mod m {
     use crate::prelude::*;
     use futures::channel::mpsc::UnboundedReceiver;
-    use std::sync::Mutex;
+    
 
     pub struct S<T>(pub UnboundedReceiver<T>);
     impl<T> Receiver<T> for S<T> {

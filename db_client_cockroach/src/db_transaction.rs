@@ -11,12 +11,12 @@ impl DBTransaction for S<'_> {
 
     async fn commit_transaction(self) -> Result<Result<(), domain_errors::AtCommit>, DynamicError> {
         match self.txn.commit().await {
-            Ok(_) => return Ok(Ok(())),
+            Ok(_) => Ok(Ok(())),
             Err(e) => {
                 if get_sql_state(&e) == SqlState::T_R_SERIALIZATION_FAILURE {
                     return Ok(Err(domain_errors::AtCommit::DataIsChanged));
                 }
-                return Err(e.into());
+                Err(e.into())
             }
         }
     }
@@ -167,5 +167,5 @@ impl DBTransaction for S<'_> {
 }
 
 fn get_sql_state(error: &tokio_postgres::Error) -> SqlState {
-    return error.as_db_error().unwrap().code().clone();
+    error.as_db_error().unwrap().code().clone()
 }

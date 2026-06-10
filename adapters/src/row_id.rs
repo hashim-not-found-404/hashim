@@ -17,8 +17,8 @@ pub mod m {
         type Error = ();
         fn try_from(value: &db_types::UuidType) -> Result<Self, ()> {
             match Uuid::parse_str(value.0.as_str()) {
-                Ok(o) => return Ok(Self(o)),
-                Err(_) => return Err(()),
+                Ok(o) => Ok(Self(o)),
+                Err(_) => Err(()),
             }
         }
     }

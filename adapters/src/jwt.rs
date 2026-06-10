@@ -43,7 +43,6 @@ pub mod m {
                 &EncodingKey::from_secret(&self.key),
             )
             .unwrap()
-            .into()
         }
 
         fn validate(&self, token: Self::JsonWebToken) -> Option<Self::UserId> {
@@ -54,8 +53,8 @@ pub mod m {
             );
 
             match result {
-                Ok(token) => return Some(token.claims.id),
-                Err(_) => return None,
+                Ok(token) => Some(token.claims.id),
+                Err(_) => None,
             }
         }
     }

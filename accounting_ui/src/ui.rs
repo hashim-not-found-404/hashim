@@ -223,7 +223,7 @@ fn SignUp() -> Element {
 fn PasswordInput(password: my_signal::m::S<String>) -> Element {
     let mut is_password_visible = use_signal(|| false);
 
-    let (input_type, icon_type) = match is_password_visible.read().clone() {
+    let (input_type, icon_type) = match *is_password_visible.read() {
         true => ("text", ICONS_SHOW),
         false => ("password", ICONS_HIDE),
     };

@@ -1,7 +1,7 @@
 pub mod m {
     use crate::prelude::*;
     use futures::{SinkExt, channel::mpsc::UnboundedSender};
-    use std::sync::{Arc, Mutex};
+    
 
     pub struct S<T>(pub UnboundedSender<T>);
     impl<T> Sender<T> for S<T> {

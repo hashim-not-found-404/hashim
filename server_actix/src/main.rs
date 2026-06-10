@@ -31,10 +31,10 @@ mod web_socket_server {
             match self.stream.next().await {
                 Some(msg) => match msg.log()? {
                     AggregatedMessage::Binary(data) => {
-                        return Ok(server_methods::WSMessage::Binary(data.to_vec()));
+                        Ok(server_methods::WSMessage::Binary(data.to_vec()))
                     }
                     AggregatedMessage::Text(_) => {
-                        return Err("we dont use text".into());
+                        Err("we dont use text".into())
                     }
                     AggregatedMessage::Ping(data) => {
                         todo!()
@@ -43,11 +43,11 @@ mod web_socket_server {
                         todo!()
                     }
                     AggregatedMessage::Close(_) => {
-                        return Ok(server_methods::WSMessage::Close);
+                        Ok(server_methods::WSMessage::Close)
                     }
                 },
                 None => {
-                    return Err(dbg!("WebSocket connection closed").into());
+                    Err(dbg!("WebSocket connection closed").into())
                 }
             }
         }
@@ -143,5 +143,5 @@ fn get_tls_config() -> rustls::ServerConfig {
         .with_single_cert(tls_certs, rustls::pki_types::PrivateKeyDer::Pkcs8(tls_key))
         .unwrap();
 
-    return tls_config;
+    tls_config
 }

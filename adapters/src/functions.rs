@@ -13,8 +13,8 @@ pub mod m {
     impl MyRegex for S {
         fn is_regex(s: &String) -> Result<(), String> {
             match RE.is_match(s) {
-                true => return Ok(()),
-                false => return Err("not match".to_string()),
+                true => Ok(()),
+                false => Err("not match".to_string()),
             }
         }
     }
