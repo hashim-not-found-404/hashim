@@ -1,6 +1,6 @@
 #[cfg(not(target_arch = "wasm32"))]
 pub mod m {
-    use crate::prelude::{Regex as MyRegex, *};
+    use crate::prelude::Regex as MyRegex;
     use regex::Regex;
     use std::sync::LazyLock;
 
