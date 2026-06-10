@@ -684,12 +684,8 @@ where
 
     pub fn broker_actor(mut receiver_to_broker: Mpsc::Receiver<MessageToBroker<Id, Mpsc>>) {
         Rt::spawn_local(async move {
-            let mut pool_of_pubsub_for_company: CompanyUserSubscribes<Id> =
-                HashMap::with_capacity(1000);
-
-            let mut pool_of_pubsub_for_branch: BranchUserSubscribes<Id> =
-                HashMap::with_capacity(10000);
-
+            let mut pool_of_pubsub_for_company: UserSubscribes<Id> = HashMap::with_capacity(1000);
+            let mut pool_of_pubsub_for_branch: UserSubscribes<Id> = HashMap::with_capacity(10000);
             let mut pool_of_server_facad_channels: UserSenders<Id, Mpsc> =
                 HashMap::with_capacity(10000);
 
@@ -732,10 +728,8 @@ where
                         list_of_resources_for_company,
                         list_of_resources_for_branch,
                     } => {
-                        let mut resource_to_send: HashMap<
-                            Id, // user uuid
-                            Vec<ResourceInfo>,
-                        > = HashMap::new();
+                        let mut resource_to_send: ListOfResources<Id /* user id */> =
+                            HashMap::new();
 
                         map_resource_to_subscribes(
                             &pool_of_pubsub_for_company,
@@ -792,9 +786,9 @@ pub trait WSServer {
 }
 
 fn map_resource_to_subscribes<Id: RowId>(
-    pool_of_pubsub: &HashMap<Id, HashMap<Id, Vec<Subscribe>>>,
-    list_of_resources: HashMap<Id, Vec<ResourceInfo>>,
-    resource_to_send: &mut HashMap<Id, Vec<ResourceInfo>>,
+    pool_of_pubsub: &UserSubscribes<Id>,
+    list_of_resources: ListOfResources<Id>,
+    resource_to_send: &mut ListOfResources<Id>,
 ) {
     for (company, resource) in list_of_resources {
         let user_and_subscribe = pool_of_pubsub.get(&company);
@@ -823,18 +817,15 @@ fn map_resource_to_subscribes<Id: RowId>(
     }
 }
 
-fn unsubscribe<Id: RowId>(
-    pool_of_pubsub: &mut HashMap<Id, HashMap<Id, Vec<Subscribe>>>,
-    user_uuid: &Id,
-) {
+fn unsubscribe<Id: RowId>(pool_of_pubsub: &mut UserSubscribes<Id>, user_uuid: &Id) {
     for (_, users_and_subs) in pool_of_pubsub.iter_mut() {
         users_and_subs.remove(user_uuid);
     }
 }
 
 fn merge_subscribes<Id: RowId>(
-    pool_of_pubsub: &mut HashMap<Id, HashMap<Id, Vec<Subscribe>>>,
-    list_of_subscribtion: HashMap<Id, HashMap<Id, Vec<Subscribe>>>,
+    pool_of_pubsub: &mut UserSubscribes<Id>,
+    list_of_subscribtion: UserSubscribes<Id>,
 ) {
     for (company, users_subscribes) in list_of_subscribtion {
         let users_and_subscribes = pool_of_pubsub.get_mut(&company);
@@ -869,19 +860,19 @@ pub enum Subscribe {
     CompanyThatHaveUserRole,
 }
 
-pub(crate) fn role_to_subscribe_mapping(roles: Vec<db_types::Role>) -> Vec<Subscribe> {
-    let mut subscribes = Vec::with_capacity(200);
+pub(crate) fn role_to_subscribe_mapping(roles: Vec<db_types::Role>) -> HashSet<Subscribe> {
+    let mut subscribes = HashSet::with_capacity(200);
 
     for role in roles {
         match role {
             db_types::Role::Manager => {
-                subscribes.push(Subscribe::UserName);
-                subscribes.push(Subscribe::UserId);
-                subscribes.push(Subscribe::CompanyName);
-                subscribes.push(Subscribe::CompanyCurrency);
-                subscribes.push(Subscribe::RoleAtCompany);
-                subscribes.push(Subscribe::UserThatHaveRole);
-                subscribes.push(Subscribe::CompanyThatHaveUserRole);
+                subscribes.insert(Subscribe::UserName);
+                subscribes.insert(Subscribe::UserId);
+                subscribes.insert(Subscribe::CompanyName);
+                subscribes.insert(Subscribe::CompanyCurrency);
+                subscribes.insert(Subscribe::RoleAtCompany);
+                subscribes.insert(Subscribe::UserThatHaveRole);
+                subscribes.insert(Subscribe::CompanyThatHaveUserRole);
             }
         }
     }
@@ -891,7 +882,7 @@ pub(crate) fn role_to_subscribe_mapping(roles: Vec<db_types::Role>) -> Vec<Subsc
 }
 
 pub(crate) fn resource_filtering_based_on_subscribe(
-    subscribe: &Vec<Subscribe>,
+    subscribe: &HashSet<Subscribe>,
     resource: &Vec<ResourceInfo>,
 ) -> Vec<ResourceInfo> {
     let mut new_resource = Vec::new();
@@ -971,23 +962,15 @@ pub struct AllRoles<Id: RowId> {
 }
 
 pub struct AllSubscribes<Id: RowId> {
-    pub companies: CompanyUserSubscribes<Id>,
-    pub branches: BranchUserSubscribes<Id>,
+    pub companies: UserSubscribes<Id>,
+    pub branches: UserSubscribes<Id>,
 }
 
-type CompanyUserSubscribes<Id> = HashMap<
-    Id, // company uuid
+type UserSubscribes<Id> = HashMap<
+    Id, // company uuid or branch
     HashMap<
         Id, // user uuid
-        Vec<Subscribe>,
-    >,
->;
-
-type BranchUserSubscribes<Id> = HashMap<
-    Id, // branch uuid
-    HashMap<
-        Id, // user uuid
-        Vec<Subscribe>,
+        HashSet<Subscribe>,
     >,
 >;
 
@@ -996,8 +979,7 @@ type UserSenders<Id, Mpsc: MultiProducerSingleConsumer> = HashMap<
     Vec<Mpsc::Sender<Vec<ResourceInfo>>>, // because user may have multiple web socket connection
 >;
 
-type ResourcesForCompany<Id> = HashMap<Id, Vec<ResourceInfo>>;
-type ResourcesForBranch<Id> = HashMap<Id, Vec<ResourceInfo>>;
+type ListOfResources<Id> = HashMap<Id, Vec<ResourceInfo>>;
 
 pub enum MessageToBroker<Id: RowId, Mpsc: MultiProducerSingleConsumer> {
     Subscribe {
@@ -1009,24 +991,14 @@ pub enum MessageToBroker<Id: RowId, Mpsc: MultiProducerSingleConsumer> {
         user_uuid: Id,
     },
     Publish {
-        list_of_resources_for_company: ResourcesForCompany<Id>,
-        list_of_resources_for_branch: ResourcesForBranch<Id>,
+        list_of_resources_for_company: ListOfResources<Id>,
+        list_of_resources_for_branch: ListOfResources<Id>,
     },
 }
 
-pub trait ExtendHashMap<K, V> {
-    fn insert_push(&mut self, k: K, v: V);
-}
-
-impl<K: Eq + Hash, V> ExtendHashMap<K, V> for HashMap<K, Vec<V>> {
-    fn insert_push(&mut self, k: K, v: V) {
-        self.entry(k).or_insert_with(Vec::new).push(v);
-    }
-}
-
 pub struct SideEffects<Id: RowId> {
-    resource_to_broadcast_for_company: HashMap<Id, Vec<ResourceInfo>>,
-    resource_to_broadcast_for_branch: HashMap<Id, Vec<ResourceInfo>>,
+    resource_to_broadcast_for_company: ListOfResources<Id>,
+    resource_to_broadcast_for_branch: ListOfResources<Id>,
     resource_to_return: Vec<ResourceInfo>,
     users_to_resubscribe: HashSet<Id>,
 }
@@ -1039,5 +1011,15 @@ impl<Id: RowId> Default for SideEffects<Id> {
             resource_to_return: Default::default(),
             users_to_resubscribe: Default::default(),
         }
+    }
+}
+
+pub trait ExtendHashMap<K, V> {
+    fn insert_push(&mut self, k: K, v: V);
+}
+
+impl<K: Eq + Hash, V> ExtendHashMap<K, V> for HashMap<K, Vec<V>> {
+    fn insert_push(&mut self, k: K, v: V) {
+        self.entry(k).or_insert_with(Vec::new).push(v);
     }
 }
