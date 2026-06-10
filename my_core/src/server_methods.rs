@@ -698,14 +698,8 @@ where
                         sender_to_server,
                     } => {
                         for user_uuid in users_uuids {
-                            let channels = pool_of_server_facad_channels.get_mut(&user_uuid);
-                            match channels {
-                                Some(channels) => channels.push(sender_to_server.clone()),
-                                None => {
-                                    pool_of_server_facad_channels
-                                        .insert(user_uuid, vec![sender_to_server.clone()]);
-                                }
-                            }
+                            pool_of_server_facad_channels
+                                .insert_push(user_uuid, sender_to_server.clone());
                         }
 
                         merge_subscribes(
@@ -795,18 +789,10 @@ fn map_resource_to_subscribes<Id: RowId>(
         match user_and_subscribe {
             Some(user_and_subscribe) => {
                 for (user_uuid, subscribe) in user_and_subscribe {
-                    let mut resource_for_user =
+                    let resource_for_user =
                         resource_filtering_based_on_subscribe(subscribe, &resource);
 
-                    let resource_to_append = resource_to_send.get_mut(user_uuid);
-                    match resource_to_append {
-                        Some(resource_to_append) => {
-                            resource_to_append.append(&mut resource_for_user)
-                        }
-                        None => {
-                            resource_to_send.insert(user_uuid.clone(), resource_for_user);
-                        }
-                    }
+                    resource_to_send.insert_append(user_uuid.clone(), resource_for_user);
                 }
             }
             None => {
@@ -1016,10 +1002,15 @@ impl<Id: RowId> Default for SideEffects<Id> {
 
 pub trait ExtendHashMap<K, V> {
     fn insert_push(&mut self, k: K, v: V);
+    fn insert_append(&mut self, k: K, v: Vec<V>);
 }
 
 impl<K: Eq + Hash, V> ExtendHashMap<K, V> for HashMap<K, Vec<V>> {
     fn insert_push(&mut self, k: K, v: V) {
-        self.entry(k).or_insert_with(Vec::new).push(v);
+        self.entry(k).or_insert(Vec::new()).push(v);
+    }
+
+    fn insert_append(&mut self, k: K, mut v: Vec<V>) {
+        self.entry(k).or_insert(Vec::new()).append(&mut v);
     }
 }
