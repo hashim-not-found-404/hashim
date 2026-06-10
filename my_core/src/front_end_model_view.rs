@@ -295,26 +295,28 @@ impl<
                             is_user_want_to_proceed,
                         ) {
                             handel.abort().await;
-                            At::Rt::sleep(Duration::from_secs(3)).await;
-                            let result = self
-                                .routs
-                                .send_query_to_cache_actor(
-                                    cache_query_operations::CacheQueryInput::GetUserUuid(
-                                        GetUserUuidInput {
-                                            user_id: user_id.clone(),
-                                        },
-                                    ),
-                                )
-                                .await;
+                            for _ in 0..30 {
+                                At::Rt::sleep(Duration::from_millis(100)).await;
+                                let result = self
+                                    .routs
+                                    .send_query_to_cache_actor(
+                                        cache_query_operations::CacheQueryInput::GetUserUuid(
+                                            GetUserUuidInput {
+                                                user_id: user_id.clone(),
+                                            },
+                                        ),
+                                    )
+                                    .await;
 
-                            let result = cache_query_operations::GetUserUuidInput::unwrap(result);
+                                let result =
+                                    cache_query_operations::GetUserUuidInput::unwrap(result);
 
-                            if result.is_none() {
-                                local_state.show_dialog.set(Dialog::Error);
+                                if result.is_none() {
+                                    local_state.show_dialog.set(Dialog::Error);
+                                }
+                                self.is_signed_in.set(result);
+                                break;
                             }
-
-                            self.is_signed_in.set(result);
-                            break;
                         }
                     } else {
                         break;
