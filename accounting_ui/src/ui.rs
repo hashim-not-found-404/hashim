@@ -271,13 +271,56 @@ fn Home() -> Element {
 
 #[component]
 fn CompanyAndBranchSelection() -> Element {
+    let state = consume_context::<StateOfEveryThing>();
+
     let mut show_create_company = use_signal(|| false);
+    let mut selected_company_id = use_signal(|| None);
+
+    let local_state = <my_signals::m::S as AllSignalTypes>::CompanyAndBranchList::default();
+    state.clone().list_company_and_branch(local_state.clone());
 
     rsx! {
-        if *show_create_company.read() {
-            CreateCompany { show_form: show_create_company }
+        div {
+            if *show_create_company.read() {
+                CreateCompany { show_form: show_create_company }
+            }
+
+            button { onclick: move |_| show_create_company.set(true), "Add New Company" }
+
+            div {
+                for company in local_state.read() {
+                    div {
+                        button {
+                            onclick: move |_| {
+                                if *selected_company_id.read() == Some(company.id.clone()) {
+                                    selected_company_id.set(None);
+                                } else {
+                                    selected_company_id.set(Some(company.id.clone()));
+                                }
+                            },
+                            "{company.name}"
+                        }
+
+                        if *selected_company_id.read() == Some(company.id.clone()) {
+                            button { "Add Branch" }
+                            div {
+                                for branch in company.branches {
+                                    button {
+                                        onclick: {
+                                            let selected_company_branch = state.selected_company_branch.clone();
+                                            move |_| {
+                                                selected_company_branch.set(Some(branch.id.clone()));
+                                            }
+                                        },
+                                        "{branch.name}"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
-        button { onclick: move |_| show_create_company.set(true), "add company" }
     }
 }
 

@@ -13,22 +13,18 @@ pub struct Response {
     pub data: push_data::OperationsResult,
 }
 
-pub struct QueryFromCacheAndServer<Mpsc: MultiProducerSingleConsumer> {
-    pub is_submit: bool,
-    pub sender: Mpsc::Sender<Option<Response>>,
-    pub data: push_data::OperationsInput,
-}
-
-pub struct QueryFromCacheOnly<Mpsc: MultiProducerSingleConsumer> {
-    pub sender: Mpsc::Sender<cache_query_operations::CacheQueryOutput>,
-    pub data: cache_query_operations::CacheQueryInput,
-}
-
 enum MessageToCache<Mpsc: MultiProducerSingleConsumer> {
     WeAreBackOnline,
     DataFromServer(Vec<u8>),
-    QueryFromCacheAndServer(QueryFromCacheAndServer<Mpsc>),
-    QueryFromCacheOnly(QueryFromCacheOnly<Mpsc>),
+    QueryFromCacheOnly {
+        sender: Mpsc::Sender<cache_query_operations::CacheQueryOutput>,
+        data: cache_query_operations::CacheQueryInput,
+    },
+    QueryFromCacheAndServer {
+        is_submit: bool,
+        sender: Mpsc::Sender<Option<Response>>,
+        data: push_data::OperationsInput,
+    },
     // Subscribe {
     //     component_id: u64,
     //     list_of_subscribtion: Vec<server_methods::Subscribe>,
@@ -100,13 +96,11 @@ where
         self.sender_to_cache
             .lock()
             .unwrap()
-            .send(MessageToCache::QueryFromCacheAndServer(
-                QueryFromCacheAndServer {
-                    is_submit,
-                    sender,
-                    data,
-                },
-            ))
+            .send(MessageToCache::QueryFromCacheAndServer {
+                is_submit,
+                sender,
+                data,
+            })
             .await
             .unwrap();
 
@@ -115,16 +109,13 @@ where
 
     pub async fn send_query_to_cache_actor(
         &self,
-        msg: cache_query_operations::CacheQueryInput,
+        data: cache_query_operations::CacheQueryInput,
     ) -> cache_query_operations::CacheQueryOutput {
         let (sender, mut receiver) = Mpsc::channel();
         self.sender_to_cache
             .lock()
             .unwrap()
-            .send(MessageToCache::QueryFromCacheOnly(QueryFromCacheOnly {
-                sender,
-                data: msg,
-            }))
+            .send(MessageToCache::QueryFromCacheOnly { sender, data })
             .await
             .unwrap();
 
@@ -284,11 +275,11 @@ where
                             }
                         }
                     }
-                    MessageToCache::QueryFromCacheAndServer(QueryFromCacheAndServer {
+                    MessageToCache::QueryFromCacheAndServer {
                         is_submit,
                         mut sender,
                         data,
-                    }) => {
+                    } => {
                         let txn_number = At::Rn::generate();
 
                         let result = if is_submit {
@@ -323,7 +314,7 @@ where
                             let _ = sender.send(None).await;
                         };
                     }
-                    MessageToCache::QueryFromCacheOnly(QueryFromCacheOnly { mut sender, data }) => {
+                    MessageToCache::QueryFromCacheOnly { mut sender, data } => {
                         let data = data.run_query(&state).await;
                         sender.send(data).await.unwrap();
                     } // MessageToCache::Subscribe {

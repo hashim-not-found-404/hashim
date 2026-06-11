@@ -19,6 +19,7 @@ pub trait AllSignalTypes: Default {
     type StringVec: HashimSignal<String>;
     type Currency: HashimSignal<db_types::Currency>;
     type Location: HashimSignal<db_types::Location>;
+    type CompanyAndBranchList: HashimSignal<Vec<Company>>;
 }
 
 pub struct State<
@@ -33,6 +34,7 @@ pub struct State<
 
     // here every field is to display , here is global state
     pub is_signed_in: As::OptionRowId,
+    pub selected_company_branch: As::OptionRowId,
     pub external_errors: As::StringVec,
 }
 
@@ -48,6 +50,7 @@ impl<
             _ph: self._ph.clone(),
             routs: self.routs.clone(),
             is_signed_in: self.is_signed_in.clone(),
+            selected_company_branch: self.selected_company_branch.clone(),
             external_errors: self.external_errors.clone(),
         }
     }
@@ -77,6 +80,7 @@ impl<
             _ph: PhantomData,
             routs,
             is_signed_in: As::OptionRowId::default(),
+            selected_company_branch: As::OptionRowId::default(),
             external_errors,
         };
 
@@ -328,6 +332,10 @@ impl<
         });
     }
 
+    pub fn list_company_and_branch(self, local_state: As::CompanyAndBranchList) {
+        At::Rt::spawn_local(async move { todo!() });
+    }
+
     pub fn create_company(self, local_state: CreateCompanyState<As>) {
         At::Rt::spawn_local(async move {
             let input = create_company::Input {
@@ -403,6 +411,19 @@ pub struct CreateCompanyBranchState<As: AllSignalTypes> {
     pub currency: As::Currency,
     pub branch_name: As::String,
     pub location: As::Location,
+}
+
+#[derive(Clone)]
+pub struct Company {
+    pub id: db_types::UuidType,
+    pub name: String,
+    pub branches: Vec<Branch>,
+}
+
+#[derive(Clone)]
+pub struct Branch {
+    pub id: db_types::UuidType,
+    pub name: String,
 }
 
 fn is_proceed(
