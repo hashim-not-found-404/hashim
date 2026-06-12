@@ -8,22 +8,38 @@ enum MessageToNetwork {
 }
 
 #[derive(Clone)]
-pub struct Response {
+pub struct Data {
     pub is_response_from_server: bool,
-    pub data: push_data::OperationsResult,
+    pub data: operations::Output,
 }
 
-enum MessageToCache<Mpsc: MultiProducerSingleConsumer> {
+#[derive(Clone)]
+pub enum Response {
+    CloseTheChannel,
+    ServerCannotBeReached,
+    Data(Data),
+}
+
+pub(crate) enum CachingStrategy {
+    ReadCacheOnly,
+    ReadCacheFirst,
+    ReadCacheAndServer,
+    ReadServerFirst,
+    ReadServerOnly,
+    WriteCacheOnly,
+    WriteCacheFirst,
+    WriteCacheAndServer,
+    WriteServerFirst,
+    WriteServerOnly,
+}
+
+pub(crate) enum MessageToCache<Mpsc: MultiProducerSingleConsumer> {
     WeAreBackOnline,
     DataFromServer(Vec<u8>),
-    QueryFromCacheOnly {
-        sender: Mpsc::Sender<cache_query_operations::CacheQueryOutput>,
-        data: cache_query_operations::CacheQueryInput,
-    },
-    QueryFromCacheAndServer {
-        is_submit: bool,
-        sender: Mpsc::Sender<Option<Response>>,
-        data: push_data::OperationsInput,
+    Query {
+        strategy: CachingStrategy,
+        sender: Mpsc::Sender<Response>,
+        data: operations::Input,
     },
     // Subscribe {
     //     component_id: u64,
@@ -87,17 +103,18 @@ where
             .unwrap();
     }
 
-    pub async fn send_to_cache_actor(
+    pub(crate) async fn send_to_cache_actor(
         &self,
-        is_submit: bool,
-        data: push_data::OperationsInput,
-    ) -> Mpsc::Receiver<Option<Response>> {
+        strategy: CachingStrategy,
+        data: operations::Input,
+    ) -> Mpsc::Receiver<Response> {
         let (sender, receiver) = Mpsc::channel();
+
         self.sender_to_cache
             .lock()
             .unwrap()
-            .send(MessageToCache::QueryFromCacheAndServer {
-                is_submit,
+            .send(MessageToCache::Query {
+                strategy,
                 sender,
                 data,
             })
@@ -105,21 +122,6 @@ where
             .unwrap();
 
         receiver
-    }
-
-    pub async fn send_query_to_cache_actor(
-        &self,
-        data: cache_query_operations::CacheQueryInput,
-    ) -> cache_query_operations::CacheQueryOutput {
-        let (sender, mut receiver) = Mpsc::channel();
-        self.sender_to_cache
-            .lock()
-            .unwrap()
-            .send(MessageToCache::QueryFromCacheOnly { sender, data })
-            .await
-            .unwrap();
-
-        receiver.recv().await.unwrap()
     }
 
     pub fn is_online(&self) -> bool {
@@ -218,8 +220,7 @@ where
     ) {
         At::Rt::spawn_local(async move {
             let mut state = cache::State::<At::Ch>::new::<At::Rn>().await;
-            let mut pool_of_senders =
-                HashMap::<u64, Mpsc::Sender<Option<Response>>>::with_capacity(100);
+            let mut pool_of_senders = HashMap::<u64, Mpsc::Sender<Response>>::with_capacity(100);
 
             loop {
                 match receiver_to_cache.recv().await.unwrap() {
@@ -248,18 +249,25 @@ where
                             }
                             messages::FromServer::PushData(results) => {
                                 for txn in results.operations {
+                                    let data = txn.operation.map_to_client_output_type();
+
+                                    let txn = push_data::Txn {
+                                        txn_number: txn.txn_number,
+                                        operation: data.clone(),
+                                    };
+
                                     state.cache.delete_txn_input(&txn.txn_number).await;
                                     state.cache.write_txn_result(&txn).await;
 
                                     let sender = pool_of_senders.remove(&txn.txn_number);
                                     if let Some(mut sender) = sender {
                                         let _ = sender
-                                            .send(Some(Response {
+                                            .send(Response::Data(Data {
                                                 is_response_from_server: true,
-                                                data: txn.operation,
+                                                data,
                                             }))
                                             .await;
-                                        let _ = sender.send(None).await;
+                                        let _ = sender.send(Response::CloseTheChannel).await;
                                     }
                                 }
 
@@ -275,70 +283,83 @@ where
                             }
                         }
                     }
-                    MessageToCache::QueryFromCacheAndServer {
-                        is_submit,
+                    MessageToCache::Query {
+                        strategy,
                         mut sender,
                         data,
-                    } => {
-                        let txn_number = At::Rn::generate();
+                    } => match strategy {
+                        CachingStrategy::ReadCacheOnly => {
+                            let result = data.run_operation_check(&mut state).await;
+                            let _ = sender
+                                .send(Response::Data(Data {
+                                    is_response_from_server: false,
+                                    data: result,
+                                }))
+                                .await;
+                        }
+                        CachingStrategy::ReadCacheFirst => todo!(),
+                        CachingStrategy::ReadCacheAndServer => todo!(),
+                        CachingStrategy::ReadServerFirst => todo!(),
+                        CachingStrategy::ReadServerOnly => todo!(),
+                        CachingStrategy::WriteCacheOnly => todo!(),
+                        CachingStrategy::WriteCacheFirst => todo!(),
+                        CachingStrategy::WriteCacheAndServer => {
+                            let txn_number = At::Rn::generate();
 
-                        let result = if is_submit {
-                            data.run_operation_check_apply_write(txn_number, &mut state)
-                                .await
-                        } else {
-                            data.run_operation_check(&mut state).await
-                        };
+                            let result = data
+                                .run_operation_check_apply_write(txn_number, &mut state)
+                                .await;
 
-                        let _ = sender
-                            .send(Some(Response {
-                                is_response_from_server: false,
-                                data: result,
-                            }))
-                            .await;
+                            let _ = sender
+                                .send(Response::Data(Data {
+                                    is_response_from_server: false,
+                                    data: result,
+                                }))
+                                .await;
 
-                        let operations = vec![push_data::Txn {
-                            txn_number,
-                            operation: data,
-                        }];
+                            let operations = vec![push_data::Txn {
+                                txn_number,
+                                operation: data,
+                            }];
 
-                        if is_submit && get(is_online.clone()) {
-                            Self::prepare_txn_and_send_to_network(
-                                &mut sender_to_network,
-                                operations,
-                                &state,
-                            )
-                            .await;
+                            if get(is_online.clone()) {
+                                Self::prepare_txn_and_send_to_network(
+                                    &mut sender_to_network,
+                                    operations,
+                                    &state,
+                                )
+                                .await;
 
-                            pool_of_senders.insert(txn_number, sender);
-                        } else {
-                            let _ = sender.send(None).await;
-                        };
-                    }
-                    MessageToCache::QueryFromCacheOnly { mut sender, data } => {
-                        let data = data.run_query(&state).await;
-                        sender.send(data).await.unwrap();
-                    } // MessageToCache::Subscribe {
-                      //     component_id,
-                      //     list_of_subscribtion,
-                      //     sender_to_component,
-                      // } => {
-                      // pool_of_senders.insert(component_id, sender_to_component);
-                      // for subscribe in list_of_subscribtion {
-                      //     pool_of_subscribes
-                      //         .entry(subscribe)
-                      //         .or_insert(HashSet::with_capacity(10))
-                      //         .insert(component_id);
-                      // }
-                      // }
-                      // MessageToCache::UnSubscribe { component_id } => {
-                      // pool_of_senders.remove(&component_id);
+                                pool_of_senders.insert(txn_number, sender);
+                            } else {
+                                let _ = sender.send(Response::CloseTheChannel).await;
+                            };
+                        }
+                        CachingStrategy::WriteServerFirst => todo!(),
+                        CachingStrategy::WriteServerOnly => todo!(),
+                    },
+                    // MessageToCache::Subscribe {
+                    //     component_id,
+                    //     list_of_subscribtion,
+                    //     sender_to_component,
+                    // } => {
+                    // pool_of_senders.insert(component_id, sender_to_component);
+                    // for subscribe in list_of_subscribtion {
+                    //     pool_of_subscribes
+                    //         .entry(subscribe)
+                    //         .or_insert(HashSet::with_capacity(10))
+                    //         .insert(component_id);
+                    // }
+                    // }
+                    // MessageToCache::UnSubscribe { component_id } => {
+                    // pool_of_senders.remove(&component_id);
 
-                      // for (_, component_id_gg) in &mut pool_of_subscribes {
-                      //     component_id_gg.remove(&component_id);
-                      // }
+                    // for (_, component_id_gg) in &mut pool_of_subscribes {
+                    //     component_id_gg.remove(&component_id);
+                    // }
 
-                      // pool_of_subscribes.retain(|_, component_ids| !component_ids.is_empty());
-                      // }
+                    // pool_of_subscribes.retain(|_, component_ids| !component_ids.is_empty());
+                    // }
                 }
             }
         });
@@ -346,7 +367,7 @@ where
 
     async fn prepare_txn_and_send_to_network<Ch: CacheIO>(
         sender_to_network: &mut Mpsc::Sender<MessageToNetwork>,
-        operations: Vec<push_data::Txn<push_data::OperationsInput>>,
+        operations: Vec<push_data::Txn<operations::Input>>,
         state: &cache::State<Ch>,
     ) {
         if operations.is_empty() {
@@ -362,10 +383,19 @@ where
             }
         }
 
+        let mut operations1 = Vec::with_capacity(operations.len());
+
+        for i in operations {
+            operations1.push(push_data::Txn {
+                txn_number: i.txn_number,
+                operation: i.operation.map_to_server_input_type(),
+            });
+        }
+
         let t = push_data::Input {
             jwts,
             nonce: At::Id::generate().to_uuid(),
-            operations,
+            operations: operations1,
         };
 
         let t = At::Ed::encode(&t);

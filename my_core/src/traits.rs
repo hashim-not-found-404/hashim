@@ -202,16 +202,11 @@ pub trait MultiProducerSingleConsumer {
 pub trait CacheIO: Sized {
     fn new() -> impl Future<Output = Self>;
 
-    fn get_all_txn_input(
-        &self,
-    ) -> impl Future<Output = Vec<push_data::Txn<push_data::OperationsInput>>>;
-    fn write_txn_input(
-        &self,
-        txn: &push_data::Txn<push_data::OperationsInput>,
-    ) -> impl Future<Output = ()>;
+    fn get_all_txn_input(&self) -> impl Future<Output = Vec<push_data::Txn<operations::Input>>>;
+    fn write_txn_input(&self, txn: &push_data::Txn<operations::Input>) -> impl Future<Output = ()>;
     fn write_txn_result(
         &self,
-        txn: &push_data::Txn<push_data::OperationsResult>,
+        txn: &push_data::Txn<operations::Output>,
     ) -> impl Future<Output = ()>;
     fn delete_txn_input(&self, txn_number: &u64) -> impl Future<Output = ()>;
 

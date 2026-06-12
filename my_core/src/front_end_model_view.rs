@@ -1,7 +1,4 @@
-use crate::{
-    cache_query_operations::{GetUserUuidInput, QueryOperations},
-    prelude::*,
-};
+use crate::prelude::*;
 
 pub trait HashimSignal<T: Default>: Default + Clone {
     fn reset(&self) {
@@ -150,9 +147,15 @@ impl<
                 password: feature_state.user_password.read(),
             };
 
+            let strategy = if is_submit {
+                web_socket::CachingStrategy::WriteCacheAndServer
+            } else {
+                web_socket::CachingStrategy::ReadCacheOnly
+            };
+
             let mut receiver_to_response = self
                 .routs
-                .send_to_cache_actor(is_submit, input.clone().map_input())
+                .send_to_cache_actor(strategy, input.clone().map_input())
                 .await;
 
             let mut handel = Self::timeout_dialog_actor(
@@ -174,8 +177,9 @@ impl<
                     }
                     Either::Two(result) => {
                         response = match result.unwrap() {
-                            Some(result) => Some(result),
-                            None => break,
+                            web_socket::Response::CloseTheChannel => break,
+                            web_socket::Response::ServerCannotBeReached => break,
+                            web_socket::Response::Data(data) => Some(data),
                         }
                     }
                 };
@@ -241,9 +245,15 @@ impl<
                 password: feature_state.user_password.read(),
             };
 
+            let strategy = if is_submit {
+                web_socket::CachingStrategy::WriteCacheAndServer
+            } else {
+                web_socket::CachingStrategy::ReadCacheOnly
+            };
+
             let mut receiver_to_response = self
                 .routs
-                .send_to_cache_actor(is_submit, input.clone().map_input())
+                .send_to_cache_actor(strategy, input.clone().map_input())
                 .await;
 
             let mut handel = Self::timeout_dialog_actor(
@@ -265,8 +275,9 @@ impl<
                     }
                     Either::Two(result) => {
                         response = match result.unwrap() {
-                            Some(result) => Some(result),
-                            None => break,
+                            web_socket::Response::CloseTheChannel => break,
+                            web_socket::Response::ServerCannotBeReached => break,
+                            web_socket::Response::Data(data) => Some(data),
                         }
                     }
                 };
@@ -301,24 +312,34 @@ impl<
                             handel.abort().await;
                             for _ in 0..30 {
                                 At::Rt::sleep(Duration::from_millis(100)).await;
+
                                 let result = self
                                     .routs
-                                    .send_query_to_cache_actor(
+                                    .send_to_cache_actor(
+                                        web_socket::CachingStrategy::ReadCacheOnly,
                                         GetUserUuidInput {
                                             user_id: user_id.clone(),
                                         }
                                         .map_input(),
                                     )
-                                    .await;
+                                    .await
+                                    .recv()
+                                    .await
+                                    .unwrap();
 
-                                let result =
-                                    cache_query_operations::GetUserUuidInput::unwrap(result);
+                                let result = match result {
+                                    web_socket::Response::CloseTheChannel => unreachable!(),
+                                    web_socket::Response::ServerCannotBeReached => unreachable!(),
+                                    web_socket::Response::Data(data) => data.data,
+                                };
 
-                                if result.is_none() {
+                                let result = operations::GetUserUuidInput::unwrap(result);
+
+                                if result.is_err() {
                                     local_state.show_dialog.set(Dialog::Error);
                                     continue;
                                 }
-                                self.is_signed_in.set(result);
+                                self.is_signed_in.set(result.ok());
                                 break;
                             }
                         }
@@ -346,7 +367,10 @@ impl<
             };
 
             self.routs
-                .send_to_cache_actor(true, input.clone().map_input())
+                .send_to_cache_actor(
+                    web_socket::CachingStrategy::WriteCacheAndServer,
+                    input.clone().map_input(),
+                )
                 .await;
 
             local_state.company_name.reset();

@@ -15,7 +15,7 @@ impl CacheIO for S {
         Self { db: conn }
     }
 
-    async fn get_all_txn_input(&self) -> Vec<push_data::Txn<push_data::OperationsInput>> {
+    async fn get_all_txn_input(&self) -> Vec<push_data::Txn<operations::Input>> {
         let mut stmt = self
             .db
             .prepare("SELECT txn_number, txn FROM write_cache_transactions_input")
@@ -38,7 +38,7 @@ impl CacheIO for S {
         transactions
     }
 
-    async fn write_txn_input(&self, txn: &push_data::Txn<push_data::OperationsInput>) -> () {
+    async fn write_txn_input(&self, txn: &push_data::Txn<operations::Input>) -> () {
         let txn_data = encode_decode::m::S::encode(&txn.operation);
         self.db
             .execute(
@@ -48,7 +48,7 @@ impl CacheIO for S {
             .unwrap();
     }
 
-    async fn write_txn_result(&self, txn: &push_data::Txn<push_data::OperationsResult>) {
+    async fn write_txn_result(&self, txn: &push_data::Txn<operations::Output>) {
         let txn_data = encode_decode::m::S::encode(&txn.operation);
         self.db
             .execute(
