@@ -67,7 +67,7 @@ where
     At: AllClientTypes + 'static,
     Mpsc: MultiProducerSingleConsumer + 'static,
 {
-    pub fn new(sender_to_error: Mpsc::Sender<DynamicError>) -> Self {
+    pub fn new(sender_to_error: Mpsc::Sender<HashimError>) -> Self {
         let (sender_to_network, receiver_to_network) = Mpsc::channel();
         let (sender_to_cache, receiver_to_cache) = Mpsc::channel();
 
@@ -163,7 +163,7 @@ where
     fn network_actor(
         mut receiver_to_network: Mpsc::Receiver<MessageToNetwork>,
         mut sender_to_cache: Mpsc::Sender<MessageToCache<Mpsc>>,
-        mut sender_to_error: Mpsc::Sender<DynamicError>,
+        mut sender_to_error: Mpsc::Sender<HashimError>,
         is_online: Arc<RwLock<bool>>,
     ) {
         At::Rt::spawn_local(async move {
@@ -201,8 +201,11 @@ where
                                 .await
                                 .unwrap();
                         }
-                        Err(err) => {
-                            sender_to_error.send(err).await.unwrap();
+                        Err(_) => {
+                            sender_to_error
+                                .send(HashimError::ConnectionClosed)
+                                .await
+                                .unwrap();
                             Self::connect(is_online.clone(), &mut sender_to_cache, &url, &mut ws)
                                 .await;
                         }
@@ -215,7 +218,7 @@ where
     fn cache_actor(
         mut receiver_to_cache: Mpsc::Receiver<MessageToCache<Mpsc>>,
         mut sender_to_network: Mpsc::Sender<MessageToNetwork>,
-        mut sender_to_error: Mpsc::Sender<DynamicError>,
+        mut sender_to_error: Mpsc::Sender<HashimError>,
         is_online: Arc<RwLock<bool>>,
     ) {
         At::Rt::spawn_local(async move {

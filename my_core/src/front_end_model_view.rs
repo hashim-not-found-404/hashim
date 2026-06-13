@@ -85,7 +85,7 @@ impl<
     }
 
     fn listen_to_error_actor(
-        mut receiver_to_error: Mpsc::Receiver<DynamicError>,
+        mut receiver_to_error: Mpsc::Receiver<HashimError>,
         external_errors_signal: As::StringVec,
     ) {
         At::Rt::spawn_local(async move {
