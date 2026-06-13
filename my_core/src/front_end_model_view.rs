@@ -153,38 +153,62 @@ impl<
                 web_socket::CachingStrategy::ReadCacheOnly
             };
 
-            let mut receiver_to_response = self
-                .routs
-                .send_to_cache_actor(strategy, input.clone().map_input())
-                .await;
-
-            let mut handel = Self::timeout_dialog_actor(
+            let handel_dialog = Arc::new(Mutex::new(Self::timeout_dialog_actor(
                 self.routs.clone(),
                 is_submit,
                 local_state.show_dialog.clone(),
-            );
+            )));
 
-            let (sender_to_consent, mut receiver_to_consent) = Mpsc::channel();
-            sender_to_consent_from_dialog.set(Some(sender_to_consent));
-            let mut is_user_want_to_proceed = false;
-            let mut response = None;
-            loop {
-                match At::Rt::select(receiver_to_consent.recv(), receiver_to_response.recv()).await
-                {
-                    Either::One(_) => {
-                        is_user_want_to_proceed = true;
-                        handel.abort().await;
-                    }
-                    Either::Two(result) => {
-                        response = match result.unwrap() {
-                            web_socket::Response::CloseTheChannel => break,
-                            web_socket::Response::ServerCannotBeReached => break,
-                            web_socket::Response::Data(data) => Some(data),
+            let (mut sender, mut receiver) = Mpsc::channel();
+
+            let is_user_want_to_proceed = Arc::new(Mutex::new(false));
+
+            let is_user_want_to_proceed1 = is_user_want_to_proceed.clone();
+            let handel_dialog1 = handel_dialog.clone();
+            let mut sender1 = sender.clone();
+
+            let mut handel_consent = At::Rt::abortable_spawn_local(async move {
+                let (sender_to_consent, mut receiver_to_consent) = Mpsc::channel();
+                sender_to_consent_from_dialog.set(Some(sender_to_consent));
+                receiver_to_consent.recv().await.unwrap();
+
+                *is_user_want_to_proceed1.lock().unwrap() = true;
+                handel_dialog1.lock().unwrap().abort().await;
+                sender1.send(()).await.unwrap();
+            });
+
+            let response = Arc::new(Mutex::new(None));
+
+            let response1 = response.clone();
+            let a = self.routs.clone();
+            let mut handel_response = At::Rt::abortable_spawn_local(async move {
+                let mut receiver_to_response = a
+                    .send_to_cache_actor(strategy, input.clone().map_input())
+                    .await;
+
+                loop {
+                    let result = receiver_to_response.recv().await.unwrap();
+                    match result {
+                        web_socket::Response::CloseTheChannel => break,
+                        web_socket::Response::ServerCannotBeReached => {
+                            local_state.show_dialog.set(Dialog::Show);
+                            break;
+                        }
+                        web_socket::Response::Data(data) => {
+                            *response1.lock().unwrap() = Some(data);
+                            sender.send(()).await.unwrap();
                         }
                     }
-                };
+                }
+            });
 
-                if let Some(response) = response.clone() {
+            loop {
+                if receiver.recv().await.is_err() {
+                    mbg!("break");
+                    break;
+                }
+
+                if let Some(response) = response.lock().unwrap().clone() {
                     let result = sign_up::Result::map_output_to_result(response.data);
 
                     let is_ok = result.is_ok();
@@ -203,21 +227,28 @@ impl<
                     }
 
                     if is_submit {
-                        if is_proceed(
+                        match is_proceed(
                             is_ok,
                             self.routs.is_online(),
                             response.is_response_from_server,
-                            is_user_want_to_proceed,
+                            *is_user_want_to_proceed.lock().unwrap(),
                         ) {
-                            self.is_signed_in.set(Some(new_uuid));
-                            break;
+                            ProceedState::Proceed => {
+                                self.is_signed_in.set(Some(new_uuid));
+                                break;
+                            }
+                            ProceedState::Never => break,
+                            ProceedState::Wait => continue,
                         }
                     } else {
                         break;
                     }
                 }
             }
-            handel.abort().await;
+
+            handel_dialog.lock().unwrap().abort().await;
+            handel_consent.abort().await;
+            handel_response.abort().await;
             feature_state.is_loading.reset();
         });
     }
@@ -251,44 +282,69 @@ impl<
                 web_socket::CachingStrategy::ReadCacheOnly
             };
 
-            let mut receiver_to_response = self
-                .routs
-                .send_to_cache_actor(strategy, input.clone().map_input())
-                .await;
-
-            let mut handel = Self::timeout_dialog_actor(
+            let handel_dialog = Arc::new(Mutex::new(Self::timeout_dialog_actor(
                 self.routs.clone(),
                 is_submit,
                 local_state.show_dialog.clone(),
-            );
+            )));
 
-            let (sender_to_consent, mut receiver_to_consent) = Mpsc::channel();
-            sender_to_consent_from_dialog.set(Some(sender_to_consent));
-            let mut is_user_want_to_proceed = false;
-            let mut response = None;
-            loop {
-                match At::Rt::select(receiver_to_consent.recv(), receiver_to_response.recv()).await
-                {
-                    Either::One(_) => {
-                        is_user_want_to_proceed = true;
-                        handel.abort().await;
-                    }
-                    Either::Two(result) => {
-                        response = match result.unwrap() {
-                            web_socket::Response::CloseTheChannel => break,
-                            web_socket::Response::ServerCannotBeReached => break,
-                            web_socket::Response::Data(data) => Some(data),
+            let (mut sender, mut receiver) = Mpsc::channel();
+
+            let is_user_want_to_proceed = Arc::new(Mutex::new(false));
+
+            let is_user_want_to_proceed1 = is_user_want_to_proceed.clone();
+            let handel_dialog1 = handel_dialog.clone();
+            let mut sender1 = sender.clone();
+
+            let mut handel_consent = At::Rt::abortable_spawn_local(async move {
+                let (sender_to_consent, mut receiver_to_consent) = Mpsc::channel();
+                sender_to_consent_from_dialog.set(Some(sender_to_consent));
+                receiver_to_consent.recv().await.unwrap();
+
+                *is_user_want_to_proceed1.lock().unwrap() = true;
+                handel_dialog1.lock().unwrap().abort().await;
+                sender1.send(()).await.unwrap();
+            });
+
+            let response = Arc::new(Mutex::new(None));
+
+            let response1 = response.clone();
+            let a = self.routs.clone();
+            let mut handel_response = At::Rt::abortable_spawn_local(async move {
+                let mut receiver_to_response = a
+                    .send_to_cache_actor(strategy, input.clone().map_input())
+                    .await;
+
+                loop {
+                    let result = receiver_to_response.recv().await.unwrap();
+                    match result {
+                        web_socket::Response::CloseTheChannel => break,
+                        web_socket::Response::ServerCannotBeReached => {
+                            local_state.show_dialog.set(Dialog::Show);
+                            break;
+                        }
+                        web_socket::Response::Data(data) => {
+                            *response1.lock().unwrap() = Some(data);
+                            sender.send(()).await.unwrap();
                         }
                     }
-                };
+                }
+            });
 
-                if let Some(response) = response.clone() {
+            let mut user_uuid = None;
+            loop {
+                if receiver.recv().await.is_err() {
+                    mbg!("break");
+                    break;
+                }
+
+                if let Some(response) = response.lock().unwrap().clone() {
                     let result = sign_in::Result::map_output_to_result(response.data);
 
                     let is_ok = result.is_ok();
                     match result {
                         Ok(ok) => {
-                            self.is_signed_in.set(Some(ok.user_uuid));
+                            user_uuid = Some(ok.user_uuid);
                         }
                         Err(business_error) => {
                             local_state.user_id_error.set(match business_error.user_id {
@@ -305,20 +361,27 @@ impl<
                     }
 
                     if is_submit {
-                        if is_proceed(
+                        match is_proceed(
                             is_ok,
                             self.routs.is_online(),
                             response.is_response_from_server,
-                            is_user_want_to_proceed,
+                            *is_user_want_to_proceed.lock().unwrap(),
                         ) {
-                            handel.abort().await;
+                            ProceedState::Proceed => {
+                                self.is_signed_in.set(user_uuid);
+                                break;
+                            }
+                            ProceedState::Never => break,
+                            ProceedState::Wait => continue,
                         }
                     } else {
                         break;
                     }
                 }
             }
-            handel.abort().await;
+            handel_dialog.lock().unwrap().abort().await;
+            handel_consent.abort().await;
+            handel_response.abort().await;
             feature_state.is_loading.reset();
         });
     }
@@ -424,33 +487,39 @@ pub struct CreateCompanyBranchState<As: AllSignalTypes> {
     pub location: As::Location,
 }
 
+enum ProceedState {
+    Proceed,
+    Never,
+    Wait,
+}
+
 fn is_proceed(
     is_ok: bool,
     is_online: bool,
     is_response_from_server: bool,
     is_user_want_to_proceed: bool,
-) -> bool {
+) -> ProceedState {
     match (
         is_ok,
         is_online,
         is_response_from_server,
         is_user_want_to_proceed,
     ) {
-        (true, true, true, true) => true,
-        (true, true, true, false) => true,
-        (true, true, false, true) => true,
-        (true, true, false, false) => false,
-        (true, false, true, true) => true,
-        (true, false, true, false) => true,
-        (true, false, false, true) => true,
-        (true, false, false, false) => false,
-        (false, true, true, true) => false,
-        (false, true, true, false) => false,
-        (false, true, false, true) => true,
-        (false, true, false, false) => false,
-        (false, false, true, true) => false,
-        (false, false, true, false) => false,
-        (false, false, false, true) => true,
-        (false, false, false, false) => false,
+        (true, true, true, true) => ProceedState::Proceed,
+        (true, true, true, false) => ProceedState::Proceed,
+        (true, true, false, true) => ProceedState::Proceed,
+        (true, true, false, false) => ProceedState::Wait,
+        (true, false, true, true) => ProceedState::Proceed,
+        (true, false, true, false) => ProceedState::Proceed,
+        (true, false, false, true) => ProceedState::Proceed,
+        (true, false, false, false) => ProceedState::Wait,
+        (false, true, true, true) => ProceedState::Never,
+        (false, true, true, false) => ProceedState::Never,
+        (false, true, false, true) => ProceedState::Proceed,
+        (false, true, false, false) => ProceedState::Wait,
+        (false, false, true, true) => ProceedState::Never,
+        (false, false, true, false) => ProceedState::Never,
+        (false, false, false, true) => ProceedState::Proceed,
+        (false, false, false, false) => ProceedState::Wait,
     }
 }

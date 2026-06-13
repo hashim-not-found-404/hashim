@@ -306,6 +306,7 @@ where
                                     data: result,
                                 }))
                                 .await;
+                            let _ = sender.send(Response::CloseTheChannel).await;
                         }
                         CachingStrategy::ReadCacheFirst => todo!(),
                         CachingStrategy::ReadCacheAndServer => {
@@ -336,6 +337,7 @@ where
                                 pool_of_senders.insert(txn_number, sender);
                             } else {
                                 let _ = sender.send(Response::ServerCannotBeReached).await;
+                                let _ = sender.send(Response::CloseTheChannel).await;
                             };
                         }
                         CachingStrategy::ReadServerFirst => todo!(),
@@ -371,6 +373,7 @@ where
 
                                 pool_of_senders.insert(txn_number, sender);
                             } else {
+                                let _ = sender.send(Response::ServerCannotBeReached).await;
                                 let _ = sender.send(Response::CloseTheChannel).await;
                             };
                         }
