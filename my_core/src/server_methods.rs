@@ -123,23 +123,12 @@ where
             txn.write_sign_up(&new_uuid, &input.user_id, &hashed_password, &input.name)
                 .await?;
 
-            side_effects.resource_to_return.push(ResourceInfo {
-                uuid: new_uuid.to_uuid(),
-                resource: Resource::Jwt(self.jwt.sign(&new_uuid)),
-            });
-            side_effects.resource_to_return.push(ResourceInfo {
-                uuid: new_uuid.to_uuid(),
-                resource: Resource::UserId(input.user_id.clone()),
-            });
-
-            if let Some(name) = &input.name {
-                side_effects.resource_to_return.push(ResourceInfo {
-                    uuid: new_uuid.to_uuid(),
-                    resource: Resource::UserName(name.clone()),
-                });
-            }
-
-            Ok(Ok(sign_up::Ok))
+            Ok(Ok(sign_up::Ok {
+                user_uuid: new_uuid.to_uuid(),
+                jwt: self.jwt.sign(&new_uuid),
+                user_id: input.user_id.clone(),
+                user_name: input.name.clone(),
+            }))
         })()
         .await;
 
@@ -173,15 +162,11 @@ where
             true => {
                 authenticated_users.insert(user_rowid.clone());
                 side_effects.users_to_resubscribe.insert(user_rowid.clone());
-                side_effects.resource_to_return.push(ResourceInfo {
-                    uuid: user_rowid.to_uuid(),
-                    resource: Resource::UserId(input.user_id.clone()),
-                });
-                side_effects.resource_to_return.push(ResourceInfo {
-                    uuid: user_rowid.to_uuid(),
-                    resource: Resource::Jwt(self.jwt.sign(&user_rowid)),
-                });
-                return Ok(Ok(sign_in::Ok));
+                return Ok(Ok(sign_in::Ok {
+                    user_uuid: user_rowid.to_uuid(),
+                    jwt: self.jwt.sign(&user_rowid),
+                    user_name: None,
+                }));
             }
             false => {
                 errr.password = Some(sign_in::PasswordError::WrongPassword);
@@ -604,18 +589,6 @@ where
                                     }
                                 }
 
-                                if !side_effects.resource_to_return.is_empty() {
-                                    if session
-                                        .send_bin(De::encode(&messages::FromServer::Resources(
-                                            side_effects.resource_to_return,
-                                        )))
-                                        .await
-                                        .is_err()
-                                    {
-                                        break;
-                                    }
-                                }
-
                                 if !side_effects.users_to_resubscribe.is_empty() {
                                     let subs = match self
                                         .get_table_of_subscribed_data(
@@ -985,7 +958,6 @@ pub enum MessageToBroker<Id: RowId, Mpsc: MultiProducerSingleConsumer> {
 pub struct SideEffects<Id: RowId> {
     resource_to_broadcast_for_company: ListOfResources<Id>,
     resource_to_broadcast_for_branch: ListOfResources<Id>,
-    resource_to_return: Vec<ResourceInfo>,
     users_to_resubscribe: HashSet<Id>,
 }
 
@@ -994,7 +966,6 @@ impl<Id: RowId> Default for SideEffects<Id> {
         Self {
             resource_to_broadcast_for_company: Default::default(),
             resource_to_broadcast_for_branch: Default::default(),
-            resource_to_return: Default::default(),
             users_to_resubscribe: Default::default(),
         }
     }

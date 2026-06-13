@@ -129,7 +129,12 @@ pub mod sign_up {
     }
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
-    pub struct Ok;
+    pub struct Ok {
+        pub user_uuid: db_types::UuidType,
+        pub jwt: String,
+        pub user_id: String,
+        pub user_name: Option<String>,
+    }
 
     #[derive(Debug, Deserialize, Serialize, Clone, Default, PartialEq)]
     pub struct Error {
@@ -157,7 +162,11 @@ pub mod sign_in {
     }
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
-    pub struct Ok;
+    pub struct Ok {
+        pub user_uuid: db_types::UuidType,
+        pub jwt: String,
+        pub user_name: Option<String>,
+    }
 
     #[derive(Debug, Deserialize, Serialize, Clone, Default, PartialEq)]
     pub struct Error {

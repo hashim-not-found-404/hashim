@@ -185,7 +185,7 @@ impl<
                 };
 
                 if let Some(response) = response.clone() {
-                    let result = sign_up::Input::unwrap(response.data);
+                    let result = SignUpResult::map_output_to_result(response.data);
 
                     let is_ok = result.is_ok();
                     match result {
@@ -283,11 +283,13 @@ impl<
                 };
 
                 if let Some(response) = response.clone() {
-                    let result = sign_in::Input::unwrap(response.data);
+                    let result = operations::SignInResult::map_output_to_result(response.data);
 
                     let is_ok = result.is_ok();
                     match result {
-                        Ok(_) => {}
+                        Ok(ok) => {
+                            self.is_signed_in.set(Some(ok));
+                        }
                         Err(business_error) => {
                             local_state.user_id_error.set(match business_error.user_id {
                                 Some(_) => String::from("user not exist"),
@@ -310,38 +312,6 @@ impl<
                             is_user_want_to_proceed,
                         ) {
                             handel.abort().await;
-                            for _ in 0..30 {
-                                At::Rt::sleep(Duration::from_millis(100)).await;
-
-                                let result = self
-                                    .routs
-                                    .send_to_cache_actor(
-                                        web_socket::CachingStrategy::ReadCacheOnly,
-                                        GetUserUuidInput {
-                                            user_id: user_id.clone(),
-                                        }
-                                        .map_input(),
-                                    )
-                                    .await
-                                    .recv()
-                                    .await
-                                    .unwrap();
-
-                                let result = match result {
-                                    web_socket::Response::CloseTheChannel => unreachable!(),
-                                    web_socket::Response::ServerCannotBeReached => unreachable!(),
-                                    web_socket::Response::Data(data) => data.data,
-                                };
-
-                                let result = operations::GetUserUuidInput::unwrap(result);
-
-                                if result.is_err() {
-                                    local_state.show_dialog.set(Dialog::Error);
-                                    continue;
-                                }
-                                self.is_signed_in.set(result.ok());
-                                break;
-                            }
                         }
                     } else {
                         break;

@@ -237,8 +237,11 @@ where
                     MessageToCache::DataFromServer(raw_data) => {
                         let message_type = match At::Ed::decode::<messages::FromServer>(&raw_data) {
                             Ok(message_type) => message_type,
-                            Err(err) => {
-                                sender_to_error.send(err).await.unwrap();
+                            Err(_) => {
+                                sender_to_error
+                                    .send(HashimError::InvalidDataFormat.into())
+                                    .await
+                                    .unwrap();
                                 continue;
                             }
                         };
