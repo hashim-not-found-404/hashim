@@ -14,7 +14,7 @@ pub(crate) trait Operations: Clone {
 
 pub(crate) trait OperationResult {
     fn is_ok(&self) -> bool;
-    fn map_to_resource(&self) -> Option<Vec<ResourceInfo>>;
+    fn map_to_resource(&self) -> Vec<ResourceInfo>;
     fn map_result_to_output(self) -> Output;
     fn map_output_to_result(result: Output) -> Self;
 }
@@ -134,7 +134,7 @@ impl push_data::OperationsResult {
         }
     }
 
-    pub(crate) fn extract_resource(&self) -> Option<Vec<ResourceInfo>> {
+    pub(crate) fn extract_resource(&self) -> Vec<ResourceInfo> {
         match self {
             push_data::OperationsResult::SignUp(i) => i.map_to_resource(),
             push_data::OperationsResult::SignIn(i) => i.map_to_resource(),
@@ -249,7 +249,7 @@ impl OperationResult for sign_up::Result {
         self.is_ok()
     }
 
-    fn map_to_resource(&self) -> Option<Vec<ResourceInfo>> {
+    fn map_to_resource(&self) -> Vec<ResourceInfo> {
         match self {
             Ok(ok) => {
                 let mut resource = Vec::with_capacity(3);
@@ -270,9 +270,9 @@ impl OperationResult for sign_up::Result {
                     });
                 }
 
-                Some(resource)
+                resource
             }
-            Err(_) => None,
+            Err(_) => Vec::new(),
         }
     }
 
@@ -336,7 +336,7 @@ impl OperationResult for sign_in::Result {
         self.is_ok()
     }
 
-    fn map_to_resource(&self) -> Option<Vec<ResourceInfo>> {
+    fn map_to_resource(&self) -> Vec<ResourceInfo> {
         match self {
             Ok(ok) => {
                 let mut resource = Vec::with_capacity(3);
@@ -353,9 +353,9 @@ impl OperationResult for sign_in::Result {
                     });
                 }
 
-                Some(resource)
+                resource
             }
-            Err(_) => None,
+            Err(_) => Vec::new(),
         }
     }
 
@@ -407,8 +407,8 @@ impl OperationResult for create_company::Result {
         self.is_ok()
     }
 
-    fn map_to_resource(&self) -> Option<Vec<ResourceInfo>> {
-        None
+    fn map_to_resource(&self) -> Vec<ResourceInfo> {
+        Vec::new()
     }
 
     fn map_result_to_output(self) -> Output {
@@ -444,8 +444,8 @@ impl OperationResult for create_company_branch::Result {
         self.is_ok()
     }
 
-    fn map_to_resource(&self) -> Option<Vec<ResourceInfo>> {
-        None
+    fn map_to_resource(&self) -> Vec<ResourceInfo> {
+        Vec::new()
     }
 
     fn map_result_to_output(self) -> Output {
@@ -494,8 +494,8 @@ impl OperationResult for list_company_and_branch::Result {
         self.is_ok()
     }
 
-    fn map_to_resource(&self) -> Option<Vec<ResourceInfo>> {
-        None
+    fn map_to_resource(&self) -> Vec<ResourceInfo> {
+        Vec::new()
     }
 
     fn map_result_to_output(self) -> Output {
