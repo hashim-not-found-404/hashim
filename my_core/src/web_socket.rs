@@ -298,7 +298,36 @@ where
                                 .await;
                         }
                         CachingStrategy::ReadCacheFirst => todo!(),
-                        CachingStrategy::ReadCacheAndServer => todo!(),
+                        CachingStrategy::ReadCacheAndServer => {
+                            let txn_number = At::Rn::generate();
+
+                            let result = data.run_operation_check(&mut state).await;
+
+                            let _ = sender
+                                .send(Response::Data(Data {
+                                    is_response_from_server: false,
+                                    data: result,
+                                }))
+                                .await;
+
+                            let operations = vec![push_data::Txn {
+                                txn_number,
+                                operation: data,
+                            }];
+
+                            if get(is_online.clone()) {
+                                Self::prepare_txn_and_send_to_network(
+                                    &mut sender_to_network,
+                                    operations,
+                                    &state,
+                                )
+                                .await;
+
+                                pool_of_senders.insert(txn_number, sender);
+                            } else {
+                                let _ = sender.send(Response::ServerCannotBeReached).await;
+                            };
+                        }
                         CachingStrategy::ReadServerFirst => todo!(),
                         CachingStrategy::ReadServerOnly => todo!(),
                         CachingStrategy::WriteCacheOnly => todo!(),

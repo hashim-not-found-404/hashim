@@ -292,16 +292,16 @@ fn CompanyAndBranchSelection() -> Element {
                     div {
                         button {
                             onclick: move |_| {
-                                if *selected_company_id.read() == Some(company.id.clone()) {
+                                if *selected_company_id.read() == Some(company.uuid.clone()) {
                                     selected_company_id.set(None);
                                 } else {
-                                    selected_company_id.set(Some(company.id.clone()));
+                                    selected_company_id.set(Some(company.uuid.clone()));
                                 }
                             },
                             "{company.name}"
                         }
 
-                        if *selected_company_id.read() == Some(company.id.clone()) {
+                        if *selected_company_id.read() == Some(company.uuid.clone()) {
                             button { "Add Branch" }
                             div {
                                 for branch in company.branches {
@@ -309,7 +309,7 @@ fn CompanyAndBranchSelection() -> Element {
                                         onclick: {
                                             let selected_company_branch = state.selected_company_branch.clone();
                                             move |_| {
-                                                selected_company_branch.set(Some(branch.id.clone()));
+                                                selected_company_branch.set(Some(branch.uuid.clone()));
                                             }
                                         },
                                         "{branch.name}"

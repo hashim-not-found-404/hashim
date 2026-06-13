@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use std::result::Result as StdResult;
 
 pub const HOST: &str = "127.0.0.1";
 pub const PORT: u16 = 8081;
@@ -100,6 +101,7 @@ pub mod push_data {
         CreateCompany(create_company::Input),
         CreateCompanyBranch(create_company_branch::Input),
         // read
+        ListCompanyAndBranch(list_company_and_branch::Input),
     }
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -111,6 +113,7 @@ pub mod push_data {
         CreateCompany(create_company::Result),
         CreateCompanyBranch(create_company_branch::Result),
         // read
+        ListCompanyAndBranch(list_company_and_branch::Result),
     }
 }
 
@@ -194,6 +197,27 @@ pub mod create_company {
     pub struct Error {
         pub user_uuid: Option<UserUuidError>,
         pub new_uuid: Option<RowIdError>,
+    }
+
+    pub type Result = StdResult<Ok, Error>;
+}
+
+pub mod list_company_and_branch {
+    use super::*;
+
+    #[derive(Debug, Deserialize, Serialize, Clone)]
+    pub struct Input {
+        pub user_uuid: db_types::UuidType,
+    }
+
+    #[derive(Debug, Deserialize, Serialize, Clone)]
+    pub struct Ok {
+        pub list: db_types::ListOfCompanies,
+    }
+
+    #[derive(Debug, Deserialize, Serialize, Clone, Default, PartialEq)]
+    pub struct Error {
+        pub user_uuid: Option<UserUuidError>,
     }
 
     pub type Result = StdResult<Ok, Error>;

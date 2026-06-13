@@ -478,6 +478,7 @@ where
                         .await?;
                     push_data::OperationsResult::CreateCompanyBranch(result)
                 }
+                push_data::OperationsInput::ListCompanyAndBranch(input) => todo!(),
             };
 
             the_return_result.operations.push(push_data::Txn {

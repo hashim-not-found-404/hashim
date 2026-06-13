@@ -3,7 +3,7 @@ use crate::prelude::*;
 pub(crate) trait Operations: Clone {
     type Ok;
     type Err;
-    fn state_less_check(&self) -> StdResult<Self::Ok, Self::Err> {
+    fn state_less_check(&self) -> Result<Self::Ok, Self::Err> {
         unreachable!("we dont have here state less check")
     }
     async fn state_full_check<Ch: CacheIO>(
@@ -25,6 +25,7 @@ pub enum Input {
     CreateCompany(create_company::Input),
     CreateCompanyBranch(create_company_branch::Input),
     GetUserUuid(GetUserUuidInput),
+    ListCompanyAndBranch(list_company_and_branch::Input),
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -34,6 +35,7 @@ pub enum Output {
     CreateCompany(create_company::Result),
     CreateCompanyBranch(create_company_branch::Result),
     GetUserUuid(GetUserUuidOutput),
+    ListCompanyAndBranch(list_company_and_branch::Result),
 }
 
 impl Input {
@@ -44,6 +46,7 @@ impl Input {
             Input::CreateCompany(i) => i.apply_change(state),
             Input::CreateCompanyBranch(i) => i.apply_change(state),
             Input::GetUserUuid(i) => i.apply_change(state),
+            Input::ListCompanyAndBranch(i) => i.apply_change(state),
         }
     }
 
@@ -57,6 +60,7 @@ impl Input {
             Input::CreateCompany(i) => operation_check_handler(i, state).await,
             Input::CreateCompanyBranch(i) => operation_check_handler(i, state).await,
             Input::GetUserUuid(i) => operation_check_handler(i, state).await,
+            Input::ListCompanyAndBranch(i) => operation_check_handler(i, state).await,
         }
     }
 
@@ -70,6 +74,7 @@ impl Input {
             Input::CreateCompany(i) => operation_check_apply_handler(i, state).await,
             Input::CreateCompanyBranch(i) => operation_check_apply_handler(i, state).await,
             Input::GetUserUuid(i) => operation_check_apply_handler(i, state).await,
+            Input::ListCompanyAndBranch(i) => operation_check_apply_handler(i, state).await,
         }
     }
 
@@ -90,6 +95,9 @@ impl Input {
             Input::GetUserUuid(i) => {
                 operation_check_apply_write_handler(txn_number, i, state).await
             }
+            Input::ListCompanyAndBranch(i) => {
+                operation_check_apply_write_handler(txn_number, i, state).await
+            }
         }
     }
 
@@ -100,6 +108,7 @@ impl Input {
             Input::CreateCompany(i) => Some(&i.user_uuid),
             Input::CreateCompanyBranch(i) => Some(&i.user_uuid),
             Input::GetUserUuid(_) => None,
+            Input::ListCompanyAndBranch(i) => Some(&i.user_uuid),
         }
     }
 
@@ -112,6 +121,9 @@ impl Input {
                 push_data::OperationsInput::CreateCompanyBranch(i.clone())
             }
             Input::GetUserUuid(_) => unreachable!(),
+            Input::ListCompanyAndBranch(i) => {
+                push_data::OperationsInput::ListCompanyAndBranch(i.clone())
+            }
         }
     }
 }
@@ -124,6 +136,9 @@ impl push_data::OperationsResult {
             push_data::OperationsResult::CreateCompany(i) => Output::CreateCompany(i.clone()),
             push_data::OperationsResult::CreateCompanyBranch(i) => {
                 Output::CreateCompanyBranch(i.clone())
+            }
+            push_data::OperationsResult::ListCompanyAndBranch(i) => {
+                Output::ListCompanyAndBranch(i.clone())
             }
         }
     }
@@ -296,7 +311,7 @@ impl Operations for create_company::Input {
     async fn state_full_check<Ch: CacheIO>(
         &self,
         state: &cache::State<Ch>,
-    ) -> StdResult<Self::Ok, Self::Err> {
+    ) -> Result<Self::Ok, Self::Err> {
         Ok(create_company::Ok)
     }
 
@@ -342,7 +357,7 @@ impl Operations for create_company_branch::Input {
     async fn state_full_check<Ch: CacheIO>(
         &self,
         state: &cache::State<Ch>,
-    ) -> StdResult<Self::Ok, Self::Err> {
+    ) -> Result<Self::Ok, Self::Err> {
         todo!()
     }
 
@@ -371,7 +386,7 @@ pub struct GetUserUuidInput {
     pub user_id: String,
 }
 
-pub type GetUserUuidOutput = StdResult<db_types::UuidType, ()>;
+pub type GetUserUuidOutput = Result<db_types::UuidType, ()>;
 
 impl Operations for GetUserUuidInput {
     type Ok = db_types::UuidType;
@@ -380,7 +395,7 @@ impl Operations for GetUserUuidInput {
     async fn state_full_check<Ch: CacheIO>(
         &self,
         state: &cache::State<Ch>,
-    ) -> StdResult<Self::Ok, Self::Err> {
+    ) -> Result<Self::Ok, Self::Err> {
         for (rowid, user) in &state.state_of_pending_txn.user {
             if user.id == self.user_id {
                 return Ok(rowid.clone());
@@ -404,6 +419,50 @@ impl Operations for GetUserUuidInput {
 
     fn unwrap(result: Output) -> Result<Self::Ok, Self::Err> {
         if let Output::GetUserUuid(a) = result {
+            return a;
+        }
+        unreachable!("{:?}", result)
+    }
+}
+
+impl Operations for list_company_and_branch::Input {
+    type Ok = list_company_and_branch::Ok;
+    type Err = list_company_and_branch::Error;
+
+    async fn state_full_check<Ch: CacheIO>(
+        &self,
+        state: &cache::State<Ch>,
+    ) -> Result<Self::Ok, Self::Err> {
+        let mut list_of_companies = db_types::ListOfCompanies::new();
+        for (rowid, row) in &state.state_of_pending_txn.access_control_for_company {
+            if row.user_ == self.user_uuid {
+                let company_uuid = state.state_of_pending_txn.company.get(&row.data_group);
+
+                list_of_companies.push(db_types::Company {
+                    uuid: row.data_group.clone(),
+                    name: company_uuid.unwrap().name.clone(),
+                    role: row.role.clone(),
+                    branches: Vec::new(),
+                });
+            }
+        }
+
+        // TODO make it read also from cache
+        Ok(Self::Ok {
+            list: list_of_companies,
+        })
+    }
+
+    fn map_input(self) -> Input {
+        Input::ListCompanyAndBranch(self)
+    }
+
+    fn map_result(result: Result<Self::Ok, Self::Err>) -> Output {
+        Output::ListCompanyAndBranch(result)
+    }
+
+    fn unwrap(result: Output) -> Result<Self::Ok, Self::Err> {
+        if let Output::ListCompanyAndBranch(a) = result {
             return a;
         }
         unreachable!("{:?}", result)

@@ -16,7 +16,7 @@ pub trait AllSignalTypes: Default {
     type StringVec: HashimSignal<String>;
     type Currency: HashimSignal<db_types::Currency>;
     type Location: HashimSignal<db_types::Location>;
-    type CompanyAndBranchList: HashimSignal<Vec<Company>>;
+    type CompanyAndBranchList: HashimSignal<Vec<db_types::Company>>;
 }
 
 pub struct State<
@@ -354,7 +354,24 @@ impl<
     }
 
     pub fn list_company_and_branch(self, local_state: As::CompanyAndBranchList) {
-        At::Rt::spawn_local(async move { todo!() });
+        At::Rt::spawn_local(async move {
+            let data = self.is_signed_in.read().unwrap();
+            let mut receiver_to_response = self
+                .routs
+                .send_to_cache_actor(
+                    web_socket::CachingStrategy::ReadCacheAndServer,
+                    list_company_and_branch::Input { user_uuid: data }.map_input(),
+                )
+                .await;
+
+            loop {
+                let r = match receiver_to_response.recv().await.unwrap() {
+                    web_socket::Response::CloseTheChannel => break,
+                    web_socket::Response::ServerCannotBeReached => todo!(),
+                    web_socket::Response::Data(data) => data.data,
+                };
+            }
+        });
     }
 
     pub fn create_company(self, local_state: CreateCompanyState<As>) {
@@ -435,19 +452,6 @@ pub struct CreateCompanyBranchState<As: AllSignalTypes> {
     pub currency: As::Currency,
     pub branch_name: As::String,
     pub location: As::Location,
-}
-
-#[derive(Clone)]
-pub struct Company {
-    pub id: db_types::UuidType,
-    pub name: String,
-    pub branches: Vec<Branch>,
-}
-
-#[derive(Clone)]
-pub struct Branch {
-    pub id: db_types::UuidType,
-    pub name: String,
 }
 
 fn is_proceed(

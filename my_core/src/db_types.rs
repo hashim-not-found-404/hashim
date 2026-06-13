@@ -3,6 +3,22 @@ use crate::prelude::*;
 #[derive(PartialEq, Clone, Hash, Eq, Debug, Deserialize, Serialize)]
 pub struct UuidType(pub String);
 
+pub type ListOfCompanies = Vec<db_types::Company>;
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct Company {
+    pub uuid: db_types::UuidType,
+    pub name: String,
+    pub role: db_types::Role,
+    pub branches: Vec<Branch>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct Branch {
+    pub uuid: db_types::UuidType,
+    pub name: String,
+}
+
 #[derive(Debug, Deserialize, Serialize, Clone, Default)]
 pub struct Location {
     latitude: f64,
@@ -25,7 +41,7 @@ pub enum Currency {
 impl FromStr for Currency {
     type Err = DynamicError;
 
-    fn from_str(s: &str) -> StdResult<Self, Self::Err> {
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "USD" => Ok(Currency::USD),
             "IQD" => Ok(Currency::IQD),

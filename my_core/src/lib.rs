@@ -33,7 +33,6 @@ pub mod prelude {
         future::Future,
         hash::Hash,
         marker::PhantomData,
-        result::Result as StdResult,
         str::FromStr,
         sync::{Arc, Mutex, RwLock},
         time::{Duration, SystemTime, UNIX_EPOCH},

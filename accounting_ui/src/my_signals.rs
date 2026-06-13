@@ -11,6 +11,6 @@ pub mod m {
         type StringVec = my_signal::m::S<String>;
         type Currency = my_signal::m::S<db_types::Currency>;
         type Location = my_signal::m::S<db_types::Location>;
-        type CompanyAndBranchList = my_signal::m::S<Vec<front_end_model_view::Company>>;
+        type CompanyAndBranchList = my_signal::m::S<db_types::ListOfCompanies>;
     }
 }
