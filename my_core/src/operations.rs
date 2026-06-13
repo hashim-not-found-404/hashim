@@ -1,7 +1,7 @@
 use crate::prelude::*;
 
 pub(crate) trait Operations: Clone {
-    type Result: UiResult;
+    type Result: OperationResult;
     fn state_less_check(&self) -> Self::Result {
         unreachable!("we dont have here state less check")
     }
@@ -12,14 +12,9 @@ pub(crate) trait Operations: Clone {
     fn map_input(self) -> Input;
 }
 
-pub(crate) trait ServerResult {
-    type Result: UiResult;
-    fn map_to_resource(&self) -> Option<Vec<ResourceInfo>>;
-    fn map_to_ui_result(&self) -> Self::Result;
-}
-
-pub(crate) trait UiResult {
+pub(crate) trait OperationResult {
     fn is_ok(&self) -> bool;
+    fn map_to_resource(&self) -> Option<Vec<ResourceInfo>>;
     fn map_result_to_output(self) -> Output;
     fn map_output_to_result(result: Output) -> Self;
 }
@@ -35,8 +30,8 @@ pub enum Input {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub enum Output {
-    SignUp(SignUpResult),
-    SignIn(SignInResult),
+    SignUp(sign_up::Result),
+    SignIn(sign_in::Result),
     CreateCompany(create_company::Result),
     CreateCompanyBranch(create_company_branch::Result),
     ListCompanyAndBranch(list_company_and_branch::Result),
@@ -127,8 +122,8 @@ impl Input {
 impl push_data::OperationsResult {
     pub(crate) fn map_to_client_output_type(&self) -> Output {
         match self {
-            push_data::OperationsResult::SignUp(i) => Output::SignUp(i.map_to_ui_result()),
-            push_data::OperationsResult::SignIn(i) => Output::SignIn(i.map_to_ui_result()),
+            push_data::OperationsResult::SignUp(i) => Output::SignUp(i.clone()),
+            push_data::OperationsResult::SignIn(i) => Output::SignIn(i.clone()),
             push_data::OperationsResult::CreateCompany(i) => Output::CreateCompany(i.clone()),
             push_data::OperationsResult::CreateCompanyBranch(i) => {
                 Output::CreateCompanyBranch(i.clone())
@@ -143,9 +138,9 @@ impl push_data::OperationsResult {
         match self {
             push_data::OperationsResult::SignUp(i) => i.map_to_resource(),
             push_data::OperationsResult::SignIn(i) => i.map_to_resource(),
-            push_data::OperationsResult::CreateCompany(i) => None,
-            push_data::OperationsResult::CreateCompanyBranch(i) => None,
-            push_data::OperationsResult::ListCompanyAndBranch(i) => None,
+            push_data::OperationsResult::CreateCompany(i) => i.map_to_resource(),
+            push_data::OperationsResult::CreateCompanyBranch(i) => i.map_to_resource(),
+            push_data::OperationsResult::ListCompanyAndBranch(i) => i.map_to_resource(),
         }
     }
 }
@@ -190,10 +185,8 @@ async fn operation_check_apply_write_handler<T: Operations, Ch: CacheIO>(
 
 // all imples down
 
-pub type SignUpResult = Result<(), sign_up::Error>;
-
 impl Operations for sign_up::Input {
-    type Result = SignUpResult;
+    type Result = sign_up::Result;
 
     async fn state_full_check<Ch: CacheIO>(&self, state: &cache::State<Ch>) -> Self::Result {
         let (mut is_new_uuid_exist, mut is_user_id_exist) = state
@@ -227,7 +220,12 @@ impl Operations for sign_up::Input {
             return Err(err);
         }
 
-        return Ok(());
+        return Ok(sign_up::Ok {
+            user_uuid: self.new_uuid.clone(),
+            jwt: String::new(),
+            user_id: self.user_id.clone(),
+            user_name: self.name.clone(),
+        });
     }
 
     fn apply_change(&self, state: &mut cache::StateOfPendingTxn) {
@@ -246,8 +244,10 @@ impl Operations for sign_up::Input {
     }
 }
 
-impl ServerResult for sign_up::Result {
-    type Result = SignUpResult;
+impl OperationResult for sign_up::Result {
+    fn is_ok(&self) -> bool {
+        self.is_ok()
+    }
 
     fn map_to_resource(&self) -> Option<Vec<ResourceInfo>> {
         match self {
@@ -276,19 +276,6 @@ impl ServerResult for sign_up::Result {
         }
     }
 
-    fn map_to_ui_result(&self) -> Self::Result {
-        match self {
-            Ok(ok) => Ok(()),
-            Err(err) => Err(err.clone()),
-        }
-    }
-}
-
-impl UiResult for SignUpResult {
-    fn is_ok(&self) -> bool {
-        self.is_ok()
-    }
-
     fn map_result_to_output(self) -> Output {
         Output::SignUp(self)
     }
@@ -304,7 +291,7 @@ impl UiResult for SignUpResult {
 pub type SignInResult = Result<db_types::UuidType, sign_in::Error>;
 
 impl Operations for sign_in::Input {
-    type Result = SignInResult;
+    type Result = sign_in::Result;
 
     async fn state_full_check<Ch: CacheIO>(&self, state: &cache::State<Ch>) -> Self::Result {
         let mut password = None;
@@ -319,22 +306,22 @@ impl Operations for sign_in::Input {
 
         todo!("you need also to lookup from cache for jwt if exist");
 
-        match password {
-            Some(password) => {
-                if password == self.password {
-                    return Ok(user_uuid.unwrap().clone());
-                } else {
-                    return Err(sign_in::Error {
-                        user_id: None,
-                        password: Some(sign_in::PasswordError::WrongPassword),
-                    });
-                }
-            }
-            None => Err(sign_in::Error {
-                user_id: Some(sign_in::UserIdError::NotExist),
-                password: None,
-            }),
-        }
+        // match password {
+        //     Some(password) => {
+        //         if password == self.password {
+        //             return Ok(user_uuid.unwrap().clone());
+        //         } else {
+        //             return Err(sign_in::Error {
+        //                 user_id: None,
+        //                 password: Some(sign_in::PasswordError::WrongPassword),
+        //             });
+        //         }
+        //     }
+        //     None => Err(sign_in::Error {
+        //         user_id: Some(sign_in::UserIdError::NotExist),
+        //         password: None,
+        //     }),
+        // }
     }
 
     fn apply_change(&self, state: &mut cache::StateOfPendingTxn) {}
@@ -344,8 +331,10 @@ impl Operations for sign_in::Input {
     }
 }
 
-impl ServerResult for sign_in::Result {
-    type Result = SignInResult;
+impl OperationResult for sign_in::Result {
+    fn is_ok(&self) -> bool {
+        self.is_ok()
+    }
 
     fn map_to_resource(&self) -> Option<Vec<ResourceInfo>> {
         match self {
@@ -368,19 +357,6 @@ impl ServerResult for sign_in::Result {
             }
             Err(_) => None,
         }
-    }
-
-    fn map_to_ui_result(&self) -> Result<db_types::UuidType, sign_in::Error> {
-        match self {
-            Ok(ok) => Ok(ok.user_uuid.clone()),
-            Err(err) => Err(err.clone()),
-        }
-    }
-}
-
-impl UiResult for SignInResult {
-    fn is_ok(&self) -> bool {
-        self.is_ok()
     }
 
     fn map_result_to_output(self) -> Output {
@@ -426,9 +402,13 @@ impl Operations for create_company::Input {
     }
 }
 
-impl UiResult for create_company::Result {
+impl OperationResult for create_company::Result {
     fn is_ok(&self) -> bool {
         self.is_ok()
+    }
+
+    fn map_to_resource(&self) -> Option<Vec<ResourceInfo>> {
+        None
     }
 
     fn map_result_to_output(self) -> Output {
@@ -459,9 +439,13 @@ impl Operations for create_company_branch::Input {
     }
 }
 
-impl UiResult for create_company_branch::Result {
+impl OperationResult for create_company_branch::Result {
     fn is_ok(&self) -> bool {
         self.is_ok()
+    }
+
+    fn map_to_resource(&self) -> Option<Vec<ResourceInfo>> {
+        None
     }
 
     fn map_result_to_output(self) -> Output {
@@ -505,9 +489,13 @@ impl Operations for list_company_and_branch::Input {
     }
 }
 
-impl UiResult for list_company_and_branch::Result {
+impl OperationResult for list_company_and_branch::Result {
     fn is_ok(&self) -> bool {
         self.is_ok()
+    }
+
+    fn map_to_resource(&self) -> Option<Vec<ResourceInfo>> {
+        None
     }
 
     fn map_result_to_output(self) -> Output {

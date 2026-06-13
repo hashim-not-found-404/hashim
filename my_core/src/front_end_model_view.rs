@@ -185,7 +185,7 @@ impl<
                 };
 
                 if let Some(response) = response.clone() {
-                    let result = SignUpResult::map_output_to_result(response.data);
+                    let result = sign_up::Result::map_output_to_result(response.data);
 
                     let is_ok = result.is_ok();
                     match result {
@@ -283,12 +283,12 @@ impl<
                 };
 
                 if let Some(response) = response.clone() {
-                    let result = operations::SignInResult::map_output_to_result(response.data);
+                    let result = sign_in::Result::map_output_to_result(response.data);
 
                     let is_ok = result.is_ok();
                     match result {
                         Ok(ok) => {
-                            self.is_signed_in.set(Some(ok));
+                            self.is_signed_in.set(Some(ok.user_uuid));
                         }
                         Err(business_error) => {
                             local_state.user_id_error.set(match business_error.user_id {
