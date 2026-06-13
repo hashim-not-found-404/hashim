@@ -140,18 +140,22 @@ impl CacheIO for S {
             .unwrap()
     }
 
-    async fn read_get_user_uuid(&self, user_id: &String) -> Option<db_types::UuidType> {
-        let query = "SELECT rowid FROM user WHERE id = ?1;";
+    async fn read_sign_in(
+        &self,
+        user_id: &String,
+    ) -> Option<(db_types::UuidType, bool /* does he have jwt */)> {
+        todo!();
+        // let query = "SELECT rowid FROM user WHERE id = ?1;";
 
-        let user_uuid = self
-            .db
-            .query_row(query, params![user_id], |row| {
-                Ok(row.get::<_, String>(0).unwrap())
-            })
-            .optional()
-            .unwrap();
+        // let user_uuid = self
+        //     .db
+        //     .query_row(query, params![user_id], |row| {
+        //         Ok(row.get::<_, String>(0).unwrap())
+        //     })
+        //     .optional()
+        //     .unwrap();
 
-        user_uuid.map(db_types::UuidType)
+        // user_uuid.map(db_types::UuidType)
     }
 }
 

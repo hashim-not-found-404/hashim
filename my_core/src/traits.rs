@@ -223,10 +223,10 @@ pub trait CacheIO: Sized {
             bool, /* is user_id exist */
         ),
     >;
-    fn read_get_user_uuid(
+    fn read_sign_in(
         &self,
         user_id: &String,
-    ) -> impl Future<Output = Option<db_types::UuidType>>;
+    ) -> impl Future<Output = Option<(db_types::UuidType, bool /* does he have jwt */)>>;
 }
 
 pub trait AllClientTypes {
