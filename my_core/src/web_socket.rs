@@ -256,6 +256,10 @@ where
                             messages::FromServer::PushData(results) => {
                                 for txn in results.operations {
                                     let data = txn.operation.map_to_client_output_type();
+                                    state
+                                        .cache
+                                        .write_resource(&txn.operation.extract_resource())
+                                        .await;
 
                                     let txn = push_data::Txn {
                                         txn_number: txn.txn_number,
