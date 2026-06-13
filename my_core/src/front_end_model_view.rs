@@ -96,12 +96,18 @@ impl<
         });
     }
 
-    fn timeout_dialog_actor(
-        routs: Arc<web_socket::MyWAMP<At, Mpsc>>,
+    fn consent_receiver_and_dialog_actors(
         is_submit: bool,
+        routs: Arc<web_socket::MyWAMP<At, Mpsc>>,
         show_dialog: As::Dialog,
-    ) -> <<At as AllClientTypes>::Rt as Runtime>::JoinHandel<()> {
-        At::Rt::abortable_spawn_local(async move {
+        sender_to_consent_from_dialog: ConsentSender,
+        is_user_want_to_proceed: Arc<Mutex<bool>>,
+        mut sender: <Mpsc as MultiProducerSingleConsumer>::Sender<()>,
+    ) -> (
+        Arc<Mutex<<<At as AllClientTypes>::Rt as Runtime>::JoinHandel<()>>>,
+        <<At as AllClientTypes>::Rt as Runtime>::JoinHandel<()>,
+    ) {
+        let handel_dialog = Arc::new(Mutex::new(At::Rt::abortable_spawn_local(async move {
             if is_submit {
                 loop {
                     if routs.is_online() {
@@ -113,7 +119,50 @@ impl<
                     show_dialog.set(Dialog::Show);
                 }
             }
-        })
+        })));
+
+        let handel_dialog1 = handel_dialog.clone();
+
+        let handel_consent = At::Rt::abortable_spawn_local(async move {
+            let (sender_to_consent, mut receiver_to_consent) = Mpsc::channel();
+            sender_to_consent_from_dialog.set(Some(sender_to_consent));
+            receiver_to_consent.recv().await.unwrap();
+
+            *is_user_want_to_proceed.lock().unwrap() = true;
+            handel_dialog.lock().unwrap().abort().await;
+            sender.send(()).await.unwrap();
+        });
+
+        (handel_dialog1, handel_consent)
+    }
+
+    fn response_receiver_actor(
+        show_dialog: As::Dialog,
+        input: operations::Input,
+        strategy: web_socket::CachingStrategy,
+        mut sender: <Mpsc as MultiProducerSingleConsumer>::Sender<()>,
+        response: Arc<Mutex<Option<web_socket::Data>>>,
+        routs: Arc<web_socket::MyWAMP<At, Mpsc>>,
+    ) -> <<At as AllClientTypes>::Rt as Runtime>::JoinHandel<()> {
+        let handel_response = At::Rt::abortable_spawn_local(async move {
+            let mut receiver_to_response = routs.send_to_cache_actor(strategy, input).await;
+
+            loop {
+                let result = receiver_to_response.recv().await.unwrap();
+                match result {
+                    web_socket::Response::CloseTheChannel => break,
+                    web_socket::Response::ServerCannotBeReached => {
+                        show_dialog.set(Dialog::Show);
+                        break;
+                    }
+                    web_socket::Response::Data(data) => {
+                        *response.lock().unwrap() = Some(data);
+                        sender.send(()).await.unwrap();
+                    }
+                }
+            }
+        });
+        handel_response
     }
 
     pub fn sign_up(
@@ -153,58 +202,30 @@ impl<
                 web_socket::CachingStrategy::ReadCacheOnly
             };
 
-            let handel_dialog = Arc::new(Mutex::new(Self::timeout_dialog_actor(
-                self.routs.clone(),
-                is_submit,
-                local_state.show_dialog.clone(),
-            )));
-
-            let (mut sender, mut receiver) = Mpsc::channel();
-
+            let (sender, mut receiver) = Mpsc::channel();
             let is_user_want_to_proceed = Arc::new(Mutex::new(false));
-
-            let is_user_want_to_proceed1 = is_user_want_to_proceed.clone();
-            let handel_dialog1 = handel_dialog.clone();
-            let mut sender1 = sender.clone();
-
-            let mut handel_consent = At::Rt::abortable_spawn_local(async move {
-                let (sender_to_consent, mut receiver_to_consent) = Mpsc::channel();
-                sender_to_consent_from_dialog.set(Some(sender_to_consent));
-                receiver_to_consent.recv().await.unwrap();
-
-                *is_user_want_to_proceed1.lock().unwrap() = true;
-                handel_dialog1.lock().unwrap().abort().await;
-                sender1.send(()).await.unwrap();
-            });
-
             let response = Arc::new(Mutex::new(None));
 
-            let response1 = response.clone();
-            let a = self.routs.clone();
-            let mut handel_response = At::Rt::abortable_spawn_local(async move {
-                let mut receiver_to_response = a
-                    .send_to_cache_actor(strategy, input.clone().map_input())
-                    .await;
+            let (handel_dialog, mut handel_consent) = Self::consent_receiver_and_dialog_actors(
+                is_submit,
+                self.routs.clone(),
+                local_state.show_dialog.clone(),
+                sender_to_consent_from_dialog,
+                is_user_want_to_proceed.clone(),
+                sender.clone(),
+            );
 
-                loop {
-                    let result = receiver_to_response.recv().await.unwrap();
-                    match result {
-                        web_socket::Response::CloseTheChannel => break,
-                        web_socket::Response::ServerCannotBeReached => {
-                            local_state.show_dialog.set(Dialog::Show);
-                            break;
-                        }
-                        web_socket::Response::Data(data) => {
-                            *response1.lock().unwrap() = Some(data);
-                            sender.send(()).await.unwrap();
-                        }
-                    }
-                }
-            });
+            let mut handel_response = Self::response_receiver_actor(
+                local_state.show_dialog,
+                input.map_input(),
+                strategy,
+                sender,
+                response.clone(),
+                self.routs.clone(),
+            );
 
             loop {
                 if receiver.recv().await.is_err() {
-                    mbg!("break");
                     break;
                 }
 
@@ -282,59 +303,31 @@ impl<
                 web_socket::CachingStrategy::ReadCacheOnly
             };
 
-            let handel_dialog = Arc::new(Mutex::new(Self::timeout_dialog_actor(
-                self.routs.clone(),
-                is_submit,
-                local_state.show_dialog.clone(),
-            )));
-
-            let (mut sender, mut receiver) = Mpsc::channel();
-
+            let (sender, mut receiver) = Mpsc::channel();
             let is_user_want_to_proceed = Arc::new(Mutex::new(false));
-
-            let is_user_want_to_proceed1 = is_user_want_to_proceed.clone();
-            let handel_dialog1 = handel_dialog.clone();
-            let mut sender1 = sender.clone();
-
-            let mut handel_consent = At::Rt::abortable_spawn_local(async move {
-                let (sender_to_consent, mut receiver_to_consent) = Mpsc::channel();
-                sender_to_consent_from_dialog.set(Some(sender_to_consent));
-                receiver_to_consent.recv().await.unwrap();
-
-                *is_user_want_to_proceed1.lock().unwrap() = true;
-                handel_dialog1.lock().unwrap().abort().await;
-                sender1.send(()).await.unwrap();
-            });
-
             let response = Arc::new(Mutex::new(None));
 
-            let response1 = response.clone();
-            let a = self.routs.clone();
-            let mut handel_response = At::Rt::abortable_spawn_local(async move {
-                let mut receiver_to_response = a
-                    .send_to_cache_actor(strategy, input.clone().map_input())
-                    .await;
+            let (handel_dialog, mut handel_consent) = Self::consent_receiver_and_dialog_actors(
+                is_submit,
+                self.routs.clone(),
+                local_state.show_dialog.clone(),
+                sender_to_consent_from_dialog,
+                is_user_want_to_proceed.clone(),
+                sender.clone(),
+            );
 
-                loop {
-                    let result = receiver_to_response.recv().await.unwrap();
-                    match result {
-                        web_socket::Response::CloseTheChannel => break,
-                        web_socket::Response::ServerCannotBeReached => {
-                            local_state.show_dialog.set(Dialog::Show);
-                            break;
-                        }
-                        web_socket::Response::Data(data) => {
-                            *response1.lock().unwrap() = Some(data);
-                            sender.send(()).await.unwrap();
-                        }
-                    }
-                }
-            });
+            let mut handel_response = Self::response_receiver_actor(
+                local_state.show_dialog,
+                input.map_input(),
+                strategy,
+                sender,
+                response.clone(),
+                self.routs.clone(),
+            );
 
             let mut user_uuid = None;
             loop {
                 if receiver.recv().await.is_err() {
-                    mbg!("break");
                     break;
                 }
 
