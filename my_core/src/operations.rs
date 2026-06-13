@@ -119,6 +119,28 @@ impl Input {
     }
 }
 
+impl Output {
+    pub(crate) fn extract_resource(&self) -> Vec<ResourceInfo> {
+        match self {
+            Output::SignUp(i) => i.map_to_resource(),
+            Output::SignIn(i) => i.map_to_resource(),
+            Output::CreateCompany(i) => i.map_to_resource(),
+            Output::CreateCompanyBranch(i) => i.map_to_resource(),
+            Output::ListCompanyAndBranch(i) => i.map_to_resource(),
+        }
+    }
+
+    pub(crate) fn is_ok(&self) -> bool {
+        match self {
+            Output::SignUp(i) => i.is_ok(),
+            Output::SignIn(i) => i.is_ok(),
+            Output::CreateCompany(i) => i.is_ok(),
+            Output::CreateCompanyBranch(i) => i.is_ok(),
+            Output::ListCompanyAndBranch(i) => i.is_ok(),
+        }
+    }
+}
+
 impl push_data::OperationsResult {
     pub(crate) fn map_to_client_output_type(&self) -> Output {
         match self {
@@ -131,16 +153,6 @@ impl push_data::OperationsResult {
             push_data::OperationsResult::ListCompanyAndBranch(i) => {
                 Output::ListCompanyAndBranch(i.clone())
             }
-        }
-    }
-
-    pub(crate) fn extract_resource(&self) -> Vec<ResourceInfo> {
-        match self {
-            push_data::OperationsResult::SignUp(i) => i.map_to_resource(),
-            push_data::OperationsResult::SignIn(i) => i.map_to_resource(),
-            push_data::OperationsResult::CreateCompany(i) => i.map_to_resource(),
-            push_data::OperationsResult::CreateCompanyBranch(i) => i.map_to_resource(),
-            push_data::OperationsResult::ListCompanyAndBranch(i) => i.map_to_resource(),
         }
     }
 }

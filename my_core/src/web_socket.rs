@@ -256,18 +256,18 @@ where
                             messages::FromServer::PushData(results) => {
                                 for txn in results.operations {
                                     let data = txn.operation.map_to_client_output_type();
-                                    state
-                                        .cache
-                                        .write_resource(&txn.operation.extract_resource())
-                                        .await;
+                                    state.cache.write_resource(&data.extract_resource()).await;
 
                                     let txn = push_data::Txn {
                                         txn_number: txn.txn_number,
                                         operation: data.clone(),
                                     };
 
-                                    state.cache.delete_txn_input(&txn.txn_number).await;
-                                    state.cache.write_txn_result(&txn).await;
+                                    if data.is_ok() {
+                                        state.cache.delete_txn_input(&txn.txn_number).await;
+                                    } else {
+                                        state.cache.write_txn_result(&txn).await;
+                                    }
 
                                     let sender = pool_of_senders.remove(&txn.txn_number);
                                     if let Some(mut sender) = sender {
