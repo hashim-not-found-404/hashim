@@ -23,7 +23,7 @@ pub struct State<
     As: AllSignalTypes + 'static,
     At: AllClientTypes + 'static,
     Mpsc: MultiProducerSingleConsumer + 'static,
-    ConsentSender: HashimSignal<Option<Mpsc::Sender<ProceedState>>> + 'static,
+    ConsentSender: HashimSignal<Option<Mpsc::Sender<IsProceed>>> + 'static,
 > {
     _ph: PhantomData<ConsentSender>,
     // here for the app logic
@@ -39,7 +39,7 @@ impl<
     As: AllSignalTypes,
     At: AllClientTypes + 'static,
     Mpsc: MultiProducerSingleConsumer + 'static,
-    ConsentSender: HashimSignal<Option<Mpsc::Sender<ProceedState>>> + 'static,
+    ConsentSender: HashimSignal<Option<Mpsc::Sender<IsProceed>>> + 'static,
 > Clone for State<As, At, Mpsc, ConsentSender>
 {
     fn clone(&self) -> Self {
@@ -57,7 +57,7 @@ impl<
     As: AllSignalTypes,
     At: AllClientTypes + 'static,
     Mpsc: MultiProducerSingleConsumer + 'static,
-    ConsentSender: HashimSignal<Option<Mpsc::Sender<ProceedState>>> + 'static,
+    ConsentSender: HashimSignal<Option<Mpsc::Sender<IsProceed>>> + 'static,
 > State<As, At, Mpsc, ConsentSender>
 {
     pub fn new() -> Self {
@@ -98,7 +98,7 @@ impl<
 
     fn consent_receiver_and_dialog_actors(
         sender_to_consent_from_dialog: ConsentSender,
-        is_user_want_to_proceed: Arc<Mutex<ProceedState>>,
+        is_user_want_to_proceed: Arc<Mutex<IsProceed>>,
         mut sender: Mpsc::Sender<MessageToCoordinator>,
     ) -> <At::Rt as Runtime>::JoinHandel<()> {
         At::Rt::abortable_spawn_local(async move {
@@ -178,7 +178,7 @@ impl<
             };
 
             let (sender, mut receiver) = Mpsc::channel();
-            let is_user_want_to_proceed = Arc::new(Mutex::new(ProceedState::Wait));
+            let is_user_want_to_proceed = Arc::new(Mutex::new(IsProceed::Wait));
             let response = Arc::new(Mutex::new(None));
 
             let mut handel_consent = Self::consent_receiver_and_dialog_actors(
@@ -227,16 +227,16 @@ impl<
                             response.is_response_from_server,
                             *is_user_want_to_proceed.lock().unwrap(),
                         ) {
-                            ProceedState::Proceed => {
+                            IsProceed::Yes => {
                                 self.is_signed_in.set(Some(new_uuid));
                                 local_state.show_dialog.reset();
                                 break;
                             }
-                            ProceedState::Never => {
+                            IsProceed::No => {
                                 local_state.show_dialog.reset();
                                 break;
                             }
-                            ProceedState::Wait => {
+                            IsProceed::Wait => {
                                 local_state.show_dialog.set(Dialog::Show);
                                 continue;
                             }
@@ -283,7 +283,7 @@ impl<
             };
 
             let (sender, mut receiver) = Mpsc::channel();
-            let is_user_want_to_proceed = Arc::new(Mutex::new(ProceedState::Wait));
+            let is_user_want_to_proceed = Arc::new(Mutex::new(IsProceed::Wait));
             let response = Arc::new(Mutex::new(None));
 
             let mut handel_consent = Self::consent_receiver_and_dialog_actors(
@@ -337,16 +337,16 @@ impl<
                             response.is_response_from_server,
                             *is_user_want_to_proceed.lock().unwrap(),
                         ) {
-                            ProceedState::Proceed => {
+                            IsProceed::Yes => {
                                 self.is_signed_in.set(user_uuid);
                                 local_state.show_dialog.reset();
                                 break;
                             }
-                            ProceedState::Never => {
+                            IsProceed::No => {
                                 local_state.show_dialog.reset();
                                 break;
                             }
-                            ProceedState::Wait => {
+                            IsProceed::Wait => {
                                 local_state.show_dialog.set(Dialog::Show);
                                 continue;
                             }
@@ -470,9 +470,9 @@ enum MessageToCoordinator {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub enum ProceedState {
-    Proceed,
-    Never,
+pub enum IsProceed {
+    Yes,
+    No,
     Wait,
 }
 
@@ -480,37 +480,37 @@ fn is_proceed(
     is_ok: bool,
     is_online: bool,
     is_response_from_server: bool,
-    is_user_want_to_proceed: ProceedState,
-) -> ProceedState {
+    is_user_want_to_proceed: IsProceed,
+) -> IsProceed {
     match (
         is_ok,
         is_online,
         is_response_from_server,
         is_user_want_to_proceed,
     ) {
-        (true, true, true, ProceedState::Proceed) => ProceedState::Proceed,
-        (true, true, true, ProceedState::Never) => ProceedState::Proceed,
-        (true, true, true, ProceedState::Wait) => ProceedState::Proceed,
-        (true, true, false, ProceedState::Proceed) => ProceedState::Proceed,
-        (true, true, false, ProceedState::Never) => ProceedState::Never,
-        (true, true, false, ProceedState::Wait) => ProceedState::Wait,
-        (true, false, true, ProceedState::Proceed) => ProceedState::Proceed,
-        (true, false, true, ProceedState::Never) => ProceedState::Proceed,
-        (true, false, true, ProceedState::Wait) => ProceedState::Proceed,
-        (true, false, false, ProceedState::Proceed) => ProceedState::Proceed,
-        (true, false, false, ProceedState::Never) => ProceedState::Never,
-        (true, false, false, ProceedState::Wait) => ProceedState::Wait,
-        (false, true, true, ProceedState::Proceed) => ProceedState::Never,
-        (false, true, true, ProceedState::Never) => ProceedState::Never,
-        (false, true, true, ProceedState::Wait) => ProceedState::Never,
-        (false, true, false, ProceedState::Proceed) => ProceedState::Proceed,
-        (false, true, false, ProceedState::Never) => ProceedState::Never,
-        (false, true, false, ProceedState::Wait) => ProceedState::Wait,
-        (false, false, true, ProceedState::Proceed) => ProceedState::Never,
-        (false, false, true, ProceedState::Never) => ProceedState::Never,
-        (false, false, true, ProceedState::Wait) => ProceedState::Never,
-        (false, false, false, ProceedState::Proceed) => ProceedState::Proceed,
-        (false, false, false, ProceedState::Never) => ProceedState::Never,
-        (false, false, false, ProceedState::Wait) => ProceedState::Wait,
+        (true, true, true, IsProceed::Yes) => IsProceed::Yes,
+        (true, true, true, IsProceed::No) => IsProceed::Yes,
+        (true, true, true, IsProceed::Wait) => IsProceed::Yes,
+        (true, true, false, IsProceed::Yes) => IsProceed::Yes,
+        (true, true, false, IsProceed::No) => IsProceed::No,
+        (true, true, false, IsProceed::Wait) => IsProceed::Wait,
+        (true, false, true, IsProceed::Yes) => IsProceed::Yes,
+        (true, false, true, IsProceed::No) => IsProceed::Yes,
+        (true, false, true, IsProceed::Wait) => IsProceed::Yes,
+        (true, false, false, IsProceed::Yes) => IsProceed::Yes,
+        (true, false, false, IsProceed::No) => IsProceed::No,
+        (true, false, false, IsProceed::Wait) => IsProceed::Wait,
+        (false, true, true, IsProceed::Yes) => IsProceed::No,
+        (false, true, true, IsProceed::No) => IsProceed::No,
+        (false, true, true, IsProceed::Wait) => IsProceed::No,
+        (false, true, false, IsProceed::Yes) => IsProceed::Yes,
+        (false, true, false, IsProceed::No) => IsProceed::No,
+        (false, true, false, IsProceed::Wait) => IsProceed::Wait,
+        (false, false, true, IsProceed::Yes) => IsProceed::No,
+        (false, false, true, IsProceed::No) => IsProceed::No,
+        (false, false, true, IsProceed::Wait) => IsProceed::No,
+        (false, false, false, IsProceed::Yes) => IsProceed::Yes,
+        (false, false, false, IsProceed::No) => IsProceed::No,
+        (false, false, false, IsProceed::Wait) => IsProceed::Wait,
     }
 }
