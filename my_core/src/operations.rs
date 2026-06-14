@@ -535,7 +535,6 @@ impl OperationResult for list_company_and_branch::Result {
                         resource: server_methods::Resource::RoleAtCompany(company.role),
                     });
                     for branch in company.branches {
-                        //company_belong
                         resource.push(ResourceInfo {
                             row_uuid: branch.uuid.clone(),
                             resource: server_methods::Resource::BranchName(branch.name),
