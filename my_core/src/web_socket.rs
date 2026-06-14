@@ -263,6 +263,9 @@ where
                                         state.cache.delete_txn_input(&txn.txn_number).await;
                                     } else {
                                         state.cache.write_txn_result(&txn).await;
+                                        todo!(
+                                            "if the input is faild i should mark it as faild to not apply it to the state"
+                                        );
                                     }
 
                                     let sender = pool_of_senders.remove(&txn.txn_number);
