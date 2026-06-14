@@ -821,7 +821,7 @@ pub enum Subscribe {
     CompanyThatHaveUserRole,
 }
 
-pub(crate) fn role_to_subscribe_mapping(roles: Vec<db_types::Role>) -> HashSet<Subscribe> {
+fn role_to_subscribe_mapping(roles: Vec<db_types::Role>) -> HashSet<Subscribe> {
     let mut subscribes = HashSet::with_capacity(200);
 
     for role in roles {
@@ -842,7 +842,7 @@ pub(crate) fn role_to_subscribe_mapping(roles: Vec<db_types::Role>) -> HashSet<S
     subscribes
 }
 
-pub(crate) fn resource_filtering_based_on_subscribe(
+fn resource_filtering_based_on_subscribe(
     subscribe: &HashSet<Subscribe>,
     resource: &Vec<ResourceInfo>,
 ) -> Vec<ResourceInfo> {
@@ -969,7 +969,7 @@ pub enum MessageToBroker<Id: RowId, Mpsc: MultiProducerSingleConsumer> {
     },
 }
 
-pub struct SideEffects<Id: RowId> {
+struct SideEffects<Id: RowId> {
     resource_to_broadcast_for_company: ListOfResources<Id>,
     resource_to_broadcast_for_branch: ListOfResources<Id>,
     users_to_resubscribe: HashSet<Id>,
