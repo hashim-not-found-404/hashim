@@ -284,7 +284,7 @@ where
         return result;
     }
 
-    pub async fn create_company_branch(
+    async fn create_company_branch(
         &self,
         client: &mut Cli,
         side_effects: &mut SideEffects<Id>,
@@ -475,7 +475,7 @@ where
         return Ok(the_return_result);
     }
 
-    pub async fn get_table_of_subscribed_data(
+    async fn get_table_of_subscribed_data(
         &self,
         client: &mut Cli,
         users_uuids: &HashSet<Id>,
