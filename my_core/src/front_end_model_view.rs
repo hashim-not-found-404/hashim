@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use crate::{front_end_model_view::Dialog::Show, prelude::*};
 
 pub trait HashimSignal<T: Default>: Default + Clone {
     fn reset(&self) {
@@ -23,7 +23,7 @@ pub struct State<
     As: AllSignalTypes + 'static,
     At: AllClientTypes + 'static,
     Mpsc: MultiProducerSingleConsumer + 'static,
-    ConsentSender: HashimSignal<Option<Mpsc::Sender<()>>> + 'static,
+    ConsentSender: HashimSignal<Option<Mpsc::Sender<ProceedState>>> + 'static,
 > {
     _ph: PhantomData<ConsentSender>,
     // here for the app logic
@@ -39,7 +39,7 @@ impl<
     As: AllSignalTypes,
     At: AllClientTypes + 'static,
     Mpsc: MultiProducerSingleConsumer + 'static,
-    ConsentSender: HashimSignal<Option<Mpsc::Sender<()>>> + 'static,
+    ConsentSender: HashimSignal<Option<Mpsc::Sender<ProceedState>>> + 'static,
 > Clone for State<As, At, Mpsc, ConsentSender>
 {
     fn clone(&self) -> Self {
@@ -57,7 +57,7 @@ impl<
     As: AllSignalTypes,
     At: AllClientTypes + 'static,
     Mpsc: MultiProducerSingleConsumer + 'static,
-    ConsentSender: HashimSignal<Option<Mpsc::Sender<()>>> + 'static,
+    ConsentSender: HashimSignal<Option<Mpsc::Sender<ProceedState>>> + 'static,
 > State<As, At, Mpsc, ConsentSender>
 {
     pub fn new() -> Self {
@@ -97,50 +97,25 @@ impl<
     }
 
     fn consent_receiver_and_dialog_actors(
-        is_submit: bool,
-        routs: Arc<web_socket::MyWAMP<At, Mpsc>>,
-        show_dialog: As::Dialog,
         sender_to_consent_from_dialog: ConsentSender,
-        is_user_want_to_proceed: Arc<Mutex<bool>>,
-        mut sender: <Mpsc as MultiProducerSingleConsumer>::Sender<()>,
-    ) -> (
-        Arc<Mutex<<<At as AllClientTypes>::Rt as Runtime>::JoinHandel<()>>>,
-        <<At as AllClientTypes>::Rt as Runtime>::JoinHandel<()>,
-    ) {
-        let handel_dialog = Arc::new(Mutex::new(At::Rt::abortable_spawn_local(async move {
-            if is_submit {
-                loop {
-                    if routs.is_online() {
-                        At::Rt::sleep(Duration::from_secs(3)).await;
-                    } else {
-                        At::Rt::sleep(Duration::from_secs(1)).await;
-                    }
-
-                    show_dialog.set(Dialog::Show);
-                }
-            }
-        })));
-
-        let handel_dialog1 = handel_dialog.clone();
-
+        is_user_want_to_proceed: Arc<Mutex<ProceedState>>,
+        mut sender: Mpsc::Sender<MessageToINIUIUUB>,
+    ) -> <At::Rt as Runtime>::JoinHandel<()> {
         let handel_consent = At::Rt::abortable_spawn_local(async move {
             let (sender_to_consent, mut receiver_to_consent) = Mpsc::channel();
             sender_to_consent_from_dialog.set(Some(sender_to_consent));
-            receiver_to_consent.recv().await.unwrap();
+            *is_user_want_to_proceed.lock().unwrap() = receiver_to_consent.recv().await.unwrap();
 
-            *is_user_want_to_proceed.lock().unwrap() = true;
-            handel_dialog.lock().unwrap().abort().await;
-            sender.send(()).await.unwrap();
+            sender.send(MessageToINIUIUUB::ReLoop).await.unwrap();
         });
 
-        (handel_dialog1, handel_consent)
+        handel_consent
     }
 
     fn response_receiver_actor(
-        show_dialog: As::Dialog,
         input: operations::Input,
         strategy: web_socket::CachingStrategy,
-        mut sender: <Mpsc as MultiProducerSingleConsumer>::Sender<()>,
+        mut sender: Mpsc::Sender<MessageToINIUIUUB>,
         response: Arc<Mutex<Option<web_socket::Data>>>,
         routs: Arc<web_socket::MyWAMP<At, Mpsc>>,
     ) -> <<At as AllClientTypes>::Rt as Runtime>::JoinHandel<()> {
@@ -150,14 +125,17 @@ impl<
             loop {
                 let result = receiver_to_response.recv().await.unwrap();
                 match result {
-                    web_socket::Response::CloseTheChannel => break,
+                    web_socket::Response::CloseTheChannel => {
+                        sender.send(MessageToINIUIUUB::Stop).await.unwrap();
+                        break;
+                    }
                     web_socket::Response::ServerCannotBeReached => {
-                        show_dialog.set(Dialog::Show);
+                        sender.send(MessageToINIUIUUB::ReLoop).await.unwrap();
                         break;
                     }
                     web_socket::Response::Data(data) => {
                         *response.lock().unwrap() = Some(data);
-                        sender.send(()).await.unwrap();
+                        sender.send(MessageToINIUIUUB::ReLoop).await.unwrap();
                     }
                 }
             }
@@ -203,20 +181,16 @@ impl<
             };
 
             let (sender, mut receiver) = Mpsc::channel();
-            let is_user_want_to_proceed = Arc::new(Mutex::new(false));
+            let is_user_want_to_proceed = Arc::new(Mutex::new(ProceedState::Wait));
             let response = Arc::new(Mutex::new(None));
 
-            let (handel_dialog, mut handel_consent) = Self::consent_receiver_and_dialog_actors(
-                is_submit,
-                self.routs.clone(),
-                local_state.show_dialog.clone(),
+            let mut handel_consent = Self::consent_receiver_and_dialog_actors(
                 sender_to_consent_from_dialog,
                 is_user_want_to_proceed.clone(),
                 sender.clone(),
             );
 
             let mut handel_response = Self::response_receiver_actor(
-                local_state.show_dialog,
                 input.map_input(),
                 strategy,
                 sender,
@@ -225,8 +199,10 @@ impl<
             );
 
             loop {
-                if receiver.recv().await.is_err() {
-                    break;
+                match receiver.recv().await {
+                    Ok(MessageToINIUIUUB::ReLoop) => {}
+                    Ok(MessageToINIUIUUB::Stop) => break,
+                    Err(_) => break,
                 }
 
                 if let Some(response) = response.lock().unwrap().clone() {
@@ -256,18 +232,24 @@ impl<
                         ) {
                             ProceedState::Proceed => {
                                 self.is_signed_in.set(Some(new_uuid));
+                                local_state.show_dialog.reset();
                                 break;
                             }
-                            ProceedState::Never => break,
-                            ProceedState::Wait => continue,
-                        }
+                            ProceedState::Never => {
+                                local_state.show_dialog.reset();
+                                break;
+                            }
+                            ProceedState::Wait => {
+                                local_state.show_dialog.set(Dialog::Show);
+                                continue;
+                            }
+                        };
                     } else {
                         break;
                     }
                 }
             }
 
-            handel_dialog.lock().unwrap().abort().await;
             handel_consent.abort().await;
             handel_response.abort().await;
             feature_state.is_loading.reset();
@@ -304,20 +286,16 @@ impl<
             };
 
             let (sender, mut receiver) = Mpsc::channel();
-            let is_user_want_to_proceed = Arc::new(Mutex::new(false));
+            let is_user_want_to_proceed = Arc::new(Mutex::new(ProceedState::Wait));
             let response = Arc::new(Mutex::new(None));
 
-            let (handel_dialog, mut handel_consent) = Self::consent_receiver_and_dialog_actors(
-                is_submit,
-                self.routs.clone(),
-                local_state.show_dialog.clone(),
+            let mut handel_consent = Self::consent_receiver_and_dialog_actors(
                 sender_to_consent_from_dialog,
                 is_user_want_to_proceed.clone(),
                 sender.clone(),
             );
 
             let mut handel_response = Self::response_receiver_actor(
-                local_state.show_dialog,
                 input.map_input(),
                 strategy,
                 sender,
@@ -327,8 +305,10 @@ impl<
 
             let mut user_uuid = None;
             loop {
-                if receiver.recv().await.is_err() {
-                    break;
+                match receiver.recv().await {
+                    Ok(MessageToINIUIUUB::ReLoop) => {}
+                    Ok(MessageToINIUIUUB::Stop) => break,
+                    Err(_) => break,
                 }
 
                 if let Some(response) = response.lock().unwrap().clone() {
@@ -362,17 +342,23 @@ impl<
                         ) {
                             ProceedState::Proceed => {
                                 self.is_signed_in.set(user_uuid);
+                                local_state.show_dialog.reset();
                                 break;
                             }
-                            ProceedState::Never => break,
-                            ProceedState::Wait => continue,
+                            ProceedState::Never => {
+                                local_state.show_dialog.reset();
+                                break;
+                            }
+                            ProceedState::Wait => {
+                                local_state.show_dialog.set(Dialog::Show);
+                                continue;
+                            }
                         }
                     } else {
                         break;
                     }
                 }
             }
-            handel_dialog.lock().unwrap().abort().await;
             handel_consent.abort().await;
             handel_response.abort().await;
             feature_state.is_loading.reset();
@@ -480,7 +466,13 @@ pub struct CreateCompanyBranchState<As: AllSignalTypes> {
     pub location: As::Location,
 }
 
-enum ProceedState {
+enum MessageToINIUIUUB {
+    ReLoop,
+    Stop,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum ProceedState {
     Proceed,
     Never,
     Wait,
@@ -490,7 +482,7 @@ fn is_proceed(
     is_ok: bool,
     is_online: bool,
     is_response_from_server: bool,
-    is_user_want_to_proceed: bool,
+    is_user_want_to_proceed: ProceedState,
 ) -> ProceedState {
     match (
         is_ok,
@@ -498,21 +490,45 @@ fn is_proceed(
         is_response_from_server,
         is_user_want_to_proceed,
     ) {
-        (true, true, true, true) => ProceedState::Proceed,
-        (true, true, true, false) => ProceedState::Proceed,
-        (true, true, false, true) => ProceedState::Proceed,
-        (true, true, false, false) => ProceedState::Wait,
-        (true, false, true, true) => ProceedState::Proceed,
-        (true, false, true, false) => ProceedState::Proceed,
-        (true, false, false, true) => ProceedState::Proceed,
-        (true, false, false, false) => ProceedState::Wait,
-        (false, true, true, true) => ProceedState::Never,
-        (false, true, true, false) => ProceedState::Never,
-        (false, true, false, true) => ProceedState::Proceed,
-        (false, true, false, false) => ProceedState::Wait,
-        (false, false, true, true) => ProceedState::Never,
-        (false, false, true, false) => ProceedState::Never,
-        (false, false, false, true) => ProceedState::Proceed,
-        (false, false, false, false) => ProceedState::Wait,
+        // (true, true, true, true) => ProceedState::Proceed,
+        // (true, true, true, false) => ProceedState::Proceed,
+        // (true, true, false, true) => ProceedState::Proceed,
+        // (true, true, false, false) => ProceedState::Wait,
+        // (true, false, true, true) => ProceedState::Proceed,
+        // (true, false, true, false) => ProceedState::Proceed,
+        // (true, false, false, true) => ProceedState::Proceed,
+        // (true, false, false, false) => ProceedState::Wait,
+        // (false, true, true, true) => ProceedState::Never,
+        // (false, true, true, false) => ProceedState::Never,
+        // (false, true, false, true) => ProceedState::Proceed,
+        // (false, true, false, false) => ProceedState::Wait,
+        // (false, false, true, true) => ProceedState::Never,
+        // (false, false, true, false) => ProceedState::Never,
+        // (false, false, false, true) => ProceedState::Proceed,
+        // (false, false, false, false) => ProceedState::Wait,
+        (true, true, true, ProceedState::Proceed) => ProceedState::Proceed,
+        (true, true, true, ProceedState::Never) => ProceedState::Proceed,
+        (true, true, true, ProceedState::Wait) => ProceedState::Proceed,
+        (true, true, false, ProceedState::Proceed) => ProceedState::Proceed,
+        (true, true, false, ProceedState::Never) => ProceedState::Never,
+        (true, true, false, ProceedState::Wait) => ProceedState::Wait,
+        (true, false, true, ProceedState::Proceed) => ProceedState::Proceed,
+        (true, false, true, ProceedState::Never) => ProceedState::Proceed,
+        (true, false, true, ProceedState::Wait) => ProceedState::Proceed,
+        (true, false, false, ProceedState::Proceed) => ProceedState::Proceed,
+        (true, false, false, ProceedState::Never) => ProceedState::Never,
+        (true, false, false, ProceedState::Wait) => ProceedState::Wait,
+        (false, true, true, ProceedState::Proceed) => ProceedState::Never,
+        (false, true, true, ProceedState::Never) => ProceedState::Never,
+        (false, true, true, ProceedState::Wait) => ProceedState::Never,
+        (false, true, false, ProceedState::Proceed) => ProceedState::Proceed,
+        (false, true, false, ProceedState::Never) => ProceedState::Never,
+        (false, true, false, ProceedState::Wait) => ProceedState::Wait,
+        (false, false, true, ProceedState::Proceed) => ProceedState::Never,
+        (false, false, true, ProceedState::Never) => ProceedState::Never,
+        (false, false, true, ProceedState::Wait) => ProceedState::Never,
+        (false, false, false, ProceedState::Proceed) => ProceedState::Proceed,
+        (false, false, false, ProceedState::Never) => ProceedState::Never,
+        (false, false, false, ProceedState::Wait) => ProceedState::Wait,
     }
 }
