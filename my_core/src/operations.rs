@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-pub(crate) trait Operations: Clone {
+pub(crate) trait OperationsInput: Clone {
     type Result: OperationResult;
     fn state_less_check(&self) -> Self::Result {
         unreachable!("we dont have here state less check")
@@ -157,14 +157,14 @@ impl push_data::OperationsResult {
     }
 }
 
-async fn operation_check_handler<T: Operations, Ch: CacheIO>(
+async fn operation_check_handler<T: OperationsInput, Ch: CacheIO>(
     input: &T,
     state: &mut cache::State<Ch>,
 ) -> Output {
     return input.state_full_check(state).await.map_result_to_output();
 }
 
-async fn operation_check_apply_handler<T: Operations, Ch: CacheIO>(
+async fn operation_check_apply_handler<T: OperationsInput, Ch: CacheIO>(
     input: &T,
     state: &mut cache::State<Ch>,
 ) {
@@ -173,7 +173,7 @@ async fn operation_check_apply_handler<T: Operations, Ch: CacheIO>(
     }
 }
 
-async fn operation_check_apply_write_handler<T: Operations, Ch: CacheIO>(
+async fn operation_check_apply_write_handler<T: OperationsInput, Ch: CacheIO>(
     txn_number: u64,
     input: &T,
     state: &mut cache::State<Ch>,
@@ -197,7 +197,7 @@ async fn operation_check_apply_write_handler<T: Operations, Ch: CacheIO>(
 
 // all imples down
 
-impl Operations for sign_up::Input {
+impl OperationsInput for sign_up::Input {
     type Result = sign_up::Result;
 
     async fn state_full_check<Ch: CacheIO>(&self, state: &cache::State<Ch>) -> Self::Result {
@@ -300,9 +300,7 @@ impl OperationResult for sign_up::Result {
     }
 }
 
-pub type SignInResult = Result<db_types::UuidType, sign_in::Error>;
-
-impl Operations for sign_in::Input {
+impl OperationsInput for sign_in::Input {
     type Result = sign_in::Result;
 
     async fn state_full_check<Ch: CacheIO>(&self, state: &cache::State<Ch>) -> Self::Result {
@@ -383,7 +381,7 @@ impl OperationResult for sign_in::Result {
     }
 }
 
-impl Operations for create_company::Input {
+impl OperationsInput for create_company::Input {
     type Result = create_company::Result;
 
     async fn state_full_check<Ch: CacheIO>(&self, state: &cache::State<Ch>) -> Self::Result {
@@ -435,7 +433,7 @@ impl OperationResult for create_company::Result {
     }
 }
 
-impl Operations for create_company_branch::Input {
+impl OperationsInput for create_company_branch::Input {
     type Result = create_company_branch::Result;
 
     async fn state_full_check<Ch: CacheIO>(&self, state: &cache::State<Ch>) -> Self::Result {
@@ -472,7 +470,7 @@ impl OperationResult for create_company_branch::Result {
     }
 }
 
-impl Operations for list_company_and_branch::Input {
+impl OperationsInput for list_company_and_branch::Input {
     type Result = list_company_and_branch::Result;
 
     async fn state_full_check<Ch: CacheIO>(&self, state: &cache::State<Ch>) -> Self::Result {
