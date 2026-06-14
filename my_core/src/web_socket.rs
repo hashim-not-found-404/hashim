@@ -124,10 +124,6 @@ where
         receiver
     }
 
-    pub fn is_online(&self) -> bool {
-        get(self.is_online.clone())
-    }
-
     async fn network_radar(ws: &Option<At::Ws>) -> Result<Vec<u8>, DynamicError> {
         match &ws {
             Some(ws) => ws.receive_bin().await,
