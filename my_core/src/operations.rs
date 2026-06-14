@@ -304,34 +304,50 @@ impl OperationsInput for sign_in::Input {
     type Result = sign_in::Result;
 
     async fn state_full_check<Ch: CacheIO>(&self, state: &cache::State<Ch>) -> Self::Result {
+        let user_uuid_and_is_jwt_exist = state.cache.read_sign_in(&self.user_id).await;
+
+        if let Some((user_uuid, user_name, is_jwt_exist)) = user_uuid_and_is_jwt_exist {
+            if is_jwt_exist {
+                return Ok(sign_in::Ok {
+                    user_uuid,
+                    jwt: String::new(),
+                    user_name: user_name,
+                });
+            }
+        }
+
         let mut password = None;
         let mut user_uuid = None;
+        let mut user_name = None;
 
         for (rowid, user) in &state.state_of_pending_txn.user {
             if user.id == self.user_id {
                 password = Some(user.password.clone());
-                user_uuid = Some(rowid)
+                user_uuid = Some(rowid);
+                user_name = user.name.clone();
             }
         }
 
-        todo!("you need also to lookup from cache for jwt if exist");
-
-        // match password {
-        //     Some(password) => {
-        //         if password == self.password {
-        //             return Ok(user_uuid.unwrap().clone());
-        //         } else {
-        //             return Err(sign_in::Error {
-        //                 user_id: None,
-        //                 password: Some(sign_in::PasswordError::WrongPassword),
-        //             });
-        //         }
-        //     }
-        //     None => Err(sign_in::Error {
-        //         user_id: Some(sign_in::UserIdError::NotExist),
-        //         password: None,
-        //     }),
-        // }
+        match password {
+            Some(password) => {
+                if password == self.password {
+                    return Ok(sign_in::Ok {
+                        user_uuid: user_uuid.unwrap().clone(),
+                        jwt: String::new(),
+                        user_name: user_name,
+                    });
+                } else {
+                    return Err(sign_in::Error {
+                        user_id: None,
+                        password: Some(sign_in::PasswordError::WrongPassword),
+                    });
+                }
+            }
+            None => Err(sign_in::Error {
+                user_id: Some(sign_in::UserIdError::NotExist),
+                password: None,
+            }),
+        }
     }
 
     fn apply_change(&self, state: &mut cache::StateOfPendingTxn) {}

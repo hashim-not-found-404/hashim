@@ -143,19 +143,27 @@ impl CacheIO for S {
     async fn read_sign_in(
         &self,
         user_id: &String,
-    ) -> Option<(db_types::UuidType, bool /* does he have jwt */)> {
-        todo!();
-        // let query = "SELECT rowid FROM user WHERE id = ?1;";
+    ) -> Option<(
+        db_types::UuidType, /* user uuid */
+        Option<String>,     /* user name */
+        bool,               /* does he have jwt */
+    )> {
+        let query = "SELECT rowid, name, jwt FROM user WHERE id = ?1;";
 
-        // let user_uuid = self
-        //     .db
-        //     .query_row(query, params![user_id], |row| {
-        //         Ok(row.get::<_, String>(0).unwrap())
-        //     })
-        //     .optional()
-        //     .unwrap();
+        self.db
+            .query_row(query, params![user_id], |row| {
+                let user_uuid_str: String = row.get(0).unwrap();
+                let user_name: Option<String> = row.get(1).unwrap();
+                let jwt: Option<String> = row.get(2).unwrap();
 
-        // user_uuid.map(db_types::UuidType)
+                Ok((
+                    db_types::UuidType(user_uuid_str),
+                    user_name,
+                    jwt.is_some(), // true if JWT exists
+                ))
+            })
+            .optional()
+            .unwrap()
     }
 }
 
