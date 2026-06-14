@@ -238,35 +238,35 @@ where
             side_effects.resource_to_broadcast_for_company.insert_push(
                 new_uuid.clone(),
                 ResourceInfo {
-                    uuid: new_uuid.to_uuid(),
+                    row_uuid: new_uuid.to_uuid(),
                     resource: server_methods::Resource::CompanyName(input.company_name.clone()),
                 },
             );
             side_effects.resource_to_broadcast_for_company.insert_push(
                 new_uuid.clone(),
                 ResourceInfo {
-                    uuid: new_uuid.to_uuid(),
+                    row_uuid: new_uuid.to_uuid(),
                     resource: server_methods::Resource::CompanyCurrency(input.currency.clone()),
                 },
             );
             side_effects.resource_to_broadcast_for_company.insert_push(
                 new_uuid.clone(),
                 ResourceInfo {
-                    uuid: new_uuid.to_uuid(),
+                    row_uuid: new_uuid.to_uuid(),
                     resource: server_methods::Resource::RoleAtCompany(ROLE),
                 },
             );
             side_effects.resource_to_broadcast_for_company.insert_push(
                 new_uuid.clone(),
                 ResourceInfo {
-                    uuid: new_uuid.to_uuid(),
+                    row_uuid: new_uuid.to_uuid(),
                     resource: server_methods::Resource::UserThatHaveRole(input.user_uuid.clone()),
                 },
             );
             side_effects.resource_to_broadcast_for_company.insert_push(
                 new_uuid.clone(),
                 ResourceInfo {
-                    uuid: new_uuid.to_uuid(),
+                    row_uuid: new_uuid.to_uuid(),
                     resource: server_methods::Resource::CompanyThatHaveUserRole(new_uuid.to_uuid()),
                 },
             );
@@ -813,6 +813,8 @@ pub enum Subscribe {
     UserName,
     UserId,
     CompanyName,
+    BranchName,
+    TableCompanyBranchFieldCompanyBelong,
     CompanyCurrency,
     RoleAtCompany,
     UserThatHaveRole,
@@ -864,6 +866,16 @@ pub(crate) fn resource_filtering_based_on_subscribe(
                     new_resource.push(one_resource.clone());
                 }
             }
+            Resource::BranchName(_) => {
+                if subscribe.contains(&Subscribe::BranchName) {
+                    new_resource.push(one_resource.clone());
+                }
+            }
+            Resource::TableCompanyBranchFieldCompanyBelong(_) => {
+                if subscribe.contains(&Subscribe::TableCompanyBranchFieldCompanyBelong) {
+                    new_resource.push(one_resource.clone());
+                }
+            }
             Resource::CompanyCurrency(_) => {
                 if subscribe.contains(&Subscribe::CompanyCurrency) {
                     new_resource.push(one_resource.clone());
@@ -897,6 +909,8 @@ pub enum Resource {
     UserName(String),
     UserId(String),
     CompanyName(String),
+    BranchName(String),
+    TableCompanyBranchFieldCompanyBelong(db_types::UuidType),
     CompanyCurrency(db_types::Currency),
     RoleAtCompany(db_types::Role),
     UserThatHaveRole(db_types::UuidType),

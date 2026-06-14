@@ -267,17 +267,17 @@ impl OperationResult for sign_up::Result {
                 let mut resource = Vec::with_capacity(3);
 
                 resource.push(ResourceInfo {
-                    uuid: ok.user_uuid.clone(),
+                    row_uuid: ok.user_uuid.clone(),
                     resource: server_methods::Resource::Jwt(ok.jwt.clone()),
                 });
                 resource.push(ResourceInfo {
-                    uuid: ok.user_uuid.clone(),
+                    row_uuid: ok.user_uuid.clone(),
                     resource: server_methods::Resource::UserId(ok.user_id.clone()),
                 });
 
                 if let Some(name) = &ok.user_name {
                     resource.push(ResourceInfo {
-                        uuid: ok.user_uuid.clone(),
+                        row_uuid: ok.user_uuid.clone(),
                         resource: server_methods::Resource::UserName(name.clone()),
                     });
                 }
@@ -368,13 +368,13 @@ impl OperationResult for sign_in::Result {
                 let mut resource = Vec::with_capacity(3);
 
                 resource.push(ResourceInfo {
-                    uuid: ok.user_uuid.clone(),
+                    row_uuid: ok.user_uuid.clone(),
                     resource: server_methods::Resource::Jwt(ok.jwt.clone()),
                 });
 
                 if let Some(name) = &ok.user_name {
                     resource.push(ResourceInfo {
-                        uuid: ok.user_uuid.clone(),
+                        row_uuid: ok.user_uuid.clone(),
                         resource: server_methods::Resource::UserName(name.clone()),
                     });
                 }
@@ -521,7 +521,39 @@ impl OperationResult for list_company_and_branch::Result {
     }
 
     fn map_to_resource(&self) -> Vec<ResourceInfo> {
-        Vec::new()
+        match self {
+            Ok(ok) => {
+                let mut resource = Vec::new();
+
+                for company in ok.list.clone() {
+                    resource.push(ResourceInfo {
+                        row_uuid: company.uuid.clone(),
+                        resource: server_methods::Resource::CompanyName(company.name),
+                    });
+                    resource.push(ResourceInfo {
+                        row_uuid: company.uuid.clone(),
+                        resource: server_methods::Resource::RoleAtCompany(company.role),
+                    });
+                    for branch in company.branches {
+                        //company_belong
+                        resource.push(ResourceInfo {
+                            row_uuid: branch.uuid.clone(),
+                            resource: server_methods::Resource::BranchName(branch.name),
+                        });
+                        resource.push(ResourceInfo {
+                            row_uuid: branch.uuid.clone(),
+                            resource:
+                                server_methods::Resource::TableCompanyBranchFieldCompanyBelong(
+                                    company.uuid.clone(),
+                                ),
+                        });
+                    }
+                }
+
+                resource
+            }
+            Err(_) => Vec::new(),
+        }
     }
 
     fn map_result_to_output(self) -> Output {

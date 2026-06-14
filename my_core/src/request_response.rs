@@ -16,7 +16,7 @@ pub enum UserUuidError {
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ResourceInfo {
-    pub uuid: db_types::UuidType,
+    pub row_uuid: db_types::UuidType,
     pub resource: server_methods::Resource,
 }
 

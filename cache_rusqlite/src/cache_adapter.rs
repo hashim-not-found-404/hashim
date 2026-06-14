@@ -71,7 +71,7 @@ impl CacheIO for S {
         let mut stmts = Vec::with_capacity(resource.len());
 
         for reso in resource {
-            let uuid = &reso.uuid.0;
+            let uuid = &reso.row_uuid.0;
 
             let stmt = match &reso.resource {
                 server_methods::Resource::Jwt(value) => {
@@ -85,6 +85,12 @@ impl CacheIO for S {
                 }
                 server_methods::Resource::CompanyName(value) => {
                     make_sql_statment("company", "name", uuid, value)
+                }
+                server_methods::Resource::BranchName(value) => {
+                    make_sql_statment("company_branch", "name", uuid, value)
+                }
+                server_methods::Resource::TableCompanyBranchFieldCompanyBelong(value) => {
+                    make_sql_statment("company_branch", "company_belong", uuid, &value.0)
                 }
                 server_methods::Resource::CompanyCurrency(value) => {
                     make_sql_statment("company", "currency", uuid, &value.as_str().to_string())
