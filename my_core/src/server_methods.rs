@@ -78,14 +78,13 @@ where
         &self,
         client: &mut Cli,
         side_effects: &mut SideEffects<Id>,
-        authenticated_users: &mut HashSet<Id>,
         input: &sign_up::Input,
     ) -> Result<sign_up::Result, DynamicError> {
         let mut errr = sign_up::Error::default();
 
         let new_uuid = match Id::try_from(&input.new_uuid) {
             Ok(new_uuid) => {
-                authenticated_users.insert(new_uuid.clone());
+                side_effects.authenticated_users.insert(new_uuid.clone());
                 Some(new_uuid)
             }
             Err(_) => {
@@ -145,7 +144,6 @@ where
         &self,
         client: &mut Cli,
         side_effects: &mut SideEffects<Id>,
-        authenticated_users: &mut HashSet<Id>,
         input: &sign_in::Input,
     ) -> Result<sign_in::Result, DynamicError> {
         let mut errr = sign_in::Error::default();
@@ -160,7 +158,7 @@ where
 
         match Auth::sign_in(&input.password, &password_hash) {
             true => {
-                authenticated_users.insert(user_rowid.clone());
+                side_effects.authenticated_users.insert(user_rowid.clone());
                 side_effects.users_to_resubscribe.insert(user_rowid.clone());
                 return Ok(Ok(sign_in::Ok {
                     user_uuid: user_rowid.to_uuid(),
@@ -179,7 +177,6 @@ where
         &self,
         client: &mut Cli,
         side_effects: &mut SideEffects<Id>,
-        authenticated_users: &mut HashSet<Id>,
         input: &create_company::Input,
     ) -> Result<create_company::Result, DynamicError> {
         let mut errr = create_company::Error::default();
@@ -194,7 +191,7 @@ where
 
         let user_uuid = match Id::try_from(&input.user_uuid) {
             Ok(user_uuid) => {
-                if authenticated_users.get(&user_uuid).is_none() {
+                if side_effects.authenticated_users.get(&user_uuid).is_none() {
                     errr.user_uuid = Some(UserUuidError::NotAuthenticated);
                 };
                 Some(user_uuid)
@@ -284,11 +281,20 @@ where
         return result;
     }
 
+    async fn list_company_and_branch(
+        &self,
+        client: &mut Cli,
+        side_effects: &mut SideEffects<Id>,
+        input: &list_company_and_branch::Input,
+    ) -> Result<list_company_and_branch::Result, DynamicError> {
+        let mut errr = list_company_and_branch::Error::default();
+        todo!()
+    }
+
     async fn create_company_branch(
         &self,
         client: &mut Cli,
         side_effects: &mut SideEffects<Id>,
-        authenticated_users: &mut HashSet<Id>,
         input: &create_company_branch::Input,
     ) -> Result<create_company_branch::Result, DynamicError> {
         let mut errr = create_company_branch::Error::default();
@@ -303,7 +309,7 @@ where
 
         let user_uuid = match Id::try_from(&input.user_uuid) {
             Ok(user_uuid) => {
-                if authenticated_users.get(&user_uuid).is_none() {
+                if side_effects.authenticated_users.get(&user_uuid).is_none() {
                     errr.user_uuid = Some(UserUuidError::NotAuthenticated);
                 };
                 Some(user_uuid)
@@ -399,12 +405,11 @@ where
         };
 
         let mut is_there_error = false;
-        let mut authenticated_users = HashSet::with_capacity(input.jwts.len());
 
         for jwt in &input.jwts {
             match self.jwt.validate(jwt.clone()) {
                 Some(user_uuid) => {
-                    authenticated_users.insert(user_uuid);
+                    side_effects.authenticated_users.insert(user_uuid);
                 }
                 None => {
                     the_return_result.jwts.push(Err(JWTError::Invalid));
@@ -434,36 +439,30 @@ where
 
         for transaction in &input.operations {
             let result = match &transaction.operation {
-                push_data::OperationsInput::SignUp(input) => {
-                    let result = self
-                        .sign_up(client, side_effects, &mut authenticated_users, input)
-                        .await?;
-                    push_data::OperationsResult::SignUp(result)
-                }
-                push_data::OperationsInput::SignIn(input) => {
-                    let result = self
-                        .sign_in(client, side_effects, &mut authenticated_users, input)
-                        .await?;
-                    push_data::OperationsResult::SignIn(result)
-                }
+                push_data::OperationsInput::SignUp(input) => push_data::OperationsResult::SignUp(
+                    self.sign_up(client, side_effects, input).await?,
+                ),
+                push_data::OperationsInput::SignIn(input) => push_data::OperationsResult::SignIn(
+                    self.sign_in(client, side_effects, input).await?,
+                ),
                 push_data::OperationsInput::CreateCompany(input) => {
-                    let result = self
-                        .create_company(client, side_effects, &mut authenticated_users, input)
-                        .await?;
-                    push_data::OperationsResult::CreateCompany(result)
+                    push_data::OperationsResult::CreateCompany(
+                        self.create_company(client, side_effects, input).await?,
+                    )
                 }
+
                 push_data::OperationsInput::CreateCompanyBranch(input) => {
-                    let result = self
-                        .create_company_branch(
-                            client,
-                            side_effects,
-                            &mut authenticated_users,
-                            input,
-                        )
-                        .await?;
-                    push_data::OperationsResult::CreateCompanyBranch(result)
+                    push_data::OperationsResult::CreateCompanyBranch(
+                        self.create_company_branch(client, side_effects, input)
+                            .await?,
+                    )
                 }
-                push_data::OperationsInput::ListCompanyAndBranch(input) => todo!(),
+                push_data::OperationsInput::ListCompanyAndBranch(input) => {
+                    push_data::OperationsResult::ListCompanyAndBranch(
+                        self.list_company_and_branch(client, side_effects, input)
+                            .await?,
+                    )
+                }
             };
 
             the_return_result.operations.push(push_data::Txn {
@@ -970,6 +969,7 @@ pub enum MessageToBroker<Id: RowId, Mpsc: MultiProducerSingleConsumer> {
 }
 
 struct SideEffects<Id: RowId> {
+    authenticated_users: HashSet<Id>,
     resource_to_broadcast_for_company: ListOfResources<Id>,
     resource_to_broadcast_for_branch: ListOfResources<Id>,
     users_to_resubscribe: HashSet<Id>,
@@ -978,6 +978,7 @@ struct SideEffects<Id: RowId> {
 impl<Id: RowId> Default for SideEffects<Id> {
     fn default() -> Self {
         Self {
+            authenticated_users: Default::default(),
             resource_to_broadcast_for_company: Default::default(),
             resource_to_broadcast_for_branch: Default::default(),
             users_to_resubscribe: Default::default(),
