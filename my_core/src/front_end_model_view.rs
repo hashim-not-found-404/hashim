@@ -99,48 +99,45 @@ impl<
     fn consent_receiver_and_dialog_actors(
         sender_to_consent_from_dialog: ConsentSender,
         is_user_want_to_proceed: Arc<Mutex<ProceedState>>,
-        mut sender: Mpsc::Sender<MessageToINIUIUUB>,
+        mut sender: Mpsc::Sender<MessageToCoordinator>,
     ) -> <At::Rt as Runtime>::JoinHandel<()> {
-        let handel_consent = At::Rt::abortable_spawn_local(async move {
+        At::Rt::abortable_spawn_local(async move {
             let (sender_to_consent, mut receiver_to_consent) = Mpsc::channel();
             sender_to_consent_from_dialog.set(Some(sender_to_consent));
             *is_user_want_to_proceed.lock().unwrap() = receiver_to_consent.recv().await.unwrap();
 
-            sender.send(MessageToINIUIUUB::ReLoop).await.unwrap();
-        });
-
-        handel_consent
+            sender.send(MessageToCoordinator::ReLoop).await.unwrap();
+        })
     }
 
     fn response_receiver_actor(
         input: operations::Input,
         strategy: web_socket::CachingStrategy,
-        mut sender: Mpsc::Sender<MessageToINIUIUUB>,
+        mut sender: Mpsc::Sender<MessageToCoordinator>,
         response: Arc<Mutex<Option<web_socket::Data>>>,
         routs: Arc<web_socket::MyWAMP<At, Mpsc>>,
     ) -> <<At as AllClientTypes>::Rt as Runtime>::JoinHandel<()> {
-        let handel_response = At::Rt::abortable_spawn_local(async move {
+        At::Rt::abortable_spawn_local(async move {
             let mut receiver_to_response = routs.send_to_cache_actor(strategy, input).await;
 
             loop {
                 let result = receiver_to_response.recv().await.unwrap();
                 match result {
                     web_socket::Response::CloseTheChannel => {
-                        sender.send(MessageToINIUIUUB::Stop).await.unwrap();
+                        sender.send(MessageToCoordinator::Stop).await.unwrap();
                         break;
                     }
                     web_socket::Response::ServerCannotBeReached => {
-                        sender.send(MessageToINIUIUUB::ReLoop).await.unwrap();
+                        sender.send(MessageToCoordinator::ReLoop).await.unwrap();
                         break;
                     }
                     web_socket::Response::Data(data) => {
                         *response.lock().unwrap() = Some(data);
-                        sender.send(MessageToINIUIUUB::ReLoop).await.unwrap();
+                        sender.send(MessageToCoordinator::ReLoop).await.unwrap();
                     }
                 }
             }
-        });
-        handel_response
+        })
     }
 
     pub fn sign_up(
@@ -200,8 +197,8 @@ impl<
 
             loop {
                 match receiver.recv().await {
-                    Ok(MessageToINIUIUUB::ReLoop) => {}
-                    Ok(MessageToINIUIUUB::Stop) => break,
+                    Ok(MessageToCoordinator::ReLoop) => {}
+                    Ok(MessageToCoordinator::Stop) => break,
                     Err(_) => break,
                 }
 
@@ -306,8 +303,8 @@ impl<
             let mut user_uuid = None;
             loop {
                 match receiver.recv().await {
-                    Ok(MessageToINIUIUUB::ReLoop) => {}
-                    Ok(MessageToINIUIUUB::Stop) => break,
+                    Ok(MessageToCoordinator::ReLoop) => {}
+                    Ok(MessageToCoordinator::Stop) => break,
                     Err(_) => break,
                 }
 
@@ -359,6 +356,7 @@ impl<
                     }
                 }
             }
+
             handel_consent.abort().await;
             handel_response.abort().await;
             feature_state.is_loading.reset();
@@ -466,7 +464,7 @@ pub struct CreateCompanyBranchState<As: AllSignalTypes> {
     pub location: As::Location,
 }
 
-enum MessageToINIUIUUB {
+enum MessageToCoordinator {
     ReLoop,
     Stop,
 }
@@ -490,22 +488,6 @@ fn is_proceed(
         is_response_from_server,
         is_user_want_to_proceed,
     ) {
-        // (true, true, true, true) => ProceedState::Proceed,
-        // (true, true, true, false) => ProceedState::Proceed,
-        // (true, true, false, true) => ProceedState::Proceed,
-        // (true, true, false, false) => ProceedState::Wait,
-        // (true, false, true, true) => ProceedState::Proceed,
-        // (true, false, true, false) => ProceedState::Proceed,
-        // (true, false, false, true) => ProceedState::Proceed,
-        // (true, false, false, false) => ProceedState::Wait,
-        // (false, true, true, true) => ProceedState::Never,
-        // (false, true, true, false) => ProceedState::Never,
-        // (false, true, false, true) => ProceedState::Proceed,
-        // (false, true, false, false) => ProceedState::Wait,
-        // (false, false, true, true) => ProceedState::Never,
-        // (false, false, true, false) => ProceedState::Never,
-        // (false, false, false, true) => ProceedState::Proceed,
-        // (false, false, false, false) => ProceedState::Wait,
         (true, true, true, ProceedState::Proceed) => ProceedState::Proceed,
         (true, true, true, ProceedState::Never) => ProceedState::Proceed,
         (true, true, true, ProceedState::Wait) => ProceedState::Proceed,
