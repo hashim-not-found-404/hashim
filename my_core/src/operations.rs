@@ -490,22 +490,26 @@ impl OperationsInput for list_company_and_branch::Input {
     type Result = list_company_and_branch::Result;
 
     async fn state_full_check<Ch: CacheIO>(&self, state: &cache::State<Ch>) -> Self::Result {
-        todo!();
-        let mut list_of_companies = db_types::ListOfCompanies::new();
-        // for (rowid, row) in &state.state_of_pending_txn.access_control_for_company {
-        //     if row.user_ == self.user_uuid {
-        //         let company_uuid = state.state_of_pending_txn.company.get(&row.data_group);
+        let mut list_of_companies = state
+            .cache
+            .read_list_company_and_branch(&self.user_uuid)
+            .await;
 
-        //         list_of_companies.push(db_types::Company {
-        //             uuid: row.data_group.clone(),
-        //             name: company_uuid.unwrap().name.clone(),
-        //             role: row.role.clone(),
-        //             branches: Vec::new(),
-        //         });
-        //     }
-        // }
+        for (rowid, row) in &state.state_of_pending_txn.access_control_for_company {
+            if row.user_ == self.user_uuid {
+                let company_uuid = state.state_of_pending_txn.company.get(&row.data_group);
 
-        // TODO make it read also from cache
+                list_of_companies.push(db_types::Company {
+                    uuid: row.data_group.clone(),
+                    name: company_uuid.unwrap().name.clone(),
+                    role: row.role.clone(),
+                    branches: Vec::new(),
+                });
+
+                // TODO make it read also branch
+            }
+        }
+
         Ok(list_company_and_branch::Ok {
             list: list_of_companies,
         })

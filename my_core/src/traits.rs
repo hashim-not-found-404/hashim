@@ -238,6 +238,10 @@ pub trait CacheIO: Sized {
             bool,               /* does he have jwt */
         )>,
     >;
+    fn read_list_company_and_branch(
+        &self,
+        user_uuid: &db_types::UuidType,
+    ) -> impl Future<Output = Vec<db_types::Company>>;
 }
 
 pub trait AllClientTypes {

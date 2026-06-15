@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use crate::prelude::*;
 use rusqlite::{Connection, OptionalExtension, params};
 
@@ -181,6 +183,79 @@ impl CacheIO for S {
             })
             .optional()
             .unwrap()
+    }
+
+    async fn read_list_company_and_branch(
+        &self,
+        user_uuid: &db_types::UuidType,
+    ) -> Vec<db_types::Company> {
+        let query = "
+            SELECT
+                c.rowid as company_uuid,
+                c.name as company_name,
+                acf.role as user_role,
+                cb.rowid as branch_uuid,
+                cb.name as branch_name
+            FROM access_control_for_company acf
+            JOIN company c ON acf.data_group = c.rowid
+            LEFT JOIN company_branch cb ON c.rowid = cb.company_belong
+            WHERE acf.user_ = ?1
+            ORDER BY c.rowid, cb.rowid
+        ";
+
+        let mut stmt = self.db.prepare(query).unwrap();
+        let rows = stmt
+            .query_map(params![user_uuid.0], |row| {
+                let company_uuid_str: String = row.get(0)?;
+                let company_name: String = row.get(1)?;
+                let user_role_str: String = row.get(2)?;
+                let branch_uuid_opt: Option<String> = row.get(3)?;
+                let branch_name_opt: Option<String> = row.get(4)?;
+
+                Ok((
+                    company_uuid_str,
+                    company_name,
+                    user_role_str,
+                    branch_uuid_opt,
+                    branch_name_opt,
+                ))
+            })
+            .unwrap();
+
+        let mut companies: Vec<db_types::Company> = Vec::new();
+        let mut current_company_uuid: Option<String> = None;
+
+        for row in rows {
+            let (company_uuid_str, company_name, user_role_str, branch_uuid_opt, branch_name_opt) =
+                row.unwrap();
+
+            if current_company_uuid.as_ref() != Some(&company_uuid_str) {
+                current_company_uuid = Some(company_uuid_str.clone());
+
+                let role = db_types::Role::from_str(user_role_str.as_str()).unwrap();
+
+                let new_company = db_types::Company {
+                    uuid: db_types::UuidType(company_uuid_str),
+                    name: company_name,
+                    role,
+                    branches: Vec::new(),
+                };
+                companies.push(new_company);
+            }
+
+            if let (Some(branch_uuid_str), Some(branch_name)) = (branch_uuid_opt, branch_name_opt) {
+                let branch = db_types::Branch {
+                    uuid: db_types::UuidType(branch_uuid_str),
+                    name: branch_name,
+                };
+
+                if let Some(company) = companies.last_mut() {
+                    company.branches.push(branch);
+                }
+            }
+        }
+
+        companies
     }
 }
 
