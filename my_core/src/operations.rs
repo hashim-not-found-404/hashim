@@ -350,8 +350,6 @@ impl OperationsInput for sign_in::Input {
         }
     }
 
-    fn apply_change(&self, state: &mut cache::StateOfPendingTxn) {}
-
     fn map_input(self) -> Input {
         Input::SignIn(self)
     }
