@@ -288,7 +288,29 @@ where
         input: &list_company_and_branch::Input,
     ) -> Result<list_company_and_branch::Result, DynamicError> {
         let mut errr = list_company_and_branch::Error::default();
-        todo!()
+
+        let user_uuid = match Id::try_from(&input.user_uuid) {
+            Ok(user_uuid) => {
+                if side_effects.authenticated_users.get(&user_uuid).is_none() {
+                    errr.user_uuid = Some(UserUuidError::NotAuthenticated);
+                };
+                Some(user_uuid)
+            }
+            Err(_) => {
+                errr.user_uuid = Some(UserUuidError::Invalid);
+                None
+            }
+        };
+
+        if errr != list_company_and_branch::Error::default() {
+            return Ok(Err(errr));
+        }
+
+        let list = client
+            .read_list_company_and_branch(&user_uuid.unwrap())
+            .await?;
+
+        Ok(Ok(list_company_and_branch::Ok { list }))
     }
 
     async fn create_company_branch(

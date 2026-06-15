@@ -34,9 +34,7 @@ impl DBClient for S {
                 let hashed_password = row.try_get::<_, String>(1).log()?;
                 Ok(Some((row_id.into(), hashed_password.into())))
             }
-            None => {
-                Ok(None)
-            }
+            None => Ok(None),
         }
     }
 
@@ -134,5 +132,70 @@ impl DBClient for S {
 
         let inserted: Option<Uuid> = row.try_get(0).ok();
         Ok(inserted.is_some())
+    }
+
+    async fn read_list_company_and_branch(
+        &mut self,
+        user_uuid: &Self::RowId,
+    ) -> Result<Vec<db_types::Company>, DynamicError> {
+        let query = "
+            WITH user_companies AS (
+                SELECT
+                    c.rowid as company_uuid,
+                    c.name as company_name,
+                    acf.role as user_role
+                FROM accounting_app.access_control_for_company acf
+                JOIN accounting_app.company c ON acf.data_group = c.rowid
+                WHERE acf.user_ = $1
+            ),
+            company_branches AS (
+                SELECT
+                    cb.company_belong,
+                    json_agg(
+                        json_build_object(
+                            'uuid', cb.rowid,
+                            'name', cb.name
+                        ) ORDER BY cb.name
+                    ) as branches
+                FROM accounting_app.company_branch cb
+                WHERE cb.company_belong IN (SELECT company_uuid FROM user_companies)
+                GROUP BY cb.company_belong
+            )
+            SELECT
+                uc.company_uuid,
+                uc.company_name,
+                uc.user_role,
+                COALESCE(cb.branches, '[]'::json) as branches
+            FROM user_companies uc
+            LEFT JOIN company_branches cb ON uc.company_uuid = cb.company_belong
+        ";
+
+        let rows = self
+            .client
+            .query(query, &[&user_uuid.into_inner()])
+            .await
+            .log()?;
+
+        let mut companies = Vec::new();
+
+        for row in rows {
+            let company_uuid: Uuid = row.try_get(0).log()?;
+            let company_name: String = row.try_get(1).log()?;
+            let user_role_str: String = row.try_get(2).log()?;
+            let branches_json: serde_json::Value = row.try_get(3).log()?;
+
+            let branches: Vec<db_types::Branch> = serde_json::from_value(branches_json).log()?;
+
+            let company = db_types::Company {
+                uuid: db_types::UuidType(company_uuid.to_string()),
+                name: company_name,
+                role: db_types::Role::from_str(&user_role_str).log()?,
+                branches,
+            };
+
+            companies.push(company);
+        }
+
+        Ok(companies)
     }
 }

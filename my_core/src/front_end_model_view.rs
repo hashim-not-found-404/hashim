@@ -99,21 +99,21 @@ impl<
     fn consent_receiver_and_dialog_actors(
         sender_to_consent_from_dialog: ConsentSender,
         is_user_want_to_proceed: Arc<Mutex<IsProceed>>,
-        mut sender: Mpsc::Sender<MessageToCoordinator>,
+        mut sender: Mpsc::Sender<()>,
     ) -> <At::Rt as Runtime>::JoinHandel<()> {
         At::Rt::abortable_spawn_local(async move {
             let (sender_to_consent, mut receiver_to_consent) = Mpsc::channel();
             sender_to_consent_from_dialog.set(Some(sender_to_consent));
             *is_user_want_to_proceed.lock().unwrap() = receiver_to_consent.recv().await.unwrap();
 
-            sender.send(MessageToCoordinator::ReLoop).await.unwrap();
+            sender.send(()).await.unwrap();
         })
     }
 
     fn response_receiver_actor(
         input: operations::Input,
         strategy: web_socket::CachingStrategy,
-        mut sender: Mpsc::Sender<MessageToCoordinator>,
+        mut sender: Mpsc::Sender<()>,
         response: Arc<Mutex<Option<web_socket::Data>>>,
         routs: Arc<web_socket::MyWAMP<At, Mpsc>>,
     ) -> <<At as AllClientTypes>::Rt as Runtime>::JoinHandel<()> {
@@ -124,16 +124,14 @@ impl<
                 let result = receiver_to_response.recv().await.unwrap();
                 match result {
                     web_socket::Response::CloseTheChannel => {
-                        sender.send(MessageToCoordinator::Stop).await.unwrap();
                         break;
                     }
                     web_socket::Response::ServerCannotBeReached => {
-                        sender.send(MessageToCoordinator::ReLoop).await.unwrap();
                         break;
                     }
                     web_socket::Response::Data(data) => {
                         *response.lock().unwrap() = Some(data);
-                        sender.send(MessageToCoordinator::ReLoop).await.unwrap();
+                        sender.send(()).await.unwrap();
                     }
                 }
             }
@@ -197,8 +195,7 @@ impl<
 
             loop {
                 match receiver.recv().await {
-                    Ok(MessageToCoordinator::ReLoop) => {}
-                    Ok(MessageToCoordinator::Stop) => break,
+                    Ok(_) => {}
                     Err(_) => break,
                 }
 
@@ -302,8 +299,7 @@ impl<
             let mut user_uuid = None;
             loop {
                 match receiver.recv().await {
-                    Ok(MessageToCoordinator::ReLoop) => {}
-                    Ok(MessageToCoordinator::Stop) => break,
+                    Ok(_) => {}
                     Err(_) => break,
                 }
 
@@ -340,8 +336,11 @@ impl<
                                 continue;
                             }
                             IsProceed::Yes => {
+                                match user_uuid {
+                                    Some(_) => local_state.show_dialog.reset(),
+                                    None => local_state.show_dialog.set(Dialog::Error),
+                                }
                                 self.is_signed_in.set(user_uuid);
-                                local_state.show_dialog.reset();
                                 break;
                             }
                             IsProceed::No => {
@@ -373,11 +372,30 @@ impl<
                 .await;
 
             loop {
-                let r = match receiver_to_response.recv().await.unwrap() {
+                let value = match receiver_to_response.recv().await.unwrap() {
                     web_socket::Response::CloseTheChannel => break,
-                    web_socket::Response::ServerCannotBeReached => todo!(),
-                    web_socket::Response::Data(data) => data.data,
+                    web_socket::Response::ServerCannotBeReached => break,
+                    web_socket::Response::Data(data) => {
+                        list_company_and_branch::Result::map_output_to_result(data.data)
+                    }
                 };
+
+                let value = match value {
+                    Ok(ok) => ok.list,
+                    Err(err) => match err.user_uuid {
+                        Some(s) => match s {
+                            UserUuidError::Invalid => unreachable!(),
+                            UserUuidError::NotAuthenticated => {
+                                self.is_signed_in.set(None);
+                                break;
+                            }
+                            UserUuidError::YouDontHavePermissionToDoThat => unreachable!(),
+                        },
+                        None => unreachable!(),
+                    },
+                };
+
+                local_state.set(value);
             }
         });
     }
@@ -460,11 +478,6 @@ pub struct CreateCompanyBranchState<As: AllSignalTypes> {
     pub currency: As::Currency,
     pub branch_name: As::String,
     pub location: As::Location,
-}
-
-enum MessageToCoordinator {
-    ReLoop,
-    Stop,
 }
 
 #[derive(Debug, Clone, Copy)]

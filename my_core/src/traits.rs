@@ -62,6 +62,10 @@ pub trait DBClient {
         &mut self,
         users_uuids: &HashSet<Self::RowId>,
     ) -> impl Future<Output = Result<server_methods::AllRoles<Self::RowId>, DynamicError>>;
+    fn read_list_company_and_branch(
+        &mut self,
+        user_uuid: &Self::RowId,
+    ) -> impl Future<Output = Result<Vec<db_types::Company>, DynamicError>>;
 }
 
 pub mod domain_errors {

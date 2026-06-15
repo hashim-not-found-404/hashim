@@ -281,7 +281,12 @@ fn CompanyAndBranchSelection() -> Element {
     let mut selected_company_id = use_signal(|| None);
 
     let local_state = <my_signals::m::S as AllSignalTypes>::CompanyAndBranchList::default();
-    state.clone().list_company_and_branch(local_state.clone());
+
+    let state1 = state.clone();
+    let local_state1 = local_state.clone();
+    use_effect(move || {
+        state1.clone().list_company_and_branch(local_state1.clone());
+    });
 
     rsx! {
         div {
