@@ -18,7 +18,9 @@ impl CacheIO for S {
     async fn get_all_txn_input(&self) -> Vec<push_data::Txn<operations::Input>> {
         let mut stmt = self
             .db
-            .prepare("SELECT txn_number, txn FROM write_cache_transactions_input")
+            .prepare(
+                "SELECT txn_number, txn FROM write_cache_transactions_input WHERE is_faild = false",
+            )
             .unwrap();
 
         let rows = stmt
@@ -54,6 +56,15 @@ impl CacheIO for S {
             .execute(
                 "INSERT OR REPLACE INTO write_cache_transactions_result (txn_number, txn) VALUES (?1, ?2)",
                 rusqlite::params![txn.txn_number as i64, txn_data],
+            )
+            .unwrap();
+    }
+
+    async fn mark_txn_input_as_faild(&self, txn_number: &u64) {
+        self.db
+            .execute(
+                "UPDATE write_cache_transactions_input SET is_faild = true WHERE txn_number = ?1",
+                rusqlite::params![*txn_number as i64],
             )
             .unwrap();
     }

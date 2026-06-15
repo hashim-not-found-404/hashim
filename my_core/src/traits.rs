@@ -212,6 +212,7 @@ pub trait CacheIO: Sized {
         &self,
         txn: &push_data::Txn<operations::Output>,
     ) -> impl Future<Output = ()>;
+    fn mark_txn_input_as_faild(&self, txn_number: &u64) -> impl Future<Output = ()>;
     fn delete_txn_input(&self, txn_number: &u64) -> impl Future<Output = ()>;
 
     fn write_resource(&self, resource: &Vec<ResourceInfo>) -> impl Future<Output = ()>;
