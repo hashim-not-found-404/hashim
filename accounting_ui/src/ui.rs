@@ -88,6 +88,12 @@ fn AuthenticationPage() -> Element {
     let auth_state = front_end_model_view::AuthFeatureState::<my_signals::m::S>::default();
     use_context_provider(|| auth_state);
 
+    let local_state = front_end_model_view::SignInState::<my_signals::m::S>::default();
+    use_context_provider(|| local_state);
+
+    let local_state = front_end_model_view::SignUpState::<my_signals::m::S>::default();
+    use_context_provider(|| local_state);
+
     if state.is_signed_in.read().is_some() {
         navigator().push(Route::CompanyAndBranchSelection {});
     }
@@ -101,7 +107,7 @@ fn AuthenticationPage() -> Element {
 fn SignIn() -> Element {
     let state = consume_context::<StateOfEveryThing>();
     let auth_state = consume_context::<front_end_model_view::AuthFeatureState<my_signals::m::S>>();
-    let local_state = front_end_model_view::SignInState::<my_signals::m::S>::default();
+    let local_state = consume_context::<front_end_model_view::SignInState<my_signals::m::S>>();
 
     let sign_up = move |_| {
         navigator().push(Route::SignUp {});
@@ -155,7 +161,7 @@ fn SignIn() -> Element {
 fn SignUp() -> Element {
     let state = consume_context::<StateOfEveryThing>();
     let auth_state = consume_context::<front_end_model_view::AuthFeatureState<my_signals::m::S>>();
-    let local_state = front_end_model_view::SignUpState::<my_signals::m::S>::default();
+    let local_state = consume_context::<front_end_model_view::SignUpState<my_signals::m::S>>();
 
     let sign_in = move |_| {
         navigator().push(Route::SignIn {});
