@@ -94,6 +94,10 @@ fn AuthenticationPage() -> Element {
     let local_state = front_end_model_view::SignUpState::<my_signals::m::S>::default();
     use_context_provider(|| local_state);
 
+    let sender: my_signal::m::S<Option<mpsc_sender::m::S<front_end_model_view::IsProceed>>> =
+        my_signal::m::S::default();
+    use_context_provider(|| sender);
+
     if state.is_signed_in.read().is_some() {
         navigator().push(Route::CompanyAndBranchSelection {});
     }
@@ -108,6 +112,9 @@ fn SignIn() -> Element {
     let state = consume_context::<StateOfEveryThing>();
     let auth_state = consume_context::<front_end_model_view::AuthFeatureState<my_signals::m::S>>();
     let local_state = consume_context::<front_end_model_view::SignInState<my_signals::m::S>>();
+    let sender = consume_context::<
+        my_signal::m::S<Option<mpsc_sender::m::S<front_end_model_view::IsProceed>>>,
+    >();
 
     let sign_up = move |_| {
         navigator().push(Route::SignUp {});
@@ -116,8 +123,6 @@ fn SignIn() -> Element {
     let state1 = state.clone();
     let local_state1 = local_state.clone();
     let auth_state1 = auth_state.clone();
-
-    let sender = my_signal::m::S::default();
 
     rsx! {
         div {
@@ -162,6 +167,9 @@ fn SignUp() -> Element {
     let state = consume_context::<StateOfEveryThing>();
     let auth_state = consume_context::<front_end_model_view::AuthFeatureState<my_signals::m::S>>();
     let local_state = consume_context::<front_end_model_view::SignUpState<my_signals::m::S>>();
+    let sender = consume_context::<
+        my_signal::m::S<Option<mpsc_sender::m::S<front_end_model_view::IsProceed>>>,
+    >();
 
     let sign_in = move |_| {
         navigator().push(Route::SignIn {});
@@ -173,8 +181,6 @@ fn SignUp() -> Element {
     let local_state2 = local_state.clone();
     let auth_state1 = auth_state.clone();
     let auth_state2 = auth_state.clone();
-
-    let sender = my_signal::m::S::default();
 
     rsx! {
         div {
