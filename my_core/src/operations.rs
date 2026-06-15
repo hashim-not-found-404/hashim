@@ -6,9 +6,6 @@ pub(crate) trait OperationsInput: Clone {
         unreachable!("we dont have here state less check")
     }
     async fn state_full_check<Ch: CacheIO>(&self, state: &cache::State<Ch>) -> Self::Result;
-    fn apply_change(&self, state: &mut cache::StateOfPendingTxn) {
-        unreachable!("we dont have here apply")
-    }
     fn map_input(self) -> Input;
 }
 
@@ -38,16 +35,6 @@ pub enum Output {
 }
 
 impl Input {
-    pub(crate) fn run_operation_apply(&self, state: &mut cache::StateOfPendingTxn) {
-        match self {
-            Input::SignUp(i) => i.apply_change(state),
-            Input::SignIn(i) => i.apply_change(state),
-            Input::CreateCompany(i) => i.apply_change(state),
-            Input::CreateCompanyBranch(i) => i.apply_change(state),
-            Input::ListCompanyAndBranch(i) => i.apply_change(state),
-        }
-    }
-
     pub(crate) async fn run_operation_check<Ch: CacheIO>(
         &self,
         state: &mut cache::State<Ch>,
@@ -168,9 +155,10 @@ async fn operation_check_apply_handler<T: OperationsInput, Ch: CacheIO>(
     input: &T,
     state: &mut cache::State<Ch>,
 ) {
-    if input.state_full_check(state).await.is_ok() {
-        input.apply_change(&mut state.state_of_pending_txn);
-    }
+    apply_change(
+        input.state_full_check(state).await.map_to_resource(),
+        &mut state.state_of_pending_txn,
+    );
 }
 
 async fn operation_check_apply_write_handler<T: OperationsInput, Ch: CacheIO>(
@@ -181,7 +169,7 @@ async fn operation_check_apply_write_handler<T: OperationsInput, Ch: CacheIO>(
     let result = input.state_full_check(state).await;
 
     if result.is_ok() {
-        input.apply_change(&mut state.state_of_pending_txn);
+        apply_change(result.map_to_resource(), &mut state.state_of_pending_txn);
 
         state
             .cache
@@ -193,6 +181,60 @@ async fn operation_check_apply_write_handler<T: OperationsInput, Ch: CacheIO>(
     }
 
     return result.map_result_to_output();
+}
+
+trait Sdfsdfojzofjoz<V> {
+    fn upsert<F>(&mut self, row_uuid: db_types::UuidType, f: F)
+    where
+        F: FnOnce(&mut V);
+}
+
+impl<V: Default> Sdfsdfojzofjoz<V> for HashMap<db_types::UuidType, V> {
+    fn upsert<F>(&mut self, row_uuid: db_types::UuidType, f: F)
+    where
+        F: FnOnce(&mut V),
+    {
+        self.entry(row_uuid).and_modify(f).or_insert(V::default());
+    }
+}
+
+fn apply_change(resources: Vec<ResourceInfo>, state: &mut cache::StateOfPendingTxn) {
+    for resource in resources {
+        let row_uuid = resource.row_uuid;
+
+        match resource.resource {
+            server_methods::Resource::Jwt(_) => {}
+            server_methods::Resource::UserName(r) => {
+                state.user.upsert(row_uuid, |table| table.name = Some(r))
+            }
+            server_methods::Resource::UserId(r) => {
+                state.user.upsert(row_uuid, |table| table.id = r)
+            }
+            server_methods::Resource::CompanyName(r) => {
+                state.company.upsert(row_uuid, |table| table.name = r)
+            }
+            server_methods::Resource::BranchName(r) => {
+                todo!();
+                // state.user.upsert(row_uuid, |table| table.name = r)
+            }
+            server_methods::Resource::TableCompanyBranchFieldCompanyBelong(r) => {
+                todo!();
+                // state.user.upsert(row_uuid, |table| table.name = r)
+            }
+            server_methods::Resource::CompanyCurrency(r) => {
+                state.company.upsert(row_uuid, |table| table.currency = r)
+            }
+            server_methods::Resource::RoleAtCompany(r) => state
+                .access_control_for_company
+                .upsert(row_uuid, |table| table.role = r),
+            server_methods::Resource::UserThatHaveRole(r) => state
+                .access_control_for_company
+                .upsert(row_uuid, |table| table.user_ = r),
+            server_methods::Resource::CompanyThatHaveUserRole(r) => state
+                .access_control_for_company
+                .upsert(row_uuid, |table| table.data_group = r),
+        }
+    }
 }
 
 // all imples down
@@ -238,17 +280,6 @@ impl OperationsInput for sign_up::Input {
             user_id: self.user_id.clone(),
             user_name: self.name.clone(),
         });
-    }
-
-    fn apply_change(&self, state: &mut cache::StateOfPendingTxn) {
-        state.user.insert(
-            self.new_uuid.clone(),
-            cache::tables::User {
-                name: self.name.clone(),
-                id: self.user_id.clone(),
-                password: self.password.clone(),
-            },
-        );
     }
 
     fn map_input(self) -> Input {
@@ -402,25 +433,6 @@ impl OperationsInput for create_company::Input {
         Ok(create_company::Ok)
     }
 
-    fn apply_change(&self, state: &mut cache::StateOfPendingTxn) {
-        state.company.insert(
-            self.new_uuid.clone(),
-            cache::tables::Company {
-                name: self.company_name.clone(),
-                currency: self.currency.clone(),
-            },
-        );
-
-        state.access_control_for_company.insert(
-            self.new_uuid.clone(),
-            cache::tables::AccessControlForCompany {
-                data_group: self.new_uuid.clone(),
-                user_: self.user_uuid.clone(),
-                role: db_types::Role::Manager,
-            },
-        );
-    }
-
     fn map_input(self) -> Input {
         Input::CreateCompany(self)
     }
@@ -452,10 +464,6 @@ impl OperationsInput for create_company_branch::Input {
 
     async fn state_full_check<Ch: CacheIO>(&self, state: &cache::State<Ch>) -> Self::Result {
         todo!()
-    }
-
-    fn apply_change(&self, state: &mut cache::StateOfPendingTxn) {
-        todo!("add to table company branch and table access control");
     }
 
     fn map_input(self) -> Input {

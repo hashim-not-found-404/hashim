@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-#[derive(PartialEq, Clone, Hash, Eq, Debug, Deserialize, Serialize)]
+#[derive(Default, PartialEq, Clone, Hash, Eq, Debug, Deserialize, Serialize)]
 pub struct UuidType(pub String);
 
 pub type ListOfCompanies = Vec<db_types::Company>;
@@ -59,8 +59,9 @@ impl Currency {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Default, Debug, Deserialize, Serialize, Clone)]
 pub enum Role {
+    #[default]
     Manager,
 }
 

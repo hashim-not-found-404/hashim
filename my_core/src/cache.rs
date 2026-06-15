@@ -3,15 +3,18 @@ use crate::prelude::*;
 pub mod tables {
     use crate::db_types;
 
+    #[derive(Default)]
     pub struct User {
         pub name: Option<String>,
         pub id: String,
         pub password: String,
     }
+    #[derive(Default)]
     pub struct Company {
         pub name: String,
         pub currency: db_types::Currency,
     }
+    #[derive(Default)]
     pub struct AccessControlForCompany {
         pub data_group: db_types::UuidType,
         pub user_: db_types::UuidType,
@@ -42,8 +45,7 @@ impl<Ch: CacheIO> State<Ch> {
         };
 
         for op in txns {
-            op.operation
-                .run_operation_apply(&mut state.state_of_pending_txn);
+            op.operation.run_operation_check_apply(&mut state);
         }
 
         state
