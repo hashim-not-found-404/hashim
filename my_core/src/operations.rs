@@ -207,16 +207,16 @@ fn apply_change(resources: Vec<ResourceInfo>, state: &mut cache::StateOfPendingT
 
         match resource.resource {
             server_methods::Resource::Jwt(_) => {}
-            server_methods::Resource::UserName(r) => {
+            server_methods::Resource::TableUserFieldName(r) => {
                 state.user.upsert(row_uuid, |table| table.name = Some(r))
             }
-            server_methods::Resource::UserId(r) => {
+            server_methods::Resource::TableUserFieldId(r) => {
                 state.user.upsert(row_uuid, |table| table.id = r)
             }
-            server_methods::Resource::CompanyName(r) => {
+            server_methods::Resource::TableCompanyFieldName(r) => {
                 state.company.upsert(row_uuid, |table| table.name = r)
             }
-            server_methods::Resource::BranchName(r) => {
+            server_methods::Resource::TableCompanyBranchFieldName(r) => {
                 todo!();
                 // state.user.upsert(row_uuid, |table| table.name = r)
             }
@@ -224,16 +224,16 @@ fn apply_change(resources: Vec<ResourceInfo>, state: &mut cache::StateOfPendingT
                 todo!();
                 // state.user.upsert(row_uuid, |table| table.name = r)
             }
-            server_methods::Resource::CompanyCurrency(r) => {
+            server_methods::Resource::TableCompanyFieldCurrency(r) => {
                 state.company.upsert(row_uuid, |table| table.currency = r)
             }
-            server_methods::Resource::RoleAtCompany(r) => state
+            server_methods::Resource::TableAccessControlForCompanyFieldRole(r) => state
                 .access_control_for_company
                 .upsert(row_uuid, |table| table.role = r),
-            server_methods::Resource::UserThatHaveRole(r) => state
+            server_methods::Resource::TableAccessControlForCompanyFieldUser(r) => state
                 .access_control_for_company
                 .upsert(row_uuid, |table| table.user_ = r),
-            server_methods::Resource::CompanyThatHaveUserRole(r) => state
+            server_methods::Resource::TableAccessControlForCompanyFieldDataGroup(r) => state
                 .access_control_for_company
                 .upsert(row_uuid, |table| table.data_group = r),
         }
@@ -306,13 +306,13 @@ impl OperationResult for sign_up::Result {
                 });
                 resource.push(ResourceInfo {
                     row_uuid: ok.user_uuid.clone(),
-                    resource: server_methods::Resource::UserId(ok.user_id.clone()),
+                    resource: server_methods::Resource::TableUserFieldId(ok.user_id.clone()),
                 });
 
                 if let Some(name) = &ok.user_name {
                     resource.push(ResourceInfo {
                         row_uuid: ok.user_uuid.clone(),
-                        resource: server_methods::Resource::UserName(name.clone()),
+                        resource: server_methods::Resource::TableUserFieldName(name.clone()),
                     });
                 }
 
@@ -407,7 +407,7 @@ impl OperationResult for sign_in::Result {
                 if let Some(name) = &ok.user_name {
                     resource.push(ResourceInfo {
                         row_uuid: ok.user_uuid.clone(),
-                        resource: server_methods::Resource::UserName(name.clone()),
+                        resource: server_methods::Resource::TableUserFieldName(name.clone()),
                     });
                 }
 
@@ -500,9 +500,9 @@ impl OperationsInput for list_company_and_branch::Input {
 
     fn subs() -> &'static [server_methods::Subscribe] {
         &[
-            server_methods::Subscribe::BranchName,
-            server_methods::Subscribe::CompanyName,
-            server_methods::Subscribe::RoleAtCompany,
+            server_methods::Subscribe::TableCompanyBranchFieldName,
+            server_methods::Subscribe::TableCompanyFieldName,
+            server_methods::Subscribe::TableAccessControlForCompanyFieldRole,
         ]
     }
 
@@ -552,16 +552,20 @@ impl OperationResult for list_company_and_branch::Result {
                 for company in ok.list.clone() {
                     resource.push(ResourceInfo {
                         row_uuid: company.uuid.clone(),
-                        resource: server_methods::Resource::CompanyName(company.name),
+                        resource: server_methods::Resource::TableCompanyFieldName(company.name),
                     });
                     resource.push(ResourceInfo {
                         row_uuid: company.uuid.clone(),
-                        resource: server_methods::Resource::RoleAtCompany(company.role),
+                        resource: server_methods::Resource::TableAccessControlForCompanyFieldRole(
+                            company.role,
+                        ),
                     });
                     for branch in company.branches {
                         resource.push(ResourceInfo {
                             row_uuid: branch.uuid.clone(),
-                            resource: server_methods::Resource::BranchName(branch.name),
+                            resource: server_methods::Resource::TableCompanyBranchFieldName(
+                                branch.name,
+                            ),
                         });
                         resource.push(ResourceInfo {
                             row_uuid: branch.uuid.clone(),

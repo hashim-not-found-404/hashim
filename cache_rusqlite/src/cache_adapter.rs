@@ -90,34 +90,36 @@ impl CacheIO for S {
                 server_methods::Resource::Jwt(value) => {
                     make_sql_statment("user", "jwt", uuid, value)
                 }
-                server_methods::Resource::UserName(value) => {
+                server_methods::Resource::TableUserFieldName(value) => {
                     make_sql_statment("user", "name", uuid, value)
                 }
-                server_methods::Resource::UserId(value) => {
+                server_methods::Resource::TableUserFieldId(value) => {
                     make_sql_statment("user", "id", uuid, value)
                 }
-                server_methods::Resource::CompanyName(value) => {
+                server_methods::Resource::TableCompanyFieldName(value) => {
                     make_sql_statment("company", "name", uuid, value)
                 }
-                server_methods::Resource::BranchName(value) => {
+                server_methods::Resource::TableCompanyBranchFieldName(value) => {
                     make_sql_statment("company_branch", "name", uuid, value)
                 }
                 server_methods::Resource::TableCompanyBranchFieldCompanyBelong(value) => {
                     make_sql_statment("company_branch", "company_belong", uuid, &value.0)
                 }
-                server_methods::Resource::CompanyCurrency(value) => {
+                server_methods::Resource::TableCompanyFieldCurrency(value) => {
                     make_sql_statment("company", "currency", uuid, &value.as_str().to_string())
                 }
-                server_methods::Resource::RoleAtCompany(value) => make_sql_statment(
-                    "access_control_for_company",
-                    "role",
-                    uuid,
-                    &value.as_str().to_string(),
-                ),
-                server_methods::Resource::UserThatHaveRole(value) => {
+                server_methods::Resource::TableAccessControlForCompanyFieldRole(value) => {
+                    make_sql_statment(
+                        "access_control_for_company",
+                        "role",
+                        uuid,
+                        &value.as_str().to_string(),
+                    )
+                }
+                server_methods::Resource::TableAccessControlForCompanyFieldUser(value) => {
                     make_sql_statment("access_control_for_company", "user_", uuid, &value.0)
                 }
-                server_methods::Resource::CompanyThatHaveUserRole(value) => {
+                server_methods::Resource::TableAccessControlForCompanyFieldDataGroup(value) => {
                     make_sql_statment("access_control_for_company", "data_group", uuid, &value.0)
                 }
             };

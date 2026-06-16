@@ -514,32 +514,32 @@ fn what_subs_to_poke(resource: &Vec<ResourceInfo>) -> HashSet<server_methods::Su
     for resource in resource {
         match resource.resource {
             server_methods::Resource::Jwt(_) => {}
-            server_methods::Resource::UserName(_) => {
-                list.insert(server_methods::Subscribe::UserName);
+            server_methods::Resource::TableUserFieldName(_) => {
+                list.insert(server_methods::Subscribe::TableUserFieldName);
             }
-            server_methods::Resource::UserId(_) => {
-                list.insert(server_methods::Subscribe::UserId);
+            server_methods::Resource::TableUserFieldId(_) => {
+                list.insert(server_methods::Subscribe::TableUserFieldId);
             }
-            server_methods::Resource::CompanyName(_) => {
-                list.insert(server_methods::Subscribe::CompanyName);
+            server_methods::Resource::TableCompanyFieldName(_) => {
+                list.insert(server_methods::Subscribe::TableCompanyFieldName);
             }
-            server_methods::Resource::BranchName(_) => {
-                list.insert(server_methods::Subscribe::BranchName);
+            server_methods::Resource::TableCompanyBranchFieldName(_) => {
+                list.insert(server_methods::Subscribe::TableCompanyBranchFieldName);
             }
             server_methods::Resource::TableCompanyBranchFieldCompanyBelong(_) => {
                 list.insert(server_methods::Subscribe::TableCompanyBranchFieldCompanyBelong);
             }
-            server_methods::Resource::CompanyCurrency(_) => {
-                list.insert(server_methods::Subscribe::CompanyCurrency);
+            server_methods::Resource::TableCompanyFieldCurrency(_) => {
+                list.insert(server_methods::Subscribe::TableCompanyFieldCurrency);
             }
-            server_methods::Resource::RoleAtCompany(_) => {
-                list.insert(server_methods::Subscribe::RoleAtCompany);
+            server_methods::Resource::TableAccessControlForCompanyFieldRole(_) => {
+                list.insert(server_methods::Subscribe::TableAccessControlForCompanyFieldRole);
             }
-            server_methods::Resource::UserThatHaveRole(_) => {
-                list.insert(server_methods::Subscribe::UserThatHaveRole);
+            server_methods::Resource::TableAccessControlForCompanyFieldUser(_) => {
+                list.insert(server_methods::Subscribe::TableAccessControlForCompanyFieldUser);
             }
-            server_methods::Resource::CompanyThatHaveUserRole(_) => {
-                list.insert(server_methods::Subscribe::CompanyThatHaveUserRole);
+            server_methods::Resource::TableAccessControlForCompanyFieldDataGroup(_) => {
+                list.insert(server_methods::Subscribe::TableAccessControlForCompanyFieldDataGroup);
             }
         }
     }

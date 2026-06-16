@@ -236,35 +236,43 @@ where
                 new_uuid.clone(),
                 ResourceInfo {
                     row_uuid: new_uuid.to_uuid(),
-                    resource: server_methods::Resource::CompanyName(input.company_name.clone()),
+                    resource: server_methods::Resource::TableCompanyFieldName(
+                        input.company_name.clone(),
+                    ),
                 },
             );
             side_effects.resource_to_broadcast_for_company.insert_push(
                 new_uuid.clone(),
                 ResourceInfo {
                     row_uuid: new_uuid.to_uuid(),
-                    resource: server_methods::Resource::CompanyCurrency(input.currency.clone()),
+                    resource: server_methods::Resource::TableCompanyFieldCurrency(
+                        input.currency.clone(),
+                    ),
                 },
             );
             side_effects.resource_to_broadcast_for_company.insert_push(
                 new_uuid.clone(),
                 ResourceInfo {
                     row_uuid: new_uuid.to_uuid(),
-                    resource: server_methods::Resource::RoleAtCompany(ROLE),
+                    resource: server_methods::Resource::TableAccessControlForCompanyFieldRole(ROLE),
                 },
             );
             side_effects.resource_to_broadcast_for_company.insert_push(
                 new_uuid.clone(),
                 ResourceInfo {
                     row_uuid: new_uuid.to_uuid(),
-                    resource: server_methods::Resource::UserThatHaveRole(input.user_uuid.clone()),
+                    resource: server_methods::Resource::TableAccessControlForCompanyFieldUser(
+                        input.user_uuid.clone(),
+                    ),
                 },
             );
             side_effects.resource_to_broadcast_for_company.insert_push(
                 new_uuid.clone(),
                 ResourceInfo {
                     row_uuid: new_uuid.to_uuid(),
-                    resource: server_methods::Resource::CompanyThatHaveUserRole(new_uuid.to_uuid()),
+                    resource: server_methods::Resource::TableAccessControlForCompanyFieldDataGroup(
+                        new_uuid.to_uuid(),
+                    ),
                 },
             );
 
@@ -832,15 +840,15 @@ fn merge_subscribes<Id: RowId>(
 // here dont contain data
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Subscribe {
-    UserName,
-    UserId,
-    CompanyName,
-    BranchName,
+    TableUserFieldName,
+    TableUserFieldId,
+    TableCompanyFieldName,
+    TableCompanyFieldCurrency,
+    TableCompanyBranchFieldName,
     TableCompanyBranchFieldCompanyBelong,
-    CompanyCurrency,
-    RoleAtCompany,
-    UserThatHaveRole,
-    CompanyThatHaveUserRole,
+    TableAccessControlForCompanyFieldRole,
+    TableAccessControlForCompanyFieldUser,
+    TableAccessControlForCompanyFieldDataGroup,
 }
 
 fn role_to_subscribe_mapping(roles: Vec<db_types::Role>) -> HashSet<Subscribe> {
@@ -849,13 +857,13 @@ fn role_to_subscribe_mapping(roles: Vec<db_types::Role>) -> HashSet<Subscribe> {
     for role in roles {
         match role {
             db_types::Role::Manager => {
-                subscribes.insert(Subscribe::UserName);
-                subscribes.insert(Subscribe::UserId);
-                subscribes.insert(Subscribe::CompanyName);
-                subscribes.insert(Subscribe::CompanyCurrency);
-                subscribes.insert(Subscribe::RoleAtCompany);
-                subscribes.insert(Subscribe::UserThatHaveRole);
-                subscribes.insert(Subscribe::CompanyThatHaveUserRole);
+                subscribes.insert(Subscribe::TableUserFieldName);
+                subscribes.insert(Subscribe::TableUserFieldId);
+                subscribes.insert(Subscribe::TableCompanyFieldName);
+                subscribes.insert(Subscribe::TableCompanyFieldCurrency);
+                subscribes.insert(Subscribe::TableAccessControlForCompanyFieldRole);
+                subscribes.insert(Subscribe::TableAccessControlForCompanyFieldUser);
+                subscribes.insert(Subscribe::TableAccessControlForCompanyFieldDataGroup);
             }
         }
     }
@@ -873,23 +881,23 @@ fn resource_filtering_based_on_subscribe(
     for one_resource in resource {
         match one_resource.resource {
             Resource::Jwt(_) => {}
-            Resource::UserName(_) => {
-                if subscribe.contains(&Subscribe::UserName) {
+            Resource::TableUserFieldName(_) => {
+                if subscribe.contains(&Subscribe::TableUserFieldName) {
                     new_resource.push(one_resource.clone());
                 }
             }
-            Resource::UserId(_) => {
-                if subscribe.contains(&Subscribe::UserId) {
+            Resource::TableUserFieldId(_) => {
+                if subscribe.contains(&Subscribe::TableUserFieldId) {
                     new_resource.push(one_resource.clone());
                 }
             }
-            Resource::CompanyName(_) => {
-                if subscribe.contains(&Subscribe::CompanyName) {
+            Resource::TableCompanyFieldName(_) => {
+                if subscribe.contains(&Subscribe::TableCompanyFieldName) {
                     new_resource.push(one_resource.clone());
                 }
             }
-            Resource::BranchName(_) => {
-                if subscribe.contains(&Subscribe::BranchName) {
+            Resource::TableCompanyBranchFieldName(_) => {
+                if subscribe.contains(&Subscribe::TableCompanyBranchFieldName) {
                     new_resource.push(one_resource.clone());
                 }
             }
@@ -898,23 +906,23 @@ fn resource_filtering_based_on_subscribe(
                     new_resource.push(one_resource.clone());
                 }
             }
-            Resource::CompanyCurrency(_) => {
-                if subscribe.contains(&Subscribe::CompanyCurrency) {
+            Resource::TableCompanyFieldCurrency(_) => {
+                if subscribe.contains(&Subscribe::TableCompanyFieldCurrency) {
                     new_resource.push(one_resource.clone());
                 }
             }
-            Resource::RoleAtCompany(_) => {
-                if subscribe.contains(&Subscribe::RoleAtCompany) {
+            Resource::TableAccessControlForCompanyFieldRole(_) => {
+                if subscribe.contains(&Subscribe::TableAccessControlForCompanyFieldRole) {
                     new_resource.push(one_resource.clone());
                 }
             }
-            Resource::UserThatHaveRole(_) => {
-                if subscribe.contains(&Subscribe::UserThatHaveRole) {
+            Resource::TableAccessControlForCompanyFieldUser(_) => {
+                if subscribe.contains(&Subscribe::TableAccessControlForCompanyFieldUser) {
                     new_resource.push(one_resource.clone());
                 }
             }
-            Resource::CompanyThatHaveUserRole(_) => {
-                if subscribe.contains(&Subscribe::CompanyThatHaveUserRole) {
+            Resource::TableAccessControlForCompanyFieldDataGroup(_) => {
+                if subscribe.contains(&Subscribe::TableAccessControlForCompanyFieldDataGroup) {
                     new_resource.push(one_resource.clone());
                 }
             }
@@ -928,15 +936,15 @@ fn resource_filtering_based_on_subscribe(
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub enum Resource {
     Jwt(String),
-    UserName(String),
-    UserId(String),
-    CompanyName(String),
-    BranchName(String),
+    TableUserFieldName(String),
+    TableUserFieldId(String),
+    TableCompanyFieldName(String),
+    TableCompanyFieldCurrency(db_types::Currency),
+    TableCompanyBranchFieldName(String),
     TableCompanyBranchFieldCompanyBelong(db_types::UuidType),
-    CompanyCurrency(db_types::Currency),
-    RoleAtCompany(db_types::Role),
-    UserThatHaveRole(db_types::UuidType),
-    CompanyThatHaveUserRole(db_types::UuidType),
+    TableAccessControlForCompanyFieldRole(db_types::Role),
+    TableAccessControlForCompanyFieldUser(db_types::UuidType),
+    TableAccessControlForCompanyFieldDataGroup(db_types::UuidType),
 }
 
 pub struct AllRoles<Id: RowId> {
