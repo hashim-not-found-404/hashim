@@ -339,7 +339,7 @@ where
 
                                 for i in components_to_poke {
                                     let sender = pool_of_pokers.get_mut(&i).unwrap();
-                                    let _ = sender.send(()).await;
+                                    let _ = sender.send(()).await.unwrap();
                                 }
                             }
                         }
@@ -347,15 +347,17 @@ where
                     MessageToCache::Subscribe {
                         component_id,
                         list_of_subscribtion,
-                        sender: sender_to_component,
+                        sender,
                     } => {
-                        pool_of_pokers.insert(component_id, sender_to_component);
+                        pool_of_pokers.insert(component_id, sender);
                         for subscribe in list_of_subscribtion {
                             pool_of_subscribes
                                 .entry(subscribe.clone())
                                 .or_default()
                                 .insert(component_id);
                         }
+
+                        mbg!(&pool_of_subscribes);
                     }
                     MessageToCache::UnSubscribe { component_id } => {
                         pool_of_pokers.remove(&component_id);
@@ -485,7 +487,7 @@ where
             });
         }
 
-        let t = push_data::Input {
+        let t = messages::FromClient {
             jwts,
             nonce: At::Id::generate().to_uuid(),
             operations: operations1,

@@ -661,6 +661,7 @@ where
                     }
                     Either::Two(wraped_resource) => {
                         let resource = wraped_resource.unwrap();
+                        dbg!(&resource);
                         if session
                             .send_bin(De::encode(&messages::FromServer::Resources(resource)))
                             .await
@@ -829,7 +830,7 @@ fn merge_subscribes<Id: RowId>(
 }
 
 // here dont contain data
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Subscribe {
     UserName,
     UserId,

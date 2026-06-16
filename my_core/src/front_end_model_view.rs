@@ -404,13 +404,14 @@ impl<
         self,
         local_state: As::CompanyAndBranchList,
     ) -> impl FnOnce() {
-        const COMPONENT_ID: u16 = 1;
+        let component_id: u16 = At::Rn::generate() as u16;
+
         let routs = self.routs.clone();
 
         let mut handel = At::Rt::abortable_spawn_local(async move {
             let mut receiver_to_poke = self
                 .routs
-                .send_subs_to_cache_actor(COMPONENT_ID, list_company_and_branch::Input::subs())
+                .send_subs_to_cache_actor(component_id, list_company_and_branch::Input::subs())
                 .await;
 
             loop {
@@ -454,14 +455,13 @@ impl<
                 local_state.set(value);
             }
 
-            self.routs.send_unsubs_to_cache_actor(COMPONENT_ID).await
+            self.routs.send_unsubs_to_cache_actor(component_id).await
         });
 
         move || {
             let _ = At::Rt::spawn_local(async move {
-                mbg!("this is called");
                 handel.abort().await;
-                routs.send_unsubs_to_cache_actor(COMPONENT_ID).await
+                routs.send_unsubs_to_cache_actor(component_id).await
             });
         }
     }

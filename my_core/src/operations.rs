@@ -512,6 +512,7 @@ impl OperationsInput for list_company_and_branch::Input {
             .read_list_company_and_branch(&self.user_uuid)
             .await;
 
+        mbg!(&list_of_companies); // %cINFO%c my_core/src/operations.rs:515%c
         for (rowid, row) in &state.state_of_pending_txn.access_control_for_company {
             if row.user_ == self.user_uuid {
                 let company_uuid = state.state_of_pending_txn.company.get(&row.data_group);
@@ -526,6 +527,7 @@ impl OperationsInput for list_company_and_branch::Input {
                 // TODO make it read also branch
             }
         }
+        mbg!(&list_of_companies); // %cINFO%c my_core/src/operations.rs:530%c
 
         Ok(list_company_and_branch::Ok {
             list: list_of_companies,
