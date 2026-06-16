@@ -1,7 +1,5 @@
 use crate::prelude::*;
 
-// pub struct Poke;
-
 enum MessageToNetwork {
     Url(String),
     Bytes(Vec<u8>),
@@ -36,19 +34,19 @@ pub(crate) enum CachingStrategy {
 pub(crate) enum MessageToCache<Mpsc: MultiProducerSingleConsumer> {
     WeAreBackOnline,
     DataFromServer(Vec<u8>),
+    Subscribe {
+        component_id: u16,
+        list_of_subscribtion: &'static [server_methods::Subscribe],
+        sender: Mpsc::Sender<()>,
+    },
+    UnSubscribe {
+        component_id: u16,
+    },
     Query {
         strategy: CachingStrategy,
         sender: Mpsc::Sender<Response>,
         data: operations::Input,
     },
-    // Subscribe {
-    //     component_id: u64,
-    //     list_of_subscribtion: Vec<server_methods::Subscribe>,
-    //     sender_to_component: Mpsc::Sender<Poke>,
-    // },
-    // UnSubscribe {
-    //     component_id: u64,
-    // },
 }
 
 pub struct MyWAMP<At, Mpsc>
@@ -122,6 +120,36 @@ where
             .unwrap();
 
         receiver
+    }
+
+    pub(crate) async fn send_subs_to_cache_actor(
+        &self,
+        component_id: u16,
+        list_of_subscribtion: &'static [server_methods::Subscribe],
+    ) -> Mpsc::Receiver<()> {
+        let (sender, receiver) = Mpsc::channel();
+
+        self.sender_to_cache
+            .lock()
+            .unwrap()
+            .send(MessageToCache::Subscribe {
+                component_id,
+                list_of_subscribtion,
+                sender,
+            })
+            .await
+            .unwrap();
+
+        receiver
+    }
+
+    pub(crate) async fn send_unsubs_to_cache_actor(&self, component_id: u16) {
+        self.sender_to_cache
+            .lock()
+            .unwrap()
+            .send(MessageToCache::UnSubscribe { component_id })
+            .await
+            .unwrap();
     }
 
     async fn network_radar(ws: &Option<At::Ws>) -> Result<Vec<u8>, DynamicError> {
@@ -220,6 +248,9 @@ where
         At::Rt::spawn_local(async move {
             let mut state = cache::State::<At::Ch>::new::<At::Rn>().await;
             let mut pool_of_senders = HashMap::<u64, Mpsc::Sender<Response>>::with_capacity(100);
+            let mut pool_of_pokers = HashMap::<u16, Mpsc::Sender<()>>::with_capacity(10);
+            let mut pool_of_subscribes =
+                HashMap::<server_methods::Subscribe, HashSet<u16>>::with_capacity(100);
 
             loop {
                 match receiver_to_cache.recv().await.unwrap() {
@@ -286,9 +317,54 @@ where
                                 }
                             }
                             messages::FromServer::Resources(resource) => {
+                                mbg!(&resource);
                                 state.cache.write_resource(&resource).await;
+
+                                let subs_to_poke = what_subs_to_poke(&resource);
+
+                                let mut components_to_poke = HashSet::new();
+
+                                for one_sub in subs_to_poke {
+                                    let a = pool_of_subscribes.get(&one_sub);
+
+                                    let a = match a {
+                                        Some(a) => a,
+                                        None => continue,
+                                    };
+
+                                    for a in a {
+                                        components_to_poke.insert(a.clone());
+                                    }
+                                }
+
+                                for i in components_to_poke {
+                                    let sender = pool_of_pokers.get_mut(&i).unwrap();
+                                    let _ = sender.send(()).await;
+                                }
                             }
                         }
+                    }
+                    MessageToCache::Subscribe {
+                        component_id,
+                        list_of_subscribtion,
+                        sender: sender_to_component,
+                    } => {
+                        pool_of_pokers.insert(component_id, sender_to_component);
+                        for subscribe in list_of_subscribtion {
+                            pool_of_subscribes
+                                .entry(subscribe.clone())
+                                .or_default()
+                                .insert(component_id);
+                        }
+                    }
+                    MessageToCache::UnSubscribe { component_id } => {
+                        pool_of_pokers.remove(&component_id);
+
+                        for (_, components) in pool_of_subscribes.iter_mut() {
+                            components.remove(&component_id);
+                        }
+
+                        pool_of_subscribes.retain(|_, components| !components.is_empty());
                     }
                     MessageToCache::Query {
                         strategy,
@@ -377,28 +453,6 @@ where
                         CachingStrategy::WriteServerFirst => todo!(),
                         CachingStrategy::WriteServerOnly => todo!(),
                     },
-                    // MessageToCache::Subscribe {
-                    //     component_id,
-                    //     list_of_subscribtion,
-                    //     sender_to_component,
-                    // } => {
-                    // pool_of_senders.insert(component_id, sender_to_component);
-                    // for subscribe in list_of_subscribtion {
-                    //     pool_of_subscribes
-                    //         .entry(subscribe)
-                    //         .or_insert(HashSet::with_capacity(10))
-                    //         .insert(component_id);
-                    // }
-                    // }
-                    // MessageToCache::UnSubscribe { component_id } => {
-                    // pool_of_senders.remove(&component_id);
-
-                    // for (_, component_id_gg) in &mut pool_of_subscribes {
-                    //     component_id_gg.remove(&component_id);
-                    // }
-
-                    // pool_of_subscribes.retain(|_, component_ids| !component_ids.is_empty());
-                    // }
                 }
             }
         });
@@ -451,4 +505,41 @@ fn set<T>(a: Arc<RwLock<T>>, v: T) {
 }
 fn get<T: Clone>(a: Arc<RwLock<T>>) -> T {
     a.read().unwrap().clone()
+}
+
+fn what_subs_to_poke(resource: &Vec<ResourceInfo>) -> HashSet<server_methods::Subscribe> {
+    let mut list = HashSet::new();
+    for resource in resource {
+        match resource.resource {
+            server_methods::Resource::Jwt(_) => {}
+            server_methods::Resource::UserName(_) => {
+                list.insert(server_methods::Subscribe::UserName);
+            }
+            server_methods::Resource::UserId(_) => {
+                list.insert(server_methods::Subscribe::UserId);
+            }
+            server_methods::Resource::CompanyName(_) => {
+                list.insert(server_methods::Subscribe::CompanyName);
+            }
+            server_methods::Resource::BranchName(_) => {
+                list.insert(server_methods::Subscribe::BranchName);
+            }
+            server_methods::Resource::TableCompanyBranchFieldCompanyBelong(_) => {
+                list.insert(server_methods::Subscribe::TableCompanyBranchFieldCompanyBelong);
+            }
+            server_methods::Resource::CompanyCurrency(_) => {
+                list.insert(server_methods::Subscribe::CompanyCurrency);
+            }
+            server_methods::Resource::RoleAtCompany(_) => {
+                list.insert(server_methods::Subscribe::RoleAtCompany);
+            }
+            server_methods::Resource::UserThatHaveRole(_) => {
+                list.insert(server_methods::Subscribe::UserThatHaveRole);
+            }
+            server_methods::Resource::CompanyThatHaveUserRole(_) => {
+                list.insert(server_methods::Subscribe::CompanyThatHaveUserRole);
+            }
+        }
+    }
+    list
 }

@@ -1015,10 +1015,10 @@ pub trait ExtendHashMap<K, V> {
 
 impl<K: Eq + Hash, V> ExtendHashMap<K, V> for HashMap<K, Vec<V>> {
     fn insert_push(&mut self, k: K, v: V) {
-        self.entry(k).or_insert(Vec::new()).push(v);
+        self.entry(k).or_default().push(v);
     }
 
     fn insert_append(&mut self, k: K, mut v: Vec<V>) {
-        self.entry(k).or_insert(Vec::new()).append(&mut v);
+        self.entry(k).or_default().append(&mut v);
     }
 }

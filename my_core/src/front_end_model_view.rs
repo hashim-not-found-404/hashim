@@ -400,6 +400,72 @@ impl<
         });
     }
 
+    pub fn list_company_and_branch_listener(
+        self,
+        local_state: As::CompanyAndBranchList,
+    ) -> impl FnOnce() {
+        const COMPONENT_ID: u16 = 1;
+        let routs = self.routs.clone();
+
+        let mut handel = At::Rt::abortable_spawn_local(async move {
+            let mut receiver_to_poke = self
+                .routs
+                .send_subs_to_cache_actor(COMPONENT_ID, list_company_and_branch::Input::subs())
+                .await;
+
+            loop {
+                receiver_to_poke.recv().await.unwrap();
+
+                let data = self.is_signed_in.read().unwrap();
+                let value = self
+                    .routs
+                    .send_to_cache_actor(
+                        web_socket::CachingStrategy::ReadCacheOnly,
+                        list_company_and_branch::Input { user_uuid: data }.map_input(),
+                    )
+                    .await
+                    .recv()
+                    .await
+                    .unwrap();
+
+                let value = match value {
+                    web_socket::Response::CloseTheChannel => break,
+                    web_socket::Response::ServerCannotBeReached => break,
+                    web_socket::Response::Data(data) => {
+                        list_company_and_branch::Result::map_output_to_result(data.data)
+                    }
+                };
+
+                let value = match value {
+                    Ok(ok) => ok.list,
+                    Err(err) => match err.user_uuid {
+                        Some(s) => match s {
+                            UserUuidError::Invalid => unreachable!(),
+                            UserUuidError::NotAuthenticated => {
+                                self.is_signed_in.set(None);
+                                break;
+                            }
+                            UserUuidError::YouDontHavePermissionToDoThat => unreachable!(),
+                        },
+                        None => unreachable!(),
+                    },
+                };
+
+                local_state.set(value);
+            }
+
+            self.routs.send_unsubs_to_cache_actor(COMPONENT_ID).await
+        });
+
+        move || {
+            let _ = At::Rt::spawn_local(async move {
+                mbg!("this is called");
+                handel.abort().await;
+                routs.send_unsubs_to_cache_actor(COMPONENT_ID).await
+            });
+        }
+    }
+
     pub fn create_company(self, local_state: CreateCompanyState<As>) {
         At::Rt::spawn_local(async move {
             let input = create_company::Input {

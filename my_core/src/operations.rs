@@ -2,6 +2,9 @@ use crate::prelude::*;
 
 pub(crate) trait OperationsInput: Clone {
     type Result: OperationResult;
+    fn subs() -> &'static [server_methods::Subscribe] {
+        unreachable!("we dont need it here")
+    }
     fn state_less_check(&self) -> Self::Result {
         unreachable!("we dont have here state less check")
     }
@@ -494,6 +497,14 @@ impl OperationResult for create_company_branch::Result {
 
 impl OperationsInput for list_company_and_branch::Input {
     type Result = list_company_and_branch::Result;
+
+    fn subs() -> &'static [server_methods::Subscribe] {
+        &[
+            server_methods::Subscribe::BranchName,
+            server_methods::Subscribe::CompanyName,
+            server_methods::Subscribe::RoleAtCompany,
+        ]
+    }
 
     async fn state_full_check<Ch: CacheIO>(&self, state: &cache::State<Ch>) -> Self::Result {
         let mut list_of_companies = state
