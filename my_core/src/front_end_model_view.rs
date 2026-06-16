@@ -408,7 +408,7 @@ impl<
 
         let routs = self.routs.clone();
 
-        let mut handel = At::Rt::abortable_spawn_local(async move {
+        let mut handel = At::Rt::spawn_local(async move {
             let mut receiver_to_poke = self
                 .routs
                 .send_subs_to_cache_actor(component_id, list_company_and_branch::Input::subs())
@@ -460,7 +460,7 @@ impl<
 
         move || {
             let _ = At::Rt::spawn_local(async move {
-                handel.abort().await;
+                // handel.abort().await;
                 routs.send_unsubs_to_cache_actor(component_id).await
             });
         }
