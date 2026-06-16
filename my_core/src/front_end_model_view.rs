@@ -111,7 +111,7 @@ impl<
     }
 
     fn response_receiver_actor(
-        input: operations::Input,
+        input: push_data::OperationsInput,
         strategy: web_socket::CachingStrategy,
         mut sender: Mpsc::Sender<()>,
         response: Arc<Mutex<Option<web_socket::Data>>>,
@@ -186,7 +186,7 @@ impl<
             );
 
             let mut handel_response = Self::response_receiver_actor(
-                input.map_input(),
+                input.wrap_input(),
                 strategy,
                 sender,
                 response.clone(),
@@ -200,7 +200,7 @@ impl<
                 }
 
                 if let Some(response) = response.lock().unwrap().clone() {
-                    let result = sign_up::Result::map_output_to_result(response.data);
+                    let result = sign_up::Result::unwrap_output(response.data);
 
                     let is_ok = result.is_ok();
                     match result {
@@ -289,7 +289,7 @@ impl<
             );
 
             let mut handel_response = Self::response_receiver_actor(
-                input.map_input(),
+                input.wrap_input(),
                 strategy,
                 sender,
                 response.clone(),
@@ -304,7 +304,7 @@ impl<
                 }
 
                 if let Some(response) = response.lock().unwrap().clone() {
-                    let result = sign_in::Result::map_output_to_result(response.data);
+                    let result = sign_in::Result::unwrap_output(response.data);
 
                     let is_ok = result.is_ok();
                     match result {
@@ -367,7 +367,7 @@ impl<
                 .routs
                 .send_to_cache_actor(
                     web_socket::CachingStrategy::ReadCacheAndServer,
-                    list_company_and_branch::Input { user_uuid: data }.map_input(),
+                    list_company_and_branch::Input { user_uuid: data }.wrap_input(),
                 )
                 .await;
 
@@ -376,7 +376,7 @@ impl<
                     web_socket::Response::CloseTheChannel => break,
                     web_socket::Response::ServerCannotBeReached => break,
                     web_socket::Response::Data(data) => {
-                        list_company_and_branch::Result::map_output_to_result(data.data)
+                        list_company_and_branch::Result::unwrap_output(data.data)
                     }
                 };
 
@@ -422,7 +422,7 @@ impl<
                     .routs
                     .send_to_cache_actor(
                         web_socket::CachingStrategy::ReadCacheOnly,
-                        list_company_and_branch::Input { user_uuid: data }.map_input(),
+                        list_company_and_branch::Input { user_uuid: data }.wrap_input(),
                     )
                     .await
                     .recv()
@@ -433,7 +433,7 @@ impl<
                     web_socket::Response::CloseTheChannel => break,
                     web_socket::Response::ServerCannotBeReached => break,
                     web_socket::Response::Data(data) => {
-                        list_company_and_branch::Result::map_output_to_result(data.data)
+                        list_company_and_branch::Result::unwrap_output(data.data)
                     }
                 };
 
@@ -478,7 +478,7 @@ impl<
             self.routs
                 .send_to_cache_actor(
                     web_socket::CachingStrategy::WriteCacheAndServer,
-                    input.clone().map_input(),
+                    input.clone().wrap_input(),
                 )
                 .await;
 

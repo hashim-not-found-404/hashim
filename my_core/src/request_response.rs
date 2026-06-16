@@ -221,6 +221,7 @@ pub mod list_company_and_branch {
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Ok {
+        // TODO should be changet to be server optimized
         pub list: db_types::ListOfCompanies,
     }
 

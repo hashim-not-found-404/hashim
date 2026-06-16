@@ -1,53 +1,45 @@
 use crate::prelude::*;
 
-pub(crate) trait OperationsInput: Clone {
-    type Result: OperationResult;
+pub(crate) trait ViewType1: Clone {
     fn subs() -> &'static [server_methods::Subscribe] {
         unreachable!("we dont need it here")
     }
-    fn state_less_check(&self) -> Self::Result {
-        unreachable!("we dont have here state less check")
-    }
-    async fn state_full_check<Ch: CacheIO>(&self, state: &cache::State<Ch>) -> Self::Result;
-    fn map_input(self) -> Input;
+    fn wrap_input(self) -> push_data::OperationsInput;
 }
 
-pub(crate) trait OperationResult {
+pub(crate) trait CacheAndServerType1: Clone {
+    fn user_uuid(&self) -> Option<db_types::UuidType>;
+
+    type Output: CacheAndServerType2;
+    async fn state_full_operation<Ch: CacheIO>(&self, state: &cache::State<Ch>) -> Self::Output;
+    // fn wrap_input(self) -> push_data::OperationsInput;
+}
+
+pub(crate) trait CacheAndServerType2 {
     fn is_ok(&self) -> bool;
-    fn map_to_resource(&self) -> Vec<ResourceInfo>;
-    fn map_result_to_output(self) -> Output;
-    fn map_output_to_result(result: Output) -> Self;
+    fn extract_resource(&self) -> Vec<ResourceInfo>;
+    fn wrap_output(self) -> push_data::OperationsResult;
 }
 
-#[derive(Deserialize, Serialize)]
-pub enum Input {
-    SignUp(sign_up::Input),
-    SignIn(sign_in::Input),
-    CreateCompany(create_company::Input),
-    CreateCompanyBranch(create_company_branch::Input),
-    ListCompanyAndBranch(list_company_and_branch::Input),
+pub(crate) trait ViewType2 {
+    fn unwrap_output(output: push_data::OperationsResult) -> Self;
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub enum Output {
-    SignUp(sign_up::Result),
-    SignIn(sign_in::Result),
-    CreateCompany(create_company::Result),
-    CreateCompanyBranch(create_company_branch::Result),
-    ListCompanyAndBranch(list_company_and_branch::Result),
-}
-
-impl Input {
+impl push_data::OperationsInput {
     pub(crate) async fn run_operation_check<Ch: CacheIO>(
         &self,
         state: &mut cache::State<Ch>,
-    ) -> Output {
+    ) -> push_data::OperationsResult {
         match self {
-            Input::SignUp(i) => operation_check_handler(i, state).await,
-            Input::SignIn(i) => operation_check_handler(i, state).await,
-            Input::CreateCompany(i) => operation_check_handler(i, state).await,
-            Input::CreateCompanyBranch(i) => operation_check_handler(i, state).await,
-            Input::ListCompanyAndBranch(i) => operation_check_handler(i, state).await,
+            push_data::OperationsInput::SignUp(i) => operation_check_handler(i, state).await,
+            push_data::OperationsInput::SignIn(i) => operation_check_handler(i, state).await,
+            push_data::OperationsInput::CreateCompany(i) => operation_check_handler(i, state).await,
+            push_data::OperationsInput::CreateCompanyBranch(i) => {
+                operation_check_handler(i, state).await
+            }
+            push_data::OperationsInput::ListCompanyAndBranch(i) => {
+                operation_check_handler(i, state).await
+            }
         }
     }
 
@@ -56,11 +48,17 @@ impl Input {
         state: &mut cache::State<Ch>,
     ) {
         match self {
-            Input::SignUp(i) => operation_check_apply_handler(i, state).await,
-            Input::SignIn(i) => operation_check_apply_handler(i, state).await,
-            Input::CreateCompany(i) => operation_check_apply_handler(i, state).await,
-            Input::CreateCompanyBranch(i) => operation_check_apply_handler(i, state).await,
-            Input::ListCompanyAndBranch(i) => operation_check_apply_handler(i, state).await,
+            push_data::OperationsInput::SignUp(i) => operation_check_apply_handler(i, state).await,
+            push_data::OperationsInput::SignIn(i) => operation_check_apply_handler(i, state).await,
+            push_data::OperationsInput::CreateCompany(i) => {
+                operation_check_apply_handler(i, state).await
+            }
+            push_data::OperationsInput::CreateCompanyBranch(i) => {
+                operation_check_apply_handler(i, state).await
+            }
+            push_data::OperationsInput::ListCompanyAndBranch(i) => {
+                operation_check_apply_handler(i, state).await
+            }
         }
     }
 
@@ -68,17 +66,21 @@ impl Input {
         &self,
         txn_number: u64,
         state: &mut cache::State<Ch>,
-    ) -> Output {
+    ) -> push_data::OperationsResult {
         match self {
-            Input::SignUp(i) => operation_check_apply_write_handler(txn_number, i, state).await,
-            Input::SignIn(i) => operation_check_apply_write_handler(txn_number, i, state).await,
-            Input::CreateCompany(i) => {
+            push_data::OperationsInput::SignUp(i) => {
                 operation_check_apply_write_handler(txn_number, i, state).await
             }
-            Input::CreateCompanyBranch(i) => {
+            push_data::OperationsInput::SignIn(i) => {
                 operation_check_apply_write_handler(txn_number, i, state).await
             }
-            Input::ListCompanyAndBranch(i) => {
+            push_data::OperationsInput::CreateCompany(i) => {
+                operation_check_apply_write_handler(txn_number, i, state).await
+            }
+            push_data::OperationsInput::CreateCompanyBranch(i) => {
+                operation_check_apply_write_handler(txn_number, i, state).await
+            }
+            push_data::OperationsInput::ListCompanyAndBranch(i) => {
                 operation_check_apply_write_handler(txn_number, i, state).await
             }
         }
@@ -86,104 +88,90 @@ impl Input {
 
     pub(crate) fn get_user_uuid(&self) -> Option<&db_types::UuidType> {
         match self {
-            Input::SignUp(i) => Some(&i.new_uuid),
-            Input::SignIn(_) => None,
-            Input::CreateCompany(i) => Some(&i.user_uuid),
-            Input::CreateCompanyBranch(i) => Some(&i.user_uuid),
-            Input::ListCompanyAndBranch(i) => Some(&i.user_uuid),
+            push_data::OperationsInput::SignUp(i) => Some(&i.new_uuid),
+            push_data::OperationsInput::SignIn(_) => None,
+            push_data::OperationsInput::CreateCompany(i) => Some(&i.user_uuid),
+            push_data::OperationsInput::CreateCompanyBranch(i) => Some(&i.user_uuid),
+            push_data::OperationsInput::ListCompanyAndBranch(i) => Some(&i.user_uuid),
         }
     }
 
     pub(crate) fn map_to_server_input_type(&self) -> push_data::OperationsInput {
         match self {
-            Input::SignUp(i) => push_data::OperationsInput::SignUp(i.clone()),
-            Input::SignIn(i) => push_data::OperationsInput::SignIn(i.clone()),
-            Input::CreateCompany(i) => push_data::OperationsInput::CreateCompany(i.clone()),
-            Input::CreateCompanyBranch(i) => {
+            push_data::OperationsInput::SignUp(i) => push_data::OperationsInput::SignUp(i.clone()),
+            push_data::OperationsInput::SignIn(i) => push_data::OperationsInput::SignIn(i.clone()),
+            push_data::OperationsInput::CreateCompany(i) => {
+                push_data::OperationsInput::CreateCompany(i.clone())
+            }
+            push_data::OperationsInput::CreateCompanyBranch(i) => {
                 push_data::OperationsInput::CreateCompanyBranch(i.clone())
             }
-            Input::ListCompanyAndBranch(i) => {
+            push_data::OperationsInput::ListCompanyAndBranch(i) => {
                 push_data::OperationsInput::ListCompanyAndBranch(i.clone())
             }
         }
     }
 }
 
-impl Output {
+impl push_data::OperationsResult {
     pub(crate) fn extract_resource(&self) -> Vec<ResourceInfo> {
         match self {
-            Output::SignUp(i) => i.map_to_resource(),
-            Output::SignIn(i) => i.map_to_resource(),
-            Output::CreateCompany(i) => i.map_to_resource(),
-            Output::CreateCompanyBranch(i) => i.map_to_resource(),
-            Output::ListCompanyAndBranch(i) => i.map_to_resource(),
+            push_data::OperationsResult::SignUp(i) => i.extract_resource(),
+            push_data::OperationsResult::SignIn(i) => i.extract_resource(),
+            push_data::OperationsResult::CreateCompany(i) => i.extract_resource(),
+            push_data::OperationsResult::CreateCompanyBranch(i) => i.extract_resource(),
+            push_data::OperationsResult::ListCompanyAndBranch(i) => i.extract_resource(),
         }
     }
 
     pub(crate) fn is_ok(&self) -> bool {
         match self {
-            Output::SignUp(i) => i.is_ok(),
-            Output::SignIn(i) => i.is_ok(),
-            Output::CreateCompany(i) => i.is_ok(),
-            Output::CreateCompanyBranch(i) => i.is_ok(),
-            Output::ListCompanyAndBranch(i) => i.is_ok(),
+            push_data::OperationsResult::SignUp(i) => i.is_ok(),
+            push_data::OperationsResult::SignIn(i) => i.is_ok(),
+            push_data::OperationsResult::CreateCompany(i) => i.is_ok(),
+            push_data::OperationsResult::CreateCompanyBranch(i) => i.is_ok(),
+            push_data::OperationsResult::ListCompanyAndBranch(i) => i.is_ok(),
         }
     }
 }
 
-impl push_data::OperationsResult {
-    pub(crate) fn map_to_client_output_type(&self) -> Output {
-        match self {
-            push_data::OperationsResult::SignUp(i) => Output::SignUp(i.clone()),
-            push_data::OperationsResult::SignIn(i) => Output::SignIn(i.clone()),
-            push_data::OperationsResult::CreateCompany(i) => Output::CreateCompany(i.clone()),
-            push_data::OperationsResult::CreateCompanyBranch(i) => {
-                Output::CreateCompanyBranch(i.clone())
-            }
-            push_data::OperationsResult::ListCompanyAndBranch(i) => {
-                Output::ListCompanyAndBranch(i.clone())
-            }
-        }
-    }
-}
-
-async fn operation_check_handler<T: OperationsInput, Ch: CacheIO>(
+async fn operation_check_handler<T: CacheAndServerType1, Ch: CacheIO>(
     input: &T,
     state: &mut cache::State<Ch>,
-) -> Output {
-    return input.state_full_check(state).await.map_result_to_output();
+) -> push_data::OperationsResult {
+    return input.state_full_operation(state).await.wrap_output();
 }
 
-async fn operation_check_apply_handler<T: OperationsInput, Ch: CacheIO>(
+async fn operation_check_apply_handler<T: CacheAndServerType1, Ch: CacheIO>(
     input: &T,
     state: &mut cache::State<Ch>,
 ) {
     apply_change(
-        input.state_full_check(state).await.map_to_resource(),
+        input.state_full_operation(state).await.extract_resource(),
         &mut state.state_of_pending_txn,
     );
 }
 
-async fn operation_check_apply_write_handler<T: OperationsInput, Ch: CacheIO>(
+async fn operation_check_apply_write_handler<T: CacheAndServerType1 + ViewType1, Ch: CacheIO>(
     txn_number: u64,
     input: &T,
     state: &mut cache::State<Ch>,
-) -> Output {
-    let result = input.state_full_check(state).await;
+) -> push_data::OperationsResult {
+    let result = input.state_full_operation(state).await;
 
     if result.is_ok() {
-        apply_change(result.map_to_resource(), &mut state.state_of_pending_txn);
+        apply_change(result.extract_resource(), &mut state.state_of_pending_txn);
 
         state
             .cache
             .write_txn_input(&push_data::Txn {
                 txn_number,
-                operation: input.clone().map_input(),
+                operation: input.clone().wrap_input(),
             })
             .await;
     }
 
-    return result.map_result_to_output();
+    return result.wrap_output();
 }
 
 trait Sdfsdfojzofjoz<V> {
@@ -242,10 +230,19 @@ fn apply_change(resources: Vec<ResourceInfo>, state: &mut cache::StateOfPendingT
 
 // all imples down
 
-impl OperationsInput for sign_up::Input {
-    type Result = sign_up::Result;
+impl ViewType1 for sign_up::Input {
+    fn wrap_input(self) -> push_data::OperationsInput {
+        push_data::OperationsInput::SignUp(self)
+    }
+}
 
-    async fn state_full_check<Ch: CacheIO>(&self, state: &cache::State<Ch>) -> Self::Result {
+impl CacheAndServerType1 for sign_up::Input {
+    fn user_uuid(&self) -> Option<db_types::UuidType> {
+        Some(self.new_uuid.clone())
+    }
+
+    type Output = sign_up::Result;
+    async fn state_full_operation<Ch: CacheIO>(&self, state: &cache::State<Ch>) -> Self::Output {
         let (mut is_new_uuid_exist, mut is_user_id_exist) = state
             .cache
             .read_sign_up(&self.new_uuid, &self.user_id)
@@ -284,18 +281,14 @@ impl OperationsInput for sign_up::Input {
             user_name: self.name.clone(),
         });
     }
-
-    fn map_input(self) -> Input {
-        Input::SignUp(self)
-    }
 }
 
-impl OperationResult for sign_up::Result {
+impl CacheAndServerType2 for sign_up::Result {
     fn is_ok(&self) -> bool {
         self.is_ok()
     }
 
-    fn map_to_resource(&self) -> Vec<ResourceInfo> {
+    fn extract_resource(&self) -> Vec<ResourceInfo> {
         match self {
             Ok(ok) => {
                 let mut resource = Vec::with_capacity(3);
@@ -322,22 +315,34 @@ impl OperationResult for sign_up::Result {
         }
     }
 
-    fn map_result_to_output(self) -> Output {
-        Output::SignUp(self)
+    fn wrap_output(self) -> push_data::OperationsResult {
+        push_data::OperationsResult::SignUp(self)
     }
+}
 
-    fn map_output_to_result(result: Output) -> Self {
-        if let Output::SignUp(result) = result {
+impl ViewType2 for sign_up::Result {
+    fn unwrap_output(result: push_data::OperationsResult) -> Self {
+        if let push_data::OperationsResult::SignUp(result) = result {
             return result;
         }
         unreachable!("{:?}", result)
     }
 }
 
-impl OperationsInput for sign_in::Input {
-    type Result = sign_in::Result;
+impl ViewType1 for sign_in::Input {
+    fn wrap_input(self) -> push_data::OperationsInput {
+        push_data::OperationsInput::SignIn(self)
+    }
+}
 
-    async fn state_full_check<Ch: CacheIO>(&self, state: &cache::State<Ch>) -> Self::Result {
+impl CacheAndServerType1 for sign_in::Input {
+    fn user_uuid(&self) -> Option<db_types::UuidType> {
+        None
+    }
+
+    type Output = sign_in::Result;
+
+    async fn state_full_operation<Ch: CacheIO>(&self, state: &cache::State<Ch>) -> Self::Output {
         let user_uuid_and_is_jwt_exist = state.cache.read_sign_in(&self.user_id).await;
 
         if let Some((user_uuid, user_name, is_jwt_exist)) = user_uuid_and_is_jwt_exist {
@@ -383,18 +388,14 @@ impl OperationsInput for sign_in::Input {
             }),
         }
     }
-
-    fn map_input(self) -> Input {
-        Input::SignIn(self)
-    }
 }
 
-impl OperationResult for sign_in::Result {
+impl CacheAndServerType2 for sign_in::Result {
     fn is_ok(&self) -> bool {
         self.is_ok()
     }
 
-    fn map_to_resource(&self) -> Vec<ResourceInfo> {
+    fn extract_resource(&self) -> Vec<ResourceInfo> {
         match self {
             Ok(ok) => {
                 let mut resource = Vec::with_capacity(3);
@@ -417,87 +418,103 @@ impl OperationResult for sign_in::Result {
         }
     }
 
-    fn map_result_to_output(self) -> Output {
-        Output::SignIn(self)
+    fn wrap_output(self) -> push_data::OperationsResult {
+        push_data::OperationsResult::SignIn(self)
     }
+}
 
-    fn map_output_to_result(result: Output) -> Self {
-        if let Output::SignIn(result) = result {
+impl ViewType2 for sign_in::Result {
+    fn unwrap_output(result: push_data::OperationsResult) -> Self {
+        if let push_data::OperationsResult::SignIn(result) = result {
             return result;
         }
         unreachable!("{:?}", result)
     }
 }
 
-impl OperationsInput for create_company::Input {
-    type Result = create_company::Result;
-
-    async fn state_full_check<Ch: CacheIO>(&self, state: &cache::State<Ch>) -> Self::Result {
-        Ok(create_company::Ok)
-    }
-
-    fn map_input(self) -> Input {
-        Input::CreateCompany(self)
+impl ViewType1 for create_company::Input {
+    fn wrap_input(self) -> push_data::OperationsInput {
+        push_data::OperationsInput::CreateCompany(self)
     }
 }
 
-impl OperationResult for create_company::Result {
-    fn is_ok(&self) -> bool {
-        self.is_ok()
-    }
-
-    fn map_to_resource(&self) -> Vec<ResourceInfo> {
-        Vec::new()
-    }
-
-    fn map_result_to_output(self) -> Output {
-        Output::CreateCompany(self)
-    }
-
-    fn map_output_to_result(result: Output) -> Self {
-        if let Output::CreateCompany(result) = result {
-            return result;
-        }
-        unreachable!("{:?}", result)
-    }
-}
-
-impl OperationsInput for create_company_branch::Input {
-    type Result = create_company_branch::Result;
-
-    async fn state_full_check<Ch: CacheIO>(&self, state: &cache::State<Ch>) -> Self::Result {
+impl CacheAndServerType1 for create_company::Input {
+    fn user_uuid(&self) -> Option<db_types::UuidType> {
         todo!()
     }
 
-    fn map_input(self) -> Input {
-        Input::CreateCompanyBranch(self)
+    type Output = create_company::Result;
+
+    async fn state_full_operation<Ch: CacheIO>(&self, state: &cache::State<Ch>) -> Self::Output {
+        Ok(create_company::Ok)
     }
 }
 
-impl OperationResult for create_company_branch::Result {
+impl CacheAndServerType2 for create_company::Result {
     fn is_ok(&self) -> bool {
         self.is_ok()
     }
 
-    fn map_to_resource(&self) -> Vec<ResourceInfo> {
+    fn extract_resource(&self) -> Vec<ResourceInfo> {
         Vec::new()
     }
 
-    fn map_result_to_output(self) -> Output {
-        Output::CreateCompanyBranch(self)
+    fn wrap_output(self) -> push_data::OperationsResult {
+        push_data::OperationsResult::CreateCompany(self)
     }
+}
 
-    fn map_output_to_result(result: Output) -> Self {
-        if let Output::CreateCompanyBranch(result) = result {
+impl ViewType2 for create_company::Result {
+    fn unwrap_output(result: push_data::OperationsResult) -> Self {
+        if let push_data::OperationsResult::CreateCompany(result) = result {
             return result;
         }
         unreachable!("{:?}", result)
     }
 }
 
-impl OperationsInput for list_company_and_branch::Input {
-    type Result = list_company_and_branch::Result;
+impl ViewType1 for create_company_branch::Input {
+    fn wrap_input(self) -> push_data::OperationsInput {
+        push_data::OperationsInput::CreateCompanyBranch(self)
+    }
+}
 
+impl CacheAndServerType1 for create_company_branch::Input {
+    fn user_uuid(&self) -> Option<db_types::UuidType> {
+        todo!()
+    }
+
+    type Output = create_company_branch::Result;
+
+    async fn state_full_operation<Ch: CacheIO>(&self, state: &cache::State<Ch>) -> Self::Output {
+        todo!()
+    }
+}
+
+impl CacheAndServerType2 for create_company_branch::Result {
+    fn is_ok(&self) -> bool {
+        self.is_ok()
+    }
+
+    fn extract_resource(&self) -> Vec<ResourceInfo> {
+        Vec::new()
+    }
+
+    fn wrap_output(self) -> push_data::OperationsResult {
+        push_data::OperationsResult::CreateCompanyBranch(self)
+    }
+}
+
+impl ViewType2 for create_company_branch::Result {
+    fn unwrap_output(result: push_data::OperationsResult) -> Self {
+        if let push_data::OperationsResult::CreateCompanyBranch(result) = result {
+            return result;
+        }
+        unreachable!("{:?}", result)
+    }
+}
+
+impl ViewType1 for list_company_and_branch::Input {
     fn subs() -> &'static [server_methods::Subscribe] {
         &[
             server_methods::Subscribe::TableCompanyBranchFieldName,
@@ -506,7 +523,19 @@ impl OperationsInput for list_company_and_branch::Input {
         ]
     }
 
-    async fn state_full_check<Ch: CacheIO>(&self, state: &cache::State<Ch>) -> Self::Result {
+    fn wrap_input(self) -> push_data::OperationsInput {
+        push_data::OperationsInput::ListCompanyAndBranch(self)
+    }
+}
+
+impl CacheAndServerType1 for list_company_and_branch::Input {
+    fn user_uuid(&self) -> Option<db_types::UuidType> {
+        Some(self.user_uuid.clone())
+    }
+
+    type Output = list_company_and_branch::Result;
+
+    async fn state_full_operation<Ch: CacheIO>(&self, state: &cache::State<Ch>) -> Self::Output {
         let mut list_of_companies = state
             .cache
             .read_list_company_and_branch(&self.user_uuid)
@@ -533,18 +562,14 @@ impl OperationsInput for list_company_and_branch::Input {
             list: list_of_companies,
         })
     }
-
-    fn map_input(self) -> Input {
-        Input::ListCompanyAndBranch(self)
-    }
 }
 
-impl OperationResult for list_company_and_branch::Result {
+impl CacheAndServerType2 for list_company_and_branch::Result {
     fn is_ok(&self) -> bool {
         self.is_ok()
     }
 
-    fn map_to_resource(&self) -> Vec<ResourceInfo> {
+    fn extract_resource(&self) -> Vec<ResourceInfo> {
         match self {
             Ok(ok) => {
                 let mut resource = Vec::new();
@@ -583,12 +608,15 @@ impl OperationResult for list_company_and_branch::Result {
         }
     }
 
-    fn map_result_to_output(self) -> Output {
-        Output::ListCompanyAndBranch(self)
+    fn wrap_output(self) -> push_data::OperationsResult {
+        push_data::OperationsResult::ListCompanyAndBranch(self)
     }
+}
 
-    fn map_output_to_result(result: Output) -> Self {
-        if let Output::ListCompanyAndBranch(a) = result {
+impl ViewType2 for list_company_and_branch::Result {
+    // TODO i need to change the type to be usable for ui
+    fn unwrap_output(result: push_data::OperationsResult) -> Self {
+        if let push_data::OperationsResult::ListCompanyAndBranch(a) = result {
             return a;
         }
         unreachable!("{:?}", result)

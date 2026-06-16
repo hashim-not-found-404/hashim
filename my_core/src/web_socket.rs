@@ -8,7 +8,7 @@ enum MessageToNetwork {
 #[derive(Clone)]
 pub struct Data {
     pub is_response_from_server: bool,
-    pub data: operations::Output,
+    pub data: push_data::OperationsResult,
 }
 
 #[derive(Clone)]
@@ -45,7 +45,7 @@ pub(crate) enum MessageToCache<Mpsc: MultiProducerSingleConsumer> {
     Query {
         strategy: CachingStrategy,
         sender: Mpsc::Sender<Response>,
-        data: operations::Input,
+        data: push_data::OperationsInput,
     },
 }
 
@@ -104,7 +104,7 @@ where
     pub(crate) async fn send_to_cache_actor(
         &self,
         strategy: CachingStrategy,
-        data: operations::Input,
+        data: push_data::OperationsInput,
     ) -> Mpsc::Receiver<Response> {
         let (sender, receiver) = Mpsc::channel();
 
@@ -282,7 +282,7 @@ where
                             }
                             messages::FromServer::PushData(results) => {
                                 for txn in results.operations {
-                                    let data = txn.operation.map_to_client_output_type();
+                                    let data = txn.operation;
                                     state.cache.write_resource(&data.extract_resource()).await;
 
                                     let txn = push_data::Txn {
@@ -462,7 +462,7 @@ where
 
     async fn prepare_txn_and_send_to_network<Ch: CacheIO>(
         sender_to_network: &mut Mpsc::Sender<MessageToNetwork>,
-        operations: Vec<push_data::Txn<operations::Input>>,
+        operations: Vec<push_data::Txn<push_data::OperationsInput>>,
         state: &cache::State<Ch>,
     ) {
         if operations.is_empty() {
