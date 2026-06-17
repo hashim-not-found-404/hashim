@@ -856,7 +856,6 @@ fn merge_subscribes<Id: RowId>(
     }
 }
 
-// here dont contain data
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Subscribe {
     TableUserFieldName,
@@ -870,6 +869,20 @@ pub enum Subscribe {
     TableAccessControlForCompanyFieldDataGroup,
 }
 
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub enum Resource {
+    Jwt(String),
+    TableUserFieldName(String),
+    TableUserFieldId(String),
+    TableCompanyFieldName(String),
+    TableCompanyFieldCurrency(db_types::Currency),
+    TableCompanyBranchFieldName(String),
+    TableCompanyBranchFieldCompanyBelong(db_types::UuidType),
+    TableAccessControlForCompanyFieldRole(db_types::Role),
+    TableAccessControlForCompanyFieldUser(db_types::UuidType),
+    TableAccessControlForCompanyFieldDataGroup(db_types::UuidType),
+}
+
 fn role_to_subscribe_mapping(roles: Vec<db_types::Role>) -> HashSet<Subscribe> {
     let mut subscribes = HashSet::with_capacity(200);
 
@@ -880,6 +893,8 @@ fn role_to_subscribe_mapping(roles: Vec<db_types::Role>) -> HashSet<Subscribe> {
                 subscribes.insert(Subscribe::TableUserFieldId);
                 subscribes.insert(Subscribe::TableCompanyFieldName);
                 subscribes.insert(Subscribe::TableCompanyFieldCurrency);
+                subscribes.insert(Subscribe::TableCompanyBranchFieldName);
+                subscribes.insert(Subscribe::TableCompanyBranchFieldCompanyBelong);
                 subscribes.insert(Subscribe::TableAccessControlForCompanyFieldRole);
                 subscribes.insert(Subscribe::TableAccessControlForCompanyFieldUser);
                 subscribes.insert(Subscribe::TableAccessControlForCompanyFieldDataGroup);
@@ -949,21 +964,6 @@ fn resource_filtering_based_on_subscribe(
     }
 
     new_resource
-}
-
-// here contain data
-#[derive(Debug, Deserialize, Serialize, Clone)]
-pub enum Resource {
-    Jwt(String),
-    TableUserFieldName(String),
-    TableUserFieldId(String),
-    TableCompanyFieldName(String),
-    TableCompanyFieldCurrency(db_types::Currency),
-    TableCompanyBranchFieldName(String),
-    TableCompanyBranchFieldCompanyBelong(db_types::UuidType),
-    TableAccessControlForCompanyFieldRole(db_types::Role),
-    TableAccessControlForCompanyFieldUser(db_types::UuidType),
-    TableAccessControlForCompanyFieldDataGroup(db_types::UuidType),
 }
 
 pub struct AllRoles<Id: RowId> {
