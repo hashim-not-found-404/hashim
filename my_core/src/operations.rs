@@ -8,7 +8,7 @@ pub(crate) trait ViewType1: Clone {
 }
 
 pub(crate) trait CacheAndServerType1: Clone {
-    fn user_uuid(&self) -> Option<db_types::UuidType>;
+    fn user_uuid(&self) -> Option<&db_types::UuidType>;
 
     type Output: CacheAndServerType2;
     async fn state_full_operation<Ch: CacheIO>(&self, state: &cache::State<Ch>) -> Self::Output;
@@ -88,27 +88,11 @@ impl push_data::OperationsInput {
 
     pub(crate) fn get_user_uuid(&self) -> Option<&db_types::UuidType> {
         match self {
-            push_data::OperationsInput::SignUp(i) => Some(&i.new_uuid),
-            push_data::OperationsInput::SignIn(_) => None,
-            push_data::OperationsInput::CreateCompany(i) => Some(&i.user_uuid),
-            push_data::OperationsInput::CreateCompanyBranch(i) => Some(&i.user_uuid),
-            push_data::OperationsInput::ListCompanyAndBranch(i) => Some(&i.user_uuid),
-        }
-    }
-
-    pub(crate) fn map_to_server_input_type(&self) -> push_data::OperationsInput {
-        match self {
-            push_data::OperationsInput::SignUp(i) => push_data::OperationsInput::SignUp(i.clone()),
-            push_data::OperationsInput::SignIn(i) => push_data::OperationsInput::SignIn(i.clone()),
-            push_data::OperationsInput::CreateCompany(i) => {
-                push_data::OperationsInput::CreateCompany(i.clone())
-            }
-            push_data::OperationsInput::CreateCompanyBranch(i) => {
-                push_data::OperationsInput::CreateCompanyBranch(i.clone())
-            }
-            push_data::OperationsInput::ListCompanyAndBranch(i) => {
-                push_data::OperationsInput::ListCompanyAndBranch(i.clone())
-            }
+            push_data::OperationsInput::SignUp(i) => i.user_uuid(),
+            push_data::OperationsInput::SignIn(i) => i.user_uuid(),
+            push_data::OperationsInput::CreateCompany(i) => i.user_uuid(),
+            push_data::OperationsInput::CreateCompanyBranch(i) => i.user_uuid(),
+            push_data::OperationsInput::ListCompanyAndBranch(i) => i.user_uuid(),
         }
     }
 }
@@ -237,8 +221,8 @@ impl ViewType1 for sign_up::Input {
 }
 
 impl CacheAndServerType1 for sign_up::Input {
-    fn user_uuid(&self) -> Option<db_types::UuidType> {
-        Some(self.new_uuid.clone())
+    fn user_uuid(&self) -> Option<&db_types::UuidType> {
+        Some(&self.new_uuid)
     }
 
     type Output = sign_up::Result;
@@ -336,7 +320,7 @@ impl ViewType1 for sign_in::Input {
 }
 
 impl CacheAndServerType1 for sign_in::Input {
-    fn user_uuid(&self) -> Option<db_types::UuidType> {
+    fn user_uuid(&self) -> Option<&db_types::UuidType> {
         None
     }
 
@@ -439,7 +423,7 @@ impl ViewType1 for create_company::Input {
 }
 
 impl CacheAndServerType1 for create_company::Input {
-    fn user_uuid(&self) -> Option<db_types::UuidType> {
+    fn user_uuid(&self) -> Option<&db_types::UuidType> {
         todo!()
     }
 
@@ -480,7 +464,7 @@ impl ViewType1 for create_company_branch::Input {
 }
 
 impl CacheAndServerType1 for create_company_branch::Input {
-    fn user_uuid(&self) -> Option<db_types::UuidType> {
+    fn user_uuid(&self) -> Option<&db_types::UuidType> {
         todo!()
     }
 
@@ -529,8 +513,8 @@ impl ViewType1 for list_company_and_branch::Input {
 }
 
 impl CacheAndServerType1 for list_company_and_branch::Input {
-    fn user_uuid(&self) -> Option<db_types::UuidType> {
-        Some(self.user_uuid.clone())
+    fn user_uuid(&self) -> Option<&db_types::UuidType> {
+        Some(&self.user_uuid)
     }
 
     type Output = list_company_and_branch::Result;
