@@ -20,6 +20,19 @@ pub mod tables {
         pub user_: db_types::UuidType,
         pub role: db_types::Role,
     }
+    #[derive(Default)]
+    pub struct CompanyBranch {
+        pub company_belong: db_types::UuidType,
+        pub name: String,
+        pub location: db_types::Location,
+        pub currency: db_types::Currency,
+    }
+    #[derive(Default)]
+    pub struct AccessControlForCompanyBranch {
+        pub data_group: db_types::UuidType,
+        pub user_: db_types::UuidType,
+        pub role: db_types::Role,
+    }
 }
 
 #[derive(Default)]
@@ -27,6 +40,9 @@ pub struct StateOfPendingTxn {
     pub user: HashMap<db_types::UuidType, tables::User>,
     pub company: HashMap<db_types::UuidType, tables::Company>,
     pub access_control_for_company: HashMap<db_types::UuidType, tables::AccessControlForCompany>,
+    pub company_branch: HashMap<db_types::UuidType, tables::CompanyBranch>,
+    pub access_control_for_company_branch:
+        HashMap<db_types::UuidType, tables::AccessControlForCompanyBranch>,
 }
 
 pub struct State<Ch: CacheIO> {

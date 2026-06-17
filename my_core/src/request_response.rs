@@ -130,10 +130,7 @@ pub mod sign_up {
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Ok {
-        pub user_uuid: db_types::UuidType,
-        pub jwt: String,
-        pub user_id: String,
-        pub user_name: Option<String>,
+        pub resource: Vec<ResourceInfo>,
     }
 
     #[derive(Debug, Deserialize, Serialize, Clone, Default, PartialEq)]
@@ -163,9 +160,7 @@ pub mod sign_in {
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Ok {
-        pub user_uuid: db_types::UuidType,
-        pub jwt: String,
-        pub user_name: Option<String>,
+        pub resource: Vec<ResourceInfo>,
     }
 
     #[derive(Debug, Deserialize, Serialize, Clone, Default, PartialEq)]
@@ -223,8 +218,7 @@ pub mod list_company_and_branch {
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Ok {
-        // TODO should be changet to be server optimized
-        pub list: db_types::ListOfCompanies,
+        pub resource: Vec<ResourceInfo>,
     }
 
     #[derive(Debug, Deserialize, Serialize, Clone, Default, PartialEq)]
@@ -249,7 +243,9 @@ pub mod create_company_branch {
     }
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
-    pub struct Ok;
+    pub struct Ok {
+        pub resource: Vec<ResourceInfo>,
+    }
 
     #[derive(Debug, Deserialize, Serialize, Clone, Default, PartialEq)]
     pub struct Error {

@@ -137,7 +137,7 @@ impl DBClient for S {
     async fn read_list_company_and_branch(
         &mut self,
         user_uuid: &Self::RowId,
-    ) -> Result<Vec<db_types::Company>, DynamicError> {
+    ) -> Result<Vec<ResourceInfo>, DynamicError> {
         let query = "
             WITH user_companies AS (
                 SELECT
@@ -153,7 +153,7 @@ impl DBClient for S {
                     cb.company_belong,
                     json_agg(
                         json_build_object(
-                            'uuid', cb.rowid,
+                            'uuid', cb.rowid::text,
                             'name', cb.name
                         ) ORDER BY cb.name
                     ) as branches
@@ -162,7 +162,7 @@ impl DBClient for S {
                 GROUP BY cb.company_belong
             )
             SELECT
-                uc.company_uuid,
+                uc.company_uuid::text,
                 uc.company_name,
                 uc.user_role,
                 COALESCE(cb.branches, '[]'::json) as branches
@@ -176,26 +176,62 @@ impl DBClient for S {
             .await
             .log()?;
 
-        let mut companies = Vec::new();
+        let mut resources = Vec::new();
+        let user_uuid_db = user_uuid.to_uuid(); // Convert to db_types::UuidType
 
         for row in rows {
-            let company_uuid: Uuid = row.try_get(0).log()?;
+            let company_uuid_str: String = row.try_get(0).log()?;
+            let company_uuid_db = db_types::UuidType(company_uuid_str.clone());
             let company_name: String = row.try_get(1).log()?;
             let user_role_str: String = row.try_get(2).log()?;
             let branches_json: serde_json::Value = row.try_get(3).log()?;
 
             let branches: Vec<db_types::Branch> = serde_json::from_value(branches_json).log()?;
+            let role = db_types::Role::from_str(&user_role_str).log()?;
 
-            let company = db_types::Company {
-                uuid: db_types::UuidType(company_uuid.to_string()),
-                name: company_name,
-                role: db_types::Role::from_str(&user_role_str).log()?,
-                branches,
-            };
+            // 1. Company name
+            resources.push(ResourceInfo {
+                row_uuid: company_uuid_db.clone(),
+                resource: server_methods::Resource::TableCompanyFieldName(company_name),
+            });
 
-            companies.push(company);
+            // 2. Access Control: role
+            resources.push(ResourceInfo {
+                row_uuid: company_uuid_db.clone(),
+                resource: server_methods::Resource::TableAccessControlForCompanyFieldRole(role),
+            });
+
+            // 3. Access Control: user_ (so cache can query by user)
+            resources.push(ResourceInfo {
+                row_uuid: company_uuid_db.clone(),
+                resource: server_methods::Resource::TableAccessControlForCompanyFieldUser(
+                    user_uuid_db.clone(),
+                ),
+            });
+
+            // 4. Access Control: data_group (self-reference)
+            resources.push(ResourceInfo {
+                row_uuid: company_uuid_db.clone(),
+                resource: server_methods::Resource::TableAccessControlForCompanyFieldDataGroup(
+                    company_uuid_db.clone(),
+                ),
+            });
+
+            // 5. Branches
+            for branch in branches {
+                resources.push(ResourceInfo {
+                    row_uuid: branch.uuid.clone(),
+                    resource: server_methods::Resource::TableCompanyBranchFieldName(branch.name),
+                });
+                resources.push(ResourceInfo {
+                    row_uuid: branch.uuid,
+                    resource: server_methods::Resource::TableCompanyBranchFieldCompanyBelong(
+                        company_uuid_db.clone(),
+                    ),
+                });
+            }
         }
 
-        Ok(companies)
+        Ok(resources)
     }
 }

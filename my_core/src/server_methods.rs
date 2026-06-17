@@ -122,12 +122,24 @@ where
             txn.write_sign_up(&new_uuid, &input.user_id, &hashed_password, &input.name)
                 .await?;
 
-            Ok(Ok(sign_up::Ok {
-                user_uuid: new_uuid.to_uuid(),
-                jwt: self.jwt.sign(&new_uuid),
-                user_id: input.user_id.clone(),
-                user_name: input.name.clone(),
-            }))
+            let mut resource = Vec::new();
+
+            resource.push(ResourceInfo {
+                row_uuid: new_uuid.to_uuid(),
+                resource: Resource::Jwt(self.jwt.sign(&new_uuid)),
+            });
+            resource.push(ResourceInfo {
+                row_uuid: new_uuid.to_uuid(),
+                resource: Resource::TableUserFieldId(input.user_id.clone()),
+            });
+            if let Some(name) = input.name.clone() {
+                resource.push(ResourceInfo {
+                    row_uuid: new_uuid.to_uuid(),
+                    resource: Resource::TableUserFieldName(name),
+                });
+            }
+
+            Ok(Ok(sign_up::Ok { resource }))
         })()
         .await;
 
@@ -160,11 +172,15 @@ where
             true => {
                 side_effects.authenticated_users.insert(user_rowid.clone());
                 side_effects.users_to_resubscribe.insert(user_rowid.clone());
-                return Ok(Ok(sign_in::Ok {
-                    user_uuid: user_rowid.to_uuid(),
-                    jwt: self.jwt.sign(&user_rowid),
-                    user_name: None,
-                }));
+
+                let mut resource = Vec::new();
+
+                resource.push(ResourceInfo {
+                    row_uuid: user_rowid.to_uuid(),
+                    resource: Resource::Jwt(self.jwt.sign(&user_rowid)),
+                });
+
+                return Ok(Ok(sign_in::Ok { resource }));
             }
             false => {
                 errr.password = Some(sign_in::PasswordError::WrongPassword);
@@ -317,11 +333,11 @@ where
             return Ok(Err(errr));
         }
 
-        let list = client
+        let resource = client
             .read_list_company_and_branch(&user_uuid.unwrap())
             .await?;
 
-        Ok(Ok(list_company_and_branch::Ok { list }))
+        Ok(Ok(list_company_and_branch::Ok { resource }))
     }
 
     async fn create_company_branch(
@@ -412,7 +428,7 @@ where
             side_effects.users_to_resubscribe.insert(user_uuid);
 
             todo!("add to the resource");
-            Ok(Ok(create_company_branch::Ok))
+            Ok(Ok(create_company_branch::Ok { resource: todo!() }))
         })()
         .await;
 

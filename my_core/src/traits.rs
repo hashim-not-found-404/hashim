@@ -65,7 +65,7 @@ pub trait DBClient {
     fn read_list_company_and_branch(
         &mut self,
         user_uuid: &Self::RowId,
-    ) -> impl Future<Output = Result<Vec<db_types::Company>, DynamicError>>;
+    ) -> impl Future<Output = Result<Vec<ResourceInfo>, DynamicError>>;
 }
 
 pub mod domain_errors {
@@ -246,7 +246,7 @@ pub trait CacheIO: Sized {
     fn read_list_company_and_branch(
         &self,
         user_uuid: &db_types::UuidType,
-    ) -> impl Future<Output = Vec<db_types::Company>>;
+    ) -> impl Future<Output = Vec<ResourceInfo>>;
 }
 
 pub trait AllClientTypes {

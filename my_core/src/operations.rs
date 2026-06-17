@@ -169,7 +169,7 @@ impl<V: Default> Sdfsdfojzofjoz<V> for HashMap<db_types::UuidType, V> {
     where
         F: FnOnce(&mut V),
     {
-        self.entry(row_uuid).and_modify(f).or_insert(V::default());
+        self.entry(row_uuid).and_modify(f).or_default();
     }
 }
 
@@ -258,12 +258,20 @@ impl CacheAndServerType1 for sign_up::Input {
             return Err(err);
         }
 
-        return Ok(sign_up::Ok {
-            user_uuid: self.new_uuid.clone(),
-            jwt: String::new(),
-            user_id: self.user_id.clone(),
-            user_name: self.name.clone(),
+        let mut resource = Vec::new();
+
+        resource.push(ResourceInfo {
+            row_uuid: self.new_uuid.clone(),
+            resource: server_methods::Resource::TableUserFieldId(self.user_id.clone()),
         });
+        if let Some(name) = self.name.clone() {
+            resource.push(ResourceInfo {
+                row_uuid: self.new_uuid.clone(),
+                resource: server_methods::Resource::TableUserFieldName(name),
+            });
+        }
+
+        return Ok(sign_up::Ok { resource });
     }
 
     fn wrap_input1(self) -> push_data::OperationsInput {
@@ -278,27 +286,7 @@ impl CacheAndServerType2 for sign_up::Result {
 
     fn extract_resource(&self) -> Vec<ResourceInfo> {
         match self {
-            Ok(ok) => {
-                let mut resource = Vec::with_capacity(3);
-
-                resource.push(ResourceInfo {
-                    row_uuid: ok.user_uuid.clone(),
-                    resource: server_methods::Resource::Jwt(ok.jwt.clone()),
-                });
-                resource.push(ResourceInfo {
-                    row_uuid: ok.user_uuid.clone(),
-                    resource: server_methods::Resource::TableUserFieldId(ok.user_id.clone()),
-                });
-
-                if let Some(name) = &ok.user_name {
-                    resource.push(ResourceInfo {
-                        row_uuid: ok.user_uuid.clone(),
-                        resource: server_methods::Resource::TableUserFieldName(name.clone()),
-                    });
-                }
-
-                resource
-            }
+            Ok(ok) => ok.resource.clone(),
             Err(_) => Vec::new(),
         }
     }
@@ -335,11 +323,16 @@ impl CacheAndServerType1 for sign_in::Input {
 
         if let Some((user_uuid, user_name, is_jwt_exist)) = user_uuid_and_is_jwt_exist {
             if is_jwt_exist {
-                return Ok(sign_in::Ok {
-                    user_uuid,
-                    jwt: String::new(),
-                    user_name: user_name,
+                let mut resource = Vec::new();
+
+                resource.push(ResourceInfo {
+                    row_uuid: user_uuid,
+                    resource: server_methods::Resource::TableUserFieldName(
+                        user_name.unwrap_or_default(),
+                    ),
                 });
+
+                return Ok(sign_in::Ok { resource });
             }
         }
 
@@ -358,11 +351,16 @@ impl CacheAndServerType1 for sign_in::Input {
         match password {
             Some(password) => {
                 if password == self.password {
-                    return Ok(sign_in::Ok {
-                        user_uuid: user_uuid.unwrap().clone(),
-                        jwt: String::new(),
-                        user_name: user_name,
+                    let mut resource = Vec::new();
+
+                    resource.push(ResourceInfo {
+                        row_uuid: user_uuid.unwrap().clone(),
+                        resource: server_methods::Resource::TableUserFieldName(
+                            user_name.unwrap_or_default(),
+                        ),
                     });
+
+                    return Ok(sign_in::Ok { resource });
                 } else {
                     return Err(sign_in::Error {
                         user_id: None,
@@ -389,23 +387,7 @@ impl CacheAndServerType2 for sign_in::Result {
 
     fn extract_resource(&self) -> Vec<ResourceInfo> {
         match self {
-            Ok(ok) => {
-                let mut resource = Vec::with_capacity(3);
-
-                resource.push(ResourceInfo {
-                    row_uuid: ok.user_uuid.clone(),
-                    resource: server_methods::Resource::Jwt(ok.jwt.clone()),
-                });
-
-                if let Some(name) = &ok.user_name {
-                    resource.push(ResourceInfo {
-                        row_uuid: ok.user_uuid.clone(),
-                        resource: server_methods::Resource::TableUserFieldName(name.clone()),
-                    });
-                }
-
-                resource
-            }
+            Ok(ok) => ok.resource.clone(),
             Err(_) => Vec::new(),
         }
     }
@@ -415,10 +397,15 @@ impl CacheAndServerType2 for sign_in::Result {
     }
 }
 
-impl ViewType2 for sign_in::Result {
+pub(crate) struct SignInResultForView(pub Result<db_types::UuidType, sign_in::Error>);
+
+impl ViewType2 for SignInResultForView {
     fn unwrap_output(result: push_data::OperationsResult) -> Self {
         if let push_data::OperationsResult::SignIn(result) = result {
-            return result;
+            return match result {
+                Ok(ok) => SignInResultForView(Ok(ok.resource[0].row_uuid.clone())),
+                Err(err) => SignInResultForView(Err(err)),
+            };
         }
         unreachable!("{:?}", result)
     }
@@ -568,30 +555,74 @@ impl CacheAndServerType1 for list_company_and_branch::Input {
     type Output = list_company_and_branch::Result;
 
     async fn state_full_operation<Ch: CacheIO>(&self, state: &cache::State<Ch>) -> Self::Output {
-        let mut list_of_companies = state
+        // Start with resources from the cache (already stored in DB)
+        let mut resources = state
             .cache
             .read_list_company_and_branch(&self.user_uuid)
             .await;
 
-        mbg!(&list_of_companies); // %cINFO%c my_core/src/operations.rs:515%c
-        for (rowid, row) in &state.state_of_pending_txn.access_control_for_company {
-            if row.user_ == self.user_uuid {
-                let company_uuid = state.state_of_pending_txn.company.get(&row.data_group);
+        // Add pending companies and branches from the current transaction
+        for (_, acf) in &state.state_of_pending_txn.access_control_for_company {
+            if acf.user_ == self.user_uuid {
+                let company_uuid = acf.data_group.clone();
+                if let Some(company) = state.state_of_pending_txn.company.get(&company_uuid) {
+                    // Company name
+                    resources.push(ResourceInfo {
+                        row_uuid: company_uuid.clone(),
+                        resource: server_methods::Resource::TableCompanyFieldName(
+                            company.name.clone(),
+                        ),
+                    });
 
-                list_of_companies.push(db_types::Company {
-                    uuid: row.data_group.clone(),
-                    name: company_uuid.unwrap().name.clone(),
-                    role: row.role.clone(),
-                    branches: Vec::new(),
-                });
+                    // Access control: role
+                    resources.push(ResourceInfo {
+                        row_uuid: company_uuid.clone(),
+                        resource: server_methods::Resource::TableAccessControlForCompanyFieldRole(
+                            acf.role.clone(),
+                        ),
+                    });
 
-                // TODO make it read also branch
+                    // Access control: user_
+                    resources.push(ResourceInfo {
+                        row_uuid: company_uuid.clone(),
+                        resource: server_methods::Resource::TableAccessControlForCompanyFieldUser(
+                            self.user_uuid.clone(),
+                        ),
+                    });
+
+                    // Access control: data_group
+                    resources.push(ResourceInfo {
+                        row_uuid: company_uuid.clone(),
+                        resource:
+                            server_methods::Resource::TableAccessControlForCompanyFieldDataGroup(
+                                company_uuid.clone(),
+                            ),
+                    });
+
+                    // Pending branches for this company
+                    for (branch_uuid, branch) in &state.state_of_pending_txn.company_branch {
+                        if branch.company_belong == company_uuid {
+                            resources.push(ResourceInfo {
+                                row_uuid: branch_uuid.clone(),
+                                resource: server_methods::Resource::TableCompanyBranchFieldName(
+                                    branch.name.clone(),
+                                ),
+                            });
+                            resources.push(ResourceInfo {
+                                row_uuid: branch_uuid.clone(),
+                                resource:
+                                    server_methods::Resource::TableCompanyBranchFieldCompanyBelong(
+                                        company_uuid.clone(),
+                                    ),
+                            });
+                        }
+                    }
+                }
             }
         }
-        mbg!(&list_of_companies); // %cINFO%c my_core/src/operations.rs:530%c
 
         Ok(list_company_and_branch::Ok {
-            list: list_of_companies,
+            resource: resources,
         })
     }
 
@@ -607,39 +638,7 @@ impl CacheAndServerType2 for list_company_and_branch::Result {
 
     fn extract_resource(&self) -> Vec<ResourceInfo> {
         match self {
-            Ok(ok) => {
-                let mut resource = Vec::new();
-
-                for company in ok.list.clone() {
-                    resource.push(ResourceInfo {
-                        row_uuid: company.uuid.clone(),
-                        resource: server_methods::Resource::TableCompanyFieldName(company.name),
-                    });
-                    resource.push(ResourceInfo {
-                        row_uuid: company.uuid.clone(),
-                        resource: server_methods::Resource::TableAccessControlForCompanyFieldRole(
-                            company.role,
-                        ),
-                    });
-                    for branch in company.branches {
-                        resource.push(ResourceInfo {
-                            row_uuid: branch.uuid.clone(),
-                            resource: server_methods::Resource::TableCompanyBranchFieldName(
-                                branch.name,
-                            ),
-                        });
-                        resource.push(ResourceInfo {
-                            row_uuid: branch.uuid.clone(),
-                            resource:
-                                server_methods::Resource::TableCompanyBranchFieldCompanyBelong(
-                                    company.uuid.clone(),
-                                ),
-                        });
-                    }
-                }
-
-                resource
-            }
+            Ok(ok) => ok.resource.clone(),
             Err(_) => Vec::new(),
         }
     }
@@ -649,14 +648,93 @@ impl CacheAndServerType2 for list_company_and_branch::Result {
     }
 }
 
-struct ListCompanyAndBranchForView(Result<Vec<db_types::Company>, ()>);
+pub(crate) struct ListCompanyAndBranchForView(pub Result<db_types::ListOfCompanies, ()>);
 
-impl ViewType2 for list_company_and_branch::Result {
-    // TODO i need to change the type to be usable for ui
+impl ViewType2 for ListCompanyAndBranchForView {
     fn unwrap_output(result: push_data::OperationsResult) -> Self {
-        if let push_data::OperationsResult::ListCompanyAndBranch(a) = result {
-            todo!();
+        if let push_data::OperationsResult::ListCompanyAndBranch(res) = result {
+            match res {
+                Ok(ok) => {
+                    let resources = ok.resource;
+                    let mut company_data: HashMap<
+                        db_types::UuidType,
+                        (String, db_types::Currency, db_types::Role),
+                    > = HashMap::new();
+                    let mut branch_data: HashMap<db_types::UuidType, (String, db_types::UuidType)> =
+                        HashMap::new();
+
+                    for r in resources {
+                        let uuid = r.row_uuid.clone();
+                        match r.resource {
+                            server_methods::Resource::TableCompanyFieldName(name) => {
+                                let entry = company_data.entry(uuid).or_insert((
+                                    String::new(),
+                                    db_types::Currency::default(),
+                                    db_types::Role::default(),
+                                ));
+                                entry.0 = name;
+                            }
+                            server_methods::Resource::TableCompanyFieldCurrency(currency) => {
+                                let entry = company_data.entry(uuid).or_insert((
+                                    String::new(),
+                                    db_types::Currency::default(),
+                                    db_types::Role::default(),
+                                ));
+                                entry.1 = currency;
+                            }
+                            server_methods::Resource::TableAccessControlForCompanyFieldRole(
+                                role,
+                            ) => {
+                                let entry = company_data.entry(uuid).or_insert((
+                                    String::new(),
+                                    db_types::Currency::default(),
+                                    db_types::Role::default(),
+                                ));
+                                entry.2 = role;
+                            }
+                            server_methods::Resource::TableCompanyBranchFieldName(name) => {
+                                branch_data
+                                    .entry(uuid)
+                                    .or_insert((String::new(), db_types::UuidType("".to_string())))
+                                    .0 = name;
+                            }
+                            server_methods::Resource::TableCompanyBranchFieldCompanyBelong(
+                                company_uuid,
+                            ) => {
+                                branch_data
+                                    .entry(uuid)
+                                    .or_insert((String::new(), company_uuid.clone()))
+                                    .1 = company_uuid.clone();
+                            }
+                            _ => {} // ignore other resources (Jwt, etc.)
+                        }
+                    }
+
+                    let mut companies = Vec::new();
+                    for (company_uuid, (name, _currency, role)) in company_data {
+                        let mut branches = Vec::new();
+                        for (branch_uuid, (branch_name, belong_uuid)) in &branch_data {
+                            if belong_uuid == &company_uuid {
+                                branches.push(db_types::Branch {
+                                    uuid: branch_uuid.clone(),
+                                    name: branch_name.clone(),
+                                });
+                            }
+                        }
+                        companies.push(db_types::Company {
+                            uuid: company_uuid,
+                            name,
+                            role,
+                            branches,
+                        });
+                    }
+
+                    ListCompanyAndBranchForView(Ok(companies))
+                }
+                Err(_) => ListCompanyAndBranchForView(Err(())),
+            }
+        } else {
+            unreachable!("{:?}", result)
         }
-        unreachable!("{:?}", result)
     }
 }

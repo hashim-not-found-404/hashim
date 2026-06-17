@@ -190,7 +190,7 @@ impl CacheIO for S {
     async fn read_list_company_and_branch(
         &self,
         user_uuid: &db_types::UuidType,
-    ) -> Vec<db_types::Company> {
+    ) -> Vec<ResourceInfo> {
         let query = "
             SELECT
                 c.rowid as company_uuid,
@@ -224,40 +224,68 @@ impl CacheIO for S {
             })
             .unwrap();
 
-        let mut companies: Vec<db_types::Company> = Vec::new();
-        let mut current_company_uuid: Option<String> = None;
+        let mut resources = Vec::new();
+        let mut last_company_uuid: Option<String> = None;
 
         for row in rows {
             let (company_uuid_str, company_name, user_role_str, branch_uuid_opt, branch_name_opt) =
                 row.unwrap();
 
-            if current_company_uuid.as_ref() != Some(&company_uuid_str) {
-                current_company_uuid = Some(company_uuid_str.clone());
+            // If this is a new company, add company-level resources once
+            if last_company_uuid.as_ref() != Some(&company_uuid_str) {
+                last_company_uuid = Some(company_uuid_str.clone());
 
-                let role = db_types::Role::from_str(user_role_str.as_str()).unwrap();
+                let company_uuid_db = db_types::UuidType(company_uuid_str.clone());
+                let role = db_types::Role::from_str(&user_role_str).unwrap();
 
-                let new_company = db_types::Company {
-                    uuid: db_types::UuidType(company_uuid_str),
-                    name: company_name,
-                    role,
-                    branches: Vec::new(),
-                };
-                companies.push(new_company);
+                // Company name
+                resources.push(ResourceInfo {
+                    row_uuid: company_uuid_db.clone(),
+                    resource: server_methods::Resource::TableCompanyFieldName(company_name),
+                });
+
+                // Access control: role
+                resources.push(ResourceInfo {
+                    row_uuid: company_uuid_db.clone(),
+                    resource: server_methods::Resource::TableAccessControlForCompanyFieldRole(role),
+                });
+
+                // Access control: user
+                resources.push(ResourceInfo {
+                    row_uuid: company_uuid_db.clone(),
+                    resource: server_methods::Resource::TableAccessControlForCompanyFieldUser(
+                        user_uuid.clone(),
+                    ),
+                });
+
+                // Access control: data_group (self)
+                resources.push(ResourceInfo {
+                    row_uuid: company_uuid_db.clone(),
+                    resource: server_methods::Resource::TableAccessControlForCompanyFieldDataGroup(
+                        company_uuid_db.clone(),
+                    ),
+                });
             }
 
+            // Add branch resources if branch exists
             if let (Some(branch_uuid_str), Some(branch_name)) = (branch_uuid_opt, branch_name_opt) {
-                let branch = db_types::Branch {
-                    uuid: db_types::UuidType(branch_uuid_str),
-                    name: branch_name,
-                };
+                let branch_uuid_db = db_types::UuidType(branch_uuid_str);
+                let company_uuid_db = db_types::UuidType(company_uuid_str.clone());
 
-                if let Some(company) = companies.last_mut() {
-                    company.branches.push(branch);
-                }
+                resources.push(ResourceInfo {
+                    row_uuid: branch_uuid_db.clone(),
+                    resource: server_methods::Resource::TableCompanyBranchFieldName(branch_name),
+                });
+                resources.push(ResourceInfo {
+                    row_uuid: branch_uuid_db,
+                    resource: server_methods::Resource::TableCompanyBranchFieldCompanyBelong(
+                        company_uuid_db,
+                    ),
+                });
             }
         }
 
-        companies
+        resources
     }
 }
 

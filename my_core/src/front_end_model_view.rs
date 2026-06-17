@@ -304,12 +304,12 @@ impl<
                 }
 
                 if let Some(response) = response.lock().unwrap().clone() {
-                    let result = sign_in::Result::unwrap_output(response.data);
+                    let result = operations::SignInResultForView::unwrap_output(response.data);
 
-                    let is_ok = result.is_ok();
-                    match result {
+                    let is_ok = result.0.is_ok();
+                    match result.0 {
                         Ok(ok) => {
-                            user_uuid = Some(ok.user_uuid);
+                            user_uuid = Some(ok);
                         }
                         Err(business_error) => {
                             local_state.user_id_error.set(match business_error.user_id {
@@ -376,23 +376,16 @@ impl<
                     web_socket::Response::CloseTheChannel => break,
                     web_socket::Response::ServerCannotBeReached => break,
                     web_socket::Response::Data(data) => {
-                        list_company_and_branch::Result::unwrap_output(data.data)
+                        operations::ListCompanyAndBranchForView::unwrap_output(data.data)
                     }
                 };
 
-                let value = match value {
-                    Ok(ok) => ok.list,
-                    Err(err) => match err.user_uuid {
-                        Some(s) => match s {
-                            UserUuidError::Invalid => unreachable!(),
-                            UserUuidError::NotAuthenticated => {
-                                self.is_signed_in.set(None);
-                                break;
-                            }
-                            UserUuidError::YouDontHavePermissionToDoThat => unreachable!(),
-                        },
-                        None => unreachable!(),
-                    },
+                let value = match value.0 {
+                    Ok(ok) => ok,
+                    Err(_) => {
+                        self.is_signed_in.set(None);
+                        break;
+                    }
                 };
 
                 local_state.set(value);
@@ -433,23 +426,16 @@ impl<
                     web_socket::Response::CloseTheChannel => break,
                     web_socket::Response::ServerCannotBeReached => break,
                     web_socket::Response::Data(data) => {
-                        list_company_and_branch::Result::unwrap_output(data.data)
+                        operations::ListCompanyAndBranchForView::unwrap_output(data.data)
                     }
                 };
 
-                let value = match value {
-                    Ok(ok) => ok.list,
-                    Err(err) => match err.user_uuid {
-                        Some(s) => match s {
-                            UserUuidError::Invalid => unreachable!(),
-                            UserUuidError::NotAuthenticated => {
-                                self.is_signed_in.set(None);
-                                break;
-                            }
-                            UserUuidError::YouDontHavePermissionToDoThat => unreachable!(),
-                        },
-                        None => unreachable!(),
-                    },
+                let value = match value.0 {
+                    Ok(ok) => ok,
+                    Err(_) => {
+                        self.is_signed_in.set(None);
+                        break;
+                    }
                 };
 
                 local_state.set(value);
