@@ -61,7 +61,7 @@ impl<Ch: CacheIO> State<Ch> {
         };
 
         for op in txns {
-            op.operation.run_operation_check_apply(&mut state);
+            op.operation.run_operation_check_apply(&mut state).await;
         }
 
         state

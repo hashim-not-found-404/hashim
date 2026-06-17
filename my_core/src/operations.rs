@@ -192,14 +192,12 @@ fn apply_change(resources: Vec<ResourceInfo>, state: &mut cache::StateOfPendingT
             server_methods::Resource::TableCompanyFieldName(r) => {
                 state.company.upsert(row_uuid, |table| table.name = r)
             }
-            server_methods::Resource::TableCompanyBranchFieldName(r) => {
-                todo!();
-                // state.user.upsert(row_uuid, |table| table.name = r)
-            }
-            server_methods::Resource::TableCompanyBranchFieldCompanyBelong(r) => {
-                todo!();
-                // state.user.upsert(row_uuid, |table| table.name = r)
-            }
+            server_methods::Resource::TableCompanyBranchFieldName(r) => state
+                .company_branch
+                .upsert(row_uuid, |table| table.name = r),
+            server_methods::Resource::TableCompanyBranchFieldCompanyBelong(r) => state
+                .company_branch
+                .upsert(row_uuid, |table| table.company_belong = r),
             server_methods::Resource::TableCompanyFieldCurrency(r) => {
                 state.company.upsert(row_uuid, |table| table.currency = r)
             }

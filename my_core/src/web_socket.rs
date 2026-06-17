@@ -57,7 +57,6 @@ where
     _ph: PhantomData<(At, Mpsc)>,
     sender_to_network: Mutex<Mpsc::Sender<MessageToNetwork>>,
     sender_to_cache: Mutex<Mpsc::Sender<MessageToCache<Mpsc>>>,
-    is_online: Arc<RwLock<bool>>,
 }
 
 impl<At, Mpsc> MyWAMP<At, Mpsc>
@@ -88,7 +87,6 @@ where
             _ph: PhantomData,
             sender_to_network: Mutex::new(sender_to_network),
             sender_to_cache: Mutex::new(sender_to_cache),
-            is_online,
         }
     }
 
