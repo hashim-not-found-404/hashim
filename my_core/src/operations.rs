@@ -158,13 +158,13 @@ async fn operation_check_apply_write_handler<T: CacheAndServerType1, Ch: CacheIO
     return result.wrap_output();
 }
 
-trait Sdfsdfojzofjoz<V> {
+trait MyUpSert<V> {
     fn upsert<F>(&mut self, row_uuid: db_types::UuidType, f: F)
     where
         F: FnOnce(&mut V);
 }
 
-impl<V: Default> Sdfsdfojzofjoz<V> for HashMap<db_types::UuidType, V> {
+impl<V: Default> MyUpSert<V> for HashMap<db_types::UuidType, V> {
     fn upsert<F>(&mut self, row_uuid: db_types::UuidType, f: F)
     where
         F: FnOnce(&mut V),
