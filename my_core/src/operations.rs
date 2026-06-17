@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-pub(crate) trait ViewType1: Clone {
+pub(crate) trait ViewType1 {
     fn subs() -> &'static [server_methods::Subscribe] {
         unreachable!("we dont need it here")
     }
@@ -12,7 +12,7 @@ pub(crate) trait CacheAndServerType1: Clone {
 
     type Output: CacheAndServerType2;
     async fn state_full_operation<Ch: CacheIO>(&self, state: &cache::State<Ch>) -> Self::Output;
-    // fn wrap_input(self) -> push_data::OperationsInput;
+    fn wrap_input1(self) -> push_data::OperationsInput;
 }
 
 pub(crate) trait CacheAndServerType2 {
@@ -136,7 +136,7 @@ async fn operation_check_apply_handler<T: CacheAndServerType1, Ch: CacheIO>(
     );
 }
 
-async fn operation_check_apply_write_handler<T: CacheAndServerType1 + ViewType1, Ch: CacheIO>(
+async fn operation_check_apply_write_handler<T: CacheAndServerType1, Ch: CacheIO>(
     txn_number: u64,
     input: &T,
     state: &mut cache::State<Ch>,
@@ -150,7 +150,7 @@ async fn operation_check_apply_write_handler<T: CacheAndServerType1 + ViewType1,
             .cache
             .write_txn_input(&push_data::Txn {
                 txn_number,
-                operation: input.clone().wrap_input(),
+                operation: input.clone().wrap_input1(),
             })
             .await;
     }
@@ -265,6 +265,10 @@ impl CacheAndServerType1 for sign_up::Input {
             user_name: self.name.clone(),
         });
     }
+
+    fn wrap_input1(self) -> push_data::OperationsInput {
+        push_data::OperationsInput::SignUp(self)
+    }
 }
 
 impl CacheAndServerType2 for sign_up::Result {
@@ -372,6 +376,10 @@ impl CacheAndServerType1 for sign_in::Input {
             }),
         }
     }
+
+    fn wrap_input1(self) -> push_data::OperationsInput {
+        push_data::OperationsInput::SignIn(self)
+    }
 }
 
 impl CacheAndServerType2 for sign_in::Result {
@@ -430,7 +438,12 @@ impl CacheAndServerType1 for create_company::Input {
     type Output = create_company::Result;
 
     async fn state_full_operation<Ch: CacheIO>(&self, state: &cache::State<Ch>) -> Self::Output {
+        todo!();
         Ok(create_company::Ok)
+    }
+
+    fn wrap_input1(self) -> push_data::OperationsInput {
+        push_data::OperationsInput::CreateCompany(self)
     }
 }
 
@@ -440,6 +453,7 @@ impl CacheAndServerType2 for create_company::Result {
     }
 
     fn extract_resource(&self) -> Vec<ResourceInfo> {
+        todo!();
         Vec::new()
     }
 
@@ -472,6 +486,10 @@ impl CacheAndServerType1 for create_company_branch::Input {
 
     async fn state_full_operation<Ch: CacheIO>(&self, state: &cache::State<Ch>) -> Self::Output {
         todo!()
+    }
+
+    fn wrap_input1(self) -> push_data::OperationsInput {
+        push_data::OperationsInput::CreateCompanyBranch(self)
     }
 }
 
@@ -545,6 +563,10 @@ impl CacheAndServerType1 for list_company_and_branch::Input {
         Ok(list_company_and_branch::Ok {
             list: list_of_companies,
         })
+    }
+
+    fn wrap_input1(self) -> push_data::OperationsInput {
+        push_data::OperationsInput::ListCompanyAndBranch(self)
     }
 }
 
