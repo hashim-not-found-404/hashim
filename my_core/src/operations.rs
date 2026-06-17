@@ -161,15 +161,19 @@ async fn operation_check_apply_write_handler<T: CacheAndServerType1, Ch: CacheIO
 trait MyUpSert<V> {
     fn upsert<F>(&mut self, row_uuid: db_types::UuidType, f: F)
     where
-        F: FnOnce(&mut V);
+        F: FnOnce(&mut V) + Clone;
 }
 
 impl<V: Default> MyUpSert<V> for HashMap<db_types::UuidType, V> {
     fn upsert<F>(&mut self, row_uuid: db_types::UuidType, f: F)
     where
-        F: FnOnce(&mut V),
+        F: FnOnce(&mut V) + Clone,
     {
-        self.entry(row_uuid).and_modify(f).or_default();
+        self.entry(row_uuid).and_modify(f.clone()).or_insert({
+            let mut v = V::default();
+            f(&mut v);
+            v
+        });
     }
 }
 
@@ -655,76 +659,70 @@ impl ViewType2 for ListCompanyAndBranchForView {
         if let push_data::OperationsResult::ListCompanyAndBranch(res) = result {
             match res {
                 Ok(ok) => {
+                    #[derive(Default)]
+                    struct CompanyData {
+                        name: String,
+                        currency: db_types::Currency,
+                        role: db_types::Role,
+                    }
+
+                    #[derive(Default)]
+                    struct BranchData {
+                        name: String,
+                        company_belong: db_types::UuidType,
+                    }
+
                     let resources = ok.resource;
-                    let mut company_data: HashMap<
-                        db_types::UuidType,
-                        (String, db_types::Currency, db_types::Role),
-                    > = HashMap::new();
-                    let mut branch_data: HashMap<db_types::UuidType, (String, db_types::UuidType)> =
-                        HashMap::new();
+                    let mut company_data: HashMap<db_types::UuidType, CompanyData> = HashMap::new();
+                    let mut branch_data: HashMap<db_types::UuidType, BranchData> = HashMap::new();
 
                     for r in resources {
                         let uuid = r.row_uuid.clone();
                         match r.resource {
                             server_methods::Resource::TableCompanyFieldName(name) => {
-                                let entry = company_data.entry(uuid).or_insert((
-                                    String::new(),
-                                    db_types::Currency::default(),
-                                    db_types::Role::default(),
-                                ));
-                                entry.0 = name;
+                                company_data.upsert(uuid, |data| data.name = name);
                             }
                             server_methods::Resource::TableCompanyFieldCurrency(currency) => {
-                                let entry = company_data.entry(uuid).or_insert((
-                                    String::new(),
-                                    db_types::Currency::default(),
-                                    db_types::Role::default(),
-                                ));
-                                entry.1 = currency;
+                                company_data.upsert(uuid, |data| data.currency = currency);
                             }
                             server_methods::Resource::TableAccessControlForCompanyFieldRole(
                                 role,
                             ) => {
-                                let entry = company_data.entry(uuid).or_insert((
-                                    String::new(),
-                                    db_types::Currency::default(),
-                                    db_types::Role::default(),
-                                ));
-                                entry.2 = role;
+                                company_data.upsert(uuid, |data| data.role = role);
                             }
                             server_methods::Resource::TableCompanyBranchFieldName(name) => {
-                                branch_data
-                                    .entry(uuid)
-                                    .or_insert((String::new(), db_types::UuidType("".to_string())))
-                                    .0 = name;
+                                branch_data.upsert(uuid, |data| data.name = name);
                             }
                             server_methods::Resource::TableCompanyBranchFieldCompanyBelong(
                                 company_uuid,
                             ) => {
-                                branch_data
-                                    .entry(uuid)
-                                    .or_insert((String::new(), company_uuid.clone()))
-                                    .1 = company_uuid.clone();
+                                branch_data.upsert(uuid, |data| data.company_belong = company_uuid);
                             }
                             _ => {} // ignore other resources (Jwt, etc.)
                         }
                     }
 
-                    let mut companies = Vec::new();
-                    for (company_uuid, (name, _currency, role)) in company_data {
-                        let mut branches = Vec::new();
-                        for (branch_uuid, (branch_name, belong_uuid)) in &branch_data {
-                            if belong_uuid == &company_uuid {
-                                branches.push(db_types::Branch {
-                                    uuid: branch_uuid.clone(),
-                                    name: branch_name.clone(),
-                                });
-                            }
-                        }
+                    // Build companies from the aggregated data
+                    let mut companies = Vec::with_capacity(company_data.len());
+                    for (uuid, data) in company_data {
+                        let branches = branch_data
+                            .iter()
+                            .filter_map(|(branch_uuid, branch)| {
+                                if branch.company_belong == uuid {
+                                    Some(db_types::Branch {
+                                        uuid: branch_uuid.clone(),
+                                        name: branch.name.clone(),
+                                    })
+                                } else {
+                                    None
+                                }
+                            })
+                            .collect();
+
                         companies.push(db_types::Company {
-                            uuid: company_uuid,
-                            name,
-                            role,
+                            uuid,
+                            name: data.name,
+                            role: data.role,
                             branches,
                         });
                     }
