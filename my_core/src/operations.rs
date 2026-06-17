@@ -432,7 +432,7 @@ impl ViewType1 for create_company::Input {
 
 impl CacheAndServerType1 for create_company::Input {
     fn user_uuid(&self) -> Option<&db_types::UuidType> {
-        todo!()
+        Some(&self.user_uuid)
     }
 
     type Output = create_company::Result;
@@ -479,7 +479,7 @@ impl ViewType1 for create_company_branch::Input {
 
 impl CacheAndServerType1 for create_company_branch::Input {
     fn user_uuid(&self) -> Option<&db_types::UuidType> {
-        todo!()
+        Some(&self.user_uuid)
     }
 
     type Output = create_company_branch::Result;
