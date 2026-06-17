@@ -276,7 +276,7 @@ where
                 },
             );
 
-            Ok(Ok(create_company::Ok))
+            Ok(Ok(create_company::Ok(input.clone())))
         })()
         .await;
 

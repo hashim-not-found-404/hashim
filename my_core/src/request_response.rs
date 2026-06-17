@@ -200,7 +200,7 @@ pub mod create_company {
     }
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
-    pub struct Ok;
+    pub struct Ok(pub Input);
 
     #[derive(Debug, Deserialize, Serialize, Clone, Default, PartialEq)]
     pub struct Error {

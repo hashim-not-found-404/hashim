@@ -438,8 +438,7 @@ impl CacheAndServerType1 for create_company::Input {
     type Output = create_company::Result;
 
     async fn state_full_operation<Ch: CacheIO>(&self, state: &cache::State<Ch>) -> Self::Output {
-        todo!();
-        Ok(create_company::Ok)
+        Ok(create_company::Ok(self.clone()))
     }
 
     fn wrap_input1(self) -> push_data::OperationsInput {
@@ -453,8 +452,46 @@ impl CacheAndServerType2 for create_company::Result {
     }
 
     fn extract_resource(&self) -> Vec<ResourceInfo> {
-        todo!();
-        Vec::new()
+        match self {
+            Ok(ok) => {
+                let mut a = Vec::new();
+
+                let input = ok.0.clone();
+                a.push(ResourceInfo {
+                    row_uuid: input.new_uuid.clone(),
+                    resource: server_methods::Resource::TableCompanyFieldName(
+                        input.company_name.clone(),
+                    ),
+                });
+                a.push(ResourceInfo {
+                    row_uuid: input.new_uuid.clone(),
+                    resource: server_methods::Resource::TableCompanyFieldCurrency(
+                        input.currency.clone(),
+                    ),
+                });
+                a.push(ResourceInfo {
+                    row_uuid: input.new_uuid.clone(),
+                    resource: server_methods::Resource::TableAccessControlForCompanyFieldRole(
+                        db_types::Role::Manager,
+                    ),
+                });
+                a.push(ResourceInfo {
+                    row_uuid: input.new_uuid.clone(),
+                    resource: server_methods::Resource::TableAccessControlForCompanyFieldUser(
+                        input.user_uuid.clone(),
+                    ),
+                });
+                a.push(ResourceInfo {
+                    row_uuid: input.new_uuid.clone(),
+                    resource: server_methods::Resource::TableAccessControlForCompanyFieldDataGroup(
+                        input.new_uuid.clone(),
+                    ),
+                });
+
+                a
+            }
+            Err(_) => Vec::new(),
+        }
     }
 
     fn wrap_output(self) -> push_data::OperationsResult {
