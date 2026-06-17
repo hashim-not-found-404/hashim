@@ -438,7 +438,36 @@ impl CacheAndServerType1 for create_company::Input {
     type Output = create_company::Result;
 
     async fn state_full_operation<Ch: CacheIO>(&self, state: &cache::State<Ch>) -> Self::Output {
-        Ok(create_company::Ok(self.clone()))
+        let v = ResourceInfo {
+            row_uuid: self.new_uuid.clone(),
+            resource: server_methods::Resource::TableCompanyFieldName(self.company_name.clone()),
+        };
+        let v1 = ResourceInfo {
+            row_uuid: self.new_uuid.clone(),
+            resource: server_methods::Resource::TableCompanyFieldCurrency(self.currency.clone()),
+        };
+        let v2 = ResourceInfo {
+            row_uuid: self.new_uuid.clone(),
+            resource: server_methods::Resource::TableAccessControlForCompanyFieldRole(
+                db_types::Role::Manager,
+            ),
+        };
+        let v3 = ResourceInfo {
+            row_uuid: self.new_uuid.clone(),
+            resource: server_methods::Resource::TableAccessControlForCompanyFieldUser(
+                self.user_uuid.clone(),
+            ),
+        };
+        let v4 = ResourceInfo {
+            row_uuid: self.new_uuid.clone(),
+            resource: server_methods::Resource::TableAccessControlForCompanyFieldDataGroup(
+                self.new_uuid.clone(),
+            ),
+        };
+
+        Ok(create_company::Ok {
+            resource: vec![v, v1, v2, v3, v4],
+        })
     }
 
     fn wrap_input1(self) -> push_data::OperationsInput {
@@ -453,43 +482,7 @@ impl CacheAndServerType2 for create_company::Result {
 
     fn extract_resource(&self) -> Vec<ResourceInfo> {
         match self {
-            Ok(ok) => {
-                let mut a = Vec::new();
-
-                let input = ok.0.clone();
-                a.push(ResourceInfo {
-                    row_uuid: input.new_uuid.clone(),
-                    resource: server_methods::Resource::TableCompanyFieldName(
-                        input.company_name.clone(),
-                    ),
-                });
-                a.push(ResourceInfo {
-                    row_uuid: input.new_uuid.clone(),
-                    resource: server_methods::Resource::TableCompanyFieldCurrency(
-                        input.currency.clone(),
-                    ),
-                });
-                a.push(ResourceInfo {
-                    row_uuid: input.new_uuid.clone(),
-                    resource: server_methods::Resource::TableAccessControlForCompanyFieldRole(
-                        db_types::Role::Manager,
-                    ),
-                });
-                a.push(ResourceInfo {
-                    row_uuid: input.new_uuid.clone(),
-                    resource: server_methods::Resource::TableAccessControlForCompanyFieldUser(
-                        input.user_uuid.clone(),
-                    ),
-                });
-                a.push(ResourceInfo {
-                    row_uuid: input.new_uuid.clone(),
-                    resource: server_methods::Resource::TableAccessControlForCompanyFieldDataGroup(
-                        input.new_uuid.clone(),
-                    ),
-                });
-
-                a
-            }
+            Ok(ok) => ok.resource.clone(),
             Err(_) => Vec::new(),
         }
     }
@@ -656,11 +649,13 @@ impl CacheAndServerType2 for list_company_and_branch::Result {
     }
 }
 
+struct ListCompanyAndBranchForView(Result<Vec<db_types::Company>, ()>);
+
 impl ViewType2 for list_company_and_branch::Result {
     // TODO i need to change the type to be usable for ui
     fn unwrap_output(result: push_data::OperationsResult) -> Self {
         if let push_data::OperationsResult::ListCompanyAndBranch(a) = result {
-            return a;
+            todo!();
         }
         unreachable!("{:?}", result)
     }

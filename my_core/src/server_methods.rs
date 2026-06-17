@@ -232,51 +232,54 @@ where
 
             side_effects.users_to_resubscribe.insert(user_uuid);
 
-            side_effects.resource_to_broadcast_for_company.insert_push(
-                new_uuid.clone(),
-                ResourceInfo {
-                    row_uuid: new_uuid.to_uuid(),
-                    resource: server_methods::Resource::TableCompanyFieldName(
-                        input.company_name.clone(),
-                    ),
-                },
-            );
-            side_effects.resource_to_broadcast_for_company.insert_push(
-                new_uuid.clone(),
-                ResourceInfo {
-                    row_uuid: new_uuid.to_uuid(),
-                    resource: server_methods::Resource::TableCompanyFieldCurrency(
-                        input.currency.clone(),
-                    ),
-                },
-            );
-            side_effects.resource_to_broadcast_for_company.insert_push(
-                new_uuid.clone(),
-                ResourceInfo {
-                    row_uuid: new_uuid.to_uuid(),
-                    resource: server_methods::Resource::TableAccessControlForCompanyFieldRole(ROLE),
-                },
-            );
-            side_effects.resource_to_broadcast_for_company.insert_push(
-                new_uuid.clone(),
-                ResourceInfo {
-                    row_uuid: new_uuid.to_uuid(),
-                    resource: server_methods::Resource::TableAccessControlForCompanyFieldUser(
-                        input.user_uuid.clone(),
-                    ),
-                },
-            );
-            side_effects.resource_to_broadcast_for_company.insert_push(
-                new_uuid.clone(),
-                ResourceInfo {
-                    row_uuid: new_uuid.to_uuid(),
-                    resource: server_methods::Resource::TableAccessControlForCompanyFieldDataGroup(
-                        new_uuid.to_uuid(),
-                    ),
-                },
-            );
+            let v = ResourceInfo {
+                row_uuid: new_uuid.to_uuid(),
+                resource: server_methods::Resource::TableCompanyFieldName(
+                    input.company_name.clone(),
+                ),
+            };
+            let v1 = ResourceInfo {
+                row_uuid: new_uuid.to_uuid(),
+                resource: server_methods::Resource::TableCompanyFieldCurrency(
+                    input.currency.clone(),
+                ),
+            };
+            let v2 = ResourceInfo {
+                row_uuid: new_uuid.to_uuid(),
+                resource: server_methods::Resource::TableAccessControlForCompanyFieldRole(ROLE),
+            };
+            let v3 = ResourceInfo {
+                row_uuid: new_uuid.to_uuid(),
+                resource: server_methods::Resource::TableAccessControlForCompanyFieldUser(
+                    input.user_uuid.clone(),
+                ),
+            };
+            let v4 = ResourceInfo {
+                row_uuid: new_uuid.to_uuid(),
+                resource: server_methods::Resource::TableAccessControlForCompanyFieldDataGroup(
+                    new_uuid.to_uuid(),
+                ),
+            };
 
-            Ok(Ok(create_company::Ok(input.clone())))
+            side_effects
+                .resource_to_broadcast_for_company
+                .insert_push(new_uuid.clone(), v.clone());
+            side_effects
+                .resource_to_broadcast_for_company
+                .insert_push(new_uuid.clone(), v1.clone());
+            side_effects
+                .resource_to_broadcast_for_company
+                .insert_push(new_uuid.clone(), v2.clone());
+            side_effects
+                .resource_to_broadcast_for_company
+                .insert_push(new_uuid.clone(), v3.clone());
+            side_effects
+                .resource_to_broadcast_for_company
+                .insert_push(new_uuid.clone(), v4.clone());
+
+            Ok(Ok(create_company::Ok {
+                resource: vec![v, v1, v2, v3, v4],
+            }))
         })()
         .await;
 
