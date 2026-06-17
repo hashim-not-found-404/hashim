@@ -483,7 +483,7 @@ where
         for i in operations {
             operations1.push(push_data::Txn {
                 txn_number: i.txn_number,
-                operation: i.operation.map_to_server_input_type(),
+                operation: i.operation,
             });
         }
 
