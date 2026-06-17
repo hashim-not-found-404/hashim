@@ -297,11 +297,21 @@ fn CompanyAndBranchSelection() -> Element {
     let state1 = state.clone();
     let local_state1 = local_state.clone();
 
+    let mut cleanup = use_signal(|| None);
+
     use_effect(move || {
-        let cleanup = state1
+        let c = state1
             .clone()
             .list_company_and_branch_listener(local_state1.clone());
         state1.clone().list_company_and_branch(local_state1.clone());
+
+        cleanup.set(Some(c));
+    });
+
+    use_drop(move || {
+        if let Some(c) = cleanup.take() {
+            c();
+        }
     });
 
     rsx! {

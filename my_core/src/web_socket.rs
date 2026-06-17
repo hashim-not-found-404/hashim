@@ -317,7 +317,6 @@ where
                                 }
                             }
                             messages::FromServer::Resources(resource) => {
-                                mbg!(&resource);
                                 state.cache.write_resource(&resource).await;
 
                                 let subs_to_poke = what_subs_to_poke(&resource);
@@ -356,8 +355,6 @@ where
                                 .or_default()
                                 .insert(component_id);
                         }
-
-                        mbg!(&pool_of_subscribes);
                     }
                     MessageToCache::UnSubscribe { component_id } => {
                         pool_of_pokers.remove(&component_id);
