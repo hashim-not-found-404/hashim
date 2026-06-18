@@ -29,7 +29,7 @@ fn check_nonce_if_valid<Id: RowId>(nonce: &Id, is_used: bool) -> bool {
     true
 }
 
-pub struct ServerMethods<Db, Cli, Jwt, Auth, Rg, Id, Mpsc, Rt, De>
+pub struct ServerMethods<Db, Cli, Jwt, Auth, Rg, Id, Mpsc, Rt, De, Rn>
 where
     Db: Database<Client = Cli>,
     Cli: DBClient,
@@ -41,15 +41,16 @@ where
     Mpsc: MultiProducerSingleConsumer,
     Rt: Runtime,
     De: Coding,
+    Rn: RandomNumber,
 {
-    _ph: PhantomData<(Cli, Auth, Rg, Id, Mpsc, Rt, De)>,
+    _ph: PhantomData<(Cli, Auth, Rg, Id, Mpsc, Rt, De, Rn)>,
     database: Db,
     jwt: Jwt,
     pub sender_to_broker: Mpsc::Sender<MessageToBroker<Id, Mpsc>>,
 }
 
-impl<Db, Cli, Jwt, Auth, Rg, Id, Mpsc, Rt, De>
-    ServerMethods<Db, Cli, Jwt, Auth, Rg, Id, Mpsc, Rt, De>
+impl<Db, Cli, Jwt, Auth, Rg, Id, Mpsc, Rt, De, Rn>
+    ServerMethods<Db, Cli, Jwt, Auth, Rg, Id, Mpsc, Rt, De, Rn>
 where
     Db: Database<Client = Cli> + 'static,
     Cli: DBClient<RowId = Id, HashedPassword = Auth> + 'static,
@@ -61,6 +62,7 @@ where
     Mpsc: MultiProducerSingleConsumer + 'static,
     Rt: Runtime + 'static,
     De: Coding + 'static,
+    Rn: RandomNumber + 'static,
 {
     pub async fn new() -> Self {
         let (sender_to_broker, receiver_to_broker) = Mpsc::channel();
@@ -563,8 +565,8 @@ where
     pub fn server_actor<Ws: WSServer + 'static>(self: Arc<Self>, mut session: Ws) {
         Rt::spawn_local(async move {
             let mut sender_to_broker = self.sender_to_broker.clone();
-
             let (sender_to_server, mut receiver_to_server) = Mpsc::channel::<Vec<ResourceInfo>>();
+            let connection_id = Rn::generate();
 
             loop {
                 let result = Rt::select(session.receive(), receiver_to_server.recv()).await;
@@ -662,6 +664,7 @@ where
 
                                     sender_to_broker
                                         .send(server_methods::MessageToBroker::Subscribe {
+                                            connection_id,
                                             list_of_subscribtion: subs,
                                             users_uuids: side_effects.users_to_resubscribe,
                                             sender_to_server: sender_to_server.clone(),
@@ -715,13 +718,16 @@ where
                 let message = receiver_to_broker.recv().await.unwrap();
                 match message {
                     MessageToBroker::Subscribe {
+                        connection_id,
                         list_of_subscribtion,
                         users_uuids,
                         sender_to_server,
                     } => {
                         for user_uuid in users_uuids {
                             pool_of_server_facad_channels
-                                .insert_push(user_uuid, sender_to_server.clone());
+                                .entry(user_uuid)
+                                .or_default()
+                                .insert(connection_id, sender_to_server.clone());
                         }
 
                         merge_subscribes(
@@ -764,15 +770,11 @@ where
 
                             match channels {
                                 Some(channels) => {
-                                    let mut index = 0;
-                                    while index < channels.len() {
-                                        if channels[index].send(resource.clone()).await.is_err() {
-                                            channels.remove(index);
-                                        } else {
-                                            index += 1;
+                                    for (connection_id, mut sender) in channels.clone() {
+                                        if sender.send(resource.clone()).await.is_err() {
+                                            channels.remove(&connection_id);
                                         }
                                     }
-
                                     if channels.len() == 0 {
                                         pool_of_server_facad_channels.remove(&user_uuid);
                                     }
@@ -997,14 +999,15 @@ type UserSubscribes<Id> = HashMap<
 >;
 
 type UserSenders<Id, Mpsc: MultiProducerSingleConsumer> = HashMap<
-    Id,                                   // user uuid
-    Vec<Mpsc::Sender<Vec<ResourceInfo>>>, // because user may have multiple web socket connection
+    Id,                                            // user uuid
+    HashMap<u64, Mpsc::Sender<Vec<ResourceInfo>>>, // because user may have multiple web socket connection
 >;
 
 type ListOfResources<Id> = HashMap<Id, Vec<ResourceInfo>>;
 
 pub enum MessageToBroker<Id: RowId, Mpsc: MultiProducerSingleConsumer> {
     Subscribe {
+        connection_id: u64,
         list_of_subscribtion: AllSubscribes<Id>,
         users_uuids: HashSet<Id>,
         sender_to_server: Mpsc::Sender<Vec<ResourceInfo>>,
@@ -1036,7 +1039,7 @@ impl<Id: RowId> Default for SideEffects<Id> {
     }
 }
 
-pub trait ExtendHashMap<K, V> {
+pub(crate) trait ExtendHashMap<K, V> {
     fn insert_push(&mut self, k: K, v: V);
     fn insert_append(&mut self, k: K, v: Vec<V>);
 }
@@ -1049,4 +1052,8 @@ impl<K: Eq + Hash, V> ExtendHashMap<K, V> for HashMap<K, Vec<V>> {
     fn insert_append(&mut self, k: K, mut v: Vec<V>) {
         self.entry(k).or_default().append(&mut v);
     }
+}
+
+pub(crate) trait ExtendHashMap1<K1, K2, V> {
+    fn nested_insert(&mut self, k1: K1, k2: K2, v: V);
 }

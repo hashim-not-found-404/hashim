@@ -23,6 +23,7 @@ type ServerMethodsType = server_methods::ServerMethods<
     actors::m::S,
     runtime::m::S,
     encode_decode::m::S,
+    random_number::m::S,
 >;
 
 #[actix_web::main]
