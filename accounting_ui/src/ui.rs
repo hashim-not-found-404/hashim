@@ -285,11 +285,17 @@ fn Home() -> Element {
     rsx! {}
 }
 
+enum ActiveForm {
+    None,
+    CreateCompany,
+    CreateCompanyBranch,
+}
+
 #[component]
 fn CompanyAndBranchSelection() -> Element {
     let state = consume_context::<StateOfEveryThing>();
 
-    let mut show_create_company = use_signal(|| false);
+    let mut show_active_form = use_signal(|| ActiveForm::None);
     let mut selected_company_id = use_signal(|| None);
 
     let local_state = <my_signals::m::S as AllSignalTypes>::CompanyAndBranchList::default();
@@ -316,11 +322,18 @@ fn CompanyAndBranchSelection() -> Element {
 
     rsx! {
         div {
-            if *show_create_company.read() {
-                CreateCompany { show_form: show_create_company }
+            match *show_active_form.read() {
+                ActiveForm::None => rsx! {},
+                ActiveForm::CreateCompany => rsx! {
+                    CreateCompany { show_form: show_active_form }
+                },
+                ActiveForm::CreateCompanyBranch => rsx! {
+                    CreateCompanyBranch { show_form: show_active_form }
+                },
             }
-
-            button { onclick: move |_| show_create_company.set(true), "Add New Company" }
+            button { onclick: move |_| show_active_form.set(ActiveForm::CreateCompany),
+                "Add New Company"
+            }
 
             div {
                 for company in local_state.read() {
@@ -337,7 +350,9 @@ fn CompanyAndBranchSelection() -> Element {
                         }
 
                         if *selected_company_id.read() == Some(company.uuid.clone()) {
-                            button { "Add Branch" }
+                            button { onclick: move |_| show_active_form.set(ActiveForm::CreateCompanyBranch),
+                                "Add New Branch"
+                            }
                             div {
                                 for branch in company.branches {
                                     button {
@@ -360,7 +375,7 @@ fn CompanyAndBranchSelection() -> Element {
 }
 
 #[component]
-fn CreateCompany(show_form: Signal<bool>) -> Element {
+fn CreateCompany(show_form: Signal<ActiveForm>) -> Element {
     let state = consume_context::<StateOfEveryThing>();
     let local_state = front_end_model_view::CreateCompanyState::<my_signals::m::S>::default();
 
@@ -389,13 +404,13 @@ fn CreateCompany(show_form: Signal<bool>) -> Element {
             button {
                 onclick: move |_| {
                     state.clone().create_company(local_state.clone());
-                    show_form.set(false);
+                    show_form.set(ActiveForm::None);
                 },
                 "Create"
             }
             button {
                 onclick: move |_| {
-                    show_form.set(false);
+                    show_form.set(ActiveForm::None);
                 },
                 "X"
             }
@@ -404,7 +419,7 @@ fn CreateCompany(show_form: Signal<bool>) -> Element {
 }
 
 #[component]
-fn CreateCompanyBranch() -> Element {
+fn CreateCompanyBranch(show_form: Signal<ActiveForm>) -> Element {
     let state = consume_context::<StateOfEveryThing>();
     let local_state = front_end_model_view::CreateCompanyBranchState::<my_signals::m::S>::default();
 
@@ -432,8 +447,18 @@ fn CreateCompanyBranch() -> Element {
                 option { value: "USD", "USD" }
                 option { value: "IQD", "IQD" }
             }
-            button { onclick: move |_| state.clone().create_company_branch(true, local_state.clone()),
+            button {
+                onclick: move |_| {
+                    state.clone().create_company_branch(true, local_state.clone());
+                    show_form.set(ActiveForm::None);
+                },
                 "Create"
+            }
+            button {
+                onclick: move |_| {
+                    show_form.set(ActiveForm::None);
+                },
+                "X"
             }
         }
     }
