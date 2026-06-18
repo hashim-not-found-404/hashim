@@ -678,6 +678,7 @@ where
                                 {
                                     sender_to_broker
                                         .send(MessageToBroker::Publish {
+                                            connection_id,
                                             list_of_resources_for_company: side_effects
                                                 .resource_to_broadcast_for_company,
                                             list_of_resources_for_branch: side_effects
@@ -724,10 +725,11 @@ where
                         sender_to_server,
                     } => {
                         for user_uuid in users_uuids {
-                            pool_of_server_facad_channels
-                                .entry(user_uuid)
-                                .or_default()
-                                .insert(connection_id, sender_to_server.clone());
+                            pool_of_server_facad_channels.nested_insert(
+                                user_uuid,
+                                connection_id,
+                                sender_to_server.clone(),
+                            );
                         }
 
                         merge_subscribes(
@@ -747,6 +749,7 @@ where
                         unsubscribe(&mut pool_of_pubsub_for_branch, &user_uuid);
                     }
                     MessageToBroker::Publish {
+                        connection_id,
                         list_of_resources_for_company,
                         list_of_resources_for_branch,
                     } => {
@@ -770,9 +773,12 @@ where
 
                             match channels {
                                 Some(channels) => {
-                                    for (connection_id, mut sender) in channels.clone() {
+                                    for (connection_id1, mut sender) in channels.clone() {
+                                        if connection_id == connection_id1 {
+                                            continue;
+                                        }
                                         if sender.send(resource.clone()).await.is_err() {
-                                            channels.remove(&connection_id);
+                                            channels.remove(&connection_id1);
                                         }
                                     }
                                     if channels.len() == 0 {
@@ -838,22 +844,8 @@ fn merge_subscribes<Id: RowId>(
     list_of_subscribtion: UserSubscribes<Id>,
 ) {
     for (company, users_subscribes) in list_of_subscribtion {
-        let users_and_subscribes = pool_of_pubsub.get_mut(&company);
-        match users_and_subscribes {
-            Some(users_and_subscribes) => {
-                for (user_uuid, subscribes) in users_subscribes {
-                    users_and_subscribes.insert(user_uuid.clone(), subscribes);
-                }
-            }
-            None => {
-                let mut users_and_subscribes = HashMap::new();
-
-                for (user_uuid, subscribes) in users_subscribes {
-                    users_and_subscribes.insert(user_uuid, subscribes);
-                }
-
-                pool_of_pubsub.insert(company, users_and_subscribes);
-            }
+        for (user_uuid, subscribes) in users_subscribes {
+            pool_of_pubsub.nested_insert(company.clone(), user_uuid, subscribes);
         }
     }
 }
@@ -1016,6 +1008,7 @@ pub enum MessageToBroker<Id: RowId, Mpsc: MultiProducerSingleConsumer> {
         user_uuid: Id,
     },
     Publish {
+        connection_id: u64,
         list_of_resources_for_company: ListOfResources<Id>,
         list_of_resources_for_branch: ListOfResources<Id>,
     },
@@ -1056,4 +1049,10 @@ impl<K: Eq + Hash, V> ExtendHashMap<K, V> for HashMap<K, Vec<V>> {
 
 pub(crate) trait ExtendHashMap1<K1, K2, V> {
     fn nested_insert(&mut self, k1: K1, k2: K2, v: V);
+}
+
+impl<K1: Eq + Hash, K2: Eq + Hash, V> ExtendHashMap1<K1, K2, V> for HashMap<K1, HashMap<K2, V>> {
+    fn nested_insert(&mut self, k1: K1, k2: K2, v: V) {
+        self.entry(k1).or_default().insert(k2, v);
+    }
 }
