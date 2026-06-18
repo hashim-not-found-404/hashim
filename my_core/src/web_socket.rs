@@ -244,11 +244,14 @@ where
         is_online: Arc<RwLock<bool>>,
     ) {
         At::Rt::spawn_local(async move {
-            let mut state = cache::State::<At::Ch>::new::<At::Rn>().await;
             let mut pool_of_senders = HashMap::<u64, Mpsc::Sender<Response>>::with_capacity(100);
             let mut pool_of_pokers = HashMap::<u16, Mpsc::Sender<()>>::with_capacity(10);
             let mut pool_of_subscribes =
                 HashMap::<server_methods::Subscribe, HashSet<u16>>::with_capacity(100);
+
+            let mut state =
+                cache::State::<At::Ch>::new::<Mpsc>(&mut pool_of_pokers, &mut pool_of_subscribes)
+                    .await;
 
             loop {
                 match receiver_to_cache.recv().await.unwrap() {
@@ -281,7 +284,15 @@ where
                             messages::FromServer::PushData(results) => {
                                 for txn in results.operations {
                                     let data = txn.operation;
-                                    state.cache.write_resource(&data.extract_resource()).await;
+                                    let resource = data.extract_resource();
+                                    state.cache.write_resource(&resource).await;
+
+                                    fun_name::<Mpsc>(
+                                        &mut pool_of_pokers,
+                                        &pool_of_subscribes,
+                                        &resource,
+                                    )
+                                    .await;
 
                                     let txn = push_data::Txn {
                                         txn_number: txn.txn_number,
@@ -311,33 +322,24 @@ where
 
                                 let txns = state.cache.get_all_txn_input().await;
                                 for op in txns {
-                                    op.operation.run_operation_check_apply(&mut state).await;
+                                    op.operation
+                                        .run_operation_check_apply::<_, Mpsc>(
+                                            &mut state,
+                                            &mut pool_of_pokers,
+                                            &mut pool_of_subscribes,
+                                        )
+                                        .await;
                                 }
                             }
                             messages::FromServer::Resources(resource) => {
                                 state.cache.write_resource(&resource).await;
 
-                                let subs_to_poke = what_subs_to_poke(&resource);
-
-                                let mut components_to_poke = HashSet::new();
-
-                                for one_sub in subs_to_poke {
-                                    let a = pool_of_subscribes.get(&one_sub);
-
-                                    let a = match a {
-                                        Some(a) => a,
-                                        None => continue,
-                                    };
-
-                                    for a in a {
-                                        components_to_poke.insert(a.clone());
-                                    }
-                                }
-
-                                for i in components_to_poke {
-                                    let sender = pool_of_pokers.get_mut(&i).unwrap();
-                                    let _ = sender.send(()).await.unwrap();
-                                }
+                                fun_name::<Mpsc>(
+                                    &mut pool_of_pokers,
+                                    &pool_of_subscribes,
+                                    &resource,
+                                )
+                                .await;
                             }
                         }
                     }
@@ -418,7 +420,12 @@ where
                             let txn_number = At::Rn::generate();
 
                             let result = data
-                                .run_operation_check_apply_write(txn_number, &mut state)
+                                .run_operation_check_apply_write::<_, Mpsc>(
+                                    txn_number,
+                                    &mut state,
+                                    &mut pool_of_pokers,
+                                    &mut pool_of_subscribes,
+                                )
                                 .await;
 
                             let _ = sender
@@ -539,4 +546,30 @@ fn what_subs_to_poke(resource: &Vec<ResourceInfo>) -> HashSet<server_methods::Su
         }
     }
     list
+}
+
+pub async fn fun_name<Mpsc: MultiProducerSingleConsumer>(
+    pool_of_pokers: &mut HashMap<u16, Mpsc::Sender<()>>,
+    pool_of_subscribes: &HashMap<server_methods::Subscribe, HashSet<u16>>,
+    resource: &Vec<ResourceInfo>,
+) {
+    let subs_to_poke = what_subs_to_poke(&resource);
+
+    let mut components_to_poke = HashSet::new();
+
+    for one_sub in subs_to_poke {
+        let a = match pool_of_subscribes.get(&one_sub) {
+            Some(a) => a,
+            None => continue,
+        };
+
+        for a in a {
+            components_to_poke.insert(a.clone());
+        }
+    }
+
+    for i in components_to_poke {
+        let sender = pool_of_pokers.get_mut(&i).unwrap();
+        sender.send(()).await.unwrap();
+    }
 }

@@ -43,45 +43,124 @@ impl push_data::OperationsInput {
         }
     }
 
-    pub(crate) async fn run_operation_check_apply<Ch: CacheIO>(
+    pub(crate) async fn run_operation_check_apply<
+        Ch: CacheIO,
+        Mpsc: MultiProducerSingleConsumer,
+    >(
         &self,
         state: &mut cache::State<Ch>,
+        pool_of_pokers: &mut HashMap<u16, Mpsc::Sender<()>>,
+        pool_of_subscribes: &HashMap<server_methods::Subscribe, HashSet<u16>>,
     ) {
         match self {
-            push_data::OperationsInput::SignUp(i) => operation_check_apply_handler(i, state).await,
-            push_data::OperationsInput::SignIn(i) => operation_check_apply_handler(i, state).await,
+            push_data::OperationsInput::SignUp(i) => {
+                operation_check_apply_handler::<_, _, Mpsc>(
+                    i,
+                    state,
+                    pool_of_pokers,
+                    pool_of_subscribes,
+                )
+                .await
+            }
+            push_data::OperationsInput::SignIn(i) => {
+                operation_check_apply_handler::<_, _, Mpsc>(
+                    i,
+                    state,
+                    pool_of_pokers,
+                    pool_of_subscribes,
+                )
+                .await
+            }
             push_data::OperationsInput::CreateCompany(i) => {
-                operation_check_apply_handler(i, state).await
+                operation_check_apply_handler::<_, _, Mpsc>(
+                    i,
+                    state,
+                    pool_of_pokers,
+                    pool_of_subscribes,
+                )
+                .await
             }
             push_data::OperationsInput::CreateCompanyBranch(i) => {
-                operation_check_apply_handler(i, state).await
+                operation_check_apply_handler::<_, _, Mpsc>(
+                    i,
+                    state,
+                    pool_of_pokers,
+                    pool_of_subscribes,
+                )
+                .await
             }
             push_data::OperationsInput::ListCompanyAndBranch(i) => {
-                operation_check_apply_handler(i, state).await
+                operation_check_apply_handler::<_, _, Mpsc>(
+                    i,
+                    state,
+                    pool_of_pokers,
+                    pool_of_subscribes,
+                )
+                .await
             }
         }
     }
 
-    pub(crate) async fn run_operation_check_apply_write<Ch: CacheIO>(
+    pub(crate) async fn run_operation_check_apply_write<
+        Ch: CacheIO,
+        Mpsc: MultiProducerSingleConsumer,
+    >(
         &self,
         txn_number: u64,
         state: &mut cache::State<Ch>,
+        pool_of_pokers: &mut HashMap<u16, Mpsc::Sender<()>>,
+        pool_of_subscribes: &HashMap<server_methods::Subscribe, HashSet<u16>>,
     ) -> push_data::OperationsResult {
         match self {
             push_data::OperationsInput::SignUp(i) => {
-                operation_check_apply_write_handler(txn_number, i, state).await
+                operation_check_apply_write_handler::<_, _, Mpsc>(
+                    txn_number,
+                    i,
+                    state,
+                    pool_of_pokers,
+                    pool_of_subscribes,
+                )
+                .await
             }
             push_data::OperationsInput::SignIn(i) => {
-                operation_check_apply_write_handler(txn_number, i, state).await
+                operation_check_apply_write_handler::<_, _, Mpsc>(
+                    txn_number,
+                    i,
+                    state,
+                    pool_of_pokers,
+                    pool_of_subscribes,
+                )
+                .await
             }
             push_data::OperationsInput::CreateCompany(i) => {
-                operation_check_apply_write_handler(txn_number, i, state).await
+                operation_check_apply_write_handler::<_, _, Mpsc>(
+                    txn_number,
+                    i,
+                    state,
+                    pool_of_pokers,
+                    pool_of_subscribes,
+                )
+                .await
             }
             push_data::OperationsInput::CreateCompanyBranch(i) => {
-                operation_check_apply_write_handler(txn_number, i, state).await
+                operation_check_apply_write_handler::<_, _, Mpsc>(
+                    txn_number,
+                    i,
+                    state,
+                    pool_of_pokers,
+                    pool_of_subscribes,
+                )
+                .await
             }
             push_data::OperationsInput::ListCompanyAndBranch(i) => {
-                operation_check_apply_write_handler(txn_number, i, state).await
+                operation_check_apply_write_handler::<_, _, Mpsc>(
+                    txn_number,
+                    i,
+                    state,
+                    pool_of_pokers,
+                    pool_of_subscribes,
+                )
+                .await
             }
         }
     }
@@ -126,25 +205,46 @@ async fn operation_check_handler<T: CacheAndServerType1, Ch: CacheIO>(
     return input.state_full_operation(state).await.wrap_output();
 }
 
-async fn operation_check_apply_handler<T: CacheAndServerType1, Ch: CacheIO>(
+async fn operation_check_apply_handler<
+    T: CacheAndServerType1,
+    Ch: CacheIO,
+    Mpsc: MultiProducerSingleConsumer,
+>(
     input: &T,
     state: &mut cache::State<Ch>,
+    pool_of_pokers: &mut HashMap<u16, Mpsc::Sender<()>>,
+    pool_of_subscribes: &HashMap<server_methods::Subscribe, HashSet<u16>>,
 ) {
-    apply_change(
+    apply_change::<Mpsc>(
         input.state_full_operation(state).await.extract_resource(),
         &mut state.state_of_pending_txn,
-    );
+        pool_of_pokers,
+        pool_of_subscribes,
+    )
+    .await;
 }
 
-async fn operation_check_apply_write_handler<T: CacheAndServerType1, Ch: CacheIO>(
+async fn operation_check_apply_write_handler<
+    T: CacheAndServerType1,
+    Ch: CacheIO,
+    Mpsc: MultiProducerSingleConsumer,
+>(
     txn_number: u64,
     input: &T,
     state: &mut cache::State<Ch>,
+    pool_of_pokers: &mut HashMap<u16, Mpsc::Sender<()>>,
+    pool_of_subscribes: &HashMap<server_methods::Subscribe, HashSet<u16>>,
 ) -> push_data::OperationsResult {
     let result = input.state_full_operation(state).await;
 
     if result.is_ok() {
-        apply_change(result.extract_resource(), &mut state.state_of_pending_txn);
+        apply_change::<Mpsc>(
+            result.extract_resource(),
+            &mut state.state_of_pending_txn,
+            pool_of_pokers,
+            pool_of_subscribes,
+        )
+        .await;
 
         state
             .cache
@@ -177,7 +277,14 @@ impl<V: Default> MyUpSert<V> for HashMap<db_types::UuidType, V> {
     }
 }
 
-fn apply_change(resources: Vec<ResourceInfo>, state: &mut cache::StateOfPendingTxn) {
+async fn apply_change<Mpsc: MultiProducerSingleConsumer>(
+    resources: Vec<ResourceInfo>,
+    state: &mut cache::StateOfPendingTxn,
+    pool_of_pokers: &mut HashMap<u16, Mpsc::Sender<()>>,
+    pool_of_subscribes: &HashMap<server_methods::Subscribe, HashSet<u16>>,
+) {
+    web_socket::fun_name::<Mpsc>(pool_of_pokers, pool_of_subscribes, &resources).await;
+
     for resource in resources {
         let row_uuid = resource.row_uuid;
 
