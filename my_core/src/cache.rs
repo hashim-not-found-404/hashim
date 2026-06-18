@@ -51,10 +51,7 @@ pub struct State<Ch: CacheIO> {
 }
 
 impl<Ch: CacheIO> State<Ch> {
-    pub async fn new<Mpsc: MultiProducerSingleConsumer>(
-        pool_of_pokers: &mut HashMap<u16, Mpsc::Sender<()>>,
-        pool_of_subscribes: &HashMap<server_methods::Subscribe, HashSet<u16>>,
-    ) -> Self {
+    pub async fn new() -> Self {
         let cache = Ch::new().await;
         let txns = cache.get_all_txn_input().await;
 
@@ -64,13 +61,7 @@ impl<Ch: CacheIO> State<Ch> {
         };
 
         for op in txns {
-            op.operation
-                .run_operation_check_apply::<_, Mpsc>(
-                    &mut state,
-                    pool_of_pokers,
-                    pool_of_subscribes,
-                )
-                .await;
+            op.operation.run_operation_check_apply(&mut state).await;
         }
 
         state

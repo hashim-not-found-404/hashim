@@ -249,9 +249,7 @@ where
             let mut pool_of_subscribes =
                 HashMap::<server_methods::Subscribe, HashSet<u16>>::with_capacity(100);
 
-            let mut state =
-                cache::State::<At::Ch>::new::<Mpsc>(&mut pool_of_pokers, &mut pool_of_subscribes)
-                    .await;
+            let mut state = cache::State::<At::Ch>::new().await;
 
             loop {
                 match receiver_to_cache.recv().await.unwrap() {
@@ -282,17 +280,13 @@ where
                                 sender_to_error.send(err.into()).await.unwrap()
                             }
                             messages::FromServer::PushData(results) => {
+                                let mut subs_to_poke = HashSet::new();
+
                                 for txn in results.operations {
                                     let data = txn.operation;
                                     let resource = data.extract_resource();
+                                    collect_subs_to_poke(&mut subs_to_poke, &resource);
                                     state.cache.write_resource(&resource).await;
-
-                                    fun_name::<Mpsc>(
-                                        &mut pool_of_pokers,
-                                        &pool_of_subscribes,
-                                        &resource,
-                                    )
-                                    .await;
 
                                     let txn = push_data::Txn {
                                         txn_number: txn.txn_number,
@@ -321,23 +315,27 @@ where
                                 state.state_of_pending_txn = cache::StateOfPendingTxn::default();
 
                                 let txns = state.cache.get_all_txn_input().await;
+
                                 for op in txns {
-                                    op.operation
-                                        .run_operation_check_apply::<_, Mpsc>(
-                                            &mut state,
-                                            &mut pool_of_pokers,
-                                            &mut pool_of_subscribes,
-                                        )
-                                        .await;
+                                    op.operation.run_operation_check_apply(&mut state).await;
                                 }
+
+                                poke_the_subs::<Mpsc>(
+                                    &mut pool_of_pokers,
+                                    &pool_of_subscribes,
+                                    &subs_to_poke,
+                                )
+                                .await;
                             }
                             messages::FromServer::Resources(resource) => {
                                 state.cache.write_resource(&resource).await;
 
-                                fun_name::<Mpsc>(
+                                let mut subs_to_poke = HashSet::new();
+                                collect_subs_to_poke(&mut subs_to_poke, &resource);
+                                poke_the_subs::<Mpsc>(
                                     &mut pool_of_pokers,
                                     &pool_of_subscribes,
-                                    &resource,
+                                    &subs_to_poke,
                                 )
                                 .await;
                             }
@@ -419,14 +417,21 @@ where
                         CachingStrategy::WriteCacheAndServer => {
                             let txn_number = At::Rn::generate();
 
+                            let mut subs_to_poke = HashSet::new();
                             let result = data
-                                .run_operation_check_apply_write::<_, Mpsc>(
+                                .run_operation_check_apply_write(
                                     txn_number,
                                     &mut state,
-                                    &mut pool_of_pokers,
-                                    &mut pool_of_subscribes,
+                                    &mut subs_to_poke,
                                 )
                                 .await;
+
+                            poke_the_subs::<Mpsc>(
+                                &mut pool_of_pokers,
+                                &pool_of_subscribes,
+                                &subs_to_poke,
+                            )
+                            .await;
 
                             let _ = sender
                                 .send(Response::Data(Data {
@@ -511,50 +516,53 @@ fn get<T: Clone>(a: Arc<RwLock<T>>) -> T {
     a.read().unwrap().clone()
 }
 
-fn what_subs_to_poke(resource: &Vec<ResourceInfo>) -> HashSet<server_methods::Subscribe> {
-    let mut list = HashSet::new();
+pub fn collect_subs_to_poke(
+    subs_to_poke: &mut HashSet<server_methods::Subscribe>,
+    resource: &Vec<ResourceInfo>,
+) {
     for resource in resource {
         match resource.resource {
             server_methods::Resource::Jwt(_) => {}
             server_methods::Resource::TableUserFieldName(_) => {
-                list.insert(server_methods::Subscribe::TableUserFieldName);
+                subs_to_poke.insert(server_methods::Subscribe::TableUserFieldName);
             }
             server_methods::Resource::TableUserFieldId(_) => {
-                list.insert(server_methods::Subscribe::TableUserFieldId);
+                subs_to_poke.insert(server_methods::Subscribe::TableUserFieldId);
             }
             server_methods::Resource::TableCompanyFieldName(_) => {
-                list.insert(server_methods::Subscribe::TableCompanyFieldName);
+                subs_to_poke.insert(server_methods::Subscribe::TableCompanyFieldName);
             }
             server_methods::Resource::TableCompanyBranchFieldName(_) => {
-                list.insert(server_methods::Subscribe::TableCompanyBranchFieldName);
+                subs_to_poke.insert(server_methods::Subscribe::TableCompanyBranchFieldName);
             }
             server_methods::Resource::TableCompanyBranchFieldCompanyBelong(_) => {
-                list.insert(server_methods::Subscribe::TableCompanyBranchFieldCompanyBelong);
+                subs_to_poke
+                    .insert(server_methods::Subscribe::TableCompanyBranchFieldCompanyBelong);
             }
             server_methods::Resource::TableCompanyFieldCurrency(_) => {
-                list.insert(server_methods::Subscribe::TableCompanyFieldCurrency);
+                subs_to_poke.insert(server_methods::Subscribe::TableCompanyFieldCurrency);
             }
             server_methods::Resource::TableAccessControlForCompanyFieldRole(_) => {
-                list.insert(server_methods::Subscribe::TableAccessControlForCompanyFieldRole);
+                subs_to_poke
+                    .insert(server_methods::Subscribe::TableAccessControlForCompanyFieldRole);
             }
             server_methods::Resource::TableAccessControlForCompanyFieldUser(_) => {
-                list.insert(server_methods::Subscribe::TableAccessControlForCompanyFieldUser);
+                subs_to_poke
+                    .insert(server_methods::Subscribe::TableAccessControlForCompanyFieldUser);
             }
             server_methods::Resource::TableAccessControlForCompanyFieldDataGroup(_) => {
-                list.insert(server_methods::Subscribe::TableAccessControlForCompanyFieldDataGroup);
+                subs_to_poke
+                    .insert(server_methods::Subscribe::TableAccessControlForCompanyFieldDataGroup);
             }
         }
     }
-    list
 }
 
-pub async fn fun_name<Mpsc: MultiProducerSingleConsumer>(
+async fn poke_the_subs<Mpsc: MultiProducerSingleConsumer>(
     pool_of_pokers: &mut HashMap<u16, Mpsc::Sender<()>>,
     pool_of_subscribes: &HashMap<server_methods::Subscribe, HashSet<u16>>,
-    resource: &Vec<ResourceInfo>,
+    subs_to_poke: &HashSet<server_methods::Subscribe>,
 ) {
-    let subs_to_poke = what_subs_to_poke(&resource);
-
     let mut components_to_poke = HashSet::new();
 
     for one_sub in subs_to_poke {

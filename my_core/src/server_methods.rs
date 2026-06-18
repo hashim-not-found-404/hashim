@@ -692,7 +692,6 @@ where
                     }
                     Either::Two(wraped_resource) => {
                         let resource = wraped_resource.unwrap();
-                        dbg!(&resource);
                         if session
                             .send_bin(De::encode(&messages::FromServer::Resources(resource)))
                             .await
