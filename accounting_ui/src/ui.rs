@@ -422,6 +422,7 @@ fn CreateCompany(show_form: Signal<ActiveForm>) -> Element {
 fn CreateCompanyBranch(show_form: Signal<ActiveForm>) -> Element {
     let state = consume_context::<StateOfEveryThing>();
     let local_state = front_end_model_view::CreateCompanyBranchState::<my_signals::m::S>::default();
+    let sender = my_signal::m::S::default();
 
     let state1 = state.clone();
     let local_state1 = local_state.clone();
@@ -429,11 +430,22 @@ fn CreateCompanyBranch(show_form: Signal<ActiveForm>) -> Element {
 
     rsx! {
         div {
+            Dialog {
+                sender: sender.clone(),
+                operation_name: "create company branch",
+                show_dialog: local_state.show_dialog.clone(),
+            }
             input {
                 placeholder: "Branch Name",
                 oninput: move |event| {
                     local_state1.branch_name.set(event.value());
-                    state1.clone().create_company_branch(false, local_state1.clone());
+                    state1
+                        .clone()
+                        .create_company_branch(
+                            my_signal::m::S::default(),
+                            false,
+                            local_state1.clone(),
+                        );
                 },
                 value: local_state.branch_name.read(),
             }
@@ -449,7 +461,7 @@ fn CreateCompanyBranch(show_form: Signal<ActiveForm>) -> Element {
             }
             button {
                 onclick: move |_| {
-                    state.clone().create_company_branch(true, local_state.clone());
+                    state.clone().create_company_branch(sender.clone(), true, local_state.clone());
                     show_form.set(ActiveForm::None);
                 },
                 "Create"

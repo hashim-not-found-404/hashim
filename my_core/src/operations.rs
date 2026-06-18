@@ -505,7 +505,10 @@ impl CacheAndServerType2 for create_company_branch::Result {
     }
 
     fn extract_resource(&self) -> Vec<ResourceInfo> {
-        Vec::new()
+        match self {
+            Ok(ok) => ok.resource.clone(),
+            Err(_) => Vec::new(),
+        }
     }
 
     fn wrap_output(self) -> push_data::OperationsResult {

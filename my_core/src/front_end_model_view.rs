@@ -11,7 +11,8 @@ pub trait HashimSignal<T: Default>: Default + Clone {
 pub trait AllSignalTypes: Default {
     type String: HashimSignal<String>;
     type Dialog: HashimSignal<Dialog>;
-    type OptionRowId: HashimSignal<Option<db_types::UuidType>>;
+    type Uuid: HashimSignal<db_types::UuidType>;
+    type OptionUuid: HashimSignal<Option<db_types::UuidType>>;
     type Bool: HashimSignal<bool>;
     type StringVec: HashimSignal<String>;
     type Currency: HashimSignal<db_types::Currency>;
@@ -30,8 +31,8 @@ pub struct State<
     routs: Arc<web_socket::MyWAMP<At, Mpsc>>,
 
     // here every field is to display , here is global state
-    pub is_signed_in: As::OptionRowId,
-    pub selected_company_branch: As::OptionRowId,
+    pub is_signed_in: As::OptionUuid,
+    pub selected_company_branch: As::OptionUuid,
     pub external_errors: As::StringVec,
 }
 
@@ -76,8 +77,8 @@ impl<
         let state = Self {
             _ph: PhantomData,
             routs,
-            is_signed_in: As::OptionRowId::default(),
-            selected_company_branch: As::OptionRowId::default(),
+            is_signed_in: As::OptionUuid::default(),
+            selected_company_branch: As::OptionUuid::default(),
             external_errors,
         };
 
@@ -472,17 +473,98 @@ impl<
         });
     }
 
-    pub fn create_company_branch(self, is_submit: bool, local_state: CreateCompanyBranchState<As>) {
+    pub fn create_company_branch(
+        self,
+        sender_to_consent_from_dialog: ConsentSender,
+        is_submit: bool,
+        local_state: CreateCompanyBranchState<As>,
+    ) {
         At::Rt::spawn_local(async move {
+            if local_state.is_loading.read() == true {
+                return;
+            }
+            local_state.is_loading.set(true);
+
+            let input = create_company_branch::Input {
+                user_uuid: self.is_signed_in.read().unwrap(),
+                new_uuid: At::Id::generate().to_uuid(),
+                company_belong: local_state.company_belong.read(),
+                currency: local_state.currency.read(),
+                branch_name: local_state.branch_name.read(),
+                location: local_state.location.read(),
+            };
+
+            let strategy = if is_submit {
+                web_socket::CachingStrategy::WriteCacheAndServer
+            } else {
+                web_socket::CachingStrategy::ReadCacheOnly
+            };
+
+            let (sender, mut receiver) = Mpsc::channel();
+            let is_user_want_to_proceed = Arc::new(Mutex::new(IsProceed::Wait));
+            let response = Arc::new(Mutex::new(None));
+
+            let mut handel_consent = Self::consent_receiver_and_dialog_actors(
+                sender_to_consent_from_dialog,
+                is_user_want_to_proceed.clone(),
+                sender.clone(),
+            );
+
+            let mut handel_response = Self::response_receiver_actor(
+                input.wrap_input(),
+                strategy,
+                sender,
+                response.clone(),
+                self.routs.clone(),
+            );
+
+            loop {
+                match receiver.recv().await {
+                    Ok(_) => {}
+                    Err(_) => break,
+                }
+
+                if let Some(response) = response.lock().unwrap().clone() {
+                    let result = create_company_branch::Result::unwrap_output(response.data);
+
+                    let is_ok = result.is_ok();
+                    match result {
+                        Ok(_) => {}
+                        Err(business_error) => {}
+                    }
+
+                    if is_submit {
+                        match is_proceed(
+                            is_ok,
+                            response.is_response_from_server,
+                            *is_user_want_to_proceed.lock().unwrap(),
+                        ) {
+                            IsProceed::Wait => {
+                                local_state.show_dialog.set(Dialog::Show);
+                                continue;
+                            }
+                            IsProceed::Yes => {
+                                local_state.show_dialog.reset();
+                                break;
+                            }
+                            IsProceed::No => {
+                                local_state.show_dialog.reset();
+                                break;
+                            }
+                        };
+                    } else {
+                        break;
+                    }
+                }
+            }
+
+            local_state.company_belong.reset();
+            local_state.currency.reset();
+            local_state.branch_name.reset();
+            local_state.location.reset();
+            local_state.is_loading.reset();
+
             todo!();
-            // let input = create_company_branch::Input {
-            //     user_uuid: self.is_signed_in.read().unwrap(),
-            //     new_uuid: At::Id::generate().to_uuid(),
-            //     company_belong: local_state.company_belong.read(),
-            //     currency: local_state.currency.read(),
-            //     branch_name: local_state.branch_name.read(),
-            //     location: local_state.location.read(),
-            // };
         });
     }
 }
@@ -525,7 +607,9 @@ pub struct CreateCompanyState<As: AllSignalTypes> {
 
 #[derive(Default, Clone)]
 pub struct CreateCompanyBranchState<As: AllSignalTypes> {
-    pub company_belong: As::String,
+    pub is_loading: As::Bool,
+    pub show_dialog: As::Dialog,
+    pub company_belong: As::Uuid,
     pub currency: As::Currency,
     pub branch_name: As::String,
     pub location: As::Location,
