@@ -61,7 +61,9 @@ impl<Ch: CacheIO> State<Ch> {
         };
 
         for op in txns {
-            op.operation.run_operation_check_apply(&mut state).await;
+            op.operation
+                .run_operation_check_apply(&mut state, &mut HashSet::new())
+                .await;
         }
 
         state

@@ -46,18 +46,23 @@ impl push_data::OperationsInput {
     pub(crate) async fn run_operation_check_apply<Ch: CacheIO>(
         &self,
         state: &mut cache::State<Ch>,
+        subs_to_poke: &mut HashSet<server_methods::Subscribe>,
     ) {
         match self {
-            push_data::OperationsInput::SignUp(i) => operation_check_apply_handler(i, state).await,
-            push_data::OperationsInput::SignIn(i) => operation_check_apply_handler(i, state).await,
+            push_data::OperationsInput::SignUp(i) => {
+                operation_check_apply_handler(i, state, subs_to_poke).await
+            }
+            push_data::OperationsInput::SignIn(i) => {
+                operation_check_apply_handler(i, state, subs_to_poke).await
+            }
             push_data::OperationsInput::CreateCompany(i) => {
-                operation_check_apply_handler(i, state).await
+                operation_check_apply_handler(i, state, subs_to_poke).await
             }
             push_data::OperationsInput::CreateCompanyBranch(i) => {
-                operation_check_apply_handler(i, state).await
+                operation_check_apply_handler(i, state, subs_to_poke).await
             }
             push_data::OperationsInput::ListCompanyAndBranch(i) => {
-                operation_check_apply_handler(i, state).await
+                operation_check_apply_handler(i, state, subs_to_poke).await
             }
         }
     }
@@ -130,10 +135,12 @@ async fn operation_check_handler<T: CacheAndServerType1, Ch: CacheIO>(
 async fn operation_check_apply_handler<T: CacheAndServerType1, Ch: CacheIO>(
     input: &T,
     state: &mut cache::State<Ch>,
+    subs_to_poke: &mut HashSet<server_methods::Subscribe>,
 ) {
     apply_change(
         input.state_full_operation(state).await.extract_resource(),
         &mut state.state_of_pending_txn,
+        subs_to_poke,
     )
     .await;
 }
@@ -147,10 +154,12 @@ async fn operation_check_apply_write_handler<T: CacheAndServerType1, Ch: CacheIO
     let result = input.state_full_operation(state).await;
 
     if result.is_ok() {
-        let resources = result.extract_resource();
-        web_socket::collect_subs_to_poke(subs_to_poke, &resources);
-
-        apply_change(resources, &mut state.state_of_pending_txn).await;
+        apply_change(
+            result.extract_resource(),
+            &mut state.state_of_pending_txn,
+            subs_to_poke,
+        )
+        .await;
 
         state
             .cache
@@ -164,7 +173,13 @@ async fn operation_check_apply_write_handler<T: CacheAndServerType1, Ch: CacheIO
     return result.wrap_output();
 }
 
-async fn apply_change(resources: Vec<ResourceInfo>, state: &mut cache::StateOfPendingTxn) {
+async fn apply_change(
+    resources: Vec<ResourceInfo>,
+    state: &mut cache::StateOfPendingTxn,
+    subs_to_poke: &mut HashSet<server_methods::Subscribe>,
+) {
+    web_socket::collect_subs_to_poke(subs_to_poke, &resources);
+
     for resource in resources {
         let row_uuid = resource.row_uuid;
 

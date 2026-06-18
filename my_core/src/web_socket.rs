@@ -317,7 +317,9 @@ where
                                 let txns = state.cache.get_all_txn_input().await;
 
                                 for op in txns {
-                                    op.operation.run_operation_check_apply(&mut state).await;
+                                    op.operation
+                                        .run_operation_check_apply(&mut state, &mut subs_to_poke)
+                                        .await;
                                 }
 
                                 poke_the_subs::<Mpsc>(
