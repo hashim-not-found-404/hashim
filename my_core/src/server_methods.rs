@@ -704,6 +704,11 @@ where
             }
 
             session.close().await.unwrap();
+
+            sender_to_broker
+                .send(MessageToBroker::Unsubscribe { connection_id })
+                .await
+                .unwrap();
         });
     }
 
@@ -731,21 +736,38 @@ where
                             );
                         }
 
-                        merge_subscribes(
+                        broker_functions::merge_subscribes(
                             &mut pool_of_pubsub_for_company,
                             list_of_subscribtion.companies,
                         );
 
-                        merge_subscribes(
+                        broker_functions::merge_subscribes(
                             &mut pool_of_pubsub_for_branch,
                             list_of_subscribtion.branches,
                         );
                     }
-                    MessageToBroker::Unsubscribe { user_uuid } => {
-                        pool_of_server_facad_channels.remove(&user_uuid);
-                        // TODO : i have leake here i need to remove the company and branches if empty
-                        unsubscribe(&mut pool_of_pubsub_for_company, &user_uuid);
-                        unsubscribe(&mut pool_of_pubsub_for_branch, &user_uuid);
+                    MessageToBroker::Unsubscribe { connection_id } => {
+                        let mut user_to_remove = Vec::new();
+
+                        for (user_uuid, inner) in pool_of_server_facad_channels.iter_mut() {
+                            if inner.remove(&connection_id).is_some() {
+                                if inner.is_empty() {
+                                    user_to_remove.push(user_uuid.clone());
+                                }
+                            }
+                        }
+
+                        for user_uuid in user_to_remove {
+                            pool_of_server_facad_channels.remove(&user_uuid);
+                            broker_functions::unsubscribe(
+                                &mut pool_of_pubsub_for_company,
+                                &user_uuid,
+                            );
+                            broker_functions::unsubscribe(
+                                &mut pool_of_pubsub_for_branch,
+                                &user_uuid,
+                            );
+                        }
                     }
                     MessageToBroker::Publish {
                         connection_id,
@@ -755,13 +777,13 @@ where
                         let mut resource_to_send: ListOfResources<Id /* user id */> =
                             HashMap::new();
 
-                        map_resource_to_subscribes(
+                        broker_functions::map_resource_to_subscribes(
                             &pool_of_pubsub_for_company,
                             list_of_resources_for_company,
                             &mut resource_to_send,
                         );
 
-                        map_resource_to_subscribes(
+                        broker_functions::map_resource_to_subscribes(
                             &pool_of_pubsub_for_branch,
                             list_of_resources_for_branch,
                             &mut resource_to_send,
@@ -780,7 +802,7 @@ where
                                             channels.remove(&connection_id1);
                                         }
                                     }
-                                    if channels.len() == 0 {
+                                    if channels.is_empty() {
                                         pool_of_server_facad_channels.remove(&user_uuid);
                                     }
                                 }
@@ -807,48 +829,111 @@ pub trait WSServer {
     fn receive(&mut self) -> impl Future<Output = Result<WSMessage, DynamicError>>;
     fn close(self) -> impl Future<Output = Result<(), DynamicError>>;
 }
+mod broker_functions {
+    use super::*;
 
-fn map_resource_to_subscribes<Id: RowId>(
-    pool_of_pubsub: &UserSubscribes<Id>,
-    list_of_resources: ListOfResources<Id>,
-    resource_to_send: &mut ListOfResources<Id>,
-) {
-    for (company, resource) in list_of_resources {
-        let user_and_subscribe = pool_of_pubsub.get(&company);
-        match user_and_subscribe {
-            Some(user_and_subscribe) => {
-                for (user_uuid, subscribe) in user_and_subscribe {
-                    let resource_for_user =
-                        resource_filtering_based_on_subscribe(subscribe, &resource);
+    pub fn map_resource_to_subscribes<Id: RowId>(
+        pool_of_pubsub: &UserSubscribes<Id>,
+        list_of_resources: ListOfResources<Id>,
+        resource_to_send: &mut ListOfResources<Id>,
+    ) {
+        for (company, resource) in list_of_resources {
+            let user_and_subscribe = pool_of_pubsub.get(&company);
+            match user_and_subscribe {
+                Some(user_and_subscribe) => {
+                    for (user_uuid, subscribe) in user_and_subscribe {
+                        let resource_for_user =
+                            resource_filtering_based_on_subscribe(subscribe, &resource);
 
-                    resource_to_send.insert_append(user_uuid.clone(), resource_for_user);
+                        resource_to_send.insert_append(user_uuid.clone(), resource_for_user);
+                    }
+                }
+                None => {
+                    dbg!("there is some problem here this should not happen");
+                    continue;
                 }
             }
-            None => {
-                dbg!("there is some problem here this should not happen");
-                continue;
+        }
+    }
+
+    pub fn unsubscribe<Id: RowId>(pool_of_pubsub: &mut UserSubscribes<Id>, user_uuid: &Id) {
+        pool_of_pubsub.retain(|_, users_and_subs| {
+            users_and_subs.remove(user_uuid);
+            !users_and_subs.is_empty()
+        });
+    }
+
+    pub fn merge_subscribes<Id: RowId>(
+        pool_of_pubsub: &mut UserSubscribes<Id>,
+        list_of_subscribtion: UserSubscribes<Id>,
+    ) {
+        for (company, users_subscribes) in list_of_subscribtion {
+            for (user_uuid, subscribes) in users_subscribes {
+                pool_of_pubsub.nested_insert(company.clone(), user_uuid, subscribes);
             }
         }
     }
-}
 
-fn unsubscribe<Id: RowId>(pool_of_pubsub: &mut UserSubscribes<Id>, user_uuid: &Id) {
-    for (_, users_and_subs) in pool_of_pubsub.iter_mut() {
-        users_and_subs.remove(user_uuid);
-    }
-}
+    fn resource_filtering_based_on_subscribe(
+        subscribe: &HashSet<Subscribe>,
+        resource: &Vec<ResourceInfo>,
+    ) -> Vec<ResourceInfo> {
+        let mut new_resource = Vec::new();
 
-fn merge_subscribes<Id: RowId>(
-    pool_of_pubsub: &mut UserSubscribes<Id>,
-    list_of_subscribtion: UserSubscribes<Id>,
-) {
-    for (company, users_subscribes) in list_of_subscribtion {
-        for (user_uuid, subscribes) in users_subscribes {
-            pool_of_pubsub.nested_insert(company.clone(), user_uuid, subscribes);
+        for one_resource in resource {
+            match one_resource.resource {
+                Resource::Jwt(_) => {}
+                Resource::TableUserFieldName(_) => {
+                    if subscribe.contains(&Subscribe::TableUserFieldName) {
+                        new_resource.push(one_resource.clone());
+                    }
+                }
+                Resource::TableUserFieldId(_) => {
+                    if subscribe.contains(&Subscribe::TableUserFieldId) {
+                        new_resource.push(one_resource.clone());
+                    }
+                }
+                Resource::TableCompanyFieldName(_) => {
+                    if subscribe.contains(&Subscribe::TableCompanyFieldName) {
+                        new_resource.push(one_resource.clone());
+                    }
+                }
+                Resource::TableCompanyBranchFieldName(_) => {
+                    if subscribe.contains(&Subscribe::TableCompanyBranchFieldName) {
+                        new_resource.push(one_resource.clone());
+                    }
+                }
+                Resource::TableCompanyBranchFieldCompanyBelong(_) => {
+                    if subscribe.contains(&Subscribe::TableCompanyBranchFieldCompanyBelong) {
+                        new_resource.push(one_resource.clone());
+                    }
+                }
+                Resource::TableCompanyFieldCurrency(_) => {
+                    if subscribe.contains(&Subscribe::TableCompanyFieldCurrency) {
+                        new_resource.push(one_resource.clone());
+                    }
+                }
+                Resource::TableAccessControlForCompanyFieldRole(_) => {
+                    if subscribe.contains(&Subscribe::TableAccessControlForCompanyFieldRole) {
+                        new_resource.push(one_resource.clone());
+                    }
+                }
+                Resource::TableAccessControlForCompanyFieldUser(_) => {
+                    if subscribe.contains(&Subscribe::TableAccessControlForCompanyFieldUser) {
+                        new_resource.push(one_resource.clone());
+                    }
+                }
+                Resource::TableAccessControlForCompanyFieldDataGroup(_) => {
+                    if subscribe.contains(&Subscribe::TableAccessControlForCompanyFieldDataGroup) {
+                        new_resource.push(one_resource.clone());
+                    }
+                }
+            }
         }
+
+        new_resource
     }
 }
-
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Subscribe {
     TableUserFieldName,
@@ -899,66 +984,6 @@ fn role_to_subscribe_mapping(roles: Vec<db_types::Role>) -> HashSet<Subscribe> {
     subscribes
 }
 
-fn resource_filtering_based_on_subscribe(
-    subscribe: &HashSet<Subscribe>,
-    resource: &Vec<ResourceInfo>,
-) -> Vec<ResourceInfo> {
-    let mut new_resource = Vec::new();
-
-    for one_resource in resource {
-        match one_resource.resource {
-            Resource::Jwt(_) => {}
-            Resource::TableUserFieldName(_) => {
-                if subscribe.contains(&Subscribe::TableUserFieldName) {
-                    new_resource.push(one_resource.clone());
-                }
-            }
-            Resource::TableUserFieldId(_) => {
-                if subscribe.contains(&Subscribe::TableUserFieldId) {
-                    new_resource.push(one_resource.clone());
-                }
-            }
-            Resource::TableCompanyFieldName(_) => {
-                if subscribe.contains(&Subscribe::TableCompanyFieldName) {
-                    new_resource.push(one_resource.clone());
-                }
-            }
-            Resource::TableCompanyBranchFieldName(_) => {
-                if subscribe.contains(&Subscribe::TableCompanyBranchFieldName) {
-                    new_resource.push(one_resource.clone());
-                }
-            }
-            Resource::TableCompanyBranchFieldCompanyBelong(_) => {
-                if subscribe.contains(&Subscribe::TableCompanyBranchFieldCompanyBelong) {
-                    new_resource.push(one_resource.clone());
-                }
-            }
-            Resource::TableCompanyFieldCurrency(_) => {
-                if subscribe.contains(&Subscribe::TableCompanyFieldCurrency) {
-                    new_resource.push(one_resource.clone());
-                }
-            }
-            Resource::TableAccessControlForCompanyFieldRole(_) => {
-                if subscribe.contains(&Subscribe::TableAccessControlForCompanyFieldRole) {
-                    new_resource.push(one_resource.clone());
-                }
-            }
-            Resource::TableAccessControlForCompanyFieldUser(_) => {
-                if subscribe.contains(&Subscribe::TableAccessControlForCompanyFieldUser) {
-                    new_resource.push(one_resource.clone());
-                }
-            }
-            Resource::TableAccessControlForCompanyFieldDataGroup(_) => {
-                if subscribe.contains(&Subscribe::TableAccessControlForCompanyFieldDataGroup) {
-                    new_resource.push(one_resource.clone());
-                }
-            }
-        }
-    }
-
-    new_resource
-}
-
 pub struct AllRoles<Id: RowId> {
     pub companies: HashMap<
         Id, // company uuid
@@ -1004,7 +1029,7 @@ pub enum MessageToBroker<Id: RowId, Mpsc: MultiProducerSingleConsumer> {
         sender_to_server: Mpsc::Sender<Vec<ResourceInfo>>,
     },
     Unsubscribe {
-        user_uuid: Id,
+        connection_id: u64,
     },
     Publish {
         connection_id: u64,
