@@ -1055,28 +1055,3 @@ impl<Id: RowId> Default for SideEffects<Id> {
         }
     }
 }
-
-pub(crate) trait ExtendHashMap<K, V> {
-    fn insert_push(&mut self, k: K, v: V);
-    fn insert_append(&mut self, k: K, v: Vec<V>);
-}
-
-impl<K: Eq + Hash, V> ExtendHashMap<K, V> for HashMap<K, Vec<V>> {
-    fn insert_push(&mut self, k: K, v: V) {
-        self.entry(k).or_default().push(v);
-    }
-
-    fn insert_append(&mut self, k: K, mut v: Vec<V>) {
-        self.entry(k).or_default().append(&mut v);
-    }
-}
-
-pub(crate) trait ExtendHashMap1<K1, K2, V> {
-    fn nested_insert(&mut self, k1: K1, k2: K2, v: V);
-}
-
-impl<K1: Eq + Hash, K2: Eq + Hash, V> ExtendHashMap1<K1, K2, V> for HashMap<K1, HashMap<K2, V>> {
-    fn nested_insert(&mut self, k1: K1, k2: K2, v: V) {
-        self.entry(k1).or_default().insert(k2, v);
-    }
-}

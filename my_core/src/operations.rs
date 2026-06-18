@@ -164,25 +164,6 @@ async fn operation_check_apply_write_handler<T: CacheAndServerType1, Ch: CacheIO
     return result.wrap_output();
 }
 
-trait MyUpSert<V> {
-    fn upsert<F>(&mut self, row_uuid: db_types::UuidType, f: F)
-    where
-        F: FnOnce(&mut V) + Clone;
-}
-
-impl<V: Default> MyUpSert<V> for HashMap<db_types::UuidType, V> {
-    fn upsert<F>(&mut self, row_uuid: db_types::UuidType, f: F)
-    where
-        F: FnOnce(&mut V) + Clone,
-    {
-        self.entry(row_uuid).and_modify(f.clone()).or_insert({
-            let mut v = V::default();
-            f(&mut v);
-            v
-        });
-    }
-}
-
 async fn apply_change(resources: Vec<ResourceInfo>, state: &mut cache::StateOfPendingTxn) {
     for resource in resources {
         let row_uuid = resource.row_uuid;
