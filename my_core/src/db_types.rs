@@ -59,10 +59,11 @@ impl Currency {
     }
 }
 
-#[derive(Default, Debug, Deserialize, Serialize, Clone)]
+#[derive(Default, Debug, Deserialize, Serialize, Clone, PartialEq)]
 pub enum Role {
     #[default]
     Manager,
+    CoManager,
 }
 
 impl FromStr for Role {
@@ -71,6 +72,7 @@ impl FromStr for Role {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "Manager" => Ok(Role::Manager),
+            "CoManager" => Ok(Role::CoManager),
             _ => Err("not exist".into()),
         }
     }
@@ -80,6 +82,16 @@ impl Role {
     pub fn as_str(&self) -> &str {
         match self {
             Role::Manager => "Manager",
+            Role::CoManager => "CoManager",
         }
+    }
+
+    pub fn is_have_roles(user_roles: &Vec<Self>, roles: &[Role]) -> bool {
+        for role in roles {
+            if user_roles.contains(role) {
+                return true;
+            }
+        }
+        false
     }
 }

@@ -928,6 +928,23 @@ mod broker_functions {
                         new_resource.push(one_resource.clone());
                     }
                 }
+                Resource::TableAccessControlForCompanyBranchFieldRole(_) => {
+                    if subscribe.contains(&Subscribe::TableAccessControlForCompanyBranchFieldRole) {
+                        new_resource.push(one_resource.clone());
+                    }
+                }
+                Resource::TableAccessControlForCompanyBranchFieldUser(_) => {
+                    if subscribe.contains(&Subscribe::TableAccessControlForCompanyBranchFieldUser) {
+                        new_resource.push(one_resource.clone());
+                    }
+                }
+                Resource::TableAccessControlForCompanyBranchFieldDataGroup(_) => {
+                    if subscribe
+                        .contains(&Subscribe::TableAccessControlForCompanyBranchFieldDataGroup)
+                    {
+                        new_resource.push(one_resource.clone());
+                    }
+                }
             }
         }
 
@@ -945,6 +962,9 @@ pub enum Subscribe {
     TableAccessControlForCompanyFieldRole,
     TableAccessControlForCompanyFieldUser,
     TableAccessControlForCompanyFieldDataGroup,
+    TableAccessControlForCompanyBranchFieldRole,
+    TableAccessControlForCompanyBranchFieldUser,
+    TableAccessControlForCompanyBranchFieldDataGroup,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -959,6 +979,9 @@ pub enum Resource {
     TableAccessControlForCompanyFieldRole(db_types::Role),
     TableAccessControlForCompanyFieldUser(db_types::UuidType),
     TableAccessControlForCompanyFieldDataGroup(db_types::UuidType),
+    TableAccessControlForCompanyBranchFieldRole(db_types::Role),
+    TableAccessControlForCompanyBranchFieldUser(db_types::UuidType),
+    TableAccessControlForCompanyBranchFieldDataGroup(db_types::UuidType),
 }
 
 fn role_to_subscribe_mapping(roles: Vec<db_types::Role>) -> HashSet<Subscribe> {
@@ -977,6 +1000,7 @@ fn role_to_subscribe_mapping(roles: Vec<db_types::Role>) -> HashSet<Subscribe> {
                 subscribes.insert(Subscribe::TableAccessControlForCompanyFieldUser);
                 subscribes.insert(Subscribe::TableAccessControlForCompanyFieldDataGroup);
             }
+            db_types::Role::CoManager => todo!(),
         }
     }
 

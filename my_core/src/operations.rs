@@ -212,6 +212,15 @@ async fn apply_change(
             server_methods::Resource::TableAccessControlForCompanyFieldDataGroup(r) => state
                 .access_control_for_company
                 .upsert(row_uuid, |table| table.data_group = r),
+            server_methods::Resource::TableAccessControlForCompanyBranchFieldRole(r) => state
+                .access_control_for_company_branch
+                .upsert(row_uuid, |table| table.role = r),
+            server_methods::Resource::TableAccessControlForCompanyBranchFieldUser(r) => state
+                .access_control_for_company_branch
+                .upsert(row_uuid, |table| table.user_ = r),
+            server_methods::Resource::TableAccessControlForCompanyBranchFieldDataGroup(r) => state
+                .access_control_for_company_branch
+                .upsert(row_uuid, |table| table.data_group = r),
         }
     }
 }
@@ -506,7 +515,68 @@ impl CacheAndServerType1 for create_company_branch::Input {
     type Output = create_company_branch::Result;
 
     async fn state_full_operation<Ch: CacheIO>(&self, state: &cache::State<Ch>) -> Self::Output {
-        todo!()
+        let mut errr = create_company_branch::Error::default();
+
+        let (user_roles, is_company_exist, is_branch_name_used) = state
+            .cache
+            .read_create_company_branch(&self.user_uuid, &self.company_belong, &self.branch_name)
+            .await;
+
+        todo!("check from pending");
+
+        if !is_company_exist {
+            errr.company_belong = Some(create_company_branch::CompanyBelongError::NotExist);
+        }
+
+        if is_branch_name_used {
+            errr.branch_name = Some(create_company_branch::BranchNameError::Duplicated)
+        }
+
+        if db_types::Role::is_have_roles(
+            &user_roles,
+            &[db_types::Role::Manager, db_types::Role::CoManager],
+        ) {
+            errr.user_uuid = Some(UserUuidError::YouDontHavePermissionToDoThat)
+        }
+
+        if errr != create_company_branch::Error::default() {
+            return Err(errr);
+        }
+
+        let mut resource = Vec::new();
+
+        resource.push(ResourceInfo {
+            row_uuid: self.new_uuid.clone(),
+            resource: server_methods::Resource::TableCompanyBranchFieldName(
+                self.branch_name.clone(),
+            ),
+        });
+        resource.push(ResourceInfo {
+            row_uuid: self.new_uuid.clone(),
+            resource: server_methods::Resource::TableCompanyBranchFieldCompanyBelong(
+                self.company_belong.clone(),
+            ),
+        });
+        resource.push(ResourceInfo {
+            row_uuid: self.new_uuid.clone(),
+            resource: server_methods::Resource::TableAccessControlForCompanyBranchFieldRole(
+                db_types::Role::CoManager,
+            ),
+        });
+        resource.push(ResourceInfo {
+            row_uuid: self.new_uuid.clone(),
+            resource: server_methods::Resource::TableAccessControlForCompanyBranchFieldUser(
+                self.user_uuid.clone(),
+            ),
+        });
+        resource.push(ResourceInfo {
+            row_uuid: self.new_uuid.clone(),
+            resource: server_methods::Resource::TableAccessControlForCompanyBranchFieldDataGroup(
+                self.new_uuid.clone(),
+            ),
+        });
+
+        return Ok(create_company_branch::Ok { resource });
     }
 
     fn wrap_input1(self) -> push_data::OperationsInput {

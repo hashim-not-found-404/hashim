@@ -530,7 +530,9 @@ impl<
                     let is_ok = result.is_ok();
                     match result {
                         Ok(_) => {}
-                        Err(business_error) => {}
+                        Err(business_error) => {
+                            todo!()
+                        }
                     }
 
                     if is_submit {

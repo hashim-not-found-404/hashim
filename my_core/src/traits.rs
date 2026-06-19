@@ -247,6 +247,18 @@ pub trait CacheIO: Sized {
         &self,
         user_uuid: &db_types::UuidType,
     ) -> impl Future<Output = Vec<ResourceInfo>>;
+    fn read_create_company_branch(
+        &self,
+        user_uuid: &db_types::UuidType,
+        company_belong: &db_types::UuidType,
+        company_branch_name: &String,
+    ) -> impl Future<
+        Output = (
+            Vec<db_types::Role>, /* roles at company */
+            bool,                /* is company exist */
+            bool,                /* is branch name used */
+        ),
+    >;
 }
 
 pub trait AllClientTypes {

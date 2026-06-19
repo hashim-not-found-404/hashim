@@ -122,6 +122,25 @@ impl CacheIO for S {
                 server_methods::Resource::TableAccessControlForCompanyFieldDataGroup(value) => {
                     make_sql_statment("access_control_for_company", "data_group", uuid, &value.0)
                 }
+                server_methods::Resource::TableAccessControlForCompanyBranchFieldRole(value) => {
+                    make_sql_statment(
+                        "access_control_for_company_branch",
+                        "role",
+                        uuid,
+                        &value.as_str().to_string(),
+                    )
+                }
+                server_methods::Resource::TableAccessControlForCompanyBranchFieldUser(value) => {
+                    make_sql_statment("access_control_for_company_branch", "user_", uuid, &value.0)
+                }
+                server_methods::Resource::TableAccessControlForCompanyBranchFieldDataGroup(
+                    value,
+                ) => make_sql_statment(
+                    "access_control_for_company_branch",
+                    "data_group",
+                    uuid,
+                    &value.0,
+                ),
             };
 
             stmts.push(stmt);
@@ -286,6 +305,56 @@ impl CacheIO for S {
         }
 
         resources
+    }
+
+    async fn read_create_company_branch(
+        &self,
+        user_uuid: &db_types::UuidType,
+        company_belong: &db_types::UuidType,
+        company_branch_name: &String,
+    ) -> (
+        Vec<db_types::Role>, /* roles at company */
+        bool,                /* is company exist */
+        bool,                /* is branch name used */
+    ) {
+        // 1. Get the user's roles in the company
+        let mut stmt = self
+            .db
+            .prepare(
+                "SELECT role FROM access_control_for_company WHERE data_group = ?1 AND user_ = ?2",
+            )
+            .unwrap();
+
+        let roles_iter = stmt
+            .query_map(params![company_belong.0, user_uuid.0], |row| {
+                let role_str: String = row.get(0)?;
+                let role = db_types::Role::from_str(role_str.as_str()).unwrap();
+                Ok(role)
+            })
+            .unwrap();
+
+        let mut roles = Vec::new();
+        for role in roles_iter {
+            roles.push(role.unwrap());
+        }
+
+        // 2. Check if the company exists
+        let mut stmt = self
+            .db
+            .prepare("SELECT 1 FROM company WHERE rowid = ?1")
+            .unwrap();
+        let company_exists = stmt.exists(params![company_belong.0]).unwrap();
+
+        // 3. Check if the branch name is already used under this company
+        let mut stmt = self
+            .db
+            .prepare("SELECT 1 FROM company_branch WHERE company_belong = ?1 AND name = ?2")
+            .unwrap();
+        let branch_name_used = stmt
+            .exists(params![company_belong.0, company_branch_name])
+            .unwrap();
+
+        (roles, company_exists, branch_name_used)
     }
 }
 

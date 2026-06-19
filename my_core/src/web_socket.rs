@@ -556,6 +556,19 @@ pub fn collect_subs_to_poke(
                 subs_to_poke
                     .insert(server_methods::Subscribe::TableAccessControlForCompanyFieldDataGroup);
             }
+            server_methods::Resource::TableAccessControlForCompanyBranchFieldRole(_) => {
+                subs_to_poke
+                    .insert(server_methods::Subscribe::TableAccessControlForCompanyBranchFieldRole);
+            }
+            server_methods::Resource::TableAccessControlForCompanyBranchFieldUser(_) => {
+                subs_to_poke
+                    .insert(server_methods::Subscribe::TableAccessControlForCompanyBranchFieldUser);
+            }
+            server_methods::Resource::TableAccessControlForCompanyBranchFieldDataGroup(_) => {
+                subs_to_poke.insert(
+                    server_methods::Subscribe::TableAccessControlForCompanyBranchFieldDataGroup,
+                );
+            }
         }
     }
 }
