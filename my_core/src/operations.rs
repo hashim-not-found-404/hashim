@@ -517,32 +517,59 @@ impl CacheAndServerType1 for create_company_branch::Input {
     async fn state_full_operation<Ch: CacheIO>(&self, state: &cache::State<Ch>) -> Self::Output {
         let mut errr = create_company_branch::Error::default();
 
-        let (user_roles, is_company_exist, is_branch_name_used) = state
+        // 1. Read from cache (database)
+        let (mut user_roles, mut is_company_exist, mut is_branch_name_used) = state
             .cache
             .read_create_company_branch(&self.user_uuid, &self.company_belong, &self.branch_name)
             .await;
 
-        todo!("check from pending");
+        // 2. Check pending transactions (uncommitted changes)
+        // Check pending company access control for roles
+        for (_, acf) in &state.state_of_pending_txn.access_control_for_company {
+            if acf.data_group == self.company_belong && acf.user_ == self.user_uuid {
+                user_roles.push(acf.role.clone());
+            }
+        }
 
+        // Check pending company existence
+        if state
+            .state_of_pending_txn
+            .company
+            .contains_key(&self.company_belong)
+        {
+            is_company_exist = true;
+        }
+
+        // Check pending branch name usage
+        for (_, branch) in &state.state_of_pending_txn.company_branch {
+            if branch.company_belong == self.company_belong && branch.name == self.branch_name {
+                is_branch_name_used = true;
+                break;
+            }
+        }
+
+        // 3. Validate based on cache + pending
         if !is_company_exist {
             errr.company_belong = Some(create_company_branch::CompanyBelongError::NotExist);
         }
 
         if is_branch_name_used {
-            errr.branch_name = Some(create_company_branch::BranchNameError::Duplicated)
+            errr.branch_name = Some(create_company_branch::BranchNameError::Duplicated);
         }
 
-        if db_types::Role::is_have_roles(
+        // Permission check: user must have Manager or CoManager role at the company
+        if !db_types::Role::has_any(
             &user_roles,
             &[db_types::Role::Manager, db_types::Role::CoManager],
         ) {
-            errr.user_uuid = Some(UserUuidError::YouDontHavePermissionToDoThat)
+            errr.user_uuid = Some(UserUuidError::YouDontHavePermissionToDoThat);
         }
 
         if errr != create_company_branch::Error::default() {
             return Err(errr);
         }
 
+        // 4. Build resources (for cache storage)
         let mut resource = Vec::new();
 
         resource.push(ResourceInfo {
@@ -576,7 +603,7 @@ impl CacheAndServerType1 for create_company_branch::Input {
             ),
         });
 
-        return Ok(create_company_branch::Ok { resource });
+        Ok(create_company_branch::Ok { resource })
     }
 
     fn wrap_input1(self) -> push_data::OperationsInput {

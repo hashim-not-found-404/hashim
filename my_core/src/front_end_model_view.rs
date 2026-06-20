@@ -531,7 +531,7 @@ impl<
                     match result {
                         Ok(_) => {}
                         Err(business_error) => {
-                            todo!()
+                            mbg!(business_error);
                         }
                     }
 
@@ -560,13 +560,10 @@ impl<
                 }
             }
 
-            local_state.company_belong.reset();
-            local_state.currency.reset();
-            local_state.branch_name.reset();
-            local_state.location.reset();
-            local_state.is_loading.reset();
+            handel_consent.abort().await;
+            handel_response.abort().await;
 
-            todo!();
+            local_state.is_loading.reset();
         });
     }
 }

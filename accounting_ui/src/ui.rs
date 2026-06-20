@@ -328,7 +328,7 @@ fn CompanyAndBranchSelection() -> Element {
                     CreateCompany { show_form: show_active_form }
                 },
                 ActiveForm::CreateCompanyBranch => rsx! {
-                    CreateCompanyBranch { show_form: show_active_form }
+                    CreateCompanyBranch { show_form: show_active_form , company_uuid: selected_company_id.read().clone().unwrap()}
                 },
             }
             button { onclick: move |_| show_active_form.set(ActiveForm::CreateCompany),
@@ -419,14 +419,17 @@ fn CreateCompany(show_form: Signal<ActiveForm>) -> Element {
 }
 
 #[component]
-fn CreateCompanyBranch(show_form: Signal<ActiveForm>) -> Element {
+fn CreateCompanyBranch(show_form: Signal<ActiveForm>, company_uuid: db_types::UuidType) -> Element {
     let state = consume_context::<StateOfEveryThing>();
     let local_state = front_end_model_view::CreateCompanyBranchState::<my_signals::m::S>::default();
+
     let sender = my_signal::m::S::default();
 
     let state1 = state.clone();
     let local_state1 = local_state.clone();
     let local_state2 = local_state.clone();
+
+    local_state2.company_belong.set(company_uuid.clone());
 
     rsx! {
         div {

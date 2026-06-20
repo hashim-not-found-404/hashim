@@ -86,7 +86,7 @@ impl Role {
         }
     }
 
-    pub fn is_have_roles(user_roles: &Vec<Self>, roles: &[Role]) -> bool {
+    pub fn has_any(user_roles: &Vec<Self>, roles: &[Role]) -> bool {
         for role in roles {
             if user_roles.contains(role) {
                 return true;
