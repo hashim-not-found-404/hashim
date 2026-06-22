@@ -153,22 +153,20 @@ async fn operation_check_apply_write_handler<T: CacheAndServerType1, Ch: CacheIO
 ) -> push_data::OperationsResult {
     let result = input.state_full_operation(state).await;
 
-    if result.is_ok() {
-        apply_change(
-            result.extract_resource(),
-            &mut state.state_of_pending_txn,
-            subs_to_poke,
-        )
-        .await;
+    apply_change(
+        result.extract_resource(),
+        &mut state.state_of_pending_txn,
+        subs_to_poke,
+    )
+    .await;
 
-        state
-            .cache
-            .write_txn_input(&push_data::Txn {
-                txn_number,
-                operation: input.clone().wrap_input1(),
-            })
-            .await;
-    }
+    state
+        .cache
+        .write_txn_input(&push_data::Txn {
+            txn_number,
+            operation: input.clone().wrap_input1(),
+        })
+        .await;
 
     return result.wrap_output();
 }
