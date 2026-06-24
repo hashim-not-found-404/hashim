@@ -271,7 +271,7 @@ pub mod sign_in {
             .unwrap();
 
         match receiver_to_process.recv().await.unwrap() {
-            process_manager::IsProceedTheProcess::Yes => {
+            process_manager::ProceedResult::Yes => {
                 match commander_local_state.user_uuid.lock().unwrap().clone() {
                     Some(_) => {
                         commander_local_state
@@ -287,7 +287,7 @@ pub mod sign_in {
                     None => local_state.show_dialog.set(ui_model::Dialog::Error),
                 }
             }
-            process_manager::IsProceedTheProcess::No => {}
+            process_manager::ProceedResult::No => {}
         };
 
         handel.abort().await;
@@ -520,7 +520,7 @@ pub mod sign_up {
             .unwrap();
 
         match receiver_to_process.recv().await.unwrap() {
-            process_manager::IsProceedTheProcess::Yes => {
+            process_manager::ProceedResult::Yes => {
                 model
                     .page_root
                     .page_after_auth
@@ -545,7 +545,7 @@ pub mod sign_up {
                     .await
                     .unwrap();
             }
-            process_manager::IsProceedTheProcess::No => {}
+            process_manager::ProceedResult::No => {}
         };
 
         handel.abort().await;
@@ -1120,11 +1120,11 @@ pub mod create_company_branch {
             .unwrap();
 
         match receiver_to_process.recv().await.unwrap() {
-            process_manager::IsProceedTheProcess::Yes => {
+            process_manager::ProceedResult::Yes => {
                 local_state.is_loading.reset();
                 handel_close(model);
             }
-            process_manager::IsProceedTheProcess::No => {}
+            process_manager::ProceedResult::No => {}
         };
 
         handel.abort().await;

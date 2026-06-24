@@ -9,7 +9,7 @@ pub(crate) enum ProcessName {
 
 pub(crate) enum Event<As: AllSignalTypes, Mpsc: MultiProducerSingleConsumer> {
     Subscribe {
-        sender: Mpsc::Sender<IsProceedTheProcess>,
+        sender: Mpsc::Sender<ProceedResult>,
         dialog: As::Dialog,
     },
     GotResponseFromCache {
@@ -32,7 +32,7 @@ pub(crate) enum MessageToProcessManager<As: AllSignalTypes, Mpsc: MultiProducerS
 }
 
 #[derive(Debug, Clone, Copy)]
-pub enum IsProceedTheProcess {
+pub enum ProceedResult {
     Yes,
     No,
 }
@@ -80,7 +80,7 @@ pub(crate) fn process_manager_actor<
             At: AllClientTypes,
             Mpsc: MultiProducerSingleConsumer,
         > {
-            sender: Mpsc::Sender<IsProceedTheProcess>,
+            sender: Mpsc::Sender<ProceedResult>,
             dialog: As::Dialog,
             timer_handel: <At::Rt as Runtime>::JoinHandel<()>,
             is_response_from_server: Option<bool>,
@@ -167,21 +167,13 @@ pub(crate) fn process_manager_actor<
                     IsProceed::Yes => {
                         process_info.timer_handel.abort().await;
                         process_info.dialog.set(ui_model::Dialog::Hide);
-                        process_info
-                            .sender
-                            .send(IsProceedTheProcess::Yes)
-                            .await
-                            .unwrap();
+                        process_info.sender.send(ProceedResult::Yes).await.unwrap();
                         process_states.remove(&process_name);
                     }
                     IsProceed::No => {
                         process_info.timer_handel.abort().await;
                         process_info.dialog.set(ui_model::Dialog::Hide);
-                        process_info
-                            .sender
-                            .send(IsProceedTheProcess::No)
-                            .await
-                            .unwrap();
+                        process_info.sender.send(ProceedResult::No).await.unwrap();
                         process_states.remove(&process_name);
                     }
                 }
