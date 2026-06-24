@@ -120,6 +120,8 @@ pub mod push_data {
 pub mod sign_up {
     use super::*;
 
+    pub type Result = StdResult<Ok, Error>;
+
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Input {
         pub new_uuid: db_types::UuidType,
@@ -133,16 +135,15 @@ pub mod sign_up {
         pub resource: Vec<ResourceInfo>,
     }
 
-    #[derive(Debug, Deserialize, Serialize, Clone, Default, PartialEq)]
+    #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
     pub struct Error {
         pub new_uuid: Option<RowIdError>,
         pub user_id: Option<UserIdError>,
         pub name: Option<String>,
     }
 
-    pub type Result = StdResult<Ok, Error>;
-
     // utility types
+
     #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
     pub enum UserIdError {
         Duplicated,
@@ -151,6 +152,8 @@ pub mod sign_up {
 
 pub mod sign_in {
     use super::*;
+
+    pub type Result = StdResult<Ok, Error>;
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Input {
@@ -163,15 +166,14 @@ pub mod sign_in {
         pub resource: Vec<ResourceInfo>,
     }
 
-    #[derive(Debug, Deserialize, Serialize, Clone, Default, PartialEq)]
+    #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
     pub struct Error {
         pub user_id: Option<UserIdError>,
         pub password: Option<PasswordError>,
     }
 
-    pub type Result = StdResult<Ok, Error>;
-
     // utility types
+
     #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
     pub enum UserIdError {
         NotExist,
@@ -186,6 +188,8 @@ pub mod sign_in {
 pub mod create_company {
     use super::*;
 
+    pub type Result = StdResult<Ok, Error>;
+
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Input {
         pub user_uuid: db_types::UuidType,
@@ -199,17 +203,17 @@ pub mod create_company {
         pub resource: Vec<ResourceInfo>,
     }
 
-    #[derive(Debug, Deserialize, Serialize, Clone, Default, PartialEq)]
+    #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
     pub struct Error {
         pub user_uuid: Option<UserUuidError>,
         pub new_uuid: Option<RowIdError>,
     }
-
-    pub type Result = StdResult<Ok, Error>;
 }
 
 pub mod list_company_and_branch {
     use super::*;
+
+    pub type Result = StdResult<Ok, Error>;
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Input {
@@ -221,16 +225,16 @@ pub mod list_company_and_branch {
         pub resource: Vec<ResourceInfo>,
     }
 
-    #[derive(Debug, Deserialize, Serialize, Clone, Default, PartialEq)]
+    #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
     pub struct Error {
         pub user_uuid: Option<UserUuidError>,
     }
-
-    pub type Result = StdResult<Ok, Error>;
 }
 
 pub mod create_company_branch {
     use super::*;
+
+    pub type Result = StdResult<Ok, Error>;
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Input {
@@ -247,7 +251,7 @@ pub mod create_company_branch {
         pub resource: Vec<ResourceInfo>,
     }
 
-    #[derive(Debug, Deserialize, Serialize, Clone, Default, PartialEq)]
+    #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
     pub struct Error {
         pub user_uuid: Option<UserUuidError>,
         pub new_uuid: Option<RowIdError>,
@@ -256,9 +260,8 @@ pub mod create_company_branch {
         pub location: Option<LocationError>,
     }
 
-    pub type Result = StdResult<Ok, Error>;
-
     // utility types
+
     #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
     pub enum CompanyBelongError {
         IdInWrongFormat,
