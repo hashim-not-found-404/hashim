@@ -102,18 +102,14 @@ pub(crate) fn process_manager_actor<
 
                     table.dialog.set(ui_model::Dialog::Hide);
                     table.is_user_want_to_proceed = consent;
-                    table.dialog.set(ui_model::Dialog::Hide);
+                    table.timer_handel.abort().await;
 
                     match consent {
                         UserConsent::WaitForServerResponse => {
-                            table.timer_handel.abort().await;
-
                             table.timer_handel =
                                 timer_handel::<As, At>(As::Dialog::clone(&table.dialog));
                         }
-                        UserConsent::DontWaitForServerResponse => {
-                            table.dialog.set(ui_model::Dialog::Hide);
-                        }
+                        UserConsent::DontWaitForServerResponse => {}
                     };
 
                     process_name
