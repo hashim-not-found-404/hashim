@@ -74,7 +74,7 @@ fn Dialog(
 
 #[component]
 fn AuthenticationPage() -> Element {
-    let (model, commander) = consume_context::<TheAll>();
+    let (model, _) = consume_context::<TheAll>();
 
     match model.navigator.read() {
         ui_model::Navigator::Auth(_) => {
@@ -102,21 +102,21 @@ fn SignIn() -> Element {
     };
 
     let commander1 = commander.clone();
-    let commander2 = commander.clone();
-    let commander3 = commander.clone();
-    let commander4 = commander.clone();
-
     let consent_callback = move |consent: process_manager::UserConsent| {
-        commander3.send(ui_model::Message::SignIn(
+        commander1.send(ui_model::Message::SignIn(
             ui_updaters::sign_in::Msg::Consent(consent),
         ));
     };
 
+    let commander1 = commander.clone();
     let password_callback = move |password: String| {
-        commander4.send(ui_model::Message::SignIn(
+        commander1.send(ui_model::Message::SignIn(
             ui_updaters::sign_in::Msg::Password(password),
         ));
     };
+
+    let commander1 = commander.clone();
+    let commander2 = commander.clone();
 
     rsx! {
         div {
@@ -165,22 +165,22 @@ fn SignUp() -> Element {
     };
 
     let commander1 = commander.clone();
-    let commander2 = commander.clone();
-    let commander3 = commander.clone();
-    let commander4 = commander.clone();
-    let commander5 = commander.clone();
-
     let consent_callback = move |consent: process_manager::UserConsent| {
-        commander4.send(ui_model::Message::SignUp(
+        commander1.send(ui_model::Message::SignUp(
             ui_updaters::sign_up::Msg::Consent(consent),
         ));
     };
 
+    let commander1 = commander.clone();
     let password_callback = move |password: String| {
-        commander5.send(ui_model::Message::SignUp(
+        commander1.send(ui_model::Message::SignUp(
             ui_updaters::sign_up::Msg::Password(password),
         ));
     };
+
+    let commander1 = commander.clone();
+    let commander2 = commander.clone();
+    let commander3 = commander.clone();
 
     rsx! {
         div {
@@ -300,9 +300,6 @@ fn CompanyAndBranchSelection() -> Element {
         .selected_company;
 
     let commander1 = commander.clone();
-    let commander2 = commander.clone();
-    let commander3 = commander.clone();
-    let commander4 = commander.clone();
 
     rsx! {
         div {
@@ -441,7 +438,6 @@ fn CreateCompany() -> Element {
             button {
                 onclick: move |_| {
                     commander3
-
                         .send(
                             ui_model::Message::CreateCompany(
                                 ui_updaters::create_company::Msg::Submit,
@@ -453,7 +449,6 @@ fn CreateCompany() -> Element {
             button {
                 onclick: move |_| {
                     commander
-
                         .send(
                             ui_model::Message::CreateCompany(ui_updaters::create_company::Msg::Close),
                         );
@@ -474,15 +469,15 @@ fn CreateCompanyBranch() -> Element {
         .page_create_company_branch;
 
     let commander1 = commander.clone();
-    let commander2 = commander.clone();
-    let commander3 = commander.clone();
-    let commander4 = commander.clone();
-
     let consent_callback = move |consent: process_manager::UserConsent| {
         commander1.send(ui_model::Message::CreateCompanyBranch(
             ui_updaters::create_company_branch::Msg::Consent(consent),
         ));
     };
+
+    let commander2 = commander.clone();
+    let commander3 = commander.clone();
+    let commander4 = commander.clone();
 
     rsx! {
         div {
