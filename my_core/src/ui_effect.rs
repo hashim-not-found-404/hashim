@@ -39,10 +39,11 @@ impl<
     ) -> Self {
         let (sender_to_commands, receiver_to_commands) = Mpsc::channel();
 
+        listen_to_error_actor::<As, At, Mpsc>(receiver_to_error, model.external_errors.clone());
+
         Self::commands_actor(
             receiver_to_commands,
             sender_to_commands.clone(),
-            receiver_to_error,
             sender_to_process_manager,
             model,
             cache,
@@ -63,7 +64,6 @@ impl<
     fn commands_actor(
         mut receiver: Mpsc::Receiver<ui_model::Message>,
         sender_to_commands: Mpsc::Sender<ui_model::Message>,
-        receiver_to_error: Mpsc::Receiver<HashimError>,
         sender_to_process_manager: Mpsc::Sender<process_manager::MessageToProcessManager<As, Mpsc>>,
         model: ui_model::Model<As>,
         cache: cache_actor::Cache<At, Mpsc>,
@@ -75,8 +75,6 @@ impl<
             selected_company_branch: Mutex::default(),
             aborter_to_company_and_branch_listener: Mutex::default(),
         });
-
-        listen_to_error_actor::<As, At, Mpsc>(receiver_to_error, model.external_errors.clone());
 
         At::Rt::spawn_local(async move {
             loop {
