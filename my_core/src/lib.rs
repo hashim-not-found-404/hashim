@@ -11,7 +11,7 @@ pub mod translations;
 pub mod ui_construct;
 pub mod ui_effect;
 pub mod ui_model;
-pub mod use_cases;
+pub mod ui_updaters;
 
 pub mod prelude {
     pub type DynamicError = Box<dyn Error>;

@@ -137,11 +137,11 @@ impl Default for Navigator {
 pub enum Message {
     CloseError,
 
-    SignIn(ui_effect::sign_in::Msg),
-    SignUp(ui_effect::sign_up::Msg),
-    CompanyAndBranchSelection(ui_effect::company_and_branch_selection::Msg),
-    CreateCompany(ui_effect::create_company::Msg),
-    CreateCompanyBranch(ui_effect::create_company_branch::Msg),
+    SignIn(ui_updaters::sign_in::Msg),
+    SignUp(ui_updaters::sign_up::Msg),
+    CompanyAndBranchSelection(ui_updaters::company_and_branch_selection::Msg),
+    CreateCompany(ui_updaters::create_company::Msg),
+    CreateCompanyBranch(ui_updaters::create_company_branch::Msg),
 }
 
 // helper types

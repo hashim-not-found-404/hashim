@@ -106,11 +106,9 @@ fn SignIn() -> Element {
     let commander3 = commander.clone();
 
     let consent_callback = move |consent: process_manager::UserConsent| {
-        commander3
-            .clone()
-            .send(ui_model::Message::SignIn(ui_effect::sign_in::Msg::Consent(
-                consent,
-            )));
+        commander3.clone().send(ui_model::Message::SignIn(
+            ui_updaters::sign_in::Msg::Consent(consent),
+        ));
     };
 
     rsx! {
@@ -126,7 +124,7 @@ fn SignIn() -> Element {
                     commander1
                         .clone()
                         .send(
-                            ui_model::Message::SignIn(ui_effect::sign_in::Msg::UserId(event.value())),
+                            ui_model::Message::SignIn(ui_updaters::sign_in::Msg::UserId(event.value())),
                         );
                 },
                 value: auth_state.user_id.read(),
@@ -138,7 +136,7 @@ fn SignIn() -> Element {
                 onclick: move |_| {
                     commander2
                         .clone()
-                        .send(ui_model::Message::SignIn(ui_effect::sign_in::Msg::Submit));
+                        .send(ui_model::Message::SignIn(ui_updaters::sign_in::Msg::Submit));
                 },
                 "Sign In"
             }
@@ -163,11 +161,9 @@ fn SignUp() -> Element {
     let commander4 = commander.clone();
 
     let consent_callback = move |consent: process_manager::UserConsent| {
-        commander4
-            .clone()
-            .send(ui_model::Message::SignUp(ui_effect::sign_up::Msg::Consent(
-                consent,
-            )));
+        commander4.clone().send(ui_model::Message::SignUp(
+            ui_updaters::sign_up::Msg::Consent(consent),
+        ));
     };
 
     rsx! {
@@ -184,7 +180,7 @@ fn SignUp() -> Element {
                         .clone()
                         .send(
                             ui_model::Message::SignUp(
-                                ui_effect::sign_up::Msg::UserName(event.value()),
+                                ui_updaters::sign_up::Msg::UserName(event.value()),
                             ),
                         );
                 },
@@ -197,7 +193,7 @@ fn SignUp() -> Element {
                     commander2
                         .clone()
                         .send(
-                            ui_model::Message::SignUp(ui_effect::sign_up::Msg::UserId(event.value())),
+                            ui_model::Message::SignUp(ui_updaters::sign_up::Msg::UserId(event.value())),
                         );
                 },
                 value: auth_state.user_id.read(),
@@ -208,7 +204,7 @@ fn SignUp() -> Element {
                 onclick: move |_| {
                     commander3
                         .clone()
-                        .send(ui_model::Message::SignUp(ui_effect::sign_up::Msg::Submit));
+                        .send(ui_model::Message::SignUp(ui_updaters::sign_up::Msg::Submit));
                 },
                 "Sign Up"
             }
@@ -313,7 +309,7 @@ fn CompanyAndBranchSelection() -> Element {
                         .clone()
                         .send(
                             ui_model::Message::CompanyAndBranchSelection(
-                                ui_effect::company_and_branch_selection::Msg::ShowCreateCompany,
+                                ui_updaters::company_and_branch_selection::Msg::ShowCreateCompany,
                             ),
                         )
                 },
@@ -332,7 +328,7 @@ fn CompanyAndBranchSelection() -> Element {
                                         .clone()
                                         .send(
                                             ui_model::Message::CompanyAndBranchSelection(
-                                                ui_effect::company_and_branch_selection::Msg::SelectedCompany(
+                                                ui_updaters::company_and_branch_selection::Msg::SelectedCompany(
                                                     company.uuid.clone(),
                                                 ),
                                             ),
@@ -348,7 +344,7 @@ fn CompanyAndBranchSelection() -> Element {
                                             .clone()
                                             .send(
                                                 ui_model::Message::CompanyAndBranchSelection(
-                                                    ui_effect::company_and_branch_selection::Msg::ShowCreateCompanyBranch,
+                                                    ui_updaters::company_and_branch_selection::Msg::ShowCreateCompanyBranch,
                                                 ),
                                             )
                                     },
@@ -366,7 +362,7 @@ fn CompanyAndBranchSelection() -> Element {
                                                                 .clone()
                                                                 .send(
                                                                     ui_model::Message::CompanyAndBranchSelection(
-                                                                        ui_effect::company_and_branch_selection::Msg::SelectedCompanyBranch(
+                                                                        ui_updaters::company_and_branch_selection::Msg::SelectedCompanyBranch(
                                                                             branch.uuid.clone(),
                                                                         ),
                                                                     ),
@@ -410,7 +406,7 @@ fn CreateCompany() -> Element {
                         .clone()
                         .send(
                             ui_model::Message::CreateCompany(
-                                ui_effect::create_company::Msg::Name(event.value()),
+                                ui_updaters::create_company::Msg::Name(event.value()),
                             ),
                         );
                 },
@@ -423,7 +419,7 @@ fn CreateCompany() -> Element {
                         .clone()
                         .send(
                             ui_model::Message::CreateCompany(
-                                ui_effect::create_company::Msg::Currency(event.value()),
+                                ui_updaters::create_company::Msg::Currency(event.value()),
                             ),
                         );
                 },
@@ -435,7 +431,7 @@ fn CreateCompany() -> Element {
                     commander3
                         .clone()
                         .send(
-                            ui_model::Message::CreateCompany(ui_effect::create_company::Msg::Submit),
+                            ui_model::Message::CreateCompany(ui_updaters::create_company::Msg::Submit),
                         );
                 },
                 "Create"
@@ -445,7 +441,7 @@ fn CreateCompany() -> Element {
                     commander
                         .clone()
                         .send(
-                            ui_model::Message::CreateCompany(ui_effect::create_company::Msg::Close),
+                            ui_model::Message::CreateCompany(ui_updaters::create_company::Msg::Close),
                         );
                 },
                 "X"
@@ -473,7 +469,7 @@ fn CreateCompanyBranch() -> Element {
         commander5
             .clone()
             .send(ui_model::Message::CreateCompanyBranch(
-                ui_effect::create_company_branch::Msg::Consent(consent),
+                ui_updaters::create_company_branch::Msg::Consent(consent),
             ));
     };
 
@@ -491,7 +487,7 @@ fn CreateCompanyBranch() -> Element {
                         .clone()
                         .send(
                             ui_model::Message::CreateCompanyBranch(
-                                ui_effect::create_company_branch::Msg::Name(event.value()),
+                                ui_updaters::create_company_branch::Msg::Name(event.value()),
                             ),
                         );
                 },
@@ -504,7 +500,7 @@ fn CreateCompanyBranch() -> Element {
                         .clone()
                         .send(
                             ui_model::Message::CreateCompanyBranch(
-                                ui_effect::create_company_branch::Msg::Currency(event.value()),
+                                ui_updaters::create_company_branch::Msg::Currency(event.value()),
                             ),
                         );
                 },
@@ -517,7 +513,7 @@ fn CreateCompanyBranch() -> Element {
                         .clone()
                         .send(
                             ui_model::Message::CreateCompanyBranch(
-                                ui_effect::create_company_branch::Msg::Submit,
+                                ui_updaters::create_company_branch::Msg::Submit,
                             ),
                         );
                 },
@@ -529,7 +525,7 @@ fn CreateCompanyBranch() -> Element {
                         .clone()
                         .send(
                             ui_model::Message::CreateCompanyBranch(
-                                ui_effect::create_company_branch::Msg::Close,
+                                ui_updaters::create_company_branch::Msg::Close,
                             ),
                         );
                 },
