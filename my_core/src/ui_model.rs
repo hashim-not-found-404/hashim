@@ -99,7 +99,6 @@ pub struct PageCreateCompany<As: AllSignalTypes> {
 pub struct PageCreateCompanyBranch<As: AllSignalTypes> {
     pub is_loading: As::Bool,
     pub show_dialog: As::Dialog,
-    // pub company_belong: As::Uuid,
     pub currency: As::Currency,
     pub branch_name: As::String,
     pub location: As::Location,
