@@ -68,15 +68,15 @@ impl<
         model: ui_model::Model<As>,
         cache: cache_actor::Cache<At, Mpsc>,
     ) {
-        let commander_local_state = Arc::new(CommanderLocalState {
-            sender_to_commander: Mutex::new(sender_to_commands),
-            sender_to_process_manager: Mutex::new(sender_to_process_manager),
-            user_uuid: Mutex::default(),
-            selected_company_branch: Mutex::default(),
-            aborter_to_company_and_branch_listener: Mutex::default(),
-        });
-
         At::Rt::spawn_local(async move {
+            let commander_local_state = Arc::new(CommanderLocalState {
+                sender_to_commander: Mutex::new(sender_to_commands),
+                sender_to_process_manager: Mutex::new(sender_to_process_manager),
+                user_uuid: Mutex::default(),
+                selected_company_branch: Mutex::default(),
+                aborter_to_company_and_branch_listener: Mutex::default(),
+            });
+
             loop {
                 let message = receiver.recv().await.unwrap();
 
