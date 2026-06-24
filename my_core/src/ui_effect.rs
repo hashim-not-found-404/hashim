@@ -55,9 +55,10 @@ impl<
         }
     }
 
-    pub fn send(mut self, msg: ui_model::Message) {
+    pub fn send(&self, msg: ui_model::Message) {
+        let mut sender = self.sender.clone();
         At::Rt::spawn_local(async move {
-            self.sender.send(msg).await.unwrap();
+            sender.send(msg).await.unwrap();
         });
     }
 

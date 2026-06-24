@@ -106,7 +106,7 @@ fn SignIn() -> Element {
     let commander3 = commander.clone();
 
     let consent_callback = move |consent: process_manager::UserConsent| {
-        commander3.clone().send(ui_model::Message::SignIn(
+        commander3.send(ui_model::Message::SignIn(
             ui_updaters::sign_in::Msg::Consent(consent),
         ));
     };
@@ -122,9 +122,10 @@ fn SignIn() -> Element {
                 placeholder: "User ID",
                 oninput: move |event| {
                     commander1
-                        .clone()
                         .send(
-                            ui_model::Message::SignIn(ui_updaters::sign_in::Msg::UserId(event.value())),
+                            ui_model::Message::SignIn(
+                                ui_updaters::sign_in::Msg::UserId(event.value()),
+                            ),
                         );
                 },
                 value: auth_state.user_id.read(),
@@ -135,8 +136,9 @@ fn SignIn() -> Element {
             button {
                 onclick: move |_| {
                     commander2
-                        .clone()
-                        .send(ui_model::Message::SignIn(ui_updaters::sign_in::Msg::Submit));
+                        .send(
+                            ui_model::Message::SignIn(ui_updaters::sign_in::Msg::Submit),
+                        );
                 },
                 "Sign In"
             }
@@ -161,7 +163,7 @@ fn SignUp() -> Element {
     let commander4 = commander.clone();
 
     let consent_callback = move |consent: process_manager::UserConsent| {
-        commander4.clone().send(ui_model::Message::SignUp(
+        commander4.send(ui_model::Message::SignUp(
             ui_updaters::sign_up::Msg::Consent(consent),
         ));
     };
@@ -177,7 +179,6 @@ fn SignUp() -> Element {
                 placeholder: "Name (Optional)",
                 oninput: move |event| {
                     commander1
-                        .clone()
                         .send(
                             ui_model::Message::SignUp(
                                 ui_updaters::sign_up::Msg::UserName(event.value()),
@@ -191,9 +192,10 @@ fn SignUp() -> Element {
                 placeholder: "User Id",
                 oninput: move |event| {
                     commander2
-                        .clone()
                         .send(
-                            ui_model::Message::SignUp(ui_updaters::sign_up::Msg::UserId(event.value())),
+                            ui_model::Message::SignUp(
+                                ui_updaters::sign_up::Msg::UserId(event.value()),
+                            ),
                         );
                 },
                 value: auth_state.user_id.read(),
@@ -203,8 +205,9 @@ fn SignUp() -> Element {
             button {
                 onclick: move |_| {
                     commander3
-                        .clone()
-                        .send(ui_model::Message::SignUp(ui_updaters::sign_up::Msg::Submit));
+                        .send(
+                            ui_model::Message::SignUp(ui_updaters::sign_up::Msg::Submit),
+                        );
                 },
                 "Sign Up"
             }
@@ -252,7 +255,7 @@ fn ErrorStack() -> Element {
 
     rsx! {
         div {
-            button { onclick: move |_| { commander.clone().send(ui_model::Message::CloseError) },
+            button { onclick: move |_| { commander.send(ui_model::Message::CloseError) },
                 "X"
             }
             label { {err} }
@@ -306,7 +309,6 @@ fn CompanyAndBranchSelection() -> Element {
             button {
                 onclick: move |_| {
                     commander1
-                        .clone()
                         .send(
                             ui_model::Message::CompanyAndBranchSelection(
                                 ui_updaters::company_and_branch_selection::Msg::ShowCreateCompany,
@@ -325,7 +327,6 @@ fn CompanyAndBranchSelection() -> Element {
                             button {
                                 onclick: move |_| {
                                     commander2
-                                        .clone()
                                         .send(
                                             ui_model::Message::CompanyAndBranchSelection(
                                                 ui_updaters::company_and_branch_selection::Msg::SelectedCompany(
@@ -341,7 +342,6 @@ fn CompanyAndBranchSelection() -> Element {
                                 button {
                                     onclick: move |_| {
                                         commander3
-                                            .clone()
                                             .send(
                                                 ui_model::Message::CompanyAndBranchSelection(
                                                     ui_updaters::company_and_branch_selection::Msg::ShowCreateCompanyBranch,
@@ -359,7 +359,6 @@ fn CompanyAndBranchSelection() -> Element {
                                                     onclick: {
                                                         move |_| {
                                                             commander4
-                                                                .clone()
                                                                 .send(
                                                                     ui_model::Message::CompanyAndBranchSelection(
                                                                         ui_updaters::company_and_branch_selection::Msg::SelectedCompanyBranch(
@@ -403,7 +402,6 @@ fn CreateCompany() -> Element {
                 placeholder: "Company Name",
                 oninput: move |event| {
                     commander1
-                        .clone()
                         .send(
                             ui_model::Message::CreateCompany(
                                 ui_updaters::create_company::Msg::Name(event.value()),
@@ -416,7 +414,6 @@ fn CreateCompany() -> Element {
                 value: local_state.currency.read().as_str(),
                 onchange: move |event| {
                     commander2
-                        .clone()
                         .send(
                             ui_model::Message::CreateCompany(
                                 ui_updaters::create_company::Msg::Currency(event.value()),
@@ -429,9 +426,11 @@ fn CreateCompany() -> Element {
             button {
                 onclick: move |_| {
                     commander3
-                        .clone()
+
                         .send(
-                            ui_model::Message::CreateCompany(ui_updaters::create_company::Msg::Submit),
+                            ui_model::Message::CreateCompany(
+                                ui_updaters::create_company::Msg::Submit,
+                            ),
                         );
                 },
                 "Create"
@@ -439,7 +438,7 @@ fn CreateCompany() -> Element {
             button {
                 onclick: move |_| {
                     commander
-                        .clone()
+
                         .send(
                             ui_model::Message::CreateCompany(ui_updaters::create_company::Msg::Close),
                         );
@@ -463,14 +462,11 @@ fn CreateCompanyBranch() -> Element {
     let commander2 = commander.clone();
     let commander3 = commander.clone();
     let commander4 = commander.clone();
-    let commander5 = commander.clone();
 
     let consent_callback = move |consent: process_manager::UserConsent| {
-        commander5
-            .clone()
-            .send(ui_model::Message::CreateCompanyBranch(
-                ui_updaters::create_company_branch::Msg::Consent(consent),
-            ));
+        commander1.send(ui_model::Message::CreateCompanyBranch(
+            ui_updaters::create_company_branch::Msg::Consent(consent),
+        ));
     };
 
     rsx! {
@@ -484,7 +480,6 @@ fn CreateCompanyBranch() -> Element {
                 placeholder: "Branch Name",
                 oninput: move |event| {
                     commander2
-                        .clone()
                         .send(
                             ui_model::Message::CreateCompanyBranch(
                                 ui_updaters::create_company_branch::Msg::Name(event.value()),
@@ -497,7 +492,6 @@ fn CreateCompanyBranch() -> Element {
                 value: local_state.currency.read().as_str(),
                 onchange: move |event| {
                     commander3
-                        .clone()
                         .send(
                             ui_model::Message::CreateCompanyBranch(
                                 ui_updaters::create_company_branch::Msg::Currency(event.value()),
@@ -510,7 +504,6 @@ fn CreateCompanyBranch() -> Element {
             button {
                 onclick: move |_| {
                     commander4
-                        .clone()
                         .send(
                             ui_model::Message::CreateCompanyBranch(
                                 ui_updaters::create_company_branch::Msg::Submit,
@@ -522,7 +515,6 @@ fn CreateCompanyBranch() -> Element {
             button {
                 onclick: move |_| {
                     commander
-                        .clone()
                         .send(
                             ui_model::Message::CreateCompanyBranch(
                                 ui_updaters::create_company_branch::Msg::Close,
