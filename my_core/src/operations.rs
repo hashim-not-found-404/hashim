@@ -16,7 +16,6 @@ pub(crate) trait CacheAndServerType1: Clone {
 }
 
 pub(crate) trait CacheAndServerType2 {
-    fn is_ok(&self) -> bool;
     fn extract_resource(&self) -> Vec<ResourceInfo>;
     fn wrap_output(self) -> push_data::OperationsResult;
 }
@@ -302,10 +301,6 @@ pub(crate) mod sign_up {
     }
 
     impl CacheAndServerType2 for Type3 {
-        fn is_ok(&self) -> bool {
-            self.is_ok()
-        }
-
         fn extract_resource(&self) -> Vec<ResourceInfo> {
             match self {
                 Ok(ok) => ok.resource.clone(),
@@ -338,7 +333,6 @@ pub(crate) mod sign_in {
 
     pub(crate) struct SignInOk {
         pub user_uuid: db_types::UuidType,
-        pub user_id: String,
         pub user_name: String,
     }
 
@@ -421,10 +415,6 @@ pub(crate) mod sign_in {
     }
 
     impl CacheAndServerType2 for Type3 {
-        fn is_ok(&self) -> bool {
-            self.is_ok()
-        }
-
         fn extract_resource(&self) -> Vec<ResourceInfo> {
             match self {
                 Ok(ok) => ok.resource.clone(),
@@ -444,7 +434,6 @@ pub(crate) mod sign_in {
                     Ok(ok) => {
                         let mut user_uuid = None;
                         let mut user_name = String::new();
-                        let mut user_id = String::new();
 
                         for resource_info in &ok.resource {
                             // Assume all resources share the same row_uuid (the user's UUID)
@@ -456,9 +445,6 @@ pub(crate) mod sign_in {
                                 server_methods::Resource::TableUserFieldName(name) => {
                                     user_name = name.clone();
                                 }
-                                server_methods::Resource::TableUserFieldId(id) => {
-                                    user_id = id.clone();
-                                }
                                 _ => {}
                             }
                         }
@@ -467,7 +453,6 @@ pub(crate) mod sign_in {
 
                         Type4(Ok(SignInOk {
                             user_uuid,
-                            user_id,
                             user_name,
                         }))
                     }
@@ -547,10 +532,6 @@ pub(crate) mod create_company {
     }
 
     impl CacheAndServerType2 for Type3 {
-        fn is_ok(&self) -> bool {
-            self.is_ok()
-        }
-
         fn extract_resource(&self) -> Vec<ResourceInfo> {
             match self {
                 Ok(ok) => ok.resource.clone(),
@@ -702,10 +683,6 @@ pub(crate) mod create_company_branch {
     }
 
     impl CacheAndServerType2 for Type3 {
-        fn is_ok(&self) -> bool {
-            self.is_ok()
-        }
-
         fn extract_resource(&self) -> Vec<ResourceInfo> {
             match self {
                 Ok(ok) => ok.resource.clone(),
@@ -840,10 +817,6 @@ pub(crate) mod list_company_and_branch {
     }
 
     impl CacheAndServerType2 for Type3 {
-        fn is_ok(&self) -> bool {
-            self.is_ok()
-        }
-
         fn extract_resource(&self) -> Vec<ResourceInfo> {
             match self {
                 Ok(ok) => ok.resource.clone(),

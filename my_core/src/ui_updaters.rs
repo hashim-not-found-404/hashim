@@ -13,242 +13,6 @@ pub(crate) trait Mvu {
     );
 }
 
-pub mod sign_in {
-    use super::*;
-
-    pub enum Msg {
-        Submit,
-        Consent(process_manager::UserConsent),
-        UserId(String),
-        Password(String),
-    }
-
-    impl Mvu for Msg {
-        async fn update<
-            As: AllSignalTypes + 'static,
-            At: AllClientTypes,
-            Mpsc: MultiProducerSingleConsumer,
-        >(
-            self,
-            model: ui_model::Model<As>,
-            cache: cache_actor::Cache<At, Mpsc>,
-            commander_local_state: Arc<ui_effect::CommanderLocalState<As, Mpsc>>,
-        ) {
-            match self {
-                Msg::Submit => {
-                    handle_submit(model, cache, commander_local_state).await;
-                }
-                Msg::Consent(i) => commander_local_state
-                    .sender_to_process_manager
-                    .lock()
-                    .unwrap()
-                    .send(process_manager::MessageToProcessManager::FromUser {
-                        process_name: process_manager::ProcessName::SignIn,
-                        consent: i,
-                    })
-                    .await
-                    .unwrap(),
-                Msg::UserId(i) => {
-                    model.page_root.page_auth.auth_feature_state.user_id.set(i);
-                    handle_check(model, cache, commander_local_state).await;
-                }
-                Msg::Password(i) => {
-                    model
-                        .page_root
-                        .page_auth
-                        .auth_feature_state
-                        .user_password
-                        .set(i);
-                    handle_check(model, cache, commander_local_state).await;
-                }
-            }
-        }
-    }
-
-    async fn handle_submit<
-        As: AllSignalTypes + 'static,
-        At: AllClientTypes,
-        Mpsc: MultiProducerSingleConsumer,
-    >(
-        model: ui_model::Model<As>,
-        mut cache: cache_actor::Cache<At, Mpsc>,
-        commander_local_state: Arc<ui_effect::CommanderLocalState<As, Mpsc>>,
-    ) {
-        let feature_state = &model.page_root.page_auth.auth_feature_state;
-        let local_state = &model.page_root.page_auth.page_sign_in;
-
-        if feature_state.is_loading.read() {
-            return;
-        }
-        feature_state.is_loading.set(true);
-
-        local_state.show_dialog.reset();
-        local_state.user_id_error.reset();
-        local_state.user_password_error.reset();
-
-        let mut receiver_to_response = cache
-            .send_to_cache_actor(
-                cache_actor::CachingStrategy::WriteCacheAndServer,
-                request_response::sign_in::Input {
-                    user_id: feature_state.user_id.read(),
-                    password: feature_state.user_password.read(),
-                }
-                .wrap_input(),
-            )
-            .await;
-
-        let model1 = model.clone();
-        let commander_local_state1 = commander_local_state.clone();
-        let mut handel = At::Rt::abortable_spawn_local(async move {
-            loop {
-                match receiver_to_response.recv().await.unwrap() {
-                    cache_actor::Response::CloseTheChannel => break,
-                    cache_actor::Response::ServerCannotBeReached => break,
-                    cache_actor::Response::Data(data) => {
-                        let is_ok = data.data.is_ok();
-
-                        if data.is_response_from_server {
-                            commander_local_state1
-                                .sender_to_process_manager
-                                .lock()
-                                .unwrap()
-                                .send(process_manager::MessageToProcessManager::FromProcess {
-                                    process_name: process_manager::ProcessName::SignIn,
-                                    event: process_manager::Event::Completed {
-                                        is_response_ok: is_ok,
-                                    },
-                                })
-                                .await
-                                .unwrap();
-                        } else {
-                            commander_local_state1
-                                .sender_to_process_manager
-                                .lock()
-                                .unwrap()
-                                .send(process_manager::MessageToProcessManager::FromProcess {
-                                    process_name: process_manager::ProcessName::SignIn,
-                                    event: process_manager::Event::GotResponseFromCache {
-                                        is_response_ok: is_ok,
-                                    },
-                                })
-                                .await
-                                .unwrap();
-                        }
-
-                        let result = operations::sign_in::Type4::unwrap_output(data.data);
-                        handel_apply_result(&model1, commander_local_state1.clone(), result);
-                    }
-                }
-            }
-        });
-
-        let (sender_to_process, mut receiver_to_process) = Mpsc::channel();
-        commander_local_state
-            .sender_to_process_manager
-            .lock()
-            .unwrap()
-            .send(process_manager::MessageToProcessManager::FromProcess {
-                process_name: process_manager::ProcessName::SignIn,
-                event: process_manager::Event::Subscribe {
-                    sender: sender_to_process,
-                    dialog: local_state.show_dialog.clone(),
-                },
-            })
-            .await
-            .unwrap();
-
-        match receiver_to_process.recv().await.unwrap() {
-            process_manager::ProceedResult::Yes => {
-                match commander_local_state.user_uuid.lock().unwrap().clone() {
-                    Some(_) => {
-                        commander_local_state
-                            .sender_to_commander
-                            .lock()
-                            .unwrap()
-                            .send(ui_model::Message::CompanyAndBranchSelection(
-                                ui_updaters::company_and_branch_selection::Msg::Subscribe,
-                            ))
-                            .await
-                            .unwrap();
-                    }
-                    None => local_state.show_dialog.set(ui_model::Dialog::Error),
-                }
-            }
-            process_manager::ProceedResult::No => {}
-        };
-
-        handel.abort().await;
-        feature_state.is_loading.reset();
-    }
-
-    async fn handle_check<
-        As: AllSignalTypes + 'static,
-        At: AllClientTypes,
-        Mpsc: MultiProducerSingleConsumer,
-    >(
-        model: ui_model::Model<As>,
-        mut cache: cache_actor::Cache<At, Mpsc>,
-        commander_local_state: Arc<ui_effect::CommanderLocalState<As, Mpsc>>,
-    ) {
-        let feature_state = &model.page_root.page_auth.auth_feature_state;
-        let local_state = &model.page_root.page_auth.page_sign_in;
-
-        local_state.user_id_error.reset();
-        local_state.user_password_error.reset();
-
-        let mut receiver_to_response = cache
-            .send_to_cache_actor(
-                cache_actor::CachingStrategy::ReadCacheOnly,
-                request_response::sign_in::Input {
-                    user_id: feature_state.user_id.read(),
-                    password: feature_state.user_password.read(),
-                }
-                .wrap_input(),
-            )
-            .await;
-
-        match receiver_to_response.recv().await.unwrap() {
-            cache_actor::Response::CloseTheChannel => {}
-            cache_actor::Response::ServerCannotBeReached => {}
-            cache_actor::Response::Data(data) => {
-                let result = operations::sign_in::Type4::unwrap_output(data.data);
-                handel_apply_result(&model, commander_local_state.clone(), result);
-            }
-        }
-    }
-
-    fn handel_apply_result<As: AllSignalTypes, Mpsc: MultiProducerSingleConsumer>(
-        model: &ui_model::Model<As>,
-        commander_local_state: Arc<ui_effect::CommanderLocalState<As, Mpsc>>,
-        result: operations::sign_in::Type4,
-    ) {
-        match result.0 {
-            Ok(ok) => {
-                *commander_local_state.user_uuid.lock().unwrap() = Some(ok.user_uuid);
-                model.page_root.page_after_auth.user_id.set(ok.user_id);
-                model.page_root.page_after_auth.user_name.set(ok.user_name);
-            }
-            Err(business_error) => {
-                model.page_root.page_auth.page_sign_in.user_id_error.set(
-                    match business_error.user_id {
-                        Some(_) => String::from("user not exist"),
-                        None => String::new(),
-                    },
-                );
-                model
-                    .page_root
-                    .page_auth
-                    .page_sign_in
-                    .user_password_error
-                    .set(match business_error.password {
-                        Some(_) => String::from("wrong password"),
-                        None => String::new(),
-                    });
-            }
-        }
-    }
-}
-
 pub mod sign_up {
     use super::*;
 
@@ -501,6 +265,247 @@ pub mod sign_up {
                     Some(e) => e,
                     None => String::new(),
                 });
+            }
+        }
+    }
+}
+
+pub mod sign_in {
+    use super::*;
+
+    pub enum Msg {
+        Submit,
+        Consent(process_manager::UserConsent),
+        UserId(String),
+        Password(String),
+    }
+
+    impl Mvu for Msg {
+        async fn update<
+            As: AllSignalTypes + 'static,
+            At: AllClientTypes,
+            Mpsc: MultiProducerSingleConsumer,
+        >(
+            self,
+            model: ui_model::Model<As>,
+            cache: cache_actor::Cache<At, Mpsc>,
+            commander_local_state: Arc<ui_effect::CommanderLocalState<As, Mpsc>>,
+        ) {
+            match self {
+                Msg::Submit => {
+                    handle_submit(model, cache, commander_local_state).await;
+                }
+                Msg::Consent(i) => commander_local_state
+                    .sender_to_process_manager
+                    .lock()
+                    .unwrap()
+                    .send(process_manager::MessageToProcessManager::FromUser {
+                        process_name: process_manager::ProcessName::SignIn,
+                        consent: i,
+                    })
+                    .await
+                    .unwrap(),
+                Msg::UserId(i) => {
+                    model.page_root.page_auth.auth_feature_state.user_id.set(i);
+                    handle_check(model, cache, commander_local_state).await;
+                }
+                Msg::Password(i) => {
+                    model
+                        .page_root
+                        .page_auth
+                        .auth_feature_state
+                        .user_password
+                        .set(i);
+                    handle_check(model, cache, commander_local_state).await;
+                }
+            }
+        }
+    }
+
+    async fn handle_submit<
+        As: AllSignalTypes + 'static,
+        At: AllClientTypes,
+        Mpsc: MultiProducerSingleConsumer,
+    >(
+        model: ui_model::Model<As>,
+        mut cache: cache_actor::Cache<At, Mpsc>,
+        commander_local_state: Arc<ui_effect::CommanderLocalState<As, Mpsc>>,
+    ) {
+        let feature_state = &model.page_root.page_auth.auth_feature_state;
+        let local_state = &model.page_root.page_auth.page_sign_in;
+
+        if feature_state.is_loading.read() {
+            return;
+        }
+        feature_state.is_loading.set(true);
+
+        local_state.show_dialog.reset();
+        local_state.user_id_error.reset();
+        local_state.user_password_error.reset();
+
+        let mut receiver_to_response = cache
+            .send_to_cache_actor(
+                cache_actor::CachingStrategy::WriteCacheAndServer,
+                request_response::sign_in::Input {
+                    user_id: feature_state.user_id.read(),
+                    password: feature_state.user_password.read(),
+                }
+                .wrap_input(),
+            )
+            .await;
+
+        let model1 = model.clone();
+        let commander_local_state1 = commander_local_state.clone();
+        let mut handel = At::Rt::abortable_spawn_local(async move {
+            loop {
+                match receiver_to_response.recv().await.unwrap() {
+                    cache_actor::Response::CloseTheChannel => break,
+                    cache_actor::Response::ServerCannotBeReached => break,
+                    cache_actor::Response::Data(data) => {
+                        let is_ok = data.data.is_ok();
+
+                        if data.is_response_from_server {
+                            commander_local_state1
+                                .sender_to_process_manager
+                                .lock()
+                                .unwrap()
+                                .send(process_manager::MessageToProcessManager::FromProcess {
+                                    process_name: process_manager::ProcessName::SignIn,
+                                    event: process_manager::Event::Completed {
+                                        is_response_ok: is_ok,
+                                    },
+                                })
+                                .await
+                                .unwrap();
+                        } else {
+                            commander_local_state1
+                                .sender_to_process_manager
+                                .lock()
+                                .unwrap()
+                                .send(process_manager::MessageToProcessManager::FromProcess {
+                                    process_name: process_manager::ProcessName::SignIn,
+                                    event: process_manager::Event::GotResponseFromCache {
+                                        is_response_ok: is_ok,
+                                    },
+                                })
+                                .await
+                                .unwrap();
+                        }
+
+                        let result = operations::sign_in::Type4::unwrap_output(data.data);
+                        handel_apply_result(&model1, commander_local_state1.clone(), result);
+                    }
+                }
+            }
+        });
+
+        let (sender_to_process, mut receiver_to_process) = Mpsc::channel();
+        commander_local_state
+            .sender_to_process_manager
+            .lock()
+            .unwrap()
+            .send(process_manager::MessageToProcessManager::FromProcess {
+                process_name: process_manager::ProcessName::SignIn,
+                event: process_manager::Event::Subscribe {
+                    sender: sender_to_process,
+                    dialog: local_state.show_dialog.clone(),
+                },
+            })
+            .await
+            .unwrap();
+
+        match receiver_to_process.recv().await.unwrap() {
+            process_manager::ProceedResult::Yes => {
+                match commander_local_state.user_uuid.lock().unwrap().clone() {
+                    Some(_) => {
+                        commander_local_state
+                            .sender_to_commander
+                            .lock()
+                            .unwrap()
+                            .send(ui_model::Message::CompanyAndBranchSelection(
+                                ui_updaters::company_and_branch_selection::Msg::Subscribe,
+                            ))
+                            .await
+                            .unwrap();
+
+                        model
+                            .page_root
+                            .page_after_auth
+                            .user_id
+                            .set(feature_state.user_id.read());
+                    }
+                    None => local_state.show_dialog.set(ui_model::Dialog::Error),
+                }
+            }
+            process_manager::ProceedResult::No => {}
+        };
+
+        handel.abort().await;
+        feature_state.is_loading.reset();
+    }
+
+    async fn handle_check<
+        As: AllSignalTypes + 'static,
+        At: AllClientTypes,
+        Mpsc: MultiProducerSingleConsumer,
+    >(
+        model: ui_model::Model<As>,
+        mut cache: cache_actor::Cache<At, Mpsc>,
+        commander_local_state: Arc<ui_effect::CommanderLocalState<As, Mpsc>>,
+    ) {
+        let feature_state = &model.page_root.page_auth.auth_feature_state;
+        let local_state = &model.page_root.page_auth.page_sign_in;
+
+        local_state.user_id_error.reset();
+        local_state.user_password_error.reset();
+
+        let mut receiver_to_response = cache
+            .send_to_cache_actor(
+                cache_actor::CachingStrategy::ReadCacheOnly,
+                request_response::sign_in::Input {
+                    user_id: feature_state.user_id.read(),
+                    password: feature_state.user_password.read(),
+                }
+                .wrap_input(),
+            )
+            .await;
+
+        match receiver_to_response.recv().await.unwrap() {
+            cache_actor::Response::CloseTheChannel => {}
+            cache_actor::Response::ServerCannotBeReached => {}
+            cache_actor::Response::Data(data) => {
+                let result = operations::sign_in::Type4::unwrap_output(data.data);
+                handel_apply_result(&model, commander_local_state.clone(), result);
+            }
+        }
+    }
+
+    fn handel_apply_result<As: AllSignalTypes, Mpsc: MultiProducerSingleConsumer>(
+        model: &ui_model::Model<As>,
+        commander_local_state: Arc<ui_effect::CommanderLocalState<As, Mpsc>>,
+        result: operations::sign_in::Type4,
+    ) {
+        match result.0 {
+            Ok(ok) => {
+                *commander_local_state.user_uuid.lock().unwrap() = Some(ok.user_uuid);
+                model.page_root.page_after_auth.user_name.set(ok.user_name);
+            }
+            Err(business_error) => {
+                model.page_root.page_auth.page_sign_in.user_id_error.set(
+                    match business_error.user_id {
+                        Some(_) => String::from("user not exist"),
+                        None => String::new(),
+                    },
+                );
+                model
+                    .page_root
+                    .page_auth
+                    .page_sign_in
+                    .user_password_error
+                    .set(match business_error.password {
+                        Some(_) => String::from("wrong password"),
+                        None => String::new(),
+                    });
             }
         }
     }
