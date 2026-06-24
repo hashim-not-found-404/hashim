@@ -135,7 +135,7 @@ pub mod sign_in {
                                 .unwrap();
                         }
 
-                        let result = operations::SignInResultForView::unwrap_output(data.data);
+                        let result = operations::sign_in::Type4::unwrap_output(data.data);
                         handel_apply_result(&model1, commander_local_state1.clone(), result);
                     }
                 }
@@ -211,7 +211,7 @@ pub mod sign_in {
             cache_actor::Response::CloseTheChannel => {}
             cache_actor::Response::ServerCannotBeReached => {}
             cache_actor::Response::Data(data) => {
-                let result = operations::SignInResultForView::unwrap_output(data.data);
+                let result = operations::sign_in::Type4::unwrap_output(data.data);
                 handel_apply_result(&model, commander_local_state.clone(), result);
             }
         }
@@ -220,7 +220,7 @@ pub mod sign_in {
     fn handel_apply_result<As: AllSignalTypes, Mpsc: MultiProducerSingleConsumer>(
         model: &ui_model::Model<As>,
         commander_local_state: Arc<ui_effect::CommanderLocalState<As, Mpsc>>,
-        result: SignInResultForView,
+        result: operations::sign_in::Type4,
     ) {
         match result.0 {
             Ok(ok) => {
@@ -384,7 +384,7 @@ pub mod sign_up {
                                 .unwrap();
                         }
 
-                        let result = request_response::sign_up::Result::unwrap_output(data.data);
+                        let result = operations::sign_up::Type4::unwrap_output(data.data);
                         handel_apply_result(&model1, commander_local_state1.clone(), result);
                     }
                 }
@@ -478,7 +478,7 @@ pub mod sign_up {
             cache_actor::Response::CloseTheChannel => {}
             cache_actor::Response::ServerCannotBeReached => {}
             cache_actor::Response::Data(data) => {
-                let result = request_response::sign_up::Result::unwrap_output(data.data);
+                let result = operations::sign_up::Type4::unwrap_output(data.data);
                 handel_apply_result(&model, commander_local_state.clone(), result);
             }
         }
@@ -621,7 +621,10 @@ pub mod company_and_branch_selection {
 
         let mut handel = At::Rt::abortable_spawn_local(async move {
             let mut receiver_to_poke = cache
-                .send_subs_to_cache_actor(component_id, list_company_and_branch::Input::subs())
+                .send_subs_to_cache_actor(
+                    component_id,
+                    operations::list_company_and_branch::Type1::subs(),
+                )
                 .await;
 
             let data: db_types::UuidType = commander_local_state
@@ -637,7 +640,7 @@ pub mod company_and_branch_selection {
                 let value = cache
                     .send_to_cache_actor(
                         cache_actor::CachingStrategy::ReadCacheOnly,
-                        list_company_and_branch::Input {
+                        operations::list_company_and_branch::Type1 {
                             user_uuid: data.clone(),
                         }
                         .wrap_input(),
@@ -651,7 +654,7 @@ pub mod company_and_branch_selection {
                     cache_actor::Response::CloseTheChannel => break,
                     cache_actor::Response::ServerCannotBeReached => break,
                     cache_actor::Response::Data(data) => {
-                        operations::ListCompanyAndBranchForView::unwrap_output(data.data)
+                        operations::list_company_and_branch::Type4::unwrap_output(data.data)
                     }
                 };
 
@@ -701,7 +704,7 @@ pub mod company_and_branch_selection {
         let mut receiver_to_response = cache
             .send_to_cache_actor(
                 cache_actor::CachingStrategy::ReadCacheAndServer,
-                list_company_and_branch::Input { user_uuid }.wrap_input(),
+                operations::list_company_and_branch::Type1 { user_uuid }.wrap_input(),
             )
             .await;
 
@@ -710,7 +713,7 @@ pub mod company_and_branch_selection {
                 cache_actor::Response::CloseTheChannel => break,
                 cache_actor::Response::ServerCannotBeReached => break,
                 cache_actor::Response::Data(data) => {
-                    operations::ListCompanyAndBranchForView::unwrap_output(data.data)
+                    operations::list_company_and_branch::Type4::unwrap_output(data.data)
                 }
             };
 
@@ -976,9 +979,8 @@ pub mod create_company_branch {
                                 .unwrap();
                         }
 
-                        let result = request_response::create_company_branch::Result::unwrap_output(
-                            data.data,
-                        );
+                        let result =
+                            operations::create_company_branch::Type4::unwrap_output(data.data);
 
                         match result {
                             Ok(_) => {}
@@ -1067,8 +1069,7 @@ pub mod create_company_branch {
             cache_actor::Response::CloseTheChannel => {}
             cache_actor::Response::ServerCannotBeReached => {}
             cache_actor::Response::Data(data) => {
-                let result =
-                    request_response::create_company_branch::Result::unwrap_output(data.data);
+                let result = operations::create_company_branch::Type4::unwrap_output(data.data);
 
                 match result {
                     Ok(_) => {}

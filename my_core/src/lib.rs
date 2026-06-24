@@ -29,7 +29,7 @@ pub mod prelude {
         *,
     };
 
-    pub(crate) use crate::operations::*;
+    pub(crate) use crate::operations::{ViewType1, ViewType2};
 
     // std
     pub(crate) use std::{

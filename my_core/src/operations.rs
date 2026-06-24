@@ -225,511 +225,581 @@ async fn apply_change(
 
 // all imples down
 
-impl ViewType1 for sign_up::Input {
-    fn wrap_input(self) -> push_data::OperationsInput {
-        push_data::OperationsInput::SignUp(self)
+pub(crate) mod sign_up {
+    use super::*;
+
+    pub(crate) type Type1 = request_response::sign_up::Input;
+    type Type2 = request_response::sign_up::Input;
+    type Type3 = request_response::sign_up::Result;
+    pub(crate) type Type4 = request_response::sign_up::Result;
+
+    impl ViewType1 for Type1 {
+        fn wrap_input(self) -> push_data::OperationsInput {
+            push_data::OperationsInput::SignUp(self)
+        }
     }
-}
 
-impl CacheAndServerType1 for sign_up::Input {
-    fn user_uuid(&self) -> Option<&db_types::UuidType> {
-        Some(&self.new_uuid)
-    }
+    impl CacheAndServerType1 for Type2 {
+        fn user_uuid(&self) -> Option<&db_types::UuidType> {
+            Some(&self.new_uuid)
+        }
 
-    type Output = sign_up::Result;
-    async fn state_full_operation<Ch: CacheIO>(&self, state: &cache::State<Ch>) -> Self::Output {
-        let (mut is_new_uuid_exist, mut is_user_id_exist) = state
-            .cache
-            .read_sign_up(&self.new_uuid, &self.user_id)
-            .await;
+        type Output = Type3;
+        async fn state_full_operation<Ch: CacheIO>(
+            &self,
+            state: &cache::State<Ch>,
+        ) -> Self::Output {
+            let (mut is_new_uuid_exist, mut is_user_id_exist) = state
+                .cache
+                .read_sign_up(&self.new_uuid, &self.user_id)
+                .await;
 
-        for (uuid, user) in &state.state_of_pending_txn.user {
-            if user.id == self.user_id {
-                is_user_id_exist = true;
+            for (uuid, user) in &state.state_of_pending_txn.user {
+                if user.id == self.user_id {
+                    is_user_id_exist = true;
+                }
+                if uuid == &self.new_uuid {
+                    is_new_uuid_exist = true;
+                }
             }
-            if uuid == &self.new_uuid {
-                is_new_uuid_exist = true;
+
+            let mut err = request_response::sign_up::Error {
+                new_uuid: None,
+                user_id: None,
+                name: None,
+            };
+
+            if is_user_id_exist {
+                err.user_id = Some(request_response::sign_up::UserIdError::Duplicated);
             }
-        }
+            if is_new_uuid_exist {
+                err.new_uuid = Some(RowIdError::Duplicated);
+            }
 
-        let mut err = sign_up::Error {
-            new_uuid: None,
-            user_id: None,
-            name: None,
-        };
+            if err != request_response::sign_up::Error::default() {
+                return Err(err);
+            }
 
-        if is_user_id_exist {
-            err.user_id = Some(sign_up::UserIdError::Duplicated);
-        }
-        if is_new_uuid_exist {
-            err.new_uuid = Some(RowIdError::Duplicated);
-        }
+            let mut resource = Vec::new();
 
-        if err != sign_up::Error::default() {
-            return Err(err);
-        }
-
-        let mut resource = Vec::new();
-
-        resource.push(ResourceInfo {
-            row_uuid: self.new_uuid.clone(),
-            resource: server_methods::Resource::TableUserFieldId(self.user_id.clone()),
-        });
-        if let Some(name) = self.name.clone() {
             resource.push(ResourceInfo {
                 row_uuid: self.new_uuid.clone(),
-                resource: server_methods::Resource::TableUserFieldName(name),
+                resource: server_methods::Resource::TableUserFieldId(self.user_id.clone()),
             });
-        }
-
-        return Ok(sign_up::Ok { resource });
-    }
-
-    fn wrap_input1(self) -> push_data::OperationsInput {
-        push_data::OperationsInput::SignUp(self)
-    }
-}
-
-impl CacheAndServerType2 for sign_up::Result {
-    fn is_ok(&self) -> bool {
-        self.is_ok()
-    }
-
-    fn extract_resource(&self) -> Vec<ResourceInfo> {
-        match self {
-            Ok(ok) => ok.resource.clone(),
-            Err(_) => Vec::new(),
-        }
-    }
-
-    fn wrap_output(self) -> push_data::OperationsResult {
-        push_data::OperationsResult::SignUp(self)
-    }
-}
-
-impl ViewType2 for sign_up::Result {
-    fn unwrap_output(result: push_data::OperationsResult) -> Self {
-        if let push_data::OperationsResult::SignUp(result) = result {
-            return result;
-        }
-        unreachable!("{:?}", result)
-    }
-}
-
-impl ViewType1 for sign_in::Input {
-    fn wrap_input(self) -> push_data::OperationsInput {
-        push_data::OperationsInput::SignIn(self)
-    }
-}
-
-impl CacheAndServerType1 for sign_in::Input {
-    fn user_uuid(&self) -> Option<&db_types::UuidType> {
-        None
-    }
-
-    type Output = sign_in::Result;
-
-    async fn state_full_operation<Ch: CacheIO>(&self, state: &cache::State<Ch>) -> Self::Output {
-        let user_uuid_and_is_jwt_exist = state.cache.read_sign_in(&self.user_id).await;
-
-        if let Some((user_uuid, user_name, is_jwt_exist)) = user_uuid_and_is_jwt_exist {
-            if is_jwt_exist {
-                let mut resource = Vec::new();
-
+            if let Some(name) = self.name.clone() {
                 resource.push(ResourceInfo {
-                    row_uuid: user_uuid,
-                    resource: server_methods::Resource::TableUserFieldName(
-                        user_name.unwrap_or_default(),
-                    ),
+                    row_uuid: self.new_uuid.clone(),
+                    resource: server_methods::Resource::TableUserFieldName(name),
                 });
-
-                return Ok(sign_in::Ok { resource });
             }
+
+            return Ok(request_response::sign_up::Ok { resource });
         }
 
-        let mut password = None;
-        let mut user_uuid = None;
-        let mut user_name = None;
-
-        for (rowid, user) in &state.state_of_pending_txn.user {
-            if user.id == self.user_id {
-                password = Some(user.password.clone());
-                user_uuid = Some(rowid);
-                user_name = user.name.clone();
-            }
-        }
-
-        match password {
-            Some(password) => {
-                if password == self.password {
-                    let mut resource = Vec::new();
-
-                    resource.push(ResourceInfo {
-                        row_uuid: user_uuid.unwrap().clone(),
-                        resource: server_methods::Resource::TableUserFieldName(
-                            user_name.unwrap_or_default(),
-                        ),
-                    });
-
-                    return Ok(sign_in::Ok { resource });
-                } else {
-                    return Err(sign_in::Error {
-                        user_id: None,
-                        password: Some(sign_in::PasswordError::WrongPassword),
-                    });
-                }
-            }
-            None => Err(sign_in::Error {
-                user_id: Some(sign_in::UserIdError::NotExist),
-                password: None,
-            }),
+        fn wrap_input1(self) -> push_data::OperationsInput {
+            push_data::OperationsInput::SignUp(self)
         }
     }
 
-    fn wrap_input1(self) -> push_data::OperationsInput {
-        push_data::OperationsInput::SignIn(self)
-    }
-}
+    impl CacheAndServerType2 for Type3 {
+        fn is_ok(&self) -> bool {
+            self.is_ok()
+        }
 
-impl CacheAndServerType2 for sign_in::Result {
-    fn is_ok(&self) -> bool {
-        self.is_ok()
-    }
+        fn extract_resource(&self) -> Vec<ResourceInfo> {
+            match self {
+                Ok(ok) => ok.resource.clone(),
+                Err(_) => Vec::new(),
+            }
+        }
 
-    fn extract_resource(&self) -> Vec<ResourceInfo> {
-        match self {
-            Ok(ok) => ok.resource.clone(),
-            Err(_) => Vec::new(),
+        fn wrap_output(self) -> push_data::OperationsResult {
+            push_data::OperationsResult::SignUp(self)
         }
     }
 
-    fn wrap_output(self) -> push_data::OperationsResult {
-        push_data::OperationsResult::SignIn(self)
-    }
-}
-
-pub(crate) struct SignInOk {
-    pub user_uuid: db_types::UuidType,
-    pub user_id: String,
-    pub user_name: String,
-}
-
-pub(crate) struct SignInResultForView(pub Result<SignInOk, sign_in::Error>);
-
-impl ViewType2 for SignInResultForView {
-    fn unwrap_output(result: push_data::OperationsResult) -> Self {
-        if let push_data::OperationsResult::SignIn(result) = result {
-            match result {
-                Ok(ok) => {
-                    let mut user_uuid = None;
-                    let mut user_name = String::new();
-                    let mut user_id = String::new();
-
-                    for resource_info in &ok.resource {
-                        // Assume all resources share the same row_uuid (the user's UUID)
-                        if user_uuid.is_none() {
-                            user_uuid = Some(resource_info.row_uuid.clone());
-                        }
-
-                        match &resource_info.resource {
-                            server_methods::Resource::TableUserFieldName(name) => {
-                                user_name = name.clone();
-                            }
-                            server_methods::Resource::TableUserFieldId(id) => {
-                                user_id = id.clone();
-                            }
-                            _ => {}
-                        }
-                    }
-
-                    let user_uuid = user_uuid.unwrap();
-
-                    SignInResultForView(Ok(SignInOk {
-                        user_uuid,
-                        user_id,
-                        user_name,
-                    }))
-                }
-                Err(err) => SignInResultForView(Err(err)),
+    impl ViewType2 for Type4 {
+        fn unwrap_output(result: push_data::OperationsResult) -> Self {
+            if let push_data::OperationsResult::SignUp(result) = result {
+                return result;
             }
-        } else {
             unreachable!("{:?}", result)
         }
     }
 }
 
-impl ViewType1 for create_company::Input {
-    fn wrap_input(self) -> push_data::OperationsInput {
-        push_data::OperationsInput::CreateCompany(self)
-    }
-}
+pub(crate) mod sign_in {
+    use super::*;
 
-impl CacheAndServerType1 for create_company::Input {
-    fn user_uuid(&self) -> Option<&db_types::UuidType> {
-        Some(&self.user_uuid)
-    }
+    pub(crate) type Type1 = request_response::sign_in::Input;
+    type Type2 = request_response::sign_in::Input;
+    type Type3 = request_response::sign_in::Result;
+    pub(crate) struct Type4(pub(crate) Result<SignInOk, request_response::sign_in::Error>);
 
-    type Output = create_company::Result;
-
-    async fn state_full_operation<Ch: CacheIO>(&self, state: &cache::State<Ch>) -> Self::Output {
-        let v = ResourceInfo {
-            row_uuid: self.new_uuid.clone(),
-            resource: server_methods::Resource::TableCompanyFieldName(self.company_name.clone()),
-        };
-        let v1 = ResourceInfo {
-            row_uuid: self.new_uuid.clone(),
-            resource: server_methods::Resource::TableCompanyFieldCurrency(self.currency.clone()),
-        };
-        let v2 = ResourceInfo {
-            row_uuid: self.new_uuid.clone(),
-            resource: server_methods::Resource::TableAccessControlForCompanyFieldRole(
-                db_types::Role::Manager,
-            ),
-        };
-        let v3 = ResourceInfo {
-            row_uuid: self.new_uuid.clone(),
-            resource: server_methods::Resource::TableAccessControlForCompanyFieldUser(
-                self.user_uuid.clone(),
-            ),
-        };
-        let v4 = ResourceInfo {
-            row_uuid: self.new_uuid.clone(),
-            resource: server_methods::Resource::TableAccessControlForCompanyFieldDataGroup(
-                self.new_uuid.clone(),
-            ),
-        };
-
-        Ok(create_company::Ok {
-            resource: vec![v, v1, v2, v3, v4],
-        })
+    pub(crate) struct SignInOk {
+        pub user_uuid: db_types::UuidType,
+        pub user_id: String,
+        pub user_name: String,
     }
 
-    fn wrap_input1(self) -> push_data::OperationsInput {
-        push_data::OperationsInput::CreateCompany(self)
-    }
-}
-
-impl CacheAndServerType2 for create_company::Result {
-    fn is_ok(&self) -> bool {
-        self.is_ok()
-    }
-
-    fn extract_resource(&self) -> Vec<ResourceInfo> {
-        match self {
-            Ok(ok) => ok.resource.clone(),
-            Err(_) => Vec::new(),
+    impl ViewType1 for Type1 {
+        fn wrap_input(self) -> push_data::OperationsInput {
+            push_data::OperationsInput::SignIn(self)
         }
     }
 
-    fn wrap_output(self) -> push_data::OperationsResult {
-        push_data::OperationsResult::CreateCompany(self)
-    }
-}
-
-impl ViewType2 for create_company::Result {
-    fn unwrap_output(result: push_data::OperationsResult) -> Self {
-        if let push_data::OperationsResult::CreateCompany(result) = result {
-            return result;
+    impl CacheAndServerType1 for Type2 {
+        fn user_uuid(&self) -> Option<&db_types::UuidType> {
+            None
         }
-        unreachable!("{:?}", result)
-    }
-}
 
-impl ViewType1 for create_company_branch::Input {
-    fn wrap_input(self) -> push_data::OperationsInput {
-        push_data::OperationsInput::CreateCompanyBranch(self)
-    }
-}
+        type Output = Type3;
 
-impl CacheAndServerType1 for create_company_branch::Input {
-    fn user_uuid(&self) -> Option<&db_types::UuidType> {
-        Some(&self.user_uuid)
-    }
+        async fn state_full_operation<Ch: CacheIO>(
+            &self,
+            state: &cache::State<Ch>,
+        ) -> Self::Output {
+            let user_uuid_and_is_jwt_exist = state.cache.read_sign_in(&self.user_id).await;
 
-    type Output = create_company_branch::Result;
+            if let Some((user_uuid, user_name, is_jwt_exist)) = user_uuid_and_is_jwt_exist {
+                if is_jwt_exist {
+                    let mut resource = Vec::new();
 
-    async fn state_full_operation<Ch: CacheIO>(&self, state: &cache::State<Ch>) -> Self::Output {
-        let mut errr = create_company_branch::Error::default();
+                    resource.push(ResourceInfo {
+                        row_uuid: user_uuid,
+                        resource: server_methods::Resource::TableUserFieldName(
+                            user_name.unwrap_or_default(),
+                        ),
+                    });
 
-        // 1. Read from cache (database)
-        let (mut user_roles, mut is_company_exist, mut is_branch_name_used) = state
-            .cache
-            .read_create_company_branch(&self.user_uuid, &self.company_belong, &self.branch_name)
-            .await;
+                    return Ok(request_response::sign_in::Ok { resource });
+                }
+            }
 
-        // 2. Check pending transactions (uncommitted changes)
-        // Check pending company access control for roles
-        for (_, acf) in &state.state_of_pending_txn.access_control_for_company {
-            if acf.data_group == self.company_belong && acf.user_ == self.user_uuid {
-                user_roles.push(acf.role.clone());
+            let mut password = None;
+            let mut user_uuid = None;
+            let mut user_name = None;
+
+            for (rowid, user) in &state.state_of_pending_txn.user {
+                if user.id == self.user_id {
+                    password = Some(user.password.clone());
+                    user_uuid = Some(rowid);
+                    user_name = user.name.clone();
+                }
+            }
+
+            match password {
+                Some(password) => {
+                    if password == self.password {
+                        let mut resource = Vec::new();
+
+                        resource.push(ResourceInfo {
+                            row_uuid: user_uuid.unwrap().clone(),
+                            resource: server_methods::Resource::TableUserFieldName(
+                                user_name.unwrap_or_default(),
+                            ),
+                        });
+
+                        return Ok(request_response::sign_in::Ok { resource });
+                    } else {
+                        return Err(request_response::sign_in::Error {
+                            user_id: None,
+                            password: Some(request_response::sign_in::PasswordError::WrongPassword),
+                        });
+                    }
+                }
+                None => Err(request_response::sign_in::Error {
+                    user_id: Some(request_response::sign_in::UserIdError::NotExist),
+                    password: None,
+                }),
             }
         }
 
-        // Check pending company existence
-        if state
-            .state_of_pending_txn
-            .company
-            .contains_key(&self.company_belong)
-        {
-            is_company_exist = true;
+        fn wrap_input1(self) -> push_data::OperationsInput {
+            push_data::OperationsInput::SignIn(self)
+        }
+    }
+
+    impl CacheAndServerType2 for Type3 {
+        fn is_ok(&self) -> bool {
+            self.is_ok()
         }
 
-        // Check pending branch name usage
-        for (_, branch) in &state.state_of_pending_txn.company_branch {
-            if branch.company_belong == self.company_belong && branch.name == self.branch_name {
-                is_branch_name_used = true;
-                break;
+        fn extract_resource(&self) -> Vec<ResourceInfo> {
+            match self {
+                Ok(ok) => ok.resource.clone(),
+                Err(_) => Vec::new(),
             }
         }
 
-        // 3. Validate based on cache + pending
-        if !is_company_exist {
-            errr.company_belong = Some(create_company_branch::CompanyBelongError::NotExist);
+        fn wrap_output(self) -> push_data::OperationsResult {
+            push_data::OperationsResult::SignIn(self)
         }
-
-        if is_branch_name_used {
-            errr.branch_name = Some(create_company_branch::BranchNameError::Duplicated);
-        }
-
-        // Permission check: user must have Manager or CoManager role at the company
-        if !db_types::Role::has_any(
-            &user_roles,
-            &[db_types::Role::Manager, db_types::Role::CoManager],
-        ) {
-            errr.user_uuid = Some(UserUuidError::YouDontHavePermissionToDoThat);
-        }
-
-        if errr != create_company_branch::Error::default() {
-            return Err(errr);
-        }
-
-        // 4. Build resources (for cache storage)
-        let mut resource = Vec::new();
-
-        resource.push(ResourceInfo {
-            row_uuid: self.new_uuid.clone(),
-            resource: server_methods::Resource::TableCompanyBranchFieldName(
-                self.branch_name.clone(),
-            ),
-        });
-        resource.push(ResourceInfo {
-            row_uuid: self.new_uuid.clone(),
-            resource: server_methods::Resource::TableCompanyBranchFieldCompanyBelong(
-                self.company_belong.clone(),
-            ),
-        });
-        resource.push(ResourceInfo {
-            row_uuid: self.new_uuid.clone(),
-            resource: server_methods::Resource::TableAccessControlForCompanyBranchFieldRole(
-                db_types::Role::CoManager,
-            ),
-        });
-        resource.push(ResourceInfo {
-            row_uuid: self.new_uuid.clone(),
-            resource: server_methods::Resource::TableAccessControlForCompanyBranchFieldUser(
-                self.user_uuid.clone(),
-            ),
-        });
-        resource.push(ResourceInfo {
-            row_uuid: self.new_uuid.clone(),
-            resource: server_methods::Resource::TableAccessControlForCompanyBranchFieldDataGroup(
-                self.new_uuid.clone(),
-            ),
-        });
-
-        Ok(create_company_branch::Ok { resource })
     }
 
-    fn wrap_input1(self) -> push_data::OperationsInput {
-        push_data::OperationsInput::CreateCompanyBranch(self)
+    impl ViewType2 for Type4 {
+        fn unwrap_output(result: push_data::OperationsResult) -> Self {
+            if let push_data::OperationsResult::SignIn(result) = result {
+                match result {
+                    Ok(ok) => {
+                        let mut user_uuid = None;
+                        let mut user_name = String::new();
+                        let mut user_id = String::new();
+
+                        for resource_info in &ok.resource {
+                            // Assume all resources share the same row_uuid (the user's UUID)
+                            if user_uuid.is_none() {
+                                user_uuid = Some(resource_info.row_uuid.clone());
+                            }
+
+                            match &resource_info.resource {
+                                server_methods::Resource::TableUserFieldName(name) => {
+                                    user_name = name.clone();
+                                }
+                                server_methods::Resource::TableUserFieldId(id) => {
+                                    user_id = id.clone();
+                                }
+                                _ => {}
+                            }
+                        }
+
+                        let user_uuid = user_uuid.unwrap();
+
+                        Type4(Ok(SignInOk {
+                            user_uuid,
+                            user_id,
+                            user_name,
+                        }))
+                    }
+                    Err(err) => Type4(Err(err)),
+                }
+            } else {
+                unreachable!("{:?}", result)
+            }
+        }
     }
 }
 
-impl CacheAndServerType2 for create_company_branch::Result {
-    fn is_ok(&self) -> bool {
-        self.is_ok()
-    }
+pub(crate) mod create_company {
+    use super::*;
 
-    fn extract_resource(&self) -> Vec<ResourceInfo> {
-        match self {
-            Ok(ok) => ok.resource.clone(),
-            Err(_) => Vec::new(),
+    pub(crate) type Type1 = request_response::create_company::Input;
+    type Type2 = request_response::create_company::Input;
+    type Type3 = request_response::create_company::Result;
+    pub(crate) type Type4 = request_response::create_company::Result;
+
+    impl ViewType1 for Type1 {
+        fn wrap_input(self) -> push_data::OperationsInput {
+            push_data::OperationsInput::CreateCompany(self)
         }
     }
 
-    fn wrap_output(self) -> push_data::OperationsResult {
-        push_data::OperationsResult::CreateCompanyBranch(self)
-    }
-}
-
-impl ViewType2 for create_company_branch::Result {
-    fn unwrap_output(result: push_data::OperationsResult) -> Self {
-        if let push_data::OperationsResult::CreateCompanyBranch(result) = result {
-            return result;
+    impl CacheAndServerType1 for Type2 {
+        fn user_uuid(&self) -> Option<&db_types::UuidType> {
+            Some(&self.user_uuid)
         }
-        unreachable!("{:?}", result)
+
+        type Output = Type3;
+
+        async fn state_full_operation<Ch: CacheIO>(
+            &self,
+            state: &cache::State<Ch>,
+        ) -> Self::Output {
+            let v = ResourceInfo {
+                row_uuid: self.new_uuid.clone(),
+                resource: server_methods::Resource::TableCompanyFieldName(
+                    self.company_name.clone(),
+                ),
+            };
+            let v1 = ResourceInfo {
+                row_uuid: self.new_uuid.clone(),
+                resource: server_methods::Resource::TableCompanyFieldCurrency(
+                    self.currency.clone(),
+                ),
+            };
+            let v2 = ResourceInfo {
+                row_uuid: self.new_uuid.clone(),
+                resource: server_methods::Resource::TableAccessControlForCompanyFieldRole(
+                    db_types::Role::Manager,
+                ),
+            };
+            let v3 = ResourceInfo {
+                row_uuid: self.new_uuid.clone(),
+                resource: server_methods::Resource::TableAccessControlForCompanyFieldUser(
+                    self.user_uuid.clone(),
+                ),
+            };
+            let v4 = ResourceInfo {
+                row_uuid: self.new_uuid.clone(),
+                resource: server_methods::Resource::TableAccessControlForCompanyFieldDataGroup(
+                    self.new_uuid.clone(),
+                ),
+            };
+
+            Ok(request_response::create_company::Ok {
+                resource: vec![v, v1, v2, v3, v4],
+            })
+        }
+
+        fn wrap_input1(self) -> push_data::OperationsInput {
+            push_data::OperationsInput::CreateCompany(self)
+        }
+    }
+
+    impl CacheAndServerType2 for Type3 {
+        fn is_ok(&self) -> bool {
+            self.is_ok()
+        }
+
+        fn extract_resource(&self) -> Vec<ResourceInfo> {
+            match self {
+                Ok(ok) => ok.resource.clone(),
+                Err(_) => Vec::new(),
+            }
+        }
+
+        fn wrap_output(self) -> push_data::OperationsResult {
+            push_data::OperationsResult::CreateCompany(self)
+        }
+    }
+
+    impl ViewType2 for Type4 {
+        fn unwrap_output(result: push_data::OperationsResult) -> Self {
+            if let push_data::OperationsResult::CreateCompany(result) = result {
+                return result;
+            }
+            unreachable!("{:?}", result)
+        }
     }
 }
 
-impl ViewType1 for list_company_and_branch::Input {
-    fn subs() -> &'static [server_methods::Subscribe] {
-        &[
-            server_methods::Subscribe::TableCompanyBranchFieldName,
-            server_methods::Subscribe::TableCompanyFieldName,
-            server_methods::Subscribe::TableAccessControlForCompanyFieldRole,
-        ]
+pub(crate) mod create_company_branch {
+    use super::*;
+
+    pub(crate) type Type1 = request_response::create_company_branch::Input;
+    type Type2 = request_response::create_company_branch::Input;
+    type Type3 = request_response::create_company_branch::Result;
+    pub(crate) type Type4 = request_response::create_company_branch::Result;
+
+    impl ViewType1 for Type1 {
+        fn wrap_input(self) -> push_data::OperationsInput {
+            push_data::OperationsInput::CreateCompanyBranch(self)
+        }
     }
 
-    fn wrap_input(self) -> push_data::OperationsInput {
-        push_data::OperationsInput::ListCompanyAndBranch(self)
+    impl CacheAndServerType1 for Type2 {
+        fn user_uuid(&self) -> Option<&db_types::UuidType> {
+            Some(&self.user_uuid)
+        }
+
+        type Output = Type3;
+
+        async fn state_full_operation<Ch: CacheIO>(
+            &self,
+            state: &cache::State<Ch>,
+        ) -> Self::Output {
+            let mut errr = request_response::create_company_branch::Error::default();
+
+            // 1. Read from cache (database)
+            let (mut user_roles, mut is_company_exist, mut is_branch_name_used) = state
+                .cache
+                .read_create_company_branch(
+                    &self.user_uuid,
+                    &self.company_belong,
+                    &self.branch_name,
+                )
+                .await;
+
+            // 2. Check pending transactions (uncommitted changes)
+            // Check pending company access control for roles
+            for (_, acf) in &state.state_of_pending_txn.access_control_for_company {
+                if acf.data_group == self.company_belong && acf.user_ == self.user_uuid {
+                    user_roles.push(acf.role.clone());
+                }
+            }
+
+            // Check pending company existence
+            if state
+                .state_of_pending_txn
+                .company
+                .contains_key(&self.company_belong)
+            {
+                is_company_exist = true;
+            }
+
+            // Check pending branch name usage
+            for (_, branch) in &state.state_of_pending_txn.company_branch {
+                if branch.company_belong == self.company_belong && branch.name == self.branch_name {
+                    is_branch_name_used = true;
+                    break;
+                }
+            }
+
+            // 3. Validate based on cache + pending
+            if !is_company_exist {
+                errr.company_belong =
+                    Some(request_response::create_company_branch::CompanyBelongError::NotExist);
+            }
+
+            if is_branch_name_used {
+                errr.branch_name =
+                    Some(request_response::create_company_branch::BranchNameError::Duplicated);
+            }
+
+            // Permission check: user must have Manager or CoManager role at the company
+            if !db_types::Role::has_any(
+                &user_roles,
+                &[db_types::Role::Manager, db_types::Role::CoManager],
+            ) {
+                errr.user_uuid = Some(UserUuidError::YouDontHavePermissionToDoThat);
+            }
+
+            if errr != request_response::create_company_branch::Error::default() {
+                return Err(errr);
+            }
+
+            // 4. Build resources (for cache storage)
+            let mut resource = Vec::new();
+
+            resource.push(ResourceInfo {
+                row_uuid: self.new_uuid.clone(),
+                resource: server_methods::Resource::TableCompanyBranchFieldName(
+                    self.branch_name.clone(),
+                ),
+            });
+            resource.push(ResourceInfo {
+                row_uuid: self.new_uuid.clone(),
+                resource: server_methods::Resource::TableCompanyBranchFieldCompanyBelong(
+                    self.company_belong.clone(),
+                ),
+            });
+            resource.push(ResourceInfo {
+                row_uuid: self.new_uuid.clone(),
+                resource: server_methods::Resource::TableAccessControlForCompanyBranchFieldRole(
+                    db_types::Role::CoManager,
+                ),
+            });
+            resource.push(ResourceInfo {
+                row_uuid: self.new_uuid.clone(),
+                resource: server_methods::Resource::TableAccessControlForCompanyBranchFieldUser(
+                    self.user_uuid.clone(),
+                ),
+            });
+            resource.push(ResourceInfo {
+                row_uuid: self.new_uuid.clone(),
+                resource:
+                    server_methods::Resource::TableAccessControlForCompanyBranchFieldDataGroup(
+                        self.new_uuid.clone(),
+                    ),
+            });
+
+            Ok(request_response::create_company_branch::Ok { resource })
+        }
+
+        fn wrap_input1(self) -> push_data::OperationsInput {
+            push_data::OperationsInput::CreateCompanyBranch(self)
+        }
+    }
+
+    impl CacheAndServerType2 for Type3 {
+        fn is_ok(&self) -> bool {
+            self.is_ok()
+        }
+
+        fn extract_resource(&self) -> Vec<ResourceInfo> {
+            match self {
+                Ok(ok) => ok.resource.clone(),
+                Err(_) => Vec::new(),
+            }
+        }
+
+        fn wrap_output(self) -> push_data::OperationsResult {
+            push_data::OperationsResult::CreateCompanyBranch(self)
+        }
+    }
+
+    impl ViewType2 for Type4 {
+        fn unwrap_output(result: push_data::OperationsResult) -> Self {
+            if let push_data::OperationsResult::CreateCompanyBranch(result) = result {
+                return result;
+            }
+            unreachable!("{:?}", result)
+        }
     }
 }
 
-impl CacheAndServerType1 for list_company_and_branch::Input {
-    fn user_uuid(&self) -> Option<&db_types::UuidType> {
-        Some(&self.user_uuid)
+pub(crate) mod list_company_and_branch {
+    use super::*;
+
+    pub(crate) type Type1 = request_response::list_company_and_branch::Input;
+    type Type2 = request_response::list_company_and_branch::Input;
+    type Type3 = request_response::list_company_and_branch::Result;
+    pub(crate) struct Type4(pub(crate) Result<db_types::ListOfCompanies, ()>);
+
+    impl ViewType1 for Type1 {
+        fn subs() -> &'static [server_methods::Subscribe] {
+            &[
+                server_methods::Subscribe::TableCompanyBranchFieldName,
+                server_methods::Subscribe::TableCompanyFieldName,
+                server_methods::Subscribe::TableAccessControlForCompanyFieldRole,
+            ]
+        }
+
+        fn wrap_input(self) -> push_data::OperationsInput {
+            push_data::OperationsInput::ListCompanyAndBranch(self)
+        }
     }
 
-    type Output = list_company_and_branch::Result;
+    impl CacheAndServerType1 for Type2 {
+        fn user_uuid(&self) -> Option<&db_types::UuidType> {
+            Some(&self.user_uuid)
+        }
 
-    async fn state_full_operation<Ch: CacheIO>(&self, state: &cache::State<Ch>) -> Self::Output {
-        // Start with resources from the cache (already stored in DB)
-        let mut resources = state
-            .cache
-            .read_list_company_and_branch(&self.user_uuid)
-            .await;
+        type Output = Type3;
 
-        // Add pending companies and branches from the current transaction
-        for (_, acf) in &state.state_of_pending_txn.access_control_for_company {
-            if acf.user_ == self.user_uuid {
-                let company_uuid = acf.data_group.clone();
-                if let Some(company) = state.state_of_pending_txn.company.get(&company_uuid) {
-                    // Company name
-                    resources.push(ResourceInfo {
-                        row_uuid: company_uuid.clone(),
-                        resource: server_methods::Resource::TableCompanyFieldName(
-                            company.name.clone(),
-                        ),
-                    });
+        async fn state_full_operation<Ch: CacheIO>(
+            &self,
+            state: &cache::State<Ch>,
+        ) -> Self::Output {
+            // Start with resources from the cache (already stored in DB)
+            let mut resources = state
+                .cache
+                .read_list_company_and_branch(&self.user_uuid)
+                .await;
 
-                    // Access control: role
-                    resources.push(ResourceInfo {
-                        row_uuid: company_uuid.clone(),
-                        resource: server_methods::Resource::TableAccessControlForCompanyFieldRole(
-                            acf.role.clone(),
-                        ),
-                    });
+            // Add pending companies and branches from the current transaction
+            for (_, acf) in &state.state_of_pending_txn.access_control_for_company {
+                if acf.user_ == self.user_uuid {
+                    let company_uuid = acf.data_group.clone();
+                    if let Some(company) = state.state_of_pending_txn.company.get(&company_uuid) {
+                        // Company name
+                        resources.push(ResourceInfo {
+                            row_uuid: company_uuid.clone(),
+                            resource: server_methods::Resource::TableCompanyFieldName(
+                                company.name.clone(),
+                            ),
+                        });
 
-                    // Access control: user_
-                    resources.push(ResourceInfo {
-                        row_uuid: company_uuid.clone(),
-                        resource: server_methods::Resource::TableAccessControlForCompanyFieldUser(
-                            self.user_uuid.clone(),
-                        ),
-                    });
+                        // Access control: role
+                        resources.push(ResourceInfo {
+                            row_uuid: company_uuid.clone(),
+                            resource:
+                                server_methods::Resource::TableAccessControlForCompanyFieldRole(
+                                    acf.role.clone(),
+                                ),
+                        });
 
-                    // Access control: data_group
-                    resources.push(ResourceInfo {
+                        // Access control: user_
+                        resources.push(ResourceInfo {
+                            row_uuid: company_uuid.clone(),
+                            resource:
+                                server_methods::Resource::TableAccessControlForCompanyFieldUser(
+                                    self.user_uuid.clone(),
+                                ),
+                        });
+
+                        // Access control: data_group
+                        resources.push(ResourceInfo {
                         row_uuid: company_uuid.clone(),
                         resource:
                             server_methods::Resource::TableAccessControlForCompanyFieldDataGroup(
@@ -737,136 +807,138 @@ impl CacheAndServerType1 for list_company_and_branch::Input {
                             ),
                     });
 
-                    // Pending branches for this company
-                    for (branch_uuid, branch) in &state.state_of_pending_txn.company_branch {
-                        if branch.company_belong == company_uuid {
-                            resources.push(ResourceInfo {
-                                row_uuid: branch_uuid.clone(),
-                                resource: server_methods::Resource::TableCompanyBranchFieldName(
-                                    branch.name.clone(),
-                                ),
-                            });
-                            resources.push(ResourceInfo {
+                        // Pending branches for this company
+                        for (branch_uuid, branch) in &state.state_of_pending_txn.company_branch {
+                            if branch.company_belong == company_uuid {
+                                resources.push(ResourceInfo {
+                                    row_uuid: branch_uuid.clone(),
+                                    resource: server_methods::Resource::TableCompanyBranchFieldName(
+                                        branch.name.clone(),
+                                    ),
+                                });
+                                resources.push(ResourceInfo {
                                 row_uuid: branch_uuid.clone(),
                                 resource:
                                     server_methods::Resource::TableCompanyBranchFieldCompanyBelong(
                                         company_uuid.clone(),
                                     ),
                             });
+                            }
                         }
                     }
                 }
             }
+
+            Ok(request_response::list_company_and_branch::Ok {
+                resource: resources,
+            })
         }
 
-        Ok(list_company_and_branch::Ok {
-            resource: resources,
-        })
-    }
-
-    fn wrap_input1(self) -> push_data::OperationsInput {
-        push_data::OperationsInput::ListCompanyAndBranch(self)
-    }
-}
-
-impl CacheAndServerType2 for list_company_and_branch::Result {
-    fn is_ok(&self) -> bool {
-        self.is_ok()
-    }
-
-    fn extract_resource(&self) -> Vec<ResourceInfo> {
-        match self {
-            Ok(ok) => ok.resource.clone(),
-            Err(_) => Vec::new(),
+        fn wrap_input1(self) -> push_data::OperationsInput {
+            push_data::OperationsInput::ListCompanyAndBranch(self)
         }
     }
 
-    fn wrap_output(self) -> push_data::OperationsResult {
-        push_data::OperationsResult::ListCompanyAndBranch(self)
+    impl CacheAndServerType2 for Type3 {
+        fn is_ok(&self) -> bool {
+            self.is_ok()
+        }
+
+        fn extract_resource(&self) -> Vec<ResourceInfo> {
+            match self {
+                Ok(ok) => ok.resource.clone(),
+                Err(_) => Vec::new(),
+            }
+        }
+
+        fn wrap_output(self) -> push_data::OperationsResult {
+            push_data::OperationsResult::ListCompanyAndBranch(self)
+        }
     }
-}
 
-pub(crate) struct ListCompanyAndBranchForView(pub Result<db_types::ListOfCompanies, ()>);
-
-impl ViewType2 for ListCompanyAndBranchForView {
-    fn unwrap_output(result: push_data::OperationsResult) -> Self {
-        if let push_data::OperationsResult::ListCompanyAndBranch(res) = result {
-            match res {
-                Ok(ok) => {
-                    #[derive(Default)]
-                    struct CompanyData {
-                        name: String,
-                        currency: db_types::Currency,
-                        role: db_types::Role,
-                    }
-
-                    #[derive(Default)]
-                    struct BranchData {
-                        name: String,
-                        company_belong: db_types::UuidType,
-                    }
-
-                    let resources = ok.resource;
-                    let mut company_data: HashMap<db_types::UuidType, CompanyData> = HashMap::new();
-                    let mut branch_data: HashMap<db_types::UuidType, BranchData> = HashMap::new();
-
-                    for r in resources {
-                        let uuid = r.row_uuid.clone();
-                        match r.resource {
-                            server_methods::Resource::TableCompanyFieldName(name) => {
-                                company_data.upsert(uuid, |data| data.name = name);
-                            }
-                            server_methods::Resource::TableCompanyFieldCurrency(currency) => {
-                                company_data.upsert(uuid, |data| data.currency = currency);
-                            }
-                            server_methods::Resource::TableAccessControlForCompanyFieldRole(
-                                role,
-                            ) => {
-                                company_data.upsert(uuid, |data| data.role = role);
-                            }
-                            server_methods::Resource::TableCompanyBranchFieldName(name) => {
-                                branch_data.upsert(uuid, |data| data.name = name);
-                            }
-                            server_methods::Resource::TableCompanyBranchFieldCompanyBelong(
-                                company_uuid,
-                            ) => {
-                                branch_data.upsert(uuid, |data| data.company_belong = company_uuid);
-                            }
-                            _ => {} // ignore other resources (Jwt, etc.)
+    impl ViewType2 for Type4 {
+        fn unwrap_output(result: push_data::OperationsResult) -> Self {
+            if let push_data::OperationsResult::ListCompanyAndBranch(res) = result {
+                match res {
+                    Ok(ok) => {
+                        #[derive(Default)]
+                        struct CompanyData {
+                            name: String,
+                            currency: db_types::Currency,
+                            role: db_types::Role,
                         }
-                    }
 
-                    // Build companies from the aggregated data
-                    let mut companies = Vec::with_capacity(company_data.len());
-                    for (uuid, data) in company_data {
-                        let branches = branch_data
-                            .iter()
-                            .filter_map(|(branch_uuid, branch)| {
-                                if branch.company_belong == uuid {
-                                    Some(db_types::Branch {
-                                        uuid: branch_uuid.clone(),
-                                        name: branch.name.clone(),
-                                    })
-                                } else {
-                                    None
+                        #[derive(Default)]
+                        struct BranchData {
+                            name: String,
+                            company_belong: db_types::UuidType,
+                        }
+
+                        let resources = ok.resource;
+                        let mut company_data: HashMap<db_types::UuidType, CompanyData> =
+                            HashMap::new();
+                        let mut branch_data: HashMap<db_types::UuidType, BranchData> =
+                            HashMap::new();
+
+                        for r in resources {
+                            let uuid = r.row_uuid.clone();
+                            match r.resource {
+                                server_methods::Resource::TableCompanyFieldName(name) => {
+                                    company_data.upsert(uuid, |data| data.name = name);
                                 }
-                            })
-                            .collect();
+                                server_methods::Resource::TableCompanyFieldCurrency(currency) => {
+                                    company_data.upsert(uuid, |data| data.currency = currency);
+                                }
+                                server_methods::Resource::TableAccessControlForCompanyFieldRole(
+                                    role,
+                                ) => {
+                                    company_data.upsert(uuid, |data| data.role = role);
+                                }
+                                server_methods::Resource::TableCompanyBranchFieldName(name) => {
+                                    branch_data.upsert(uuid, |data| data.name = name);
+                                }
+                                server_methods::Resource::TableCompanyBranchFieldCompanyBelong(
+                                    company_uuid,
+                                ) => {
+                                    branch_data
+                                        .upsert(uuid, |data| data.company_belong = company_uuid);
+                                }
+                                _ => {} // ignore other resources (Jwt, etc.)
+                            }
+                        }
 
-                        companies.push(db_types::Company {
-                            uuid,
-                            name: data.name,
-                            role: data.role,
-                            branches,
-                        });
+                        // Build companies from the aggregated data
+                        let mut companies = Vec::with_capacity(company_data.len());
+                        for (uuid, data) in company_data {
+                            let branches = branch_data
+                                .iter()
+                                .filter_map(|(branch_uuid, branch)| {
+                                    if branch.company_belong == uuid {
+                                        Some(db_types::Branch {
+                                            uuid: branch_uuid.clone(),
+                                            name: branch.name.clone(),
+                                        })
+                                    } else {
+                                        None
+                                    }
+                                })
+                                .collect();
+
+                            companies.push(db_types::Company {
+                                uuid,
+                                name: data.name,
+                                role: data.role,
+                                branches,
+                            });
+                        }
+
+                        Type4(Ok(companies))
                     }
-
-                    ListCompanyAndBranchForView(Ok(companies))
+                    Err(_) => Type4(Err(())),
                 }
-                Err(_) => ListCompanyAndBranchForView(Err(())),
+            } else {
+                unreachable!("{:?}", result)
             }
-        } else {
-            unreachable!("{:?}", result)
         }
     }
 }
