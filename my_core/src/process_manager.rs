@@ -106,6 +106,8 @@ pub(crate) fn process_manager_actor<
 
                     match consent {
                         UserConsent::WaitForServerResponse => {
+                            table.timer_handel.abort().await;
+
                             table.timer_handel =
                                 timer_handel::<As, At>(As::Dialog::clone(&table.dialog));
                         }
