@@ -37,13 +37,13 @@ impl<
         model: ui_model::Model<As>,
         cache: cache_actor::Cache<At, Mpsc>,
     ) -> Self {
-        let (sender_to_commands, receiver_to_commands) = Mpsc::channel();
+        let (sender_to_commander, receiver_to_commander) = Mpsc::channel();
 
         listen_to_error_actor::<As, At, Mpsc>(receiver_to_error, model.external_errors.clone());
 
-        Self::commands_actor(
-            receiver_to_commands,
-            sender_to_commands.clone(),
+        Self::commander_actor(
+            receiver_to_commander,
+            sender_to_commander.clone(),
             sender_to_process_manager,
             model,
             cache,
@@ -51,7 +51,7 @@ impl<
 
         Self {
             _ph: PhantomData,
-            sender: sender_to_commands,
+            sender: sender_to_commander,
         }
     }
 
@@ -61,16 +61,16 @@ impl<
         });
     }
 
-    fn commands_actor(
+    fn commander_actor(
         mut receiver: Mpsc::Receiver<ui_model::Message>,
-        sender_to_commands: Mpsc::Sender<ui_model::Message>,
+        sender_to_commander: Mpsc::Sender<ui_model::Message>,
         sender_to_process_manager: Mpsc::Sender<process_manager::MessageToProcessManager<As, Mpsc>>,
         model: ui_model::Model<As>,
         cache: cache_actor::Cache<At, Mpsc>,
     ) {
         At::Rt::spawn_local(async move {
             let commander_local_state = Arc::new(CommanderLocalState {
-                sender_to_commander: Mutex::new(sender_to_commands),
+                sender_to_commander: Mutex::new(sender_to_commander),
                 sender_to_process_manager: Mutex::new(sender_to_process_manager),
                 user_uuid: Mutex::default(),
                 selected_company_branch: Mutex::default(),
