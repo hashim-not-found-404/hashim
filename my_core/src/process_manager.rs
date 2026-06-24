@@ -1,0 +1,204 @@
+use crate::prelude::*;
+
+#[derive(PartialEq, Eq, Hash, Clone, Copy)]
+pub(crate) enum ProcessName {
+    SignIn,
+    SignUp,
+    CreateCompanyBranch,
+}
+
+pub(crate) enum Event<As: AllSignalTypes, Mpsc: MultiProducerSingleConsumer> {
+    Subscribe {
+        sender: Mpsc::Sender<IsProceedTheProcess>,
+        dialog: As::Dialog,
+    },
+    GotResponseFromCache {
+        is_response_ok: bool,
+    },
+    Completed {
+        is_response_ok: bool,
+    },
+}
+
+pub(crate) enum MessageToProcessManager<As: AllSignalTypes, Mpsc: MultiProducerSingleConsumer> {
+    FromUser {
+        process_name: ProcessName,
+        consent: UserConsent,
+    },
+    FromProcess {
+        process_name: ProcessName,
+        event: Event<As, Mpsc>,
+    },
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum IsProceedTheProcess {
+    Yes,
+    No,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum UserConsent {
+    WaitForServerResponse,
+    DontWaitForServerResponse,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum IsProceed {
+    Wait,
+    Yes,
+    No,
+}
+
+pub(crate) fn is_proceed(
+    is_ok: bool,
+    is_response_from_server: bool,
+    is_user_want_to_proceed: UserConsent,
+) -> IsProceed {
+    match (is_response_from_server, is_ok, is_user_want_to_proceed) {
+        (true, true, UserConsent::WaitForServerResponse) => IsProceed::Yes,
+        (true, true, UserConsent::DontWaitForServerResponse) => IsProceed::Yes,
+        (true, false, UserConsent::WaitForServerResponse) => IsProceed::No,
+        (true, false, UserConsent::DontWaitForServerResponse) => IsProceed::No,
+        (false, true, UserConsent::WaitForServerResponse) => IsProceed::Wait,
+        (false, true, UserConsent::DontWaitForServerResponse) => IsProceed::Yes,
+        (false, false, UserConsent::WaitForServerResponse) => IsProceed::Wait,
+        (false, false, UserConsent::DontWaitForServerResponse) => IsProceed::Yes,
+    }
+}
+
+pub(crate) fn process_manager_actor<
+    As: AllSignalTypes + 'static,
+    At: AllClientTypes,
+    Mpsc: MultiProducerSingleConsumer + 'static,
+>() -> Mpsc::Sender<MessageToProcessManager<As, Mpsc>> {
+    let (sender, mut receiver) = Mpsc::channel();
+
+    At::Rt::spawn_local(async move {
+        struct ProcessInfo<
+            As: AllSignalTypes,
+            At: AllClientTypes,
+            Mpsc: MultiProducerSingleConsumer,
+        > {
+            sender: Mpsc::Sender<IsProceedTheProcess>,
+            dialog: As::Dialog,
+            timer_handel: <At::Rt as Runtime>::JoinHandel<()>,
+            is_response_from_server: Option<bool>,
+            is_ok: Option<bool>,
+            is_user_want_to_proceed: UserConsent,
+        }
+
+        let mut process_states = HashMap::<ProcessName, ProcessInfo<As, At, Mpsc>>::new();
+
+        loop {
+            let msg = receiver.recv().await.unwrap();
+
+            let process_name = match msg {
+                MessageToProcessManager::FromUser {
+                    process_name,
+                    consent,
+                } => {
+                    let table = process_states.get_mut(&process_name).unwrap();
+
+                    table.dialog.set(ui_model::Dialog::Hide);
+                    table.is_user_want_to_proceed = consent;
+                    table.dialog.set(ui_model::Dialog::Hide);
+
+                    match consent {
+                        UserConsent::WaitForServerResponse => {
+                            table.timer_handel =
+                                timer_handel::<As, At>(As::Dialog::clone(&table.dialog));
+                        }
+                        UserConsent::DontWaitForServerResponse => {
+                            table.dialog.set(ui_model::Dialog::Hide);
+                        }
+                    };
+
+                    process_name
+                }
+                MessageToProcessManager::FromProcess {
+                    process_name,
+                    event,
+                } => {
+                    match event {
+                        Event::Subscribe { sender, dialog } => {
+                            let timer_handel = timer_handel::<As, At>(As::Dialog::clone(&dialog));
+
+                            process_states.insert(
+                                process_name,
+                                ProcessInfo {
+                                    sender,
+                                    dialog,
+                                    timer_handel,
+                                    is_response_from_server: None,
+                                    is_ok: None,
+                                    is_user_want_to_proceed: UserConsent::WaitForServerResponse,
+                                },
+                            );
+                        }
+                        Event::GotResponseFromCache { is_response_ok } => {
+                            process_states.entry(process_name).and_modify(|table| {
+                                table.is_response_from_server = Some(false);
+                                table.is_ok = Some(is_response_ok);
+                            });
+                        }
+                        Event::Completed { is_response_ok } => {
+                            process_states.entry(process_name).and_modify(|table| {
+                                table.is_response_from_server = Some(true);
+                                table.is_ok = Some(is_response_ok);
+                            });
+                        }
+                    };
+                    process_name
+                }
+            };
+
+            let process_info = process_states.get_mut(&process_name).unwrap();
+
+            if let (Some(is_ok), Some(is_response_from_server)) =
+                (process_info.is_ok, process_info.is_response_from_server)
+            {
+                let proceed = is_proceed(
+                    is_ok,
+                    is_response_from_server,
+                    process_info.is_user_want_to_proceed,
+                );
+
+                match proceed {
+                    IsProceed::Wait => {}
+                    IsProceed::Yes => {
+                        process_info.timer_handel.abort().await;
+                        process_info.dialog.set(ui_model::Dialog::Hide);
+                        process_info
+                            .sender
+                            .send(IsProceedTheProcess::Yes)
+                            .await
+                            .unwrap();
+                        process_states.remove(&process_name);
+                    }
+                    IsProceed::No => {
+                        process_info.timer_handel.abort().await;
+                        process_info.dialog.set(ui_model::Dialog::Hide);
+                        process_info
+                            .sender
+                            .send(IsProceedTheProcess::No)
+                            .await
+                            .unwrap();
+                        process_states.remove(&process_name);
+                    }
+                }
+            }
+        }
+    });
+
+    sender
+}
+
+fn timer_handel<As: AllSignalTypes + 'static, At: AllClientTypes>(
+    dialog_clone: <As as AllSignalTypes>::Dialog,
+) -> <At::Rt as Runtime>::JoinHandel<()> {
+    At::Rt::abortable_spawn_local(async move {
+        At::Rt::sleep(Duration::from_secs(5)).await;
+        dialog_clone.set(ui_model::Dialog::Show);
+    })
+}

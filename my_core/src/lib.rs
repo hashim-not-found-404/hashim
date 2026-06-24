@@ -1,12 +1,17 @@
 pub mod cache;
+pub mod cache_actor;
 pub mod db_types;
-pub mod front_end_model_view;
+pub mod network_actor;
 pub mod operations;
+pub mod process_manager;
 pub mod request_response;
 pub mod server_methods;
 pub mod traits;
 pub mod translations;
-pub mod web_socket;
+pub mod ui_construct;
+pub mod ui_effect;
+pub mod ui_model;
+pub mod use_cases;
 
 pub mod prelude {
     pub type DynamicError = Box<dyn Error>;
@@ -17,10 +22,10 @@ pub mod prelude {
     pub use crate::mbg; // this macro for dev only
     pub use crate::{
         ext_trait::*,
-        front_end_model_view::{AllSignalTypes, HashimSignal},
         request_response::*,
         server_methods::WSServer,
         traits::*,
+        ui_model::{AllSignalTypes, HashimSignal},
         *,
     };
 
@@ -126,6 +131,16 @@ mod ext_trait {
                 f(&mut v);
                 v
             });
+        }
+    }
+
+    impl<T: Default + Clone> HashimSignal<T> for Arc<RwLock<T>> {
+        fn read(&self) -> T {
+            RwLock::read(self).unwrap().clone()
+        }
+
+        fn set(&self, v: T) {
+            *self.write().unwrap() = v;
         }
     }
 }

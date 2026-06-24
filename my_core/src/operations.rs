@@ -176,7 +176,7 @@ async fn apply_change(
     state: &mut cache::StateOfPendingTxn,
     subs_to_poke: &mut HashSet<server_methods::Subscribe>,
 ) {
-    web_socket::collect_subs_to_poke(subs_to_poke, &resources);
+    cache_actor::collect_subs_to_poke(subs_to_poke, &resources);
 
     for resource in resources {
         let row_uuid = resource.row_uuid;
@@ -408,17 +408,53 @@ impl CacheAndServerType2 for sign_in::Result {
     }
 }
 
-pub(crate) struct SignInResultForView(pub Result<db_types::UuidType, sign_in::Error>);
+pub(crate) struct SignInOk {
+    pub user_uuid: db_types::UuidType,
+    pub user_id: String,
+    pub user_name: String,
+}
+
+pub(crate) struct SignInResultForView(pub Result<SignInOk, sign_in::Error>);
 
 impl ViewType2 for SignInResultForView {
     fn unwrap_output(result: push_data::OperationsResult) -> Self {
         if let push_data::OperationsResult::SignIn(result) = result {
-            return match result {
-                Ok(ok) => SignInResultForView(Ok(ok.resource[0].row_uuid.clone())),
+            match result {
+                Ok(ok) => {
+                    let mut user_uuid = None;
+                    let mut user_name = String::new();
+                    let mut user_id = String::new();
+
+                    for resource_info in &ok.resource {
+                        // Assume all resources share the same row_uuid (the user's UUID)
+                        if user_uuid.is_none() {
+                            user_uuid = Some(resource_info.row_uuid.clone());
+                        }
+
+                        match &resource_info.resource {
+                            server_methods::Resource::TableUserFieldName(name) => {
+                                user_name = name.clone();
+                            }
+                            server_methods::Resource::TableUserFieldId(id) => {
+                                user_id = id.clone();
+                            }
+                            _ => {}
+                        }
+                    }
+
+                    let user_uuid = user_uuid.unwrap();
+
+                    SignInResultForView(Ok(SignInOk {
+                        user_uuid,
+                        user_id,
+                        user_name,
+                    }))
+                }
                 Err(err) => SignInResultForView(Err(err)),
-            };
+            }
+        } else {
+            unreachable!("{:?}", result)
         }
-        unreachable!("{:?}", result)
     }
 }
 

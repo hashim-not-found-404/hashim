@@ -1,10 +1,5 @@
 use crate::prelude::*;
 
-enum MessageToNetwork {
-    Url(String),
-    Bytes(Vec<u8>),
-}
-
 #[derive(Clone)]
 pub struct Data {
     pub is_response_from_server: bool,
@@ -49,33 +44,36 @@ pub(crate) enum MessageToCache<Mpsc: MultiProducerSingleConsumer> {
     },
 }
 
-pub struct MyWAMP<At, Mpsc>
+pub struct Cache<At, Mpsc>
 where
     At: AllClientTypes + 'static,
     Mpsc: MultiProducerSingleConsumer + 'static,
 {
     _ph: PhantomData<(At, Mpsc)>,
-    sender_to_network: Mutex<Mpsc::Sender<MessageToNetwork>>,
-    sender_to_cache: Mutex<Mpsc::Sender<MessageToCache<Mpsc>>>,
+    sender: Mpsc::Sender<MessageToCache<Mpsc>>,
 }
 
-impl<At, Mpsc> MyWAMP<At, Mpsc>
+impl<At: AllClientTypes, Mpsc: MultiProducerSingleConsumer> Clone for Cache<At, Mpsc> {
+    fn clone(&self) -> Self {
+        Self {
+            _ph: self._ph.clone(),
+            sender: self.sender.clone(),
+        }
+    }
+}
+
+impl<At, Mpsc> Cache<At, Mpsc>
 where
     At: AllClientTypes + 'static,
     Mpsc: MultiProducerSingleConsumer + 'static,
 {
-    pub fn new(sender_to_error: Mpsc::Sender<HashimError>) -> Self {
-        let (sender_to_network, receiver_to_network) = Mpsc::channel();
-        let (sender_to_cache, receiver_to_cache) = Mpsc::channel();
-
-        let is_online = Arc::new(RwLock::new(false));
-
-        Self::network_actor(
-            receiver_to_network,
-            sender_to_cache.clone(),
-            sender_to_error.clone(),
-            is_online.clone(),
-        );
+    pub(crate) fn new(
+        receiver_to_cache: Mpsc::Receiver<MessageToCache<Mpsc>>,
+        sender_to_cache: Mpsc::Sender<MessageToCache<Mpsc>>,
+        sender_to_network: Mpsc::Sender<network_actor::MessageToNetwork>,
+        sender_to_error: Mpsc::Sender<HashimError>,
+        is_online: Arc<RwLock<bool>>,
+    ) -> Self {
         Self::cache_actor(
             receiver_to_cache,
             sender_to_network.clone(),
@@ -85,30 +83,18 @@ where
 
         Self {
             _ph: PhantomData,
-            sender_to_network: Mutex::new(sender_to_network),
-            sender_to_cache: Mutex::new(sender_to_cache),
+            sender: sender_to_cache,
         }
     }
 
-    pub async fn connect_to_url(&self, url: &String) {
-        self.sender_to_network
-            .lock()
-            .unwrap()
-            .send(MessageToNetwork::Url(url.clone()))
-            .await
-            .unwrap();
-    }
-
     pub(crate) async fn send_to_cache_actor(
-        &self,
+        &mut self,
         strategy: CachingStrategy,
         data: push_data::OperationsInput,
     ) -> Mpsc::Receiver<Response> {
         let (sender, receiver) = Mpsc::channel();
 
-        self.sender_to_cache
-            .lock()
-            .unwrap()
+        self.sender
             .send(MessageToCache::Query {
                 strategy,
                 sender,
@@ -121,15 +107,13 @@ where
     }
 
     pub(crate) async fn send_subs_to_cache_actor(
-        &self,
+        &mut self,
         component_id: u16,
         list_of_subscribtion: &'static [server_methods::Subscribe],
     ) -> Mpsc::Receiver<()> {
         let (sender, receiver) = Mpsc::channel();
 
-        self.sender_to_cache
-            .lock()
-            .unwrap()
+        self.sender
             .send(MessageToCache::Subscribe {
                 component_id,
                 list_of_subscribtion,
@@ -141,105 +125,16 @@ where
         receiver
     }
 
-    pub(crate) async fn send_unsubs_to_cache_actor(&self, component_id: u16) {
-        self.sender_to_cache
-            .lock()
-            .unwrap()
+    pub(crate) async fn send_unsubs_to_cache_actor(&mut self, component_id: u16) {
+        self.sender
             .send(MessageToCache::UnSubscribe { component_id })
             .await
             .unwrap();
     }
 
-    async fn network_radar(ws: &Option<At::Ws>) -> Result<Vec<u8>, DynamicError> {
-        match &ws {
-            Some(ws) => ws.receive_bin().await,
-            None => Err(HashimError::ConnectionClosed.into()),
-        }
-    }
-
-    async fn connect(
-        is_online: Arc<RwLock<bool>>,
-        sender_to_cache: &mut Mpsc::Sender<MessageToCache<Mpsc>>,
-        url: &Option<String>,
-        ws: &mut Option<At::Ws>,
-    ) {
-        if let Some(ur) = url {
-            set(is_online.clone(), false);
-
-            if let Ok(ok) = At::Ws::connect(ur.as_str()).await {
-                *ws = Some(ok);
-
-                sender_to_cache
-                    .send(MessageToCache::WeAreBackOnline)
-                    .await
-                    .unwrap();
-
-                set(is_online.clone(), true);
-
-                return;
-            }
-        }
-        At::Rt::sleep(Duration::from_secs(5)).await;
-    }
-
-    fn network_actor(
-        mut receiver_to_network: Mpsc::Receiver<MessageToNetwork>,
-        mut sender_to_cache: Mpsc::Sender<MessageToCache<Mpsc>>,
-        mut sender_to_error: Mpsc::Sender<HashimError>,
-        is_online: Arc<RwLock<bool>>,
-    ) {
-        At::Rt::spawn_local(async move {
-            let mut ws: Option<At::Ws> = None;
-            let mut url: Option<String> = None;
-
-            loop {
-                match At::Rt::select(receiver_to_network.recv(), Self::network_radar(&ws)).await {
-                    Either::One(r) => match r.unwrap() {
-                        MessageToNetwork::Url(ur) => {
-                            url = Some(ur);
-                            Self::connect(is_online.clone(), &mut sender_to_cache, &url, &mut ws)
-                                .await;
-                        }
-                        MessageToNetwork::Bytes(data) => match &ws {
-                            Some(ws1) => {
-                                let result = ws1.send_bin(&data).await;
-                                if result.is_err() {
-                                    Self::connect(
-                                        is_online.clone(),
-                                        &mut sender_to_cache,
-                                        &url,
-                                        &mut ws,
-                                    )
-                                    .await;
-                                }
-                            }
-                            None => At::Rt::sleep(Duration::from_secs(5)).await,
-                        },
-                    },
-                    Either::Two(from_network) => match from_network {
-                        Ok(data) => {
-                            sender_to_cache
-                                .send(MessageToCache::DataFromServer(data))
-                                .await
-                                .unwrap();
-                        }
-                        Err(_) => {
-                            sender_to_error
-                                .send(HashimError::ConnectionClosed)
-                                .await
-                                .unwrap();
-                            Self::connect(is_online.clone(), &mut sender_to_cache, &url, &mut ws)
-                                .await;
-                        }
-                    },
-                }
-            }
-        });
-    }
-
     fn cache_actor(
         mut receiver_to_cache: Mpsc::Receiver<MessageToCache<Mpsc>>,
-        mut sender_to_network: Mpsc::Sender<MessageToNetwork>,
+        mut sender_to_network: Mpsc::Sender<network_actor::MessageToNetwork>,
         mut sender_to_error: Mpsc::Sender<HashimError>,
         is_online: Arc<RwLock<bool>>,
     ) {
@@ -398,7 +293,7 @@ where
                                 operation: data,
                             }];
 
-                            if get(is_online.clone()) {
+                            if is_online.read() {
                                 Self::prepare_txn_and_send_to_network(
                                     &mut sender_to_network,
                                     operations,
@@ -447,7 +342,7 @@ where
                                 operation: data,
                             }];
 
-                            if get(is_online.clone()) {
+                            if is_online.read() {
                                 Self::prepare_txn_and_send_to_network(
                                     &mut sender_to_network,
                                     operations,
@@ -470,7 +365,7 @@ where
     }
 
     async fn prepare_txn_and_send_to_network<Ch: CacheIO>(
-        sender_to_network: &mut Mpsc::Sender<MessageToNetwork>,
+        sender_to_network: &mut Mpsc::Sender<network_actor::MessageToNetwork>,
         operations: Vec<push_data::Txn<push_data::OperationsInput>>,
         state: &cache::State<Ch>,
     ) {
@@ -504,18 +399,8 @@ where
 
         let t = At::Ed::encode(&t);
 
-        sender_to_network
-            .send(MessageToNetwork::Bytes(t))
-            .await
-            .unwrap();
+        sender_to_network.send(t).await.unwrap();
     }
-}
-
-fn set<T>(a: Arc<RwLock<T>>, v: T) {
-    *a.write().unwrap() = v;
-}
-fn get<T: Clone>(a: Arc<RwLock<T>>) -> T {
-    a.read().unwrap().clone()
 }
 
 pub fn collect_subs_to_poke(

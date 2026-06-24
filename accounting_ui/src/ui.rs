@@ -2,12 +2,9 @@ use crate::prelude::*;
 use dioxus::prelude::*;
 use std::str::FromStr;
 
-type StateOfEveryThing = front_end_model_view::State<
-    my_signals::m::S,
-    my_types::m::S,
-    actors::m::S,
-    my_signal::m::S<Option<mpsc_sender::m::S<front_end_model_view::IsProceed>>>,
->;
+type TheModel = ui_model::Model<my_signals::m::S>;
+type TheCommander = ui_effect::Commander<my_signals::m::S, my_types::m::S, actors::m::S>;
+type TheAll = (TheModel, TheCommander);
 
 const ICONS_SHOW: Asset = asset!("/assets/icons/show.png");
 const ICONS_HIDE: Asset = asset!("/assets/icons/hide.png");
@@ -23,15 +20,15 @@ enum Route {
     #[end_layout]
     #[route("/company_and_branch_selection")]
     CompanyAndBranchSelection {},
-
     #[route("/home")]
-    Home {},
+    MyHome {},
 }
 
 #[component]
 pub fn App() -> Element {
-    let state: StateOfEveryThing = front_end_model_view::State::new();
-    use_context_provider(|| state);
+    let (model, commander): TheAll =
+        ui_construct::new::<my_signals::m::S, my_types::m::S, actors::m::S>();
+    use_context_provider(|| (model, commander));
 
     rsx! {
         // document::Link { rel: "stylesheet", href: MAIN_CSS }
@@ -42,39 +39,32 @@ pub fn App() -> Element {
 
 #[component]
 fn Dialog(
-    sender: my_signal::m::S<Option<mpsc_sender::m::S<front_end_model_view::IsProceed>>>,
+    consent_callback: EventHandler<process_manager::UserConsent>,
     operation_name: &'static str,
     show_dialog: <my_signals::m::S as AllSignalTypes>::Dialog,
 ) -> Element {
-    let show_dialog1 = show_dialog.clone();
+    let consent_callback1 = consent_callback.clone();
 
-    let click = move |s: front_end_model_view::IsProceed| {
-        show_dialog.set(front_end_model_view::Dialog::Hide);
-        let mut sender = sender.read().unwrap();
-        spawn(async move {
-            sender.send(s).await.unwrap();
-        });
-    };
-
-    let click1 = click.clone();
-
-    match show_dialog1.read() {
-        front_end_model_view::Dialog::Hide => rsx! {},
-        front_end_model_view::Dialog::Show => {
+    match show_dialog.read() {
+        ui_model::Dialog::Hide => rsx! {},
+        ui_model::Dialog::Show => {
             rsx! {
                 div {
                     label { "do you want to proceed operation {operation_name} offline" }
-                    button { onclick: move |_| click(front_end_model_view::IsProceed::Yes),
+                    button {
+                        onclick: move |_| {
+                            consent_callback(process_manager::UserConsent::DontWaitForServerResponse)
+                        },
                         "Yes"
                     }
-                    button { onclick: move |_| click1(front_end_model_view::IsProceed::No),
+                    button { onclick: move |_| { consent_callback1(process_manager::UserConsent::WaitForServerResponse) },
                         "No"
                     }
                 }
 
             }
         }
-        front_end_model_view::Dialog::Error => {
+        ui_model::Dialog::Error => {
             rsx! {
                 label { "sorry you can't proceed now" }
             }
@@ -84,22 +74,16 @@ fn Dialog(
 
 #[component]
 fn AuthenticationPage() -> Element {
-    let state = consume_context::<StateOfEveryThing>();
-    let auth_state = front_end_model_view::AuthFeatureState::<my_signals::m::S>::default();
-    use_context_provider(|| auth_state);
+    let (model, commander) = consume_context::<TheAll>();
 
-    let local_state = front_end_model_view::SignInState::<my_signals::m::S>::default();
-    use_context_provider(|| local_state);
-
-    let local_state = front_end_model_view::SignUpState::<my_signals::m::S>::default();
-    use_context_provider(|| local_state);
-
-    let sender: my_signal::m::S<Option<mpsc_sender::m::S<front_end_model_view::IsProceed>>> =
-        my_signal::m::S::default();
-    use_context_provider(|| sender);
-
-    if state.is_signed_in.read().is_some() {
-        navigator().push(Route::CompanyAndBranchSelection {});
+    match model.navigator.read() {
+        ui_model::Navigator::Auth(_) => {
+            navigator().push(Route::SignIn {});
+        }
+        ui_model::Navigator::CompanyBranchSelection(_) => {
+            navigator().push(Route::CompanyAndBranchSelection {});
+        }
+        ui_model::Navigator::Home => todo!(),
     }
 
     rsx! {
@@ -109,39 +93,40 @@ fn AuthenticationPage() -> Element {
 
 #[component]
 fn SignIn() -> Element {
-    let state = consume_context::<StateOfEveryThing>();
-    let auth_state = consume_context::<front_end_model_view::AuthFeatureState<my_signals::m::S>>();
-    let local_state = consume_context::<front_end_model_view::SignInState<my_signals::m::S>>();
-    let sender = consume_context::<
-        my_signal::m::S<Option<mpsc_sender::m::S<front_end_model_view::IsProceed>>>,
-    >();
+    let (model, commander) = consume_context::<TheAll>();
+    let auth_state = model.page_root.page_auth.auth_feature_state;
+    let local_state = model.page_root.page_auth.page_sign_in;
 
     let sign_up = move |_| {
         navigator().push(Route::SignUp {});
     };
 
-    let state1 = state.clone();
-    let local_state1 = local_state.clone();
-    let auth_state1 = auth_state.clone();
+    let commander1 = commander.clone();
+    let commander2 = commander.clone();
+    let commander3 = commander.clone();
+
+    let consent_callback = move |consent: process_manager::UserConsent| {
+        commander3
+            .clone()
+            .send(ui_model::Message::SignIn(ui_effect::sign_in::Msg::Consent(
+                consent,
+            )));
+    };
 
     rsx! {
         div {
             Dialog {
-                sender: sender.clone(),
+                consent_callback,
                 operation_name: "sign in",
                 show_dialog: local_state.show_dialog.clone(),
             }
             input {
                 placeholder: "User ID",
                 oninput: move |event| {
-                    auth_state1.user_id.set(event.value());
-                    state1
+                    commander1
                         .clone()
-                        .sign_in(
-                            my_signal::m::S::default(),
-                            false,
-                            local_state1.clone(),
-                            auth_state1.clone(),
+                        .send(
+                            ui_model::Message::SignIn(ui_effect::sign_in::Msg::UserId(event.value())),
                         );
                 },
                 value: auth_state.user_id.read(),
@@ -151,9 +136,9 @@ fn SignIn() -> Element {
             label { {local_state.user_password_error.read()} }
             button {
                 onclick: move |_| {
-                    state
+                    commander2
                         .clone()
-                        .sign_in(sender.clone(), true, local_state.clone(), auth_state.clone())
+                        .send(ui_model::Message::SignIn(ui_effect::sign_in::Msg::Submit));
                 },
                 "Sign In"
             }
@@ -164,42 +149,43 @@ fn SignIn() -> Element {
 
 #[component]
 fn SignUp() -> Element {
-    let state = consume_context::<StateOfEveryThing>();
-    let auth_state = consume_context::<front_end_model_view::AuthFeatureState<my_signals::m::S>>();
-    let local_state = consume_context::<front_end_model_view::SignUpState<my_signals::m::S>>();
-    let sender = consume_context::<
-        my_signal::m::S<Option<mpsc_sender::m::S<front_end_model_view::IsProceed>>>,
-    >();
+    let (model, commander) = consume_context::<TheAll>();
+    let auth_state = model.page_root.page_auth.auth_feature_state;
+    let local_state = model.page_root.page_auth.page_sign_up;
 
     let sign_in = move |_| {
         navigator().push(Route::SignIn {});
     };
 
-    let state1 = state.clone();
-    let state2 = state.clone();
-    let local_state1 = local_state.clone();
-    let local_state2 = local_state.clone();
-    let auth_state1 = auth_state.clone();
-    let auth_state2 = auth_state.clone();
+    let commander1 = commander.clone();
+    let commander2 = commander.clone();
+    let commander3 = commander.clone();
+    let commander4 = commander.clone();
+
+    let consent_callback = move |consent: process_manager::UserConsent| {
+        commander4
+            .clone()
+            .send(ui_model::Message::SignUp(ui_effect::sign_up::Msg::Consent(
+                consent,
+            )));
+    };
 
     rsx! {
         div {
             Dialog {
-                sender: sender.clone(),
+                consent_callback,
                 operation_name: "sign up",
                 show_dialog: local_state.show_dialog.clone(),
             }
             input {
                 placeholder: "Name (Optional)",
                 oninput: move |event| {
-                    local_state1.user_name.set(event.value());
-                    state1
+                    commander1
                         .clone()
-                        .sign_up(
-                            my_signal::m::S::default(),
-                            false,
-                            local_state1.clone(),
-                            auth_state1.clone(),
+                        .send(
+                            ui_model::Message::SignUp(
+                                ui_effect::sign_up::Msg::UserName(event.value()),
+                            ),
                         );
                 },
                 value: local_state.user_name.read(),
@@ -208,14 +194,10 @@ fn SignUp() -> Element {
             input {
                 placeholder: "User Id",
                 oninput: move |event| {
-                    auth_state2.user_id.set(event.value());
-                    state2
+                    commander2
                         .clone()
-                        .sign_up(
-                            my_signal::m::S::default(),
-                            false,
-                            local_state2.clone(),
-                            auth_state2.clone(),
+                        .send(
+                            ui_model::Message::SignUp(ui_effect::sign_up::Msg::UserId(event.value())),
                         );
                 },
                 value: auth_state.user_id.read(),
@@ -224,9 +206,9 @@ fn SignUp() -> Element {
             PasswordInput { password: auth_state.user_password.clone() }
             button {
                 onclick: move |_| {
-                    state
+                    commander3
                         .clone()
-                        .sign_up(sender.clone(), true, local_state.clone(), auth_state.clone())
+                        .send(ui_model::Message::SignUp(ui_effect::sign_up::Msg::Submit));
                 },
                 "Sign Up"
             }
@@ -265,104 +247,136 @@ fn PasswordInput(password: my_signal::m::S<String>) -> Element {
 
 #[component]
 fn ErrorStack() -> Element {
-    let state = consume_context::<StateOfEveryThing>();
+    let (model, commander) = consume_context::<TheAll>();
 
-    let err = state.external_errors.read();
+    let err = model.external_errors.read();
     if err.is_empty() {
         return rsx!();
     }
 
     rsx! {
         div {
-            button { onclick: move |_| { state.external_errors.set(String::new()) }, "X" }
+            button { onclick: move |_| { commander.clone().send(ui_model::Message::CloseError) },
+                "X"
+            }
             label { {err} }
         }
     }
 }
 
 #[component]
-fn Home() -> Element {
+fn MyHome() -> Element {
     rsx! {}
-}
-
-enum ActiveForm {
-    None,
-    CreateCompany,
-    CreateCompanyBranch,
 }
 
 #[component]
 fn CompanyAndBranchSelection() -> Element {
-    let state = consume_context::<StateOfEveryThing>();
+    let (model, commander) = consume_context::<TheAll>();
 
-    let mut show_active_form = use_signal(|| ActiveForm::None);
-    let mut selected_company_id = use_signal(|| None);
+    let local_state = model
+        .page_root
+        .page_after_auth
+        .page_company_branch_selection
+        .list;
 
-    let local_state = <my_signals::m::S as AllSignalTypes>::CompanyAndBranchList::default();
+    let selected_company = model
+        .page_root
+        .page_after_auth
+        .page_company_branch_selection
+        .selected_company;
 
-    let state1 = state.clone();
-    let local_state1 = local_state.clone();
-
-    let mut cleanup = use_signal(|| None);
-
-    use_effect(move || {
-        let c = state1
-            .clone()
-            .list_company_and_branch_listener(local_state1.clone());
-        state1.clone().list_company_and_branch(local_state1.clone());
-
-        cleanup.set(Some(c));
-    });
-
-    use_drop(move || {
-        if let Some(c) = cleanup.take() {
-            c();
-        }
-    });
+    let commander1 = commander.clone();
+    let commander2 = commander.clone();
+    let commander3 = commander.clone();
+    let commander4 = commander.clone();
 
     rsx! {
         div {
-            match *show_active_form.read() {
-                ActiveForm::None => rsx! {},
-                ActiveForm::CreateCompany => rsx! {
-                    CreateCompany { show_form: show_active_form }
-                },
-                ActiveForm::CreateCompanyBranch => rsx! {
-                    CreateCompanyBranch { show_form: show_active_form , company_uuid: selected_company_id.read().clone().unwrap()}
-                },
+            match model.navigator.read() {
+                ui_model::Navigator::CompanyBranchSelection(n) => {
+                    match n {
+                        ui_model::CompanyBranchSelection::None => rsx! {},
+                        ui_model::CompanyBranchSelection::CreateCompany => rsx! {
+                            CreateCompany {}
+                        },
+                        ui_model::CompanyBranchSelection::CreateCompanyBranch => rsx! {
+                            CreateCompanyBranch {}
+                        },
+                    }
+                }
+                _ => rsx! {},
             }
-            button { onclick: move |_| show_active_form.set(ActiveForm::CreateCompany),
+
+            button {
+                onclick: move |_| {
+                    commander1
+                        .clone()
+                        .send(
+                            ui_model::Message::CompanyAndBranchSelection(
+                                ui_effect::company_and_branch_selection::Msg::ShowCreateCompany,
+                            ),
+                        )
+                },
                 "Add New Company"
             }
 
             div {
                 for company in local_state.read() {
-                    div {
-                        button {
-                            onclick: move |_| {
-                                if *selected_company_id.read() == Some(company.uuid.clone()) {
-                                    selected_company_id.set(None);
-                                } else {
-                                    selected_company_id.set(Some(company.uuid.clone()));
-                                }
-                            },
-                            "{company.name}"
-                        }
-
-                        if *selected_company_id.read() == Some(company.uuid.clone()) {
-                            button { onclick: move |_| show_active_form.set(ActiveForm::CreateCompanyBranch),
-                                "Add New Branch"
+                    {
+                        let commander2 = commander.clone();
+                        let commander3 = commander.clone();
+                        rsx! {
+                            button {
+                                onclick: move |_| {
+                                    commander2
+                                        .clone()
+                                        .send(
+                                            ui_model::Message::CompanyAndBranchSelection(
+                                                ui_effect::company_and_branch_selection::Msg::SelectedCompany(
+                                                    company.uuid.clone(),
+                                                ),
+                                            ),
+                                        );
+                                },
+                                "{company.name}"
                             }
-                            div {
-                                for branch in company.branches {
-                                    button {
-                                        onclick: {
-                                            let selected_company_branch = state.selected_company_branch.clone();
-                                            move |_| {
-                                                selected_company_branch.set(Some(branch.uuid.clone()));
+
+                            if selected_company.read() == Some(company.uuid.clone()) {
+                                button {
+                                    onclick: move |_| {
+                                        commander3
+                                            .clone()
+                                            .send(
+                                                ui_model::Message::CompanyAndBranchSelection(
+                                                    ui_effect::company_and_branch_selection::Msg::ShowCreateCompanyBranch,
+                                                ),
+                                            )
+                                    },
+                                    "Add New Branch"
+                                }
+                                div {
+                                    for branch in company.branches {
+                                        {
+                                            let commander4 = commander.clone();
+                                            rsx! {
+                                                button {
+                                                    onclick: {
+                                                        move |_| {
+                                                            commander4
+                                                                .clone()
+                                                                .send(
+                                                                    ui_model::Message::CompanyAndBranchSelection(
+                                                                        ui_effect::company_and_branch_selection::Msg::SelectedCompanyBranch(
+                                                                            branch.uuid.clone(),
+                                                                        ),
+                                                                    ),
+                                                                )
+                                                        }
+                                                    },
+                                                    "{branch.name}"
+                                                }
                                             }
-                                        },
-                                        "{branch.name}"
+                                        }
                                     }
                                 }
                             }
@@ -375,42 +389,64 @@ fn CompanyAndBranchSelection() -> Element {
 }
 
 #[component]
-fn CreateCompany(show_form: Signal<ActiveForm>) -> Element {
-    let state = consume_context::<StateOfEveryThing>();
-    let local_state = front_end_model_view::CreateCompanyState::<my_signals::m::S>::default();
+fn CreateCompany() -> Element {
+    let (model, commander) = consume_context::<TheAll>();
+    let local_state = model
+        .page_root
+        .page_after_auth
+        .page_company_branch_selection
+        .page_create_company;
 
-    let local_state1 = local_state.clone();
-    let local_state2 = local_state.clone();
+    let commander1 = commander.clone();
+    let commander2 = commander.clone();
+    let commander3 = commander.clone();
 
     rsx! {
         div {
             input {
                 placeholder: "Company Name",
                 oninput: move |event| {
-                    local_state1.company_name.set(event.value());
+                    commander1
+                        .clone()
+                        .send(
+                            ui_model::Message::CreateCompany(
+                                ui_effect::create_company::Msg::Name(event.value()),
+                            ),
+                        );
                 },
                 value: local_state.company_name.read(),
             }
             select {
                 value: local_state.currency.read().as_str(),
                 onchange: move |event| {
-                    local_state2
-                        .currency
-                        .set(db_types::Currency::from_str(event.value().as_str()).unwrap())
+                    commander2
+                        .clone()
+                        .send(
+                            ui_model::Message::CreateCompany(
+                                ui_effect::create_company::Msg::Currency(event.value()),
+                            ),
+                        );
                 },
                 option { value: "USD", "USD" }
                 option { value: "IQD", "IQD" }
             }
             button {
                 onclick: move |_| {
-                    state.clone().create_company(local_state.clone());
-                    show_form.set(ActiveForm::None);
+                    commander3
+                        .clone()
+                        .send(
+                            ui_model::Message::CreateCompany(ui_effect::create_company::Msg::Submit),
+                        );
                 },
                 "Create"
             }
             button {
                 onclick: move |_| {
-                    show_form.set(ActiveForm::None);
+                    commander
+                        .clone()
+                        .send(
+                            ui_model::Message::CreateCompany(ui_effect::create_company::Msg::Close),
+                        );
                 },
                 "X"
             }
@@ -419,35 +455,44 @@ fn CreateCompany(show_form: Signal<ActiveForm>) -> Element {
 }
 
 #[component]
-fn CreateCompanyBranch(show_form: Signal<ActiveForm>, company_uuid: db_types::UuidType) -> Element {
-    let state = consume_context::<StateOfEveryThing>();
-    let local_state = front_end_model_view::CreateCompanyBranchState::<my_signals::m::S>::default();
+fn CreateCompanyBranch() -> Element {
+    let (model, commander) = consume_context::<TheAll>();
+    let local_state = model
+        .page_root
+        .page_after_auth
+        .page_company_branch_selection
+        .page_create_company_branch;
 
-    let sender = my_signal::m::S::default();
+    let commander1 = commander.clone();
+    let commander2 = commander.clone();
+    let commander3 = commander.clone();
+    let commander4 = commander.clone();
+    let commander5 = commander.clone();
 
-    let state1 = state.clone();
-    let local_state1 = local_state.clone();
-    let local_state2 = local_state.clone();
-
-    local_state2.company_belong.set(company_uuid.clone());
+    let consent_callback = move |consent: process_manager::UserConsent| {
+        commander5
+            .clone()
+            .send(ui_model::Message::CreateCompanyBranch(
+                ui_effect::create_company_branch::Msg::Consent(consent),
+            ));
+    };
 
     rsx! {
         div {
             Dialog {
-                sender: sender.clone(),
+                consent_callback,
                 operation_name: "create company branch",
                 show_dialog: local_state.show_dialog.clone(),
             }
             input {
                 placeholder: "Branch Name",
                 oninput: move |event| {
-                    local_state1.branch_name.set(event.value());
-                    state1
+                    commander2
                         .clone()
-                        .create_company_branch(
-                            my_signal::m::S::default(),
-                            false,
-                            local_state1.clone(),
+                        .send(
+                            ui_model::Message::CreateCompanyBranch(
+                                ui_effect::create_company_branch::Msg::Name(event.value()),
+                            ),
                         );
                 },
                 value: local_state.branch_name.read(),
@@ -455,23 +500,38 @@ fn CreateCompanyBranch(show_form: Signal<ActiveForm>, company_uuid: db_types::Uu
             select {
                 value: local_state.currency.read().as_str(),
                 onchange: move |event| {
-                    local_state2
-                        .currency
-                        .set(db_types::Currency::from_str(event.value().as_str()).unwrap())
+                    commander3
+                        .clone()
+                        .send(
+                            ui_model::Message::CreateCompanyBranch(
+                                ui_effect::create_company_branch::Msg::Currency(event.value()),
+                            ),
+                        );
                 },
                 option { value: "USD", "USD" }
                 option { value: "IQD", "IQD" }
             }
             button {
                 onclick: move |_| {
-                    state.clone().create_company_branch(sender.clone(), true, local_state.clone());
-                    show_form.set(ActiveForm::None);
+                    commander4
+                        .clone()
+                        .send(
+                            ui_model::Message::CreateCompanyBranch(
+                                ui_effect::create_company_branch::Msg::Submit,
+                            ),
+                        );
                 },
                 "Create"
             }
             button {
                 onclick: move |_| {
-                    show_form.set(ActiveForm::None);
+                    commander
+                        .clone()
+                        .send(
+                            ui_model::Message::CreateCompanyBranch(
+                                ui_effect::create_company_branch::Msg::Close,
+                            ),
+                        );
                 },
                 "X"
             }
