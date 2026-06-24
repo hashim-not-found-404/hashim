@@ -533,6 +533,8 @@ pub mod sign_up {
                     .user_name
                     .set(local_state.user_name.read());
 
+                *commander_local_state.user_uuid.lock().unwrap() = Some(new_uuid);
+
                 commander_local_state
                     .sender_to_commander
                     .lock()
@@ -542,8 +544,6 @@ pub mod sign_up {
                     ))
                     .await
                     .unwrap();
-
-                *commander_local_state.user_uuid.lock().unwrap() = Some(new_uuid);
             }
             process_manager::IsProceedTheProcess::No => {}
         };
