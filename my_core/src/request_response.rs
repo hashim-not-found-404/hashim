@@ -92,7 +92,7 @@ pub mod push_data {
         pub operation: T,
     }
 
-    #[derive(Debug, Deserialize, Serialize)]
+    #[derive(Debug, Deserialize, Serialize, Clone)]
     pub enum OperationsInput {
         // auth
         SignUp(sign_up::Input),

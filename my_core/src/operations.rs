@@ -12,7 +12,6 @@ pub(crate) trait CacheAndServerType1: Clone {
 
     type Output: CacheAndServerType2;
     async fn state_full_operation<Ch: CacheIO>(&self, state: &cache::State<Ch>) -> Self::Output;
-    fn wrap_input1(self) -> push_data::OperationsInput;
 }
 
 pub(crate) trait CacheAndServerType2 {
@@ -72,21 +71,29 @@ impl push_data::OperationsInput {
         state: &mut cache::State<Ch>,
         subs_to_poke: &mut HashSet<server_methods::Subscribe>,
     ) -> push_data::OperationsResult {
+        state
+            .cache
+            .write_txn_input(&push_data::Txn {
+                txn_number,
+                operation: self.clone(),
+            })
+            .await;
+
         match self {
             push_data::OperationsInput::SignUp(i) => {
-                operation_check_apply_write_handler(txn_number, i, state, subs_to_poke).await
+                operation_check_apply_write_handler(i, state, subs_to_poke).await
             }
             push_data::OperationsInput::SignIn(i) => {
-                operation_check_apply_write_handler(txn_number, i, state, subs_to_poke).await
+                operation_check_apply_write_handler(i, state, subs_to_poke).await
             }
             push_data::OperationsInput::CreateCompany(i) => {
-                operation_check_apply_write_handler(txn_number, i, state, subs_to_poke).await
+                operation_check_apply_write_handler(i, state, subs_to_poke).await
             }
             push_data::OperationsInput::CreateCompanyBranch(i) => {
-                operation_check_apply_write_handler(txn_number, i, state, subs_to_poke).await
+                operation_check_apply_write_handler(i, state, subs_to_poke).await
             }
             push_data::OperationsInput::ListCompanyAndBranch(i) => {
-                operation_check_apply_write_handler(txn_number, i, state, subs_to_poke).await
+                operation_check_apply_write_handler(i, state, subs_to_poke).await
             }
         }
     }
@@ -145,7 +152,6 @@ async fn operation_check_apply_handler<T: CacheAndServerType1, Ch: CacheIO>(
 }
 
 async fn operation_check_apply_write_handler<T: CacheAndServerType1, Ch: CacheIO>(
-    txn_number: u64,
     input: &T,
     state: &mut cache::State<Ch>,
     subs_to_poke: &mut HashSet<server_methods::Subscribe>,
@@ -158,14 +164,6 @@ async fn operation_check_apply_write_handler<T: CacheAndServerType1, Ch: CacheIO
         subs_to_poke,
     )
     .await;
-
-    state
-        .cache
-        .write_txn_input(&push_data::Txn {
-            txn_number,
-            operation: input.clone().wrap_input1(),
-        })
-        .await;
 
     return result.wrap_output();
 }
@@ -294,10 +292,6 @@ pub(crate) mod sign_up {
 
             return Ok(request_response::sign_up::Ok { resource });
         }
-
-        fn wrap_input1(self) -> push_data::OperationsInput {
-            push_data::OperationsInput::SignUp(self)
-        }
     }
 
     impl CacheAndServerType2 for Type3 {
@@ -407,10 +401,6 @@ pub(crate) mod sign_in {
                     password: None,
                 }),
             }
-        }
-
-        fn wrap_input1(self) -> push_data::OperationsInput {
-            push_data::OperationsInput::SignIn(self)
         }
     }
 
@@ -524,10 +514,6 @@ pub(crate) mod create_company {
             Ok(request_response::create_company::Ok {
                 resource: vec![v, v1, v2, v3, v4],
             })
-        }
-
-        fn wrap_input1(self) -> push_data::OperationsInput {
-            push_data::OperationsInput::CreateCompany(self)
         }
     }
 
@@ -676,10 +662,6 @@ pub(crate) mod create_company_branch {
 
             Ok(request_response::create_company_branch::Ok { resource })
         }
-
-        fn wrap_input1(self) -> push_data::OperationsInput {
-            push_data::OperationsInput::CreateCompanyBranch(self)
-        }
     }
 
     impl CacheAndServerType2 for Type3 {
@@ -809,10 +791,6 @@ pub(crate) mod list_company_and_branch {
             Ok(request_response::list_company_and_branch::Ok {
                 resource: resources,
             })
-        }
-
-        fn wrap_input1(self) -> push_data::OperationsInput {
-            push_data::OperationsInput::ListCompanyAndBranch(self)
         }
     }
 
