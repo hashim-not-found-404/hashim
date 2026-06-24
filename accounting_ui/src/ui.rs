@@ -104,10 +104,17 @@ fn SignIn() -> Element {
     let commander1 = commander.clone();
     let commander2 = commander.clone();
     let commander3 = commander.clone();
+    let commander4 = commander.clone();
 
     let consent_callback = move |consent: process_manager::UserConsent| {
         commander3.send(ui_model::Message::SignIn(
             ui_updaters::sign_in::Msg::Consent(consent),
+        ));
+    };
+
+    let password_callback = move |password: String| {
+        commander4.send(ui_model::Message::SignIn(
+            ui_updaters::sign_in::Msg::Password(password),
         ));
     };
 
@@ -131,7 +138,7 @@ fn SignIn() -> Element {
                 value: auth_state.user_id.read(),
             }
             label { {local_state.user_id_error.read()} }
-            PasswordInput { password: auth_state.user_password.clone() }
+            PasswordInput { password_callback }
             label { {local_state.user_password_error.read()} }
             button {
                 onclick: move |_| {
@@ -161,10 +168,17 @@ fn SignUp() -> Element {
     let commander2 = commander.clone();
     let commander3 = commander.clone();
     let commander4 = commander.clone();
+    let commander5 = commander.clone();
 
     let consent_callback = move |consent: process_manager::UserConsent| {
         commander4.send(ui_model::Message::SignUp(
             ui_updaters::sign_up::Msg::Consent(consent),
+        ));
+    };
+
+    let password_callback = move |password: String| {
+        commander5.send(ui_model::Message::SignUp(
+            ui_updaters::sign_up::Msg::Password(password),
         ));
     };
 
@@ -201,7 +215,7 @@ fn SignUp() -> Element {
                 value: auth_state.user_id.read(),
             }
             label { {local_state.user_id_error.read()} }
-            PasswordInput { password: auth_state.user_password.clone() }
+            PasswordInput { password_callback }
             button {
                 onclick: move |_| {
                     commander3
@@ -217,7 +231,8 @@ fn SignUp() -> Element {
 }
 
 #[component]
-fn PasswordInput(password: my_signal::m::S<String>) -> Element {
+fn PasswordInput(password_callback: EventHandler<String>) -> Element {
+    let (model, _) = consume_context::<TheAll>();
     let mut is_password_visible = use_signal(|| false);
 
     let (input_type, icon_type) = match *is_password_visible.read() {
@@ -225,13 +240,13 @@ fn PasswordInput(password: my_signal::m::S<String>) -> Element {
         false => ("password", ICONS_HIDE),
     };
 
-    let password1 = password.clone();
+    let password = model.page_root.page_auth.auth_feature_state.user_password;
     rsx! {
         div {
             input {
                 placeholder: "Password",
                 r#type: input_type,
-                oninput: move |event| password1.set(event.value()),
+                oninput: move |event| password_callback(event.value()),
                 value: password.read(),
             }
             button {
