@@ -279,11 +279,25 @@ where
     type Ws: WSServer;
 }
 
-pub trait AllClientTypes {
+pub trait AllClientTypes: Default + Clone {
     type Rn: RandomNumber;
     type Ws: WebSocketOp;
     type Ed: Coding;
     type Rt: Runtime;
     type Ch: CacheIO;
     type Id: RowId;
+    type Mpsc: MultiProducerSingleConsumer;
+
+    // signals
+    type String: HashimSignal<String>;
+    type Dialog: HashimSignal<ui_model::Dialog>;
+    type Uuid: HashimSignal<db_types::UuidType>;
+    type OptionUuid: HashimSignal<Option<db_types::UuidType>>;
+    type Bool: HashimSignal<bool>;
+    type StringVec: HashimSignal<String>;
+    type Currency: HashimSignal<db_types::Currency>;
+    type Location: HashimSignal<db_types::Location>;
+    type CompanyAndBranchList: HashimSignal<Vec<db_types::Company>>;
+
+    type Navigator: HashimSignal<ui_model::Navigator>;
 }

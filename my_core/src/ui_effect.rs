@@ -1,22 +1,20 @@
 use crate::{prelude::*, ui_updaters::Mvu};
 
-pub(crate) struct CommanderLocalState<As: AllSignalTypes, Mpsc: MultiProducerSingleConsumer> {
+pub(crate) struct CommanderLocalState<At: AllClientTypes, Mpsc: MultiProducerSingleConsumer> {
     pub(crate) sender_to_commander: Mutex<Mpsc::Sender<ui_model::Message>>,
     pub(crate) sender_to_process_manager:
-        Mutex<Mpsc::Sender<process_manager::MessageToProcessManager<As, Mpsc>>>,
+        Mutex<Mpsc::Sender<process_manager::MessageToProcessManager<At, Mpsc>>>,
     pub(crate) user_uuid: Mutex<Option<db_types::UuidType>>,
     pub(crate) selected_company_branch: Mutex<Option<db_types::UuidType>>,
     pub(crate) aborter_to_company_and_branch_listener: Mutex<Option<Box<dyn FnOnce()>>>,
 }
 
-pub struct Commander<As: AllSignalTypes, At: AllClientTypes, Mpsc: MultiProducerSingleConsumer> {
-    _ph: PhantomData<(At, As)>,
+pub struct Commander<At: AllClientTypes, Mpsc: MultiProducerSingleConsumer> {
+    _ph: PhantomData<At>,
     sender: Mpsc::Sender<ui_model::Message>,
 }
 
-impl<As: AllSignalTypes, At: AllClientTypes, Mpsc: MultiProducerSingleConsumer> Clone
-    for Commander<As, At, Mpsc>
-{
+impl<At: AllClientTypes, Mpsc: MultiProducerSingleConsumer> Clone for Commander<At, Mpsc> {
     fn clone(&self) -> Self {
         Self {
             _ph: self._ph.clone(),
@@ -25,21 +23,18 @@ impl<As: AllSignalTypes, At: AllClientTypes, Mpsc: MultiProducerSingleConsumer> 
     }
 }
 
-impl<
-    As: AllSignalTypes + 'static,
-    At: AllClientTypes + 'static,
-    Mpsc: MultiProducerSingleConsumer + 'static,
-> Commander<As, At, Mpsc>
+impl<At: AllClientTypes + 'static, Mpsc: MultiProducerSingleConsumer + 'static>
+    Commander<At, Mpsc>
 {
     pub(crate) fn new(
         receiver_to_error: Mpsc::Receiver<HashimError>,
-        sender_to_process_manager: Mpsc::Sender<process_manager::MessageToProcessManager<As, Mpsc>>,
-        model: ui_model::Model<As>,
+        sender_to_process_manager: Mpsc::Sender<process_manager::MessageToProcessManager<At, Mpsc>>,
+        model: ui_model::Model<At>,
         cache: cache_actor::Cache<At, Mpsc>,
     ) -> Self {
         let (sender_to_commander, receiver_to_commander) = Mpsc::channel();
 
-        listen_to_error_actor::<As, At, Mpsc>(receiver_to_error, model.external_errors.clone());
+        listen_to_error_actor::<At, Mpsc>(receiver_to_error, model.external_errors.clone());
 
         Self::commander_actor(
             receiver_to_commander,
@@ -65,8 +60,8 @@ impl<
     fn commander_actor(
         mut receiver: Mpsc::Receiver<ui_model::Message>,
         sender_to_commander: Mpsc::Sender<ui_model::Message>,
-        sender_to_process_manager: Mpsc::Sender<process_manager::MessageToProcessManager<As, Mpsc>>,
-        model: ui_model::Model<As>,
+        sender_to_process_manager: Mpsc::Sender<process_manager::MessageToProcessManager<At, Mpsc>>,
+        model: ui_model::Model<At>,
         cache: cache_actor::Cache<At, Mpsc>,
     ) {
         At::Rt::spawn_local(async move {
@@ -113,12 +108,11 @@ impl<
 }
 
 fn listen_to_error_actor<
-    As: AllSignalTypes + 'static,
     At: AllClientTypes + 'static,
     Mpsc: MultiProducerSingleConsumer + 'static,
 >(
     mut receiver_to_error: Mpsc::Receiver<HashimError>,
-    external_errors_signal: As::StringVec,
+    external_errors_signal: At::StringVec,
 ) {
     At::Rt::spawn_local(async move {
         loop {

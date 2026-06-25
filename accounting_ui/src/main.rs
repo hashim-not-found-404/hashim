@@ -1,5 +1,4 @@
 mod my_signal;
-mod my_signals;
 mod my_types;
 mod ui;
 

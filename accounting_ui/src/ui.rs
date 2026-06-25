@@ -2,8 +2,8 @@ use crate::prelude::*;
 use dioxus::prelude::*;
 use std::str::FromStr;
 
-type TheModel = ui_model::Model<my_signals::m::S>;
-type TheCommander = ui_effect::Commander<my_signals::m::S, my_types::m::S, actors::m::S>;
+type TheModel = ui_model::Model<my_types::m::S>;
+type TheCommander = ui_effect::Commander<my_types::m::S, actors::m::S>;
 type TheAll = (TheModel, TheCommander);
 
 const ICONS_SHOW: Asset = asset!("/assets/icons/show.png");
@@ -26,8 +26,7 @@ enum Route {
 
 #[component]
 pub fn App() -> Element {
-    let (model, commander): TheAll =
-        ui_construct::new::<my_signals::m::S, my_types::m::S, actors::m::S>();
+    let (model, commander): TheAll = ui_construct::new::<my_types::m::S, actors::m::S>();
     use_context_provider(|| (model, commander));
 
     rsx! {
@@ -41,7 +40,7 @@ pub fn App() -> Element {
 fn Dialog(
     consent_callback: EventHandler<process_manager::UserConsent>,
     operation_name: &'static str,
-    show_dialog: <my_signals::m::S as AllSignalTypes>::Dialog,
+    show_dialog: <my_types::m::S as AllClientTypes>::Dialog,
 ) -> Element {
     let consent_callback1 = consent_callback.clone();
 

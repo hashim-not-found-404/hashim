@@ -1,10 +1,7 @@
 use crate::prelude::*;
 
-pub fn new<
-    As: AllSignalTypes + 'static,
-    At: AllClientTypes + 'static,
-    Mpsc: MultiProducerSingleConsumer + 'static,
->() -> (ui_model::Model<As>, ui_effect::Commander<As, At, Mpsc>) {
+pub fn new<At: AllClientTypes + 'static, Mpsc: MultiProducerSingleConsumer + 'static>()
+-> (ui_model::Model<At>, ui_effect::Commander<At, Mpsc>) {
     let (sender_to_network, receiver_to_network) = Mpsc::channel();
     let (sender_to_cache, receiver_to_cache) = Mpsc::channel();
     let (sender_to_error, receiver_to_error) = Mpsc::channel();
@@ -29,7 +26,7 @@ pub fn new<
 
     let model = ui_model::Model::default();
 
-    let sender_to_process_manager = process_manager::process_manager_actor::<As, At, Mpsc>();
+    let sender_to_process_manager = process_manager::process_manager_actor::<At, Mpsc>();
 
     let commander = ui_effect::Commander::new(
         receiver_to_error,

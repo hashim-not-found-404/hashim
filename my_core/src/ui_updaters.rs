@@ -1,15 +1,11 @@
 use crate::prelude::*;
 
 pub(crate) trait Mvu {
-    async fn update<
-        As: AllSignalTypes + 'static,
-        At: AllClientTypes,
-        Mpsc: MultiProducerSingleConsumer,
-    >(
+    async fn update<At: AllClientTypes + 'static, Mpsc: MultiProducerSingleConsumer>(
         self,
-        model: ui_model::Model<As>,
+        model: ui_model::Model<At>,
         cache: cache_actor::Cache<At, Mpsc>,
-        commander_local_state: Arc<ui_effect::CommanderLocalState<As, Mpsc>>,
+        commander_local_state: Arc<ui_effect::CommanderLocalState<At, Mpsc>>,
     );
 }
 
@@ -25,15 +21,11 @@ pub mod sign_up {
     }
 
     impl Mvu for Msg {
-        async fn update<
-            As: AllSignalTypes + 'static,
-            At: AllClientTypes,
-            Mpsc: MultiProducerSingleConsumer,
-        >(
+        async fn update<At: AllClientTypes + 'static, Mpsc: MultiProducerSingleConsumer>(
             self,
-            model: ui_model::Model<As>,
+            model: ui_model::Model<At>,
             cache: cache_actor::Cache<At, Mpsc>,
-            commander_local_state: Arc<ui_effect::CommanderLocalState<As, Mpsc>>,
+            commander_local_state: Arc<ui_effect::CommanderLocalState<At, Mpsc>>,
         ) {
             match self {
                 Msg::Submit => handle_submit(model, cache, commander_local_state).await,
@@ -68,14 +60,10 @@ pub mod sign_up {
         }
     }
 
-    async fn handle_submit<
-        As: AllSignalTypes + 'static,
-        At: AllClientTypes,
-        Mpsc: MultiProducerSingleConsumer,
-    >(
-        model: ui_model::Model<As>,
+    async fn handle_submit<At: AllClientTypes + 'static, Mpsc: MultiProducerSingleConsumer>(
+        model: ui_model::Model<At>,
         mut cache: cache_actor::Cache<At, Mpsc>,
-        commander_local_state: Arc<ui_effect::CommanderLocalState<As, Mpsc>>,
+        commander_local_state: Arc<ui_effect::CommanderLocalState<At, Mpsc>>,
     ) {
         let feature_state = model.page_root.page_auth.auth_feature_state.clone();
         let local_state = model.page_root.page_auth.page_sign_up.clone();
@@ -203,14 +191,10 @@ pub mod sign_up {
         feature_state.is_loading.reset();
     }
 
-    async fn handle_check<
-        As: AllSignalTypes + 'static,
-        At: AllClientTypes,
-        Mpsc: MultiProducerSingleConsumer,
-    >(
-        model: ui_model::Model<As>,
+    async fn handle_check<At: AllClientTypes + 'static, Mpsc: MultiProducerSingleConsumer>(
+        model: ui_model::Model<At>,
         mut cache: cache_actor::Cache<At, Mpsc>,
-        commander_local_state: Arc<ui_effect::CommanderLocalState<As, Mpsc>>,
+        commander_local_state: Arc<ui_effect::CommanderLocalState<At, Mpsc>>,
     ) {
         let feature_state = model.page_root.page_auth.auth_feature_state.clone();
         let local_state = model.page_root.page_auth.page_sign_up.clone();
@@ -248,9 +232,9 @@ pub mod sign_up {
         }
     }
 
-    fn handel_apply_result<As: AllSignalTypes, Mpsc: MultiProducerSingleConsumer>(
-        model: &ui_model::Model<As>,
-        commander_local_state: Arc<ui_effect::CommanderLocalState<As, Mpsc>>,
+    fn handel_apply_result<At: AllClientTypes, Mpsc: MultiProducerSingleConsumer>(
+        model: &ui_model::Model<At>,
+        commander_local_state: Arc<ui_effect::CommanderLocalState<At, Mpsc>>,
         result: server_operations::sign_up::Result,
     ) {
         let local_state = model.page_root.page_auth.page_sign_up.clone();
@@ -281,15 +265,11 @@ pub mod sign_in {
     }
 
     impl Mvu for Msg {
-        async fn update<
-            As: AllSignalTypes + 'static,
-            At: AllClientTypes,
-            Mpsc: MultiProducerSingleConsumer,
-        >(
+        async fn update<At: AllClientTypes + 'static, Mpsc: MultiProducerSingleConsumer>(
             self,
-            model: ui_model::Model<As>,
+            model: ui_model::Model<At>,
             cache: cache_actor::Cache<At, Mpsc>,
-            commander_local_state: Arc<ui_effect::CommanderLocalState<As, Mpsc>>,
+            commander_local_state: Arc<ui_effect::CommanderLocalState<At, Mpsc>>,
         ) {
             match self {
                 Msg::Submit => {
@@ -322,14 +302,10 @@ pub mod sign_in {
         }
     }
 
-    async fn handle_submit<
-        As: AllSignalTypes + 'static,
-        At: AllClientTypes,
-        Mpsc: MultiProducerSingleConsumer,
-    >(
-        model: ui_model::Model<As>,
+    async fn handle_submit<At: AllClientTypes + 'static, Mpsc: MultiProducerSingleConsumer>(
+        model: ui_model::Model<At>,
         mut cache: cache_actor::Cache<At, Mpsc>,
-        commander_local_state: Arc<ui_effect::CommanderLocalState<As, Mpsc>>,
+        commander_local_state: Arc<ui_effect::CommanderLocalState<At, Mpsc>>,
     ) {
         let feature_state = &model.page_root.page_auth.auth_feature_state;
         let local_state = &model.page_root.page_auth.page_sign_in;
@@ -441,14 +417,10 @@ pub mod sign_in {
         feature_state.is_loading.reset();
     }
 
-    async fn handle_check<
-        As: AllSignalTypes + 'static,
-        At: AllClientTypes,
-        Mpsc: MultiProducerSingleConsumer,
-    >(
-        model: ui_model::Model<As>,
+    async fn handle_check<At: AllClientTypes + 'static, Mpsc: MultiProducerSingleConsumer>(
+        model: ui_model::Model<At>,
         mut cache: cache_actor::Cache<At, Mpsc>,
-        commander_local_state: Arc<ui_effect::CommanderLocalState<As, Mpsc>>,
+        commander_local_state: Arc<ui_effect::CommanderLocalState<At, Mpsc>>,
     ) {
         let feature_state = &model.page_root.page_auth.auth_feature_state;
         let local_state = &model.page_root.page_auth.page_sign_in;
@@ -477,9 +449,9 @@ pub mod sign_in {
         }
     }
 
-    fn handel_apply_result<As: AllSignalTypes, Mpsc: MultiProducerSingleConsumer>(
-        model: &ui_model::Model<As>,
-        commander_local_state: Arc<ui_effect::CommanderLocalState<As, Mpsc>>,
+    fn handel_apply_result<At: AllClientTypes, Mpsc: MultiProducerSingleConsumer>(
+        model: &ui_model::Model<At>,
+        commander_local_state: Arc<ui_effect::CommanderLocalState<At, Mpsc>>,
         result: operations::sign_in::Type4,
     ) {
         match result.0 {
@@ -521,15 +493,11 @@ pub mod company_and_branch_selection {
     }
 
     impl Mvu for Msg {
-        async fn update<
-            As: AllSignalTypes + 'static,
-            At: AllClientTypes,
-            Mpsc: MultiProducerSingleConsumer,
-        >(
+        async fn update<At: AllClientTypes + 'static, Mpsc: MultiProducerSingleConsumer>(
             self,
-            model: ui_model::Model<As>,
+            model: ui_model::Model<At>,
             cache: cache_actor::Cache<At, Mpsc>,
-            commander_local_state: Arc<ui_effect::CommanderLocalState<As, Mpsc>>,
+            commander_local_state: Arc<ui_effect::CommanderLocalState<At, Mpsc>>,
         ) {
             match self {
                 Msg::Subscribe => {
@@ -610,13 +578,12 @@ pub mod company_and_branch_selection {
     }
 
     fn handel_list_company_and_branch_listener<
-        As: AllSignalTypes + 'static,
         At: AllClientTypes + 'static,
         Mpsc: MultiProducerSingleConsumer + 'static,
     >(
-        model: ui_model::Model<As>,
+        model: ui_model::Model<At>,
         mut cache: cache_actor::Cache<At, Mpsc>,
-        commander_local_state: Arc<ui_effect::CommanderLocalState<As, Mpsc>>,
+        commander_local_state: Arc<ui_effect::CommanderLocalState<At, Mpsc>>,
     ) -> impl FnOnce() {
         let component_id = At::Rn::generate() as u16;
         let mut cache1 = cache.clone();
@@ -688,13 +655,12 @@ pub mod company_and_branch_selection {
     }
 
     async fn handel_list_company_and_branch<
-        As: AllSignalTypes + 'static,
         At: AllClientTypes + 'static,
         Mpsc: MultiProducerSingleConsumer + 'static,
     >(
-        model: ui_model::Model<As>,
+        model: ui_model::Model<At>,
         mut cache: cache_actor::Cache<At, Mpsc>,
-        commander_local_state: Arc<ui_effect::CommanderLocalState<As, Mpsc>>,
+        commander_local_state: Arc<ui_effect::CommanderLocalState<At, Mpsc>>,
     ) {
         let user_uuid = commander_local_state
             .user_uuid
@@ -748,15 +714,11 @@ pub mod create_company {
     }
 
     impl Mvu for Msg {
-        async fn update<
-            As: AllSignalTypes + 'static,
-            At: AllClientTypes,
-            Mpsc: MultiProducerSingleConsumer,
-        >(
+        async fn update<At: AllClientTypes + 'static, Mpsc: MultiProducerSingleConsumer>(
             self,
-            model: ui_model::Model<As>,
+            model: ui_model::Model<At>,
             cache: cache_actor::Cache<At, Mpsc>,
-            commander_local_state: Arc<ui_effect::CommanderLocalState<As, Mpsc>>,
+            commander_local_state: Arc<ui_effect::CommanderLocalState<At, Mpsc>>,
         ) {
             let page_create_company = model
                 .page_root
@@ -776,7 +738,7 @@ pub mod create_company {
         }
     }
 
-    fn handel_close<As: AllSignalTypes>(model: ui_model::Model<As>) {
+    fn handel_close<At: AllClientTypes>(model: ui_model::Model<At>) {
         let page_create_company = model
             .page_root
             .page_after_auth
@@ -793,14 +755,10 @@ pub mod create_company {
             ));
     }
 
-    async fn handle_submit<
-        As: AllSignalTypes + 'static,
-        At: AllClientTypes,
-        Mpsc: MultiProducerSingleConsumer,
-    >(
-        model: ui_model::Model<As>,
+    async fn handle_submit<At: AllClientTypes + 'static, Mpsc: MultiProducerSingleConsumer>(
+        model: ui_model::Model<At>,
         mut cache: cache_actor::Cache<At, Mpsc>,
-        commander_local_state: Arc<ui_effect::CommanderLocalState<As, Mpsc>>,
+        commander_local_state: Arc<ui_effect::CommanderLocalState<At, Mpsc>>,
     ) {
         let data = commander_local_state
             .user_uuid
@@ -846,15 +804,11 @@ pub mod create_company_branch {
     }
 
     impl Mvu for Msg {
-        async fn update<
-            As: AllSignalTypes + 'static,
-            At: AllClientTypes,
-            Mpsc: MultiProducerSingleConsumer,
-        >(
+        async fn update<At: AllClientTypes + 'static, Mpsc: MultiProducerSingleConsumer>(
             self,
-            model: ui_model::Model<As>,
+            model: ui_model::Model<At>,
             cache: cache_actor::Cache<At, Mpsc>,
-            commander_local_state: Arc<ui_effect::CommanderLocalState<As, Mpsc>>,
+            commander_local_state: Arc<ui_effect::CommanderLocalState<At, Mpsc>>,
         ) {
             match self {
                 Msg::Submit => handle_submit(model, cache, commander_local_state).await,
@@ -893,14 +847,10 @@ pub mod create_company_branch {
         }
     }
 
-    async fn handle_submit<
-        As: AllSignalTypes + 'static,
-        At: AllClientTypes,
-        Mpsc: MultiProducerSingleConsumer,
-    >(
-        model: ui_model::Model<As>,
+    async fn handle_submit<At: AllClientTypes + 'static, Mpsc: MultiProducerSingleConsumer>(
+        model: ui_model::Model<At>,
         mut cache: cache_actor::Cache<At, Mpsc>,
-        commander_local_state: Arc<ui_effect::CommanderLocalState<As, Mpsc>>,
+        commander_local_state: Arc<ui_effect::CommanderLocalState<At, Mpsc>>,
     ) {
         let local_state = model
             .page_root
@@ -1022,14 +972,10 @@ pub mod create_company_branch {
         local_state.is_loading.reset();
     }
 
-    async fn handle_check<
-        As: AllSignalTypes + 'static,
-        At: AllClientTypes,
-        Mpsc: MultiProducerSingleConsumer,
-    >(
-        model: ui_model::Model<As>,
+    async fn handle_check<At: AllClientTypes + 'static, Mpsc: MultiProducerSingleConsumer>(
+        model: ui_model::Model<At>,
         mut cache: cache_actor::Cache<At, Mpsc>,
-        commander_local_state: Arc<ui_effect::CommanderLocalState<As, Mpsc>>,
+        commander_local_state: Arc<ui_effect::CommanderLocalState<At, Mpsc>>,
     ) {
         let local_state = model
             .page_root
@@ -1084,7 +1030,7 @@ pub mod create_company_branch {
         }
     }
 
-    fn handel_close<As: AllSignalTypes>(model: ui_model::Model<As>) {
+    fn handel_close<At: AllClientTypes>(model: ui_model::Model<At>) {
         let page_create_company_branch = model
             .page_root
             .page_after_auth

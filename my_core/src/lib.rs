@@ -22,12 +22,8 @@ pub mod prelude {
 
     pub use crate::mbg; // this macro for dev only
     pub use crate::{
-        ext_trait::*,
-        request_response::*,
-        server_methods::WSServer,
-        traits::*,
-        ui_model::{AllSignalTypes, HashimSignal},
-        *,
+        ext_trait::*, request_response::*, server_methods::WSServer, traits::*,
+        ui_model::HashimSignal, *,
     };
 
     pub(crate) use crate::{

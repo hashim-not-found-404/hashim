@@ -8,100 +8,86 @@ pub trait HashimSignal<T: Default>: Default + Clone {
     fn set(&self, v: T);
 }
 
-pub trait AllSignalTypes: Default + Clone {
-    type String: HashimSignal<String>;
-    type Dialog: HashimSignal<Dialog>;
-    type Uuid: HashimSignal<db_types::UuidType>;
-    type OptionUuid: HashimSignal<Option<db_types::UuidType>>;
-    type Bool: HashimSignal<bool>;
-    type StringVec: HashimSignal<String>;
-    type Currency: HashimSignal<db_types::Currency>;
-    type Location: HashimSignal<db_types::Location>;
-    type CompanyAndBranchList: HashimSignal<Vec<db_types::Company>>;
-
-    type Navigator: HashimSignal<Navigator>;
-}
-
 // model
 
 #[derive(Default, Clone)]
-pub struct Model<As: AllSignalTypes> {
-    pub navigator: As::Navigator,
-    pub page_root: PageRoot<As>,
-    pub external_errors: As::StringVec,
+pub struct Model<At: AllClientTypes> {
+    pub navigator: At::Navigator,
+    pub page_root: PageRoot<At>,
+    pub external_errors: At::StringVec,
 }
 
 #[derive(Default, Clone)]
-pub struct PageRoot<As: AllSignalTypes> {
-    pub page_auth: PageAuth<As>,
-    pub page_after_auth: PageAfterAuth<As>,
+pub struct PageRoot<At: AllClientTypes> {
+    pub page_auth: PageAuth<At>,
+    pub page_after_auth: PageAfterAuth<At>,
 }
 
 #[derive(Default, Clone)]
-pub struct PageAuth<As: AllSignalTypes> {
-    pub auth_feature_state: AuthFeatureState<As>,
-    pub page_sign_up: PageSignUp<As>,
-    pub page_sign_in: PageSignIn<As>,
+pub struct PageAuth<At: AllClientTypes> {
+    pub auth_feature_state: AuthFeatureState<At>,
+    pub page_sign_up: PageSignUp<At>,
+    pub page_sign_in: PageSignIn<At>,
 }
 
 #[derive(Default, Clone)]
-pub struct PageAfterAuth<As: AllSignalTypes> {
-    pub user_id: As::String,
-    pub user_name: As::String,
+pub struct PageAfterAuth<At: AllClientTypes> {
+    pub user_id: At::String,
+    pub user_name: At::String,
 
-    pub page_company_branch_selection: PageCompanyBranchSelection<As>,
-    pub page_home: PageHome<As>,
+    pub page_company_branch_selection: PageCompanyBranchSelection<At>,
+    pub page_home: PageHome<At>,
 }
 
 #[derive(Default, Clone)]
-pub struct PageCompanyBranchSelection<As: AllSignalTypes> {
-    pub list: As::CompanyAndBranchList,
-    pub selected_company: As::OptionUuid,
+pub struct PageCompanyBranchSelection<At: AllClientTypes> {
+    pub list: At::CompanyAndBranchList,
+    pub selected_company: At::OptionUuid,
 
-    pub page_create_company: PageCreateCompany<As>,
-    pub page_create_company_branch: PageCreateCompanyBranch<As>,
+    pub page_create_company: PageCreateCompany<At>,
+    pub page_create_company_branch: PageCreateCompanyBranch<At>,
 }
 
 #[derive(Default, Clone)]
-pub struct PageHome<As: AllSignalTypes> {
-    selected_branch: As::String,
+pub struct PageHome<At: AllClientTypes> {
+    selected_branch: At::String,
 }
 
 #[derive(Default, Clone)]
-pub struct AuthFeatureState<As: AllSignalTypes> {
-    pub user_id: As::String,
-    pub user_password: As::String,
-    pub is_loading: As::Bool,
+pub struct AuthFeatureState<At: AllClientTypes> {
+    pub user_id: At::String,
+    pub user_password: At::String,
+    pub is_loading: At::Bool,
 }
 
 #[derive(Default, Clone)]
-pub struct PageSignIn<As: AllSignalTypes> {
-    pub show_dialog: As::Dialog,
-    pub user_id_error: As::String,
-    pub user_password_error: As::String,
+pub struct PageSignIn<At: AllClientTypes> {
+    pub show_dialog: At::Dialog,
+    pub user_id_error: At::String,
+    pub user_password_error: At::String,
 }
 
 #[derive(Default, Clone)]
-pub struct PageSignUp<As: AllSignalTypes> {
-    pub show_dialog: As::Dialog,
-    pub user_name: As::String,
-    pub user_id_error: As::String,
-    pub user_name_error: As::String,
+pub struct PageSignUp<At: AllClientTypes> {
+    pub show_dialog: At::Dialog,
+    pub user_name: At::String,
+    pub user_id_error: At::String,
+    pub user_name_error: At::String,
 }
 
 #[derive(Default, Clone)]
-pub struct PageCreateCompany<As: AllSignalTypes> {
-    pub company_name: As::String,
-    pub currency: As::Currency,
+pub struct PageCreateCompany<At: AllClientTypes> {
+    pub company_name: At::String,
+    pub currency: At::Currency,
 }
 
 #[derive(Default, Clone)]
-pub struct PageCreateCompanyBranch<As: AllSignalTypes> {
-    pub is_loading: As::Bool,
-    pub show_dialog: As::Dialog,
-    pub currency: As::Currency,
-    pub branch_name: As::String,
-    pub location: As::Location,
+pub struct PageCreateCompanyBranch<At: AllClientTypes> {
+    pub is_loading: At::Bool,
+    pub show_dialog: At::Dialog,
+    pub currency: At::Currency,
+    pub branch_name: At::String,
+    pub location: At::Location,
 }
 
 // navigator types

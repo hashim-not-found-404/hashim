@@ -7,10 +7,10 @@ pub(crate) enum ProcessName {
     CreateCompanyBranch,
 }
 
-pub(crate) enum Event<As: AllSignalTypes, Mpsc: MultiProducerSingleConsumer> {
+pub(crate) enum Event<At: AllClientTypes, Mpsc: MultiProducerSingleConsumer> {
     Subscribe {
         sender: Mpsc::Sender<ProceedResult>,
-        dialog: As::Dialog,
+        dialog: At::Dialog,
     },
     GotResponseFromCache {
         is_response_ok: bool,
@@ -20,14 +20,14 @@ pub(crate) enum Event<As: AllSignalTypes, Mpsc: MultiProducerSingleConsumer> {
     },
 }
 
-pub(crate) enum MessageToProcessManager<As: AllSignalTypes, Mpsc: MultiProducerSingleConsumer> {
+pub(crate) enum MessageToProcessManager<At: AllClientTypes, Mpsc: MultiProducerSingleConsumer> {
     FromUser {
         process_name: ProcessName,
         consent: UserConsent,
     },
     FromProcess {
         process_name: ProcessName,
-        event: Event<As, Mpsc>,
+        event: Event<At, Mpsc>,
     },
 }
 
@@ -68,27 +68,22 @@ pub(crate) fn is_proceed(
 }
 
 pub(crate) fn process_manager_actor<
-    As: AllSignalTypes + 'static,
-    At: AllClientTypes,
+    At: AllClientTypes + 'static,
     Mpsc: MultiProducerSingleConsumer + 'static,
->() -> Mpsc::Sender<MessageToProcessManager<As, Mpsc>> {
+>() -> Mpsc::Sender<MessageToProcessManager<At, Mpsc>> {
     let (sender, mut receiver) = Mpsc::channel();
 
     At::Rt::spawn_local(async move {
-        struct ProcessInfo<
-            As: AllSignalTypes,
-            At: AllClientTypes,
-            Mpsc: MultiProducerSingleConsumer,
-        > {
+        struct ProcessInfo<At: AllClientTypes, Mpsc: MultiProducerSingleConsumer> {
             sender: Mpsc::Sender<ProceedResult>,
-            dialog: As::Dialog,
+            dialog: At::Dialog,
             timer_handel: <At::Rt as Runtime>::JoinHandel<()>,
             is_response_from_server: Option<bool>,
             is_ok: Option<bool>,
             is_user_want_to_proceed: UserConsent,
         }
 
-        let mut process_states = HashMap::<ProcessName, ProcessInfo<As, At, Mpsc>>::new();
+        let mut process_states = HashMap::<ProcessName, ProcessInfo<At, Mpsc>>::new();
 
         loop {
             let msg = receiver.recv().await.unwrap();
@@ -107,7 +102,7 @@ pub(crate) fn process_manager_actor<
                     match consent {
                         UserConsent::WaitForServerResponse => {
                             table.timer_handel =
-                                timer_handel::<As, At>(As::Dialog::clone(&table.dialog));
+                                timer_handel::<At>(At::Dialog::clone(&table.dialog));
                         }
                         UserConsent::DontWaitForServerResponse => {}
                     };
@@ -120,7 +115,7 @@ pub(crate) fn process_manager_actor<
                 } => {
                     match event {
                         Event::Subscribe { sender, dialog } => {
-                            let timer_handel = timer_handel::<As, At>(As::Dialog::clone(&dialog));
+                            let timer_handel = timer_handel::<At>(At::Dialog::clone(&dialog));
 
                             process_states.insert(
                                 process_name,
@@ -184,8 +179,8 @@ pub(crate) fn process_manager_actor<
     sender
 }
 
-fn timer_handel<As: AllSignalTypes + 'static, At: AllClientTypes>(
-    dialog_clone: <As as AllSignalTypes>::Dialog,
+fn timer_handel<At: AllClientTypes + 'static>(
+    dialog_clone: <At as AllClientTypes>::Dialog,
 ) -> <At::Rt as Runtime>::JoinHandel<()> {
     At::Rt::abortable_spawn_local(async move {
         At::Rt::sleep(Duration::from_secs(5)).await;
