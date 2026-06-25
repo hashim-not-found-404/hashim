@@ -1,7 +1,8 @@
+pub mod my_types;
 pub mod web_socket_server;
 
 pub mod prelude {
-    pub use crate::web_socket_server;
+    pub use crate::{my_types, web_socket_server};
     pub(crate) use adapters::prelude::*;
     pub(crate) use db_client_cockroach::prelude::*;
     pub(crate) use my_core::prelude::*;
@@ -12,24 +13,8 @@ use actix_web::{
     App, HttpRequest, HttpResponse, HttpServer,
     web::{self, Data, Payload},
 };
-use my_core::server_operations::AllServerTypes;
 
-struct MyAllTypes;
-impl AllServerTypes for MyAllTypes {
-    type Db = db::S;
-    type Cli = db_client::S;
-    type Jwt = jwt::m::S;
-    type Auth = authentication::m::S;
-    type Rg = functions::m::S;
-    type Id = row_id::m::S;
-    type Mpsc = actors::m::S;
-    type Rt = runtime::m::S;
-    type De = encode_decode::m::S;
-    type Rn = random_number::m::S;
-    type Ws = web_socket_server::m::S;
-}
-
-type ServerMethodsType = server_methods::ServerMethods<MyAllTypes>;
+type ServerMethodsType = server_methods::ServerMethods<my_types::m::S>;
 
 #[actix_web::main]
 async fn main() {

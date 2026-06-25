@@ -261,6 +261,24 @@ pub trait CacheIO: Sized {
     >;
 }
 
+pub trait AllServerTypes
+where
+    for<'a> <Self::Cli as DBClient>::Txn<'a>:
+        DBTransaction<RowId = Self::Id, HashedPassword = Self::Auth>,
+{
+    type Db: Database<Client = Self::Cli>;
+    type Cli: DBClient<RowId = Self::Id, HashedPassword = Self::Auth>;
+    type Jwt: JWT<UserId = Self::Id, JsonWebToken = String>;
+    type Auth: HashedPassword;
+    type Rg: Regex;
+    type Id: RowId;
+    type Mpsc: MultiProducerSingleConsumer;
+    type Rt: Runtime;
+    type De: Coding;
+    type Rn: RandomNumber;
+    type Ws: WSServer;
+}
+
 pub trait AllClientTypes {
     type Rn: RandomNumber;
     type Ws: WebSocketOp;

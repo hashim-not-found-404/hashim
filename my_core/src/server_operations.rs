@@ -2,25 +2,6 @@ use crate::prelude::*;
 use crate::server_methods::Resource;
 use std::result::Result as StdResult;
 
-pub trait AllServerTypes
-where
-    for<'a> <Self::Cli as DBClient>::Txn<'a>:
-        DBTransaction<RowId = Self::Id, HashedPassword = Self::Auth>,
-{
-    type Db: Database<Client = Self::Cli>;
-    type Cli: DBClient<RowId = Self::Id, HashedPassword = Self::Auth>;
-    // type Txn: DBTransaction<RowId = Self::Id, HashedPassword = Self::Auth>;
-    type Jwt: JWT<UserId = Self::Id, JsonWebToken = String>;
-    type Auth: HashedPassword;
-    type Rg: Regex;
-    type Id: RowId;
-    type Mpsc: MultiProducerSingleConsumer;
-    type Rt: Runtime;
-    type De: Coding;
-    type Rn: RandomNumber;
-    type Ws: WSServer;
-}
-
 pub(crate) trait ServerOperations {
     type Ok;
     type Error;
