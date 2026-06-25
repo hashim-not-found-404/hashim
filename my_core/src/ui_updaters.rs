@@ -343,11 +343,12 @@ pub mod sign_in {
         local_state.user_id_error.reset();
         local_state.user_password_error.reset();
 
+        let user_id = feature_state.user_id.read();
         let mut receiver_to_response = cache
             .send_to_cache_actor(
                 cache_actor::CachingStrategy::WriteCacheAndServer,
                 request_response::sign_in::Input {
-                    user_id: feature_state.user_id.read(),
+                    user_id: user_id.clone(),
                     password: feature_state.user_password.read(),
                 }
                 .wrap_input(),
@@ -428,11 +429,7 @@ pub mod sign_in {
                             .await
                             .unwrap();
 
-                        model
-                            .page_root
-                            .page_after_auth
-                            .user_id
-                            .set(feature_state.user_id.read());
+                        model.page_root.page_after_auth.user_id.set(user_id);
                     }
                     None => local_state.show_dialog.set(ui_model::Dialog::Error),
                 }
