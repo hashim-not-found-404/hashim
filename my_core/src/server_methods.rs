@@ -374,32 +374,32 @@ async fn push_data<At: AllServerTypes>(
         let result = match &transaction.operation {
             push_data::OperationsInput::SignUp(input) => push_data::OperationsResult::SignUp(
                 input
-                    .handel_operation::<At>(side_effects, client, &jwt)
+                    .handle_operation::<At>(side_effects, client, &jwt)
                     .await?,
             ),
             push_data::OperationsInput::SignIn(input) => push_data::OperationsResult::SignIn(
                 input
-                    .handel_operation::<At>(side_effects, client, &jwt)
+                    .handle_operation::<At>(side_effects, client, &jwt)
                     .await?,
             ),
             push_data::OperationsInput::CreateCompany(input) => {
                 push_data::OperationsResult::CreateCompany(
                     input
-                        .handel_operation::<At>(side_effects, client, &jwt)
+                        .handle_operation::<At>(side_effects, client, &jwt)
                         .await?,
                 )
             }
             push_data::OperationsInput::CreateCompanyBranch(input) => {
                 push_data::OperationsResult::CreateCompanyBranch(
                     input
-                        .handel_operation::<At>(side_effects, client, &jwt)
+                        .handle_operation::<At>(side_effects, client, &jwt)
                         .await?,
                 )
             }
             push_data::OperationsInput::ListCompanyAndBranch(input) => {
                 push_data::OperationsResult::ListCompanyAndBranch(
                     input
-                        .handel_operation::<At>(side_effects, client, &jwt)
+                        .handle_operation::<At>(side_effects, client, &jwt)
                         .await?,
                 )
             }

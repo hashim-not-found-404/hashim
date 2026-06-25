@@ -6,7 +6,7 @@ pub(crate) trait ServerOperations {
     type Ok;
     type Error;
 
-    async fn handel_operation<At: AllServerTypes>(
+    async fn handle_operation<At: AllServerTypes>(
         &self,
         side_effects: &mut server_methods::SideEffects<At::Id>,
         client: &mut At::Cli,
@@ -50,7 +50,7 @@ pub mod sign_up {
         type Ok = Ok;
         type Error = Error;
 
-        async fn handel_operation<At: AllServerTypes>(
+        async fn handle_operation<At: AllServerTypes>(
             &self,
             side_effects: &mut server_methods::SideEffects<At::Id>,
             client: &mut At::Cli,
@@ -168,7 +168,7 @@ pub mod sign_in {
         type Ok = Ok;
         type Error = Error;
 
-        async fn handel_operation<At: AllServerTypes>(
+        async fn handle_operation<At: AllServerTypes>(
             &self,
             side_effects: &mut server_methods::SideEffects<At::Id>,
             client: &mut At::Cli,
@@ -235,7 +235,7 @@ pub mod create_company {
         type Ok = Ok;
         type Error = Error;
 
-        async fn handel_operation<At: AllServerTypes>(
+        async fn handle_operation<At: AllServerTypes>(
             &self,
             side_effects: &mut server_methods::SideEffects<At::Id>,
             client: &mut At::Cli,
@@ -380,7 +380,7 @@ pub mod list_company_and_branch {
         type Ok = Ok;
         type Error = Error;
 
-        async fn handel_operation<At: AllServerTypes>(
+        async fn handle_operation<At: AllServerTypes>(
             &self,
             side_effects: &mut server_methods::SideEffects<At::Id>,
             client: &mut At::Cli,
@@ -465,7 +465,7 @@ pub mod create_company_branch {
         type Ok = Ok;
         type Error = Error;
 
-        async fn handel_operation<At: AllServerTypes>(
+        async fn handle_operation<At: AllServerTypes>(
             &self,
             side_effects: &mut server_methods::SideEffects<At::Id>,
             client: &mut At::Cli,

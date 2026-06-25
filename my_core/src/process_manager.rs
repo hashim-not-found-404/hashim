@@ -75,7 +75,7 @@ pub(crate) fn process_manager_actor<At: AllClientTypes>()
         struct ProcessInfo<At: AllClientTypes> {
             sender: <At::Mpsc as MultiProducerSingleConsumer>::Sender<ProceedResult>,
             dialog: At::Dialog,
-            timer_handel: <At::Rt as Runtime>::JoinHandel<()>,
+            timer_handle: <At::Rt as Runtime>::JoinHandle<()>,
             is_response_from_server: Option<bool>,
             is_ok: Option<bool>,
             is_user_want_to_proceed: UserConsent,
@@ -95,12 +95,12 @@ pub(crate) fn process_manager_actor<At: AllClientTypes>()
 
                     table.dialog.set(ui_model::Dialog::Hide);
                     table.is_user_want_to_proceed = consent;
-                    table.timer_handel.abort().await;
+                    table.timer_handle.abort().await;
 
                     match consent {
                         UserConsent::WaitForServerResponse => {
-                            table.timer_handel =
-                                timer_handel::<At>(At::Dialog::clone(&table.dialog));
+                            table.timer_handle =
+                                timer_handle::<At>(At::Dialog::clone(&table.dialog));
                         }
                         UserConsent::DontWaitForServerResponse => {}
                     };
@@ -113,14 +113,14 @@ pub(crate) fn process_manager_actor<At: AllClientTypes>()
                 } => {
                     match event {
                         Event::Subscribe { sender, dialog } => {
-                            let timer_handel = timer_handel::<At>(At::Dialog::clone(&dialog));
+                            let timer_handle = timer_handle::<At>(At::Dialog::clone(&dialog));
 
                             process_states.insert(
                                 process_name,
                                 ProcessInfo {
                                     sender,
                                     dialog,
-                                    timer_handel,
+                                    timer_handle,
                                     is_response_from_server: None,
                                     is_ok: None,
                                     is_user_want_to_proceed: UserConsent::WaitForServerResponse,
@@ -158,13 +158,13 @@ pub(crate) fn process_manager_actor<At: AllClientTypes>()
                 match proceed {
                     IsProceed::Wait => {}
                     IsProceed::Yes => {
-                        process_info.timer_handel.abort().await;
+                        process_info.timer_handle.abort().await;
                         process_info.dialog.set(ui_model::Dialog::Hide);
                         process_info.sender.send(ProceedResult::Yes).await.unwrap();
                         process_states.remove(&process_name);
                     }
                     IsProceed::No => {
-                        process_info.timer_handel.abort().await;
+                        process_info.timer_handle.abort().await;
                         process_info.dialog.set(ui_model::Dialog::Hide);
                         process_info.sender.send(ProceedResult::No).await.unwrap();
                         process_states.remove(&process_name);
@@ -177,9 +177,9 @@ pub(crate) fn process_manager_actor<At: AllClientTypes>()
     sender
 }
 
-fn timer_handel<At: AllClientTypes>(
+fn timer_handle<At: AllClientTypes>(
     dialog_clone: <At as AllClientTypes>::Dialog,
-) -> <At::Rt as Runtime>::JoinHandel<()> {
+) -> <At::Rt as Runtime>::JoinHandle<()> {
     At::Rt::abortable_spawn_local(async move {
         At::Rt::sleep(Duration::from_secs(5)).await;
         dialog_clone.set(ui_model::Dialog::Show);

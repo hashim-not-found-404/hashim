@@ -6,10 +6,10 @@ pub mod m {
     pub struct S;
 
     impl Runtime for S {
-        type JoinHandel<F> = join_handel::m::S<F>;
+        type JoinHandle<F> = join_handle::m::S<F>;
 
-        fn abortable_spawn_local<F: Future + 'static>(fut: F) -> Self::JoinHandel<F::Output> {
-            Self::JoinHandel::new(tokio::task::spawn_local(fut))
+        fn abortable_spawn_local<F: Future + 'static>(fut: F) -> Self::JoinHandle<F::Output> {
+            Self::JoinHandle::new(tokio::task::spawn_local(fut))
         }
 
         fn spawn_local<F>(fut: F)
@@ -57,13 +57,13 @@ pub mod m {
     pub struct S;
 
     impl Runtime for S {
-        type JoinHandel<T> = join_handel::m::S<T>;
+        type JoinHandle<T> = join_handle::m::S<T>;
 
-        fn abortable_spawn_local<F: Future + 'static>(fut: F) -> Self::JoinHandel<F::Output> {
+        fn abortable_spawn_local<F: Future + 'static>(fut: F) -> Self::JoinHandle<F::Output> {
             let (sender_to_abort, mut receiver_to_abort) = actors::m::S::channel();
-            let join_handel = Self::JoinHandel::new(sender_to_abort);
+            let join_handle = Self::JoinHandle::new(sender_to_abort);
 
-            let output_place = join_handel.output.clone();
+            let output_place = join_handle.output.clone();
             spawn_local(async move {
                 match Self::select(fut, receiver_to_abort.recv()).await {
                     Either::One(a) => *output_place.lock().await = Some(a),
@@ -71,7 +71,7 @@ pub mod m {
                 }
             });
 
-            join_handel
+            join_handle
         }
 
         fn spawn_local<F: Future + 'static>(fut: F) {

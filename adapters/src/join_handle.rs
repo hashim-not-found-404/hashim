@@ -4,7 +4,7 @@ pub mod m {
 
     pub struct S<T>(pub tokio::task::JoinHandle<T>);
 
-    impl<T> JoinHandel for S<T> {
+    impl<T> JoinHandle for S<T> {
         async fn abort(&mut self) {
             self.0.abort();
         }
@@ -28,7 +28,7 @@ pub mod m {
         aborter: mpsc_sender::m::S<()>,
     }
 
-    impl<T> JoinHandel for S<T> {
+    impl<T> JoinHandle for S<T> {
         async fn abort(&mut self) {
             self.aborter.send(()).await;
         }

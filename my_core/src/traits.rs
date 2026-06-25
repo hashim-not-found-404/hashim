@@ -161,15 +161,15 @@ pub enum Either<L, R> {
     Two(R),
 }
 
-pub trait JoinHandel {
+pub trait JoinHandle {
     fn abort(&mut self) -> impl Future<Output = ()>;
 }
 
 pub trait Runtime {
-    type JoinHandel<T>: JoinHandel;
+    type JoinHandle<T>: JoinHandle;
 
     #[must_use = "this `output` you may want to abort"]
-    fn abortable_spawn_local<F>(fut: F) -> Self::JoinHandel<F::Output>
+    fn abortable_spawn_local<F>(fut: F) -> Self::JoinHandle<F::Output>
     where
         F: Future + 'static;
 

@@ -101,7 +101,7 @@ pub mod sign_up {
 
         let model1 = model.clone();
         let commander_local_state1 = commander_local_state.clone();
-        let mut handel = At::Rt::abortable_spawn_local(async move {
+        let mut handle = At::Rt::abortable_spawn_local(async move {
             loop {
                 match receiver_to_response.recv().await.unwrap() {
                     cache_actor::Response::CloseTheChannel => break,
@@ -138,7 +138,7 @@ pub mod sign_up {
                         }
 
                         let result = operations::sign_up::Type4::unwrap_output(data.data);
-                        handel_apply_result(&model1, commander_local_state1.clone(), result);
+                        handle_apply_result(&model1, commander_local_state1.clone(), result);
                     }
                 }
             }
@@ -188,7 +188,7 @@ pub mod sign_up {
             process_manager::ProceedResult::No => {}
         };
 
-        handel.abort().await;
+        handle.abort().await;
         feature_state.is_loading.reset();
     }
 
@@ -228,12 +228,12 @@ pub mod sign_up {
             cache_actor::Response::ServerCannotBeReached => {}
             cache_actor::Response::Data(data) => {
                 let result = operations::sign_up::Type4::unwrap_output(data.data);
-                handel_apply_result(&model, commander_local_state.clone(), result);
+                handle_apply_result(&model, commander_local_state.clone(), result);
             }
         }
     }
 
-    fn handel_apply_result<At: AllClientTypes>(
+    fn handle_apply_result<At: AllClientTypes>(
         model: &ui_model::Model<At>,
         commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
         result: server_operations::sign_up::Result,
@@ -335,7 +335,7 @@ pub mod sign_in {
 
         let model1 = model.clone();
         let commander_local_state1 = commander_local_state.clone();
-        let mut handel = At::Rt::abortable_spawn_local(async move {
+        let mut handle = At::Rt::abortable_spawn_local(async move {
             loop {
                 match receiver_to_response.recv().await.unwrap() {
                     cache_actor::Response::CloseTheChannel => break,
@@ -372,7 +372,7 @@ pub mod sign_in {
                         }
 
                         let result = operations::sign_in::Type4::unwrap_output(data.data);
-                        handel_apply_result(&model1, commander_local_state1.clone(), result);
+                        handle_apply_result(&model1, commander_local_state1.clone(), result);
                     }
                 }
             }
@@ -415,7 +415,7 @@ pub mod sign_in {
             process_manager::ProceedResult::No => {}
         };
 
-        handel.abort().await;
+        handle.abort().await;
         feature_state.is_loading.reset();
     }
 
@@ -446,12 +446,12 @@ pub mod sign_in {
             cache_actor::Response::ServerCannotBeReached => {}
             cache_actor::Response::Data(data) => {
                 let result = operations::sign_in::Type4::unwrap_output(data.data);
-                handel_apply_result(&model, commander_local_state.clone(), result);
+                handle_apply_result(&model, commander_local_state.clone(), result);
             }
         }
     }
 
-    fn handel_apply_result<At: AllClientTypes>(
+    fn handle_apply_result<At: AllClientTypes>(
         model: &ui_model::Model<At>,
         commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
         result: operations::sign_in::Type4,
@@ -510,14 +510,14 @@ pub mod company_and_branch_selection {
                             ui_model::CompanyBranchSelection::None,
                         ));
 
-                    handel_list_company_and_branch(
+                    handle_list_company_and_branch(
                         model.clone(),
                         cache.clone(),
                         commander_local_state.clone(),
                     )
                     .await;
 
-                    let listener_aborter = handel_list_company_and_branch_listener(
+                    let listener_aborter = handle_list_company_and_branch_listener(
                         model,
                         cache,
                         commander_local_state.clone(),
@@ -580,7 +580,7 @@ pub mod company_and_branch_selection {
         }
     }
 
-    fn handel_list_company_and_branch_listener<At: AllClientTypes>(
+    fn handle_list_company_and_branch_listener<At: AllClientTypes>(
         model: ui_model::Model<At>,
         mut cache: cache_actor::Cache<At>,
         commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
@@ -588,7 +588,7 @@ pub mod company_and_branch_selection {
         let component_id = At::Rn::generate() as u16;
         let mut cache1 = cache.clone();
 
-        let mut handel = At::Rt::abortable_spawn_local(async move {
+        let mut handle = At::Rt::abortable_spawn_local(async move {
             let mut receiver_to_poke = cache
                 .send_subs_to_cache_actor(
                     component_id,
@@ -648,13 +648,13 @@ pub mod company_and_branch_selection {
 
         move || {
             At::Rt::spawn_local(async move {
-                handel.abort().await;
+                handle.abort().await;
                 cache1.send_unsubs_to_cache_actor(component_id).await;
             });
         }
     }
 
-    async fn handel_list_company_and_branch<At: AllClientTypes>(
+    async fn handle_list_company_and_branch<At: AllClientTypes>(
         model: ui_model::Model<At>,
         mut cache: cache_actor::Cache<At>,
         commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
@@ -727,7 +727,7 @@ pub mod create_company {
 
             match self {
                 Msg::Submit => handle_submit(model, cache, commander_local_state).await,
-                Msg::Close => handel_close(model),
+                Msg::Close => handle_close(model),
                 Msg::Name(i) => page_create_company.company_name.set(i),
                 Msg::Currency(i) => page_create_company
                     .currency
@@ -736,7 +736,7 @@ pub mod create_company {
         }
     }
 
-    fn handel_close<At: AllClientTypes>(model: ui_model::Model<At>) {
+    fn handle_close<At: AllClientTypes>(model: ui_model::Model<At>) {
         let page_create_company = model
             .page_root
             .page_after_auth
@@ -786,7 +786,7 @@ pub mod create_company {
             )
             .await;
 
-        handel_close(model);
+        handle_close(model);
     }
 }
 
@@ -823,7 +823,7 @@ pub mod create_company_branch {
                         .await
                         .unwrap();
                 }
-                Msg::Close => handel_close(model),
+                Msg::Close => handle_close(model),
                 Msg::Name(i) => {
                     model
                         .page_root
@@ -894,7 +894,7 @@ pub mod create_company_branch {
 
         let model1 = model.clone();
         let commander_local_state1 = commander_local_state.clone();
-        let mut handel = At::Rt::abortable_spawn_local(async move {
+        let mut handle = At::Rt::abortable_spawn_local(async move {
             loop {
                 match receiver_to_response.recv().await.unwrap() {
                     cache_actor::Response::CloseTheChannel => break,
@@ -962,12 +962,12 @@ pub mod create_company_branch {
         match receiver_to_process.recv().await.unwrap() {
             process_manager::ProceedResult::Yes => {
                 local_state.is_loading.reset();
-                handel_close(model);
+                handle_close(model);
             }
             process_manager::ProceedResult::No => {}
         };
 
-        handel.abort().await;
+        handle.abort().await;
         local_state.is_loading.reset();
     }
 
@@ -1029,7 +1029,7 @@ pub mod create_company_branch {
         }
     }
 
-    fn handel_close<At: AllClientTypes>(model: ui_model::Model<At>) {
+    fn handle_close<At: AllClientTypes>(model: ui_model::Model<At>) {
         let page_create_company_branch = model
             .page_root
             .page_after_auth
