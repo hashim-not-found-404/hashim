@@ -1,4 +1,7 @@
-use crate::prelude::*;
+use crate::{
+    prelude::*,
+    server_operations::{AllServerTypes, ServerOperations},
+};
 
 fn check_nonce_if_valid<Id: RowId>(nonce: &Id, is_used: bool) -> bool {
     if is_used {
@@ -29,424 +32,29 @@ fn check_nonce_if_valid<Id: RowId>(nonce: &Id, is_used: bool) -> bool {
     true
 }
 
-pub struct ServerMethods<Db, Cli, Jwt, Auth, Rg, Id, Mpsc, Rt, De, Rn>
-where
-    Db: Database<Client = Cli>,
-    Cli: DBClient,
-    for<'a> Cli::Txn<'a>: DBTransaction<RowId = Id, HashedPassword = Auth>,
-    Jwt: JWT<UserId = Id, JsonWebToken = String>,
-    Auth: HashedPassword,
-    Rg: Regex,
-    Id: RowId,
-    Mpsc: MultiProducerSingleConsumer,
-    Rt: Runtime,
-    De: Coding,
-    Rn: RandomNumber,
-{
-    _ph: PhantomData<(Cli, Auth, Rg, Id, Mpsc, Rt, De, Rn)>,
-    database: Db,
-    jwt: Jwt,
-    pub sender_to_broker: Mpsc::Sender<MessageToBroker<Id, Mpsc>>,
+pub struct ServerMethods<At: AllServerTypes> {
+    database: At::Db,
+    jwt: At::Jwt,
+    pub sender_to_broker:
+        <At::Mpsc as MultiProducerSingleConsumer>::Sender<MessageToBroker<At::Id, At::Mpsc>>,
 }
 
-impl<Db, Cli, Jwt, Auth, Rg, Id, Mpsc, Rt, De, Rn>
-    ServerMethods<Db, Cli, Jwt, Auth, Rg, Id, Mpsc, Rt, De, Rn>
-where
-    Db: Database<Client = Cli> + 'static,
-    Cli: DBClient<RowId = Id, HashedPassword = Auth> + 'static,
-    for<'a> Cli::Txn<'a>: DBTransaction<RowId = Id, HashedPassword = Auth>,
-    Jwt: JWT<UserId = Id, JsonWebToken = String> + 'static,
-    Auth: HashedPassword + 'static,
-    Rg: Regex + 'static,
-    Id: RowId + 'static,
-    Mpsc: MultiProducerSingleConsumer + 'static,
-    Rt: Runtime + 'static,
-    De: Coding + 'static,
-    Rn: RandomNumber + 'static,
-{
+impl<At: AllServerTypes + 'static> ServerMethods<At> {
     pub async fn new() -> Self {
-        let (sender_to_broker, receiver_to_broker) = Mpsc::channel();
+        let (sender_to_broker, receiver_to_broker) = At::Mpsc::channel();
         Self::broker_actor(receiver_to_broker);
 
         Self {
-            _ph: PhantomData,
-            database: Db::new().await,
-            jwt: Jwt::new(),
+            database: At::Db::new().await,
+            jwt: At::Jwt::new(),
             sender_to_broker,
         }
     }
 
-    async fn sign_up(
-        &self,
-        client: &mut Cli,
-        side_effects: &mut SideEffects<Id>,
-        input: &sign_up::Input,
-    ) -> Result<sign_up::Result, DynamicError> {
-        let mut errr = sign_up::Error::default();
-
-        let new_uuid = match Id::try_from(&input.new_uuid) {
-            Ok(new_uuid) => {
-                side_effects.authenticated_users.insert(new_uuid.clone());
-                Some(new_uuid)
-            }
-            Err(_) => {
-                errr.new_uuid = Some(RowIdError::Invalid);
-                None
-            }
-        };
-
-        if errr != sign_up::Error::default() {
-            return Ok(Err(errr));
-        }
-
-        let hashed_password = Auth::sign_up(&input.password);
-
-        let mut txn = client.begin_transaction().await?;
-
-        let result = (|| async {
-            let new_uuid = new_uuid.unwrap();
-
-            let (is_new_uuid_exist, is_user_id_exist) =
-                txn.read_sign_up(&new_uuid, &input.user_id).await?;
-
-            if is_new_uuid_exist {
-                errr.new_uuid = Some(RowIdError::Duplicated);
-            }
-
-            if is_user_id_exist {
-                errr.user_id = Some(sign_up::UserIdError::Duplicated);
-            }
-
-            if errr != sign_up::Error::default() {
-                return Ok(Err(errr));
-            }
-
-            txn.write_sign_up(&new_uuid, &input.user_id, &hashed_password, &input.name)
-                .await?;
-
-            let mut resource = Vec::new();
-
-            resource.push(ResourceInfo {
-                row_uuid: new_uuid.to_uuid(),
-                resource: Resource::Jwt(self.jwt.sign(&new_uuid)),
-            });
-            resource.push(ResourceInfo {
-                row_uuid: new_uuid.to_uuid(),
-                resource: Resource::TableUserFieldId(input.user_id.clone()),
-            });
-            if let Some(name) = input.name.clone() {
-                resource.push(ResourceInfo {
-                    row_uuid: new_uuid.to_uuid(),
-                    resource: Resource::TableUserFieldName(name),
-                });
-            }
-
-            Ok(Ok(sign_up::Ok { resource }))
-        })()
-        .await;
-
-        if let Ok(Ok(_)) = &result {
-            let _ = txn.commit_transaction().await?;
-        } else {
-            let _ = txn.rollback_transaction().await?;
-        }
-
-        return result;
-    }
-
-    async fn sign_in(
-        &self,
-        client: &mut Cli,
-        side_effects: &mut SideEffects<Id>,
-        input: &sign_in::Input,
-    ) -> Result<sign_in::Result, DynamicError> {
-        let mut errr = sign_in::Error::default();
-
-        let (user_rowid, password_hash) = match client.read_sign_in(&input.user_id).await? {
-            Some(p) => p,
-            None => {
-                errr.user_id = Some(sign_in::UserIdError::NotExist);
-                return Ok(Err(errr));
-            }
-        };
-
-        match Auth::sign_in(&input.password, &password_hash) {
-            true => {
-                side_effects.authenticated_users.insert(user_rowid.clone());
-                side_effects.users_to_resubscribe.insert(user_rowid.clone());
-
-                let mut resource = Vec::new();
-
-                resource.push(ResourceInfo {
-                    row_uuid: user_rowid.to_uuid(),
-                    resource: Resource::Jwt(self.jwt.sign(&user_rowid)),
-                });
-
-                return Ok(Ok(sign_in::Ok { resource }));
-            }
-            false => {
-                errr.password = Some(sign_in::PasswordError::WrongPassword);
-                return Ok(Err(errr));
-            }
-        };
-    }
-
-    async fn create_company(
-        &self,
-        client: &mut Cli,
-        side_effects: &mut SideEffects<Id>,
-        input: &create_company::Input,
-    ) -> Result<create_company::Result, DynamicError> {
-        let mut errr = create_company::Error::default();
-
-        let new_uuid = match Id::try_from(&input.new_uuid) {
-            Ok(new_uuid) => Some(new_uuid),
-            Err(_) => {
-                errr.new_uuid = Some(RowIdError::Invalid);
-                None
-            }
-        };
-
-        let user_uuid = match Id::try_from(&input.user_uuid) {
-            Ok(user_uuid) => {
-                if side_effects.authenticated_users.get(&user_uuid).is_none() {
-                    errr.user_uuid = Some(UserUuidError::NotAuthenticated);
-                };
-                Some(user_uuid)
-            }
-            Err(_) => {
-                errr.user_uuid = Some(UserUuidError::Invalid);
-                None
-            }
-        };
-
-        if errr != create_company::Error::default() {
-            return Ok(Err(errr));
-        }
-
-        let mut txn = client.begin_transaction().await?;
-
-        let result = (|| async {
-            let new_uuid = new_uuid.unwrap();
-            let user_uuid = user_uuid.unwrap();
-
-            let is_new_uuid_used = txn.read_create_company(&new_uuid).await?;
-
-            if is_new_uuid_used {
-                errr.new_uuid = Some(RowIdError::Duplicated);
-                return Ok(Err(errr));
-            }
-
-            const ROLE: db_types::Role = db_types::Role::Manager;
-
-            txn.write_create_company(
-                &new_uuid,
-                &user_uuid,
-                &ROLE,
-                &input.company_name,
-                &input.currency,
-            )
-            .await?;
-
-            side_effects.users_to_resubscribe.insert(user_uuid);
-
-            let v = ResourceInfo {
-                row_uuid: new_uuid.to_uuid(),
-                resource: server_methods::Resource::TableCompanyFieldName(
-                    input.company_name.clone(),
-                ),
-            };
-            let v1 = ResourceInfo {
-                row_uuid: new_uuid.to_uuid(),
-                resource: server_methods::Resource::TableCompanyFieldCurrency(
-                    input.currency.clone(),
-                ),
-            };
-            let v2 = ResourceInfo {
-                row_uuid: new_uuid.to_uuid(),
-                resource: server_methods::Resource::TableAccessControlForCompanyFieldRole(ROLE),
-            };
-            let v3 = ResourceInfo {
-                row_uuid: new_uuid.to_uuid(),
-                resource: server_methods::Resource::TableAccessControlForCompanyFieldUser(
-                    input.user_uuid.clone(),
-                ),
-            };
-            let v4 = ResourceInfo {
-                row_uuid: new_uuid.to_uuid(),
-                resource: server_methods::Resource::TableAccessControlForCompanyFieldDataGroup(
-                    new_uuid.to_uuid(),
-                ),
-            };
-
-            side_effects
-                .resource_to_broadcast_for_company
-                .insert_push(new_uuid.clone(), v.clone());
-            side_effects
-                .resource_to_broadcast_for_company
-                .insert_push(new_uuid.clone(), v1.clone());
-            side_effects
-                .resource_to_broadcast_for_company
-                .insert_push(new_uuid.clone(), v2.clone());
-            side_effects
-                .resource_to_broadcast_for_company
-                .insert_push(new_uuid.clone(), v3.clone());
-            side_effects
-                .resource_to_broadcast_for_company
-                .insert_push(new_uuid.clone(), v4.clone());
-
-            Ok(Ok(create_company::Ok {
-                resource: vec![v, v1, v2, v3, v4],
-            }))
-        })()
-        .await;
-
-        if let Ok(Ok(_)) = &result {
-            let _ = txn.commit_transaction().await?;
-        } else {
-            let _ = txn.rollback_transaction().await?;
-        }
-
-        return result;
-    }
-
-    async fn list_company_and_branch(
-        &self,
-        client: &mut Cli,
-        side_effects: &mut SideEffects<Id>,
-        input: &list_company_and_branch::Input,
-    ) -> Result<list_company_and_branch::Result, DynamicError> {
-        let mut errr = list_company_and_branch::Error::default();
-
-        let user_uuid = match Id::try_from(&input.user_uuid) {
-            Ok(user_uuid) => {
-                if side_effects.authenticated_users.get(&user_uuid).is_none() {
-                    errr.user_uuid = Some(UserUuidError::NotAuthenticated);
-                };
-                Some(user_uuid)
-            }
-            Err(_) => {
-                errr.user_uuid = Some(UserUuidError::Invalid);
-                None
-            }
-        };
-
-        if errr != list_company_and_branch::Error::default() {
-            return Ok(Err(errr));
-        }
-
-        let resource = client
-            .read_list_company_and_branch(&user_uuid.unwrap())
-            .await?;
-
-        Ok(Ok(list_company_and_branch::Ok { resource }))
-    }
-
-    async fn create_company_branch(
-        &self,
-        client: &mut Cli,
-        side_effects: &mut SideEffects<Id>,
-        input: &create_company_branch::Input,
-    ) -> Result<create_company_branch::Result, DynamicError> {
-        let mut errr = create_company_branch::Error::default();
-
-        let new_uuid = match Id::try_from(&input.new_uuid) {
-            Ok(new_uuid) => Some(new_uuid),
-            Err(_) => {
-                errr.new_uuid = Some(RowIdError::Invalid);
-                None
-            }
-        };
-
-        let user_uuid = match Id::try_from(&input.user_uuid) {
-            Ok(user_uuid) => {
-                if side_effects.authenticated_users.get(&user_uuid).is_none() {
-                    errr.user_uuid = Some(UserUuidError::NotAuthenticated);
-                };
-                Some(user_uuid)
-            }
-            Err(_) => {
-                errr.user_uuid = Some(UserUuidError::Invalid);
-                None
-            }
-        };
-
-        let company_belong = match Id::try_from(&input.company_belong) {
-            Ok(company_belong) => Some(company_belong),
-            Err(_) => {
-                errr.company_belong =
-                    Some(create_company_branch::CompanyBelongError::IdInWrongFormat);
-                None
-            }
-        };
-
-        if errr != create_company_branch::Error::default() {
-            return Ok(Err(errr));
-        }
-
-        let new_uuid = new_uuid.unwrap();
-        let user_uuid = user_uuid.unwrap();
-        let company_belong = company_belong.unwrap();
-
-        let mut txn = client.begin_transaction().await?;
-
-        let result = (|| async {
-            todo!("get the role of the user to check it");
-            let (is_new_uuid_used, is_company_exist, is_branch_name_used) = txn
-                .read_create_company_branch(&new_uuid, &company_belong, &input.branch_name)
-                .await?;
-
-            if is_new_uuid_used {
-                errr.new_uuid = Some(RowIdError::Duplicated);
-            }
-
-            if is_company_exist {
-                errr.company_belong = Some(create_company_branch::CompanyBelongError::NotExist);
-            }
-
-            if is_branch_name_used {
-                errr.branch_name = Some(create_company_branch::BranchNameError::Duplicated);
-            }
-
-            if !input.location.is_valid() {
-                errr.location = Some(create_company_branch::LocationError::Invalid);
-            }
-
-            if errr != create_company_branch::Error::default() {
-                return Ok(Err(errr));
-            }
-
-            txn.write_create_company_branch(
-                &new_uuid,
-                &company_belong,
-                &input.branch_name,
-                &input.location,
-                &input.currency,
-                &user_uuid,
-                &db_types::Role::Manager,
-            )
-            .await?;
-
-            side_effects.users_to_resubscribe.insert(user_uuid);
-
-            todo!("add to the resource");
-            Ok(Ok(create_company_branch::Ok { resource: todo!() }))
-        })()
-        .await;
-
-        if let Ok(Ok(_)) = &result {
-            let _ = txn.commit_transaction().await?;
-        } else {
-            let _ = txn.rollback_transaction().await?;
-        }
-
-        return result;
-    }
-
     async fn push_data(
         &self,
-        client: &mut Cli,
-        side_effects: &mut SideEffects<Id>,
+        client: &mut At::Cli,
+        side_effects: &mut SideEffects<At::Id>,
         input: &push_data::Input,
     ) -> Result<push_data::Result, DynamicError> {
         let mut the_return_result = push_data::Result {
@@ -470,7 +78,7 @@ where
             }
         }
 
-        let nonce = match Id::try_from(&input.nonce) {
+        let nonce = match At::Id::try_from(&input.nonce) {
             Ok(nonce) => nonce,
             Err(_) => {
                 the_return_result.nonce = Err(NonceError::Invalid);
@@ -480,7 +88,7 @@ where
 
         let is_nonce_used = client.write_nonce_if_not_used(&nonce).await?;
 
-        if !check_nonce_if_valid::<Id>(&nonce, is_nonce_used) {
+        if !check_nonce_if_valid::<At::Id>(&nonce, is_nonce_used) {
             the_return_result.nonce = Err(NonceError::Invalid);
         }
 
@@ -491,26 +99,33 @@ where
         for transaction in &input.operations {
             let result = match &transaction.operation {
                 push_data::OperationsInput::SignUp(input) => push_data::OperationsResult::SignUp(
-                    self.sign_up(client, side_effects, input).await?,
+                    input
+                        .handel_operation::<At>(side_effects, client, &self.jwt)
+                        .await?,
                 ),
                 push_data::OperationsInput::SignIn(input) => push_data::OperationsResult::SignIn(
-                    self.sign_in(client, side_effects, input).await?,
+                    input
+                        .handel_operation::<At>(side_effects, client, &self.jwt)
+                        .await?,
                 ),
                 push_data::OperationsInput::CreateCompany(input) => {
                     push_data::OperationsResult::CreateCompany(
-                        self.create_company(client, side_effects, input).await?,
+                        input
+                            .handel_operation::<At>(side_effects, client, &self.jwt)
+                            .await?,
                     )
                 }
-
                 push_data::OperationsInput::CreateCompanyBranch(input) => {
                     push_data::OperationsResult::CreateCompanyBranch(
-                        self.create_company_branch(client, side_effects, input)
+                        input
+                            .handel_operation::<At>(side_effects, client, &self.jwt)
                             .await?,
                     )
                 }
                 push_data::OperationsInput::ListCompanyAndBranch(input) => {
                     push_data::OperationsResult::ListCompanyAndBranch(
-                        self.list_company_and_branch(client, side_effects, input)
+                        input
+                            .handel_operation::<At>(side_effects, client, &self.jwt)
                             .await?,
                     )
                 }
@@ -527,9 +142,9 @@ where
 
     async fn get_table_of_subscribed_data(
         &self,
-        client: &mut Cli,
-        users_uuids: &HashSet<Id>,
-    ) -> Result<AllSubscribes<Id>, DynamicError> {
+        client: &mut At::Cli,
+        users_uuids: &HashSet<At::Id>,
+    ) -> Result<AllSubscribes<At::Id>, DynamicError> {
         let roles = client.read_roles_for_user(users_uuids).await?;
 
         let mut subs = AllSubscribes {
@@ -563,13 +178,14 @@ where
     }
 
     pub fn server_actor<Ws: WSServer + 'static>(self: Arc<Self>, mut session: Ws) {
-        Rt::spawn_local(async move {
+        At::Rt::spawn_local(async move {
             let mut sender_to_broker = self.sender_to_broker.clone();
-            let (sender_to_server, mut receiver_to_server) = Mpsc::channel::<Vec<ResourceInfo>>();
-            let connection_id = Rn::generate();
+            let (sender_to_server, mut receiver_to_server) =
+                At::Mpsc::channel::<Vec<ResourceInfo>>();
+            let connection_id = At::Rn::generate();
 
             loop {
-                let result = Rt::select(session.receive(), receiver_to_server.recv()).await;
+                let result = At::Rt::select(session.receive(), receiver_to_server.recv()).await;
                 match result {
                     Either::One(msg) => {
                         let msg = match msg {
@@ -580,28 +196,30 @@ where
                         match msg {
                             WSMessage::Close => break,
                             WSMessage::Binary(received_data) => {
-                                let input = match De::decode::<messages::FromClient>(&received_data)
-                                {
-                                    Ok(ok) => ok,
-                                    Err(_) => {
-                                        if session
-                                            .send_bin(De::encode(&messages::FromServer::Error(
-                                                HashimError::InvalidDataFormat,
-                                            )))
-                                            .await
-                                            .is_err()
-                                        {
-                                            break;
+                                let input =
+                                    match At::De::decode::<messages::FromClient>(&received_data) {
+                                        Ok(ok) => ok,
+                                        Err(_) => {
+                                            if session
+                                                .send_bin(At::De::encode(
+                                                    &messages::FromServer::Error(
+                                                        HashimError::InvalidDataFormat,
+                                                    ),
+                                                ))
+                                                .await
+                                                .is_err()
+                                            {
+                                                break;
+                                            }
+                                            continue;
                                         }
-                                        continue;
-                                    }
-                                };
+                                    };
 
                                 let mut client = match self.database.get_client().await {
                                     Ok(ok) => ok,
                                     Err(_) => {
                                         if session
-                                            .send_bin(De::encode(&messages::FromServer::Error(
+                                            .send_bin(At::De::encode(&messages::FromServer::Error(
                                                 HashimError::InternalServerError,
                                             )))
                                             .await
@@ -613,13 +231,13 @@ where
                                     }
                                 };
 
-                                let mut side_effects = SideEffects::<Id>::default();
+                                let mut side_effects = SideEffects::<At::Id>::default();
                                 match self.push_data(&mut client, &mut side_effects, &input).await {
                                     Ok(ok) => {
                                         if session
-                                            .send_bin(De::encode(&messages::FromServer::PushData(
-                                                ok,
-                                            )))
+                                            .send_bin(At::De::encode(
+                                                &messages::FromServer::PushData(ok),
+                                            ))
                                             .await
                                             .is_err()
                                         {
@@ -628,7 +246,7 @@ where
                                     }
                                     Err(_) => {
                                         if session
-                                            .send_bin(De::encode(&messages::FromServer::Error(
+                                            .send_bin(At::De::encode(&messages::FromServer::Error(
                                                 HashimError::InternalServerError,
                                             )))
                                             .await
@@ -650,9 +268,11 @@ where
                                         Ok(ok) => ok,
                                         Err(_) => {
                                             if session
-                                                .send_bin(De::encode(&messages::FromServer::Error(
-                                                    HashimError::InternalServerError,
-                                                )))
+                                                .send_bin(At::De::encode(
+                                                    &messages::FromServer::Error(
+                                                        HashimError::InternalServerError,
+                                                    ),
+                                                ))
                                                 .await
                                                 .is_err()
                                             {
@@ -693,7 +313,7 @@ where
                     Either::Two(wraped_resource) => {
                         let resource = wraped_resource.unwrap();
                         if session
-                            .send_bin(De::encode(&messages::FromServer::Resources(resource)))
+                            .send_bin(At::De::encode(&messages::FromServer::Resources(resource)))
                             .await
                             .is_err()
                         {
@@ -712,11 +332,17 @@ where
         });
     }
 
-    pub fn broker_actor(mut receiver_to_broker: Mpsc::Receiver<MessageToBroker<Id, Mpsc>>) {
-        Rt::spawn_local(async move {
-            let mut pool_of_pubsub_for_company: UserSubscribes<Id> = HashMap::with_capacity(1000);
-            let mut pool_of_pubsub_for_branch: UserSubscribes<Id> = HashMap::with_capacity(10000);
-            let mut pool_of_server_facad_channels: UserSenders<Id, Mpsc> =
+    pub fn broker_actor(
+        mut receiver_to_broker: <At::Mpsc as MultiProducerSingleConsumer>::Receiver<
+            MessageToBroker<At::Id, At::Mpsc>,
+        >,
+    ) {
+        At::Rt::spawn_local(async move {
+            let mut pool_of_pubsub_for_company: UserSubscribes<At::Id> =
+                HashMap::with_capacity(1000);
+            let mut pool_of_pubsub_for_branch: UserSubscribes<At::Id> =
+                HashMap::with_capacity(10000);
+            let mut pool_of_server_facad_channels: UserSenders<At::Id, At::Mpsc> =
                 HashMap::with_capacity(10000);
 
             loop {
@@ -774,7 +400,7 @@ where
                         list_of_resources_for_company,
                         list_of_resources_for_branch,
                     } => {
-                        let mut resource_to_send: ListOfResources<Id /* user id */> =
+                        let mut resource_to_send: ListOfResources<At::Id /* user id */> =
                             HashMap::new();
 
                         broker_functions::map_resource_to_subscribes(
@@ -1062,11 +688,11 @@ pub enum MessageToBroker<Id: RowId, Mpsc: MultiProducerSingleConsumer> {
     },
 }
 
-struct SideEffects<Id: RowId> {
-    authenticated_users: HashSet<Id>,
-    resource_to_broadcast_for_company: ListOfResources<Id>,
-    resource_to_broadcast_for_branch: ListOfResources<Id>,
-    users_to_resubscribe: HashSet<Id>,
+pub(crate) struct SideEffects<Id: RowId> {
+    pub(crate) authenticated_users: HashSet<Id>,
+    pub(crate) resource_to_broadcast_for_company: ListOfResources<Id>,
+    pub(crate) resource_to_broadcast_for_branch: ListOfResources<Id>,
+    pub(crate) users_to_resubscribe: HashSet<Id>,
 }
 
 impl<Id: RowId> Default for SideEffects<Id> {

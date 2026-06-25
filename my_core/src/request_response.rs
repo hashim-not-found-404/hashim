@@ -118,163 +118,21 @@ pub mod push_data {
 }
 
 pub mod sign_up {
-    use super::*;
-
-    pub type Result = StdResult<Ok, Error>;
-
-    #[derive(Debug, Deserialize, Serialize, Clone)]
-    pub struct Input {
-        pub new_uuid: db_types::UuidType,
-        pub name: Option<String>,
-        pub user_id: String,
-        pub password: String,
-    }
-
-    #[derive(Debug, Deserialize, Serialize, Clone)]
-    pub struct Ok {
-        pub resource: Vec<ResourceInfo>,
-    }
-
-    #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
-    pub struct Error {
-        pub new_uuid: Option<RowIdError>,
-        pub user_id: Option<UserIdError>,
-        pub name: Option<String>,
-    }
-
-    // utility types
-
-    #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
-    pub enum UserIdError {
-        Duplicated,
-    }
+    pub use crate::server_operations::sign_up::*;
 }
 
 pub mod sign_in {
-    use super::*;
-
-    pub type Result = StdResult<Ok, Error>;
-
-    #[derive(Debug, Deserialize, Serialize, Clone)]
-    pub struct Input {
-        pub user_id: String,
-        pub password: String,
-    }
-
-    #[derive(Debug, Deserialize, Serialize, Clone)]
-    pub struct Ok {
-        pub resource: Vec<ResourceInfo>,
-    }
-
-    #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
-    pub struct Error {
-        pub user_id: Option<UserIdError>,
-        pub password: Option<PasswordError>,
-    }
-
-    // utility types
-
-    #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
-    pub enum UserIdError {
-        NotExist,
-    }
-
-    #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
-    pub enum PasswordError {
-        WrongPassword,
-    }
+    pub use crate::server_operations::sign_in::*;
 }
 
 pub mod create_company {
-    use super::*;
-
-    pub type Result = StdResult<Ok, Error>;
-
-    #[derive(Debug, Deserialize, Serialize, Clone)]
-    pub struct Input {
-        pub user_uuid: db_types::UuidType,
-        pub new_uuid: db_types::UuidType,
-        pub company_name: String,
-        pub currency: db_types::Currency,
-    }
-
-    #[derive(Debug, Deserialize, Serialize, Clone)]
-    pub struct Ok {
-        pub resource: Vec<ResourceInfo>,
-    }
-
-    #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
-    pub struct Error {
-        pub user_uuid: Option<UserUuidError>,
-        pub new_uuid: Option<RowIdError>,
-    }
+    pub use crate::server_operations::create_company::*;
 }
 
 pub mod list_company_and_branch {
-    use super::*;
-
-    pub type Result = StdResult<Ok, Error>;
-
-    #[derive(Debug, Deserialize, Serialize, Clone)]
-    pub struct Input {
-        pub user_uuid: db_types::UuidType,
-    }
-
-    #[derive(Debug, Deserialize, Serialize, Clone)]
-    pub struct Ok {
-        pub resource: Vec<ResourceInfo>,
-    }
-
-    #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
-    pub struct Error {
-        pub user_uuid: Option<UserUuidError>,
-    }
+    pub use crate::server_operations::list_company_and_branch::*;
 }
 
 pub mod create_company_branch {
-    use super::*;
-
-    pub type Result = StdResult<Ok, Error>;
-
-    #[derive(Debug, Deserialize, Serialize, Clone)]
-    pub struct Input {
-        pub user_uuid: db_types::UuidType,
-        pub new_uuid: db_types::UuidType,
-        pub company_belong: db_types::UuidType,
-        pub branch_name: String,
-        pub location: db_types::Location,
-        pub currency: db_types::Currency,
-    }
-
-    #[derive(Debug, Deserialize, Serialize, Clone)]
-    pub struct Ok {
-        pub resource: Vec<ResourceInfo>,
-    }
-
-    #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
-    pub struct Error {
-        pub user_uuid: Option<UserUuidError>,
-        pub new_uuid: Option<RowIdError>,
-        pub company_belong: Option<CompanyBelongError>,
-        pub branch_name: Option<BranchNameError>,
-        pub location: Option<LocationError>,
-    }
-
-    // utility types
-
-    #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
-    pub enum CompanyBelongError {
-        IdInWrongFormat,
-        NotExist,
-    }
-
-    #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
-    pub enum BranchNameError {
-        Duplicated,
-    }
-
-    #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
-    pub enum LocationError {
-        Invalid,
-    }
+    pub use crate::server_operations::create_company_branch::*;
 }

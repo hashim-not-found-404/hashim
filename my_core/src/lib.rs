@@ -6,6 +6,7 @@ pub mod operations;
 pub mod process_manager;
 pub mod request_response;
 pub mod server_methods;
+pub mod server_operations;
 pub mod traits;
 pub mod translations;
 pub mod ui_construct;
