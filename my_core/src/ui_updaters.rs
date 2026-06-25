@@ -1,11 +1,11 @@
 use crate::prelude::*;
 
 pub(crate) trait Mvu {
-    async fn update<At: AllClientTypes + 'static, Mpsc: MultiProducerSingleConsumer>(
+    async fn update<At: AllClientTypes + 'static>(
         self,
         model: ui_model::Model<At>,
-        cache: cache_actor::Cache<At, Mpsc>,
-        commander_local_state: Arc<ui_effect::CommanderLocalState<At, Mpsc>>,
+        cache: cache_actor::Cache<At>,
+        commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
     );
 }
 
@@ -21,11 +21,11 @@ pub mod sign_up {
     }
 
     impl Mvu for Msg {
-        async fn update<At: AllClientTypes + 'static, Mpsc: MultiProducerSingleConsumer>(
+        async fn update<At: AllClientTypes + 'static>(
             self,
             model: ui_model::Model<At>,
-            cache: cache_actor::Cache<At, Mpsc>,
-            commander_local_state: Arc<ui_effect::CommanderLocalState<At, Mpsc>>,
+            cache: cache_actor::Cache<At>,
+            commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
         ) {
             match self {
                 Msg::Submit => handle_submit(model, cache, commander_local_state).await,
@@ -60,10 +60,10 @@ pub mod sign_up {
         }
     }
 
-    async fn handle_submit<At: AllClientTypes + 'static, Mpsc: MultiProducerSingleConsumer>(
+    async fn handle_submit<At: AllClientTypes + 'static>(
         model: ui_model::Model<At>,
-        mut cache: cache_actor::Cache<At, Mpsc>,
-        commander_local_state: Arc<ui_effect::CommanderLocalState<At, Mpsc>>,
+        mut cache: cache_actor::Cache<At>,
+        commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
     ) {
         let feature_state = model.page_root.page_auth.auth_feature_state.clone();
         let local_state = model.page_root.page_auth.page_sign_up.clone();
@@ -143,7 +143,7 @@ pub mod sign_up {
             }
         });
 
-        let (sender_to_process, mut receiver_to_process) = Mpsc::channel();
+        let (sender_to_process, mut receiver_to_process) = At::Mpsc::channel();
         commander_local_state
             .sender_to_process_manager
             .lock()
@@ -191,10 +191,10 @@ pub mod sign_up {
         feature_state.is_loading.reset();
     }
 
-    async fn handle_check<At: AllClientTypes + 'static, Mpsc: MultiProducerSingleConsumer>(
+    async fn handle_check<At: AllClientTypes + 'static>(
         model: ui_model::Model<At>,
-        mut cache: cache_actor::Cache<At, Mpsc>,
-        commander_local_state: Arc<ui_effect::CommanderLocalState<At, Mpsc>>,
+        mut cache: cache_actor::Cache<At>,
+        commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
     ) {
         let feature_state = model.page_root.page_auth.auth_feature_state.clone();
         let local_state = model.page_root.page_auth.page_sign_up.clone();
@@ -232,9 +232,9 @@ pub mod sign_up {
         }
     }
 
-    fn handel_apply_result<At: AllClientTypes, Mpsc: MultiProducerSingleConsumer>(
+    fn handel_apply_result<At: AllClientTypes>(
         model: &ui_model::Model<At>,
-        commander_local_state: Arc<ui_effect::CommanderLocalState<At, Mpsc>>,
+        commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
         result: server_operations::sign_up::Result,
     ) {
         let local_state = model.page_root.page_auth.page_sign_up.clone();
@@ -265,11 +265,11 @@ pub mod sign_in {
     }
 
     impl Mvu for Msg {
-        async fn update<At: AllClientTypes + 'static, Mpsc: MultiProducerSingleConsumer>(
+        async fn update<At: AllClientTypes + 'static>(
             self,
             model: ui_model::Model<At>,
-            cache: cache_actor::Cache<At, Mpsc>,
-            commander_local_state: Arc<ui_effect::CommanderLocalState<At, Mpsc>>,
+            cache: cache_actor::Cache<At>,
+            commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
         ) {
             match self {
                 Msg::Submit => {
@@ -302,10 +302,10 @@ pub mod sign_in {
         }
     }
 
-    async fn handle_submit<At: AllClientTypes + 'static, Mpsc: MultiProducerSingleConsumer>(
+    async fn handle_submit<At: AllClientTypes + 'static>(
         model: ui_model::Model<At>,
-        mut cache: cache_actor::Cache<At, Mpsc>,
-        commander_local_state: Arc<ui_effect::CommanderLocalState<At, Mpsc>>,
+        mut cache: cache_actor::Cache<At>,
+        commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
     ) {
         let feature_state = &model.page_root.page_auth.auth_feature_state;
         let local_state = &model.page_root.page_auth.page_sign_in;
@@ -376,7 +376,7 @@ pub mod sign_in {
             }
         });
 
-        let (sender_to_process, mut receiver_to_process) = Mpsc::channel();
+        let (sender_to_process, mut receiver_to_process) = At::Mpsc::channel();
         commander_local_state
             .sender_to_process_manager
             .lock()
@@ -417,10 +417,10 @@ pub mod sign_in {
         feature_state.is_loading.reset();
     }
 
-    async fn handle_check<At: AllClientTypes + 'static, Mpsc: MultiProducerSingleConsumer>(
+    async fn handle_check<At: AllClientTypes + 'static>(
         model: ui_model::Model<At>,
-        mut cache: cache_actor::Cache<At, Mpsc>,
-        commander_local_state: Arc<ui_effect::CommanderLocalState<At, Mpsc>>,
+        mut cache: cache_actor::Cache<At>,
+        commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
     ) {
         let feature_state = &model.page_root.page_auth.auth_feature_state;
         let local_state = &model.page_root.page_auth.page_sign_in;
@@ -449,9 +449,9 @@ pub mod sign_in {
         }
     }
 
-    fn handel_apply_result<At: AllClientTypes, Mpsc: MultiProducerSingleConsumer>(
+    fn handel_apply_result<At: AllClientTypes>(
         model: &ui_model::Model<At>,
-        commander_local_state: Arc<ui_effect::CommanderLocalState<At, Mpsc>>,
+        commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
         result: operations::sign_in::Type4,
     ) {
         match result.0 {
@@ -493,11 +493,11 @@ pub mod company_and_branch_selection {
     }
 
     impl Mvu for Msg {
-        async fn update<At: AllClientTypes + 'static, Mpsc: MultiProducerSingleConsumer>(
+        async fn update<At: AllClientTypes + 'static>(
             self,
             model: ui_model::Model<At>,
-            cache: cache_actor::Cache<At, Mpsc>,
-            commander_local_state: Arc<ui_effect::CommanderLocalState<At, Mpsc>>,
+            cache: cache_actor::Cache<At>,
+            commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
         ) {
             match self {
                 Msg::Subscribe => {
@@ -577,13 +577,10 @@ pub mod company_and_branch_selection {
         }
     }
 
-    fn handel_list_company_and_branch_listener<
-        At: AllClientTypes + 'static,
-        Mpsc: MultiProducerSingleConsumer + 'static,
-    >(
+    fn handel_list_company_and_branch_listener<At: AllClientTypes + 'static>(
         model: ui_model::Model<At>,
-        mut cache: cache_actor::Cache<At, Mpsc>,
-        commander_local_state: Arc<ui_effect::CommanderLocalState<At, Mpsc>>,
+        mut cache: cache_actor::Cache<At>,
+        commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
     ) -> impl FnOnce() {
         let component_id = At::Rn::generate() as u16;
         let mut cache1 = cache.clone();
@@ -654,13 +651,10 @@ pub mod company_and_branch_selection {
         }
     }
 
-    async fn handel_list_company_and_branch<
-        At: AllClientTypes + 'static,
-        Mpsc: MultiProducerSingleConsumer + 'static,
-    >(
+    async fn handel_list_company_and_branch<At: AllClientTypes + 'static>(
         model: ui_model::Model<At>,
-        mut cache: cache_actor::Cache<At, Mpsc>,
-        commander_local_state: Arc<ui_effect::CommanderLocalState<At, Mpsc>>,
+        mut cache: cache_actor::Cache<At>,
+        commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
     ) {
         let user_uuid = commander_local_state
             .user_uuid
@@ -714,11 +708,11 @@ pub mod create_company {
     }
 
     impl Mvu for Msg {
-        async fn update<At: AllClientTypes + 'static, Mpsc: MultiProducerSingleConsumer>(
+        async fn update<At: AllClientTypes + 'static>(
             self,
             model: ui_model::Model<At>,
-            cache: cache_actor::Cache<At, Mpsc>,
-            commander_local_state: Arc<ui_effect::CommanderLocalState<At, Mpsc>>,
+            cache: cache_actor::Cache<At>,
+            commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
         ) {
             let page_create_company = model
                 .page_root
@@ -755,10 +749,10 @@ pub mod create_company {
             ));
     }
 
-    async fn handle_submit<At: AllClientTypes + 'static, Mpsc: MultiProducerSingleConsumer>(
+    async fn handle_submit<At: AllClientTypes + 'static>(
         model: ui_model::Model<At>,
-        mut cache: cache_actor::Cache<At, Mpsc>,
-        commander_local_state: Arc<ui_effect::CommanderLocalState<At, Mpsc>>,
+        mut cache: cache_actor::Cache<At>,
+        commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
     ) {
         let data = commander_local_state
             .user_uuid
@@ -804,11 +798,11 @@ pub mod create_company_branch {
     }
 
     impl Mvu for Msg {
-        async fn update<At: AllClientTypes + 'static, Mpsc: MultiProducerSingleConsumer>(
+        async fn update<At: AllClientTypes + 'static>(
             self,
             model: ui_model::Model<At>,
-            cache: cache_actor::Cache<At, Mpsc>,
-            commander_local_state: Arc<ui_effect::CommanderLocalState<At, Mpsc>>,
+            cache: cache_actor::Cache<At>,
+            commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
         ) {
             match self {
                 Msg::Submit => handle_submit(model, cache, commander_local_state).await,
@@ -847,10 +841,10 @@ pub mod create_company_branch {
         }
     }
 
-    async fn handle_submit<At: AllClientTypes + 'static, Mpsc: MultiProducerSingleConsumer>(
+    async fn handle_submit<At: AllClientTypes + 'static>(
         model: ui_model::Model<At>,
-        mut cache: cache_actor::Cache<At, Mpsc>,
-        commander_local_state: Arc<ui_effect::CommanderLocalState<At, Mpsc>>,
+        mut cache: cache_actor::Cache<At>,
+        commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
     ) {
         let local_state = model
             .page_root
@@ -945,7 +939,7 @@ pub mod create_company_branch {
             }
         });
 
-        let (sender_to_process, mut receiver_to_process) = Mpsc::channel();
+        let (sender_to_process, mut receiver_to_process) = At::Mpsc::channel();
         commander_local_state
             .sender_to_process_manager
             .lock()
@@ -972,10 +966,10 @@ pub mod create_company_branch {
         local_state.is_loading.reset();
     }
 
-    async fn handle_check<At: AllClientTypes + 'static, Mpsc: MultiProducerSingleConsumer>(
+    async fn handle_check<At: AllClientTypes + 'static>(
         model: ui_model::Model<At>,
-        mut cache: cache_actor::Cache<At, Mpsc>,
-        commander_local_state: Arc<ui_effect::CommanderLocalState<At, Mpsc>>,
+        mut cache: cache_actor::Cache<At>,
+        commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
     ) {
         let local_state = model
             .page_root

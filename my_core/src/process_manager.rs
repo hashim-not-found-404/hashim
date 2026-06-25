@@ -7,9 +7,9 @@ pub(crate) enum ProcessName {
     CreateCompanyBranch,
 }
 
-pub(crate) enum Event<At: AllClientTypes, Mpsc: MultiProducerSingleConsumer> {
+pub(crate) enum Event<At: AllClientTypes> {
     Subscribe {
-        sender: Mpsc::Sender<ProceedResult>,
+        sender: <At::Mpsc as MultiProducerSingleConsumer>::Sender<ProceedResult>,
         dialog: At::Dialog,
     },
     GotResponseFromCache {
@@ -20,14 +20,14 @@ pub(crate) enum Event<At: AllClientTypes, Mpsc: MultiProducerSingleConsumer> {
     },
 }
 
-pub(crate) enum MessageToProcessManager<At: AllClientTypes, Mpsc: MultiProducerSingleConsumer> {
+pub(crate) enum MessageToProcessManager<At: AllClientTypes> {
     FromUser {
         process_name: ProcessName,
         consent: UserConsent,
     },
     FromProcess {
         process_name: ProcessName,
-        event: Event<At, Mpsc>,
+        event: Event<At>,
     },
 }
 
@@ -67,15 +67,13 @@ pub(crate) fn is_proceed(
     }
 }
 
-pub(crate) fn process_manager_actor<
-    At: AllClientTypes + 'static,
-    Mpsc: MultiProducerSingleConsumer + 'static,
->() -> Mpsc::Sender<MessageToProcessManager<At, Mpsc>> {
-    let (sender, mut receiver) = Mpsc::channel();
+pub(crate) fn process_manager_actor<At: AllClientTypes + 'static>()
+-> <At::Mpsc as MultiProducerSingleConsumer>::Sender<MessageToProcessManager<At>> {
+    let (sender, mut receiver) = At::Mpsc::channel();
 
     At::Rt::spawn_local(async move {
-        struct ProcessInfo<At: AllClientTypes, Mpsc: MultiProducerSingleConsumer> {
-            sender: Mpsc::Sender<ProceedResult>,
+        struct ProcessInfo<At: AllClientTypes> {
+            sender: <At::Mpsc as MultiProducerSingleConsumer>::Sender<ProceedResult>,
             dialog: At::Dialog,
             timer_handel: <At::Rt as Runtime>::JoinHandel<()>,
             is_response_from_server: Option<bool>,
@@ -83,7 +81,7 @@ pub(crate) fn process_manager_actor<
             is_user_want_to_proceed: UserConsent,
         }
 
-        let mut process_states = HashMap::<ProcessName, ProcessInfo<At, Mpsc>>::new();
+        let mut process_states = HashMap::<ProcessName, ProcessInfo<At>>::new();
 
         loop {
             let msg = receiver.recv().await.unwrap();

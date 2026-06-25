@@ -1,20 +1,24 @@
 use crate::{prelude::*, ui_updaters::Mvu};
 
-pub(crate) struct CommanderLocalState<At: AllClientTypes, Mpsc: MultiProducerSingleConsumer> {
-    pub(crate) sender_to_commander: Mutex<Mpsc::Sender<ui_model::Message>>,
-    pub(crate) sender_to_process_manager:
-        Mutex<Mpsc::Sender<process_manager::MessageToProcessManager<At, Mpsc>>>,
+pub(crate) struct CommanderLocalState<At: AllClientTypes> {
+    pub(crate) sender_to_commander:
+        Mutex<<At::Mpsc as MultiProducerSingleConsumer>::Sender<ui_model::Message>>,
+    pub(crate) sender_to_process_manager: Mutex<
+        <At::Mpsc as MultiProducerSingleConsumer>::Sender<
+            process_manager::MessageToProcessManager<At>,
+        >,
+    >,
     pub(crate) user_uuid: Mutex<Option<db_types::UuidType>>,
     pub(crate) selected_company_branch: Mutex<Option<db_types::UuidType>>,
     pub(crate) aborter_to_company_and_branch_listener: Mutex<Option<Box<dyn FnOnce()>>>,
 }
 
-pub struct Commander<At: AllClientTypes, Mpsc: MultiProducerSingleConsumer> {
+pub struct Commander<At: AllClientTypes> {
     _ph: PhantomData<At>,
-    sender: Mpsc::Sender<ui_model::Message>,
+    sender: <At::Mpsc as MultiProducerSingleConsumer>::Sender<ui_model::Message>,
 }
 
-impl<At: AllClientTypes, Mpsc: MultiProducerSingleConsumer> Clone for Commander<At, Mpsc> {
+impl<At: AllClientTypes> Clone for Commander<At> {
     fn clone(&self) -> Self {
         Self {
             _ph: self._ph.clone(),
@@ -23,18 +27,18 @@ impl<At: AllClientTypes, Mpsc: MultiProducerSingleConsumer> Clone for Commander<
     }
 }
 
-impl<At: AllClientTypes + 'static, Mpsc: MultiProducerSingleConsumer + 'static>
-    Commander<At, Mpsc>
-{
+impl<At: AllClientTypes + 'static> Commander<At> {
     pub(crate) fn new(
-        receiver_to_error: Mpsc::Receiver<HashimError>,
-        sender_to_process_manager: Mpsc::Sender<process_manager::MessageToProcessManager<At, Mpsc>>,
+        receiver_to_error: <At::Mpsc as MultiProducerSingleConsumer>::Receiver<HashimError>,
+        sender_to_process_manager: <At::Mpsc as MultiProducerSingleConsumer>::Sender<
+            process_manager::MessageToProcessManager<At>,
+        >,
         model: ui_model::Model<At>,
-        cache: cache_actor::Cache<At, Mpsc>,
+        cache: cache_actor::Cache<At>,
     ) -> Self {
-        let (sender_to_commander, receiver_to_commander) = Mpsc::channel();
+        let (sender_to_commander, receiver_to_commander) = At::Mpsc::channel();
 
-        listen_to_error_actor::<At, Mpsc>(receiver_to_error, model.external_errors.clone());
+        listen_to_error_actor::<At>(receiver_to_error, model.external_errors.clone());
 
         Self::commander_actor(
             receiver_to_commander,
@@ -58,11 +62,13 @@ impl<At: AllClientTypes + 'static, Mpsc: MultiProducerSingleConsumer + 'static>
     }
 
     fn commander_actor(
-        mut receiver: Mpsc::Receiver<ui_model::Message>,
-        sender_to_commander: Mpsc::Sender<ui_model::Message>,
-        sender_to_process_manager: Mpsc::Sender<process_manager::MessageToProcessManager<At, Mpsc>>,
+        mut receiver: <At::Mpsc as MultiProducerSingleConsumer>::Receiver<ui_model::Message>,
+        sender_to_commander: <At::Mpsc as MultiProducerSingleConsumer>::Sender<ui_model::Message>,
+        sender_to_process_manager: <At::Mpsc as MultiProducerSingleConsumer>::Sender<
+            process_manager::MessageToProcessManager<At>,
+        >,
         model: ui_model::Model<At>,
-        cache: cache_actor::Cache<At, Mpsc>,
+        cache: cache_actor::Cache<At>,
     ) {
         At::Rt::spawn_local(async move {
             let commander_local_state = Arc::new(CommanderLocalState {
@@ -107,11 +113,8 @@ impl<At: AllClientTypes + 'static, Mpsc: MultiProducerSingleConsumer + 'static>
     }
 }
 
-fn listen_to_error_actor<
-    At: AllClientTypes + 'static,
-    Mpsc: MultiProducerSingleConsumer + 'static,
->(
-    mut receiver_to_error: Mpsc::Receiver<HashimError>,
+fn listen_to_error_actor<At: AllClientTypes + 'static>(
+    mut receiver_to_error: <At::Mpsc as MultiProducerSingleConsumer>::Receiver<HashimError>,
     external_errors_signal: At::StringVec,
 ) {
     At::Rt::spawn_local(async move {

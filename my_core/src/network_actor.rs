@@ -2,11 +2,11 @@ use crate::prelude::*;
 
 pub(crate) type MessageToNetwork = Vec<u8>;
 
-pub struct Network<At: AllClientTypes, Mpsc: MultiProducerSingleConsumer> {
-    _ph: PhantomData<(At, Mpsc)>,
+pub struct Network<At: AllClientTypes> {
+    _ph: PhantomData<At>,
 }
 
-impl<At: AllClientTypes, Mpsc: MultiProducerSingleConsumer + 'static> Network<At, Mpsc> {
+impl<At: AllClientTypes + 'static> Network<At> {
     async fn network_radar(ws: &Option<At::Ws>) -> Result<Vec<u8>, DynamicError> {
         match &ws {
             Some(ws) => ws.receive_bin().await,
@@ -16,7 +16,9 @@ impl<At: AllClientTypes, Mpsc: MultiProducerSingleConsumer + 'static> Network<At
 
     async fn connect(
         is_online: Arc<RwLock<bool>>,
-        sender_to_cache: &mut Mpsc::Sender<cache_actor::MessageToCache<Mpsc>>,
+        sender_to_cache: &mut <At::Mpsc as MultiProducerSingleConsumer>::Sender<
+            cache_actor::MessageToCache<At>,
+        >,
         url: &String,
         ws: &mut Option<At::Ws>,
     ) {
@@ -38,9 +40,13 @@ impl<At: AllClientTypes, Mpsc: MultiProducerSingleConsumer + 'static> Network<At
     }
 
     pub(crate) fn network_actor(
-        mut receiver_to_network: Mpsc::Receiver<MessageToNetwork>,
-        mut sender_to_cache: Mpsc::Sender<cache_actor::MessageToCache<Mpsc>>,
-        mut sender_to_error: Mpsc::Sender<HashimError>,
+        mut receiver_to_network: <At::Mpsc as MultiProducerSingleConsumer>::Receiver<
+            MessageToNetwork,
+        >,
+        mut sender_to_cache: <At::Mpsc as MultiProducerSingleConsumer>::Sender<
+            cache_actor::MessageToCache<At>,
+        >,
+        mut sender_to_error: <At::Mpsc as MultiProducerSingleConsumer>::Sender<HashimError>,
         is_online: Arc<RwLock<bool>>,
         url: String,
     ) {

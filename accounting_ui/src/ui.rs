@@ -3,7 +3,7 @@ use dioxus::prelude::*;
 use std::str::FromStr;
 
 type TheModel = ui_model::Model<my_types::m::S>;
-type TheCommander = ui_effect::Commander<my_types::m::S, actors::m::S>;
+type TheCommander = ui_effect::Commander<my_types::m::S>;
 type TheAll = (TheModel, TheCommander);
 
 const ICONS_SHOW: Asset = asset!("/assets/icons/show.png");
@@ -26,7 +26,7 @@ enum Route {
 
 #[component]
 pub fn App() -> Element {
-    let (model, commander): TheAll = ui_construct::new::<my_types::m::S, actors::m::S>();
+    let (model, commander): TheAll = ui_construct::new::<my_types::m::S>();
     use_context_provider(|| (model, commander));
 
     rsx! {
