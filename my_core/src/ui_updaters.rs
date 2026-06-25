@@ -1,7 +1,7 @@
 use crate::prelude::*;
 
 pub(crate) trait Mvu {
-    async fn update<At: AllClientTypes + 'static>(
+    async fn update<At: AllClientTypes>(
         self,
         model: ui_model::Model<At>,
         cache: cache_actor::Cache<At>,
@@ -21,7 +21,7 @@ pub mod sign_up {
     }
 
     impl Mvu for Msg {
-        async fn update<At: AllClientTypes + 'static>(
+        async fn update<At: AllClientTypes>(
             self,
             model: ui_model::Model<At>,
             cache: cache_actor::Cache<At>,
@@ -60,7 +60,7 @@ pub mod sign_up {
         }
     }
 
-    async fn handle_submit<At: AllClientTypes + 'static>(
+    async fn handle_submit<At: AllClientTypes>(
         model: ui_model::Model<At>,
         mut cache: cache_actor::Cache<At>,
         commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
@@ -191,7 +191,7 @@ pub mod sign_up {
         feature_state.is_loading.reset();
     }
 
-    async fn handle_check<At: AllClientTypes + 'static>(
+    async fn handle_check<At: AllClientTypes>(
         model: ui_model::Model<At>,
         mut cache: cache_actor::Cache<At>,
         commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
@@ -265,7 +265,7 @@ pub mod sign_in {
     }
 
     impl Mvu for Msg {
-        async fn update<At: AllClientTypes + 'static>(
+        async fn update<At: AllClientTypes>(
             self,
             model: ui_model::Model<At>,
             cache: cache_actor::Cache<At>,
@@ -302,7 +302,7 @@ pub mod sign_in {
         }
     }
 
-    async fn handle_submit<At: AllClientTypes + 'static>(
+    async fn handle_submit<At: AllClientTypes>(
         model: ui_model::Model<At>,
         mut cache: cache_actor::Cache<At>,
         commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
@@ -417,7 +417,7 @@ pub mod sign_in {
         feature_state.is_loading.reset();
     }
 
-    async fn handle_check<At: AllClientTypes + 'static>(
+    async fn handle_check<At: AllClientTypes>(
         model: ui_model::Model<At>,
         mut cache: cache_actor::Cache<At>,
         commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
@@ -493,7 +493,7 @@ pub mod company_and_branch_selection {
     }
 
     impl Mvu for Msg {
-        async fn update<At: AllClientTypes + 'static>(
+        async fn update<At: AllClientTypes>(
             self,
             model: ui_model::Model<At>,
             cache: cache_actor::Cache<At>,
@@ -577,7 +577,7 @@ pub mod company_and_branch_selection {
         }
     }
 
-    fn handel_list_company_and_branch_listener<At: AllClientTypes + 'static>(
+    fn handel_list_company_and_branch_listener<At: AllClientTypes>(
         model: ui_model::Model<At>,
         mut cache: cache_actor::Cache<At>,
         commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
@@ -651,7 +651,7 @@ pub mod company_and_branch_selection {
         }
     }
 
-    async fn handel_list_company_and_branch<At: AllClientTypes + 'static>(
+    async fn handel_list_company_and_branch<At: AllClientTypes>(
         model: ui_model::Model<At>,
         mut cache: cache_actor::Cache<At>,
         commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
@@ -708,7 +708,7 @@ pub mod create_company {
     }
 
     impl Mvu for Msg {
-        async fn update<At: AllClientTypes + 'static>(
+        async fn update<At: AllClientTypes>(
             self,
             model: ui_model::Model<At>,
             cache: cache_actor::Cache<At>,
@@ -749,7 +749,7 @@ pub mod create_company {
             ));
     }
 
-    async fn handle_submit<At: AllClientTypes + 'static>(
+    async fn handle_submit<At: AllClientTypes>(
         model: ui_model::Model<At>,
         mut cache: cache_actor::Cache<At>,
         commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
@@ -798,7 +798,7 @@ pub mod create_company_branch {
     }
 
     impl Mvu for Msg {
-        async fn update<At: AllClientTypes + 'static>(
+        async fn update<At: AllClientTypes>(
             self,
             model: ui_model::Model<At>,
             cache: cache_actor::Cache<At>,
@@ -841,7 +841,7 @@ pub mod create_company_branch {
         }
     }
 
-    async fn handle_submit<At: AllClientTypes + 'static>(
+    async fn handle_submit<At: AllClientTypes>(
         model: ui_model::Model<At>,
         mut cache: cache_actor::Cache<At>,
         commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
@@ -966,7 +966,7 @@ pub mod create_company_branch {
         local_state.is_loading.reset();
     }
 
-    async fn handle_check<At: AllClientTypes + 'static>(
+    async fn handle_check<At: AllClientTypes>(
         model: ui_model::Model<At>,
         mut cache: cache_actor::Cache<At>,
         commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,

@@ -46,7 +46,7 @@ pub(crate) enum MessageToCache<At: AllClientTypes> {
 
 pub struct Cache<At>
 where
-    At: AllClientTypes + 'static,
+    At: AllClientTypes,
 {
     _ph: PhantomData<At>,
     sender: <At::Mpsc as MultiProducerSingleConsumer>::Sender<MessageToCache<At>>,
@@ -63,7 +63,7 @@ impl<At: AllClientTypes> Clone for Cache<At> {
 
 impl<At> Cache<At>
 where
-    At: AllClientTypes + 'static,
+    At: AllClientTypes,
 {
     pub(crate) fn new(
         receiver_to_cache: <At::Mpsc as MultiProducerSingleConsumer>::Receiver<MessageToCache<At>>,

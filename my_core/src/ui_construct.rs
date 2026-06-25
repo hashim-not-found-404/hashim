@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-pub fn new<At: AllClientTypes + 'static>() -> (ui_model::Model<At>, ui_effect::Commander<At>) {
+pub fn new<At: AllClientTypes>() -> (ui_model::Model<At>, ui_effect::Commander<At>) {
     let (sender_to_network, receiver_to_network) = At::Mpsc::channel();
     let (sender_to_cache, receiver_to_cache) = At::Mpsc::channel();
     let (sender_to_error, receiver_to_error) = At::Mpsc::channel();

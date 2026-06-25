@@ -6,7 +6,7 @@ pub struct Network<At: AllClientTypes> {
     _ph: PhantomData<At>,
 }
 
-impl<At: AllClientTypes + 'static> Network<At> {
+impl<At: AllClientTypes> Network<At> {
     async fn network_radar(ws: &Option<At::Ws>) -> Result<Vec<u8>, DynamicError> {
         match &ws {
             Some(ws) => ws.receive_bin().await,

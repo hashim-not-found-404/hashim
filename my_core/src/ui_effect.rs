@@ -27,7 +27,7 @@ impl<At: AllClientTypes> Clone for Commander<At> {
     }
 }
 
-impl<At: AllClientTypes + 'static> Commander<At> {
+impl<At: AllClientTypes> Commander<At> {
     pub(crate) fn new(
         receiver_to_error: <At::Mpsc as MultiProducerSingleConsumer>::Receiver<HashimError>,
         sender_to_process_manager: <At::Mpsc as MultiProducerSingleConsumer>::Sender<
@@ -113,7 +113,7 @@ impl<At: AllClientTypes + 'static> Commander<At> {
     }
 }
 
-fn listen_to_error_actor<At: AllClientTypes + 'static>(
+fn listen_to_error_actor<At: AllClientTypes>(
     mut receiver_to_error: <At::Mpsc as MultiProducerSingleConsumer>::Receiver<HashimError>,
     external_errors_signal: At::StringVec,
 ) {

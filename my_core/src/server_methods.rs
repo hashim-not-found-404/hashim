@@ -36,7 +36,7 @@ pub struct ServerMethods<At: AllServerTypes> {
         <At::Mpsc as MultiProducerSingleConsumer>::Sender<MessageToBroker<At::Id, At::Mpsc>>,
 }
 
-impl<At: AllServerTypes + 'static> ServerMethods<At> {
+impl<At: AllServerTypes> ServerMethods<At> {
     pub async fn new() -> Self {
         let (sender_to_broker, receiver_to_broker) = At::Mpsc::channel();
         Self::broker_actor(receiver_to_broker);

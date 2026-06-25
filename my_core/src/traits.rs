@@ -261,7 +261,7 @@ pub trait CacheIO: Sized {
     >;
 }
 
-pub trait AllServerTypes
+pub trait AllServerTypes: 'static
 where
     for<'a> <Self::Cli as DBClient>::Txn<'a>:
         DBTransaction<RowId = Self::Id, HashedPassword = Self::Auth>,
@@ -279,7 +279,7 @@ where
     type Ws: WSServer;
 }
 
-pub trait AllClientTypes: Default + Clone {
+pub trait AllClientTypes: Default + Clone + 'static {
     type Rn: RandomNumber;
     type Ws: WebSocketOp;
     type Ed: Coding;

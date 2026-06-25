@@ -67,7 +67,7 @@ pub(crate) fn is_proceed(
     }
 }
 
-pub(crate) fn process_manager_actor<At: AllClientTypes + 'static>()
+pub(crate) fn process_manager_actor<At: AllClientTypes>()
 -> <At::Mpsc as MultiProducerSingleConsumer>::Sender<MessageToProcessManager<At>> {
     let (sender, mut receiver) = At::Mpsc::channel();
 
@@ -177,7 +177,7 @@ pub(crate) fn process_manager_actor<At: AllClientTypes + 'static>()
     sender
 }
 
-fn timer_handel<At: AllClientTypes + 'static>(
+fn timer_handel<At: AllClientTypes>(
     dialog_clone: <At as AllClientTypes>::Dialog,
 ) -> <At::Rt as Runtime>::JoinHandel<()> {
     At::Rt::abortable_spawn_local(async move {
