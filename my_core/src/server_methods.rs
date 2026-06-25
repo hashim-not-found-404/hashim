@@ -177,7 +177,7 @@ impl<At: AllServerTypes + 'static> ServerMethods<At> {
         Ok(subs)
     }
 
-    pub fn server_actor<Ws: WSServer + 'static>(self: Arc<Self>, mut session: Ws) {
+    pub fn server_actor(self: Arc<Self>, mut session: At::Ws) {
         At::Rt::spawn_local(async move {
             let mut sender_to_broker = self.sender_to_broker.clone();
             let (sender_to_server, mut receiver_to_server) =

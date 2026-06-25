@@ -12,19 +12,24 @@ use actix_web::{
     App, HttpRequest, HttpResponse, HttpServer,
     web::{self, Data, Payload},
 };
+use my_core::server_operations::AllServerTypes;
 
-type ServerMethodsType = server_methods::ServerMethods<
-    db::S,
-    db_client::S,
-    jwt::m::S,
-    authentication::m::S,
-    functions::m::S,
-    row_id::m::S,
-    actors::m::S,
-    runtime::m::S,
-    encode_decode::m::S,
-    random_number::m::S,
->;
+struct MyAllTypes;
+impl AllServerTypes for MyAllTypes {
+    type Db = db::S;
+    type Cli = db_client::S;
+    type Jwt = jwt::m::S;
+    type Auth = authentication::m::S;
+    type Rg = functions::m::S;
+    type Id = row_id::m::S;
+    type Mpsc = actors::m::S;
+    type Rt = runtime::m::S;
+    type De = encode_decode::m::S;
+    type Rn = random_number::m::S;
+    type Ws = web_socket_server::m::S;
+}
+
+type ServerMethodsType = server_methods::ServerMethods<MyAllTypes>;
 
 #[actix_web::main]
 async fn main() {

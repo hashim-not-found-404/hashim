@@ -90,7 +90,7 @@ pub mod sign_up {
         local_state.user_name_error.reset();
 
         let new_uuid = At::Id::generate().to_uuid();
-        let input = request_response::sign_up::Input {
+        let input = server_operations::sign_up::Input {
             new_uuid: new_uuid.clone(),
             name: {
                 let name = local_state.user_name.read();
@@ -222,7 +222,7 @@ pub mod sign_up {
         let mut receiver_to_response = cache
             .send_to_cache_actor(
                 cache_actor::CachingStrategy::ReadCacheOnly,
-                request_response::sign_up::Input {
+                server_operations::sign_up::Input {
                     new_uuid: new_uuid.clone(),
                     name: {
                         let name = local_state.user_name.read();
@@ -251,7 +251,7 @@ pub mod sign_up {
     fn handel_apply_result<As: AllSignalTypes, Mpsc: MultiProducerSingleConsumer>(
         model: &ui_model::Model<As>,
         commander_local_state: Arc<ui_effect::CommanderLocalState<As, Mpsc>>,
-        result: request_response::sign_up::Result,
+        result: server_operations::sign_up::Result,
     ) {
         let local_state = model.page_root.page_auth.page_sign_up.clone();
         match result {
@@ -347,7 +347,7 @@ pub mod sign_in {
         let mut receiver_to_response = cache
             .send_to_cache_actor(
                 cache_actor::CachingStrategy::WriteCacheAndServer,
-                request_response::sign_in::Input {
+                server_operations::sign_in::Input {
                     user_id: user_id.clone(),
                     password: feature_state.user_password.read(),
                 }
@@ -459,7 +459,7 @@ pub mod sign_in {
         let mut receiver_to_response = cache
             .send_to_cache_actor(
                 cache_actor::CachingStrategy::ReadCacheOnly,
-                request_response::sign_in::Input {
+                server_operations::sign_in::Input {
                     user_id: feature_state.user_id.read(),
                     password: feature_state.user_password.read(),
                 }
@@ -816,7 +816,7 @@ pub mod create_company {
             .page_create_company
             .clone();
 
-        let input = request_response::create_company::Input {
+        let input = server_operations::create_company::Input {
             user_uuid: data,
             new_uuid: At::Id::generate().to_uuid(),
             company_name: local_state.company_name.read(),
@@ -921,7 +921,7 @@ pub mod create_company_branch {
             .clone()
             .unwrap();
 
-        let input = request_response::create_company_branch::Input {
+        let input = server_operations::create_company_branch::Input {
             user_uuid: data,
             new_uuid: At::Id::generate().to_uuid(),
             company_belong: model
@@ -1045,7 +1045,7 @@ pub mod create_company_branch {
             .clone()
             .unwrap();
 
-        let input = request_response::create_company_branch::Input {
+        let input = server_operations::create_company_branch::Input {
             user_uuid: data,
             new_uuid: At::Id::generate().to_uuid(),
             company_belong: model

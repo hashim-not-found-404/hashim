@@ -95,44 +95,24 @@ pub mod push_data {
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub enum OperationsInput {
         // auth
-        SignUp(sign_up::Input),
-        SignIn(sign_in::Input),
+        SignUp(server_operations::sign_up::Input),
+        SignIn(server_operations::sign_in::Input),
         // write
-        CreateCompany(create_company::Input),
-        CreateCompanyBranch(create_company_branch::Input),
+        CreateCompany(server_operations::create_company::Input),
+        CreateCompanyBranch(server_operations::create_company_branch::Input),
         // read
-        ListCompanyAndBranch(list_company_and_branch::Input),
+        ListCompanyAndBranch(server_operations::list_company_and_branch::Input),
     }
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub enum OperationsResult {
         // auth
-        SignUp(sign_up::Result),
-        SignIn(sign_in::Result),
+        SignUp(server_operations::sign_up::Result),
+        SignIn(server_operations::sign_in::Result),
         // write
-        CreateCompany(create_company::Result),
-        CreateCompanyBranch(create_company_branch::Result),
+        CreateCompany(server_operations::create_company::Result),
+        CreateCompanyBranch(server_operations::create_company_branch::Result),
         // read
-        ListCompanyAndBranch(list_company_and_branch::Result),
+        ListCompanyAndBranch(server_operations::list_company_and_branch::Result),
     }
-}
-
-pub mod sign_up {
-    pub use crate::server_operations::sign_up::*;
-}
-
-pub mod sign_in {
-    pub use crate::server_operations::sign_in::*;
-}
-
-pub mod create_company {
-    pub use crate::server_operations::create_company::*;
-}
-
-pub mod list_company_and_branch {
-    pub use crate::server_operations::list_company_and_branch::*;
-}
-
-pub mod create_company_branch {
-    pub use crate::server_operations::create_company_branch::*;
 }

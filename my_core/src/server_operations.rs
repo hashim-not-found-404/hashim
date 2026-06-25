@@ -18,6 +18,7 @@ where
     type Rt: Runtime;
     type De: Coding;
     type Rn: RandomNumber;
+    type Ws: WSServer;
 }
 
 pub(crate) trait ServerOperations {

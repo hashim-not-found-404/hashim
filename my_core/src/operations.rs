@@ -225,10 +225,10 @@ async fn apply_change(
 pub(crate) mod sign_up {
     use super::*;
 
-    pub(crate) type Type1 = request_response::sign_up::Input;
-    type Type2 = request_response::sign_up::Input;
-    type Type3 = request_response::sign_up::Result;
-    pub(crate) type Type4 = request_response::sign_up::Result;
+    pub(crate) type Type1 = server_operations::sign_up::Input;
+    type Type2 = server_operations::sign_up::Input;
+    type Type3 = server_operations::sign_up::Result;
+    pub(crate) type Type4 = server_operations::sign_up::Result;
 
     impl ViewType1 for Type1 {
         fn wrap_input(self) -> push_data::OperationsInput {
@@ -260,20 +260,20 @@ pub(crate) mod sign_up {
                 }
             }
 
-            let mut err = request_response::sign_up::Error {
+            let mut err = server_operations::sign_up::Error {
                 new_uuid: None,
                 user_id: None,
                 name: None,
             };
 
             if is_user_id_exist {
-                err.user_id = Some(request_response::sign_up::UserIdError::Duplicated);
+                err.user_id = Some(server_operations::sign_up::UserIdError::Duplicated);
             }
             if is_new_uuid_exist {
                 err.new_uuid = Some(RowIdError::Duplicated);
             }
 
-            if err != request_response::sign_up::Error::default() {
+            if err != server_operations::sign_up::Error::default() {
                 return Err(err);
             }
 
@@ -290,7 +290,7 @@ pub(crate) mod sign_up {
                 });
             }
 
-            return Ok(request_response::sign_up::Ok { resource });
+            return Ok(server_operations::sign_up::Ok { resource });
         }
     }
 
@@ -320,10 +320,10 @@ pub(crate) mod sign_up {
 pub(crate) mod sign_in {
     use super::*;
 
-    pub(crate) type Type1 = request_response::sign_in::Input;
-    type Type2 = request_response::sign_in::Input;
-    type Type3 = request_response::sign_in::Result;
-    pub(crate) struct Type4(pub(crate) Result<SignInOk, request_response::sign_in::Error>);
+    pub(crate) type Type1 = server_operations::sign_in::Input;
+    type Type2 = server_operations::sign_in::Input;
+    type Type3 = server_operations::sign_in::Result;
+    pub(crate) struct Type4(pub(crate) Result<SignInOk, server_operations::sign_in::Error>);
 
     pub(crate) struct SignInOk {
         pub user_uuid: db_types::UuidType,
@@ -360,7 +360,7 @@ pub(crate) mod sign_in {
                         ),
                     });
 
-                    return Ok(request_response::sign_in::Ok { resource });
+                    return Ok(server_operations::sign_in::Ok { resource });
                 }
             }
 
@@ -388,16 +388,18 @@ pub(crate) mod sign_in {
                             ),
                         });
 
-                        return Ok(request_response::sign_in::Ok { resource });
+                        return Ok(server_operations::sign_in::Ok { resource });
                     } else {
-                        return Err(request_response::sign_in::Error {
+                        return Err(server_operations::sign_in::Error {
                             user_id: None,
-                            password: Some(request_response::sign_in::PasswordError::WrongPassword),
+                            password: Some(
+                                server_operations::sign_in::PasswordError::WrongPassword,
+                            ),
                         });
                     }
                 }
-                None => Err(request_response::sign_in::Error {
-                    user_id: Some(request_response::sign_in::UserIdError::NotExist),
+                None => Err(server_operations::sign_in::Error {
+                    user_id: Some(server_operations::sign_in::UserIdError::NotExist),
                     password: None,
                 }),
             }
@@ -458,10 +460,10 @@ pub(crate) mod sign_in {
 pub(crate) mod create_company {
     use super::*;
 
-    pub(crate) type Type1 = request_response::create_company::Input;
-    type Type2 = request_response::create_company::Input;
-    type Type3 = request_response::create_company::Result;
-    pub(crate) type Type4 = request_response::create_company::Result;
+    pub(crate) type Type1 = server_operations::create_company::Input;
+    type Type2 = server_operations::create_company::Input;
+    type Type3 = server_operations::create_company::Result;
+    pub(crate) type Type4 = server_operations::create_company::Result;
 
     impl ViewType1 for Type1 {
         fn wrap_input(self) -> push_data::OperationsInput {
@@ -511,7 +513,7 @@ pub(crate) mod create_company {
                 ),
             };
 
-            Ok(request_response::create_company::Ok {
+            Ok(server_operations::create_company::Ok {
                 resource: vec![v, v1, v2, v3, v4],
             })
         }
@@ -543,10 +545,10 @@ pub(crate) mod create_company {
 pub(crate) mod create_company_branch {
     use super::*;
 
-    pub(crate) type Type1 = request_response::create_company_branch::Input;
-    type Type2 = request_response::create_company_branch::Input;
-    type Type3 = request_response::create_company_branch::Result;
-    pub(crate) type Type4 = request_response::create_company_branch::Result;
+    pub(crate) type Type1 = server_operations::create_company_branch::Input;
+    type Type2 = server_operations::create_company_branch::Input;
+    type Type3 = server_operations::create_company_branch::Result;
+    pub(crate) type Type4 = server_operations::create_company_branch::Result;
 
     impl ViewType1 for Type1 {
         fn wrap_input(self) -> push_data::OperationsInput {
@@ -565,7 +567,7 @@ pub(crate) mod create_company_branch {
             &self,
             state: &cache::State<Ch>,
         ) -> Self::Output {
-            let mut errr = request_response::create_company_branch::Error::default();
+            let mut errr = server_operations::create_company_branch::Error::default();
 
             // 1. Read from cache (database)
             let (mut user_roles, mut is_company_exist, mut is_branch_name_used) = state
@@ -605,12 +607,12 @@ pub(crate) mod create_company_branch {
             // 3. Validate based on cache + pending
             if !is_company_exist {
                 errr.company_belong =
-                    Some(request_response::create_company_branch::CompanyBelongError::NotExist);
+                    Some(server_operations::create_company_branch::CompanyBelongError::NotExist);
             }
 
             if is_branch_name_used {
                 errr.branch_name =
-                    Some(request_response::create_company_branch::BranchNameError::Duplicated);
+                    Some(server_operations::create_company_branch::BranchNameError::Duplicated);
             }
 
             // Permission check: user must have Manager or CoManager role at the company
@@ -621,7 +623,7 @@ pub(crate) mod create_company_branch {
                 errr.user_uuid = Some(UserUuidError::YouDontHavePermissionToDoThat);
             }
 
-            if errr != request_response::create_company_branch::Error::default() {
+            if errr != server_operations::create_company_branch::Error::default() {
                 return Err(errr);
             }
 
@@ -660,7 +662,7 @@ pub(crate) mod create_company_branch {
                     ),
             });
 
-            Ok(request_response::create_company_branch::Ok { resource })
+            Ok(server_operations::create_company_branch::Ok { resource })
         }
     }
 
@@ -690,9 +692,9 @@ pub(crate) mod create_company_branch {
 pub(crate) mod list_company_and_branch {
     use super::*;
 
-    pub(crate) type Type1 = request_response::list_company_and_branch::Input;
-    type Type2 = request_response::list_company_and_branch::Input;
-    type Type3 = request_response::list_company_and_branch::Result;
+    pub(crate) type Type1 = server_operations::list_company_and_branch::Input;
+    type Type2 = server_operations::list_company_and_branch::Input;
+    type Type3 = server_operations::list_company_and_branch::Result;
     pub(crate) struct Type4(pub(crate) Result<db_types::ListOfCompanies, ()>);
 
     impl ViewType1 for Type1 {
@@ -788,7 +790,7 @@ pub(crate) mod list_company_and_branch {
                 }
             }
 
-            Ok(request_response::list_company_and_branch::Ok {
+            Ok(server_operations::list_company_and_branch::Ok {
                 resource: resources,
             })
         }
