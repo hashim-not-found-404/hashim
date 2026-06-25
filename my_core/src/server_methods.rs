@@ -1,34 +1,5 @@
 use crate::prelude::*;
 
-fn check_nonce_if_valid<Id: RowId>(nonce: &Id, is_used: bool) -> bool {
-    if is_used {
-        return false;
-    }
-
-    let nonce = nonce.get_time_as_seconds();
-
-    let now = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap()
-        .as_secs() as u64;
-
-    // 1. Reject future timestamps (more than 5 seconds ahead)
-    let max_future = 5; // 5 seconds tolerance for clock drift
-
-    if nonce > now + max_future {
-        return false; // Future nonce → reject immediately
-    }
-
-    // 2. Reject old timestamps (more than 5 minutes old)
-    let max_age = 300; // 5 minutes
-
-    if now.saturating_sub(nonce) > max_age {
-        return false; // Too old
-    }
-
-    true
-}
-
 pub struct ServerMethods<At: AllServerTypes> {
     database: At::Db,
     jwt: At::Jwt,
@@ -412,6 +383,35 @@ async fn push_data<At: AllServerTypes>(
     }
 
     return Ok(the_return_result);
+}
+
+fn check_nonce_if_valid<Id: RowId>(nonce: &Id, is_used: bool) -> bool {
+    if is_used {
+        return false;
+    }
+
+    let nonce = nonce.get_time_as_seconds();
+
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_secs() as u64;
+
+    // 1. Reject future timestamps (more than 5 seconds ahead)
+    let max_future = 5; // 5 seconds tolerance for clock drift
+
+    if nonce > now + max_future {
+        return false; // Future nonce → reject immediately
+    }
+
+    // 2. Reject old timestamps (more than 5 minutes old)
+    let max_age = 300; // 5 minutes
+
+    if now.saturating_sub(nonce) > max_age {
+        return false; // Too old
+    }
+
+    true
 }
 
 async fn get_table_of_subscribed_data<At: AllServerTypes>(
