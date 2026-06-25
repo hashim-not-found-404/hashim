@@ -228,8 +228,13 @@ impl<At: AllServerTypes> ServerMethods<At> {
                                     }
                                 };
 
+                                dbg!(&input);
                                 let mut side_effects = SideEffects::<At::Id>::default();
-                                match self.push_data(&mut client, &mut side_effects, &input).await {
+                                let output =
+                                    self.push_data(&mut client, &mut side_effects, &input).await;
+
+                                dbg!(&output);
+                                match output {
                                     Ok(ok) => {
                                         if session
                                             .send_bin(At::De::encode(
