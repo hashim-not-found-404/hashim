@@ -48,132 +48,6 @@ impl<At: AllServerTypes> ServerMethods<At> {
         }
     }
 
-    async fn push_data(
-        &self,
-        client: &mut At::Cli,
-        side_effects: &mut SideEffects<At::Id>,
-        input: &push_data::Input,
-    ) -> Result<push_data::Result, DynamicError> {
-        let mut the_return_result = push_data::Result {
-            jwts: Vec::with_capacity(input.jwts.len()),
-            nonce: Ok(()),
-            operations: Vec::with_capacity(input.operations.len()),
-        };
-
-        let mut is_there_error = false;
-
-        for jwt in &input.jwts {
-            match self.jwt.validate(jwt.clone()) {
-                Some(user_uuid) => {
-                    side_effects.authenticated_users.insert(user_uuid);
-                }
-                None => {
-                    the_return_result.jwts.push(Err(JWTError::Invalid));
-
-                    is_there_error = true;
-                }
-            }
-        }
-
-        let nonce = match At::Id::try_from(&input.nonce) {
-            Ok(nonce) => nonce,
-            Err(_) => {
-                the_return_result.nonce = Err(NonceError::Invalid);
-                return Ok(the_return_result);
-            }
-        };
-
-        let is_nonce_used = client.write_nonce_if_not_used(&nonce).await?;
-
-        if !check_nonce_if_valid::<At::Id>(&nonce, is_nonce_used) {
-            the_return_result.nonce = Err(NonceError::Invalid);
-        }
-
-        if is_there_error {
-            return Ok(the_return_result);
-        }
-
-        for transaction in &input.operations {
-            let result = match &transaction.operation {
-                push_data::OperationsInput::SignUp(input) => push_data::OperationsResult::SignUp(
-                    input
-                        .handel_operation::<At>(side_effects, client, &self.jwt)
-                        .await?,
-                ),
-                push_data::OperationsInput::SignIn(input) => push_data::OperationsResult::SignIn(
-                    input
-                        .handel_operation::<At>(side_effects, client, &self.jwt)
-                        .await?,
-                ),
-                push_data::OperationsInput::CreateCompany(input) => {
-                    push_data::OperationsResult::CreateCompany(
-                        input
-                            .handel_operation::<At>(side_effects, client, &self.jwt)
-                            .await?,
-                    )
-                }
-                push_data::OperationsInput::CreateCompanyBranch(input) => {
-                    push_data::OperationsResult::CreateCompanyBranch(
-                        input
-                            .handel_operation::<At>(side_effects, client, &self.jwt)
-                            .await?,
-                    )
-                }
-                push_data::OperationsInput::ListCompanyAndBranch(input) => {
-                    push_data::OperationsResult::ListCompanyAndBranch(
-                        input
-                            .handel_operation::<At>(side_effects, client, &self.jwt)
-                            .await?,
-                    )
-                }
-            };
-
-            the_return_result.operations.push(push_data::Txn {
-                txn_number: transaction.txn_number,
-                operation: result,
-            });
-        }
-
-        return Ok(the_return_result);
-    }
-
-    async fn get_table_of_subscribed_data(
-        &self,
-        client: &mut At::Cli,
-        users_uuids: &HashSet<At::Id>,
-    ) -> Result<AllSubscribes<At::Id>, DynamicError> {
-        let roles = client.read_roles_for_user(users_uuids).await?;
-
-        let mut subs = AllSubscribes {
-            companies: HashMap::new(),
-            branches: HashMap::new(),
-        };
-
-        for (company, users_roles) in roles.companies {
-            let mut users_subscribes = HashMap::new();
-
-            for (user, roles) in users_roles {
-                let subscribes = role_to_subscribe_mapping(roles);
-                users_subscribes.insert(user, subscribes);
-            }
-
-            subs.companies.insert(company, users_subscribes);
-        }
-
-        for (branch, users_roles) in roles.branches {
-            let mut users_subscribes = HashMap::new();
-
-            for (user, roles) in users_roles {
-                let subscribes = role_to_subscribe_mapping(roles);
-                users_subscribes.insert(user, subscribes);
-            }
-
-            subs.companies.insert(branch, users_subscribes);
-        }
-
-        Ok(subs)
-    }
-
     pub fn server_actor(self: Arc<Self>, mut session: At::Ws) {
         At::Rt::spawn_local(async move {
             let mut sender_to_broker = self.sender_to_broker.clone();
@@ -230,8 +104,13 @@ impl<At: AllServerTypes> ServerMethods<At> {
 
                                 dbg!(&input);
                                 let mut side_effects = SideEffects::<At::Id>::default();
-                                let output =
-                                    self.push_data(&mut client, &mut side_effects, &input).await;
+                                let output = push_data::<At>(
+                                    &input,
+                                    &mut side_effects,
+                                    &mut client,
+                                    &self.jwt,
+                                )
+                                .await;
 
                                 dbg!(&output);
                                 match output {
@@ -260,12 +139,11 @@ impl<At: AllServerTypes> ServerMethods<At> {
                                 }
 
                                 if !side_effects.users_to_resubscribe.is_empty() {
-                                    let subs = match self
-                                        .get_table_of_subscribed_data(
-                                            &mut client,
-                                            &side_effects.users_to_resubscribe,
-                                        )
-                                        .await
+                                    let subs = match get_table_of_subscribed_data::<At>(
+                                        &mut client,
+                                        &side_effects.users_to_resubscribe,
+                                    )
+                                    .await
                                     {
                                         Ok(ok) => ok,
                                         Err(_) => {
@@ -445,6 +323,131 @@ impl<At: AllServerTypes> ServerMethods<At> {
             }
         });
     }
+}
+
+async fn push_data<At: AllServerTypes>(
+    input: &push_data::Input,
+    side_effects: &mut server_methods::SideEffects<At::Id>,
+    client: &mut At::Cli,
+    jwt: &At::Jwt,
+) -> Result<push_data::Result, DynamicError> {
+    let mut the_return_result = push_data::Result {
+        jwts: Vec::with_capacity(input.jwts.len()),
+        nonce: Ok(()),
+        operations: Vec::with_capacity(input.operations.len()),
+    };
+
+    let mut is_there_error = false;
+
+    for jwt_value in &input.jwts {
+        match jwt.validate(jwt_value.clone()) {
+            Some(user_uuid) => {
+                side_effects.authenticated_users.insert(user_uuid);
+            }
+            None => {
+                the_return_result.jwts.push(Err(JWTError::Invalid));
+
+                is_there_error = true;
+            }
+        }
+    }
+
+    let nonce = match At::Id::try_from(&input.nonce) {
+        Ok(nonce) => nonce,
+        Err(_) => {
+            the_return_result.nonce = Err(NonceError::Invalid);
+            return Ok(the_return_result);
+        }
+    };
+
+    let is_nonce_used = client.write_nonce_if_not_used(&nonce).await?;
+
+    if !check_nonce_if_valid::<At::Id>(&nonce, is_nonce_used) {
+        the_return_result.nonce = Err(NonceError::Invalid);
+    }
+
+    if is_there_error {
+        return Ok(the_return_result);
+    }
+
+    for transaction in &input.operations {
+        let result = match &transaction.operation {
+            push_data::OperationsInput::SignUp(input) => push_data::OperationsResult::SignUp(
+                input
+                    .handel_operation::<At>(side_effects, client, &jwt)
+                    .await?,
+            ),
+            push_data::OperationsInput::SignIn(input) => push_data::OperationsResult::SignIn(
+                input
+                    .handel_operation::<At>(side_effects, client, &jwt)
+                    .await?,
+            ),
+            push_data::OperationsInput::CreateCompany(input) => {
+                push_data::OperationsResult::CreateCompany(
+                    input
+                        .handel_operation::<At>(side_effects, client, &jwt)
+                        .await?,
+                )
+            }
+            push_data::OperationsInput::CreateCompanyBranch(input) => {
+                push_data::OperationsResult::CreateCompanyBranch(
+                    input
+                        .handel_operation::<At>(side_effects, client, &jwt)
+                        .await?,
+                )
+            }
+            push_data::OperationsInput::ListCompanyAndBranch(input) => {
+                push_data::OperationsResult::ListCompanyAndBranch(
+                    input
+                        .handel_operation::<At>(side_effects, client, &jwt)
+                        .await?,
+                )
+            }
+        };
+
+        the_return_result.operations.push(push_data::Txn {
+            txn_number: transaction.txn_number,
+            operation: result,
+        });
+    }
+
+    return Ok(the_return_result);
+}
+
+async fn get_table_of_subscribed_data<At: AllServerTypes>(
+    client: &mut At::Cli,
+    users_uuids: &HashSet<At::Id>,
+) -> Result<AllSubscribes<At::Id>, DynamicError> {
+    let roles = client.read_roles_for_user(users_uuids).await?;
+
+    let mut subs = AllSubscribes {
+        companies: HashMap::new(),
+        branches: HashMap::new(),
+    };
+
+    for (company, users_roles) in roles.companies {
+        let mut users_subscribes = HashMap::new();
+
+        for (user, roles) in users_roles {
+            let subscribes = role_to_subscribe_mapping(roles);
+            users_subscribes.insert(user, subscribes);
+        }
+
+        subs.companies.insert(company, users_subscribes);
+    }
+
+    for (branch, users_roles) in roles.branches {
+        let mut users_subscribes = HashMap::new();
+
+        for (user, roles) in users_roles {
+            let subscribes = role_to_subscribe_mapping(roles);
+            users_subscribes.insert(user, subscribes);
+        }
+
+        subs.companies.insert(branch, users_subscribes);
+    }
+
+    Ok(subs)
 }
 
 pub enum WSMessage {
