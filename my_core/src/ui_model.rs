@@ -120,6 +120,7 @@ impl Default for Navigator {
 
 // message
 
+#[derive(Debug)]
 pub enum Message {
     CloseError,
 

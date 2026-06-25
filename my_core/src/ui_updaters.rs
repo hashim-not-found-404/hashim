@@ -12,6 +12,7 @@ pub(crate) trait Mvu {
 pub mod sign_up {
     use super::*;
 
+    #[derive(Debug)]
     pub enum Msg {
         Submit,
         Consent(process_manager::UserConsent),
@@ -257,6 +258,7 @@ pub mod sign_up {
 pub mod sign_in {
     use super::*;
 
+    #[derive(Debug)]
     pub enum Msg {
         Submit,
         Consent(process_manager::UserConsent),
@@ -483,6 +485,7 @@ pub mod sign_in {
 pub mod company_and_branch_selection {
     use super::*;
 
+    #[derive(Debug)]
     pub enum Msg {
         Subscribe,
         UnSubscribe,
@@ -700,6 +703,7 @@ pub mod company_and_branch_selection {
 pub mod create_company {
     use super::*;
 
+    #[derive(Debug)]
     pub enum Msg {
         Submit,
         Close,
@@ -789,6 +793,7 @@ pub mod create_company {
 pub mod create_company_branch {
     use super::*;
 
+    #[derive(Debug)]
     pub enum Msg {
         Submit,
         Consent(process_manager::UserConsent),

@@ -81,6 +81,7 @@ impl<At: AllClientTypes> Commander<At> {
 
             loop {
                 let message = receiver.recv().await.unwrap();
+                mbg!(&message);
 
                 let model = model.clone();
                 let cache = cache.clone();
