@@ -38,7 +38,6 @@ pub mod prelude {
         fmt::Display,
         future::Future,
         hash::Hash,
-        marker::PhantomData,
         str::FromStr,
         sync::{Arc, Mutex, RwLock},
         time::{Duration, SystemTime, UNIX_EPOCH},
