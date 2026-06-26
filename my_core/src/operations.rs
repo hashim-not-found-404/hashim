@@ -195,6 +195,12 @@ async fn apply_change(
             server_methods::Resource::TableCompanyBranchFieldCompanyBelong(r) => state
                 .company_branch
                 .upsert(row_uuid, |table| table.company_belong = r),
+            server_methods::Resource::TableCompanyBranchFieldCurrency(r) => state
+                .company_branch
+                .upsert(row_uuid, |table| table.currency = r),
+            server_methods::Resource::TableCompanyBranchFieldLocation(r) => state
+                .company_branch
+                .upsert(row_uuid, |table| table.location = r),
             server_methods::Resource::TableCompanyFieldCurrency(r) => {
                 state.company.upsert(row_uuid, |table| table.currency = r)
             }

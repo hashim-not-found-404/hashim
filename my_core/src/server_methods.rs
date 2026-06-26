@@ -539,6 +539,16 @@ mod broker_functions {
                         new_resource.push(one_resource.clone());
                     }
                 }
+                Resource::TableCompanyBranchFieldCurrency(_) => {
+                    if subscribe.contains(&Subscribe::TableCompanyBranchFieldCurrency) {
+                        new_resource.push(one_resource.clone());
+                    }
+                }
+                Resource::TableCompanyBranchFieldLocation(_) => {
+                    if subscribe.contains(&Subscribe::TableCompanyBranchFieldLocation) {
+                        new_resource.push(one_resource.clone());
+                    }
+                }
                 Resource::TableCompanyFieldCurrency(_) => {
                     if subscribe.contains(&Subscribe::TableCompanyFieldCurrency) {
                         new_resource.push(one_resource.clone());
@@ -590,6 +600,8 @@ pub enum Subscribe {
     TableCompanyFieldCurrency,
     TableCompanyBranchFieldName,
     TableCompanyBranchFieldCompanyBelong,
+    TableCompanyBranchFieldLocation,
+    TableCompanyBranchFieldCurrency,
     TableAccessControlForCompanyFieldRole,
     TableAccessControlForCompanyFieldUser,
     TableAccessControlForCompanyFieldDataGroup,
@@ -607,6 +619,8 @@ pub enum Resource {
     TableCompanyFieldCurrency(db_types::Currency),
     TableCompanyBranchFieldName(String),
     TableCompanyBranchFieldCompanyBelong(db_types::UuidType),
+    TableCompanyBranchFieldLocation(db_types::Location),
+    TableCompanyBranchFieldCurrency(db_types::Currency),
     TableAccessControlForCompanyFieldRole(db_types::Role),
     TableAccessControlForCompanyFieldUser(db_types::UuidType),
     TableAccessControlForCompanyFieldDataGroup(db_types::UuidType),

@@ -1,4 +1,7 @@
 use crate::prelude::*;
+use rust_decimal::Decimal;
+use rust_decimal::prelude::FromPrimitive;
+use std::str::FromStr;
 use tokio_postgres::error::SqlState;
 
 pub struct S<'a> {
@@ -138,18 +141,69 @@ impl DBTransaction for S<'_> {
 
     async fn read_create_company_branch(
         &mut self,
-        nonce: &Self::RowId,
+        new_uuid: &Self::RowId,
+        user_uuid: &Self::RowId,
         company_belong: &Self::RowId,
         branch_name: &String,
     ) -> Result<
         (
-            bool, /* is nonce used */
-            bool, /* is company_belong exist */
-            bool, /* is branch_name used */
+            Vec<db_types::Role>, /* user roles */
+            bool,                /* is new_uuid exist */
+            bool,                /* is company_belong exist */
+            bool,                /* is branch_name used */
         ),
         DynamicError,
     > {
-        todo!()
+        let query = "
+            WITH user_roles AS (
+                SELECT array_agg(role) as roles
+                FROM accounting_app.access_control_for_company
+                WHERE data_group = $1 AND user_ = $2
+            ),
+            checks AS (
+                SELECT
+                    EXISTS(SELECT 1 FROM accounting_app.company_branch WHERE rowid = $3) as new_uuid_exists,
+                    EXISTS(SELECT 1 FROM accounting_app.company WHERE rowid = $1) as company_exists,
+                    EXISTS(SELECT 1 FROM accounting_app.company_branch
+                          WHERE company_belong = $1 AND name = $4) as branch_name_used
+            )
+            SELECT
+                COALESCE((SELECT roles FROM user_roles), '{}'::text[]) as roles,
+                (SELECT new_uuid_exists FROM checks) as new_uuid_exists,
+                (SELECT company_exists FROM checks) as company_exists,
+                (SELECT branch_name_used FROM checks) as branch_name_used
+        ";
+
+        let row = self
+            .txn
+            .query_one(
+                query,
+                &[
+                    &company_belong.into_inner(),
+                    &user_uuid.into_inner(),
+                    &new_uuid.into_inner(),
+                    &branch_name,
+                ],
+            )
+            .await
+            .unwrap();
+
+        let role_strings: Vec<String> = row.try_get(0).unwrap();
+        let roles = role_strings
+            .into_iter()
+            .map(|s| db_types::Role::from_str(&s))
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap();
+        let is_new_uuid_exist: bool = row.try_get(1).unwrap();
+        let is_company_belong_exist: bool = row.try_get(2).unwrap();
+        let is_branch_name_used: bool = row.try_get(3).unwrap();
+
+        Ok((
+            roles,
+            is_new_uuid_exist,
+            is_company_belong_exist,
+            is_branch_name_used,
+        ))
     }
 
     async fn write_create_company_branch(
@@ -162,7 +216,41 @@ impl DBTransaction for S<'_> {
         user_uuid: &Self::RowId,
         user_role: &db_types::Role,
     ) -> Result<(), DynamicError> {
-        todo!()
+        let query = "
+            WITH inserted_branch AS (
+                INSERT INTO accounting_app.company_branch (
+                    rowid, company_belong, name,
+                    location_latitude, location_longitude, currency
+                ) VALUES ($1, $2, $3, $4, $5, $6)
+                RETURNING rowid
+            )
+            INSERT INTO accounting_app.access_control_for_company_branch (
+                rowid, data_group, user_, role
+            )
+            SELECT rowid, rowid, $7, $8 FROM inserted_branch
+        ";
+
+        let lat = Decimal::from_f64(location.latitude).unwrap();
+        let lng = Decimal::from_f64(location.longitude).unwrap();
+
+        self.txn
+            .execute(
+                query,
+                &[
+                    &new_uuid.into_inner(),
+                    &company_belong.into_inner(),
+                    &branch_name,
+                    &lat,
+                    &lng,
+                    &currency.as_str(),
+                    &user_uuid.into_inner(),
+                    &user_role.as_str(),
+                ],
+            )
+            .await
+            .unwrap();
+
+        Ok(())
     }
 }
 

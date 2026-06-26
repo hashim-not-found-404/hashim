@@ -21,13 +21,20 @@ pub struct Branch {
 
 #[derive(Debug, Deserialize, Serialize, Clone, Default)]
 pub struct Location {
-    latitude: f64,
-    longitude: f64,
+    pub latitude: f64,
+    pub longitude: f64,
 }
 
 impl Location {
     pub fn is_valid(&self) -> bool {
-        todo!();
+        // Check bounds for latitude and longitude
+        // Also ensure the values are finite (not NaN or Infinity)
+        self.latitude >= -90.0
+            && self.latitude <= 90.0
+            && self.longitude >= -180.0
+            && self.longitude <= 180.0
+            && self.latitude.is_finite()
+            && self.longitude.is_finite()
     }
 }
 

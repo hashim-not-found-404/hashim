@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{fmt::Display, ops::Add, str::FromStr};
 
 use crate::prelude::*;
 use rusqlite::{Connection, OptionalExtension, params};
@@ -88,28 +88,58 @@ impl CacheIO for S {
 
             let stmt = match &reso.resource {
                 server_methods::Resource::Jwt(value) => {
-                    make_sql_statment("user", "jwt", uuid, value)
+                    make_sql_statment_for_string("user", "jwt", uuid, value)
                 }
                 server_methods::Resource::TableUserFieldName(value) => {
-                    make_sql_statment("user", "name", uuid, value)
+                    make_sql_statment_for_string("user", "name", uuid, value)
                 }
                 server_methods::Resource::TableUserFieldId(value) => {
-                    make_sql_statment("user", "id", uuid, value)
+                    make_sql_statment_for_string("user", "id", uuid, value)
                 }
                 server_methods::Resource::TableCompanyFieldName(value) => {
-                    make_sql_statment("company", "name", uuid, value)
+                    make_sql_statment_for_string("company", "name", uuid, value)
                 }
                 server_methods::Resource::TableCompanyBranchFieldName(value) => {
-                    make_sql_statment("company_branch", "name", uuid, value)
+                    make_sql_statment_for_string("company_branch", "name", uuid, value)
                 }
                 server_methods::Resource::TableCompanyBranchFieldCompanyBelong(value) => {
-                    make_sql_statment("company_branch", "company_belong", uuid, &value.0)
+                    make_sql_statment_for_string("company_branch", "company_belong", uuid, &value.0)
+                }
+                server_methods::Resource::TableCompanyBranchFieldCurrency(value) => {
+                    make_sql_statment_for_string(
+                        "company_branch",
+                        "currency",
+                        uuid,
+                        &value.as_str().to_string(),
+                    )
+                }
+                server_methods::Resource::TableCompanyBranchFieldLocation(value) => {
+                    make_sql_statment_for_number(
+                        "company_branch",
+                        "location_latitude",
+                        uuid,
+                        &value.latitude,
+                    )
+                    .add(
+                        make_sql_statment_for_number(
+                            "company_branch",
+                            "location_longitude",
+                            uuid,
+                            &value.longitude,
+                        )
+                        .as_str(),
+                    )
                 }
                 server_methods::Resource::TableCompanyFieldCurrency(value) => {
-                    make_sql_statment("company", "currency", uuid, &value.as_str().to_string())
+                    make_sql_statment_for_string(
+                        "company",
+                        "currency",
+                        uuid,
+                        &value.as_str().to_string(),
+                    )
                 }
                 server_methods::Resource::TableAccessControlForCompanyFieldRole(value) => {
-                    make_sql_statment(
+                    make_sql_statment_for_string(
                         "access_control_for_company",
                         "role",
                         uuid,
@@ -117,13 +147,23 @@ impl CacheIO for S {
                     )
                 }
                 server_methods::Resource::TableAccessControlForCompanyFieldUser(value) => {
-                    make_sql_statment("access_control_for_company", "user_", uuid, &value.0)
+                    make_sql_statment_for_string(
+                        "access_control_for_company",
+                        "user_",
+                        uuid,
+                        &value.0,
+                    )
                 }
                 server_methods::Resource::TableAccessControlForCompanyFieldDataGroup(value) => {
-                    make_sql_statment("access_control_for_company", "data_group", uuid, &value.0)
+                    make_sql_statment_for_string(
+                        "access_control_for_company",
+                        "data_group",
+                        uuid,
+                        &value.0,
+                    )
                 }
                 server_methods::Resource::TableAccessControlForCompanyBranchFieldRole(value) => {
-                    make_sql_statment(
+                    make_sql_statment_for_string(
                         "access_control_for_company_branch",
                         "role",
                         uuid,
@@ -131,11 +171,16 @@ impl CacheIO for S {
                     )
                 }
                 server_methods::Resource::TableAccessControlForCompanyBranchFieldUser(value) => {
-                    make_sql_statment("access_control_for_company_branch", "user_", uuid, &value.0)
+                    make_sql_statment_for_string(
+                        "access_control_for_company_branch",
+                        "user_",
+                        uuid,
+                        &value.0,
+                    )
                 }
                 server_methods::Resource::TableAccessControlForCompanyBranchFieldDataGroup(
                     value,
-                ) => make_sql_statment(
+                ) => make_sql_statment_for_string(
                     "access_control_for_company_branch",
                     "data_group",
                     uuid,
@@ -358,9 +403,26 @@ impl CacheIO for S {
     }
 }
 
-fn make_sql_statment(table_name: &str, field_name: &str, uuid: &String, value: &String) -> String {
+fn make_sql_statment_for_string(
+    table_name: &str,
+    field_name: &str,
+    uuid: &String,
+    value: &String,
+) -> String {
     format!(
         "INSERT OR IGNORE INTO {table_name} (rowid) VALUES ('{uuid}');
          UPDATE {table_name} SET {field_name} = '{value}' WHERE rowid = '{uuid}';"
+    )
+}
+
+fn make_sql_statment_for_number(
+    table_name: &str,
+    field_name: &str,
+    uuid: &String,
+    value: &f64,
+) -> String {
+    format!(
+        "INSERT OR IGNORE INTO {table_name} (rowid) VALUES ('{uuid}');
+         UPDATE {table_name} SET {field_name} = {value} WHERE rowid = '{uuid}';"
     )
 }

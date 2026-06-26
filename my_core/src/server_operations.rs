@@ -513,16 +513,27 @@ pub mod create_company_branch {
             let mut txn = client.begin_transaction().await?;
 
             let result = (|| async {
-                todo!("get the role of the user to check it");
-                let (is_new_uuid_used, is_company_exist, is_branch_name_used) = txn
-                    .read_create_company_branch(&new_uuid, &company_belong, &self.branch_name)
+                let (user_roles, is_new_uuid_used, is_company_exist, is_branch_name_used) = txn
+                    .read_create_company_branch(
+                        &new_uuid,
+                        &user_uuid,
+                        &company_belong,
+                        &self.branch_name,
+                    )
                     .await?;
+
+                if !db_types::Role::has_any(
+                    &user_roles,
+                    &[db_types::Role::Manager, db_types::Role::CoManager],
+                ) {
+                    errr.user_uuid = Some(UserUuidError::YouDontHavePermissionToDoThat);
+                }
 
                 if is_new_uuid_used {
                     errr.new_uuid = Some(RowIdError::Duplicated);
                 }
 
-                if is_company_exist {
+                if !is_company_exist {
                     errr.company_belong = Some(CompanyBelongError::NotExist);
                 }
 
@@ -538,6 +549,8 @@ pub mod create_company_branch {
                     return Ok(Err(errr));
                 }
 
+                const ROLE: db_types::Role = db_types::Role::CoManager;
+
                 txn.write_create_company_branch(
                     &new_uuid,
                     &company_belong,
@@ -545,14 +558,51 @@ pub mod create_company_branch {
                     &self.location,
                     &self.currency,
                     &user_uuid,
-                    &db_types::Role::Manager,
+                    &ROLE,
                 )
                 .await?;
 
                 side_effects.users_to_resubscribe.insert(user_uuid);
 
-                todo!("add to the resource");
-                Ok(Ok(Self::Ok { resource: todo!() }))
+                let mut resource = Vec::new();
+                let row_uuid = new_uuid.to_uuid();
+
+                resource.push(ResourceInfo {
+                    row_uuid: row_uuid.clone(),
+                    resource: Resource::TableCompanyBranchFieldName(self.branch_name.clone()),
+                });
+                resource.push(ResourceInfo {
+                    row_uuid: row_uuid.clone(),
+                    resource: Resource::TableCompanyBranchFieldCompanyBelong(
+                        self.company_belong.clone(),
+                    ),
+                });
+                resource.push(ResourceInfo {
+                    row_uuid: row_uuid.clone(),
+                    resource: Resource::TableAccessControlForCompanyBranchFieldDataGroup(
+                        self.new_uuid.clone(),
+                    ),
+                });
+                resource.push(ResourceInfo {
+                    row_uuid: row_uuid.clone(),
+                    resource: Resource::TableAccessControlForCompanyBranchFieldRole(ROLE),
+                });
+                resource.push(ResourceInfo {
+                    row_uuid: row_uuid.clone(),
+                    resource: Resource::TableAccessControlForCompanyBranchFieldUser(
+                        self.user_uuid.clone(),
+                    ),
+                });
+                resource.push(ResourceInfo {
+                    row_uuid: row_uuid.clone(),
+                    resource: Resource::TableCompanyBranchFieldCurrency(self.currency.clone()),
+                });
+                resource.push(ResourceInfo {
+                    row_uuid: row_uuid.clone(),
+                    resource: Resource::TableCompanyBranchFieldLocation(self.location.clone()),
+                });
+
+                Ok(Ok(Self::Ok { resource }))
             })()
             .await;
 

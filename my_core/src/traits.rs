@@ -121,14 +121,16 @@ pub trait DBTransaction {
     fn read_create_company_branch(
         &mut self,
         new_uuid: &Self::RowId,
+        user_uuid: &Self::RowId,
         company_belong: &Self::RowId,
         branch_name: &String,
     ) -> impl Future<
         Output = Result<
             (
-                bool, /* is new_uuid exist */
-                bool, /* is company_belong exist */
-                bool, /* is branch_name used */
+                Vec<db_types::Role>, /* user roles */
+                bool,                /* is new_uuid exist */
+                bool,                /* is company_belong exist */
+                bool,                /* is branch_name used */
             ),
             DynamicError,
         >,

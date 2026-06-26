@@ -438,6 +438,12 @@ pub fn collect_subs_to_poke(
                 subs_to_poke
                     .insert(server_methods::Subscribe::TableCompanyBranchFieldCompanyBelong);
             }
+            server_methods::Resource::TableCompanyBranchFieldCurrency(_) => {
+                subs_to_poke.insert(server_methods::Subscribe::TableCompanyBranchFieldCurrency);
+            }
+            server_methods::Resource::TableCompanyBranchFieldLocation(_) => {
+                subs_to_poke.insert(server_methods::Subscribe::TableCompanyBranchFieldLocation);
+            }
             server_methods::Resource::TableCompanyFieldCurrency(_) => {
                 subs_to_poke.insert(server_methods::Subscribe::TableCompanyFieldCurrency);
             }
