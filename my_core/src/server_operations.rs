@@ -602,6 +602,10 @@ pub mod create_company_branch {
                     resource: Resource::TableCompanyBranchFieldLocation(self.location.clone()),
                 });
 
+                side_effects
+                    .resource_to_broadcast_for_company
+                    .insert_append(new_uuid, resource.clone());
+
                 Ok(Ok(Self::Ok { resource }))
             })()
             .await;
