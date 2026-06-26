@@ -186,17 +186,17 @@ impl DBTransaction for S<'_> {
                 ],
             )
             .await
-            .unwrap();
+            .log()?;
 
-        let role_strings: Vec<String> = row.try_get(0).unwrap();
+        let role_strings: Vec<String> = row.try_get(0).log()?;
         let roles = role_strings
             .into_iter()
             .map(|s| db_types::Role::from_str(&s))
             .collect::<Result<Vec<_>, _>>()
-            .unwrap();
-        let is_new_uuid_exist: bool = row.try_get(1).unwrap();
-        let is_company_belong_exist: bool = row.try_get(2).unwrap();
-        let is_branch_name_used: bool = row.try_get(3).unwrap();
+            .log()?;
+        let is_new_uuid_exist: bool = row.try_get(1).log()?;
+        let is_company_belong_exist: bool = row.try_get(2).log()?;
+        let is_branch_name_used: bool = row.try_get(3).log()?;
 
         Ok((
             roles,
@@ -230,8 +230,12 @@ impl DBTransaction for S<'_> {
             SELECT rowid, rowid, $7, $8 FROM inserted_branch
         ";
 
-        let lat = Decimal::from_f64(location.latitude).unwrap();
-        let lng = Decimal::from_f64(location.longitude).unwrap();
+        let lat = Decimal::from_f64(location.latitude)
+            .ok_or(HashimError::InternalServerError)
+            .log()?;
+        let lng = Decimal::from_f64(location.longitude)
+            .ok_or(HashimError::InternalServerError)
+            .log()?;
 
         self.txn
             .execute(
@@ -248,7 +252,7 @@ impl DBTransaction for S<'_> {
                 ],
             )
             .await
-            .unwrap();
+            .log()?;
 
         Ok(())
     }
