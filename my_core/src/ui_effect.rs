@@ -14,14 +14,12 @@ pub(crate) struct CommanderLocalState<At: AllClientTypes> {
 }
 
 pub struct Commander<At: AllClientTypes> {
-    _ph: PhantomData<At>,
     sender: <At::Mpsc as MultiProducerSingleConsumer>::Sender<ui_model::Message>,
 }
 
 impl<At: AllClientTypes> Clone for Commander<At> {
     fn clone(&self) -> Self {
         Self {
-            _ph: self._ph.clone(),
             sender: self.sender.clone(),
         }
     }
@@ -49,7 +47,6 @@ impl<At: AllClientTypes> Commander<At> {
         );
 
         Self {
-            _ph: PhantomData,
             sender: sender_to_commander,
         }
     }

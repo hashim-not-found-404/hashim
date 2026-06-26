@@ -7,7 +7,7 @@ pub fn new<At: AllClientTypes>() -> (ui_model::Model<At>, ui_effect::Commander<A
 
     let is_online = Arc::new(RwLock::new(false));
 
-    network_actor::Network::<At>::network_actor(
+    network_actor::network_actor::<At>(
         receiver_to_network,
         sender_to_cache.clone(),
         sender_to_error.clone(),

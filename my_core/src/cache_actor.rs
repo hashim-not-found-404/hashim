@@ -48,14 +48,12 @@ pub struct Cache<At>
 where
     At: AllClientTypes,
 {
-    _ph: PhantomData<At>,
     sender: <At::Mpsc as MultiProducerSingleConsumer>::Sender<MessageToCache<At>>,
 }
 
 impl<At: AllClientTypes> Clone for Cache<At> {
     fn clone(&self) -> Self {
         Self {
-            _ph: self._ph.clone(),
             sender: self.sender.clone(),
         }
     }
@@ -82,7 +80,6 @@ where
         );
 
         Self {
-            _ph: PhantomData,
             sender: sender_to_cache,
         }
     }
