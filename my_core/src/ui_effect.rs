@@ -32,7 +32,7 @@ impl<At: AllClientTypes> Commander<At> {
             process_manager::MessageToProcessManager<At>,
         >,
         model: ui_model::Model<At>,
-        cache: cache_actor::Cache<At>,
+        cache: cache_actor::CacheStruct<At>,
     ) -> Self {
         let (sender_to_commander, receiver_to_commander) = At::Mpsc::channel();
 
@@ -65,7 +65,7 @@ impl<At: AllClientTypes> Commander<At> {
             process_manager::MessageToProcessManager<At>,
         >,
         model: ui_model::Model<At>,
-        cache: cache_actor::Cache<At>,
+        cache: cache_actor::CacheStruct<At>,
     ) {
         At::Rt::spawn_local(async move {
             let commander_local_state = Arc::new(CommanderLocalState {

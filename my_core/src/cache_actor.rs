@@ -44,14 +44,14 @@ pub(crate) enum MessageToCache<At: AllClientTypes> {
     },
 }
 
-pub struct Cache<At>
+pub struct CacheStruct<At>
 where
     At: AllClientTypes,
 {
     sender: <At::Mpsc as MultiProducerSingleConsumer>::Sender<MessageToCache<At>>,
 }
 
-impl<At: AllClientTypes> Clone for Cache<At> {
+impl<At: AllClientTypes> Clone for CacheStruct<At> {
     fn clone(&self) -> Self {
         Self {
             sender: self.sender.clone(),
@@ -59,7 +59,7 @@ impl<At: AllClientTypes> Clone for Cache<At> {
     }
 }
 
-impl<At> Cache<At>
+impl<At> CacheStruct<At>
 where
     At: AllClientTypes,
 {
@@ -371,12 +371,12 @@ where
         });
     }
 
-    async fn prepare_txn_and_send_to_network<Ch: Cache>(
+    async fn prepare_txn_and_send_to_network(
         sender_to_network: &mut <At::Mpsc as MultiProducerSingleConsumer>::Sender<
             network_actor::MessageToNetwork,
         >,
         operations: Vec<push_data::Txn<push_data::OperationsInput>>,
-        state: &cache::State<Ch>,
+        state: &cache::State<At::Ch>,
     ) {
         if operations.is_empty() {
             return;

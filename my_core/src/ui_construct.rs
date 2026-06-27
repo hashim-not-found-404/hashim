@@ -15,7 +15,7 @@ pub fn new<At: AllClientTypes>() -> (ui_model::Model<At>, ui_effect::Commander<A
         format!("ws://{}/ws", ADDRESS),
     );
 
-    let cache = cache_actor::Cache::<At>::new(
+    let cache = cache_actor::CacheStruct::<At>::new(
         receiver_to_cache,
         sender_to_cache,
         sender_to_network,

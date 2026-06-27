@@ -4,7 +4,7 @@ pub(crate) trait Mvu {
     async fn update<At: AllClientTypes>(
         self,
         model: ui_model::Model<At>,
-        cache: cache_actor::Cache<At>,
+        cache: cache_actor::CacheStruct<At>,
         commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
     );
 }
@@ -25,7 +25,7 @@ pub mod sign_up {
         async fn update<At: AllClientTypes>(
             self,
             model: ui_model::Model<At>,
-            cache: cache_actor::Cache<At>,
+            cache: cache_actor::CacheStruct<At>,
             commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
         ) {
             match self {
@@ -63,7 +63,7 @@ pub mod sign_up {
 
     async fn handle_submit<At: AllClientTypes>(
         model: ui_model::Model<At>,
-        mut cache: cache_actor::Cache<At>,
+        mut cache: cache_actor::CacheStruct<At>,
         commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
     ) {
         let feature_state = model.page_root.page_auth.auth_feature_state.clone();
@@ -194,7 +194,7 @@ pub mod sign_up {
 
     async fn handle_check<At: AllClientTypes>(
         model: ui_model::Model<At>,
-        mut cache: cache_actor::Cache<At>,
+        mut cache: cache_actor::CacheStruct<At>,
         commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
     ) {
         let feature_state = model.page_root.page_auth.auth_feature_state.clone();
@@ -270,7 +270,7 @@ pub mod sign_in {
         async fn update<At: AllClientTypes>(
             self,
             model: ui_model::Model<At>,
-            cache: cache_actor::Cache<At>,
+            cache: cache_actor::CacheStruct<At>,
             commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
         ) {
             match self {
@@ -306,7 +306,7 @@ pub mod sign_in {
 
     async fn handle_submit<At: AllClientTypes>(
         model: ui_model::Model<At>,
-        mut cache: cache_actor::Cache<At>,
+        mut cache: cache_actor::CacheStruct<At>,
         commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
     ) {
         let feature_state = &model.page_root.page_auth.auth_feature_state;
@@ -421,7 +421,7 @@ pub mod sign_in {
 
     async fn handle_check<At: AllClientTypes>(
         model: ui_model::Model<At>,
-        mut cache: cache_actor::Cache<At>,
+        mut cache: cache_actor::CacheStruct<At>,
         commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
     ) {
         let feature_state = &model.page_root.page_auth.auth_feature_state;
@@ -499,7 +499,7 @@ pub mod company_and_branch_selection {
         async fn update<At: AllClientTypes>(
             self,
             model: ui_model::Model<At>,
-            cache: cache_actor::Cache<At>,
+            cache: cache_actor::CacheStruct<At>,
             commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
         ) {
             match self {
@@ -582,7 +582,7 @@ pub mod company_and_branch_selection {
 
     fn handle_list_company_and_branch_listener<At: AllClientTypes>(
         model: ui_model::Model<At>,
-        mut cache: cache_actor::Cache<At>,
+        mut cache: cache_actor::CacheStruct<At>,
         commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
     ) -> impl FnOnce() {
         let component_id = At::Rn::generate() as u16;
@@ -656,7 +656,7 @@ pub mod company_and_branch_selection {
 
     async fn handle_list_company_and_branch<At: AllClientTypes>(
         model: ui_model::Model<At>,
-        mut cache: cache_actor::Cache<At>,
+        mut cache: cache_actor::CacheStruct<At>,
         commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
     ) {
         let user_uuid = commander_local_state
@@ -715,7 +715,7 @@ pub mod create_company {
         async fn update<At: AllClientTypes>(
             self,
             model: ui_model::Model<At>,
-            cache: cache_actor::Cache<At>,
+            cache: cache_actor::CacheStruct<At>,
             commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
         ) {
             let page_create_company = model
@@ -755,7 +755,7 @@ pub mod create_company {
 
     async fn handle_submit<At: AllClientTypes>(
         model: ui_model::Model<At>,
-        mut cache: cache_actor::Cache<At>,
+        mut cache: cache_actor::CacheStruct<At>,
         commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
     ) {
         let data = commander_local_state
@@ -806,7 +806,7 @@ pub mod create_company_branch {
         async fn update<At: AllClientTypes>(
             self,
             model: ui_model::Model<At>,
-            cache: cache_actor::Cache<At>,
+            cache: cache_actor::CacheStruct<At>,
             commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
         ) {
             match self {
@@ -848,7 +848,7 @@ pub mod create_company_branch {
 
     async fn handle_submit<At: AllClientTypes>(
         model: ui_model::Model<At>,
-        mut cache: cache_actor::Cache<At>,
+        mut cache: cache_actor::CacheStruct<At>,
         commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
     ) {
         let local_state = model
@@ -973,7 +973,7 @@ pub mod create_company_branch {
 
     async fn handle_check<At: AllClientTypes>(
         model: ui_model::Model<At>,
-        mut cache: cache_actor::Cache<At>,
+        mut cache: cache_actor::CacheStruct<At>,
         commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
     ) {
         let local_state = model
