@@ -704,20 +704,10 @@ pub enum MessageToBroker<Mpsc: MultiProducerSingleConsumer> {
     },
 }
 
+#[derive(Default)]
 pub(crate) struct SideEffects {
     pub(crate) authenticated_users: HashSet<db_types::UuidType>,
     pub(crate) resource_to_broadcast_for_company: ListOfResources,
     pub(crate) resource_to_broadcast_for_branch: ListOfResources,
     pub(crate) users_to_resubscribe: HashSet<db_types::UuidType>,
-}
-
-impl Default for SideEffects {
-    fn default() -> Self {
-        Self {
-            authenticated_users: Default::default(),
-            resource_to_broadcast_for_company: Default::default(),
-            resource_to_broadcast_for_branch: Default::default(),
-            users_to_resubscribe: Default::default(),
-        }
-    }
 }
