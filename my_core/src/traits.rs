@@ -273,8 +273,8 @@ where
     type Id: RowId;
     type Mpsc: MultiProducerSingleConsumer;
     type Ed: Coding;
-
     type Rg: Regex;
+
     type Auth: HashedPassword;
     type Jwt: JWT<UserId = Self::Id, JsonWebToken = String>;
 
@@ -283,12 +283,13 @@ where
     type Ws: WSServer;
 }
 
-pub trait AllClientTypes: Default + Clone + 'static {
+pub trait AllClientTypes: 'static + Default + Clone {
     type Rn: RandomNumber;
     type Rt: Runtime;
     type Id: RowId;
     type Mpsc: MultiProducerSingleConsumer;
     type Ed: Coding;
+    type Rg: Regex;
 
     type Ch: Cache;
     type Ws: WSClient;
