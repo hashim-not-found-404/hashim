@@ -8,7 +8,7 @@ pub(crate) trait ServerOperations {
 
     async fn handle_operation<At: AllServerTypes>(
         &self,
-        side_effects: &mut server_methods::SideEffects<At::Id>,
+        side_effects: &mut server_methods::SideEffects,
         client: &mut At::Cli,
         jwt: &At::Jwt,
     ) -> Result<Result<Self::Ok, Self::Error>, DynamicError>;
@@ -52,22 +52,22 @@ pub mod sign_up {
 
         async fn handle_operation<At: AllServerTypes>(
             &self,
-            side_effects: &mut server_methods::SideEffects<At::Id>,
+            side_effects: &mut server_methods::SideEffects,
             client: &mut At::Cli,
             jwt: &At::Jwt,
         ) -> StdResult<StdResult<Self::Ok, Self::Error>, DynamicError> {
             let mut errr = Self::Error::default();
 
-            let new_uuid = match At::Id::try_from(&self.new_uuid) {
-                Ok(new_uuid) => {
-                    side_effects.authenticated_users.insert(new_uuid.clone());
-                    Some(new_uuid)
+            match At::Id::validate(&self.new_uuid) {
+                true => {
+                    side_effects
+                        .authenticated_users
+                        .insert(self.new_uuid.clone());
                 }
-                Err(_) => {
+                false => {
                     errr.new_uuid = Some(RowIdError::Invalid);
-                    None
                 }
-            };
+            }
 
             if errr != Self::Error::default() {
                 return Ok(Err(errr));
@@ -78,10 +78,8 @@ pub mod sign_up {
             let mut txn = client.begin_transaction().await?;
 
             let result = (|| async {
-                let new_uuid = new_uuid.unwrap();
-
                 let (is_new_uuid_exist, is_user_id_exist) =
-                    txn.read_sign_up(&new_uuid, &self.user_id).await?;
+                    txn.read_sign_up(&self.new_uuid, &self.user_id).await?;
 
                 if is_new_uuid_exist {
                     errr.new_uuid = Some(RowIdError::Duplicated);
@@ -95,22 +93,22 @@ pub mod sign_up {
                     return Ok(Err(errr));
                 }
 
-                txn.write_sign_up(&new_uuid, &self.user_id, &hashed_password, &self.name)
+                txn.write_sign_up(&self.new_uuid, &self.user_id, &hashed_password, &self.name)
                     .await?;
 
                 let mut resource = Vec::new();
 
                 resource.push(ResourceInfo {
-                    row_uuid: new_uuid.to_uuid(),
-                    resource: Resource::Jwt(jwt.sign(&new_uuid)),
+                    row_uuid: self.new_uuid.clone(),
+                    resource: Resource::Jwt(jwt.sign(&self.new_uuid)),
                 });
                 resource.push(ResourceInfo {
-                    row_uuid: new_uuid.to_uuid(),
+                    row_uuid: self.new_uuid.clone(),
                     resource: Resource::TableUserFieldId(self.user_id.clone()),
                 });
                 if let Some(name) = self.name.clone() {
                     resource.push(ResourceInfo {
-                        row_uuid: new_uuid.to_uuid(),
+                        row_uuid: self.new_uuid.clone(),
                         resource: Resource::TableUserFieldName(name),
                     });
                 }
@@ -170,7 +168,7 @@ pub mod sign_in {
 
         async fn handle_operation<At: AllServerTypes>(
             &self,
-            side_effects: &mut server_methods::SideEffects<At::Id>,
+            side_effects: &mut server_methods::SideEffects,
             client: &mut At::Cli,
             jwt: &At::Jwt,
         ) -> StdResult<StdResult<Self::Ok, Self::Error>, DynamicError> {
@@ -192,7 +190,7 @@ pub mod sign_in {
                     let mut resource = Vec::new();
 
                     resource.push(ResourceInfo {
-                        row_uuid: user_rowid.to_uuid(),
+                        row_uuid: user_rowid.clone(),
                         resource: Resource::Jwt(jwt.sign(&user_rowid)),
                     });
 
@@ -237,32 +235,30 @@ pub mod create_company {
 
         async fn handle_operation<At: AllServerTypes>(
             &self,
-            side_effects: &mut server_methods::SideEffects<At::Id>,
+            side_effects: &mut server_methods::SideEffects,
             client: &mut At::Cli,
             jwt: &At::Jwt,
         ) -> StdResult<StdResult<Self::Ok, Self::Error>, DynamicError> {
             let mut errr = Self::Error::default();
 
-            let new_uuid = match At::Id::try_from(&self.new_uuid) {
-                Ok(new_uuid) => Some(new_uuid),
-                Err(_) => {
-                    errr.new_uuid = Some(RowIdError::Invalid);
-                    None
-                }
-            };
+            if !At::Id::validate(&self.new_uuid) {
+                errr.new_uuid = Some(RowIdError::Invalid);
+            }
 
-            let user_uuid = match At::Id::try_from(&self.user_uuid) {
-                Ok(user_uuid) => {
-                    if side_effects.authenticated_users.get(&user_uuid).is_none() {
+            match At::Id::validate(&self.user_uuid) {
+                true => {
+                    if side_effects
+                        .authenticated_users
+                        .get(&self.user_uuid)
+                        .is_none()
+                    {
                         errr.user_uuid = Some(UserUuidError::NotAuthenticated);
                     };
-                    Some(user_uuid)
                 }
-                Err(_) => {
+                false => {
                     errr.user_uuid = Some(UserUuidError::Invalid);
-                    None
                 }
-            };
+            }
 
             if errr != Self::Error::default() {
                 return Ok(Err(errr));
@@ -271,10 +267,7 @@ pub mod create_company {
             let mut txn = client.begin_transaction().await?;
 
             let result = (|| async {
-                let new_uuid = new_uuid.unwrap();
-                let user_uuid = user_uuid.unwrap();
-
-                let is_new_uuid_used = txn.read_create_company(&new_uuid).await?;
+                let is_new_uuid_used = txn.read_create_company(&self.new_uuid).await?;
 
                 if is_new_uuid_used {
                     errr.new_uuid = Some(RowIdError::Duplicated);
@@ -284,60 +277,62 @@ pub mod create_company {
                 const ROLE: db_types::Role = db_types::Role::Manager;
 
                 txn.write_create_company(
-                    &new_uuid,
-                    &user_uuid,
+                    &self.new_uuid,
+                    &self.user_uuid,
                     &ROLE,
                     &self.company_name,
                     &self.currency,
                 )
                 .await?;
 
-                side_effects.users_to_resubscribe.insert(user_uuid);
+                side_effects
+                    .users_to_resubscribe
+                    .insert(self.user_uuid.clone());
 
                 let v = ResourceInfo {
-                    row_uuid: new_uuid.to_uuid(),
+                    row_uuid: self.new_uuid.clone(),
                     resource: server_methods::Resource::TableCompanyFieldName(
                         self.company_name.clone(),
                     ),
                 };
                 let v1 = ResourceInfo {
-                    row_uuid: new_uuid.to_uuid(),
+                    row_uuid: self.new_uuid.clone(),
                     resource: server_methods::Resource::TableCompanyFieldCurrency(
                         self.currency.clone(),
                     ),
                 };
                 let v2 = ResourceInfo {
-                    row_uuid: new_uuid.to_uuid(),
+                    row_uuid: self.new_uuid.clone(),
                     resource: server_methods::Resource::TableAccessControlForCompanyFieldRole(ROLE),
                 };
                 let v3 = ResourceInfo {
-                    row_uuid: new_uuid.to_uuid(),
+                    row_uuid: self.new_uuid.clone(),
                     resource: server_methods::Resource::TableAccessControlForCompanyFieldUser(
                         self.user_uuid.clone(),
                     ),
                 };
                 let v4 = ResourceInfo {
-                    row_uuid: new_uuid.to_uuid(),
+                    row_uuid: self.new_uuid.clone(),
                     resource: server_methods::Resource::TableAccessControlForCompanyFieldDataGroup(
-                        new_uuid.to_uuid(),
+                        self.new_uuid.clone(),
                     ),
                 };
 
                 side_effects
                     .resource_to_broadcast_for_company
-                    .insert_push(new_uuid.clone(), v.clone());
+                    .insert_push(self.new_uuid.clone(), v.clone());
                 side_effects
                     .resource_to_broadcast_for_company
-                    .insert_push(new_uuid.clone(), v1.clone());
+                    .insert_push(self.new_uuid.clone(), v1.clone());
                 side_effects
                     .resource_to_broadcast_for_company
-                    .insert_push(new_uuid.clone(), v2.clone());
+                    .insert_push(self.new_uuid.clone(), v2.clone());
                 side_effects
                     .resource_to_broadcast_for_company
-                    .insert_push(new_uuid.clone(), v3.clone());
+                    .insert_push(self.new_uuid.clone(), v3.clone());
                 side_effects
                     .resource_to_broadcast_for_company
-                    .insert_push(new_uuid.clone(), v4.clone());
+                    .insert_push(self.new_uuid.clone(), v4.clone());
 
                 Ok(Ok(Self::Ok {
                     resource: vec![v, v1, v2, v3, v4],
@@ -382,32 +377,32 @@ pub mod list_company_and_branch {
 
         async fn handle_operation<At: AllServerTypes>(
             &self,
-            side_effects: &mut server_methods::SideEffects<At::Id>,
+            side_effects: &mut server_methods::SideEffects,
             client: &mut At::Cli,
             jwt: &At::Jwt,
         ) -> StdResult<StdResult<Self::Ok, Self::Error>, DynamicError> {
             let mut errr = Self::Error::default();
 
-            let user_uuid = match At::Id::try_from(&self.user_uuid) {
-                Ok(user_uuid) => {
-                    if side_effects.authenticated_users.get(&user_uuid).is_none() {
+            match At::Id::validate(&self.user_uuid) {
+                true => {
+                    if side_effects
+                        .authenticated_users
+                        .get(&self.user_uuid)
+                        .is_none()
+                    {
                         errr.user_uuid = Some(UserUuidError::NotAuthenticated);
                     };
-                    Some(user_uuid)
                 }
-                Err(_) => {
+                false => {
                     errr.user_uuid = Some(UserUuidError::Invalid);
-                    None
                 }
-            };
+            }
 
             if errr != Self::Error::default() {
                 return Ok(Err(errr));
             }
 
-            let resource = client
-                .read_list_company_and_branch(&user_uuid.unwrap())
-                .await?;
+            let resource = client.read_list_company_and_branch(&self.user_uuid).await?;
 
             Ok(Ok(Self::Ok { resource }))
         }
@@ -467,57 +462,47 @@ pub mod create_company_branch {
 
         async fn handle_operation<At: AllServerTypes>(
             &self,
-            side_effects: &mut server_methods::SideEffects<At::Id>,
+            side_effects: &mut server_methods::SideEffects,
             client: &mut At::Cli,
             jwt: &At::Jwt,
         ) -> StdResult<StdResult<Self::Ok, Self::Error>, DynamicError> {
             let mut errr = Self::Error::default();
 
-            let new_uuid = match At::Id::try_from(&self.new_uuid) {
-                Ok(new_uuid) => Some(new_uuid),
-                Err(_) => {
-                    errr.new_uuid = Some(RowIdError::Invalid);
-                    None
-                }
-            };
+            if !At::Id::validate(&self.new_uuid) {
+                errr.new_uuid = Some(RowIdError::Invalid);
+            }
 
-            let user_uuid = match At::Id::try_from(&self.user_uuid) {
-                Ok(user_uuid) => {
-                    if side_effects.authenticated_users.get(&user_uuid).is_none() {
+            match At::Id::validate(&self.user_uuid) {
+                true => {
+                    if side_effects
+                        .authenticated_users
+                        .get(&self.user_uuid)
+                        .is_none()
+                    {
                         errr.user_uuid = Some(UserUuidError::NotAuthenticated);
                     };
-                    Some(user_uuid)
                 }
-                Err(_) => {
+                false => {
                     errr.user_uuid = Some(UserUuidError::Invalid);
-                    None
                 }
             };
 
-            let company_belong = match At::Id::try_from(&self.company_belong) {
-                Ok(company_belong) => Some(company_belong),
-                Err(_) => {
-                    errr.company_belong = Some(CompanyBelongError::IdInWrongFormat);
-                    None
-                }
-            };
+            if !At::Id::validate(&self.company_belong) {
+                errr.company_belong = Some(CompanyBelongError::IdInWrongFormat);
+            }
 
             if errr != Self::Error::default() {
                 return Ok(Err(errr));
             }
-
-            let new_uuid = new_uuid.unwrap();
-            let user_uuid = user_uuid.unwrap();
-            let company_belong = company_belong.unwrap();
 
             let mut txn = client.begin_transaction().await?;
 
             let result = (|| async {
                 let (user_roles, is_new_uuid_used, is_company_exist, is_branch_name_used) = txn
                     .read_create_company_branch(
-                        &new_uuid,
-                        &user_uuid,
-                        &company_belong,
+                        &self.new_uuid,
+                        &self.user_uuid,
+                        &self.company_belong,
                         &self.branch_name,
                     )
                     .await?;
@@ -552,59 +537,60 @@ pub mod create_company_branch {
                 const ROLE: db_types::Role = db_types::Role::CoManager;
 
                 txn.write_create_company_branch(
-                    &new_uuid,
-                    &company_belong,
+                    &self.new_uuid,
+                    &self.company_belong,
                     &self.branch_name,
                     &self.location,
                     &self.currency,
-                    &user_uuid,
+                    &self.user_uuid,
                     &ROLE,
                 )
                 .await?;
 
-                side_effects.users_to_resubscribe.insert(user_uuid);
+                side_effects
+                    .users_to_resubscribe
+                    .insert(self.user_uuid.clone());
 
                 let mut resource = Vec::new();
-                let row_uuid = new_uuid.to_uuid();
 
                 resource.push(ResourceInfo {
-                    row_uuid: row_uuid.clone(),
+                    row_uuid: self.new_uuid.clone(),
                     resource: Resource::TableCompanyBranchFieldName(self.branch_name.clone()),
                 });
                 resource.push(ResourceInfo {
-                    row_uuid: row_uuid.clone(),
+                    row_uuid: self.new_uuid.clone(),
                     resource: Resource::TableCompanyBranchFieldCompanyBelong(
                         self.company_belong.clone(),
                     ),
                 });
                 resource.push(ResourceInfo {
-                    row_uuid: row_uuid.clone(),
+                    row_uuid: self.new_uuid.clone(),
                     resource: Resource::TableAccessControlForCompanyBranchFieldDataGroup(
                         self.new_uuid.clone(),
                     ),
                 });
                 resource.push(ResourceInfo {
-                    row_uuid: row_uuid.clone(),
+                    row_uuid: self.new_uuid.clone(),
                     resource: Resource::TableAccessControlForCompanyBranchFieldRole(ROLE),
                 });
                 resource.push(ResourceInfo {
-                    row_uuid: row_uuid.clone(),
+                    row_uuid: self.new_uuid.clone(),
                     resource: Resource::TableAccessControlForCompanyBranchFieldUser(
                         self.user_uuid.clone(),
                     ),
                 });
                 resource.push(ResourceInfo {
-                    row_uuid: row_uuid.clone(),
+                    row_uuid: self.new_uuid.clone(),
                     resource: Resource::TableCompanyBranchFieldCurrency(self.currency.clone()),
                 });
                 resource.push(ResourceInfo {
-                    row_uuid: row_uuid.clone(),
+                    row_uuid: self.new_uuid.clone(),
                     resource: Resource::TableCompanyBranchFieldLocation(self.location.clone()),
                 });
 
                 side_effects
                     .resource_to_broadcast_for_company
-                    .insert_append(new_uuid, resource.clone());
+                    .insert_append(self.new_uuid.clone(), resource.clone());
 
                 Ok(Ok(Self::Ok { resource }))
             })()

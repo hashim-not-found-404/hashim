@@ -402,7 +402,7 @@ where
 
         let t = messages::FromClient {
             jwts,
-            nonce: At::Id::generate().to_uuid(),
+            nonce: At::Id::generate(),
             operations: operations1,
         };
 

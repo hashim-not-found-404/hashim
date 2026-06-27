@@ -78,7 +78,7 @@ pub mod sign_up {
         local_state.user_id_error.reset();
         local_state.user_name_error.reset();
 
-        let new_uuid = At::Id::generate().to_uuid();
+        let new_uuid = At::Id::generate();
         let input = server_operations::sign_up::Input {
             new_uuid: new_uuid.clone(),
             name: {
@@ -203,7 +203,7 @@ pub mod sign_up {
         local_state.user_id_error.reset();
         local_state.user_name_error.reset();
 
-        let new_uuid = At::Id::generate().to_uuid();
+        let new_uuid = At::Id::generate();
         let mut receiver_to_response = cache
             .send_to_cache_actor(
                 cache_actor::CachingStrategy::ReadCacheOnly,
@@ -774,7 +774,7 @@ pub mod create_company {
 
         let input = server_operations::create_company::Input {
             user_uuid: data,
-            new_uuid: At::Id::generate().to_uuid(),
+            new_uuid: At::Id::generate(),
             company_name: local_state.company_name.read(),
             currency: local_state.currency.read(),
         };
@@ -872,7 +872,7 @@ pub mod create_company_branch {
 
         let input = server_operations::create_company_branch::Input {
             user_uuid: data,
-            new_uuid: At::Id::generate().to_uuid(),
+            new_uuid: At::Id::generate(),
             company_belong: model
                 .page_root
                 .page_after_auth
@@ -992,7 +992,7 @@ pub mod create_company_branch {
 
         let input = server_operations::create_company_branch::Input {
             user_uuid: data,
-            new_uuid: At::Id::generate().to_uuid(),
+            new_uuid: At::Id::generate(),
             company_belong: model
                 .page_root
                 .page_after_auth

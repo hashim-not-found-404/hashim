@@ -1,7 +1,7 @@
 use crate::prelude::*;
 
 #[derive(Default, PartialEq, Clone, Hash, Eq, Debug, Deserialize, Serialize)]
-pub struct UuidType(pub String);
+pub struct UuidType(pub [u8; 16]);
 
 pub type ListOfCompanies = Vec<db_types::Company>;
 

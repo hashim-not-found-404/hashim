@@ -1,13 +1,9 @@
 use crate::prelude::*;
 
-pub trait RowId:
-    for<'a> TryFrom<&'a db_types::UuidType, Error = ()> + ToString + Clone + Hash + Eq
-{
-    fn to_uuid(&self) -> db_types::UuidType {
-        db_types::UuidType(self.to_string())
-    }
-    fn generate() -> Self;
-    fn get_time_as_seconds(&self) -> u64;
+pub trait RowId {
+    fn generate() -> db_types::UuidType;
+    fn get_time_as_seconds(uuid: &db_types::UuidType) -> u64;
+    fn validate(uuid: &db_types::UuidType) -> bool;
 }
 
 pub trait Regex {
@@ -24,11 +20,10 @@ pub trait HashedPassword {
 }
 
 pub trait JWT {
-    type UserId: RowId;
     type JsonWebToken: From<String> + Into<String>;
     fn new() -> Self;
-    fn sign(&self, user_uuid: &Self::UserId) -> Self::JsonWebToken;
-    fn validate(&self, token: Self::JsonWebToken) -> Option<Self::UserId>;
+    fn sign(&self, user_uuid: &db_types::UuidType) -> Self::JsonWebToken;
+    fn validate(&self, token: Self::JsonWebToken) -> Option<db_types::UuidType>;
 }
 
 pub trait Database {
@@ -38,7 +33,6 @@ pub trait Database {
 }
 
 pub trait DBClient {
-    type RowId: RowId;
     type HashedPassword: HashedPassword;
 
     type Txn<'a>: DBTransaction
@@ -49,7 +43,7 @@ pub trait DBClient {
 
     fn write_nonce_if_not_used(
         &mut self,
-        nonce: &Self::RowId,
+        nonce: &db_types::UuidType,
     ) -> impl Future<Output = Result<bool /* is nonce used */, DynamicError>>;
 
     // here we just do read we dont do here any set or check
@@ -57,14 +51,14 @@ pub trait DBClient {
     fn read_sign_in(
         &mut self,
         user_id: &String,
-    ) -> impl Future<Output = Result<Option<(Self::RowId, Self::HashedPassword)>, DynamicError>>;
+    ) -> impl Future<Output = Result<Option<(db_types::UuidType, Self::HashedPassword)>, DynamicError>>;
     fn read_roles_for_user(
         &mut self,
-        users_uuids: &HashSet<Self::RowId>,
-    ) -> impl Future<Output = Result<server_methods::AllRoles<Self::RowId>, DynamicError>>;
+        users_uuids: &HashSet<db_types::UuidType>,
+    ) -> impl Future<Output = Result<server_methods::AllRoles, DynamicError>>;
     fn read_list_company_and_branch(
         &mut self,
-        user_uuid: &Self::RowId,
+        user_uuid: &db_types::UuidType,
     ) -> impl Future<Output = Result<Vec<ResourceInfo>, DynamicError>>;
 }
 
@@ -76,7 +70,6 @@ pub mod domain_errors {
 }
 
 pub trait DBTransaction {
-    type RowId: RowId;
     type HashedPassword: HashedPassword;
 
     fn commit_transaction(
@@ -86,7 +79,7 @@ pub trait DBTransaction {
 
     fn read_sign_up(
         &mut self,
-        new_uuid: &Self::RowId,
+        new_uuid: &db_types::UuidType,
         user_id: &String,
     ) -> impl Future<
         Output = Result<
@@ -99,7 +92,7 @@ pub trait DBTransaction {
     >;
     fn write_sign_up(
         &mut self,
-        new_uuid: &Self::RowId,
+        new_uuid: &db_types::UuidType,
         user_id: &String,
         hashed_password: &Self::HashedPassword,
         user_name: &Option<String>,
@@ -107,12 +100,12 @@ pub trait DBTransaction {
 
     fn read_create_company(
         &mut self,
-        new_uuid: &Self::RowId,
+        new_uuid: &db_types::UuidType,
     ) -> impl Future<Output = Result<bool /* is new_uuid exist */, DynamicError>>;
     fn write_create_company(
         &mut self,
-        new_uuid: &Self::RowId,
-        user_uuid: &Self::RowId,
+        new_uuid: &db_types::UuidType,
+        user_uuid: &db_types::UuidType,
         user_role: &db_types::Role,
         company_name: &String,
         currency: &db_types::Currency,
@@ -120,9 +113,9 @@ pub trait DBTransaction {
 
     fn read_create_company_branch(
         &mut self,
-        new_uuid: &Self::RowId,
-        user_uuid: &Self::RowId,
-        company_belong: &Self::RowId,
+        new_uuid: &db_types::UuidType,
+        user_uuid: &db_types::UuidType,
+        company_belong: &db_types::UuidType,
         branch_name: &String,
     ) -> impl Future<
         Output = Result<
@@ -137,12 +130,12 @@ pub trait DBTransaction {
     >;
     fn write_create_company_branch(
         &mut self,
-        new_uuid: &Self::RowId,
-        company_belong: &Self::RowId,
+        new_uuid: &db_types::UuidType,
+        company_belong: &db_types::UuidType,
         branch_name: &String,
         location: &db_types::Location,
         currency: &db_types::Currency,
-        user_uuid: &Self::RowId,
+        user_uuid: &db_types::UuidType,
         user_role: &db_types::Role,
     ) -> impl Future<Output = Result<(), DynamicError>>;
 }
@@ -265,8 +258,7 @@ pub trait Cache: Sized {
 
 pub trait AllServerTypes: 'static
 where
-    for<'a> <Self::Cli as DBClient>::Txn<'a>:
-        DBTransaction<RowId = Self::Id, HashedPassword = Self::Auth>,
+    for<'a> <Self::Cli as DBClient>::Txn<'a>: DBTransaction<HashedPassword = Self::Auth>,
 {
     type Rn: RandomNumber;
     type Rt: Runtime;
@@ -276,10 +268,10 @@ where
     type Rg: Regex;
 
     type Auth: HashedPassword;
-    type Jwt: JWT<UserId = Self::Id, JsonWebToken = String>;
+    type Jwt: JWT<JsonWebToken = String>;
 
     type Db: Database<Client = Self::Cli>;
-    type Cli: DBClient<RowId = Self::Id, HashedPassword = Self::Auth>;
+    type Cli: DBClient<HashedPassword = Self::Auth>;
     type Ws: WSServer;
 }
 

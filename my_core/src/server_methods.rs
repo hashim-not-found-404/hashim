@@ -4,7 +4,7 @@ pub struct ServerMethods<At: AllServerTypes> {
     database: At::Db,
     jwt: At::Jwt,
     pub sender_to_broker:
-        <At::Mpsc as MultiProducerSingleConsumer>::Sender<MessageToBroker<At::Id, At::Mpsc>>,
+        <At::Mpsc as MultiProducerSingleConsumer>::Sender<MessageToBroker<At::Mpsc>>,
 }
 
 impl<At: AllServerTypes> ServerMethods<At> {
@@ -74,7 +74,7 @@ impl<At: AllServerTypes> ServerMethods<At> {
                                 };
 
                                 dbg!(&input);
-                                let mut side_effects = SideEffects::<At::Id>::default();
+                                let mut side_effects = SideEffects::default();
                                 let output = push_data::<At>(
                                     &input,
                                     &mut side_effects,
@@ -185,15 +185,13 @@ impl<At: AllServerTypes> ServerMethods<At> {
 
     pub fn broker_actor(
         mut receiver_to_broker: <At::Mpsc as MultiProducerSingleConsumer>::Receiver<
-            MessageToBroker<At::Id, At::Mpsc>,
+            MessageToBroker<At::Mpsc>,
         >,
     ) {
         At::Rt::spawn_local(async move {
-            let mut pool_of_pubsub_for_company: UserSubscribes<At::Id> =
-                HashMap::with_capacity(1000);
-            let mut pool_of_pubsub_for_branch: UserSubscribes<At::Id> =
-                HashMap::with_capacity(10000);
-            let mut pool_of_server_facad_channels: UserSenders<At::Id, At::Mpsc> =
+            let mut pool_of_pubsub_for_company: UserSubscribes = HashMap::with_capacity(1000);
+            let mut pool_of_pubsub_for_branch: UserSubscribes = HashMap::with_capacity(10000);
+            let mut pool_of_server_facad_channels: UserSenders<At::Mpsc> =
                 HashMap::with_capacity(10000);
 
             loop {
@@ -251,8 +249,7 @@ impl<At: AllServerTypes> ServerMethods<At> {
                         list_of_resources_for_company,
                         list_of_resources_for_branch,
                     } => {
-                        let mut resource_to_send: ListOfResources<At::Id /* user id */> =
-                            HashMap::new();
+                        let mut resource_to_send: ListOfResources = HashMap::new();
 
                         broker_functions::map_resource_to_subscribes(
                             &pool_of_pubsub_for_company,
@@ -298,7 +295,7 @@ impl<At: AllServerTypes> ServerMethods<At> {
 
 async fn push_data<At: AllServerTypes>(
     input: &push_data::Input,
-    side_effects: &mut server_methods::SideEffects<At::Id>,
+    side_effects: &mut server_methods::SideEffects,
     client: &mut At::Cli,
     jwt: &At::Jwt,
 ) -> Result<push_data::Result, DynamicError> {
@@ -323,17 +320,14 @@ async fn push_data<At: AllServerTypes>(
         }
     }
 
-    let nonce = match At::Id::try_from(&input.nonce) {
-        Ok(nonce) => nonce,
-        Err(_) => {
-            the_return_result.nonce = Err(NonceError::Invalid);
-            return Ok(the_return_result);
-        }
+    if !At::Id::validate(&input.nonce) {
+        the_return_result.nonce = Err(NonceError::Invalid);
+        return Ok(the_return_result);
     };
 
-    let is_nonce_used = client.write_nonce_if_not_used(&nonce).await?;
+    let is_nonce_used = client.write_nonce_if_not_used(&input.nonce).await?;
 
-    if !check_nonce_if_valid::<At::Id>(&nonce, is_nonce_used) {
+    if !check_nonce_if_valid::<At::Id>(&input.nonce, is_nonce_used) {
         the_return_result.nonce = Err(NonceError::Invalid);
     }
 
@@ -385,12 +379,12 @@ async fn push_data<At: AllServerTypes>(
     return Ok(the_return_result);
 }
 
-fn check_nonce_if_valid<Id: RowId>(nonce: &Id, is_used: bool) -> bool {
+fn check_nonce_if_valid<Id: RowId>(nonce: &db_types::UuidType, is_used: bool) -> bool {
     if is_used {
         return false;
     }
 
-    let nonce = nonce.get_time_as_seconds();
+    let nonce = Id::get_time_as_seconds(nonce);
 
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -416,8 +410,8 @@ fn check_nonce_if_valid<Id: RowId>(nonce: &Id, is_used: bool) -> bool {
 
 async fn get_table_of_subscribed_data<At: AllServerTypes>(
     client: &mut At::Cli,
-    users_uuids: &HashSet<At::Id>,
-) -> Result<AllSubscribes<At::Id>, DynamicError> {
+    users_uuids: &HashSet<db_types::UuidType>,
+) -> Result<AllSubscribes, DynamicError> {
     let roles = client.read_roles_for_user(users_uuids).await?;
 
     let mut subs = AllSubscribes {
@@ -463,10 +457,10 @@ pub trait WSServer {
 mod broker_functions {
     use super::*;
 
-    pub fn map_resource_to_subscribes<Id: RowId>(
-        pool_of_pubsub: &UserSubscribes<Id>,
-        list_of_resources: ListOfResources<Id>,
-        resource_to_send: &mut ListOfResources<Id>,
+    pub fn map_resource_to_subscribes(
+        pool_of_pubsub: &UserSubscribes,
+        list_of_resources: ListOfResources,
+        resource_to_send: &mut ListOfResources,
     ) {
         for (company, resource) in list_of_resources {
             let user_and_subscribe = pool_of_pubsub.get(&company);
@@ -487,16 +481,16 @@ mod broker_functions {
         }
     }
 
-    pub fn unsubscribe<Id: RowId>(pool_of_pubsub: &mut UserSubscribes<Id>, user_uuid: &Id) {
+    pub fn unsubscribe(pool_of_pubsub: &mut UserSubscribes, user_uuid: &db_types::UuidType) {
         pool_of_pubsub.retain(|_, users_and_subs| {
             users_and_subs.remove(user_uuid);
             !users_and_subs.is_empty()
         });
     }
 
-    pub fn merge_subscribes<Id: RowId>(
-        pool_of_pubsub: &mut UserSubscribes<Id>,
-        list_of_subscribtion: UserSubscribes<Id>,
+    pub fn merge_subscribes(
+        pool_of_pubsub: &mut UserSubscribes,
+        list_of_subscribtion: UserSubscribes,
     ) {
         for (company, users_subscribes) in list_of_subscribtion {
             for (user_uuid, subscribes) in users_subscribes {
@@ -656,48 +650,48 @@ fn role_to_subscribe_mapping(roles: Vec<db_types::Role>) -> HashSet<Subscribe> {
     subscribes
 }
 
-pub struct AllRoles<Id: RowId> {
+pub struct AllRoles {
     pub companies: HashMap<
-        Id, // company uuid
+        db_types::UuidType, // company uuid
         HashMap<
-            Id, // user uuid
+            db_types::UuidType, // user uuid
             Vec<db_types::Role>,
         >,
     >,
     pub branches: HashMap<
-        Id, // branch uuid
+        db_types::UuidType, // branch uuid
         HashMap<
-            Id, // user uuid
+            db_types::UuidType, // user uuid
             Vec<db_types::Role>,
         >,
     >,
 }
 
-pub struct AllSubscribes<Id: RowId> {
-    pub companies: UserSubscribes<Id>,
-    pub branches: UserSubscribes<Id>,
+pub struct AllSubscribes {
+    pub companies: UserSubscribes,
+    pub branches: UserSubscribes,
 }
 
-type UserSubscribes<Id> = HashMap<
-    Id, // company uuid or branch
+type UserSubscribes = HashMap<
+    db_types::UuidType, // company uuid or branch
     HashMap<
-        Id, // user uuid
+        db_types::UuidType, // user uuid
         HashSet<Subscribe>,
     >,
 >;
 
-type UserSenders<Id, Mpsc: MultiProducerSingleConsumer> = HashMap<
-    Id,                                            // user uuid
+type UserSenders<Mpsc: MultiProducerSingleConsumer> = HashMap<
+    db_types::UuidType,                            // user uuid
     HashMap<u64, Mpsc::Sender<Vec<ResourceInfo>>>, // because user may have multiple web socket connection
 >;
 
-type ListOfResources<Id> = HashMap<Id, Vec<ResourceInfo>>;
+type ListOfResources = HashMap<db_types::UuidType, Vec<ResourceInfo>>;
 
-pub enum MessageToBroker<Id: RowId, Mpsc: MultiProducerSingleConsumer> {
+pub enum MessageToBroker<Mpsc: MultiProducerSingleConsumer> {
     Subscribe {
         connection_id: u64,
-        list_of_subscribtion: AllSubscribes<Id>,
-        users_uuids: HashSet<Id>,
+        list_of_subscribtion: AllSubscribes,
+        users_uuids: HashSet<db_types::UuidType>,
         sender_to_server: Mpsc::Sender<Vec<ResourceInfo>>,
     },
     Unsubscribe {
@@ -705,19 +699,19 @@ pub enum MessageToBroker<Id: RowId, Mpsc: MultiProducerSingleConsumer> {
     },
     Publish {
         connection_id: u64,
-        list_of_resources_for_company: ListOfResources<Id>,
-        list_of_resources_for_branch: ListOfResources<Id>,
+        list_of_resources_for_company: ListOfResources,
+        list_of_resources_for_branch: ListOfResources,
     },
 }
 
-pub(crate) struct SideEffects<Id: RowId> {
-    pub(crate) authenticated_users: HashSet<Id>,
-    pub(crate) resource_to_broadcast_for_company: ListOfResources<Id>,
-    pub(crate) resource_to_broadcast_for_branch: ListOfResources<Id>,
-    pub(crate) users_to_resubscribe: HashSet<Id>,
+pub(crate) struct SideEffects {
+    pub(crate) authenticated_users: HashSet<db_types::UuidType>,
+    pub(crate) resource_to_broadcast_for_company: ListOfResources,
+    pub(crate) resource_to_broadcast_for_branch: ListOfResources,
+    pub(crate) users_to_resubscribe: HashSet<db_types::UuidType>,
 }
 
-impl<Id: RowId> Default for SideEffects<Id> {
+impl Default for SideEffects {
     fn default() -> Self {
         Self {
             authenticated_users: Default::default(),
