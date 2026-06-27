@@ -15,8 +15,8 @@ pub trait RandomNumber {
 }
 
 pub trait HashedPassword {
-    fn sign_up(password: &String) -> Self;
-    fn sign_in(password: &String, password_hash: &Self) -> bool;
+    fn sign_up(password: &String) -> String;
+    fn sign_in(password: &String, password_hash: &String) -> bool;
 }
 
 pub trait JWT {
@@ -32,8 +32,6 @@ pub trait Database {
 }
 
 pub trait DBClient {
-    type HashedPassword: HashedPassword;
-
     type Txn<'a>: DBTransaction
     where
         Self: 'a;
@@ -50,7 +48,7 @@ pub trait DBClient {
     fn read_sign_in(
         &mut self,
         user_id: &String,
-    ) -> impl Future<Output = Result<Option<(db_types::UuidType, Self::HashedPassword)>, DynamicError>>;
+    ) -> impl Future<Output = Result<Option<(db_types::UuidType, String)>, DynamicError>>;
     fn read_roles_for_user(
         &mut self,
         users_uuids: &HashSet<db_types::UuidType>,
@@ -69,8 +67,6 @@ pub mod domain_errors {
 }
 
 pub trait DBTransaction {
-    type HashedPassword: HashedPassword;
-
     fn commit_transaction(
         self,
     ) -> impl Future<Output = Result<Result<(), domain_errors::AtCommit>, DynamicError>>;
@@ -93,7 +89,7 @@ pub trait DBTransaction {
         &mut self,
         new_uuid: &db_types::UuidType,
         user_id: &String,
-        hashed_password: &Self::HashedPassword,
+        hashed_password: &String,
         user_name: &Option<String>,
     ) -> impl Future<Output = Result<(), DynamicError>>;
 
@@ -260,7 +256,7 @@ pub trait Cache: Sized {
 
 pub trait AllServerTypes: 'static
 where
-    for<'a> <Self::Cli as DBClient>::Txn<'a>: DBTransaction<HashedPassword = Self::Auth>,
+    for<'a> <Self::Cli as DBClient>::Txn<'a>: DBTransaction,
 {
     type Rn: RandomNumber;
     type Rt: Runtime;
@@ -273,7 +269,7 @@ where
     type Jwt: JWT;
 
     type Db: Database<Client = Self::Cli>;
-    type Cli: DBClient<HashedPassword = Self::Auth>;
+    type Cli: DBClient;
     type Ws: WSServer;
 }
 
