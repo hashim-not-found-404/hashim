@@ -58,15 +58,12 @@ pub mod sign_up {
         ) -> StdResult<StdResult<Self::Ok, Self::Error>, DynamicError> {
             let mut errr = Self::Error::default();
 
-            match At::Id::validate(&self.new_uuid) {
-                true => {
-                    side_effects
-                        .authenticated_users
-                        .insert(self.new_uuid.clone());
-                }
-                false => {
-                    errr.new_uuid = Some(RowIdError::Invalid);
-                }
+            if At::Id::validate(&self.new_uuid) {
+                side_effects
+                    .authenticated_users
+                    .insert(self.new_uuid.clone());
+            } else {
+                errr.new_uuid = Some(RowIdError::Invalid);
             }
 
             if errr != Self::Error::default() {
@@ -245,19 +242,16 @@ pub mod create_company {
                 errr.new_uuid = Some(RowIdError::Invalid);
             }
 
-            match At::Id::validate(&self.user_uuid) {
-                true => {
-                    if side_effects
-                        .authenticated_users
-                        .get(&self.user_uuid)
-                        .is_none()
-                    {
-                        errr.user_uuid = Some(UserUuidError::NotAuthenticated);
-                    };
-                }
-                false => {
-                    errr.user_uuid = Some(UserUuidError::Invalid);
-                }
+            if At::Id::validate(&self.user_uuid) {
+                if side_effects
+                    .authenticated_users
+                    .get(&self.user_uuid)
+                    .is_none()
+                {
+                    errr.user_uuid = Some(UserUuidError::NotAuthenticated);
+                };
+            } else {
+                errr.user_uuid = Some(UserUuidError::Invalid);
             }
 
             if errr != Self::Error::default() {
@@ -383,19 +377,16 @@ pub mod list_company_and_branch {
         ) -> StdResult<StdResult<Self::Ok, Self::Error>, DynamicError> {
             let mut errr = Self::Error::default();
 
-            match At::Id::validate(&self.user_uuid) {
-                true => {
-                    if side_effects
-                        .authenticated_users
-                        .get(&self.user_uuid)
-                        .is_none()
-                    {
-                        errr.user_uuid = Some(UserUuidError::NotAuthenticated);
-                    };
-                }
-                false => {
-                    errr.user_uuid = Some(UserUuidError::Invalid);
-                }
+            if At::Id::validate(&self.user_uuid) {
+                if side_effects
+                    .authenticated_users
+                    .get(&self.user_uuid)
+                    .is_none()
+                {
+                    errr.user_uuid = Some(UserUuidError::NotAuthenticated);
+                };
+            } else {
+                errr.user_uuid = Some(UserUuidError::Invalid);
             }
 
             if errr != Self::Error::default() {
@@ -472,19 +463,16 @@ pub mod create_company_branch {
                 errr.new_uuid = Some(RowIdError::Invalid);
             }
 
-            match At::Id::validate(&self.user_uuid) {
-                true => {
-                    if side_effects
-                        .authenticated_users
-                        .get(&self.user_uuid)
-                        .is_none()
-                    {
-                        errr.user_uuid = Some(UserUuidError::NotAuthenticated);
-                    };
-                }
-                false => {
-                    errr.user_uuid = Some(UserUuidError::Invalid);
-                }
+            if At::Id::validate(&self.user_uuid) {
+                if side_effects
+                    .authenticated_users
+                    .get(&self.user_uuid)
+                    .is_none()
+                {
+                    errr.user_uuid = Some(UserUuidError::NotAuthenticated);
+                };
+            } else {
+                errr.user_uuid = Some(UserUuidError::Invalid);
             };
 
             if !At::Id::validate(&self.company_belong) {
