@@ -7,7 +7,7 @@ pub struct S {
     db: Connection,
 }
 
-impl CacheIO for S {
+impl Cache for S {
     async fn new() -> Self {
         let conn = Connection::open("opfs-sahpool://my_persistent_database.db").unwrap();
 

@@ -371,7 +371,7 @@ where
         });
     }
 
-    async fn prepare_txn_and_send_to_network<Ch: CacheIO>(
+    async fn prepare_txn_and_send_to_network<Ch: Cache>(
         sender_to_network: &mut <At::Mpsc as MultiProducerSingleConsumer>::Sender<
             network_actor::MessageToNetwork,
         >,

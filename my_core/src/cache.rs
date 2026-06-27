@@ -45,12 +45,12 @@ pub struct StateOfPendingTxn {
         HashMap<db_types::UuidType, tables::AccessControlForCompanyBranch>,
 }
 
-pub struct State<Ch: CacheIO> {
+pub struct State<Ch: Cache> {
     pub state_of_pending_txn: StateOfPendingTxn,
     pub cache: Ch,
 }
 
-impl<Ch: CacheIO> State<Ch> {
+impl<Ch: Cache> State<Ch> {
     pub async fn new() -> Self {
         let cache = Ch::new().await;
         let txns = cache.get_all_txn_input().await;

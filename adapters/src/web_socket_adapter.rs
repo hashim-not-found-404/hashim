@@ -12,7 +12,7 @@ pub mod m {
         read: Mutex<SplitStream<WebSocketStream<MaybeTlsStream<tokio::net::TcpStream>>>>,
     }
 
-    impl WebSocketOp for S {
+    impl WSClient for S {
         async fn connect(url: &str) -> Result<Self, DynamicError> {
             let (ws_stream, _) = connect_async(url).await.log()?;
             let (write, read) = ws_stream.split();
@@ -66,7 +66,7 @@ pub mod m {
         read: Mutex<SplitStream<WebSocket>>,
     }
 
-    impl WebSocketOp for S {
+    impl WSClient for S {
         async fn connect(url: &str) -> Result<Self, DynamicError> {
             let ws = WebSocket::open(url).log()?;
             let (mut write, read) = ws.split();

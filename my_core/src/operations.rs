@@ -11,7 +11,7 @@ pub(crate) trait CacheAndServerType1: Clone {
     fn user_uuid(&self) -> Option<&db_types::UuidType>;
 
     type Output: CacheAndServerType2;
-    async fn state_full_operation<Ch: CacheIO>(&self, state: &cache::State<Ch>) -> Self::Output;
+    async fn state_full_operation<Ch: Cache>(&self, state: &cache::State<Ch>) -> Self::Output;
 }
 
 pub(crate) trait CacheAndServerType2 {
@@ -24,7 +24,7 @@ pub(crate) trait ViewType2 {
 }
 
 impl push_data::OperationsInput {
-    pub(crate) async fn run_operation_check<Ch: CacheIO>(
+    pub(crate) async fn run_operation_check<Ch: Cache>(
         &self,
         state: &mut cache::State<Ch>,
     ) -> push_data::OperationsResult {
@@ -41,7 +41,7 @@ impl push_data::OperationsInput {
         }
     }
 
-    pub(crate) async fn run_operation_check_apply<Ch: CacheIO>(
+    pub(crate) async fn run_operation_check_apply<Ch: Cache>(
         &self,
         state: &mut cache::State<Ch>,
         subs_to_poke: &mut HashSet<server_methods::Subscribe>,
@@ -65,7 +65,7 @@ impl push_data::OperationsInput {
         }
     }
 
-    pub(crate) async fn run_operation_check_apply_write<Ch: CacheIO>(
+    pub(crate) async fn run_operation_check_apply_write<Ch: Cache>(
         &self,
         txn_number: u64,
         state: &mut cache::State<Ch>,
@@ -131,14 +131,14 @@ impl push_data::OperationsResult {
     }
 }
 
-async fn operation_check_handler<T: CacheAndServerType1, Ch: CacheIO>(
+async fn operation_check_handler<T: CacheAndServerType1, Ch: Cache>(
     input: &T,
     state: &mut cache::State<Ch>,
 ) -> push_data::OperationsResult {
     return input.state_full_operation(state).await.wrap_output();
 }
 
-async fn operation_check_apply_handler<T: CacheAndServerType1, Ch: CacheIO>(
+async fn operation_check_apply_handler<T: CacheAndServerType1, Ch: Cache>(
     input: &T,
     state: &mut cache::State<Ch>,
     subs_to_poke: &mut HashSet<server_methods::Subscribe>,
@@ -151,7 +151,7 @@ async fn operation_check_apply_handler<T: CacheAndServerType1, Ch: CacheIO>(
     .await;
 }
 
-async fn operation_check_apply_write_handler<T: CacheAndServerType1, Ch: CacheIO>(
+async fn operation_check_apply_write_handler<T: CacheAndServerType1, Ch: Cache>(
     input: &T,
     state: &mut cache::State<Ch>,
     subs_to_poke: &mut HashSet<server_methods::Subscribe>,
@@ -248,10 +248,7 @@ pub(crate) mod sign_up {
         }
 
         type Output = Type3;
-        async fn state_full_operation<Ch: CacheIO>(
-            &self,
-            state: &cache::State<Ch>,
-        ) -> Self::Output {
+        async fn state_full_operation<Ch: Cache>(&self, state: &cache::State<Ch>) -> Self::Output {
             let (mut is_new_uuid_exist, mut is_user_id_exist) = state
                 .cache
                 .read_sign_up(&self.new_uuid, &self.user_id)
@@ -349,10 +346,7 @@ pub(crate) mod sign_in {
 
         type Output = Type3;
 
-        async fn state_full_operation<Ch: CacheIO>(
-            &self,
-            state: &cache::State<Ch>,
-        ) -> Self::Output {
+        async fn state_full_operation<Ch: Cache>(&self, state: &cache::State<Ch>) -> Self::Output {
             let user_uuid_and_is_jwt_exist = state.cache.read_sign_in(&self.user_id).await;
 
             if let Some((user_uuid, user_name, is_jwt_exist)) = user_uuid_and_is_jwt_exist {
@@ -484,10 +478,7 @@ pub(crate) mod create_company {
 
         type Output = Type3;
 
-        async fn state_full_operation<Ch: CacheIO>(
-            &self,
-            state: &cache::State<Ch>,
-        ) -> Self::Output {
+        async fn state_full_operation<Ch: Cache>(&self, state: &cache::State<Ch>) -> Self::Output {
             let v = ResourceInfo {
                 row_uuid: self.new_uuid.clone(),
                 resource: server_methods::Resource::TableCompanyFieldName(
@@ -569,10 +560,7 @@ pub(crate) mod create_company_branch {
 
         type Output = Type3;
 
-        async fn state_full_operation<Ch: CacheIO>(
-            &self,
-            state: &cache::State<Ch>,
-        ) -> Self::Output {
+        async fn state_full_operation<Ch: Cache>(&self, state: &cache::State<Ch>) -> Self::Output {
             let mut errr = server_operations::create_company_branch::Error::default();
 
             // 1. Read from cache (database)
@@ -724,10 +712,7 @@ pub(crate) mod list_company_and_branch {
 
         type Output = Type3;
 
-        async fn state_full_operation<Ch: CacheIO>(
-            &self,
-            state: &cache::State<Ch>,
-        ) -> Self::Output {
+        async fn state_full_operation<Ch: Cache>(&self, state: &cache::State<Ch>) -> Self::Output {
             // Start with resources from the cache (already stored in DB)
             let mut resources = state
                 .cache

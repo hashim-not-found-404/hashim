@@ -147,7 +147,7 @@ pub trait DBTransaction {
     ) -> impl Future<Output = Result<(), DynamicError>>;
 }
 
-pub trait WebSocketOp: Sized {
+pub trait WSClient: Sized {
     fn connect(url: &str) -> impl Future<Output = Result<Self, DynamicError>>;
     fn send_bin(&self, data: &Vec<u8>) -> impl Future<Output = Result<(), DynamicError>>;
     fn receive_bin(&self) -> impl Future<Output = Result<Vec<u8>, DynamicError>>;
@@ -205,7 +205,7 @@ pub trait MultiProducerSingleConsumer {
     fn channel<T>() -> (Self::Sender<T>, Self::Receiver<T>);
 }
 
-pub trait CacheIO: Sized {
+pub trait Cache: Sized {
     fn new() -> impl Future<Output = Self>;
 
     fn get_all_txn_input(
@@ -290,8 +290,8 @@ pub trait AllClientTypes: Default + Clone + 'static {
     type Mpsc: MultiProducerSingleConsumer;
     type Ed: Coding;
 
-    type Ws: WebSocketOp;
-    type Ch: CacheIO;
+    type Ch: Cache;
+    type Ws: WSClient;
 
     // signals
     type String: HashimSignal<String>;
