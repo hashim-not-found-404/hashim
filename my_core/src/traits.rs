@@ -268,27 +268,30 @@ where
     for<'a> <Self::Cli as DBClient>::Txn<'a>:
         DBTransaction<RowId = Self::Id, HashedPassword = Self::Auth>,
 {
-    type Db: Database<Client = Self::Cli>;
-    type Cli: DBClient<RowId = Self::Id, HashedPassword = Self::Auth>;
-    type Jwt: JWT<UserId = Self::Id, JsonWebToken = String>;
-    type Auth: HashedPassword;
-    type Rg: Regex;
+    type Rn: RandomNumber;
+    type Rt: Runtime;
     type Id: RowId;
     type Mpsc: MultiProducerSingleConsumer;
-    type Rt: Runtime;
-    type De: Coding;
-    type Rn: RandomNumber;
+    type Ed: Coding;
+
+    type Rg: Regex;
+    type Auth: HashedPassword;
+    type Jwt: JWT<UserId = Self::Id, JsonWebToken = String>;
+
+    type Db: Database<Client = Self::Cli>;
+    type Cli: DBClient<RowId = Self::Id, HashedPassword = Self::Auth>;
     type Ws: WSServer;
 }
 
 pub trait AllClientTypes: Default + Clone + 'static {
     type Rn: RandomNumber;
-    type Ws: WebSocketOp;
-    type Ed: Coding;
     type Rt: Runtime;
-    type Ch: CacheIO;
     type Id: RowId;
     type Mpsc: MultiProducerSingleConsumer;
+    type Ed: Coding;
+
+    type Ws: WebSocketOp;
+    type Ch: CacheIO;
 
     // signals
     type String: HashimSignal<String>;

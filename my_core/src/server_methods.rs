@@ -39,11 +39,11 @@ impl<At: AllServerTypes> ServerMethods<At> {
                             WSMessage::Close => break,
                             WSMessage::Binary(received_data) => {
                                 let input =
-                                    match At::De::decode::<messages::FromClient>(&received_data) {
+                                    match At::Ed::decode::<messages::FromClient>(&received_data) {
                                         Ok(ok) => ok,
                                         Err(_) => {
                                             if session
-                                                .send_bin(At::De::encode(
+                                                .send_bin(At::Ed::encode(
                                                     &messages::FromServer::Error(
                                                         HashimError::InvalidDataFormat,
                                                     ),
@@ -61,7 +61,7 @@ impl<At: AllServerTypes> ServerMethods<At> {
                                     Ok(ok) => ok,
                                     Err(_) => {
                                         if session
-                                            .send_bin(At::De::encode(&messages::FromServer::Error(
+                                            .send_bin(At::Ed::encode(&messages::FromServer::Error(
                                                 HashimError::InternalServerError,
                                             )))
                                             .await
@@ -87,7 +87,7 @@ impl<At: AllServerTypes> ServerMethods<At> {
                                 match output {
                                     Ok(ok) => {
                                         if session
-                                            .send_bin(At::De::encode(
+                                            .send_bin(At::Ed::encode(
                                                 &messages::FromServer::PushData(ok),
                                             ))
                                             .await
@@ -98,7 +98,7 @@ impl<At: AllServerTypes> ServerMethods<At> {
                                     }
                                     Err(_) => {
                                         if session
-                                            .send_bin(At::De::encode(&messages::FromServer::Error(
+                                            .send_bin(At::Ed::encode(&messages::FromServer::Error(
                                                 HashimError::InternalServerError,
                                             )))
                                             .await
@@ -119,7 +119,7 @@ impl<At: AllServerTypes> ServerMethods<At> {
                                         Ok(ok) => ok,
                                         Err(_) => {
                                             if session
-                                                .send_bin(At::De::encode(
+                                                .send_bin(At::Ed::encode(
                                                     &messages::FromServer::Error(
                                                         HashimError::InternalServerError,
                                                     ),
@@ -164,7 +164,7 @@ impl<At: AllServerTypes> ServerMethods<At> {
                     Either::Two(wraped_resource) => {
                         let resource = wraped_resource.unwrap();
                         if session
-                            .send_bin(At::De::encode(&messages::FromServer::Resources(resource)))
+                            .send_bin(At::Ed::encode(&messages::FromServer::Resources(resource)))
                             .await
                             .is_err()
                         {

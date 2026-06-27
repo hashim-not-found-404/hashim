@@ -11,7 +11,7 @@ pub mod m {
         type Id = row_id::m::S;
         type Mpsc = actors::m::S;
         type Rt = runtime::m::S;
-        type De = encode_decode::m::S;
+        type Ed = encode_decode::m::S;
         type Rn = random_number::m::S;
         type Ws = web_socket_server::m::S;
     }
