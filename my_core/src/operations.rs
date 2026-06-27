@@ -180,6 +180,7 @@ async fn apply_change(
 
         match resource.resource {
             server_methods::Resource::Jwt(_) => {}
+            server_methods::Resource::HashedPassword(_) => todo!(),
             server_methods::Resource::TableUserFieldName(r) => {
                 state.user.upsert(row_uuid, |table| table.name = Some(r))
             }

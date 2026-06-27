@@ -514,6 +514,7 @@ mod broker_functions {
         for one_resource in resource {
             match one_resource.resource {
                 Resource::Jwt(_) => {}
+                Resource::HashedPassword(_) => todo!(),
                 Resource::TableUserFieldName(_) => {
                     if subscribe.contains(&Subscribe::TableUserFieldName) {
                         new_resource.push(one_resource.clone());
@@ -613,6 +614,8 @@ pub enum Subscribe {
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub enum Resource {
     Jwt(String),
+    HashedPassword(String),
+
     TableUserFieldName(String),
     TableUserFieldId(String),
     TableCompanyFieldName(String),

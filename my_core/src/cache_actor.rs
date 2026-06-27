@@ -419,6 +419,7 @@ pub fn collect_subs_to_poke(
     for resource in resource {
         match resource.resource {
             server_methods::Resource::Jwt(_) => {}
+            server_methods::Resource::HashedPassword(_) => todo!(),
             server_methods::Resource::TableUserFieldName(_) => {
                 subs_to_poke.insert(server_methods::Subscribe::TableUserFieldName);
             }
