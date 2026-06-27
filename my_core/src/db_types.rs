@@ -1,7 +1,10 @@
 use crate::prelude::*;
 
-#[derive(Default, PartialEq, Clone, Hash, Eq, Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone, Default, PartialEq, Hash, Eq)]
 pub struct UuidType(pub [u8; 16]);
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct JsonWebTokenType(pub String);
 
 pub type ListOfCompanies = Vec<db_types::Company>;
 

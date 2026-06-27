@@ -607,7 +607,7 @@ pub enum Subscribe {
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub enum Resource {
-    Jwt(String),
+    Jwt(db_types::JsonWebTokenType),
     HashedPassword(String),
 
     TableUserFieldName(String),

@@ -20,10 +20,9 @@ pub trait HashedPassword {
 }
 
 pub trait JWT {
-    type JsonWebToken: From<String> + Into<String>;
     fn new() -> Self;
-    fn sign(&self, user_uuid: &db_types::UuidType) -> Self::JsonWebToken;
-    fn validate(&self, token: Self::JsonWebToken) -> Option<db_types::UuidType>;
+    fn sign(&self, user_uuid: &db_types::UuidType) -> db_types::JsonWebTokenType;
+    fn validate(&self, token: db_types::JsonWebTokenType) -> Option<db_types::UuidType>;
 }
 
 pub trait Database {
@@ -216,7 +215,10 @@ pub trait Cache: Sized {
     fn delete_txn_input(&self, txn_number: &u64) -> impl Future<Output = ()>;
 
     fn write_resource(&self, resource: &Vec<ResourceInfo>) -> impl Future<Output = ()>;
-    fn get_jwt(&self, user_uuid: &db_types::UuidType) -> impl Future<Output = Option<String>>;
+    fn get_jwt(
+        &self,
+        user_uuid: &db_types::UuidType,
+    ) -> impl Future<Output = Option<db_types::JsonWebTokenType>>;
 
     fn read_sign_up(
         &self,
@@ -268,7 +270,7 @@ where
     type Rg: Regex;
 
     type Auth: HashedPassword;
-    type Jwt: JWT<JsonWebToken = String>;
+    type Jwt: JWT;
 
     type Db: Database<Client = Self::Cli>;
     type Cli: DBClient<HashedPassword = Self::Auth>;

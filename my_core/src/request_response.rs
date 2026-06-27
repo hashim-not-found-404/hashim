@@ -73,7 +73,7 @@ pub mod push_data {
 
     #[derive(Debug, Deserialize, Serialize)]
     pub struct Input {
-        pub jwts: Vec<String>,
+        pub jwts: Vec<db_types::JsonWebTokenType>,
         pub nonce: db_types::UuidType,
         pub operations: Vec<Txn<OperationsInput>>,
     }
