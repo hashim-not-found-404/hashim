@@ -17,37 +17,36 @@ pub mod m {
 
     #[derive(Serialize, Deserialize)]
     struct Claims {
-        id: row_id::m::S,
+        id: db_types::UuidType,
         exp: u64,
     }
 
     impl JWT for S {
-        type UserId = row_id::m::S;
-        type JsonWebToken = String;
-
         fn new() -> Self {
             Self {
                 key: Arc::new("key".into()),
             }
         }
 
-        fn sign(&self, id: &Self::UserId) -> Self::JsonWebToken {
+        fn sign(&self, id: &db_types::UuidType) -> db_types::JsonWebTokenType {
             let claims = Claims {
                 id: id.clone(),
                 exp: exp_time(),
             };
 
-            encode(
-                &Header::default(),
-                &claims,
-                &EncodingKey::from_secret(&self.key),
+            db_types::JsonWebTokenType(
+                encode(
+                    &Header::default(),
+                    &claims,
+                    &EncodingKey::from_secret(&self.key),
+                )
+                .unwrap(),
             )
-            .unwrap()
         }
 
-        fn validate(&self, token: Self::JsonWebToken) -> Option<Self::UserId> {
+        fn validate(&self, token: db_types::JsonWebTokenType) -> Option<db_types::UuidType> {
             let result = decode::<Claims>(
-                &token,
+                &token.0,
                 &DecodingKey::from_secret(&self.key),
                 &Validation::new(Algorithm::HS256),
             );

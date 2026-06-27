@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use adapters::row_id::m::{MyUuidConverter, MyUuidConverter1};
 use std::{
     collections::{HashMap, HashSet},
     str::FromStr,
@@ -10,8 +11,6 @@ pub struct S {
 }
 
 impl DBClient for S {
-    type RowId = row_id::m::S;
-    type HashedPassword = authentication::m::S;
     type Txn<'a> = db_transaction::S<'a>;
 
     async fn begin_transaction(&mut self) -> Result<Self::Txn<'_>, DynamicError> {
@@ -23,7 +22,7 @@ impl DBClient for S {
     async fn read_sign_in(
         &mut self,
         user_id: &String,
-    ) -> Result<Option<(Self::RowId, Self::HashedPassword)>, DynamicError> {
+    ) -> Result<Option<(db_types::UuidType, String)>, DynamicError> {
         let query = "SELECT rowid,pass FROM accounting_app.user WHERE id = $1 LIMIT 1;";
         let stmt = self.client.prepare_cached(query).await.log()?;
         let row = self.client.query_opt(&stmt, &[user_id]).await.log()?;
@@ -32,7 +31,7 @@ impl DBClient for S {
             Some(row) => {
                 let row_id = row.try_get::<_, Uuid>(0).log()?;
                 let hashed_password = row.try_get::<_, String>(1).log()?;
-                Ok(Some((row_id.into(), hashed_password.into())))
+                Ok(Some((row_id.to_uuid(), hashed_password.into())))
             }
             None => Ok(None),
         }
@@ -40,8 +39,8 @@ impl DBClient for S {
 
     async fn read_roles_for_user(
         &mut self,
-        users_uuid: &HashSet<Self::RowId>,
-    ) -> Result<server_methods::AllRoles<Self::RowId>, DynamicError> {
+        users_uuid: &HashSet<db_types::UuidType>,
+    ) -> Result<server_methods::AllRoles, DynamicError> {
         let query = r#"
             SELECT
                 'company' as type,
@@ -64,7 +63,7 @@ impl DBClient for S {
 
         let stmt = self.client.prepare_cached(query).await.log()?;
 
-        let mut result = server_methods::AllRoles::<Self::RowId> {
+        let mut result = server_methods::AllRoles {
             companies: HashMap::new(),
             branches: HashMap::new(),
         };
@@ -85,8 +84,8 @@ impl DBClient for S {
                 let role = db_types::Role::from_str(&role_str).log()?;
 
                 // Convert Uuid to your RowId type
-                let data_group_id = Self::RowId::from(data_group);
-                let user_id_typed = Self::RowId::from(user_id);
+                let data_group_id = db_types::UuidType(data_group.into_bytes());
+                let user_id_typed = db_types::UuidType(user_id.into_bytes());
 
                 match entity_type.as_str() {
                     "company" => {
@@ -117,7 +116,7 @@ impl DBClient for S {
 
     async fn write_nonce_if_not_used(
         &mut self,
-        nonce: &Self::RowId,
+        nonce: &db_types::UuidType,
     ) -> Result<bool /* is nonce used */, DynamicError> {
         let row = self
             .client
@@ -136,7 +135,7 @@ impl DBClient for S {
 
     async fn read_list_company_and_branch(
         &mut self,
-        user_uuid: &Self::RowId,
+        user_uuid: &db_types::UuidType,
     ) -> Result<Vec<ResourceInfo>, DynamicError> {
         let query = "
             WITH user_companies AS (
@@ -177,11 +176,10 @@ impl DBClient for S {
             .log()?;
 
         let mut resources = Vec::new();
-        let user_uuid_db = user_uuid.to_uuid(); // Convert to db_types::UuidType
 
         for row in rows {
-            let company_uuid_str: String = row.try_get(0).log()?;
-            let company_uuid_db = db_types::UuidType(company_uuid_str.clone());
+            let company_uuid_str: Uuid = row.try_get(0).log()?;
+            let company_uuid_db = db_types::UuidType(company_uuid_str.into_bytes());
             let company_name: String = row.try_get(1).log()?;
             let user_role_str: String = row.try_get(2).log()?;
             let branches_json: serde_json::Value = row.try_get(3).log()?;
@@ -205,7 +203,7 @@ impl DBClient for S {
             resources.push(ResourceInfo {
                 row_uuid: company_uuid_db.clone(),
                 resource: server_methods::Resource::TableAccessControlForCompanyFieldUser(
-                    user_uuid_db.clone(),
+                    user_uuid.clone(),
                 ),
             });
 

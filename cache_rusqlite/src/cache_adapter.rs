@@ -1,7 +1,7 @@
-use std::{fmt::Display, ops::Add, str::FromStr};
-
 use crate::prelude::*;
 use rusqlite::{Connection, OptionalExtension, params};
+use std::{ops::Add, str::FromStr};
+use uuid::Uuid;
 
 pub struct S {
     db: Connection,
@@ -84,12 +84,13 @@ impl Cache for S {
         let mut stmts = Vec::with_capacity(resource.len());
 
         for reso in resource {
-            let uuid = &reso.row_uuid.0;
+            let uuid = &reso.row_uuid.into_inner();
 
             let stmt = match &reso.resource {
                 server_methods::Resource::Jwt(value) => {
-                    make_sql_statment_for_string("user", "jwt", uuid, value)
+                    make_sql_statment_for_string("user", "jwt", uuid, &value.0)
                 }
+                server_methods::Resource::HashedPassword(_) => continue,
                 server_methods::Resource::TableUserFieldName(value) => {
                     make_sql_statment_for_string("user", "name", uuid, value)
                 }
@@ -103,7 +104,12 @@ impl Cache for S {
                     make_sql_statment_for_string("company_branch", "name", uuid, value)
                 }
                 server_methods::Resource::TableCompanyBranchFieldCompanyBelong(value) => {
-                    make_sql_statment_for_string("company_branch", "company_belong", uuid, &value.0)
+                    make_sql_statment_for_string(
+                        "company_branch",
+                        "company_belong",
+                        uuid,
+                        &value.into_inner(),
+                    )
                 }
                 server_methods::Resource::TableCompanyBranchFieldCurrency(value) => {
                     make_sql_statment_for_string(
@@ -151,7 +157,7 @@ impl Cache for S {
                         "access_control_for_company",
                         "user_",
                         uuid,
-                        &value.0,
+                        &value.into_inner(),
                     )
                 }
                 server_methods::Resource::TableAccessControlForCompanyFieldDataGroup(value) => {
@@ -159,7 +165,7 @@ impl Cache for S {
                         "access_control_for_company",
                         "data_group",
                         uuid,
-                        &value.0,
+                        &value.into_inner(),
                     )
                 }
                 server_methods::Resource::TableAccessControlForCompanyBranchFieldRole(value) => {
@@ -175,7 +181,7 @@ impl Cache for S {
                         "access_control_for_company_branch",
                         "user_",
                         uuid,
-                        &value.0,
+                        &value.into_inner(),
                     )
                 }
                 server_methods::Resource::TableAccessControlForCompanyBranchFieldDataGroup(
@@ -184,7 +190,7 @@ impl Cache for S {
                     "access_control_for_company_branch",
                     "data_group",
                     uuid,
-                    &value.0,
+                    &value.into_inner(),
                 ),
             };
 
@@ -195,13 +201,18 @@ impl Cache for S {
         self.db.execute_batch(stmts.as_str()).unwrap();
     }
 
-    async fn get_jwt(&self, user_uuid: &db_types::UuidType) -> Option<String> {
+    async fn get_jwt(&self, user_uuid: &db_types::UuidType) -> Option<db_types::JsonWebTokenType> {
         let mut stmt = self
             .db
             .prepare("SELECT jwt FROM user WHERE rowid = ?1")
             .unwrap();
 
-        stmt.query_one([&user_uuid.0], |row| row.get(0)).ok()
+        let json_web_token_type = stmt.query_one([&user_uuid.0], |row| row.get(0));
+
+        match json_web_token_type {
+            Ok(a) => Some(db_types::JsonWebTokenType(a)),
+            Err(_) => None,
+        }
     }
 
     async fn read_sign_up(
@@ -242,7 +253,7 @@ impl Cache for S {
                 let jwt: Option<String> = row.get(2).unwrap();
 
                 Ok((
-                    db_types::UuidType(user_uuid_str),
+                    user_uuid_str.to_uuid(),
                     user_name,
                     jwt.is_some(), // true if JWT exists
                 ))
@@ -299,7 +310,7 @@ impl Cache for S {
             if last_company_uuid.as_ref() != Some(&company_uuid_str) {
                 last_company_uuid = Some(company_uuid_str.clone());
 
-                let company_uuid_db = db_types::UuidType(company_uuid_str.clone());
+                let company_uuid_db = company_uuid_str.clone().to_uuid();
                 let role = db_types::Role::from_str(&user_role_str).unwrap();
 
                 // Company name
@@ -333,8 +344,8 @@ impl Cache for S {
 
             // Add branch resources if branch exists
             if let (Some(branch_uuid_str), Some(branch_name)) = (branch_uuid_opt, branch_name_opt) {
-                let branch_uuid_db = db_types::UuidType(branch_uuid_str);
-                let company_uuid_db = db_types::UuidType(company_uuid_str.clone());
+                let branch_uuid_db = branch_uuid_str.to_uuid();
+                let company_uuid_db = company_uuid_str.to_uuid();
 
                 resources.push(ResourceInfo {
                     row_uuid: branch_uuid_db.clone(),
@@ -425,4 +436,28 @@ fn make_sql_statment_for_number(
         "INSERT OR IGNORE INTO {table_name} (rowid) VALUES ('{uuid}');
          UPDATE {table_name} SET {field_name} = {value} WHERE rowid = '{uuid}';"
     )
+}
+
+pub trait MyUuidConverter {
+    fn into_inner(&self) -> String;
+}
+
+impl MyUuidConverter for db_types::UuidType {
+    fn into_inner(&self) -> String {
+        // Convert [u8; 16] → Uuid → String
+        let uuid = Uuid::from_bytes(self.0);
+        uuid.to_string()
+    }
+}
+
+pub trait MyUuidConverter1 {
+    fn to_uuid(self) -> db_types::UuidType;
+}
+
+impl MyUuidConverter1 for String {
+    fn to_uuid(self) -> db_types::UuidType {
+        // Parse string → Uuid → [u8; 16]
+        let uuid = Uuid::parse_str(&self).expect("Invalid UUID string");
+        db_types::UuidType(*uuid.as_bytes())
+    }
 }

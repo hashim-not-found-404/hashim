@@ -8,16 +8,10 @@ pub mod m {
     use derive_more::From;
 
     #[derive(Clone, From)]
-    pub struct S(String);
-
-    impl S {
-        pub fn into_inner(&self) -> String {
-            self.0.clone()
-        }
-    }
+    pub struct S;
 
     impl HashedPassword for S {
-        fn sign_up(password: &String) -> Self {
+        fn sign_up(password: &String) -> String {
             // 1. Generate a cryptographically random salt
             let salt = SaltString::generate(&mut OsRng);
 
@@ -32,12 +26,12 @@ pub mod m {
 
             // 4. You need to return or store this string.
             // You'll have to convert `password_hash` (String) into your `TableUserFieldPass` type.
-            Self(password_hash)
+            password_hash
         }
 
-        fn sign_in(password: &String, password_hash: &Self) -> bool {
+        fn sign_in(password: &String, password_hash: &String) -> bool {
             // 1. Parse the stored PHC string
-            let parsed_hash = PasswordHash::new(&password_hash.0).unwrap();
+            let parsed_hash = PasswordHash::new(&password_hash).unwrap();
 
             // 2. Verify the provided password against the parsed hash
             // The verification uses the parameters (salt, cost, etc.) embedded in the parsed hash.

@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use adapters::row_id::m::MyUuidConverter;
 use rust_decimal::Decimal;
 use rust_decimal::prelude::FromPrimitive;
 use std::str::FromStr;
@@ -9,9 +10,6 @@ pub struct S<'a> {
 }
 
 impl DBTransaction for S<'_> {
-    type RowId = row_id::m::S;
-    type HashedPassword = authentication::m::S;
-
     async fn commit_transaction(self) -> Result<Result<(), domain_errors::AtCommit>, DynamicError> {
         match self.txn.commit().await {
             Ok(_) => Ok(Ok(())),
@@ -31,7 +29,7 @@ impl DBTransaction for S<'_> {
 
     async fn read_sign_up(
         &mut self,
-        new_uuid: &Self::RowId,
+        new_uuid: &db_types::UuidType,
         user_id: &String,
     ) -> Result<
         (
@@ -61,9 +59,9 @@ impl DBTransaction for S<'_> {
 
     async fn write_sign_up(
         &mut self,
-        new_uuid: &Self::RowId,
+        new_uuid: &db_types::UuidType,
         user_id: &String,
-        hashed_password: &Self::HashedPassword,
+        hashed_password: &String,
         user_name: &Option<String>,
     ) -> Result<(), DynamicError> {
         let query =
@@ -74,12 +72,7 @@ impl DBTransaction for S<'_> {
         self.txn
             .execute(
                 &stmt,
-                &[
-                    &new_uuid.into_inner(),
-                    user_id,
-                    &hashed_password.into_inner(),
-                    user_name,
-                ],
+                &[&new_uuid.into_inner(), user_id, &hashed_password, user_name],
             )
             .await
             .log()?;
@@ -89,7 +82,7 @@ impl DBTransaction for S<'_> {
 
     async fn read_create_company(
         &mut self,
-        new_uuid: &Self::RowId,
+        new_uuid: &db_types::UuidType,
     ) -> Result<bool /* is new_uuid exist */, DynamicError> {
         let query = "SELECT EXISTS(SELECT 1 FROM accounting_app.company WHERE rowid = $1)";
         let stmt = self.txn.prepare_cached(query).await.log()?;
@@ -105,8 +98,8 @@ impl DBTransaction for S<'_> {
 
     async fn write_create_company(
         &mut self,
-        new_uuid: &Self::RowId,
-        user_uuid: &Self::RowId,
+        new_uuid: &db_types::UuidType,
+        user_uuid: &db_types::UuidType,
         user_role: &db_types::Role,
         company_name: &String,
         currency: &db_types::Currency,
@@ -141,9 +134,9 @@ impl DBTransaction for S<'_> {
 
     async fn read_create_company_branch(
         &mut self,
-        new_uuid: &Self::RowId,
-        user_uuid: &Self::RowId,
-        company_belong: &Self::RowId,
+        new_uuid: &db_types::UuidType,
+        user_uuid: &db_types::UuidType,
+        company_belong: &db_types::UuidType,
         branch_name: &String,
     ) -> Result<
         (
@@ -208,12 +201,12 @@ impl DBTransaction for S<'_> {
 
     async fn write_create_company_branch(
         &mut self,
-        new_uuid: &Self::RowId,
-        company_belong: &Self::RowId,
+        new_uuid: &db_types::UuidType,
+        company_belong: &db_types::UuidType,
         branch_name: &String,
         location: &db_types::Location,
         currency: &db_types::Currency,
-        user_uuid: &Self::RowId,
+        user_uuid: &db_types::UuidType,
         user_role: &db_types::Role,
     ) -> Result<(), DynamicError> {
         let query = "

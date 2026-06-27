@@ -12,6 +12,7 @@ pub mod m {
         type Ch = cache_adapter::S;
         type Id = row_id::m::S;
         type Mpsc = actors::m::S;
+        type Rg = functions::m::S;
 
         type Uuid = my_signal::m::S<db_types::UuidType>;
         type OptionUuid = my_signal::m::S<Option<db_types::UuidType>>;

@@ -1,41 +1,49 @@
 pub mod m {
     use crate::prelude::*;
-    use derive_more::From;
-    use serde::{Deserialize, Serialize};
     use uuid::Uuid;
 
-    #[derive(Clone, Serialize, Deserialize, Debug, Eq, PartialEq, From, Hash)]
-    pub struct S(Uuid);
-
-    impl S {
-        pub fn into_inner(&self) -> Uuid {
-            self.0
-        }
-    }
-
-    impl TryFrom<&db_types::UuidType> for S {
-        type Error = ();
-        fn try_from(value: &db_types::UuidType) -> Result<Self, ()> {
-            match Uuid::parse_str(value.0.as_str()) {
-                Ok(o) => Ok(Self(o)),
-                Err(_) => Err(()),
-            }
-        }
-    }
-
-    impl ToString for S {
-        fn to_string(&self) -> String {
-            self.0.to_string()
-        }
-    }
+    pub struct S;
 
     impl RowId for S {
-        fn generate() -> Self {
-            Self(Uuid::now_v7())
+        fn generate() -> db_types::UuidType {
+            // Generate a random UUID v4
+            db_types::UuidType(*Uuid::now_v7().as_bytes())
         }
 
-        fn get_time_as_seconds(&self) -> u64 {
-            self.0.get_timestamp().unwrap().to_unix().0
+        fn get_time_as_seconds(uuid: &db_types::UuidType) -> u64 {
+            // Convert bytes to Uuid and extract timestamp (for UUID v7)
+            let u = Uuid::from_bytes(uuid.0);
+            if let Some(ts) = u.get_timestamp() {
+                ts.to_unix().0
+            } else {
+                0 // v4 UUIDs have no timestamp
+            }
+        }
+
+        fn validate(uuid: &db_types::UuidType) -> bool {
+            // Verify that the UUID is valid and has a known version (v4 or v7)
+            let u = Uuid::from_bytes(uuid.0);
+            matches!(u.get_version_num(), 7)
+        }
+    }
+
+    pub trait MyUuidConverter {
+        fn into_inner(&self) -> Uuid;
+    }
+
+    impl MyUuidConverter for db_types::UuidType {
+        fn into_inner(&self) -> Uuid {
+            Uuid::from_bytes(self.0) // assuming self.0 is [u8; 16]
+        }
+    }
+
+    pub trait MyUuidConverter1 {
+        fn to_uuid(self) -> db_types::UuidType;
+    }
+
+    impl MyUuidConverter1 for Uuid {
+        fn to_uuid(self) -> db_types::UuidType {
+            db_types::UuidType(*self.as_bytes())
         }
     }
 }
