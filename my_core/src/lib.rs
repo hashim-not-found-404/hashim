@@ -1,6 +1,7 @@
 pub mod cache;
 pub mod cache_actor;
 pub mod db_types;
+pub mod decider;
 pub mod network_actor;
 pub mod operations;
 pub mod process_manager;

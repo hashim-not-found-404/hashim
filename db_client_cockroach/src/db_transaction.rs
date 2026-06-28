@@ -57,13 +57,7 @@ impl DBTransaction for S<'_> {
         Ok((uuid_exists, user_id_exists))
     }
 
-    async fn write_sign_up(
-        &mut self,
-        new_uuid: &db_types::UuidType,
-        user_id: &String,
-        hashed_password: &String,
-        user_name: &Option<String>,
-    ) -> Result<(), DynamicError> {
+    async fn write_sign_up(&mut self, data: &decider::sign_up::Ok) -> Result<(), DynamicError> {
         let query =
             "INSERT INTO accounting_app.user (rowid, id, pass, name) VALUES ($1, $2, $3, $4)";
 
@@ -72,7 +66,12 @@ impl DBTransaction for S<'_> {
         self.txn
             .execute(
                 &stmt,
-                &[&new_uuid.into_inner(), user_id, &hashed_password, user_name],
+                &[
+                    &data.new_uuid.into_inner(),
+                    &data.user_id,
+                    &data.hashed_password,
+                    &data.user_name,
+                ],
             )
             .await
             .log()?;
@@ -98,11 +97,7 @@ impl DBTransaction for S<'_> {
 
     async fn write_create_company(
         &mut self,
-        new_uuid: &db_types::UuidType,
-        user_uuid: &db_types::UuidType,
-        user_role: &db_types::Role,
-        company_name: &String,
-        currency: &db_types::Currency,
+        data: &decider::create_company::Ok,
     ) -> Result<(), DynamicError> {
         let query = "
             WITH company_insert AS (
@@ -120,11 +115,11 @@ impl DBTransaction for S<'_> {
             .execute(
                 &stmt,
                 &[
-                    &new_uuid.into_inner(),
-                    &company_name,
-                    &currency.as_str(),
-                    &user_uuid.into_inner(),
-                    &user_role.as_str(),
+                    &data.new_uuid.into_inner(),
+                    &data.company_name,
+                    &data.currency.as_str(),
+                    &data.user_uuid.into_inner(),
+                    &data.role.as_str(),
                 ],
             )
             .await
@@ -201,13 +196,7 @@ impl DBTransaction for S<'_> {
 
     async fn write_create_company_branch(
         &mut self,
-        new_uuid: &db_types::UuidType,
-        company_belong: &db_types::UuidType,
-        branch_name: &String,
-        location: &db_types::Location,
-        currency: &db_types::Currency,
-        user_uuid: &db_types::UuidType,
-        user_role: &db_types::Role,
+        data: &decider::create_company_branch::Ok,
     ) -> Result<(), DynamicError> {
         let query = "
             WITH inserted_branch AS (
@@ -223,10 +212,10 @@ impl DBTransaction for S<'_> {
             SELECT rowid, rowid, $7, $8 FROM inserted_branch
         ";
 
-        let lat = Decimal::from_f64(location.latitude)
+        let lat = Decimal::from_f64(data.location.latitude)
             .ok_or(HashimError::InternalServerError)
             .log()?;
-        let lng = Decimal::from_f64(location.longitude)
+        let lng = Decimal::from_f64(data.location.longitude)
             .ok_or(HashimError::InternalServerError)
             .log()?;
 
@@ -234,14 +223,14 @@ impl DBTransaction for S<'_> {
             .execute(
                 query,
                 &[
-                    &new_uuid.into_inner(),
-                    &company_belong.into_inner(),
-                    &branch_name,
+                    &data.new_uuid.into_inner(),
+                    &data.company_belong.into_inner(),
+                    &data.branch_name,
                     &lat,
                     &lng,
-                    &currency.as_str(),
-                    &user_uuid.into_inner(),
-                    &user_role.as_str(),
+                    &data.currency.as_str(),
+                    &data.user_uuid.into_inner(),
+                    &data.role.as_str(),
                 ],
             )
             .await

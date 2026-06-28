@@ -1,3 +1,5 @@
+use crate::cache::State;
+use crate::decider::EventMaker;
 use crate::prelude::*;
 
 pub(crate) trait ViewType1 {
@@ -11,7 +13,10 @@ pub(crate) trait CacheAndServerType1: Clone {
     fn user_uuid(&self) -> Option<&db_types::UuidType>;
 
     type Output: CacheAndServerType2;
-    async fn state_full_operation<Ch: Cache>(&self, state: &cache::State<Ch>) -> Self::Output;
+    async fn state_full_operation<At: AllClientTypes>(
+        &self,
+        state: &mut cache::State<At>,
+    ) -> Self::Output;
 }
 
 pub(crate) trait CacheAndServerType2 {
@@ -24,51 +29,57 @@ pub(crate) trait ViewType2 {
 }
 
 impl push_data::OperationsInput {
-    pub(crate) async fn run_operation_check<Ch: Cache>(
+    pub(crate) async fn run_operation_check<At: AllClientTypes>(
         &self,
-        state: &mut cache::State<Ch>,
+        state: &mut cache::State<At>,
     ) -> push_data::OperationsResult {
         match self {
-            push_data::OperationsInput::SignUp(i) => operation_check_handler(i, state).await,
-            push_data::OperationsInput::SignIn(i) => operation_check_handler(i, state).await,
-            push_data::OperationsInput::CreateCompany(i) => operation_check_handler(i, state).await,
+            push_data::OperationsInput::SignUp(i) => {
+                operation_check_handler::<_, At>(i, state).await
+            }
+            push_data::OperationsInput::SignIn(i) => {
+                operation_check_handler::<_, At>(i, state).await
+            }
+            push_data::OperationsInput::CreateCompany(i) => {
+                operation_check_handler::<_, At>(i, state).await
+            }
             push_data::OperationsInput::CreateCompanyBranch(i) => {
-                operation_check_handler(i, state).await
+                operation_check_handler::<_, At>(i, state).await
             }
             push_data::OperationsInput::ListCompanyAndBranch(i) => {
-                operation_check_handler(i, state).await
+                operation_check_handler::<_, At>(i, state).await
             }
         }
     }
 
-    pub(crate) async fn run_operation_check_apply<Ch: Cache>(
+    pub(crate) async fn run_operation_check_apply<At: AllClientTypes>(
         &self,
-        state: &mut cache::State<Ch>,
+        state: &mut cache::State<At>,
         subs_to_poke: &mut HashSet<server_methods::Subscribe>,
     ) {
         match self {
             push_data::OperationsInput::SignUp(i) => {
-                operation_check_apply_handler(i, state, subs_to_poke).await
+                operation_check_apply_handler::<_, At>(i, state, subs_to_poke).await
             }
             push_data::OperationsInput::SignIn(i) => {
-                operation_check_apply_handler(i, state, subs_to_poke).await
+                operation_check_apply_handler::<_, At>(i, state, subs_to_poke).await
             }
             push_data::OperationsInput::CreateCompany(i) => {
-                operation_check_apply_handler(i, state, subs_to_poke).await
+                operation_check_apply_handler::<_, At>(i, state, subs_to_poke).await
             }
             push_data::OperationsInput::CreateCompanyBranch(i) => {
-                operation_check_apply_handler(i, state, subs_to_poke).await
+                operation_check_apply_handler::<_, At>(i, state, subs_to_poke).await
             }
             push_data::OperationsInput::ListCompanyAndBranch(i) => {
-                operation_check_apply_handler(i, state, subs_to_poke).await
+                operation_check_apply_handler::<_, At>(i, state, subs_to_poke).await
             }
         }
     }
 
-    pub(crate) async fn run_operation_check_apply_write<Ch: Cache>(
+    pub(crate) async fn run_operation_check_apply_write<At: AllClientTypes>(
         &self,
         txn_number: u64,
-        state: &mut cache::State<Ch>,
+        state: &mut cache::State<At>,
         subs_to_poke: &mut HashSet<server_methods::Subscribe>,
     ) -> push_data::OperationsResult {
         state
@@ -81,19 +92,19 @@ impl push_data::OperationsInput {
 
         match self {
             push_data::OperationsInput::SignUp(i) => {
-                operation_check_apply_write_handler(i, state, subs_to_poke).await
+                operation_check_apply_write_handler::<_, At>(i, state, subs_to_poke).await
             }
             push_data::OperationsInput::SignIn(i) => {
-                operation_check_apply_write_handler(i, state, subs_to_poke).await
+                operation_check_apply_write_handler::<_, At>(i, state, subs_to_poke).await
             }
             push_data::OperationsInput::CreateCompany(i) => {
-                operation_check_apply_write_handler(i, state, subs_to_poke).await
+                operation_check_apply_write_handler::<_, At>(i, state, subs_to_poke).await
             }
             push_data::OperationsInput::CreateCompanyBranch(i) => {
-                operation_check_apply_write_handler(i, state, subs_to_poke).await
+                operation_check_apply_write_handler::<_, At>(i, state, subs_to_poke).await
             }
             push_data::OperationsInput::ListCompanyAndBranch(i) => {
-                operation_check_apply_write_handler(i, state, subs_to_poke).await
+                operation_check_apply_write_handler::<_, At>(i, state, subs_to_poke).await
             }
         }
     }
@@ -131,32 +142,35 @@ impl push_data::OperationsResult {
     }
 }
 
-async fn operation_check_handler<T: CacheAndServerType1, Ch: Cache>(
+async fn operation_check_handler<T: CacheAndServerType1, At: AllClientTypes>(
     input: &T,
-    state: &mut cache::State<Ch>,
+    state: &mut cache::State<At>,
 ) -> push_data::OperationsResult {
-    return input.state_full_operation(state).await.wrap_output();
+    return input.state_full_operation::<At>(state).await.wrap_output();
 }
 
-async fn operation_check_apply_handler<T: CacheAndServerType1, Ch: Cache>(
+async fn operation_check_apply_handler<T: CacheAndServerType1, At: AllClientTypes>(
     input: &T,
-    state: &mut cache::State<Ch>,
+    state: &mut cache::State<At>,
     subs_to_poke: &mut HashSet<server_methods::Subscribe>,
 ) {
     apply_change(
-        input.state_full_operation(state).await.extract_resource(),
+        input
+            .state_full_operation::<At>(state)
+            .await
+            .extract_resource(),
         &mut state.state_of_pending_txn,
         subs_to_poke,
     )
     .await;
 }
 
-async fn operation_check_apply_write_handler<T: CacheAndServerType1, Ch: Cache>(
+async fn operation_check_apply_write_handler<T: CacheAndServerType1, At: AllClientTypes>(
     input: &T,
-    state: &mut cache::State<Ch>,
+    state: &mut cache::State<At>,
     subs_to_poke: &mut HashSet<server_methods::Subscribe>,
 ) -> push_data::OperationsResult {
-    let result = input.state_full_operation(state).await;
+    let result = input.state_full_operation::<At>(state).await;
 
     apply_change(
         result.extract_resource(),
@@ -180,7 +194,6 @@ async fn apply_change(
 
         match resource.resource {
             server_methods::Resource::Jwt(_) => {}
-            server_methods::Resource::HashedPassword(_) => todo!(),
             server_methods::Resource::TableUserFieldName(r) => {
                 state.user.upsert(row_uuid, |table| table.name = Some(r))
             }
@@ -229,13 +242,39 @@ async fn apply_change(
 
 // all imples down
 
+struct SodoJwt;
+impl JWT for SodoJwt {
+    fn new() -> Self {
+        Self
+    }
+
+    fn sign(&self, user_uuid: &db_types::UuidType) -> db_types::JsonWebTokenType {
+        db_types::JsonWebTokenType(String::new())
+    }
+
+    fn validate(&self, token: db_types::JsonWebTokenType) -> Option<db_types::UuidType> {
+        unreachable!("this is not callable at client side")
+    }
+}
+
+struct SodoAuth;
+impl HashedPassword for SodoAuth {
+    fn sign_up(password: &String) -> String {
+        password.clone()
+    }
+
+    fn sign_in(password: &String, password_hash: &String) -> bool {
+        unreachable!("this is not callable at client side")
+    }
+}
+
 pub(crate) mod sign_up {
     use super::*;
 
-    pub(crate) type Type1 = server_operations::sign_up::Input;
-    type Type2 = server_operations::sign_up::Input;
-    type Type3 = server_operations::sign_up::Result;
-    pub(crate) type Type4 = server_operations::sign_up::Result;
+    pub(crate) type Type1 = decider::sign_up::Input;
+    type Type2 = decider::sign_up::Input;
+    type Type3 = decider::sign_up::Result;
+    pub(crate) type Type4 = decider::sign_up::Result;
 
     impl ViewType1 for Type1 {
         fn wrap_input(self) -> push_data::OperationsInput {
@@ -249,59 +288,23 @@ pub(crate) mod sign_up {
         }
 
         type Output = Type3;
-        async fn state_full_operation<Ch: Cache>(&self, state: &cache::State<Ch>) -> Self::Output {
-            let (mut is_new_uuid_exist, mut is_user_id_exist) = state
-                .cache
-                .read_sign_up(&self.new_uuid, &self.user_id)
-                .await;
+        async fn state_full_operation<At: AllClientTypes>(
+            &self,
+            state: &mut cache::State<At>,
+        ) -> Self::Output {
+            let result = self
+                .handle::<State<_>, At::Rn, At::Rt, At::Id, At::Mpsc, At::Ed, At::Rg, SodoAuth, SodoJwt>(&mut server_methods::SideEffects::default(), state, &SodoJwt)
+                .await
+                .unwrap();
 
-            for (uuid, user) in &state.state_of_pending_txn.user {
-                if user.id == self.user_id {
-                    is_user_id_exist = true;
-                }
-                if uuid == &self.new_uuid {
-                    is_new_uuid_exist = true;
-                }
-            }
-
-            let mut err = server_operations::sign_up::Error {
-                new_uuid: None,
-                user_id: None,
-                name: None,
-            };
-
-            if is_user_id_exist {
-                err.user_id = Some(server_operations::sign_up::UserIdError::Duplicated);
-            }
-            if is_new_uuid_exist {
-                err.new_uuid = Some(RowIdError::Duplicated);
-            }
-
-            if err != server_operations::sign_up::Error::default() {
-                return Err(err);
-            }
-
-            let mut resource = Vec::new();
-
-            resource.push(ResourceInfo {
-                row_uuid: self.new_uuid.clone(),
-                resource: server_methods::Resource::TableUserFieldId(self.user_id.clone()),
-            });
-            if let Some(name) = self.name.clone() {
-                resource.push(ResourceInfo {
-                    row_uuid: self.new_uuid.clone(),
-                    resource: server_methods::Resource::TableUserFieldName(name),
-                });
-            }
-
-            return Ok(server_operations::sign_up::Ok { resource });
+            return result;
         }
     }
 
     impl CacheAndServerType2 for Type3 {
         fn extract_resource(&self) -> Vec<ResourceInfo> {
             match self {
-                Ok(ok) => ok.resource.clone(),
+                Ok(ok) => ok.clone().into(),
                 Err(_) => Vec::new(),
             }
         }
@@ -324,10 +327,10 @@ pub(crate) mod sign_up {
 pub(crate) mod sign_in {
     use super::*;
 
-    pub(crate) type Type1 = server_operations::sign_in::Input;
-    type Type2 = server_operations::sign_in::Input;
-    type Type3 = server_operations::sign_in::Result;
-    pub(crate) struct Type4(pub(crate) Result<SignInOk, server_operations::sign_in::Error>);
+    pub(crate) type Type1 = decider::sign_in::Input;
+    type Type2 = decider::sign_in::Input;
+    type Type3 = decider::sign_in::Result;
+    pub(crate) struct Type4(pub(crate) Result<SignInOk, decider::sign_in::Error>);
 
     pub(crate) struct SignInOk {
         pub user_uuid: db_types::UuidType,
@@ -347,21 +350,18 @@ pub(crate) mod sign_in {
 
         type Output = Type3;
 
-        async fn state_full_operation<Ch: Cache>(&self, state: &cache::State<Ch>) -> Self::Output {
+        async fn state_full_operation<At: AllClientTypes>(
+            &self,
+            state: &mut cache::State<At>,
+        ) -> Self::Output {
             let user_uuid_and_is_jwt_exist = state.cache.read_sign_in(&self.user_id).await;
 
             if let Some((user_uuid, user_name, is_jwt_exist)) = user_uuid_and_is_jwt_exist {
                 if is_jwt_exist {
-                    let mut resource = Vec::new();
-
-                    resource.push(ResourceInfo {
-                        row_uuid: user_uuid,
-                        resource: server_methods::Resource::TableUserFieldName(
-                            user_name.unwrap_or_default(),
-                        ),
+                    return Ok(decider::sign_in::Ok {
+                        user_uuid,
+                        jwt: db_types::JsonWebTokenType(String::new()),
                     });
-
-                    return Ok(server_operations::sign_in::Ok { resource });
                 }
             }
 
@@ -380,27 +380,19 @@ pub(crate) mod sign_in {
             match password {
                 Some(password) => {
                     if password == self.password {
-                        let mut resource = Vec::new();
-
-                        resource.push(ResourceInfo {
-                            row_uuid: user_uuid.unwrap().clone(),
-                            resource: server_methods::Resource::TableUserFieldName(
-                                user_name.unwrap_or_default(),
-                            ),
+                        return Ok(decider::sign_in::Ok {
+                            user_uuid: user_uuid.unwrap().clone(),
+                            jwt: db_types::JsonWebTokenType(String::new()),
                         });
-
-                        return Ok(server_operations::sign_in::Ok { resource });
                     } else {
-                        return Err(server_operations::sign_in::Error {
+                        return Err(decider::sign_in::Error {
                             user_id: None,
-                            password: Some(
-                                server_operations::sign_in::PasswordError::WrongPassword,
-                            ),
+                            password: Some(decider::sign_in::PasswordError::WrongPassword),
                         });
                     }
                 }
-                None => Err(server_operations::sign_in::Error {
-                    user_id: Some(server_operations::sign_in::UserIdError::NotExist),
+                None => Err(decider::sign_in::Error {
+                    user_id: Some(decider::sign_in::UserIdError::NotExist),
                     password: None,
                 }),
             }
@@ -410,7 +402,7 @@ pub(crate) mod sign_in {
     impl CacheAndServerType2 for Type3 {
         fn extract_resource(&self) -> Vec<ResourceInfo> {
             match self {
-                Ok(ok) => ok.resource.clone(),
+                Ok(ok) => ok.clone().into(),
                 Err(_) => Vec::new(),
             }
         }
@@ -425,24 +417,8 @@ pub(crate) mod sign_in {
             if let push_data::OperationsResult::SignIn(result) = result {
                 match result {
                     Ok(ok) => {
-                        let mut user_uuid = None;
-                        let mut user_name = String::new();
-
-                        for resource_info in &ok.resource {
-                            // Assume all resources share the same row_uuid (the user's UUID)
-                            if user_uuid.is_none() {
-                                user_uuid = Some(resource_info.row_uuid.clone());
-                            }
-
-                            match &resource_info.resource {
-                                server_methods::Resource::TableUserFieldName(name) => {
-                                    user_name = name.clone();
-                                }
-                                _ => {}
-                            }
-                        }
-
-                        let user_uuid = user_uuid.unwrap();
+                        let mut user_uuid = ok.user_uuid;
+                        let mut user_name = todo!();
 
                         Type4(Ok(SignInOk {
                             user_uuid,
@@ -461,10 +437,10 @@ pub(crate) mod sign_in {
 pub(crate) mod create_company {
     use super::*;
 
-    pub(crate) type Type1 = server_operations::create_company::Input;
-    type Type2 = server_operations::create_company::Input;
-    type Type3 = server_operations::create_company::Result;
-    pub(crate) type Type4 = server_operations::create_company::Result;
+    pub(crate) type Type1 = decider::create_company::Input;
+    type Type2 = decider::create_company::Input;
+    type Type3 = decider::create_company::Result;
+    pub(crate) type Type4 = decider::create_company::Result;
 
     impl ViewType1 for Type1 {
         fn wrap_input(self) -> push_data::OperationsInput {
@@ -479,48 +455,23 @@ pub(crate) mod create_company {
 
         type Output = Type3;
 
-        async fn state_full_operation<Ch: Cache>(&self, state: &cache::State<Ch>) -> Self::Output {
-            let v = ResourceInfo {
-                row_uuid: self.new_uuid.clone(),
-                resource: server_methods::Resource::TableCompanyFieldName(
-                    self.company_name.clone(),
-                ),
-            };
-            let v1 = ResourceInfo {
-                row_uuid: self.new_uuid.clone(),
-                resource: server_methods::Resource::TableCompanyFieldCurrency(
-                    self.currency.clone(),
-                ),
-            };
-            let v2 = ResourceInfo {
-                row_uuid: self.new_uuid.clone(),
-                resource: server_methods::Resource::TableAccessControlForCompanyFieldRole(
-                    db_types::Role::Manager,
-                ),
-            };
-            let v3 = ResourceInfo {
-                row_uuid: self.new_uuid.clone(),
-                resource: server_methods::Resource::TableAccessControlForCompanyFieldUser(
-                    self.user_uuid.clone(),
-                ),
-            };
-            let v4 = ResourceInfo {
-                row_uuid: self.new_uuid.clone(),
-                resource: server_methods::Resource::TableAccessControlForCompanyFieldDataGroup(
-                    self.new_uuid.clone(),
-                ),
-            };
+        async fn state_full_operation<At: AllClientTypes>(
+            &self,
+            state: &mut cache::State<At>,
+        ) -> Self::Output {
+            let result = self
+                .handle::<State<_>, At::Rn, At::Rt, At::Id, At::Mpsc, At::Ed, At::Rg, SodoAuth, SodoJwt>(&mut server_methods::SideEffects::default(), state, &SodoJwt)
+                .await
+                .unwrap();
 
-            Ok(server_operations::create_company::Ok {
-                resource: vec![v, v1, v2, v3, v4],
-            })
+            return result;
         }
     }
 
     impl CacheAndServerType2 for Type3 {
         fn extract_resource(&self) -> Vec<ResourceInfo> {
             match self {
-                Ok(ok) => ok.resource.clone(),
+                Ok(ok) => ok.clone().into(),
                 Err(_) => Vec::new(),
             }
         }
@@ -543,10 +494,10 @@ pub(crate) mod create_company {
 pub(crate) mod create_company_branch {
     use super::*;
 
-    pub(crate) type Type1 = server_operations::create_company_branch::Input;
-    type Type2 = server_operations::create_company_branch::Input;
-    type Type3 = server_operations::create_company_branch::Result;
-    pub(crate) type Type4 = server_operations::create_company_branch::Result;
+    pub(crate) type Type1 = decider::create_company_branch::Input;
+    type Type2 = decider::create_company_branch::Input;
+    type Type3 = decider::create_company_branch::Result;
+    pub(crate) type Type4 = decider::create_company_branch::Result;
 
     impl ViewType1 for Type1 {
         fn wrap_input(self) -> push_data::OperationsInput {
@@ -561,110 +512,23 @@ pub(crate) mod create_company_branch {
 
         type Output = Type3;
 
-        async fn state_full_operation<Ch: Cache>(&self, state: &cache::State<Ch>) -> Self::Output {
-            let mut errr = server_operations::create_company_branch::Error::default();
+        async fn state_full_operation<At: AllClientTypes>(
+            &self,
+            state: &mut cache::State<At>,
+        ) -> Self::Output {
+            let result = self
+                .handle::<State<_>, At::Rn, At::Rt, At::Id, At::Mpsc, At::Ed, At::Rg, SodoAuth, SodoJwt>(&mut server_methods::SideEffects::default(), state, &SodoJwt)
+                .await
+                .unwrap();
 
-            // 1. Read from cache (database)
-            let (mut user_roles, mut is_company_exist, mut is_branch_name_used) = state
-                .cache
-                .read_create_company_branch(
-                    &self.user_uuid,
-                    &self.company_belong,
-                    &self.branch_name,
-                )
-                .await;
-
-            // 2. Check pending transactions (uncommitted changes)
-            // Check pending company access control for roles
-            for (_, acf) in &state.state_of_pending_txn.access_control_for_company {
-                if acf.data_group == self.company_belong && acf.user_ == self.user_uuid {
-                    user_roles.push(acf.role.clone());
-                }
-            }
-
-            // Check pending company existence
-            if state
-                .state_of_pending_txn
-                .company
-                .contains_key(&self.company_belong)
-            {
-                is_company_exist = true;
-            }
-
-            // Check pending branch name usage
-            for (_, branch) in &state.state_of_pending_txn.company_branch {
-                if branch.company_belong == self.company_belong && branch.name == self.branch_name {
-                    is_branch_name_used = true;
-                    break;
-                }
-            }
-
-            // 3. Validate based on cache + pending
-            if !is_company_exist {
-                errr.company_belong =
-                    Some(server_operations::create_company_branch::CompanyBelongError::NotExist);
-            }
-
-            if is_branch_name_used {
-                errr.branch_name =
-                    Some(server_operations::create_company_branch::BranchNameError::Duplicated);
-            }
-
-            // Permission check: user must have Manager or CoManager role at the company
-            if !db_types::Role::has_any(
-                &user_roles,
-                &[db_types::Role::Manager, db_types::Role::CoManager],
-            ) {
-                errr.user_uuid = Some(UserUuidError::YouDontHavePermissionToDoThat);
-            }
-
-            if errr != server_operations::create_company_branch::Error::default() {
-                return Err(errr);
-            }
-
-            // 4. Build resources (for cache storage)
-            let mut resource = Vec::new();
-
-            resource.push(ResourceInfo {
-                row_uuid: self.new_uuid.clone(),
-                resource: server_methods::Resource::TableCompanyBranchFieldName(
-                    self.branch_name.clone(),
-                ),
-            });
-            resource.push(ResourceInfo {
-                row_uuid: self.new_uuid.clone(),
-                resource: server_methods::Resource::TableCompanyBranchFieldCompanyBelong(
-                    self.company_belong.clone(),
-                ),
-            });
-            resource.push(ResourceInfo {
-                row_uuid: self.new_uuid.clone(),
-                resource: server_methods::Resource::TableAccessControlForCompanyBranchFieldRole(
-                    db_types::Role::CoManager,
-                ),
-            });
-            resource.push(ResourceInfo {
-                row_uuid: self.new_uuid.clone(),
-                resource: server_methods::Resource::TableAccessControlForCompanyBranchFieldUser(
-                    self.user_uuid.clone(),
-                ),
-            });
-            resource.push(ResourceInfo {
-                row_uuid: self.new_uuid.clone(),
-                resource:
-                    server_methods::Resource::TableAccessControlForCompanyBranchFieldDataGroup(
-                        self.new_uuid.clone(),
-                    ),
-            });
-
-            Ok(server_operations::create_company_branch::Ok { resource })
+            return result;
         }
     }
 
     impl CacheAndServerType2 for Type3 {
         fn extract_resource(&self) -> Vec<ResourceInfo> {
             match self {
-                Ok(ok) => ok.resource.clone(),
+                Ok(ok) => ok.clone().into(),
                 Err(_) => Vec::new(),
             }
         }
@@ -687,9 +551,9 @@ pub(crate) mod create_company_branch {
 pub(crate) mod list_company_and_branch {
     use super::*;
 
-    pub(crate) type Type1 = server_operations::list_company_and_branch::Input;
-    type Type2 = server_operations::list_company_and_branch::Input;
-    type Type3 = server_operations::list_company_and_branch::Result;
+    pub(crate) type Type1 = decider::list_company_and_branch::Input;
+    type Type2 = decider::list_company_and_branch::Input;
+    type Type3 = decider::list_company_and_branch::Result;
     pub(crate) struct Type4(pub(crate) Result<db_types::ListOfCompanies, ()>);
 
     impl ViewType1 for Type1 {
@@ -713,85 +577,23 @@ pub(crate) mod list_company_and_branch {
 
         type Output = Type3;
 
-        async fn state_full_operation<Ch: Cache>(&self, state: &cache::State<Ch>) -> Self::Output {
-            // Start with resources from the cache (already stored in DB)
-            let mut resources = state
-                .cache
-                .read_list_company_and_branch(&self.user_uuid)
-                .await;
+        async fn state_full_operation<At: AllClientTypes>(
+            &self,
+            state: &mut cache::State<At>,
+        ) -> Self::Output {
+            let result = self
+                .handle::<State<_>, At::Rn, At::Rt, At::Id, At::Mpsc, At::Ed, At::Rg, SodoAuth, SodoJwt>(&mut server_methods::SideEffects::default(), state, &SodoJwt)
+                .await
+                .unwrap();
 
-            // Add pending companies and branches from the current transaction
-            for (_, acf) in &state.state_of_pending_txn.access_control_for_company {
-                if acf.user_ == self.user_uuid {
-                    let company_uuid = acf.data_group.clone();
-                    if let Some(company) = state.state_of_pending_txn.company.get(&company_uuid) {
-                        // Company name
-                        resources.push(ResourceInfo {
-                            row_uuid: company_uuid.clone(),
-                            resource: server_methods::Resource::TableCompanyFieldName(
-                                company.name.clone(),
-                            ),
-                        });
-
-                        // Access control: role
-                        resources.push(ResourceInfo {
-                            row_uuid: company_uuid.clone(),
-                            resource:
-                                server_methods::Resource::TableAccessControlForCompanyFieldRole(
-                                    acf.role.clone(),
-                                ),
-                        });
-
-                        // Access control: user_
-                        resources.push(ResourceInfo {
-                            row_uuid: company_uuid.clone(),
-                            resource:
-                                server_methods::Resource::TableAccessControlForCompanyFieldUser(
-                                    self.user_uuid.clone(),
-                                ),
-                        });
-
-                        // Access control: data_group
-                        resources.push(ResourceInfo {
-                        row_uuid: company_uuid.clone(),
-                        resource:
-                            server_methods::Resource::TableAccessControlForCompanyFieldDataGroup(
-                                company_uuid.clone(),
-                            ),
-                    });
-
-                        // Pending branches for this company
-                        for (branch_uuid, branch) in &state.state_of_pending_txn.company_branch {
-                            if branch.company_belong == company_uuid {
-                                resources.push(ResourceInfo {
-                                    row_uuid: branch_uuid.clone(),
-                                    resource: server_methods::Resource::TableCompanyBranchFieldName(
-                                        branch.name.clone(),
-                                    ),
-                                });
-                                resources.push(ResourceInfo {
-                                row_uuid: branch_uuid.clone(),
-                                resource:
-                                    server_methods::Resource::TableCompanyBranchFieldCompanyBelong(
-                                        company_uuid.clone(),
-                                    ),
-                            });
-                            }
-                        }
-                    }
-                }
-            }
-
-            Ok(server_operations::list_company_and_branch::Ok {
-                resource: resources,
-            })
+            return result;
         }
     }
 
     impl CacheAndServerType2 for Type3 {
         fn extract_resource(&self) -> Vec<ResourceInfo> {
             match self {
-                Ok(ok) => ok.resource.clone(),
+                Ok(ok) => ok.clone().into(),
                 Err(_) => Vec::new(),
             }
         }

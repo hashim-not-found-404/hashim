@@ -151,7 +151,7 @@ where
             let mut pool_of_subscribes =
                 HashMap::<server_methods::Subscribe, HashSet<u16>>::with_capacity(100);
 
-            let mut state = cache::State::<At::Ch>::new().await;
+            let mut state = cache::State::<At>::new().await;
 
             loop {
                 match receiver_to_cache.recv().await.unwrap() {
@@ -220,7 +220,10 @@ where
 
                                 for op in txns {
                                     op.operation
-                                        .run_operation_check_apply(&mut state, &mut subs_to_poke)
+                                        .run_operation_check_apply::<At>(
+                                            &mut state,
+                                            &mut subs_to_poke,
+                                        )
                                         .await;
                                 }
 
@@ -273,7 +276,7 @@ where
                         data,
                     } => match strategy {
                         CachingStrategy::ReadCacheOnly => {
-                            let result = data.run_operation_check(&mut state).await;
+                            let result = data.run_operation_check::<At>(&mut state).await;
                             let _ = sender
                                 .send(Response::Data(Data {
                                     is_response_from_server: false,
@@ -286,7 +289,7 @@ where
                         CachingStrategy::ReadCacheAndServer => {
                             let txn_number = At::Rn::generate();
 
-                            let result = data.run_operation_check(&mut state).await;
+                            let result = data.run_operation_check::<At>(&mut state).await;
 
                             let _ = sender
                                 .send(Response::Data(Data {
@@ -323,7 +326,7 @@ where
 
                             let mut subs_to_poke = HashSet::new();
                             let result = data
-                                .run_operation_check_apply_write(
+                                .run_operation_check_apply_write::<At>(
                                     txn_number,
                                     &mut state,
                                     &mut subs_to_poke,
@@ -376,7 +379,7 @@ where
             network_actor::MessageToNetwork,
         >,
         operations: Vec<push_data::Txn<push_data::OperationsInput>>,
-        state: &cache::State<At::Ch>,
+        state: &cache::State<At>,
     ) {
         if operations.is_empty() {
             return;
@@ -419,7 +422,6 @@ pub fn collect_subs_to_poke(
     for resource in resource {
         match resource.resource {
             server_methods::Resource::Jwt(_) => {}
-            server_methods::Resource::HashedPassword(_) => todo!(),
             server_methods::Resource::TableUserFieldName(_) => {
                 subs_to_poke.insert(server_methods::Subscribe::TableUserFieldName);
             }

@@ -87,10 +87,7 @@ pub trait DBTransaction {
     >;
     fn write_sign_up(
         &mut self,
-        new_uuid: &db_types::UuidType,
-        user_id: &String,
-        hashed_password: &String,
-        user_name: &Option<String>,
+        data: &decider::sign_up::Ok,
     ) -> impl Future<Output = Result<(), DynamicError>>;
 
     fn read_create_company(
@@ -99,11 +96,7 @@ pub trait DBTransaction {
     ) -> impl Future<Output = Result<bool /* is new_uuid exist */, DynamicError>>;
     fn write_create_company(
         &mut self,
-        new_uuid: &db_types::UuidType,
-        user_uuid: &db_types::UuidType,
-        user_role: &db_types::Role,
-        company_name: &String,
-        currency: &db_types::Currency,
+        data: &decider::create_company::Ok,
     ) -> impl Future<Output = Result<(), DynamicError>>;
 
     fn read_create_company_branch(
@@ -125,13 +118,7 @@ pub trait DBTransaction {
     >;
     fn write_create_company_branch(
         &mut self,
-        new_uuid: &db_types::UuidType,
-        company_belong: &db_types::UuidType,
-        branch_name: &String,
-        location: &db_types::Location,
-        currency: &db_types::Currency,
-        user_uuid: &db_types::UuidType,
-        user_role: &db_types::Role,
+        data: &decider::create_company_branch::Ok,
     ) -> impl Future<Output = Result<(), DynamicError>>;
 }
 

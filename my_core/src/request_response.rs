@@ -95,24 +95,24 @@ pub mod push_data {
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub enum OperationsInput {
         // auth
-        SignUp(server_operations::sign_up::Input),
-        SignIn(server_operations::sign_in::Input),
+        SignUp(decider::sign_up::Input),
+        SignIn(decider::sign_in::Input),
         // write
-        CreateCompany(server_operations::create_company::Input),
-        CreateCompanyBranch(server_operations::create_company_branch::Input),
+        CreateCompany(decider::create_company::Input),
+        CreateCompanyBranch(decider::create_company_branch::Input),
         // read
-        ListCompanyAndBranch(server_operations::list_company_and_branch::Input),
+        ListCompanyAndBranch(decider::list_company_and_branch::Input),
     }
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub enum OperationsResult {
         // auth
-        SignUp(server_operations::sign_up::Result),
-        SignIn(server_operations::sign_in::Result),
+        SignUp(decider::sign_up::Result),
+        SignIn(decider::sign_in::Result),
         // write
-        CreateCompany(server_operations::create_company::Result),
-        CreateCompanyBranch(server_operations::create_company_branch::Result),
+        CreateCompany(decider::create_company::Result),
+        CreateCompanyBranch(decider::create_company_branch::Result),
         // read
-        ListCompanyAndBranch(server_operations::list_company_and_branch::Result),
+        ListCompanyAndBranch(decider::list_company_and_branch::Result),
     }
 }

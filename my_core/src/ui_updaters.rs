@@ -79,7 +79,7 @@ pub mod sign_up {
         local_state.user_name_error.reset();
 
         let new_uuid = At::Id::generate();
-        let input = server_operations::sign_up::Input {
+        let input = decider::sign_up::Input {
             new_uuid: new_uuid.clone(),
             name: {
                 let name = local_state.user_name.read();
@@ -207,7 +207,7 @@ pub mod sign_up {
         let mut receiver_to_response = cache
             .send_to_cache_actor(
                 cache_actor::CachingStrategy::ReadCacheOnly,
-                server_operations::sign_up::Input {
+                decider::sign_up::Input {
                     new_uuid: new_uuid.clone(),
                     name: {
                         let name = local_state.user_name.read();
@@ -236,7 +236,7 @@ pub mod sign_up {
     fn handle_apply_result<At: AllClientTypes>(
         model: &ui_model::Model<At>,
         commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
-        result: server_operations::sign_up::Result,
+        result: decider::sign_up::Result,
     ) {
         let local_state = model.page_root.page_auth.page_sign_up.clone();
         match result {
@@ -325,7 +325,7 @@ pub mod sign_in {
         let mut receiver_to_response = cache
             .send_to_cache_actor(
                 cache_actor::CachingStrategy::WriteCacheAndServer,
-                server_operations::sign_in::Input {
+                decider::sign_in::Input {
                     user_id: user_id.clone(),
                     password: feature_state.user_password.read(),
                 }
@@ -433,7 +433,7 @@ pub mod sign_in {
         let mut receiver_to_response = cache
             .send_to_cache_actor(
                 cache_actor::CachingStrategy::ReadCacheOnly,
-                server_operations::sign_in::Input {
+                decider::sign_in::Input {
                     user_id: feature_state.user_id.read(),
                     password: feature_state.user_password.read(),
                 }
@@ -772,7 +772,7 @@ pub mod create_company {
             .page_create_company
             .clone();
 
-        let input = server_operations::create_company::Input {
+        let input = decider::create_company::Input {
             user_uuid: data,
             new_uuid: At::Id::generate(),
             company_name: local_state.company_name.read(),
@@ -870,7 +870,7 @@ pub mod create_company_branch {
             .clone()
             .unwrap();
 
-        let input = server_operations::create_company_branch::Input {
+        let input = decider::create_company_branch::Input {
             user_uuid: data,
             new_uuid: At::Id::generate(),
             company_belong: model
@@ -990,7 +990,7 @@ pub mod create_company_branch {
             .clone()
             .unwrap();
 
-        let input = server_operations::create_company_branch::Input {
+        let input = decider::create_company_branch::Input {
             user_uuid: data,
             new_uuid: At::Id::generate(),
             company_belong: model

@@ -90,7 +90,6 @@ impl Cache for S {
                 server_methods::Resource::Jwt(value) => {
                     make_sql_statment_for_string("user", "jwt", uuid, &value.0)
                 }
-                server_methods::Resource::HashedPassword(_) => continue,
                 server_methods::Resource::TableUserFieldName(value) => {
                     make_sql_statment_for_string("user", "name", uuid, value)
                 }
