@@ -384,7 +384,10 @@ fn check_nonce_if_valid<Id: RowId>(nonce: &db_types::UuidType, is_used: bool) ->
         return false;
     }
 
-    let nonce = Id::get_time_as_seconds(nonce);
+    let nonce = match Id::get_time_as_seconds(nonce) {
+        Some(nonce) => nonce,
+        None => return false,
+    };
 
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)

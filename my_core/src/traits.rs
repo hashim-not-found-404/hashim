@@ -2,7 +2,7 @@ use crate::prelude::*;
 
 pub trait RowId {
     fn generate() -> db_types::UuidType;
-    fn get_time_as_seconds(uuid: &db_types::UuidType) -> u64;
+    fn get_time_as_seconds(uuid: &db_types::UuidType) -> Option<u64>;
     fn validate(uuid: &db_types::UuidType) -> bool;
 }
 
