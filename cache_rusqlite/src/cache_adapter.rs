@@ -1,7 +1,6 @@
 use crate::prelude::*;
 use rusqlite::{Connection, OptionalExtension, params};
 use std::{ops::Add, str::FromStr};
-use uuid::Uuid;
 
 pub struct S {
     db: Connection,
@@ -435,28 +434,4 @@ fn make_sql_statment_for_number(
         "INSERT OR IGNORE INTO {table_name} (rowid) VALUES ('{uuid}');
          UPDATE {table_name} SET {field_name} = {value} WHERE rowid = '{uuid}';"
     )
-}
-
-pub trait MyUuidConverter {
-    fn to_string(&self) -> String;
-}
-
-impl MyUuidConverter for db_types::UuidType {
-    fn to_string(&self) -> String {
-        // Convert [u8; 16] → Uuid → String
-        let uuid = Uuid::from_bytes(self.0);
-        uuid.to_string()
-    }
-}
-
-pub trait MyUuidConverter1 {
-    fn to_uuid(self) -> db_types::UuidType;
-}
-
-impl MyUuidConverter1 for String {
-    fn to_uuid(self) -> db_types::UuidType {
-        // Parse string → Uuid → [u8; 16]
-        let uuid = Uuid::parse_str(&self).expect("Invalid UUID string");
-        db_types::UuidType(*uuid.as_bytes())
-    }
 }
