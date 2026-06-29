@@ -8,10 +8,7 @@ pub mod actors;
 pub mod authentication;
 pub mod encode_decode;
 pub mod functions;
-pub mod join_handle;
 pub mod jwt;
-pub mod mpsc_receiver;
-pub mod mpsc_sender;
 pub mod random_number;
 pub mod row_id;
 pub mod runtime;
@@ -19,10 +16,11 @@ pub mod web_socket_adapter;
 
 pub mod prelude {
     pub use crate::{
-        actors, authentication, encode_decode, functions, join_handle, jwt, mpsc_receiver,
-        mpsc_sender, random_number, row_id, runtime, web_socket_adapter,
+        actors, authentication, encode_decode, functions, jwt, random_number, row_id, runtime,
+        web_socket_adapter,
     };
+}
 
-    // my crates
-    pub(crate) use my_core::prelude::*;
+pub(crate) mod internel_prelude {
+    pub use my_core::prelude::*;
 }

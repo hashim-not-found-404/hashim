@@ -1,6 +1,7 @@
 #[cfg(not(target_arch = "wasm32"))]
 pub mod m {
-    use crate::prelude::*;
+    use super::*;
+    use crate::internel_prelude::*;
     use std::time::Duration;
 
     pub struct S;
@@ -48,7 +49,8 @@ pub mod m {
 
 #[cfg(target_arch = "wasm32")]
 pub mod m {
-    use crate::prelude::*;
+    use super::*;
+    use crate::internel_prelude::*;
     use futures::future::{Either as Eth, select};
     use gloo_timers::future::TimeoutFuture;
     use std::{pin::pin, time::Duration};
@@ -106,6 +108,54 @@ pub mod m {
             match select(pin!(fut1), pin!(fut2)).await {
                 Eth::Left((result, _)) => Either::One(result),
                 Eth::Right((result, _)) => Either::Two(result),
+            }
+        }
+    }
+}
+
+mod join_handle {
+    #[cfg(not(target_arch = "wasm32"))]
+    pub mod m {
+        use crate::internel_prelude::*;
+
+        pub struct S<T>(pub tokio::task::JoinHandle<T>);
+
+        impl<T> JoinHandle for S<T> {
+            async fn abort(&mut self) {
+                self.0.abort();
+            }
+        }
+
+        impl<T> S<T> {
+            pub fn new(t: tokio::task::JoinHandle<T>) -> Self {
+                Self(t)
+            }
+        }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub mod m {
+        use crate::internel_prelude::*;
+        use futures::lock::Mutex;
+        use std::sync::Arc;
+
+        pub struct S<T> {
+            pub output: Arc<Mutex<Option<T>>>,
+            aborter: mpsc_sender::m::S<()>,
+        }
+
+        impl<T> JoinHandle for S<T> {
+            async fn abort(&mut self) {
+                self.aborter.send(()).await;
+            }
+        }
+
+        impl<T> S<T> {
+            pub fn new(aborter: mpsc_sender::m::S<()>) -> Self {
+                Self {
+                    output: Arc::default(),
+                    aborter,
+                }
             }
         }
     }

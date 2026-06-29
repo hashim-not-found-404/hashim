@@ -1,5 +1,5 @@
 pub mod m {
-    use crate::prelude::*;
+    use crate::internel_prelude::*;
     use getrandom::fill;
 
     pub struct S;

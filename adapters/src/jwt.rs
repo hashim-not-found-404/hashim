@@ -1,6 +1,6 @@
 #[cfg(not(target_arch = "wasm32"))]
 pub mod m {
-    use crate::prelude::*;
+    use crate::internel_prelude::*;
     use chrono::{Duration, Utc};
     use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode};
     use serde::{Deserialize, Serialize};

@@ -1,6 +1,6 @@
 #[cfg(not(target_arch = "wasm32"))]
 pub mod m {
-    use crate::prelude::*;
+    use crate::internel_prelude::*;
     use futures::stream::{SplitSink, SplitStream};
     use futures::{SinkExt, StreamExt};
     use std::sync::Mutex;
@@ -53,7 +53,7 @@ pub mod m {
 
 #[cfg(target_arch = "wasm32")]
 pub mod m {
-    use crate::prelude::*;
+    use crate::internel_prelude::*;
     use futures_util::{
         SinkExt, StreamExt,
         stream::{SplitSink, SplitStream},
