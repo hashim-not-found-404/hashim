@@ -47,7 +47,7 @@ impl DBTransaction for S<'_> {
         let stmt = self.txn.prepare_cached(query).await.log()?;
         let row = self
             .txn
-            .query_one(&stmt, &[&new_uuid.into_inner(), user_id])
+            .query_one(&stmt, &[&new_uuid.to_externel_uuid(), user_id])
             .await
             .log()?;
 
@@ -67,7 +67,7 @@ impl DBTransaction for S<'_> {
             .execute(
                 &stmt,
                 &[
-                    &data.new_uuid.into_inner(),
+                    &data.new_uuid.to_externel_uuid(),
                     &data.user_id,
                     &data.hashed_password,
                     &data.user_name,
@@ -87,7 +87,7 @@ impl DBTransaction for S<'_> {
         let stmt = self.txn.prepare_cached(query).await.log()?;
         let row = self
             .txn
-            .query_one(&stmt, &[&new_uuid.into_inner()])
+            .query_one(&stmt, &[&new_uuid.to_externel_uuid()])
             .await
             .log()?;
 
@@ -115,10 +115,10 @@ impl DBTransaction for S<'_> {
             .execute(
                 &stmt,
                 &[
-                    &data.new_uuid.into_inner(),
+                    &data.new_uuid.to_externel_uuid(),
                     &data.company_name,
                     &data.currency.as_str(),
-                    &data.user_uuid.into_inner(),
+                    &data.user_uuid.to_externel_uuid(),
                     &data.role.as_str(),
                 ],
             )
@@ -167,9 +167,9 @@ impl DBTransaction for S<'_> {
             .query_one(
                 query,
                 &[
-                    &company_belong.into_inner(),
-                    &user_uuid.into_inner(),
-                    &new_uuid.into_inner(),
+                    &company_belong.to_externel_uuid(),
+                    &user_uuid.to_externel_uuid(),
+                    &new_uuid.to_externel_uuid(),
                     &branch_name,
                 ],
             )
@@ -223,13 +223,13 @@ impl DBTransaction for S<'_> {
             .execute(
                 query,
                 &[
-                    &data.new_uuid.into_inner(),
-                    &data.company_belong.into_inner(),
+                    &data.new_uuid.to_externel_uuid(),
+                    &data.company_belong.to_externel_uuid(),
                     &data.branch_name,
                     &lat,
                     &lng,
                     &data.currency.as_str(),
-                    &data.user_uuid.into_inner(),
+                    &data.user_uuid.to_externel_uuid(),
                     &data.role.as_str(),
                 ],
             )

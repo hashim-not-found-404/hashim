@@ -84,7 +84,7 @@ impl Cache for S {
         let mut stmts = Vec::with_capacity(resource.len());
 
         for reso in resource {
-            let uuid = &reso.row_uuid.into_inner();
+            let uuid = &reso.row_uuid.to_string();
 
             let stmt = match &reso.resource {
                 server_methods::Resource::Jwt(value) => {
@@ -107,7 +107,7 @@ impl Cache for S {
                         "company_branch",
                         "company_belong",
                         uuid,
-                        &value.into_inner(),
+                        &value.to_string(),
                     )
                 }
                 server_methods::Resource::TableCompanyBranchFieldCurrency(value) => {
@@ -156,7 +156,7 @@ impl Cache for S {
                         "access_control_for_company",
                         "user_",
                         uuid,
-                        &value.into_inner(),
+                        &value.to_string(),
                     )
                 }
                 server_methods::Resource::TableAccessControlForCompanyFieldDataGroup(value) => {
@@ -164,7 +164,7 @@ impl Cache for S {
                         "access_control_for_company",
                         "data_group",
                         uuid,
-                        &value.into_inner(),
+                        &value.to_string(),
                     )
                 }
                 server_methods::Resource::TableAccessControlForCompanyBranchFieldRole(value) => {
@@ -180,7 +180,7 @@ impl Cache for S {
                         "access_control_for_company_branch",
                         "user_",
                         uuid,
-                        &value.into_inner(),
+                        &value.to_string(),
                     )
                 }
                 server_methods::Resource::TableAccessControlForCompanyBranchFieldDataGroup(
@@ -189,7 +189,7 @@ impl Cache for S {
                     "access_control_for_company_branch",
                     "data_group",
                     uuid,
-                    &value.into_inner(),
+                    &value.to_string(),
                 ),
             };
 
@@ -438,11 +438,11 @@ fn make_sql_statment_for_number(
 }
 
 pub trait MyUuidConverter {
-    fn into_inner(&self) -> String;
+    fn to_string(&self) -> String;
 }
 
 impl MyUuidConverter for db_types::UuidType {
-    fn into_inner(&self) -> String {
+    fn to_string(&self) -> String {
         // Convert [u8; 16] → Uuid → String
         let uuid = Uuid::from_bytes(self.0);
         uuid.to_string()

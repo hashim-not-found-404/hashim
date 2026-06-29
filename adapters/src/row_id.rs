@@ -28,11 +28,11 @@ pub mod m {
     }
 
     pub trait MyUuidConverter {
-        fn into_inner(&self) -> Uuid;
+        fn to_externel_uuid(&self) -> Uuid;
     }
 
     impl MyUuidConverter for db_types::UuidType {
-        fn into_inner(&self) -> Uuid {
+        fn to_externel_uuid(&self) -> Uuid {
             Uuid::from_bytes(self.0) // assuming self.0 is [u8; 16]
         }
     }

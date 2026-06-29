@@ -70,7 +70,7 @@ impl DBClient for S {
 
         for user_uuid in users_uuid {
             // Convert RowId to the actual UUID type expected by the database
-            let user_id_param = user_uuid.clone().into_inner();
+            let user_id_param = user_uuid.clone().to_externel_uuid();
 
             let rows = self.client.query(&stmt, &[&user_id_param]).await.log()?;
 
@@ -124,7 +124,7 @@ impl DBClient for S {
                 "INSERT INTO accounting_app.transaction_number (rowid) VALUES ($1)
                  ON CONFLICT (rowid) DO NOTHING
                  RETURNING true",
-                &[&nonce.into_inner()],
+                &[&nonce.to_externel_uuid()],
             )
             .await
             .log()?;
@@ -171,7 +171,7 @@ impl DBClient for S {
 
         let rows = self
             .client
-            .query(query, &[&user_uuid.into_inner()])
+            .query(query, &[&user_uuid.to_externel_uuid()])
             .await
             .log()?;
 
