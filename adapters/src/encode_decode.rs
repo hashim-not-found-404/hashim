@@ -1,5 +1,5 @@
 pub mod m {
-    use crate::internel_prelude::*;
+    use my_core::prelude::*;
     use postcard::{from_bytes, to_allocvec};
     use serde::{Deserialize, Serialize};
 

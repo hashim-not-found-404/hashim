@@ -1,6 +1,6 @@
 pub mod m {
     use super::*;
-    use crate::internel_prelude::*;
+    use my_core::prelude::*;
 
     pub struct S;
 
@@ -17,8 +17,8 @@ pub mod m {
 
 mod mpsc_receiver {
     pub mod m {
-        use crate::internel_prelude::*;
         use futures::channel::mpsc::UnboundedReceiver;
+        use my_core::prelude::*;
 
         pub struct S<T>(pub UnboundedReceiver<T>);
         impl<T> Receiver<T> for S<T> {
@@ -37,8 +37,8 @@ mod mpsc_receiver {
 
 mod mpsc_sender {
     pub mod m {
-        use crate::internel_prelude::*;
         use futures::{SinkExt, channel::mpsc::UnboundedSender};
+        use my_core::prelude::*;
 
         pub struct S<T>(pub UnboundedSender<T>);
         impl<T> Sender<T> for S<T> {

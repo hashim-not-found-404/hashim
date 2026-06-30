@@ -1,6 +1,6 @@
 pub mod m {
-    use crate::internel_prelude::*;
     use getrandom::fill;
+    use my_core::prelude::*;
 
     pub struct S;
 

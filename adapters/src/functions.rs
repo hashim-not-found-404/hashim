@@ -1,5 +1,5 @@
 pub mod m {
-    use crate::internel_prelude::Regex as MyRegex;
+    use my_core::prelude::Regex as MyRegex;
     use regex::Regex;
     use std::sync::LazyLock;
 

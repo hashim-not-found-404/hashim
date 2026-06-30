@@ -1,11 +1,11 @@
 #[cfg(not(target_arch = "wasm32"))]
 pub mod m {
-    use crate::internel_prelude::*;
     use argon2::{
         Argon2, PasswordHash, PasswordHasher, PasswordVerifier,
         password_hash::{SaltString, rand_core::OsRng},
     };
     use derive_more::From;
+    use my_core::prelude::*;
 
     #[derive(Clone, From)]
     pub struct S;

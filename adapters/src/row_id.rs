@@ -1,5 +1,5 @@
 pub mod m {
-    use crate::internel_prelude::*;
+    use my_core::prelude::*;
     use uuid::Uuid;
 
     pub struct S;

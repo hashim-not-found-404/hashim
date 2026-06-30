@@ -1,7 +1,7 @@
 #[cfg(not(target_arch = "wasm32"))]
 pub mod m {
     use super::*;
-    use crate::internel_prelude::*;
+    use my_core::prelude::*;
     use std::time::Duration;
 
     pub struct S;
@@ -50,9 +50,9 @@ pub mod m {
 #[cfg(target_arch = "wasm32")]
 pub mod m {
     use super::*;
-    use crate::internel_prelude::*;
     use futures::future::{Either as Eth, select};
     use gloo_timers::future::TimeoutFuture;
+    use my_core::prelude::*;
     use std::{pin::pin, time::Duration};
     use wasm_bindgen_futures::spawn_local;
 
@@ -116,7 +116,7 @@ pub mod m {
 mod join_handle {
     #[cfg(not(target_arch = "wasm32"))]
     pub mod m {
-        use crate::internel_prelude::*;
+        use my_core::prelude::*;
 
         pub struct S<T>(pub tokio::task::JoinHandle<T>);
 
@@ -135,8 +135,8 @@ mod join_handle {
 
     #[cfg(target_arch = "wasm32")]
     pub mod m {
-        use crate::internel_prelude::*;
         use futures::lock::Mutex;
+        use my_core::prelude::*;
         use std::sync::Arc;
 
         pub struct S<T> {

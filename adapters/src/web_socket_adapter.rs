@@ -1,8 +1,8 @@
 #[cfg(not(target_arch = "wasm32"))]
 pub mod m {
-    use crate::internel_prelude::*;
     use futures::stream::{SplitSink, SplitStream};
     use futures::{SinkExt, StreamExt};
+    use my_core::prelude::*;
     use std::sync::Mutex;
     use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
     use tokio_tungstenite::{connect_async, tungstenite::Message};
@@ -53,12 +53,12 @@ pub mod m {
 
 #[cfg(target_arch = "wasm32")]
 pub mod m {
-    use crate::internel_prelude::*;
     use futures_util::{
         SinkExt, StreamExt,
         stream::{SplitSink, SplitStream},
     };
     use gloo_net::websocket::{Message, futures::WebSocket};
+    use my_core::prelude::*;
     use std::sync::Mutex;
 
     pub struct S {
