@@ -1,8 +1,9 @@
 pub mod cache_adapter;
 
 pub mod prelude {
-    pub use crate::{MyUuidConverter, MyUuidConverter1, cache_adapter};
+    pub use crate::cache_adapter;
 
+    pub(crate) use crate::{MyUuidConverter, MyUuidConverter1};
     pub(crate) use adapters::prelude::*;
     pub(crate) use my_core::prelude::*;
 }

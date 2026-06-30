@@ -3,8 +3,9 @@ pub mod db_client;
 pub mod db_transaction;
 
 pub mod prelude {
-    pub use crate::{MyUuidConverter, MyUuidConverter1, db, db_client, db_transaction};
+    pub use crate::{db, db_client};
 
+    pub(crate) use crate::{MyUuidConverter, MyUuidConverter1, db_transaction};
     // my crates
     pub(crate) use my_core::prelude::*;
 }
