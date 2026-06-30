@@ -1,5 +1,6 @@
 git ls-files "*.rs" | xargs wc -l | tail -1
 du -sh ./target
+dep_graph_rs ./my_core | dot -Tpng > graph.png
 
 clear && cockroach start-single-node --insecure
 clear && cockroach sql --insecure
