@@ -1,6 +1,7 @@
 use crate::prelude::*;
 
 pub trait HashimSignal<T: Default>: Default + Clone {
+    // TODO remove clone and make is static
     fn reset(&self) {
         self.set(T::default());
     }
