@@ -50,7 +50,10 @@ pub mod m {
 #[cfg(target_arch = "wasm32")]
 pub mod m {
     use super::*;
-    use futures::future::{Either as Eth, select};
+    use futures::{
+        channel::oneshot,
+        future::{Either as Eth, select},
+    };
     use gloo_timers::future::TimeoutFuture;
     use my_core::prelude::*;
     use std::{pin::pin, time::Duration};
@@ -62,12 +65,12 @@ pub mod m {
         type JoinHandle<T> = join_handle::m::S<T>;
 
         fn abortable_spawn_local<F: Future + 'static>(fut: F) -> Self::JoinHandle<F::Output> {
-            let (sender_to_abort, mut receiver_to_abort) = crate::actors::m::S::channel();
+            let (sender_to_abort, mut receiver_to_abort) = oneshot::channel();
             let join_handle = Self::JoinHandle::new(sender_to_abort);
 
             let output_place = join_handle.output.clone();
             spawn_local(async move {
-                match Self::select(fut, receiver_to_abort.recv()).await {
+                match Self::select(fut, receiver_to_abort).await {
                     Either::One(a) => *output_place.lock().await = Some(a),
                     Either::Two(_) => return,
                 }
@@ -135,26 +138,31 @@ mod join_handle {
 
     #[cfg(target_arch = "wasm32")]
     pub mod m {
-        use futures::lock::Mutex;
+        use futures::{channel::oneshot, lock::Mutex};
         use my_core::prelude::*;
         use std::sync::Arc;
 
         pub struct S<T> {
             pub output: Arc<Mutex<Option<T>>>,
-            aborter: crate::actors::mpsc_sender::m::S<()>,
+            aborter: Option<oneshot::Sender<()>>,
         }
 
         impl<T> JoinHandle for S<T> {
             async fn abort(&mut self) {
-                self.aborter.send(()).await;
+                match self.aborter.take() {
+                    Some(s) => {
+                        s.send(());
+                    }
+                    None => return,
+                }
             }
         }
 
         impl<T> S<T> {
-            pub fn new(aborter: crate::actors::mpsc_sender::m::S<()>) -> Self {
+            pub fn new(aborter: oneshot::Sender<()>) -> Self {
                 Self {
                     output: Arc::default(),
-                    aborter,
+                    aborter: Some(aborter),
                 }
             }
         }

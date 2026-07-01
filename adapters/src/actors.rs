@@ -15,7 +15,7 @@ pub mod m {
     }
 }
 
-pub mod mpsc_receiver {
+mod mpsc_receiver {
     pub mod m {
         use futures::channel::mpsc::UnboundedReceiver;
         use my_core::prelude::*;
@@ -35,7 +35,7 @@ pub mod mpsc_receiver {
     }
 }
 
-pub mod mpsc_sender {
+mod mpsc_sender {
     pub mod m {
         use futures::{SinkExt, channel::mpsc::UnboundedSender};
         use my_core::prelude::*;
