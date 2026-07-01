@@ -1,7 +1,6 @@
 use crate::prelude::*;
 
-pub trait HashimSignal<T: Default>: Default + Clone {
-    // TODO remove clone and make is static
+pub trait HashimSignal<T: Default + Clone>: Default {
     fn reset(&self) {
         self.set(T::default());
     }
@@ -11,27 +10,27 @@ pub trait HashimSignal<T: Default>: Default + Clone {
 
 // model
 
-#[derive(Default, Clone)]
+#[derive(Default)]
 pub struct Model<At: AllClientTypes> {
     pub navigator: At::Navigator,
     pub page_root: PageRoot<At>,
     pub external_errors: At::StringVec,
 }
 
-#[derive(Default, Clone)]
+#[derive(Default)]
 pub struct PageRoot<At: AllClientTypes> {
     pub page_auth: PageAuth<At>,
     pub page_after_auth: PageAfterAuth<At>,
 }
 
-#[derive(Default, Clone)]
+#[derive(Default)]
 pub struct PageAuth<At: AllClientTypes> {
     pub auth_feature_state: AuthFeatureState<At>,
     pub page_sign_up: PageSignUp<At>,
     pub page_sign_in: PageSignIn<At>,
 }
 
-#[derive(Default, Clone)]
+#[derive(Default)]
 pub struct PageAfterAuth<At: AllClientTypes> {
     pub user_id: At::String,
     pub user_name: At::String,
@@ -40,7 +39,7 @@ pub struct PageAfterAuth<At: AllClientTypes> {
     pub page_home: PageHome<At>,
 }
 
-#[derive(Default, Clone)]
+#[derive(Default)]
 pub struct PageCompanyBranchSelection<At: AllClientTypes> {
     pub list: At::CompanyAndBranchList,
     pub selected_company: At::OptionUuid,
@@ -49,26 +48,26 @@ pub struct PageCompanyBranchSelection<At: AllClientTypes> {
     pub page_create_company_branch: PageCreateCompanyBranch<At>,
 }
 
-#[derive(Default, Clone)]
+#[derive(Default)]
 pub struct PageHome<At: AllClientTypes> {
     selected_branch: At::String,
 }
 
-#[derive(Default, Clone)]
+#[derive(Default)]
 pub struct AuthFeatureState<At: AllClientTypes> {
     pub user_id: At::String,
     pub user_password: At::String,
     pub is_loading: At::Bool,
 }
 
-#[derive(Default, Clone)]
+#[derive(Default)]
 pub struct PageSignIn<At: AllClientTypes> {
     pub show_dialog: At::Dialog,
     pub user_id_error: At::String,
     pub user_password_error: At::String,
 }
 
-#[derive(Default, Clone)]
+#[derive(Default)]
 pub struct PageSignUp<At: AllClientTypes> {
     pub show_dialog: At::Dialog,
     pub user_name: At::String,
@@ -76,13 +75,13 @@ pub struct PageSignUp<At: AllClientTypes> {
     pub user_name_error: At::String,
 }
 
-#[derive(Default, Clone)]
+#[derive(Default)]
 pub struct PageCreateCompany<At: AllClientTypes> {
     pub company_name: At::String,
     pub currency: At::Currency,
 }
 
-#[derive(Default, Clone)]
+#[derive(Default)]
 pub struct PageCreateCompanyBranch<At: AllClientTypes> {
     pub is_loading: At::Bool,
     pub show_dialog: At::Dialog,

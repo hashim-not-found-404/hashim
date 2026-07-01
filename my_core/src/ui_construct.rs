@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-pub fn new<At: AllClientTypes>() -> (ui_model::Model<At>, ui_effect::Commander<At>) {
+pub fn new<At: AllClientTypes>(model: &'static ui_model::Model<At>) -> ui_effect::Commander<At> {
     let (sender_to_network, receiver_to_network) = At::Mpsc::channel();
     let (sender_to_cache, receiver_to_cache) = At::Mpsc::channel();
     let (sender_to_error, receiver_to_error) = At::Mpsc::channel();
@@ -23,16 +23,10 @@ pub fn new<At: AllClientTypes>() -> (ui_model::Model<At>, ui_effect::Commander<A
         is_online,
     );
 
-    let model = ui_model::Model::default();
-
     let sender_to_process_manager = process_manager::process_manager_actor::<At>();
 
-    let commander = ui_effect::Commander::new(
-        receiver_to_error,
-        sender_to_process_manager,
-        model.clone(),
-        cache,
-    );
+    let commander =
+        ui_effect::Commander::new(receiver_to_error, sender_to_process_manager, model, cache);
 
-    (model, commander)
+    commander
 }

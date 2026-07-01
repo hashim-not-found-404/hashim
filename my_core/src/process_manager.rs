@@ -10,7 +10,7 @@ pub(crate) enum ProcessName {
 pub(crate) enum Event<At: AllClientTypes> {
     Subscribe {
         sender: <At::Mpsc as MultiProducerSingleConsumer>::Sender<ProceedResult>,
-        dialog: At::Dialog,
+        dialog: &'static At::Dialog,
     },
     GotResponseFromCache {
         is_response_ok: bool,
@@ -74,7 +74,7 @@ pub(crate) fn process_manager_actor<At: AllClientTypes>()
     At::Rt::spawn_local(async move {
         struct ProcessInfo<At: AllClientTypes> {
             sender: <At::Mpsc as MultiProducerSingleConsumer>::Sender<ProceedResult>,
-            dialog: At::Dialog,
+            dialog: &'static At::Dialog,
             timer_handle: <At::Rt as Runtime>::JoinHandle<()>,
             is_response_from_server: Option<bool>,
             is_ok: Option<bool>,
@@ -99,8 +99,7 @@ pub(crate) fn process_manager_actor<At: AllClientTypes>()
 
                     match consent {
                         UserConsent::WaitForServerResponse => {
-                            table.timer_handle =
-                                timer_handle::<At>(At::Dialog::clone(&table.dialog));
+                            table.timer_handle = timer_handle::<At>(&table.dialog);
                         }
                         UserConsent::DontWaitForServerResponse => {}
                     };
@@ -113,7 +112,7 @@ pub(crate) fn process_manager_actor<At: AllClientTypes>()
                 } => {
                     match event {
                         Event::Subscribe { sender, dialog } => {
-                            let timer_handle = timer_handle::<At>(At::Dialog::clone(&dialog));
+                            let timer_handle = timer_handle::<At>(&dialog);
 
                             process_states.insert(
                                 process_name,
@@ -178,7 +177,7 @@ pub(crate) fn process_manager_actor<At: AllClientTypes>()
 }
 
 fn timer_handle<At: AllClientTypes>(
-    dialog_clone: <At as AllClientTypes>::Dialog,
+    dialog_clone: &'static <At as AllClientTypes>::Dialog,
 ) -> <At::Rt as Runtime>::JoinHandle<()> {
     At::Rt::abortable_spawn_local(async move {
         At::Rt::sleep(Duration::from_secs(5)).await;

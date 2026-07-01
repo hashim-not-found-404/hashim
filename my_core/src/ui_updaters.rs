@@ -3,7 +3,7 @@ use crate::prelude::*;
 pub(crate) trait Mvu {
     async fn update<At: AllClientTypes>(
         self,
-        model: ui_model::Model<At>,
+        model: &'static ui_model::Model<At>,
         cache: cache_actor::CacheStruct<At>,
         commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
     );
@@ -24,7 +24,7 @@ pub mod sign_up {
     impl Mvu for Msg {
         async fn update<At: AllClientTypes>(
             self,
-            model: ui_model::Model<At>,
+            model: &'static ui_model::Model<At>,
             cache: cache_actor::CacheStruct<At>,
             commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
         ) {
@@ -62,12 +62,12 @@ pub mod sign_up {
     }
 
     async fn handle_submit<At: AllClientTypes>(
-        model: ui_model::Model<At>,
+        model: &'static ui_model::Model<At>,
         mut cache: cache_actor::CacheStruct<At>,
         commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
     ) {
-        let feature_state = model.page_root.page_auth.auth_feature_state.clone();
-        let local_state = model.page_root.page_auth.page_sign_up.clone();
+        let feature_state = &model.page_root.page_auth.auth_feature_state;
+        let local_state = &model.page_root.page_auth.page_sign_up;
 
         if feature_state.is_loading.read() == true {
             return;
@@ -99,7 +99,6 @@ pub mod sign_up {
             )
             .await;
 
-        let model1 = model.clone();
         let commander_local_state1 = commander_local_state.clone();
         let mut handle = At::Rt::abortable_spawn_local(async move {
             loop {
@@ -138,7 +137,7 @@ pub mod sign_up {
                         }
 
                         let result = operations::sign_up::Type4::unwrap_output(data.data);
-                        handle_apply_result(&model1, commander_local_state1.clone(), result);
+                        handle_apply_result(&model, commander_local_state1.clone(), result);
                     }
                 }
             }
@@ -153,7 +152,7 @@ pub mod sign_up {
                 process_name: process_manager::ProcessName::SignUp,
                 event: process_manager::Event::Subscribe {
                     sender: sender_to_process,
-                    dialog: local_state.show_dialog.clone(),
+                    dialog: &local_state.show_dialog,
                 },
             })
             .await
@@ -193,12 +192,12 @@ pub mod sign_up {
     }
 
     async fn handle_check<At: AllClientTypes>(
-        model: ui_model::Model<At>,
+        model: &'static ui_model::Model<At>,
         mut cache: cache_actor::CacheStruct<At>,
         commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
     ) {
-        let feature_state = model.page_root.page_auth.auth_feature_state.clone();
-        let local_state = model.page_root.page_auth.page_sign_up.clone();
+        let feature_state = &model.page_root.page_auth.auth_feature_state;
+        let local_state = &model.page_root.page_auth.page_sign_up;
 
         local_state.user_id_error.reset();
         local_state.user_name_error.reset();
@@ -238,7 +237,7 @@ pub mod sign_up {
         commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
         result: decider::sign_up::Result,
     ) {
-        let local_state = model.page_root.page_auth.page_sign_up.clone();
+        let local_state = &model.page_root.page_auth.page_sign_up;
         match result {
             Ok(_) => {}
             Err(business_error) => {
@@ -269,7 +268,7 @@ pub mod sign_in {
     impl Mvu for Msg {
         async fn update<At: AllClientTypes>(
             self,
-            model: ui_model::Model<At>,
+            model: &'static ui_model::Model<At>,
             cache: cache_actor::CacheStruct<At>,
             commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
         ) {
@@ -305,7 +304,7 @@ pub mod sign_in {
     }
 
     async fn handle_submit<At: AllClientTypes>(
-        model: ui_model::Model<At>,
+        model: &'static ui_model::Model<At>,
         mut cache: cache_actor::CacheStruct<At>,
         commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
     ) {
@@ -333,7 +332,6 @@ pub mod sign_in {
             )
             .await;
 
-        let model1 = model.clone();
         let commander_local_state1 = commander_local_state.clone();
         let mut handle = At::Rt::abortable_spawn_local(async move {
             loop {
@@ -372,7 +370,7 @@ pub mod sign_in {
                         }
 
                         let result = operations::sign_in::Type4::unwrap_output(data.data);
-                        handle_apply_result(&model1, commander_local_state1.clone(), result);
+                        handle_apply_result(&model, commander_local_state1.clone(), result);
                     }
                 }
             }
@@ -387,7 +385,7 @@ pub mod sign_in {
                 process_name: process_manager::ProcessName::SignIn,
                 event: process_manager::Event::Subscribe {
                     sender: sender_to_process,
-                    dialog: local_state.show_dialog.clone(),
+                    dialog: &local_state.show_dialog,
                 },
             })
             .await
@@ -420,7 +418,7 @@ pub mod sign_in {
     }
 
     async fn handle_check<At: AllClientTypes>(
-        model: ui_model::Model<At>,
+        model: &'static ui_model::Model<At>,
         mut cache: cache_actor::CacheStruct<At>,
         commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
     ) {
@@ -498,7 +496,7 @@ pub mod company_and_branch_selection {
     impl Mvu for Msg {
         async fn update<At: AllClientTypes>(
             self,
-            model: ui_model::Model<At>,
+            model: &'static ui_model::Model<At>,
             cache: cache_actor::CacheStruct<At>,
             commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
         ) {
@@ -511,7 +509,7 @@ pub mod company_and_branch_selection {
                         ));
 
                     handle_list_company_and_branch(
-                        model.clone(),
+                        model,
                         cache.clone(),
                         commander_local_state.clone(),
                     )
@@ -581,7 +579,7 @@ pub mod company_and_branch_selection {
     }
 
     fn handle_list_company_and_branch_listener<At: AllClientTypes>(
-        model: ui_model::Model<At>,
+        model: &'static ui_model::Model<At>,
         mut cache: cache_actor::CacheStruct<At>,
         commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
     ) -> impl FnOnce() {
@@ -655,7 +653,7 @@ pub mod company_and_branch_selection {
     }
 
     async fn handle_list_company_and_branch<At: AllClientTypes>(
-        model: ui_model::Model<At>,
+        model: &'static ui_model::Model<At>,
         mut cache: cache_actor::CacheStruct<At>,
         commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
     ) {
@@ -714,16 +712,15 @@ pub mod create_company {
     impl Mvu for Msg {
         async fn update<At: AllClientTypes>(
             self,
-            model: ui_model::Model<At>,
+            model: &'static ui_model::Model<At>,
             cache: cache_actor::CacheStruct<At>,
             commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
         ) {
-            let page_create_company = model
+            let page_create_company = &model
                 .page_root
                 .page_after_auth
                 .page_company_branch_selection
-                .page_create_company
-                .clone();
+                .page_create_company;
 
             match self {
                 Msg::Submit => handle_submit(model, cache, commander_local_state).await,
@@ -736,8 +733,8 @@ pub mod create_company {
         }
     }
 
-    fn handle_close<At: AllClientTypes>(model: ui_model::Model<At>) {
-        let page_create_company = model
+    fn handle_close<At: AllClientTypes>(model: &'static ui_model::Model<At>) {
+        let page_create_company = &model
             .page_root
             .page_after_auth
             .page_company_branch_selection
@@ -754,7 +751,7 @@ pub mod create_company {
     }
 
     async fn handle_submit<At: AllClientTypes>(
-        model: ui_model::Model<At>,
+        model: &'static ui_model::Model<At>,
         mut cache: cache_actor::CacheStruct<At>,
         commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
     ) {
@@ -765,12 +762,11 @@ pub mod create_company {
             .clone()
             .unwrap();
 
-        let local_state = model
+        let local_state = &model
             .page_root
             .page_after_auth
             .page_company_branch_selection
-            .page_create_company
-            .clone();
+            .page_create_company;
 
         let input = decider::create_company::Input {
             user_uuid: data,
@@ -805,7 +801,7 @@ pub mod create_company_branch {
     impl Mvu for Msg {
         async fn update<At: AllClientTypes>(
             self,
-            model: ui_model::Model<At>,
+            model: &'static ui_model::Model<At>,
             cache: cache_actor::CacheStruct<At>,
             commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
         ) {
@@ -847,16 +843,15 @@ pub mod create_company_branch {
     }
 
     async fn handle_submit<At: AllClientTypes>(
-        model: ui_model::Model<At>,
+        model: &'static ui_model::Model<At>,
         mut cache: cache_actor::CacheStruct<At>,
         commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
     ) {
-        let local_state = model
+        let local_state = &model
             .page_root
             .page_after_auth
             .page_company_branch_selection
-            .page_create_company_branch
-            .clone();
+            .page_create_company_branch;
 
         if local_state.is_loading.read() == true {
             return;
@@ -892,7 +887,6 @@ pub mod create_company_branch {
             )
             .await;
 
-        let model1 = model.clone();
         let commander_local_state1 = commander_local_state.clone();
         let mut handle = At::Rt::abortable_spawn_local(async move {
             loop {
@@ -953,7 +947,7 @@ pub mod create_company_branch {
                 process_name: process_manager::ProcessName::CreateCompanyBranch,
                 event: process_manager::Event::Subscribe {
                     sender: sender_to_process,
-                    dialog: local_state.show_dialog.clone(),
+                    dialog: &local_state.show_dialog,
                 },
             })
             .await
@@ -972,16 +966,15 @@ pub mod create_company_branch {
     }
 
     async fn handle_check<At: AllClientTypes>(
-        model: ui_model::Model<At>,
+        model: &'static ui_model::Model<At>,
         mut cache: cache_actor::CacheStruct<At>,
         commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
     ) {
-        let local_state = model
+        let local_state = &model
             .page_root
             .page_after_auth
             .page_company_branch_selection
-            .page_create_company_branch
-            .clone();
+            .page_create_company_branch;
 
         let data = commander_local_state
             .user_uuid
@@ -1029,8 +1022,8 @@ pub mod create_company_branch {
         }
     }
 
-    fn handle_close<At: AllClientTypes>(model: ui_model::Model<At>) {
-        let page_create_company_branch = model
+    fn handle_close<At: AllClientTypes>(model: &'static ui_model::Model<At>) {
+        let page_create_company_branch = &model
             .page_root
             .page_after_auth
             .page_company_branch_selection

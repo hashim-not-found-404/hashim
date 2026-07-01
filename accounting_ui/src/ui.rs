@@ -1,10 +1,13 @@
 use crate::prelude::*;
 use dioxus::prelude::*;
-use std::str::FromStr;
+use std::sync::LazyLock;
 
 type TheModel = ui_model::Model<my_types::m::S>;
 type TheCommander = ui_effect::Commander<my_types::m::S>;
-type TheAll = (TheModel, TheCommander);
+
+static MODEL: LazyLock<TheModel> = LazyLock::new(|| TheModel::default());
+static COMMANDER: LazyLock<TheCommander> =
+    LazyLock::new(|| ui_construct::new::<my_types::m::S>(&MODEL));
 
 const ICONS_SHOW: Asset = asset!("/assets/icons/show.png");
 const ICONS_HIDE: Asset = asset!("/assets/icons/hide.png");
@@ -26,9 +29,6 @@ enum Route {
 
 #[component]
 pub fn App() -> Element {
-    let (model, commander): TheAll = ui_construct::new::<my_types::m::S>();
-    use_context_provider(|| (model, commander));
-
     rsx! {
         // document::Link { rel: "stylesheet", href: MAIN_CSS }
         Router::<Route> {}
@@ -73,9 +73,7 @@ fn Dialog(
 
 #[component]
 fn AuthenticationPage() -> Element {
-    let (model, _) = consume_context::<TheAll>();
-
-    match model.navigator.read() {
+    match MODEL.navigator.read() {
         ui_model::Navigator::Auth(_) => {
             navigator().push(Route::SignIn {});
         }
@@ -92,30 +90,24 @@ fn AuthenticationPage() -> Element {
 
 #[component]
 fn SignIn() -> Element {
-    let (model, commander) = consume_context::<TheAll>();
-    let auth_state = model.page_root.page_auth.auth_feature_state;
-    let local_state = model.page_root.page_auth.page_sign_in;
+    let auth_state = &MODEL.page_root.page_auth.auth_feature_state;
+    let local_state = &MODEL.page_root.page_auth.page_sign_in;
 
     let sign_up = move |_| {
         navigator().push(Route::SignUp {});
     };
 
-    let commander1 = commander.clone();
     let consent_callback = move |consent: process_manager::UserConsent| {
-        commander1.send(ui_model::Message::SignIn(
+        COMMANDER.send(ui_model::Message::SignIn(
             ui_updaters::sign_in::Msg::Consent(consent),
         ));
     };
 
-    let commander1 = commander.clone();
     let password_callback = move |password: String| {
-        commander1.send(ui_model::Message::SignIn(
+        COMMANDER.send(ui_model::Message::SignIn(
             ui_updaters::sign_in::Msg::Password(password),
         ));
     };
-
-    let commander1 = commander.clone();
-    let commander2 = commander.clone();
 
     rsx! {
         div {
@@ -127,7 +119,7 @@ fn SignIn() -> Element {
             input {
                 placeholder: "User ID",
                 oninput: move |event| {
-                    commander1
+                    COMMANDER
                         .send(
                             ui_model::Message::SignIn(
                                 ui_updaters::sign_in::Msg::UserId(event.value()),
@@ -141,7 +133,7 @@ fn SignIn() -> Element {
             label { {local_state.user_password_error.read()} }
             button {
                 onclick: move |_| {
-                    commander2
+                    COMMANDER
                         .send(
                             ui_model::Message::SignIn(ui_updaters::sign_in::Msg::Submit),
                         );
@@ -155,31 +147,24 @@ fn SignIn() -> Element {
 
 #[component]
 fn SignUp() -> Element {
-    let (model, commander) = consume_context::<TheAll>();
-    let auth_state = model.page_root.page_auth.auth_feature_state;
-    let local_state = model.page_root.page_auth.page_sign_up;
+    let auth_state = &MODEL.page_root.page_auth.auth_feature_state;
+    let local_state = &MODEL.page_root.page_auth.page_sign_up;
 
     let sign_in = move |_| {
         navigator().push(Route::SignIn {});
     };
 
-    let commander1 = commander.clone();
     let consent_callback = move |consent: process_manager::UserConsent| {
-        commander1.send(ui_model::Message::SignUp(
+        COMMANDER.send(ui_model::Message::SignUp(
             ui_updaters::sign_up::Msg::Consent(consent),
         ));
     };
 
-    let commander1 = commander.clone();
     let password_callback = move |password: String| {
-        commander1.send(ui_model::Message::SignUp(
+        COMMANDER.send(ui_model::Message::SignUp(
             ui_updaters::sign_up::Msg::Password(password),
         ));
     };
-
-    let commander1 = commander.clone();
-    let commander2 = commander.clone();
-    let commander3 = commander.clone();
 
     rsx! {
         div {
@@ -191,7 +176,7 @@ fn SignUp() -> Element {
             input {
                 placeholder: "Name (Optional)",
                 oninput: move |event| {
-                    commander1
+                    COMMANDER
                         .send(
                             ui_model::Message::SignUp(
                                 ui_updaters::sign_up::Msg::UserName(event.value()),
@@ -204,7 +189,7 @@ fn SignUp() -> Element {
             input {
                 placeholder: "User Id",
                 oninput: move |event| {
-                    commander2
+                    COMMANDER
                         .send(
                             ui_model::Message::SignUp(
                                 ui_updaters::sign_up::Msg::UserId(event.value()),
@@ -217,7 +202,7 @@ fn SignUp() -> Element {
             PasswordInput { password_callback }
             button {
                 onclick: move |_| {
-                    commander3
+                    COMMANDER
                         .send(
                             ui_model::Message::SignUp(ui_updaters::sign_up::Msg::Submit),
                         );
@@ -231,7 +216,6 @@ fn SignUp() -> Element {
 
 #[component]
 fn PasswordInput(password_callback: EventHandler<String>) -> Element {
-    let (model, _) = consume_context::<TheAll>();
     let mut is_password_visible = use_signal(|| false);
 
     let (input_type, icon_type) = match *is_password_visible.read() {
@@ -239,7 +223,7 @@ fn PasswordInput(password_callback: EventHandler<String>) -> Element {
         false => ("password", ICONS_HIDE),
     };
 
-    let password = model.page_root.page_auth.auth_feature_state.user_password;
+    let password = &MODEL.page_root.page_auth.auth_feature_state.user_password;
     rsx! {
         div {
             input {
@@ -260,16 +244,14 @@ fn PasswordInput(password_callback: EventHandler<String>) -> Element {
 
 #[component]
 fn ErrorStack() -> Element {
-    let (model, commander) = consume_context::<TheAll>();
-
-    let err = model.external_errors.read();
+    let err = MODEL.external_errors.read();
     if err.is_empty() {
         return rsx!();
     }
 
     rsx! {
         div {
-            button { onclick: move |_| { commander.send(ui_model::Message::CloseError) },
+            button { onclick: move |_| { COMMANDER.send(ui_model::Message::CloseError) },
                 "X"
             }
             label { {err} }
@@ -284,25 +266,21 @@ fn MyHome() -> Element {
 
 #[component]
 fn CompanyAndBranchSelection() -> Element {
-    let (model, commander) = consume_context::<TheAll>();
-
-    let local_state = model
+    let local_state = &MODEL
         .page_root
         .page_after_auth
         .page_company_branch_selection
         .list;
 
-    let selected_company = model
+    let selected_company = &MODEL
         .page_root
         .page_after_auth
         .page_company_branch_selection
         .selected_company;
 
-    let commander1 = commander.clone();
-
     rsx! {
         div {
-            match model.navigator.read() {
+            match MODEL.navigator.read() {
                 ui_model::Navigator::CompanyBranchSelection(n) => {
                     match n {
                         ui_model::CompanyBranchSelection::None => rsx! {},
@@ -319,7 +297,7 @@ fn CompanyAndBranchSelection() -> Element {
 
             button {
                 onclick: move |_| {
-                    commander1
+                    COMMANDER
                         .send(
                             ui_model::Message::CompanyAndBranchSelection(
                                 ui_updaters::company_and_branch_selection::Msg::ShowCreateCompany,
@@ -332,12 +310,10 @@ fn CompanyAndBranchSelection() -> Element {
             div {
                 for company in local_state.read() {
                     {
-                        let commander2 = commander.clone();
-                        let commander3 = commander.clone();
                         rsx! {
                             button {
                                 onclick: move |_| {
-                                    commander2
+                                    COMMANDER
                                         .send(
                                             ui_model::Message::CompanyAndBranchSelection(
                                                 ui_updaters::company_and_branch_selection::Msg::SelectedCompany(
@@ -352,7 +328,7 @@ fn CompanyAndBranchSelection() -> Element {
                             if selected_company.read() == Some(company.uuid.clone()) {
                                 button {
                                     onclick: move |_| {
-                                        commander3
+                                        COMMANDER
                                             .send(
                                                 ui_model::Message::CompanyAndBranchSelection(
                                                     ui_updaters::company_and_branch_selection::Msg::ShowCreateCompanyBranch,
@@ -364,12 +340,11 @@ fn CompanyAndBranchSelection() -> Element {
                                 div {
                                     for branch in company.branches {
                                         {
-                                            let commander4 = commander.clone();
                                             rsx! {
                                                 button {
                                                     onclick: {
                                                         move |_| {
-                                                            commander4
+                                                            COMMANDER
                                                                 .send(
                                                                     ui_model::Message::CompanyAndBranchSelection(
                                                                         ui_updaters::company_and_branch_selection::Msg::SelectedCompanyBranch(
@@ -396,23 +371,18 @@ fn CompanyAndBranchSelection() -> Element {
 
 #[component]
 fn CreateCompany() -> Element {
-    let (model, commander) = consume_context::<TheAll>();
-    let local_state = model
+    let local_state = &MODEL
         .page_root
         .page_after_auth
         .page_company_branch_selection
         .page_create_company;
-
-    let commander1 = commander.clone();
-    let commander2 = commander.clone();
-    let commander3 = commander.clone();
 
     rsx! {
         div {
             input {
                 placeholder: "Company Name",
                 oninput: move |event| {
-                    commander1
+                    COMMANDER
                         .send(
                             ui_model::Message::CreateCompany(
                                 ui_updaters::create_company::Msg::Name(event.value()),
@@ -424,7 +394,7 @@ fn CreateCompany() -> Element {
             select {
                 value: local_state.currency.read().as_str(),
                 onchange: move |event| {
-                    commander2
+                    COMMANDER
                         .send(
                             ui_model::Message::CreateCompany(
                                 ui_updaters::create_company::Msg::Currency(event.value()),
@@ -436,7 +406,7 @@ fn CreateCompany() -> Element {
             }
             button {
                 onclick: move |_| {
-                    commander3
+                    COMMANDER
                         .send(
                             ui_model::Message::CreateCompany(
                                 ui_updaters::create_company::Msg::Submit,
@@ -447,7 +417,7 @@ fn CreateCompany() -> Element {
             }
             button {
                 onclick: move |_| {
-                    commander
+                    COMMANDER
                         .send(
                             ui_model::Message::CreateCompany(ui_updaters::create_company::Msg::Close),
                         );
@@ -460,23 +430,17 @@ fn CreateCompany() -> Element {
 
 #[component]
 fn CreateCompanyBranch() -> Element {
-    let (model, commander) = consume_context::<TheAll>();
-    let local_state = model
+    let local_state = &MODEL
         .page_root
         .page_after_auth
         .page_company_branch_selection
         .page_create_company_branch;
 
-    let commander1 = commander.clone();
     let consent_callback = move |consent: process_manager::UserConsent| {
-        commander1.send(ui_model::Message::CreateCompanyBranch(
+        COMMANDER.send(ui_model::Message::CreateCompanyBranch(
             ui_updaters::create_company_branch::Msg::Consent(consent),
         ));
     };
-
-    let commander2 = commander.clone();
-    let commander3 = commander.clone();
-    let commander4 = commander.clone();
 
     rsx! {
         div {
@@ -488,7 +452,7 @@ fn CreateCompanyBranch() -> Element {
             input {
                 placeholder: "Branch Name",
                 oninput: move |event| {
-                    commander2
+                    COMMANDER
                         .send(
                             ui_model::Message::CreateCompanyBranch(
                                 ui_updaters::create_company_branch::Msg::Name(event.value()),
@@ -500,7 +464,7 @@ fn CreateCompanyBranch() -> Element {
             select {
                 value: local_state.currency.read().as_str(),
                 onchange: move |event| {
-                    commander3
+                    COMMANDER
                         .send(
                             ui_model::Message::CreateCompanyBranch(
                                 ui_updaters::create_company_branch::Msg::Currency(event.value()),
@@ -512,7 +476,7 @@ fn CreateCompanyBranch() -> Element {
             }
             button {
                 onclick: move |_| {
-                    commander4
+                    COMMANDER
                         .send(
                             ui_model::Message::CreateCompanyBranch(
                                 ui_updaters::create_company_branch::Msg::Submit,
@@ -523,7 +487,7 @@ fn CreateCompanyBranch() -> Element {
             }
             button {
                 onclick: move |_| {
-                    commander
+                    COMMANDER
                         .send(
                             ui_model::Message::CreateCompanyBranch(
                                 ui_updaters::create_company_branch::Msg::Close,

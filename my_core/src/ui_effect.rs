@@ -31,12 +31,12 @@ impl<At: AllClientTypes> Commander<At> {
         sender_to_process_manager: <At::Mpsc as MultiProducerSingleConsumer>::Sender<
             process_manager::MessageToProcessManager<At>,
         >,
-        model: ui_model::Model<At>,
+        model: &'static ui_model::Model<At>,
         cache: cache_actor::CacheStruct<At>,
     ) -> Self {
         let (sender_to_commander, receiver_to_commander) = At::Mpsc::channel();
 
-        listen_to_error_actor::<At>(receiver_to_error, model.external_errors.clone());
+        listen_to_error_actor::<At>(receiver_to_error, &model.external_errors);
 
         Self::commander_actor(
             receiver_to_commander,
@@ -64,7 +64,7 @@ impl<At: AllClientTypes> Commander<At> {
         sender_to_process_manager: <At::Mpsc as MultiProducerSingleConsumer>::Sender<
             process_manager::MessageToProcessManager<At>,
         >,
-        model: ui_model::Model<At>,
+        model: &'static ui_model::Model<At>,
         cache: cache_actor::CacheStruct<At>,
     ) {
         At::Rt::spawn_local(async move {
@@ -80,7 +80,6 @@ impl<At: AllClientTypes> Commander<At> {
                 let message = receiver.recv().await.unwrap();
                 mbg!(&message);
 
-                let model = model.clone();
                 let cache = cache.clone();
                 let commander_local_state = commander_local_state.clone();
 
@@ -113,7 +112,7 @@ impl<At: AllClientTypes> Commander<At> {
 
 fn listen_to_error_actor<At: AllClientTypes>(
     mut receiver_to_error: <At::Mpsc as MultiProducerSingleConsumer>::Receiver<HashimError>,
-    external_errors_signal: At::StringVec,
+    external_errors_signal: &'static At::StringVec,
 ) {
     At::Rt::spawn_local(async move {
         loop {
