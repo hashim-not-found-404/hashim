@@ -62,7 +62,7 @@ pub mod m {
         type JoinHandle<T> = join_handle::m::S<T>;
 
         fn abortable_spawn_local<F: Future + 'static>(fut: F) -> Self::JoinHandle<F::Output> {
-            let (sender_to_abort, mut receiver_to_abort) = actors::m::S::channel();
+            let (sender_to_abort, mut receiver_to_abort) = crate::actors::m::S::channel();
             let join_handle = Self::JoinHandle::new(sender_to_abort);
 
             let output_place = join_handle.output.clone();
@@ -141,7 +141,7 @@ mod join_handle {
 
         pub struct S<T> {
             pub output: Arc<Mutex<Option<T>>>,
-            aborter: mpsc_sender::m::S<()>,
+            aborter: crate::actors::mpsc_sender::m::S<()>,
         }
 
         impl<T> JoinHandle for S<T> {
@@ -151,7 +151,7 @@ mod join_handle {
         }
 
         impl<T> S<T> {
-            pub fn new(aborter: mpsc_sender::m::S<()>) -> Self {
+            pub fn new(aborter: crate::actors::mpsc_sender::m::S<()>) -> Self {
                 Self {
                     output: Arc::default(),
                     aborter,
