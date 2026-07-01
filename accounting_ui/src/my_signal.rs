@@ -7,6 +7,7 @@ pub mod m {
     };
 
     pub struct S<T> {
+        // TODO  i will use singlton pattern instead of the Arc to stop cloning
         value: Arc<Mutex<T>>,
         subscribers: Arc<Mutex<HashSet<ReactiveContext>>>,
     }

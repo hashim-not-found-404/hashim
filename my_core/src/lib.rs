@@ -15,13 +15,10 @@ pub mod ui_effect;
 pub mod ui_model;
 pub mod ui_updaters;
 
+// TODO make it DAG
 pub mod prelude {
     pub type DynamicError = Box<dyn Error>;
 
-    #[cfg(target_arch = "wasm32")]
-    pub use dioxus_logger;
-
-    pub use crate::mbg; // this macro for dev only
     pub use crate::{
         ext_trait::*, request_response::*, server_methods::WSServer, traits::*,
         ui_model::HashimSignal, *,
@@ -31,6 +28,11 @@ pub mod prelude {
         operations::{ViewType1, ViewType2},
         server_operations::ServerOperations,
     };
+
+    #[cfg(target_arch = "wasm32")]
+    pub use dioxus_logger;
+
+    pub use crate::mbg; // this macro for dev only
 
     // std
     pub(crate) use std::{
