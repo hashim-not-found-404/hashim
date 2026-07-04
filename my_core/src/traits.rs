@@ -1,10 +1,10 @@
-use crate::prelude::*;
-
-pub trait RowId {
-    fn generate() -> db_types::UuidType;
-    fn get_time_as_seconds(uuid: &db_types::UuidType) -> Option<u64>;
-    fn validate(uuid: &db_types::UuidType) -> bool;
-}
+use crate::{
+    db_types, decider,
+    request_response::{ResourceInfo, push_data},
+    utils,
+};
+use serde::{Deserialize, Serialize};
+use std::{collections::HashSet, future::Future, time::Duration};
 
 pub trait Regex {
     fn is_regex(s: &String) -> Result<(), String>;
@@ -14,21 +14,10 @@ pub trait RandomNumber {
     fn generate() -> u64;
 }
 
-pub trait HashedPassword {
-    fn sign_up(password: &String) -> String;
-    fn sign_in(password: &String, password_hash: &String) -> bool;
-}
-
-pub trait JWT {
-    fn new() -> Self;
-    fn sign(&self, user_uuid: &db_types::UuidType) -> db_types::JsonWebTokenType;
-    fn validate(&self, token: db_types::JsonWebTokenType) -> Option<db_types::UuidType>;
-}
-
 pub trait Database {
     type Client: DBClient;
     fn new() -> impl Future<Output = Self>;
-    fn get_client(&self) -> impl Future<Output = Result<Self::Client, DynamicError>>;
+    fn get_client(&self) -> impl Future<Output = Result<Self::Client, utils::DynamicError>>;
 }
 
 pub trait DBClient {
@@ -36,27 +25,29 @@ pub trait DBClient {
     where
         Self: 'a;
 
-    fn begin_transaction(&mut self) -> impl Future<Output = Result<Self::Txn<'_>, DynamicError>>;
+    fn begin_transaction(
+        &mut self,
+    ) -> impl Future<Output = Result<Self::Txn<'_>, utils::DynamicError>>;
 
     fn write_nonce_if_not_used(
         &mut self,
         nonce: &db_types::UuidType,
-    ) -> impl Future<Output = Result<bool /* is nonce used */, DynamicError>>;
+    ) -> impl Future<Output = Result<bool /* is nonce used */, utils::DynamicError>>;
 
     // here we just do read we dont do here any set or check
 
     fn read_sign_in(
         &mut self,
         user_id: &String,
-    ) -> impl Future<Output = Result<Option<(db_types::UuidType, String)>, DynamicError>>;
+    ) -> impl Future<Output = Result<Option<(db_types::UuidType, String)>, utils::DynamicError>>;
     fn read_roles_for_user(
         &mut self,
         users_uuids: &HashSet<db_types::UuidType>,
-    ) -> impl Future<Output = Result<server_methods::AllRoles, DynamicError>>;
+    ) -> impl Future<Output = Result<server_methods::AllRoles, utils::DynamicError>>;
     fn read_list_company_and_branch(
         &mut self,
         user_uuid: &db_types::UuidType,
-    ) -> impl Future<Output = Result<Vec<ResourceInfo>, DynamicError>>;
+    ) -> impl Future<Output = Result<Vec<ResourceInfo>, utils::DynamicError>>;
 }
 
 pub mod domain_errors {
@@ -69,8 +60,8 @@ pub mod domain_errors {
 pub trait DBTransaction {
     fn commit_transaction(
         self,
-    ) -> impl Future<Output = Result<Result<(), domain_errors::AtCommit>, DynamicError>>;
-    fn rollback_transaction(self) -> impl Future<Output = Result<(), DynamicError>>;
+    ) -> impl Future<Output = Result<Result<(), domain_errors::AtCommit>, utils::DynamicError>>;
+    fn rollback_transaction(self) -> impl Future<Output = Result<(), utils::DynamicError>>;
 
     fn read_sign_up(
         &mut self,
@@ -82,22 +73,22 @@ pub trait DBTransaction {
                 bool, /* is new_uuid exist */
                 bool, /* is user_id exist */
             ),
-            DynamicError,
+            utils::DynamicError,
         >,
     >;
     fn write_sign_up(
         &mut self,
         data: &decider::sign_up::Ok,
-    ) -> impl Future<Output = Result<(), DynamicError>>;
+    ) -> impl Future<Output = Result<(), utils::DynamicError>>;
 
     fn read_create_company(
         &mut self,
         new_uuid: &db_types::UuidType,
-    ) -> impl Future<Output = Result<bool /* is new_uuid exist */, DynamicError>>;
+    ) -> impl Future<Output = Result<bool /* is new_uuid exist */, utils::DynamicError>>;
     fn write_create_company(
         &mut self,
         data: &decider::create_company::Ok,
-    ) -> impl Future<Output = Result<(), DynamicError>>;
+    ) -> impl Future<Output = Result<(), utils::DynamicError>>;
 
     fn read_create_company_branch(
         &mut self,
@@ -113,24 +104,24 @@ pub trait DBTransaction {
                 bool,                /* is company_belong exist */
                 bool,                /* is branch_name used */
             ),
-            DynamicError,
+            utils::DynamicError,
         >,
     >;
     fn write_create_company_branch(
         &mut self,
         data: &decider::create_company_branch::Ok,
-    ) -> impl Future<Output = Result<(), DynamicError>>;
+    ) -> impl Future<Output = Result<(), utils::DynamicError>>;
 }
 
 pub trait WSClient: Sized {
-    fn connect(url: &str) -> impl Future<Output = Result<Self, DynamicError>>;
-    fn send_bin(&self, data: &Vec<u8>) -> impl Future<Output = Result<(), DynamicError>>;
-    fn receive_bin(&self) -> impl Future<Output = Result<Vec<u8>, DynamicError>>;
+    fn connect(url: &str) -> impl Future<Output = Result<Self, utils::DynamicError>>;
+    fn send_bin(&self, data: &Vec<u8>) -> impl Future<Output = Result<(), utils::DynamicError>>;
+    fn receive_bin(&self) -> impl Future<Output = Result<Vec<u8>, utils::DynamicError>>;
 }
 
 pub trait Coding {
     fn encode<T: Serialize>(data: &T) -> Vec<u8>;
-    fn decode<'de, T: Deserialize<'de>>(data: &'de Vec<u8>) -> Result<T, DynamicError>;
+    fn decode<'de, T: Deserialize<'de>>(data: &'de Vec<u8>) -> Result<T, utils::DynamicError>;
 }
 
 pub enum Either<L, R> {
@@ -154,7 +145,10 @@ pub trait Runtime {
     where
         F: Future + 'static;
 
-    fn timeout<T, F>(duration: Duration, fut: F) -> impl Future<Output = Result<T, DynamicError>>
+    fn timeout<T, F>(
+        duration: Duration,
+        fut: F,
+    ) -> impl Future<Output = Result<T, utils::DynamicError>>
     where
         F: Future<Output = T>;
 
@@ -167,11 +161,11 @@ pub trait Runtime {
 }
 
 pub trait Sender<T>: Clone {
-    fn send(&mut self, t: T) -> impl Future<Output = Result<(), DynamicError>>;
+    fn send(&mut self, t: T) -> impl Future<Output = Result<(), utils::DynamicError>>;
 }
 
 pub trait Receiver<T> {
-    fn recv(&mut self) -> impl Future<Output = Result<T, DynamicError>>;
+    fn recv(&mut self) -> impl Future<Output = Result<T, utils::DynamicError>>;
 }
 
 pub trait MultiProducerSingleConsumer {
@@ -239,6 +233,25 @@ pub trait Cache: Sized {
             bool,                /* is branch name used */
         ),
     >;
+}
+
+pub enum WSMessage {
+    Binary(Vec<u8>),
+    Close,
+}
+
+pub trait WSServer {
+    fn send_bin(&mut self, bin: Vec<u8>) -> impl Future<Output = Result<(), utils::DynamicError>>;
+    fn receive(&mut self) -> impl Future<Output = Result<WSMessage, utils::DynamicError>>;
+    fn close(self) -> impl Future<Output = Result<(), utils::DynamicError>>;
+}
+
+pub trait HashimSignal<T: Default + Clone>: Default {
+    fn reset(&self) {
+        self.set(T::default());
+    }
+    fn read(&self) -> T;
+    fn set(&self, v: T);
 }
 
 pub trait AllServerTypes: 'static

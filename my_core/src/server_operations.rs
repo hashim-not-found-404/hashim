@@ -1,109 +1,8 @@
-use crate::decider::EventMaker;
-use crate::decider::StateOp;
-use crate::prelude::*;
-use std::result::Result as StdResult;
-
-enum ServerState<'a, 'b, Cli: DBClient> {
-    Client(&'a mut Cli),
-    Txn(&'b mut <Cli as DBClient>::Txn<'a>),
-}
-
-impl<'a, 'b, Cli: DBClient> ServerState<'a, 'b, Cli> {
-    fn set_client(client: &'a mut Cli) -> Self {
-        Self::Client(client)
-    }
-
-    fn set_txn(txn: &'b mut <Cli as DBClient>::Txn<'a>) -> Self {
-        Self::Txn(txn)
-    }
-
-    // fn get_client(&'a mut self) -> &'a mut Cli {
-    //     match self {
-    //         ServerState::Client(client) => client,
-    //         ServerState::Txn(_) => unreachable!(),
-    //     }
-    // }
-
-    // fn get_txn(&'a mut self) -> &'a mut <Cli as DBClient>::Txn<'a> {
-    //     match self {
-    //         ServerState::Client(_) => unreachable!(),
-    //         ServerState::Txn(txn) => txn,
-    //     }
-    // }
-}
-
-impl<'a, 'b, Cli: DBClient> StateOp for ServerState<'a, 'b, Cli> {
-    async fn read_sign_up(
-        &mut self,
-        new_uuid: &db_types::UuidType,
-        user_id: &String,
-    ) -> StdResult<
-        (
-            bool, /* is new_uuid exist */
-            bool, /* is user_id exist */
-        ),
-        DynamicError,
-    > {
-        match self {
-            ServerState::Client(_) => unreachable!(),
-            ServerState::Txn(txn) => txn.read_sign_up(new_uuid, user_id).await,
-        }
-    }
-
-    async fn read_sign_in(
-        &mut self,
-        user_id: &String,
-    ) -> StdResult<Option<(db_types::UuidType, String)>, DynamicError> {
-        match self {
-            ServerState::Client(client) => client.read_sign_in(user_id).await,
-            ServerState::Txn(_) => unreachable!(),
-        }
-    }
-
-    async fn read_create_company(
-        &mut self,
-        new_uuid: &db_types::UuidType,
-    ) -> StdResult<bool /* is new_uuid exist */, DynamicError> {
-        match self {
-            ServerState::Client(_) => unreachable!(),
-            ServerState::Txn(txn) => txn.read_create_company(new_uuid).await,
-        }
-    }
-
-    async fn read_list_company_and_branch(
-        &mut self,
-        user_uuid: &db_types::UuidType,
-    ) -> StdResult<Vec<ResourceInfo>, DynamicError> {
-        match self {
-            ServerState::Client(client) => client.read_list_company_and_branch(user_uuid).await,
-            ServerState::Txn(_) => unreachable!(),
-        }
-    }
-
-    async fn read_create_company_branch(
-        &mut self,
-        new_uuid: &db_types::UuidType,
-        user_uuid: &db_types::UuidType,
-        company_belong: &db_types::UuidType,
-        branch_name: &String,
-    ) -> StdResult<
-        (
-            Vec<db_types::Role>, /* user roles */
-            bool,                /* is new_uuid exist */
-            bool,                /* is company_belong exist */
-            bool,                /* is branch_name used */
-        ),
-        DynamicError,
-    > {
-        match self {
-            ServerState::Client(_) => unreachable!(),
-            ServerState::Txn(txn) => {
-                txn.read_create_company_branch(new_uuid, user_uuid, company_belong, branch_name)
-                    .await
-            }
-        }
-    }
-}
+use crate::{
+    db_types, decider, server_methods,
+    traits::{AllServerTypes, DBClient, DBTransaction},
+    utils,
+};
 
 pub(crate) trait ServerOperations {
     type Ok;
@@ -114,7 +13,7 @@ pub(crate) trait ServerOperations {
         side_effects: &mut server_methods::SideEffects,
         client: &mut At::Cli,
         jwt: &At::Jwt,
-    ) -> Result<Result<Self::Ok, Self::Error>, DynamicError>;
+    ) -> Result<Result<Self::Ok, Self::Error>, utils::DynamicError>;
 }
 
 impl ServerOperations for decider::sign_up::Input {
@@ -126,17 +25,11 @@ impl ServerOperations for decider::sign_up::Input {
         side_effects: &mut server_methods::SideEffects,
         client: &mut At::Cli,
         jwt: &At::Jwt,
-    ) -> StdResult<StdResult<Self::Ok, Self::Error>, DynamicError> {
+    ) -> Result<Result<Self::Ok, Self::Error>, utils::DynamicError> {
         let mut txn = client.begin_transaction().await?;
-        let mut state = ServerState::<At::Cli>::set_txn(&mut txn);
+        todo!();
 
-        let result = self
-                .handle::<ServerState<_>, At::Rn, At::Rt, At::Id, At::Mpsc, At::Ed, At::Rg, At::Auth, At::Jwt>(
-                    side_effects,
-                    &mut state,
-                    jwt,
-                )
-                .await;
+        let result = todo!();
 
         if let Ok(Ok(resource)) = &result {
             txn.write_sign_up(resource).await?;
@@ -158,16 +51,10 @@ impl ServerOperations for decider::sign_in::Input {
         side_effects: &mut server_methods::SideEffects,
         client: &mut At::Cli,
         jwt: &At::Jwt,
-    ) -> StdResult<StdResult<Self::Ok, Self::Error>, DynamicError> {
-        let mut state = ServerState::<At::Cli>::set_client(client);
+    ) -> Result<Result<Self::Ok, Self::Error>, utils::DynamicError> {
+        todo!();
 
-        let result = self
-                .handle::<ServerState<_>, At::Rn, At::Rt, At::Id, At::Mpsc, At::Ed, At::Rg, At::Auth, At::Jwt>(
-                    side_effects,
-                    &mut state,
-                    jwt,
-                )
-                .await;
+        let result = todo!();
 
         return result;
     }
@@ -182,17 +69,11 @@ impl ServerOperations for decider::create_company::Input {
         side_effects: &mut server_methods::SideEffects,
         client: &mut At::Cli,
         jwt: &At::Jwt,
-    ) -> StdResult<StdResult<Self::Ok, Self::Error>, DynamicError> {
+    ) -> Result<Result<Self::Ok, Self::Error>, utils::DynamicError> {
         let mut txn = client.begin_transaction().await?;
-        let mut state = ServerState::<At::Cli>::set_txn(&mut txn);
+        todo!();
 
-        let result = self
-                .handle::<ServerState<_>, At::Rn, At::Rt, At::Id, At::Mpsc, At::Ed, At::Rg, At::Auth, At::Jwt>(
-                    side_effects,
-                    &mut state,
-                    jwt,
-                )
-                .await;
+        let result = todo!();
 
         if let Ok(Ok(resource)) = &result {
             txn.write_create_company(resource).await?;
@@ -214,16 +95,10 @@ impl ServerOperations for decider::list_company_and_branch::Input {
         side_effects: &mut server_methods::SideEffects,
         client: &mut At::Cli,
         jwt: &At::Jwt,
-    ) -> StdResult<StdResult<Self::Ok, Self::Error>, DynamicError> {
-        let mut state = ServerState::<At::Cli>::set_client(client);
+    ) -> Result<Result<Self::Ok, Self::Error>, utils::DynamicError> {
+        todo!();
 
-        let result = self
-                .handle::<ServerState<_>, At::Rn, At::Rt, At::Id, At::Mpsc, At::Ed, At::Rg, At::Auth, At::Jwt>(
-                    side_effects,
-                    &mut state,
-                    jwt,
-                )
-                .await;
+        let result = todo!();
 
         return result;
     }
@@ -238,17 +113,11 @@ impl ServerOperations for decider::create_company_branch::Input {
         side_effects: &mut server_methods::SideEffects,
         client: &mut At::Cli,
         jwt: &At::Jwt,
-    ) -> StdResult<StdResult<Self::Ok, Self::Error>, DynamicError> {
+    ) -> Result<Result<Self::Ok, Self::Error>, utils::DynamicError> {
         let mut txn = client.begin_transaction().await?;
-        let mut state = ServerState::<At::Cli>::set_txn(&mut txn);
+        todo!();
 
-        let result = self
-                .handle::<ServerState<_>, At::Rn, At::Rt, At::Id, At::Mpsc, At::Ed, At::Rg, At::Auth, At::Jwt>(
-                    side_effects,
-                    &mut state,
-                    jwt,
-                )
-                .await;
+        let result = todo!();
 
         if let Ok(Ok(resource)) = &result {
             txn.write_create_company_branch(resource).await?;

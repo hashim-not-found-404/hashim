@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use crate::{traits::AllClientTypes, ui_updaters};
 
 pub trait HashimSignal<T: Default + Clone>: Default {
     fn reset(&self) {

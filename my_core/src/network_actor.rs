@@ -1,8 +1,22 @@
-use crate::prelude::*;
+use crate::{
+    cache_actor,
+    request_response::HashimError,
+    traits::{
+        AllClientTypes, Either, MultiProducerSingleConsumer, Receiver, Runtime, Sender, WSClient,
+    },
+    ui_model::HashimSignal,
+    utils,
+};
+use std::{
+    sync::{Arc, RwLock},
+    time::Duration,
+};
 
 pub(crate) type MessageToNetwork = Vec<u8>;
 
-async fn network_radar<At: AllClientTypes>(ws: &Option<At::Ws>) -> Result<Vec<u8>, DynamicError> {
+async fn network_radar<At: AllClientTypes>(
+    ws: &Option<At::Ws>,
+) -> Result<Vec<u8>, utils::DynamicError> {
     match &ws {
         Some(ws) => ws.receive_bin().await,
         None => Err(HashimError::ConnectionClosed.into()),

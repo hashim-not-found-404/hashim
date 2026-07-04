@@ -1,4 +1,21 @@
-use crate::prelude::*;
+use crate::{
+    db_types,
+    request_response::{HashimError, JWTError, NonceError, ResourceInfo, messages, push_data},
+    server_operations::ServerOperations,
+    traits::{
+        AllServerTypes, Coding, DBClient, Database, Either, JWT, MultiProducerSingleConsumer,
+        RandomNumber, Receiver, RowId, Runtime, Sender,
+    },
+    utils::{self, HashMapWithHashMapValue, HashMapWithVectorValue},
+};
+use serde::{Deserialize, Serialize};
+use std::{
+    collections::{HashMap, HashSet},
+    future::Future,
+    hash::Hash,
+    sync::Arc,
+    time::{SystemTime, UNIX_EPOCH},
+};
 
 pub struct ServerMethods<At: AllServerTypes> {
     database: At::Db,
@@ -134,7 +151,7 @@ impl<At: AllServerTypes> ServerMethods<At> {
                                     };
 
                                     sender_to_broker
-                                        .send(server_methods::MessageToBroker::Subscribe {
+                                        .send(MessageToBroker::Subscribe {
                                             connection_id,
                                             list_of_subscribtion: subs,
                                             users_uuids: side_effects.users_to_resubscribe,
@@ -295,10 +312,10 @@ impl<At: AllServerTypes> ServerMethods<At> {
 
 async fn push_data<At: AllServerTypes>(
     input: &push_data::Input,
-    side_effects: &mut server_methods::SideEffects,
+    side_effects: &mut SideEffects,
     client: &mut At::Cli,
     jwt: &At::Jwt,
-) -> Result<push_data::Result, DynamicError> {
+) -> Result<push_data::Result, utils::DynamicError> {
     let mut the_return_result = push_data::Result {
         jwts: Vec::with_capacity(input.jwts.len()),
         nonce: Ok(()),
@@ -414,7 +431,7 @@ fn check_nonce_if_valid<Id: RowId>(nonce: &db_types::UuidType, is_used: bool) ->
 async fn get_table_of_subscribed_data<At: AllServerTypes>(
     client: &mut At::Cli,
     users_uuids: &HashSet<db_types::UuidType>,
-) -> Result<AllSubscribes, DynamicError> {
+) -> Result<AllSubscribes, utils::DynamicError> {
     let roles = client.read_roles_for_user(users_uuids).await?;
 
     let mut subs = AllSubscribes {
@@ -453,11 +470,12 @@ pub enum WSMessage {
 }
 
 pub trait WSServer {
-    fn send_bin(&mut self, bin: Vec<u8>) -> impl Future<Output = Result<(), DynamicError>>;
-    fn receive(&mut self) -> impl Future<Output = Result<WSMessage, DynamicError>>;
-    fn close(self) -> impl Future<Output = Result<(), DynamicError>>;
+    fn send_bin(&mut self, bin: Vec<u8>) -> impl Future<Output = Result<(), utils::DynamicError>>;
+    fn receive(&mut self) -> impl Future<Output = Result<WSMessage, utils::DynamicError>>;
+    fn close(self) -> impl Future<Output = Result<(), utils::DynamicError>>;
 }
 mod broker_functions {
+
     use super::*;
 
     pub fn map_resource_to_subscribes(

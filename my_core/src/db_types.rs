@@ -1,4 +1,6 @@
-use crate::prelude::*;
+use crate::utils;
+use serde::{Deserialize, Serialize};
+use std::{error::Error, fmt::Display, str::FromStr};
 
 #[derive(Debug, Deserialize, Serialize, Clone, Default, PartialEq, Hash, Eq)]
 pub struct UuidType(pub [u8; 16]);
@@ -6,19 +8,19 @@ pub struct UuidType(pub [u8; 16]);
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct JsonWebTokenType(pub String);
 
-pub type ListOfCompanies = Vec<db_types::Company>;
+pub type ListOfCompanies = Vec<Company>;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Company {
-    pub uuid: db_types::UuidType,
+    pub uuid: UuidType,
     pub name: String,
-    pub role: db_types::Role,
+    pub role: Role,
     pub branches: Vec<Branch>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Branch {
-    pub uuid: db_types::UuidType,
+    pub uuid: UuidType,
     pub name: String,
 }
 
@@ -49,7 +51,7 @@ pub enum Currency {
 }
 
 impl FromStr for Currency {
-    type Err = DynamicError;
+    type Err = utils::DynamicError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
@@ -77,7 +79,7 @@ pub enum Role {
 }
 
 impl FromStr for Role {
-    type Err = DynamicError;
+    type Err = utils::DynamicError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
@@ -103,5 +105,79 @@ impl Role {
             }
         }
         false
+    }
+}
+
+pub const HOST: &str = "127.0.0.1";
+pub const PORT: u16 = 8081;
+pub const ADDRESS: &str = "127.0.0.1:8081";
+
+// there should be no generic in all the below types
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub enum Resource {
+    Jwt(JsonWebTokenType),
+
+    TableUserFieldName(String),
+    TableUserFieldId(String),
+    TableCompanyFieldName(String),
+    TableCompanyFieldCurrency(Currency),
+    TableCompanyBranchFieldName(String),
+    TableCompanyBranchFieldCompanyBelong(UuidType),
+    TableCompanyBranchFieldLocation(Location),
+    TableCompanyBranchFieldCurrency(Currency),
+    TableAccessControlForCompanyFieldRole(Role),
+    TableAccessControlForCompanyFieldUser(UuidType),
+    TableAccessControlForCompanyFieldDataGroup(UuidType),
+    TableAccessControlForCompanyBranchFieldRole(Role),
+    TableAccessControlForCompanyBranchFieldUser(UuidType),
+    TableAccessControlForCompanyBranchFieldDataGroup(UuidType),
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct ResourceInfo {
+    pub row_uuid: UuidType,
+    pub resource: Resource,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+pub enum UserUuidError {
+    Invalid,
+    NotAuthenticated,
+    YouDontHavePermissionToDoThat,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+pub enum RowIdError {
+    Invalid,
+    Duplicated,
+}
+
+#[derive(Debug, Deserialize, Serialize, PartialEq)]
+pub enum NonceError {
+    Invalid,
+}
+
+#[derive(Debug, Deserialize, Serialize, PartialEq)]
+pub enum JWTError {
+    Invalid,
+}
+
+#[derive(Debug, Deserialize, Serialize, PartialEq)]
+pub enum HashimError {
+    InternalServerError,
+    InvalidDataFormat,
+    ConnectionClosed,
+}
+
+impl Error for HashimError {}
+
+impl Display for HashimError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            HashimError::InternalServerError => write!(f, "Internal Server Error"),
+            HashimError::InvalidDataFormat => write!(f, "Invalid Data Format"),
+            HashimError::ConnectionClosed => write!(f, "Connection Closed"),
+        }
     }
 }

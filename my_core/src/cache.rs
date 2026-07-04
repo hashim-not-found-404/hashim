@@ -1,4 +1,12 @@
-use crate::{decider::StateOp, prelude::*};
+use crate::{
+    db_types,
+    decider::StateOp,
+    request_response::ResourceInfo,
+    server_methods,
+    traits::{AllClientTypes, Cache},
+    utils,
+};
+use std::collections::{HashMap, HashSet};
 
 pub mod tables {
     use crate::db_types;
@@ -80,7 +88,7 @@ impl<At: AllClientTypes> StateOp for State<At> {
             bool, /* is new_uuid exist */
             bool, /* is user_id exist */
         ),
-        DynamicError,
+        utils::DynamicError,
     > {
         let (mut is_new_uuid_exist, mut is_user_id_exist) =
             self.cache.read_sign_up(new_uuid, user_id).await;
@@ -100,21 +108,21 @@ impl<At: AllClientTypes> StateOp for State<At> {
     async fn read_sign_in(
         &mut self,
         user_id: &String,
-    ) -> Result<Option<(db_types::UuidType, String)>, DynamicError> {
+    ) -> Result<Option<(db_types::UuidType, String)>, utils::DynamicError> {
         unreachable!("this is not callable at client side")
     }
 
     async fn read_create_company(
         &mut self,
         new_uuid: &db_types::UuidType,
-    ) -> Result<bool /* is new_uuid exist */, DynamicError> {
+    ) -> Result<bool /* is new_uuid exist */, utils::DynamicError> {
         Ok(false)
     }
 
     async fn read_list_company_and_branch(
         &mut self,
         user_uuid: &db_types::UuidType,
-    ) -> Result<Vec<ResourceInfo>, DynamicError> {
+    ) -> Result<Vec<ResourceInfo>, utils::DynamicError> {
         // Start with resources from the cache (already stored in DB)
         let mut resources = self.cache.read_list_company_and_branch(&user_uuid).await;
 
@@ -194,7 +202,7 @@ impl<At: AllClientTypes> StateOp for State<At> {
             bool,                /* is company_belong exist */
             bool,                /* is branch_name used */
         ),
-        DynamicError,
+        utils::DynamicError,
     > {
         // 1. Read from cache (database)
         let (mut user_roles, mut is_company_exist, mut is_branch_name_used) = self

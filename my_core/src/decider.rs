@@ -1,89 +1,27 @@
-use crate::prelude::*;
-use crate::server_methods::Resource;
-use std::result::Result as StdResult;
+use crate::db_types;
+use serde::{Deserialize, Serialize};
 
-pub(crate) trait StateOp {
-    async fn read_sign_up(
-        &mut self,
-        new_uuid: &db_types::UuidType,
-        user_id: &String,
-    ) -> Result<
-        (
-            bool, /* is new_uuid exist */
-            bool, /* is user_id exist */
-        ),
-        DynamicError,
-    >;
-
-    async fn read_sign_in(
-        &mut self,
-        user_id: &String,
-    ) -> Result<Option<(db_types::UuidType, String)>, DynamicError>;
-
-    async fn read_create_company(
-        &mut self,
-        new_uuid: &db_types::UuidType,
-    ) -> Result<bool /* is new_uuid exist */, DynamicError>;
-
-    async fn read_list_company_and_branch(
-        &mut self,
-        user_uuid: &db_types::UuidType,
-    ) -> Result<Vec<ResourceInfo>, DynamicError>;
-
-    async fn read_create_company_branch(
-        &mut self,
-        new_uuid: &db_types::UuidType,
-        user_uuid: &db_types::UuidType,
-        company_belong: &db_types::UuidType,
-        branch_name: &String,
-    ) -> Result<
-        (
-            Vec<db_types::Role>, /* user roles */
-            bool,                /* is new_uuid exist */
-            bool,                /* is company_belong exist */
-            bool,                /* is branch_name used */
-        ),
-        DynamicError,
-    >;
+pub trait RowId {
+    fn generate() -> db_types::UuidType;
+    fn get_time_as_seconds(uuid: &db_types::UuidType) -> Option<u64>;
+    fn validate(uuid: &db_types::UuidType) -> bool;
 }
 
-pub(crate) trait EventMaker {
-    /*
-    i think insted of store resource and return resource is to return and store struct but the resource we need it to the broadcast , and that is better to prevent sql inject , and also the write on the server will e optimized
+pub trait HashedPassword {
+    fn sign_up(password: &String) -> String;
+    fn sign_in(password: &String, password_hash: &String) -> bool;
+}
 
-    The Trade‑Offs
-    Aspect	        Vec<ResourceInfo>	Struct + Prepared Statement
-    Flexibility     High	            ❌ Low (fixed schema)
-    SQL Injection   ❌ Vulnerable        Safe
-    Performance     ❌ N statements      1 statement
-    Type Safety     ❌ Loose             Compiler‑checked
-    Boilerplate     Low                 ❌ More code
-     */
-    type Ok: Into<Vec<ResourceInfo>>;
-    type Error;
-
-    async fn handle<
-        St: StateOp,
-        Rn: RandomNumber,
-        Rt: Runtime,
-        Id: RowId,
-        Mpsc: MultiProducerSingleConsumer,
-        Ed: Coding,
-        Rg: Regex,
-        Auth: HashedPassword,
-        Jwt: JWT,
-    >(
-        &self,
-        side_effects: &mut server_methods::SideEffects,
-        state: &mut St,
-        jwt: &Jwt,
-    ) -> Result<Result<Self::Ok, Self::Error>, DynamicError>;
+pub trait JWT {
+    fn new() -> Self;
+    fn sign(&self, user_uuid: &db_types::UuidType) -> db_types::JsonWebTokenType;
+    fn validate(&self, token: db_types::JsonWebTokenType) -> Option<db_types::UuidType>;
 }
 
 pub mod sign_up {
     use super::*;
 
-    pub type Result = StdResult<Ok, Error>;
+    pub type MyResult = Result<Ok, Error>;
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Input {
@@ -104,7 +42,7 @@ pub mod sign_up {
 
     #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
     pub struct Error {
-        pub new_uuid: Option<RowIdError>,
+        pub new_uuid: Option<db_types::RowIdError>,
         pub user_id: Option<UserIdError>,
         pub name: Option<String>,
     }
@@ -116,89 +54,52 @@ pub mod sign_up {
         Duplicated,
     }
 
-    impl Into<Vec<ResourceInfo>> for Ok {
-        fn into(self) -> Vec<ResourceInfo> {
-            let mut resource = Vec::new();
-
-            resource.push(ResourceInfo {
-                row_uuid: self.new_uuid.clone(),
-                resource: Resource::Jwt(self.jwt),
-            });
-            resource.push(ResourceInfo {
-                row_uuid: self.new_uuid.clone(),
-                resource: Resource::TableUserFieldId(self.user_id.clone()),
-            });
-            if let Some(name) = self.user_name.clone() {
-                resource.push(ResourceInfo {
-                    row_uuid: self.new_uuid.clone(),
-                    resource: Resource::TableUserFieldName(name),
-                });
-            }
-
-            resource
+    impl Error {
+        fn is_empty(&self) -> bool {
+            *self != Error::default()
         }
     }
 
-    impl EventMaker for Input {
-        type Ok = Ok;
-        type Error = Error;
+    impl Input {
+        fn state_less_check<Id: RowId>(&self) -> Error {
+            let mut errr = Error::default();
 
-        async fn handle<
-            St: StateOp,
-            Rn: RandomNumber,
-            Rt: Runtime,
-            Id: RowId,
-            Mpsc: MultiProducerSingleConsumer,
-            Ed: Coding,
-            Rg: Regex,
-            Auth: HashedPassword,
-            Jwt: JWT,
-        >(
+            if !Id::validate(&self.new_uuid) {
+                errr.new_uuid = Some(db_types::RowIdError::Invalid);
+            }
+
+            errr
+        }
+
+        fn state_full_check<Id: RowId>(
             &self,
-            side_effects: &mut server_methods::SideEffects,
-            state: &mut St,
-            jwt: &Jwt,
-        ) -> StdResult<StdResult<Self::Ok, Self::Error>, DynamicError> {
-            let mut errr = Self::Error::default();
-
-            if Id::validate(&self.new_uuid) {
-                side_effects
-                    .authenticated_users
-                    .insert(self.new_uuid.clone());
-            } else {
-                errr.new_uuid = Some(RowIdError::Invalid);
-            }
-
-            if errr != Self::Error::default() {
-                return Ok(Err(errr));
-            }
-
-            let hashed_password = Auth::sign_up(&self.password);
-
-            let (is_new_uuid_exist, is_user_id_exist) =
-                state.read_sign_up(&self.new_uuid, &self.user_id).await?;
+            is_new_uuid_exist: bool,
+            is_user_id_exist: bool,
+        ) -> Error {
+            let mut errr = Error::default();
 
             if is_new_uuid_exist {
-                errr.new_uuid = Some(RowIdError::Duplicated);
+                errr.new_uuid = Some(db_types::RowIdError::Duplicated);
             }
 
             if is_user_id_exist {
                 errr.user_id = Some(UserIdError::Duplicated);
             }
 
-            if errr != Self::Error::default() {
-                return Ok(Err(errr));
-            }
+            errr
+        }
 
+        fn handle<Auth: HashedPassword, Jwt: JWT>(&self, jwt: &Jwt) -> Ok {
+            let hashed_password = Auth::sign_up(&self.password);
             let jwt = jwt.sign(&self.new_uuid);
 
-            return Ok(Ok(Ok {
+            return Ok {
                 new_uuid: self.new_uuid.clone(),
                 user_id: self.user_id.clone(),
                 user_name: self.name.clone(),
                 hashed_password,
                 jwt,
-            }));
+            };
         }
     }
 }
@@ -206,7 +107,7 @@ pub mod sign_up {
 pub mod sign_in {
     use super::*;
 
-    pub type Result = StdResult<Ok, Error>;
+    pub type MyResult = Result<Ok, Error>;
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Input {
@@ -238,62 +139,32 @@ pub mod sign_in {
         WrongPassword,
     }
 
-    impl Into<Vec<ResourceInfo>> for Ok {
-        fn into(self) -> Vec<ResourceInfo> {
-            let mut resource = Vec::new();
-
-            resource.push(ResourceInfo {
-                row_uuid: self.user_uuid.clone(),
-                resource: Resource::Jwt(self.jwt),
-            });
-
-            resource
-        }
-    }
-
-    impl EventMaker for Input {
-        type Ok = Ok;
-        type Error = Error;
-
-        async fn handle<
-            St: StateOp,
-            Rn: RandomNumber,
-            Rt: Runtime,
-            Id: RowId,
-            Mpsc: MultiProducerSingleConsumer,
-            Ed: Coding,
-            Rg: Regex,
-            Auth: HashedPassword,
-            Jwt: JWT,
-        >(
+    impl Input {
+        fn handle<Auth: HashedPassword, Jwt: JWT>(
             &self,
-            side_effects: &mut server_methods::SideEffects,
-            state: &mut St,
             jwt: &Jwt,
-        ) -> StdResult<StdResult<Self::Ok, Self::Error>, DynamicError> {
-            let mut errr = Self::Error::default();
+            user_rowid_and_password_hash: &Option<(db_types::UuidType, String)>,
+        ) -> MyResult {
+            let mut errr = Error::default();
 
-            let (user_rowid, password_hash) = match state.read_sign_in(&self.user_id).await? {
-                Some(p) => p,
+            let (user_rowid, password_hash) = match user_rowid_and_password_hash {
+                Some((user_rowid, password_hash)) => (user_rowid, password_hash),
                 None => {
                     errr.user_id = Some(UserIdError::NotExist);
-                    return Ok(Err(errr));
+                    return Err(errr);
                 }
             };
 
-            match Auth::sign_in(&self.password, &password_hash) {
+            match Auth::sign_in(&self.password, password_hash) {
                 true => {
-                    side_effects.authenticated_users.insert(user_rowid.clone());
-                    side_effects.users_to_resubscribe.insert(user_rowid.clone());
-
-                    return Ok(Ok(Ok {
+                    return Ok(Ok {
                         user_uuid: user_rowid.clone(),
                         jwt: jwt.sign(&user_rowid),
-                    }));
+                    });
                 }
                 false => {
                     errr.password = Some(PasswordError::WrongPassword);
-                    return Ok(Err(errr));
+                    return Err(errr);
                 }
             };
         }
@@ -303,7 +174,7 @@ pub mod sign_in {
 pub mod create_company {
     use super::*;
 
-    pub type Result = StdResult<Ok, Error>;
+    pub type MyResult = Result<Ok, Error>;
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Input {
@@ -324,148 +195,42 @@ pub mod create_company {
 
     #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
     pub struct Error {
-        pub user_uuid: Option<UserUuidError>,
-        pub new_uuid: Option<RowIdError>,
+        pub user_uuid: Option<db_types::UserUuidError>,
+        pub new_uuid: Option<db_types::RowIdError>,
     }
 
-    impl Into<Vec<ResourceInfo>> for Ok {
-        fn into(self) -> Vec<ResourceInfo> {
-            let mut resource = Vec::new();
-
-            resource.push(ResourceInfo {
-                row_uuid: self.new_uuid.clone(),
-                resource: server_methods::Resource::TableCompanyFieldName(
-                    self.company_name.clone(),
-                ),
-            });
-            resource.push(ResourceInfo {
-                row_uuid: self.new_uuid.clone(),
-                resource: server_methods::Resource::TableCompanyFieldCurrency(
-                    self.currency.clone(),
-                ),
-            });
-            resource.push(ResourceInfo {
-                row_uuid: self.new_uuid.clone(),
-                resource: server_methods::Resource::TableAccessControlForCompanyFieldRole(
-                    self.role.clone(),
-                ),
-            });
-            resource.push(ResourceInfo {
-                row_uuid: self.new_uuid.clone(),
-                resource: server_methods::Resource::TableAccessControlForCompanyFieldUser(
-                    self.user_uuid.clone(),
-                ),
-            });
-            resource.push(ResourceInfo {
-                row_uuid: self.new_uuid.clone(),
-                resource: server_methods::Resource::TableAccessControlForCompanyFieldDataGroup(
-                    self.new_uuid.clone(),
-                ),
-            });
-
-            resource
-        }
-    }
-
-    impl EventMaker for Input {
-        type Ok = Ok;
-        type Error = Error;
-
-        async fn handle<
-            St: StateOp,
-            Rn: RandomNumber,
-            Rt: Runtime,
-            Id: RowId,
-            Mpsc: MultiProducerSingleConsumer,
-            Ed: Coding,
-            Rg: Regex,
-            Auth: HashedPassword,
-            Jwt: JWT,
-        >(
-            &self,
-            side_effects: &mut server_methods::SideEffects,
-            state: &mut St,
-            jwt: &Jwt,
-        ) -> StdResult<StdResult<Self::Ok, Self::Error>, DynamicError> {
-            let mut errr = Self::Error::default();
+    impl Input {
+        fn state_less_check<Id: RowId>(&self) -> Error {
+            let mut errr = Error::default();
 
             if !Id::validate(&self.new_uuid) {
-                errr.new_uuid = Some(RowIdError::Invalid);
+                errr.new_uuid = Some(db_types::RowIdError::Invalid);
             }
 
             if !Id::validate(&self.user_uuid) {
-                errr.user_uuid = Some(UserUuidError::Invalid);
+                errr.user_uuid = Some(db_types::UserUuidError::Invalid);
             }
+            errr
+        }
 
-            // TODO here is the bug
-            if side_effects
-                .authenticated_users
-                .get(&self.user_uuid)
-                .is_none()
-            {
-                errr.user_uuid = Some(UserUuidError::NotAuthenticated);
-            };
-
-            if errr != Self::Error::default() {
-                mbg!(&errr);
-                return Ok(Err(errr));
-            }
-
-            let is_new_uuid_used = state.read_create_company(&self.new_uuid).await?;
-
+        fn state_full_check<Id: RowId>(&self, is_new_uuid_used: bool) -> Error {
+            let mut errr = Error::default();
             if is_new_uuid_used {
-                errr.new_uuid = Some(RowIdError::Duplicated);
-                return Ok(Err(errr));
+                errr.new_uuid = Some(db_types::RowIdError::Duplicated);
             }
+            errr
+        }
 
+        fn handle(&self) -> Ok {
             const ROLE: db_types::Role = db_types::Role::Manager;
 
-            side_effects
-                .users_to_resubscribe
-                .insert(self.user_uuid.clone());
-
-            let mut resource = Vec::new();
-
-            resource.push(ResourceInfo {
-                row_uuid: self.new_uuid.clone(),
-                resource: server_methods::Resource::TableCompanyFieldName(
-                    self.company_name.clone(),
-                ),
-            });
-            resource.push(ResourceInfo {
-                row_uuid: self.new_uuid.clone(),
-                resource: server_methods::Resource::TableCompanyFieldCurrency(
-                    self.currency.clone(),
-                ),
-            });
-            resource.push(ResourceInfo {
-                row_uuid: self.new_uuid.clone(),
-                resource: server_methods::Resource::TableAccessControlForCompanyFieldRole(ROLE),
-            });
-            resource.push(ResourceInfo {
-                row_uuid: self.new_uuid.clone(),
-                resource: server_methods::Resource::TableAccessControlForCompanyFieldUser(
-                    self.user_uuid.clone(),
-                ),
-            });
-            resource.push(ResourceInfo {
-                row_uuid: self.new_uuid.clone(),
-                resource: server_methods::Resource::TableAccessControlForCompanyFieldDataGroup(
-                    self.new_uuid.clone(),
-                ),
-            });
-
-            side_effects
-                .resource_to_broadcast_for_company
-                .insert_append(self.new_uuid.clone(), resource.clone());
-
-            Ok(Ok(Ok {
+            Ok {
                 new_uuid: self.new_uuid.clone(),
                 company_name: self.company_name.clone(),
                 currency: self.currency.clone(),
                 user_uuid: self.user_uuid.clone(),
                 role: ROLE,
-            }))
+            }
         }
     }
 }
@@ -473,7 +238,7 @@ pub mod create_company {
 pub mod list_company_and_branch {
     use super::*;
 
-    pub type Result = StdResult<Ok, Error>;
+    pub type MyResult = Result<Ok, Error>;
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Input {
@@ -482,61 +247,23 @@ pub mod list_company_and_branch {
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Ok {
-        pub resource: Vec<ResourceInfo>,
+        pub resource: Vec<db_types::ResourceInfo>,
     }
 
     #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
     pub struct Error {
-        pub user_uuid: Option<UserUuidError>,
+        pub user_uuid: Option<db_types::UserUuidError>,
     }
 
-    impl Into<Vec<ResourceInfo>> for Ok {
-        fn into(self) -> Vec<ResourceInfo> {
-            self.resource
-        }
-    }
+    impl Input {
+        fn state_less_check<Id: RowId>(&self) -> Error {
+            let mut errr = Error::default();
 
-    impl EventMaker for Input {
-        type Ok = Ok;
-        type Error = Error;
-
-        async fn handle<
-            St: StateOp,
-            Rn: RandomNumber,
-            Rt: Runtime,
-            Id: RowId,
-            Mpsc: MultiProducerSingleConsumer,
-            Ed: Coding,
-            Rg: Regex,
-            Auth: HashedPassword,
-            Jwt: JWT,
-        >(
-            &self,
-            side_effects: &mut server_methods::SideEffects,
-            state: &mut St,
-            jwt: &Jwt,
-        ) -> StdResult<StdResult<Self::Ok, Self::Error>, DynamicError> {
-            let mut errr = Self::Error::default();
-
-            if Id::validate(&self.user_uuid) {
-                if side_effects
-                    .authenticated_users
-                    .get(&self.user_uuid)
-                    .is_none()
-                {
-                    errr.user_uuid = Some(UserUuidError::NotAuthenticated);
-                };
-            } else {
-                errr.user_uuid = Some(UserUuidError::Invalid);
+            if !Id::validate(&self.user_uuid) {
+                errr.user_uuid = Some(db_types::UserUuidError::Invalid);
             }
 
-            if errr != Self::Error::default() {
-                return Ok(Err(errr));
-            }
-
-            let resource = state.read_list_company_and_branch(&self.user_uuid).await?;
-
-            Ok(Ok(Ok { resource }))
+            errr
         }
     }
 }
@@ -544,7 +271,7 @@ pub mod list_company_and_branch {
 pub mod create_company_branch {
     use super::*;
 
-    pub type Result = StdResult<Ok, Error>;
+    pub type MyResult = Result<Ok, Error>;
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Input {
@@ -569,8 +296,8 @@ pub mod create_company_branch {
 
     #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
     pub struct Error {
-        pub user_uuid: Option<UserUuidError>,
-        pub new_uuid: Option<RowIdError>,
+        pub user_uuid: Option<db_types::UserUuidError>,
+        pub new_uuid: Option<db_types::RowIdError>,
         pub company_belong: Option<CompanyBelongError>,
         pub branch_name: Option<BranchNameError>,
         pub location: Option<LocationError>,
@@ -594,113 +321,43 @@ pub mod create_company_branch {
         Invalid,
     }
 
-    impl Into<Vec<ResourceInfo>> for Ok {
-        fn into(self) -> Vec<ResourceInfo> {
-            let mut resource = Vec::new();
-
-            resource.push(ResourceInfo {
-                row_uuid: self.new_uuid.clone(),
-                resource: Resource::TableCompanyBranchFieldName(self.branch_name.clone()),
-            });
-            resource.push(ResourceInfo {
-                row_uuid: self.new_uuid.clone(),
-                resource: Resource::TableCompanyBranchFieldCompanyBelong(
-                    self.company_belong.clone(),
-                ),
-            });
-            resource.push(ResourceInfo {
-                row_uuid: self.new_uuid.clone(),
-                resource: Resource::TableAccessControlForCompanyBranchFieldDataGroup(
-                    self.new_uuid.clone(),
-                ),
-            });
-            resource.push(ResourceInfo {
-                row_uuid: self.new_uuid.clone(),
-                resource: Resource::TableAccessControlForCompanyBranchFieldRole(self.role),
-            });
-            resource.push(ResourceInfo {
-                row_uuid: self.new_uuid.clone(),
-                resource: Resource::TableAccessControlForCompanyBranchFieldUser(
-                    self.user_uuid.clone(),
-                ),
-            });
-            resource.push(ResourceInfo {
-                row_uuid: self.new_uuid.clone(),
-                resource: Resource::TableCompanyBranchFieldCurrency(self.currency.clone()),
-            });
-            resource.push(ResourceInfo {
-                row_uuid: self.new_uuid.clone(),
-                resource: Resource::TableCompanyBranchFieldLocation(self.location.clone()),
-            });
-
-            resource
-        }
-    }
-
-    impl EventMaker for Input {
-        type Ok = Ok;
-        type Error = Error;
-
-        async fn handle<
-            St: StateOp,
-            Rn: RandomNumber,
-            Rt: Runtime,
-            Id: RowId,
-            Mpsc: MultiProducerSingleConsumer,
-            Ed: Coding,
-            Rg: Regex,
-            Auth: HashedPassword,
-            Jwt: JWT,
-        >(
-            &self,
-            side_effects: &mut server_methods::SideEffects,
-            state: &mut St,
-            jwt: &Jwt,
-        ) -> StdResult<StdResult<Self::Ok, Self::Error>, DynamicError> {
-            let mut errr = Self::Error::default();
+    impl Input {
+        fn state_less_check<Id: RowId>(&self) -> Error {
+            let mut errr = Error::default();
 
             if !Id::validate(&self.new_uuid) {
-                errr.new_uuid = Some(RowIdError::Invalid);
+                errr.new_uuid = Some(db_types::RowIdError::Invalid);
             }
 
-            if Id::validate(&self.user_uuid) {
-                if side_effects
-                    .authenticated_users
-                    .get(&self.user_uuid)
-                    .is_none()
-                {
-                    errr.user_uuid = Some(UserUuidError::NotAuthenticated);
-                };
-            } else {
-                errr.user_uuid = Some(UserUuidError::Invalid);
+            if !Id::validate(&self.user_uuid) {
+                errr.user_uuid = Some(db_types::UserUuidError::Invalid);
             };
 
             if !Id::validate(&self.company_belong) {
                 errr.company_belong = Some(CompanyBelongError::IdInWrongFormat);
             }
 
-            if errr != Self::Error::default() {
-                return Ok(Err(errr));
-            }
+            errr
+        }
 
-            let (user_roles, is_new_uuid_used, is_company_exist, is_branch_name_used) = state
-                .read_create_company_branch(
-                    &self.new_uuid,
-                    &self.user_uuid,
-                    &self.company_belong,
-                    &self.branch_name,
-                )
-                .await?;
+        fn state_full_check<Id: RowId>(
+            &self,
+            user_roles: &Vec<db_types::Role>,
+            is_new_uuid_used: bool,
+            is_company_exist: bool,
+            is_branch_name_used: bool,
+        ) -> Error {
+            let mut errr = Error::default();
 
             if !db_types::Role::has_any(
                 &user_roles,
                 &[db_types::Role::Manager, db_types::Role::CoManager],
             ) {
-                errr.user_uuid = Some(UserUuidError::YouDontHavePermissionToDoThat);
+                errr.user_uuid = Some(db_types::UserUuidError::YouDontHavePermissionToDoThat);
             }
 
             if is_new_uuid_used {
-                errr.new_uuid = Some(RowIdError::Duplicated);
+                errr.new_uuid = Some(db_types::RowIdError::Duplicated);
             }
 
             if !is_company_exist {
@@ -715,58 +372,13 @@ pub mod create_company_branch {
                 errr.location = Some(LocationError::Invalid);
             }
 
-            if errr != Self::Error::default() {
-                return Ok(Err(errr));
-            }
+            errr
+        }
 
+        fn handel(&self) -> Ok {
             const ROLE: db_types::Role = db_types::Role::CoManager;
 
-            side_effects
-                .users_to_resubscribe
-                .insert(self.user_uuid.clone());
-
-            let mut resource = Vec::new();
-
-            resource.push(ResourceInfo {
-                row_uuid: self.new_uuid.clone(),
-                resource: Resource::TableCompanyBranchFieldName(self.branch_name.clone()),
-            });
-            resource.push(ResourceInfo {
-                row_uuid: self.new_uuid.clone(),
-                resource: Resource::TableCompanyBranchFieldCompanyBelong(
-                    self.company_belong.clone(),
-                ),
-            });
-            resource.push(ResourceInfo {
-                row_uuid: self.new_uuid.clone(),
-                resource: Resource::TableAccessControlForCompanyBranchFieldDataGroup(
-                    self.new_uuid.clone(),
-                ),
-            });
-            resource.push(ResourceInfo {
-                row_uuid: self.new_uuid.clone(),
-                resource: Resource::TableAccessControlForCompanyBranchFieldRole(ROLE),
-            });
-            resource.push(ResourceInfo {
-                row_uuid: self.new_uuid.clone(),
-                resource: Resource::TableAccessControlForCompanyBranchFieldUser(
-                    self.user_uuid.clone(),
-                ),
-            });
-            resource.push(ResourceInfo {
-                row_uuid: self.new_uuid.clone(),
-                resource: Resource::TableCompanyBranchFieldCurrency(self.currency.clone()),
-            });
-            resource.push(ResourceInfo {
-                row_uuid: self.new_uuid.clone(),
-                resource: Resource::TableCompanyBranchFieldLocation(self.location.clone()),
-            });
-
-            side_effects
-                .resource_to_broadcast_for_company
-                .insert_append(self.new_uuid.clone(), resource.clone());
-
-            Ok(Ok(Ok {
+            Ok {
                 new_uuid: self.new_uuid.clone(),
                 branch_name: self.branch_name.clone(),
                 company_belong: self.company_belong.clone(),
@@ -774,7 +386,7 @@ pub mod create_company_branch {
                 currency: self.currency.clone(),
                 location: self.location.clone(),
                 role: ROLE,
-            }))
+            }
         }
     }
 }
