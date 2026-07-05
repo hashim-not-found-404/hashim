@@ -6,7 +6,7 @@ use crate::{
     },
     accounting_domain::{db_types, decider::RowId, request_response},
     utility::{
-        shared_traits::{
+        traits::{
             Coding, MultiProducerSingleConsumer, RandomNumber, Receiver, Runtime, Sender,
         },
         utils::ReadAndSet,

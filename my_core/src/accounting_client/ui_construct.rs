@@ -4,7 +4,7 @@ use crate::{
         ui_model,
     },
     accounting_domain::db_types,
-    utility::shared_traits::MultiProducerSingleConsumer,
+    utility::traits::MultiProducerSingleConsumer,
 };
 use std::sync::{Arc, RwLock};
 

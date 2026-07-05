@@ -3,7 +3,7 @@ use crate::{
         client_traits::{AllClientTypes, HashimSignal},
         client_types,
     },
-    utility::shared_traits::{JoinHandle, MultiProducerSingleConsumer, Receiver, Runtime, Sender},
+    utility::traits::{JoinHandle, MultiProducerSingleConsumer, Receiver, Runtime, Sender},
 };
 use std::{collections::HashMap, hash::Hash, time::Duration};
 

@@ -1,7 +1,7 @@
 #[cfg(not(target_arch = "wasm32"))]
 pub mod target {
     use my_core::utility::{
-        shared_traits::{Either, Runtime},
+        traits::{Either, Runtime},
         utils::DynamicError,
     };
     use std::time::Duration;
@@ -59,7 +59,7 @@ pub mod target {
     };
     use gloo_timers::future::TimeoutFuture;
     use my_core::utility::{
-        shared_traits::{Either, Runtime},
+        traits::{Either, Runtime},
         utils::DynamicError,
     };
     use std::{pin::pin, time::Duration};
@@ -125,7 +125,7 @@ pub mod target {
 mod join_handle {
     #[cfg(not(target_arch = "wasm32"))]
     pub mod target {
-        use my_core::utility::shared_traits::JoinHandle;
+        use my_core::utility::traits::JoinHandle;
 
         pub struct S<T>(pub tokio::task::JoinHandle<T>);
 
@@ -145,7 +145,7 @@ mod join_handle {
     #[cfg(target_arch = "wasm32")]
     pub mod target {
         use futures::{channel::oneshot, lock::Mutex};
-        use my_core::utility::shared_traits::JoinHandle;
+        use my_core::utility::traits::JoinHandle;
         use std::sync::Arc;
 
         pub struct S<T> {

@@ -11,7 +11,7 @@ use crate::{
         decider::{self, RowId},
     },
     mbg,
-    utility::shared_traits::{
+    utility::traits::{
         JoinHandle, MultiProducerSingleConsumer, RandomNumber, Receiver, Runtime, Sender,
     },
 };

@@ -1,5 +1,5 @@
 pub mod target {
-    use my_core::utility::shared_traits::Regex as MyRegex;
+    use my_core::utility::traits::Regex as MyRegex;
     use regex::Regex;
     use std::sync::LazyLock;
 

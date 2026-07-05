@@ -2,7 +2,7 @@ use crate::{
     accounting_client::client_traits::{AllClientTypes, WSClient},
     accounting_domain::db_types,
     utility::{
-        shared_traits::{Either, MultiProducerSingleConsumer, Receiver, Runtime, Sender},
+        traits::{Either, MultiProducerSingleConsumer, Receiver, Runtime, Sender},
         utils::{self, ReadAndSet},
     },
 };

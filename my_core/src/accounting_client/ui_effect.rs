@@ -7,7 +7,7 @@ use crate::{
     },
     accounting_domain::db_types,
     mbg,
-    utility::shared_traits::{MultiProducerSingleConsumer, Receiver, Runtime, Sender},
+    utility::traits::{MultiProducerSingleConsumer, Receiver, Runtime, Sender},
 };
 use std::sync::Arc;
 

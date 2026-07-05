@@ -10,7 +10,7 @@ use crate::{
         server_types,
     },
     utility::{
-        shared_traits::{
+        traits::{
             self, Coding, MultiProducerSingleConsumer, RandomNumber, Receiver, Runtime, Sender,
         },
         utils::{self, HashMapWithHashMapValue, HashMapWithVectorValue},
@@ -26,7 +26,7 @@ pub struct ServerMethods<At: server_traits::AllServerTypes> {
     database: At::Db,
     jwt: At::Jwt,
     pub sender_to_broker:
-        <At::Mpsc as shared_traits::MultiProducerSingleConsumer>::Sender<MessageToBroker<At::Mpsc>>,
+        <At::Mpsc as traits::MultiProducerSingleConsumer>::Sender<MessageToBroker<At::Mpsc>>,
 }
 
 impl<At: server_traits::AllServerTypes> ServerMethods<At> {
@@ -51,7 +51,7 @@ impl<At: server_traits::AllServerTypes> ServerMethods<At> {
             loop {
                 let result = At::Rt::select(session.receive(), receiver_to_server.recv()).await;
                 match result {
-                    shared_traits::Either::One(msg) => {
+                    traits::Either::One(msg) => {
                         let msg = match msg {
                             Ok(msg) => msg,
                             Err(_) => break,
@@ -191,7 +191,7 @@ impl<At: server_traits::AllServerTypes> ServerMethods<At> {
                             }
                         }
                     }
-                    shared_traits::Either::Two(wraped_resource) => {
+                    traits::Either::Two(wraped_resource) => {
                         let resource = wraped_resource.unwrap();
                         if session
                             .send_bin(At::Ed::encode(
@@ -216,7 +216,7 @@ impl<At: server_traits::AllServerTypes> ServerMethods<At> {
     }
 
     pub fn broker_actor(
-        mut receiver_to_broker: <At::Mpsc as shared_traits::MultiProducerSingleConsumer>::Receiver<
+        mut receiver_to_broker: <At::Mpsc as traits::MultiProducerSingleConsumer>::Receiver<
             MessageToBroker<At::Mpsc>,
         >,
     ) {
@@ -669,12 +669,12 @@ type UserSubscribes = HashMap<
     >,
 >;
 
-type UserSenders<Mpsc: shared_traits::MultiProducerSingleConsumer> = HashMap<
+type UserSenders<Mpsc: traits::MultiProducerSingleConsumer> = HashMap<
     db_types::UuidType,                                      // user uuid
     HashMap<u64, Mpsc::Sender<Vec<db_types::ResourceInfo>>>, // because user may have multiple web socket connection
 >;
 
-pub enum MessageToBroker<Mpsc: shared_traits::MultiProducerSingleConsumer> {
+pub enum MessageToBroker<Mpsc: traits::MultiProducerSingleConsumer> {
     Subscribe {
         connection_id: u64,
         list_of_subscribtion: AllSubscribes,

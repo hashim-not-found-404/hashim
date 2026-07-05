@@ -1,6 +1,6 @@
 pub mod target {
     use super::{mpsc_receiver, mpsc_sender};
-    use my_core::utility::shared_traits::MultiProducerSingleConsumer;
+    use my_core::utility::traits::MultiProducerSingleConsumer;
 
     pub struct S;
 
@@ -21,7 +21,7 @@ pub mod target {
 mod mpsc_receiver {
     pub mod target {
         use futures::channel::mpsc::UnboundedReceiver;
-        use my_core::utility::{shared_traits::Receiver, utils::DynamicError};
+        use my_core::utility::{traits::Receiver, utils::DynamicError};
 
         pub struct S<T>(pub UnboundedReceiver<T>);
         impl<T> Receiver<T> for S<T> {
@@ -41,7 +41,7 @@ mod mpsc_receiver {
 mod mpsc_sender {
     pub mod target {
         use futures::{SinkExt, channel::mpsc::UnboundedSender};
-        use my_core::utility::{shared_traits::Sender, utils::DynamicError};
+        use my_core::utility::{traits::Sender, utils::DynamicError};
 
         pub struct S<T>(pub UnboundedSender<T>);
         impl<T> Sender<T> for S<T> {

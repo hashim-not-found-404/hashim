@@ -1,6 +1,6 @@
 pub mod target {
     use getrandom::fill;
-    use my_core::utility::shared_traits::RandomNumber;
+    use my_core::utility::traits::RandomNumber;
 
     pub struct S;
 

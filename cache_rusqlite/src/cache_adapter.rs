@@ -3,7 +3,7 @@ use adapters::encode_decode;
 use my_core::{
     accounting_client::client_traits::Cache,
     accounting_domain::{db_types, request_response},
-    utility::shared_traits::Coding,
+    utility::traits::Coding,
 };
 use rusqlite::{Connection, OptionalExtension, params};
 use std::{ops::Add, str::FromStr};

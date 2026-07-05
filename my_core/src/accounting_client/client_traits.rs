@@ -1,7 +1,7 @@
 use crate::{
     accounting_client::client_types,
     accounting_domain::{db_types, decider, request_response},
-    utility::{shared_traits, utils},
+    utility::{traits, utils},
 };
 
 pub trait WSClient: Sized {
@@ -84,12 +84,12 @@ pub trait HashimSignal<T: Default + Clone>: Default {
 }
 
 pub trait AllClientTypes: 'static + Default + Clone {
-    type Rn: shared_traits::RandomNumber;
-    type Rt: shared_traits::Runtime;
+    type Rn: traits::RandomNumber;
+    type Rt: traits::Runtime;
     type Id: decider::RowId;
-    type Mpsc: shared_traits::MultiProducerSingleConsumer;
-    type Ed: shared_traits::Coding;
-    type Rg: shared_traits::Regex;
+    type Mpsc: traits::MultiProducerSingleConsumer;
+    type Ed: traits::Coding;
+    type Rg: traits::Regex;
 
     type Ch: Cache;
     type Ws: WSClient;

@@ -1,2 +1,2 @@
-pub mod shared_traits;
+pub mod traits;
 pub mod utils;

@@ -1,7 +1,7 @@
 use crate::{
     accounting_domain::{db_types, decider},
     server::server_types,
-    utility::{shared_traits, utils},
+    utility::{traits, utils},
 };
 use std::collections::HashSet;
 
@@ -119,12 +119,12 @@ pub trait AllServerTypes: 'static
 where
     for<'a> <Self::Cli as DBClient>::Txn<'a>: DBTransaction,
 {
-    type Rn: shared_traits::RandomNumber;
-    type Rt: shared_traits::Runtime;
+    type Rn: traits::RandomNumber;
+    type Rt: traits::Runtime;
     type Id: decider::RowId;
-    type Mpsc: shared_traits::MultiProducerSingleConsumer;
-    type Ed: shared_traits::Coding;
-    type Rg: shared_traits::Regex;
+    type Mpsc: traits::MultiProducerSingleConsumer;
+    type Ed: traits::Coding;
+    type Rg: traits::Regex;
 
     type Auth: decider::HashedPassword;
     type Jwt: decider::JWT;
