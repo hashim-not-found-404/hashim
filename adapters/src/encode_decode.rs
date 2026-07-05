@@ -1,6 +1,5 @@
 pub mod target {
-    use my_core::utility::shared_traits::Coding;
-    use my_core::utility::utils::DynamicError;
+    use my_core::utility::{shared_traits::Coding, utils::DynamicError};
     use postcard::{from_bytes, to_allocvec};
     use serde::{Deserialize, Serialize};
 

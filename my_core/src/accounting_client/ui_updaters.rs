@@ -1,14 +1,14 @@
 use crate::{
-    accounting_domain::{
-        db_types,
-        decider::{self, RowId},
-    },
     accounting_client::{
         cache_actor,
         client_traits::{AllClientTypes, HashimSignal},
         client_types,
         operations::{self, ViewType1, ViewType2},
         process_manager, ui_model,
+    },
+    accounting_domain::{
+        db_types,
+        decider::{self, RowId},
     },
     mbg,
     utility::shared_traits::{

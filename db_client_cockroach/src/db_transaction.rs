@@ -1,11 +1,9 @@
-use my_core::accounting_domain::db_types;
-use my_core::accounting_domain::decider;
-use my_core::server::server_traits::DBTransaction;
-use my_core::server::server_traits::domain_errors;
-use my_core::utility::utils::DynamicError;
-use my_core::utility::utils::LogError;
-use rust_decimal::Decimal;
-use rust_decimal::prelude::FromPrimitive;
+use my_core::{
+    accounting_domain::{db_types, decider},
+    server::server_traits::{DBTransaction, domain_errors},
+    utility::utils::{DynamicError, LogError},
+};
+use rust_decimal::{Decimal, prelude::FromPrimitive};
 use std::str::FromStr;
 use tokio_postgres::error::SqlState;
 

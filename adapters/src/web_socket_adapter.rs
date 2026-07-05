@@ -1,14 +1,16 @@
 #[cfg(not(target_arch = "wasm32"))]
 pub mod target {
-    use futures::stream::{SplitSink, SplitStream};
-    use futures::{SinkExt, StreamExt};
-    use my_core::accounting_client::client_traits::WSClient;
-    use my_core::accounting_domain::db_types::HashimError;
-    use my_core::utility::utils::DynamicError;
-    use my_core::utility::utils::LogError;
+    use futures::{
+        SinkExt, StreamExt,
+        stream::{SplitSink, SplitStream},
+    };
+    use my_core::{
+        accounting_client::client_traits::WSClient,
+        accounting_domain::db_types::HashimError,
+        utility::utils::{DynamicError, LogError},
+    };
     use std::sync::Mutex;
-    use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
-    use tokio_tungstenite::{connect_async, tungstenite::Message};
+    use tokio_tungstenite::{MaybeTlsStream, WebSocketStream, connect_async, tungstenite::Message};
 
     pub struct S {
         write: Mutex<SplitSink<WebSocketStream<MaybeTlsStream<tokio::net::TcpStream>>, Message>>,
@@ -61,10 +63,11 @@ pub mod target {
         stream::{SplitSink, SplitStream},
     };
     use gloo_net::websocket::{Message, futures::WebSocket};
-    use my_core::accounting_client::client_traits::WSClient;
-    use my_core::accounting_domain::db_types::HashimError;
-    use my_core::utility::utils::DynamicError;
-    use my_core::utility::utils::LogError;
+    use my_core::{
+        accounting_client::client_traits::WSClient,
+        accounting_domain::db_types::HashimError,
+        utility::utils::{DynamicError, LogError},
+    };
     use std::sync::Mutex;
 
     pub struct S {

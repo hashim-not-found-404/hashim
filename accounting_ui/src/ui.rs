@@ -1,11 +1,10 @@
+use crate::my_types;
 use dioxus::prelude::*;
 use my_core::accounting_client::{
     client_traits::{AllClientTypes, HashimSignal},
     client_types, process_manager, ui_construct, ui_effect, ui_model,
 };
 use std::sync::LazyLock;
-
-use crate::my_types;
 
 type TheModel = ui_model::Model<my_types::S>;
 type TheCommander = ui_effect::Commander<my_types::S>;

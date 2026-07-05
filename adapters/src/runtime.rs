@@ -1,8 +1,9 @@
 #[cfg(not(target_arch = "wasm32"))]
 pub mod target {
-    use my_core::utility::shared_traits::Either;
-    use my_core::utility::shared_traits::Runtime;
-    use my_core::utility::utils::DynamicError;
+    use my_core::utility::{
+        shared_traits::{Either, Runtime},
+        utils::DynamicError,
+    };
     use std::time::Duration;
     use tokio;
 
@@ -57,9 +58,10 @@ pub mod target {
         future::{Either as Eth, select},
     };
     use gloo_timers::future::TimeoutFuture;
-    use my_core::utility::shared_traits::Either;
-    use my_core::utility::shared_traits::Runtime;
-    use my_core::utility::utils::DynamicError;
+    use my_core::utility::{
+        shared_traits::{Either, Runtime},
+        utils::DynamicError,
+    };
     use std::{pin::pin, time::Duration};
     use wasm_bindgen_futures::spawn_local;
 

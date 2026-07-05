@@ -1,3 +1,4 @@
+use crate::my_signal;
 use adapters::{
     actors, encode_decode, functions, random_number, row_id, runtime, web_socket_adapter,
 };
@@ -6,8 +7,6 @@ use my_core::{
     accounting_client::{client_traits::AllClientTypes, client_types},
     accounting_domain::db_types,
 };
-
-use crate::my_signal;
 
 #[derive(Default, Clone)]
 pub struct S;

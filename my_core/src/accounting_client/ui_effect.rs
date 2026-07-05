@@ -1,11 +1,11 @@
 use crate::{
-    accounting_domain::db_types,
     accounting_client::{
         cache_actor,
         client_traits::{AllClientTypes, HashimSignal},
-        process_manager, ui_model, ui_updaters,
-        ui_updaters::Mvu,
+        process_manager, ui_model,
+        ui_updaters::{self, Mvu},
     },
+    accounting_domain::db_types,
     mbg,
     utility::shared_traits::{MultiProducerSingleConsumer, Receiver, Runtime, Sender},
 };

@@ -1,6 +1,7 @@
 use crate::{
-    accounting_domain::db_types, accounting_domain::decider, accounting_domain::request_response,
-    accounting_client::client_types, utility::shared_traits, utility::utils,
+    accounting_client::client_types,
+    accounting_domain::{db_types, decider, request_response},
+    utility::{shared_traits, utils},
 };
 
 pub trait WSClient: Sized {

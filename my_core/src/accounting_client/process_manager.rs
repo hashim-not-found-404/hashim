@@ -1,6 +1,8 @@
 use crate::{
-    accounting_client::client_traits::{AllClientTypes, HashimSignal},
-    accounting_client::client_types,
+    accounting_client::{
+        client_traits::{AllClientTypes, HashimSignal},
+        client_types,
+    },
     utility::shared_traits::{JoinHandle, MultiProducerSingleConsumer, Receiver, Runtime, Sender},
 };
 use std::{collections::HashMap, hash::Hash, time::Duration};
