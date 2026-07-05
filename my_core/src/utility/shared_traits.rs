@@ -1,4 +1,4 @@
-use crate::utils;
+use crate::utility::utils;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 

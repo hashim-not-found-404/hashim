@@ -1,4 +1,4 @@
-use crate::db_types;
+use crate::accounting_domain::db_types;
 use std::collections::{HashMap, HashSet};
 
 pub struct AllRoles {

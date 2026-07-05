@@ -1,8 +1,8 @@
 use crate::{
-    client_traits::{AllClientTypes, WSClient},
-    db_types,
-    shared_traits::{Either, MultiProducerSingleConsumer, Receiver, Runtime, Sender},
-    utils::{self, ReadAndSet},
+    accounting_domain::db_types,
+    client::client_traits::{AllClientTypes, WSClient},
+    utility::shared_traits::{Either, MultiProducerSingleConsumer, Receiver, Runtime, Sender},
+    utility::utils::{self, ReadAndSet},
 };
 use std::{
     sync::{Arc, RwLock},

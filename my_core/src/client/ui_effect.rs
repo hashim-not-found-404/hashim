@@ -1,12 +1,15 @@
 use crate::{
-    cache_actor,
-    client_traits::{AllClientTypes, HashimSignal},
-    db_types, mbg, process_manager,
-    shared_traits::{MultiProducerSingleConsumer, Receiver, Runtime, Sender},
-    ui_model,
-    ui_updaters::{self, Mvu},
+    accounting_domain::db_types,
+    client::{
+        cache_actor,
+        client_traits::{AllClientTypes, HashimSignal},
+        process_manager, ui_model, ui_updaters,
+        ui_updaters::Mvu,
+    },
+    mbg,
+    utility::shared_traits::{MultiProducerSingleConsumer, Receiver, Runtime, Sender},
 };
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 pub struct Commander<At: AllClientTypes> {
     sender: <At::Mpsc as MultiProducerSingleConsumer>::Sender<ui_model::Message>,

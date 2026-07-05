@@ -1,6 +1,10 @@
 use crate::{
-    cache_actor, client_traits::AllClientTypes, db_types, network_actor, process_manager,
-    shared_traits::MultiProducerSingleConsumer, ui_effect, ui_model,
+    accounting_domain::db_types,
+    client::{
+        cache_actor, client_traits::AllClientTypes, network_actor, process_manager, ui_effect,
+        ui_model,
+    },
+    utility::shared_traits::MultiProducerSingleConsumer,
 };
 use std::sync::{Arc, RwLock};
 

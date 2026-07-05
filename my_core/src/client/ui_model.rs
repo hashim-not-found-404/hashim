@@ -1,4 +1,6 @@
-use crate::{client_traits::AllClientTypes, db_types, process_manager};
+use crate::{
+    accounting_domain::db_types, client::client_traits::AllClientTypes, client::process_manager,
+};
 
 // model
 

@@ -1,4 +1,7 @@
-use crate::{client_types, db_types, decider, request_response, shared_traits, utils};
+use crate::{
+    accounting_domain::db_types, accounting_domain::decider, accounting_domain::request_response,
+    client::client_types, utility::shared_traits, utility::utils,
+};
 
 pub trait WSClient: Sized {
     fn connect(url: &str) -> impl Future<Output = Result<Self, utils::DynamicError>>;

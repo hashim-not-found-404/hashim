@@ -1,4 +1,4 @@
-use crate::{db_types, decider};
+use crate::accounting_domain::{db_types, decider};
 use serde::{Deserialize, Serialize};
 
 pub mod messages {

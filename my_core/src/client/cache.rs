@@ -1,11 +1,12 @@
 use crate::{
-    client_traits::{AllClientTypes, Cache},
-    db_types, utils,
+    accounting_domain::db_types,
+    client::client_traits::{AllClientTypes, Cache},
+    utility::utils,
 };
 use std::collections::{HashMap, HashSet};
 
 pub mod tables {
-    use crate::db_types;
+    use crate::accounting_domain::db_types;
 
     #[derive(Default)]
     pub struct User {

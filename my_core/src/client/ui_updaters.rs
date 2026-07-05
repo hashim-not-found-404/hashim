@@ -1,15 +1,19 @@
 use crate::{
-    cache_actor,
-    client_traits::{AllClientTypes, HashimSignal},
-    client_types, db_types, decider,
-    decider::RowId,
+    accounting_domain::{
+        db_types,
+        decider::{self, RowId},
+    },
+    client::{
+        cache_actor,
+        client_traits::{AllClientTypes, HashimSignal},
+        client_types,
+        operations::{self, ViewType1, ViewType2},
+        process_manager, ui_model,
+    },
     mbg,
-    operations::{self, ViewType1, ViewType2},
-    process_manager,
-    shared_traits::{
+    utility::shared_traits::{
         JoinHandle, MultiProducerSingleConsumer, RandomNumber, Receiver, Runtime, Sender,
     },
-    ui_model,
 };
 use std::{
     str::FromStr,
@@ -798,8 +802,6 @@ pub mod create_company {
 }
 
 pub mod create_company_branch {
-    use crate::client_types;
-
     use super::*;
 
     impl Mvu for ui_model::CreateCompanyBranch {

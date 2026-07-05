@@ -1,4 +1,4 @@
-use crate::db_types;
+use crate::accounting_domain::db_types;
 use serde::{Deserialize, Serialize};
 
 pub trait RowId {
