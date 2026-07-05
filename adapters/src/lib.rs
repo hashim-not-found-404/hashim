@@ -7,7 +7,3 @@ pub mod random_number;
 pub mod row_id;
 pub mod runtime;
 pub mod web_socket_adapter;
-
-pub mod prelude {
-    pub use crate::*;
-}

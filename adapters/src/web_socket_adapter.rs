@@ -2,7 +2,10 @@
 pub mod m {
     use futures::stream::{SplitSink, SplitStream};
     use futures::{SinkExt, StreamExt};
-    use my_core::prelude::*;
+    use my_core::accounting_client::client_traits::WSClient;
+    use my_core::accounting_domain::db_types::HashimError;
+    use my_core::utility::utils::DynamicError;
+    use my_core::utility::utils::LogError;
     use std::sync::Mutex;
     use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
     use tokio_tungstenite::{connect_async, tungstenite::Message};
@@ -58,7 +61,10 @@ pub mod m {
         stream::{SplitSink, SplitStream},
     };
     use gloo_net::websocket::{Message, futures::WebSocket};
-    use my_core::prelude::*;
+    use my_core::accounting_client::client_traits::WSClient;
+    use my_core::accounting_domain::db_types::HashimError;
+    use my_core::utility::utils::DynamicError;
+    use my_core::utility::utils::LogError;
     use std::sync::Mutex;
 
     pub struct S {

@@ -18,7 +18,7 @@ regex = "1.12.4"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tokio-tungstenite = "0.29.0"
-tokio = { workspace = true , features = ["macros"]}
+tokio = { workspace = true , features = ["macros","rt"]}
 argon2 = "0.5.3"
 jsonwebtoken = { version = "10.4.0", features = ["rust_crypto"] }
 

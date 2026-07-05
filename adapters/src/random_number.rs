@@ -1,6 +1,6 @@
 pub mod m {
     use getrandom::fill;
-    use my_core::prelude::*;
+    use my_core::utility::shared_traits::RandomNumber;
 
     pub struct S;
 

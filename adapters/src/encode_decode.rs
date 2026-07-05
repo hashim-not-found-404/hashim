@@ -1,5 +1,6 @@
 pub mod m {
-    use my_core::prelude::*;
+    use my_core::utility::shared_traits::Coding;
+    use my_core::utility::utils::DynamicError;
     use postcard::{from_bytes, to_allocvec};
     use serde::{Deserialize, Serialize};
 
