@@ -1,5 +1,5 @@
 #[cfg(not(target_arch = "wasm32"))]
-pub mod m {
+pub mod target {
     use futures::stream::{SplitSink, SplitStream};
     use futures::{SinkExt, StreamExt};
     use my_core::accounting_client::client_traits::WSClient;
@@ -55,7 +55,7 @@ pub mod m {
 }
 
 #[cfg(target_arch = "wasm32")]
-pub mod m {
+pub mod target {
     use futures_util::{
         SinkExt, StreamExt,
         stream::{SplitSink, SplitStream},

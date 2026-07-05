@@ -1,22 +1,25 @@
-pub mod m {
+pub mod target {
     use super::*;
     use my_core::utility::shared_traits::MultiProducerSingleConsumer;
 
     pub struct S;
 
     impl MultiProducerSingleConsumer for S {
-        type Sender<T> = mpsc_sender::m::S<T>;
-        type Receiver<T> = mpsc_receiver::m::S<T>;
+        type Sender<T> = mpsc_sender::target::S<T>;
+        type Receiver<T> = mpsc_receiver::target::S<T>;
 
         fn channel<T>() -> (Self::Sender<T>, Self::Receiver<T>) {
             let (tx, rx) = futures::channel::mpsc::unbounded();
-            (mpsc_sender::m::S::new(tx), mpsc_receiver::m::S::new(rx))
+            (
+                mpsc_sender::target::S::new(tx),
+                mpsc_receiver::target::S::new(rx),
+            )
         }
     }
 }
 
 mod mpsc_receiver {
-    pub mod m {
+    pub mod target {
         use futures::channel::mpsc::UnboundedReceiver;
         use my_core::utility::shared_traits::Receiver;
         use my_core::utility::utils::DynamicError;
@@ -37,7 +40,7 @@ mod mpsc_receiver {
 }
 
 mod mpsc_sender {
-    pub mod m {
+    pub mod target {
         use futures::{SinkExt, channel::mpsc::UnboundedSender};
         use my_core::utility::shared_traits::Sender;
         use my_core::utility::utils::DynamicError;

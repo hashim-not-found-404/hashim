@@ -1,5 +1,5 @@
 #[cfg(not(target_arch = "wasm32"))]
-pub mod m {
+pub mod target {
     use argon2::{
         Argon2, PasswordHash, PasswordHasher, PasswordVerifier,
         password_hash::{SaltString, rand_core::OsRng},

@@ -1,18 +1,18 @@
-pub mod m {
+pub mod target {
     use crate::prelude::*;
 
     pub struct S;
     impl AllServerTypes for S {
         type Db = db::S;
         type Cli = db_client::S;
-        type Jwt = jwt::m::S;
-        type Auth = authentication::m::S;
-        type Rg = functions::m::S;
-        type Id = row_id::m::S;
-        type Mpsc = actors::m::S;
-        type Rt = runtime::m::S;
-        type Ed = encode_decode::m::S;
-        type Rn = random_number::m::S;
-        type Ws = web_socket_server::m::S;
+        type Jwt = jwt::target::S;
+        type Auth = authentication::target::S;
+        type Rg = functions::target::S;
+        type Id = row_id::target::S;
+        type Mpsc = actors::target::S;
+        type Rt = runtime::target::S;
+        type Ed = encode_decode::target::S;
+        type Rn = random_number::target::S;
+        type Ws = web_socket_server::target::S;
     }
 }

@@ -1,4 +1,4 @@
-pub mod m {
+pub mod target {
     use getrandom::fill;
     use my_core::utility::shared_traits::RandomNumber;
 

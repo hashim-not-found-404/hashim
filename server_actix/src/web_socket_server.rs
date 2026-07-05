@@ -1,4 +1,4 @@
-pub mod m {
+pub mod target {
     use actix_ws::{AggregatedMessage, AggregatedMessageStream, Session};
     use futures_util::StreamExt;
     use my_core::prelude::*;

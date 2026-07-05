@@ -1,4 +1,4 @@
-pub mod m {
+pub mod target {
     use my_core::accounting_domain::db_types;
     use my_core::accounting_domain::decider::RowId;
     use uuid::Uuid;

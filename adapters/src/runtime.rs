@@ -1,5 +1,5 @@
 #[cfg(not(target_arch = "wasm32"))]
-pub mod m {
+pub mod target {
     use my_core::utility::shared_traits::Either;
     use my_core::utility::shared_traits::Runtime;
     use my_core::utility::utils::DynamicError;
@@ -9,7 +9,7 @@ pub mod m {
     pub struct S;
 
     impl Runtime for S {
-        type JoinHandle<F> = super::join_handle::m::S<F>;
+        type JoinHandle<F> = super::join_handle::target::S<F>;
 
         fn abortable_spawn_local<F: Future + 'static>(fut: F) -> Self::JoinHandle<F::Output> {
             Self::JoinHandle::new(tokio::task::spawn_local(fut))
@@ -50,7 +50,7 @@ pub mod m {
 }
 
 #[cfg(target_arch = "wasm32")]
-pub mod m {
+pub mod target {
     use super::*;
     use futures::{
         channel::oneshot,
@@ -66,7 +66,7 @@ pub mod m {
     pub struct S;
 
     impl Runtime for S {
-        type JoinHandle<T> = join_handle::m::S<T>;
+        type JoinHandle<T> = join_handle::target::S<T>;
 
         fn abortable_spawn_local<F: Future + 'static>(fut: F) -> Self::JoinHandle<F::Output> {
             let (sender_to_abort, mut receiver_to_abort) = oneshot::channel();
@@ -122,7 +122,7 @@ pub mod m {
 
 mod join_handle {
     #[cfg(not(target_arch = "wasm32"))]
-    pub mod m {
+    pub mod target {
         use my_core::utility::shared_traits::JoinHandle;
 
         pub struct S<T>(pub tokio::task::JoinHandle<T>);
@@ -141,7 +141,7 @@ mod join_handle {
     }
 
     #[cfg(target_arch = "wasm32")]
-    pub mod m {
+    pub mod target {
         use futures::{channel::oneshot, lock::Mutex};
         use my_core::utility::shared_traits::JoinHandle;
         use std::sync::Arc;

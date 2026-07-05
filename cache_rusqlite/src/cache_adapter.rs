@@ -28,8 +28,10 @@ impl Cache for S {
             .query_map([], |row| {
                 Ok(push_data::Txn {
                     txn_number: row.get::<usize, i64>(0).unwrap() as u64,
-                    operation: encode_decode::m::S::decode(&row.get::<usize, Vec<u8>>(1).unwrap())
-                        .unwrap(),
+                    operation: encode_decode::target::S::decode(
+                        &row.get::<usize, Vec<u8>>(1).unwrap(),
+                    )
+                    .unwrap(),
                 })
             })
             .unwrap();
@@ -42,7 +44,7 @@ impl Cache for S {
     }
 
     async fn write_txn_input(&self, txn: &push_data::Txn<push_data::OperationsInput>) -> () {
-        let txn_data = encode_decode::m::S::encode(&txn.operation);
+        let txn_data = encode_decode::target::S::encode(&txn.operation);
         self.db
             .execute(
                 "INSERT OR REPLACE INTO write_cache_transactions_input (txn_number, txn) VALUES (?1, ?2)",
@@ -52,7 +54,7 @@ impl Cache for S {
     }
 
     async fn write_txn_result(&self, txn: &push_data::Txn<push_data::OperationsResult>) {
-        let txn_data = encode_decode::m::S::encode(&txn.operation);
+        let txn_data = encode_decode::target::S::encode(&txn.operation);
         self.db
             .execute(
                 "INSERT OR REPLACE INTO write_cache_transactions_result (txn_number, txn) VALUES (?1, ?2)",

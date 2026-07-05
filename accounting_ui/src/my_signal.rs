@@ -1,4 +1,4 @@
-pub mod m {
+pub mod target {
     use crate::prelude::*;
     use dioxus::{core::ReactiveContext, prelude::*};
     use std::{

@@ -1,5 +1,5 @@
 #[cfg(not(target_arch = "wasm32"))]
-pub mod m {
+pub mod target {
     use chrono::{Duration, Utc};
     use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode};
     use my_core::accounting_domain::db_types;

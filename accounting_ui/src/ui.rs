@@ -2,12 +2,12 @@ use crate::prelude::*;
 use dioxus::prelude::*;
 use std::sync::LazyLock;
 
-type TheModel = ui_model::Model<my_types::m::S>;
-type TheCommander = ui_effect::Commander<my_types::m::S>;
+type TheModel = ui_model::Model<my_types::target::S>;
+type TheCommander = ui_effect::Commander<my_types::target::S>;
 
 static MODEL: LazyLock<TheModel> = LazyLock::new(|| TheModel::default());
 static COMMANDER: LazyLock<TheCommander> =
-    LazyLock::new(|| ui_construct::new::<my_types::m::S>(&MODEL));
+    LazyLock::new(|| ui_construct::new::<my_types::target::S>(&MODEL));
 
 const ICONS_SHOW: Asset = asset!("/assets/icons/show.png");
 const ICONS_HIDE: Asset = asset!("/assets/icons/hide.png");
@@ -40,7 +40,7 @@ pub fn App() -> Element {
 fn Dialog(
     consent_callback: EventHandler<process_manager::UserConsent>,
     operation_name: &'static str,
-    show_dialog: <my_types::m::S as AllClientTypes>::Dialog,
+    show_dialog: <my_types::target::S as AllClientTypes>::Dialog,
 ) -> Element {
     let consent_callback1 = consent_callback.clone();
 

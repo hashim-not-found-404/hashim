@@ -1,4 +1,4 @@
-pub mod m {
+pub mod target {
     use my_core::utility::shared_traits::Coding;
     use my_core::utility::utils::DynamicError;
     use postcard::{from_bytes, to_allocvec};
