@@ -314,8 +314,8 @@ pub(crate) mod sign_in {
     pub(crate) struct Type4(pub(crate) Result<SignInOk, cases::sign_in::Error>);
 
     pub(crate) struct SignInOk {
-        pub user_uuid: types::UuidType,
-        pub user_name: String,
+        pub(crate) user_uuid: types::UuidType,
+        pub(crate) user_name: String,
     }
 
     impl ViewType1 for Type1 {

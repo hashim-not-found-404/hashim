@@ -59,7 +59,7 @@ pub(crate) trait Mvu {
     );
 }
 
-pub mod sign_up {
+pub(crate) mod sign_up {
     use super::*;
 
     impl Mvu for ui_model::SignUp {
@@ -295,7 +295,7 @@ pub mod sign_up {
     }
 }
 
-pub mod sign_in {
+pub(crate) mod sign_in {
     use super::*;
 
     impl Mvu for ui_model::SignIn {
@@ -513,7 +513,7 @@ pub mod sign_in {
     }
 }
 
-pub mod company_and_branch_selection {
+pub(crate) mod company_and_branch_selection {
     use super::*;
 
     impl Mvu for ui_model::CompanyAndBranchSelection {
@@ -721,7 +721,7 @@ pub mod company_and_branch_selection {
     }
 }
 
-pub mod create_company {
+pub(crate) mod create_company {
     use super::*;
 
     impl Mvu for ui_model::CreateCompany {
@@ -801,7 +801,7 @@ pub mod create_company {
     }
 }
 
-pub mod create_company_branch {
+pub(crate) mod create_company_branch {
     use super::*;
 
     impl Mvu for ui_model::CreateCompanyBranch {

@@ -16,13 +16,13 @@ use std::{
 };
 
 #[derive(Clone)]
-pub struct Data {
-    pub is_response_from_server: bool,
-    pub data: request_response::push_data::OperationsResult,
+pub(crate) struct Data {
+    pub(crate) is_response_from_server: bool,
+    pub(crate) data: request_response::push_data::OperationsResult,
 }
 
 #[derive(Clone)]
-pub enum Response {
+pub(crate) enum Response {
     CloseTheChannel,
     ServerCannotBeReached,
     Data(Data),
@@ -59,7 +59,7 @@ pub(crate) enum MessageToCache<At: AllClientTypes> {
     },
 }
 
-pub struct CacheStruct<At>
+pub(crate) struct CacheStruct<At>
 where
     At: AllClientTypes,
 {
@@ -435,7 +435,7 @@ where
     }
 }
 
-pub fn collect_subs_to_poke(
+pub(crate) fn collect_subs_to_poke(
     subs_to_poke: &mut HashSet<types::Subscribe>,
     resource: &Vec<types::ResourceInfo>,
 ) {

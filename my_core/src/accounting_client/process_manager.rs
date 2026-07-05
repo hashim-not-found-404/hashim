@@ -39,7 +39,7 @@ pub(crate) enum MessageToProcessManager<At: AllClientTypes> {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub enum ProceedResult {
+pub(crate) enum ProceedResult {
     Yes,
     No,
 }
@@ -51,7 +51,7 @@ pub enum UserConsent {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub enum IsProceed {
+pub(crate) enum IsProceed {
     Wait,
     Yes,
     No,

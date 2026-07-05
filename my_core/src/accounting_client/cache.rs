@@ -5,58 +5,59 @@ use crate::{
 };
 use std::collections::{HashMap, HashSet};
 
-pub mod tables {
+pub(crate) mod tables {
     use crate::accounting_domain::types;
 
     #[derive(Default)]
-    pub struct User {
-        pub name: Option<String>,
-        pub id: String,
-        pub password: String,
+    pub(crate) struct User {
+        pub(crate) name: Option<String>,
+        pub(crate) id: String,
+        pub(crate) password: String,
     }
     #[derive(Default)]
-    pub struct Company {
-        pub name: String,
-        pub currency: types::Currency,
+    pub(crate) struct Company {
+        pub(crate) name: String,
+        pub(crate) currency: types::Currency,
     }
     #[derive(Default)]
-    pub struct AccessControlForCompany {
-        pub data_group: types::UuidType,
-        pub user_: types::UuidType,
-        pub role: types::Role,
+    pub(crate) struct AccessControlForCompany {
+        pub(crate) data_group: types::UuidType,
+        pub(crate) user_: types::UuidType,
+        pub(crate) role: types::Role,
     }
     #[derive(Default)]
-    pub struct CompanyBranch {
-        pub company_belong: types::UuidType,
-        pub name: String,
-        pub location: types::Location,
-        pub currency: types::Currency,
+    pub(crate) struct CompanyBranch {
+        pub(crate) company_belong: types::UuidType,
+        pub(crate) name: String,
+        pub(crate) location: types::Location,
+        pub(crate) currency: types::Currency,
     }
     #[derive(Default)]
-    pub struct AccessControlForCompanyBranch {
-        pub data_group: types::UuidType,
-        pub user_: types::UuidType,
-        pub role: types::Role,
+    pub(crate) struct AccessControlForCompanyBranch {
+        pub(crate) data_group: types::UuidType,
+        pub(crate) user_: types::UuidType,
+        pub(crate) role: types::Role,
     }
 }
 
 #[derive(Default)]
-pub struct StateOfPendingTxn {
-    pub user: HashMap<types::UuidType, tables::User>,
-    pub company: HashMap<types::UuidType, tables::Company>,
-    pub access_control_for_company: HashMap<types::UuidType, tables::AccessControlForCompany>,
-    pub company_branch: HashMap<types::UuidType, tables::CompanyBranch>,
-    pub access_control_for_company_branch:
+pub(crate) struct StateOfPendingTxn {
+    pub(crate) user: HashMap<types::UuidType, tables::User>,
+    pub(crate) company: HashMap<types::UuidType, tables::Company>,
+    pub(crate) access_control_for_company:
+        HashMap<types::UuidType, tables::AccessControlForCompany>,
+    pub(crate) company_branch: HashMap<types::UuidType, tables::CompanyBranch>,
+    pub(crate) access_control_for_company_branch:
         HashMap<types::UuidType, tables::AccessControlForCompanyBranch>,
 }
 
-pub struct State<At: AllClientTypes> {
-    pub state_of_pending_txn: StateOfPendingTxn,
-    pub cache: At::Ch,
+pub(crate) struct State<At: AllClientTypes> {
+    pub(crate) state_of_pending_txn: StateOfPendingTxn,
+    pub(crate) cache: At::Ch,
 }
 
 impl<At: AllClientTypes> State<At> {
-    pub async fn new() -> Self {
+    pub(crate) async fn new() -> Self {
         let cache = At::Ch::new().await;
         let txns = cache.get_all_txn_input().await;
 
@@ -191,9 +192,9 @@ impl<At: AllClientTypes> State<At> {
     ) -> Result<
         (
             Vec<types::Role>, /* user roles */
-            bool,                /* is new_uuid exist */
-            bool,                /* is company_belong exist */
-            bool,                /* is branch_name used */
+            bool,             /* is new_uuid exist */
+            bool,             /* is company_belong exist */
+            bool,             /* is branch_name used */
         ),
         utils::DynamicError,
     > {
