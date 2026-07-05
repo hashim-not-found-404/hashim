@@ -1,4 +1,4 @@
-use crate::client_traits::AllClientTypes;
+use crate::{client_traits::AllClientTypes, db_types, process_manager};
 
 // model
 
@@ -80,4 +80,61 @@ pub struct PageCreateCompanyBranch<At: AllClientTypes> {
     pub currency: At::Currency,
     pub branch_name: At::String,
     pub location: At::Location,
+}
+
+// message
+
+#[derive(Debug)]
+pub enum Message {
+    CloseError,
+
+    SignIn(SignIn),
+    SignUp(SignUp),
+    CompanyAndBranchSelection(CompanyAndBranchSelection),
+    CreateCompany(CreateCompany),
+    CreateCompanyBranch(CreateCompanyBranch),
+}
+
+#[derive(Debug)]
+pub enum SignUp {
+    Submit,
+    Consent(process_manager::UserConsent),
+    UserName(String),
+    UserId(String),
+    Password(String),
+}
+
+#[derive(Debug)]
+pub enum SignIn {
+    Submit,
+    Consent(process_manager::UserConsent),
+    UserId(String),
+    Password(String),
+}
+
+#[derive(Debug)]
+pub enum CompanyAndBranchSelection {
+    Subscribe,
+    UnSubscribe,
+    ShowCreateCompany,
+    ShowCreateCompanyBranch,
+    SelectedCompany(db_types::UuidType),
+    SelectedCompanyBranch(db_types::UuidType),
+}
+
+#[derive(Debug)]
+pub enum CreateCompany {
+    Submit,
+    Close,
+    Name(String),
+    Currency(String),
+}
+
+#[derive(Debug)]
+pub enum CreateCompanyBranch {
+    Submit,
+    Consent(process_manager::UserConsent),
+    Close,
+    Name(String),
+    Currency(String),
 }

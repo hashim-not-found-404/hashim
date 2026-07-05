@@ -528,7 +528,7 @@ mod broker_functions {
     }
 
     fn resource_filtering_based_on_subscribe(
-        subscribe: &HashSet<Subscribe>,
+        subscribe: &HashSet<db_types::Subscribe>,
         resource: &Vec<db_types::ResourceInfo>,
     ) -> Vec<db_types::ResourceInfo> {
         let mut new_resource = Vec::new();
@@ -537,74 +537,86 @@ mod broker_functions {
             match one_resource.resource {
                 db_types::Resource::Jwt(_) => {}
                 db_types::Resource::TableUserFieldName(_) => {
-                    if subscribe.contains(&Subscribe::TableUserFieldName) {
+                    if subscribe.contains(&db_types::Subscribe::TableUserFieldName) {
                         new_resource.push(one_resource.clone());
                     }
                 }
                 db_types::Resource::TableUserFieldId(_) => {
-                    if subscribe.contains(&Subscribe::TableUserFieldId) {
+                    if subscribe.contains(&db_types::Subscribe::TableUserFieldId) {
                         new_resource.push(one_resource.clone());
                     }
                 }
                 db_types::Resource::TableCompanyFieldName(_) => {
-                    if subscribe.contains(&Subscribe::TableCompanyFieldName) {
+                    if subscribe.contains(&db_types::Subscribe::TableCompanyFieldName) {
                         new_resource.push(one_resource.clone());
                     }
                 }
                 db_types::Resource::TableCompanyBranchFieldName(_) => {
-                    if subscribe.contains(&Subscribe::TableCompanyBranchFieldName) {
+                    if subscribe.contains(&db_types::Subscribe::TableCompanyBranchFieldName) {
                         new_resource.push(one_resource.clone());
                     }
                 }
                 db_types::Resource::TableCompanyBranchFieldCompanyBelong(_) => {
-                    if subscribe.contains(&Subscribe::TableCompanyBranchFieldCompanyBelong) {
+                    if subscribe
+                        .contains(&db_types::Subscribe::TableCompanyBranchFieldCompanyBelong)
+                    {
                         new_resource.push(one_resource.clone());
                     }
                 }
                 db_types::Resource::TableCompanyBranchFieldCurrency(_) => {
-                    if subscribe.contains(&Subscribe::TableCompanyBranchFieldCurrency) {
+                    if subscribe.contains(&db_types::Subscribe::TableCompanyBranchFieldCurrency) {
                         new_resource.push(one_resource.clone());
                     }
                 }
                 db_types::Resource::TableCompanyBranchFieldLocation(_) => {
-                    if subscribe.contains(&Subscribe::TableCompanyBranchFieldLocation) {
+                    if subscribe.contains(&db_types::Subscribe::TableCompanyBranchFieldLocation) {
                         new_resource.push(one_resource.clone());
                     }
                 }
                 db_types::Resource::TableCompanyFieldCurrency(_) => {
-                    if subscribe.contains(&Subscribe::TableCompanyFieldCurrency) {
+                    if subscribe.contains(&db_types::Subscribe::TableCompanyFieldCurrency) {
                         new_resource.push(one_resource.clone());
                     }
                 }
                 db_types::Resource::TableAccessControlForCompanyFieldRole(_) => {
-                    if subscribe.contains(&Subscribe::TableAccessControlForCompanyFieldRole) {
+                    if subscribe
+                        .contains(&db_types::Subscribe::TableAccessControlForCompanyFieldRole)
+                    {
                         new_resource.push(one_resource.clone());
                     }
                 }
                 db_types::Resource::TableAccessControlForCompanyFieldUser(_) => {
-                    if subscribe.contains(&Subscribe::TableAccessControlForCompanyFieldUser) {
+                    if subscribe
+                        .contains(&db_types::Subscribe::TableAccessControlForCompanyFieldUser)
+                    {
                         new_resource.push(one_resource.clone());
                     }
                 }
                 db_types::Resource::TableAccessControlForCompanyFieldDataGroup(_) => {
-                    if subscribe.contains(&Subscribe::TableAccessControlForCompanyFieldDataGroup) {
+                    if subscribe
+                        .contains(&db_types::Subscribe::TableAccessControlForCompanyFieldDataGroup)
+                    {
                         new_resource.push(one_resource.clone());
                     }
                 }
                 db_types::Resource::TableAccessControlForCompanyBranchFieldRole(_) => {
-                    if subscribe.contains(&Subscribe::TableAccessControlForCompanyBranchFieldRole) {
+                    if subscribe
+                        .contains(&db_types::Subscribe::TableAccessControlForCompanyBranchFieldRole)
+                    {
                         new_resource.push(one_resource.clone());
                     }
                 }
                 db_types::Resource::TableAccessControlForCompanyBranchFieldUser(_) => {
-                    if subscribe.contains(&Subscribe::TableAccessControlForCompanyBranchFieldUser) {
+                    if subscribe
+                        .contains(&db_types::Subscribe::TableAccessControlForCompanyBranchFieldUser)
+                    {
                         new_resource.push(one_resource.clone());
                     }
                 }
                 db_types::Resource::TableAccessControlForCompanyBranchFieldDataGroup(_) => {
-                    if subscribe
-                        .contains(&Subscribe::TableAccessControlForCompanyBranchFieldDataGroup)
-                    {
+                    if subscribe.contains(
+                        &db_types::Subscribe::TableAccessControlForCompanyBranchFieldDataGroup,
+                    ) {
                         new_resource.push(one_resource.clone());
                     }
                 }
@@ -614,39 +626,22 @@ mod broker_functions {
         new_resource
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum Subscribe {
-    TableUserFieldName,
-    TableUserFieldId,
-    TableCompanyFieldName,
-    TableCompanyFieldCurrency,
-    TableCompanyBranchFieldName,
-    TableCompanyBranchFieldCompanyBelong,
-    TableCompanyBranchFieldLocation,
-    TableCompanyBranchFieldCurrency,
-    TableAccessControlForCompanyFieldRole,
-    TableAccessControlForCompanyFieldUser,
-    TableAccessControlForCompanyFieldDataGroup,
-    TableAccessControlForCompanyBranchFieldRole,
-    TableAccessControlForCompanyBranchFieldUser,
-    TableAccessControlForCompanyBranchFieldDataGroup,
-}
 
-fn role_to_subscribe_mapping(roles: Vec<db_types::Role>) -> HashSet<Subscribe> {
+fn role_to_subscribe_mapping(roles: Vec<db_types::Role>) -> HashSet<db_types::Subscribe> {
     let mut subscribes = HashSet::with_capacity(200);
 
     for role in roles {
         match role {
             db_types::Role::Manager => {
-                subscribes.insert(Subscribe::TableUserFieldName);
-                subscribes.insert(Subscribe::TableUserFieldId);
-                subscribes.insert(Subscribe::TableCompanyFieldName);
-                subscribes.insert(Subscribe::TableCompanyFieldCurrency);
-                subscribes.insert(Subscribe::TableCompanyBranchFieldName);
-                subscribes.insert(Subscribe::TableCompanyBranchFieldCompanyBelong);
-                subscribes.insert(Subscribe::TableAccessControlForCompanyFieldRole);
-                subscribes.insert(Subscribe::TableAccessControlForCompanyFieldUser);
-                subscribes.insert(Subscribe::TableAccessControlForCompanyFieldDataGroup);
+                subscribes.insert(db_types::Subscribe::TableUserFieldName);
+                subscribes.insert(db_types::Subscribe::TableUserFieldId);
+                subscribes.insert(db_types::Subscribe::TableCompanyFieldName);
+                subscribes.insert(db_types::Subscribe::TableCompanyFieldCurrency);
+                subscribes.insert(db_types::Subscribe::TableCompanyBranchFieldName);
+                subscribes.insert(db_types::Subscribe::TableCompanyBranchFieldCompanyBelong);
+                subscribes.insert(db_types::Subscribe::TableAccessControlForCompanyFieldRole);
+                subscribes.insert(db_types::Subscribe::TableAccessControlForCompanyFieldUser);
+                subscribes.insert(db_types::Subscribe::TableAccessControlForCompanyFieldDataGroup);
             }
             db_types::Role::CoManager => todo!(),
         }
@@ -665,7 +660,7 @@ type UserSubscribes = HashMap<
     db_types::UuidType, // company uuid or branch
     HashMap<
         db_types::UuidType, // user uuid
-        HashSet<Subscribe>,
+        HashSet<db_types::Subscribe>,
     >,
 >;
 

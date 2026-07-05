@@ -1,12 +1,11 @@
 use crate::{
-    cache, network_actor,
-    request_response::{HashimError, ResourceInfo, messages, push_data},
-    server_methods,
-    traits::{
-        AllClientTypes, Cache, Coding, MultiProducerSingleConsumer, RandomNumber, Receiver, RowId,
-        Runtime, Sender,
-    },
-    ui_model::HashimSignal,
+    cache,
+    client_traits::{AllClientTypes, Cache},
+    db_types,
+    decider::RowId,
+    network_actor, request_response,
+    shared_traits::{Coding, MultiProducerSingleConsumer, RandomNumber, Receiver, Runtime, Sender},
+    utils::ReadAndSet,
 };
 use std::{
     collections::{HashMap, HashSet},
@@ -16,7 +15,7 @@ use std::{
 #[derive(Clone)]
 pub struct Data {
     pub is_response_from_server: bool,
-    pub data: push_data::OperationsResult,
+    pub data: request_response::push_data::OperationsResult,
 }
 
 #[derive(Clone)]
@@ -44,7 +43,7 @@ pub(crate) enum MessageToCache<At: AllClientTypes> {
     DataFromServer(Vec<u8>),
     Subscribe {
         component_id: u16,
-        list_of_subscribtion: &'static [server_methods::Subscribe],
+        list_of_subscribtion: &'static [db_types::Subscribe],
         sender: <At::Mpsc as MultiProducerSingleConsumer>::Sender<()>,
     },
     UnSubscribe {
@@ -53,7 +52,7 @@ pub(crate) enum MessageToCache<At: AllClientTypes> {
     Query {
         strategy: CachingStrategy,
         sender: <At::Mpsc as MultiProducerSingleConsumer>::Sender<Response>,
-        data: push_data::OperationsInput,
+        data: request_response::push_data::OperationsInput,
     },
 }
 
@@ -82,7 +81,7 @@ where
         sender_to_network: <At::Mpsc as MultiProducerSingleConsumer>::Sender<
             network_actor::MessageToNetwork,
         >,
-        sender_to_error: <At::Mpsc as MultiProducerSingleConsumer>::Sender<HashimError>,
+        sender_to_error: <At::Mpsc as MultiProducerSingleConsumer>::Sender<db_types::HashimError>,
         is_online: Arc<RwLock<bool>>,
     ) -> Self {
         Self::cache_actor(
@@ -100,7 +99,7 @@ where
     pub(crate) async fn send_to_cache_actor(
         &mut self,
         strategy: CachingStrategy,
-        data: push_data::OperationsInput,
+        data: request_response::push_data::OperationsInput,
     ) -> <At::Mpsc as MultiProducerSingleConsumer>::Receiver<Response> {
         let (sender, receiver) = At::Mpsc::channel();
 
@@ -119,7 +118,7 @@ where
     pub(crate) async fn send_subs_to_cache_actor(
         &mut self,
         component_id: u16,
-        list_of_subscribtion: &'static [server_methods::Subscribe],
+        list_of_subscribtion: &'static [db_types::Subscribe],
     ) -> <At::Mpsc as MultiProducerSingleConsumer>::Receiver<()> {
         let (sender, receiver) = At::Mpsc::channel();
 
@@ -149,7 +148,9 @@ where
         mut sender_to_network: <At::Mpsc as MultiProducerSingleConsumer>::Sender<
             network_actor::MessageToNetwork,
         >,
-        mut sender_to_error: <At::Mpsc as MultiProducerSingleConsumer>::Sender<HashimError>,
+        mut sender_to_error: <At::Mpsc as MultiProducerSingleConsumer>::Sender<
+            db_types::HashimError,
+        >,
         is_online: Arc<RwLock<bool>>,
     ) {
         At::Rt::spawn_local(async move {
@@ -162,7 +163,7 @@ where
                 <At::Mpsc as MultiProducerSingleConsumer>::Sender<()>,
             >::with_capacity(10);
             let mut pool_of_subscribes =
-                HashMap::<server_methods::Subscribe, HashSet<u16>>::with_capacity(100);
+                HashMap::<db_types::Subscribe, HashSet<u16>>::with_capacity(100);
 
             let mut state = cache::State::<At>::new().await;
 
@@ -179,11 +180,14 @@ where
                         .await;
                     }
                     MessageToCache::DataFromServer(raw_data) => {
-                        let message_type = match At::Ed::decode::<messages::FromServer>(&raw_data) {
+                        let message_type = match At::Ed::decode::<
+                            request_response::messages::FromServer,
+                        >(&raw_data)
+                        {
                             Ok(message_type) => message_type,
                             Err(_) => {
                                 sender_to_error
-                                    .send(HashimError::InvalidDataFormat.into())
+                                    .send(db_types::HashimError::InvalidDataFormat.into())
                                     .await
                                     .unwrap();
                                 continue;
@@ -191,10 +195,10 @@ where
                         };
 
                         match message_type {
-                            messages::FromServer::Error(err) => {
+                            request_response::messages::FromServer::Error(err) => {
                                 sender_to_error.send(err.into()).await.unwrap()
                             }
-                            messages::FromServer::PushData(results) => {
+                            request_response::messages::FromServer::PushData(results) => {
                                 let mut subs_to_poke = HashSet::new();
 
                                 for txn in results.operations {
@@ -203,7 +207,7 @@ where
                                     collect_subs_to_poke(&mut subs_to_poke, &resource);
                                     state.cache.write_resource(&resource).await;
 
-                                    let txn = push_data::Txn {
+                                    let txn = request_response::push_data::Txn {
                                         txn_number: txn.txn_number,
                                         operation: data.clone(),
                                     };
@@ -247,7 +251,7 @@ where
                                 )
                                 .await;
                             }
-                            messages::FromServer::Resources(resource) => {
+                            request_response::messages::FromServer::Resources(resource) => {
                                 state.cache.write_resource(&resource).await;
 
                                 let mut subs_to_poke = HashSet::new();
@@ -311,7 +315,7 @@ where
                                 }))
                                 .await;
 
-                            let operations = vec![push_data::Txn {
+                            let operations = vec![request_response::push_data::Txn {
                                 txn_number,
                                 operation: data,
                             }];
@@ -360,7 +364,7 @@ where
                                 }))
                                 .await;
 
-                            let operations = vec![push_data::Txn {
+                            let operations = vec![request_response::push_data::Txn {
                                 txn_number,
                                 operation: data,
                             }];
@@ -391,7 +395,9 @@ where
         sender_to_network: &mut <At::Mpsc as MultiProducerSingleConsumer>::Sender<
             network_actor::MessageToNetwork,
         >,
-        operations: Vec<push_data::Txn<push_data::OperationsInput>>,
+        operations: Vec<
+            request_response::push_data::Txn<request_response::push_data::OperationsInput>,
+        >,
         state: &cache::State<At>,
     ) {
         if operations.is_empty() {
@@ -410,13 +416,13 @@ where
         let mut operations1 = Vec::with_capacity(operations.len());
 
         for i in operations {
-            operations1.push(push_data::Txn {
+            operations1.push(request_response::push_data::Txn {
                 txn_number: i.txn_number,
                 operation: i.operation,
             });
         }
 
-        let t = messages::FromClient {
+        let t = request_response::messages::FromClient {
             jwts,
             nonce: At::Id::generate(),
             operations: operations1,
@@ -429,61 +435,57 @@ where
 }
 
 pub fn collect_subs_to_poke(
-    subs_to_poke: &mut HashSet<server_methods::Subscribe>,
-    resource: &Vec<ResourceInfo>,
+    subs_to_poke: &mut HashSet<db_types::Subscribe>,
+    resource: &Vec<db_types::ResourceInfo>,
 ) {
     for resource in resource {
         match resource.resource {
-            server_methods::Resource::Jwt(_) => {}
-            server_methods::Resource::TableUserFieldName(_) => {
-                subs_to_poke.insert(server_methods::Subscribe::TableUserFieldName);
+            db_types::Resource::Jwt(_) => {}
+            db_types::Resource::TableUserFieldName(_) => {
+                subs_to_poke.insert(db_types::Subscribe::TableUserFieldName);
             }
-            server_methods::Resource::TableUserFieldId(_) => {
-                subs_to_poke.insert(server_methods::Subscribe::TableUserFieldId);
+            db_types::Resource::TableUserFieldId(_) => {
+                subs_to_poke.insert(db_types::Subscribe::TableUserFieldId);
             }
-            server_methods::Resource::TableCompanyFieldName(_) => {
-                subs_to_poke.insert(server_methods::Subscribe::TableCompanyFieldName);
+            db_types::Resource::TableCompanyFieldName(_) => {
+                subs_to_poke.insert(db_types::Subscribe::TableCompanyFieldName);
             }
-            server_methods::Resource::TableCompanyBranchFieldName(_) => {
-                subs_to_poke.insert(server_methods::Subscribe::TableCompanyBranchFieldName);
+            db_types::Resource::TableCompanyBranchFieldName(_) => {
+                subs_to_poke.insert(db_types::Subscribe::TableCompanyBranchFieldName);
             }
-            server_methods::Resource::TableCompanyBranchFieldCompanyBelong(_) => {
+            db_types::Resource::TableCompanyBranchFieldCompanyBelong(_) => {
+                subs_to_poke.insert(db_types::Subscribe::TableCompanyBranchFieldCompanyBelong);
+            }
+            db_types::Resource::TableCompanyBranchFieldCurrency(_) => {
+                subs_to_poke.insert(db_types::Subscribe::TableCompanyBranchFieldCurrency);
+            }
+            db_types::Resource::TableCompanyBranchFieldLocation(_) => {
+                subs_to_poke.insert(db_types::Subscribe::TableCompanyBranchFieldLocation);
+            }
+            db_types::Resource::TableCompanyFieldCurrency(_) => {
+                subs_to_poke.insert(db_types::Subscribe::TableCompanyFieldCurrency);
+            }
+            db_types::Resource::TableAccessControlForCompanyFieldRole(_) => {
+                subs_to_poke.insert(db_types::Subscribe::TableAccessControlForCompanyFieldRole);
+            }
+            db_types::Resource::TableAccessControlForCompanyFieldUser(_) => {
+                subs_to_poke.insert(db_types::Subscribe::TableAccessControlForCompanyFieldUser);
+            }
+            db_types::Resource::TableAccessControlForCompanyFieldDataGroup(_) => {
                 subs_to_poke
-                    .insert(server_methods::Subscribe::TableCompanyBranchFieldCompanyBelong);
+                    .insert(db_types::Subscribe::TableAccessControlForCompanyFieldDataGroup);
             }
-            server_methods::Resource::TableCompanyBranchFieldCurrency(_) => {
-                subs_to_poke.insert(server_methods::Subscribe::TableCompanyBranchFieldCurrency);
-            }
-            server_methods::Resource::TableCompanyBranchFieldLocation(_) => {
-                subs_to_poke.insert(server_methods::Subscribe::TableCompanyBranchFieldLocation);
-            }
-            server_methods::Resource::TableCompanyFieldCurrency(_) => {
-                subs_to_poke.insert(server_methods::Subscribe::TableCompanyFieldCurrency);
-            }
-            server_methods::Resource::TableAccessControlForCompanyFieldRole(_) => {
+            db_types::Resource::TableAccessControlForCompanyBranchFieldRole(_) => {
                 subs_to_poke
-                    .insert(server_methods::Subscribe::TableAccessControlForCompanyFieldRole);
+                    .insert(db_types::Subscribe::TableAccessControlForCompanyBranchFieldRole);
             }
-            server_methods::Resource::TableAccessControlForCompanyFieldUser(_) => {
+            db_types::Resource::TableAccessControlForCompanyBranchFieldUser(_) => {
                 subs_to_poke
-                    .insert(server_methods::Subscribe::TableAccessControlForCompanyFieldUser);
+                    .insert(db_types::Subscribe::TableAccessControlForCompanyBranchFieldUser);
             }
-            server_methods::Resource::TableAccessControlForCompanyFieldDataGroup(_) => {
+            db_types::Resource::TableAccessControlForCompanyBranchFieldDataGroup(_) => {
                 subs_to_poke
-                    .insert(server_methods::Subscribe::TableAccessControlForCompanyFieldDataGroup);
-            }
-            server_methods::Resource::TableAccessControlForCompanyBranchFieldRole(_) => {
-                subs_to_poke
-                    .insert(server_methods::Subscribe::TableAccessControlForCompanyBranchFieldRole);
-            }
-            server_methods::Resource::TableAccessControlForCompanyBranchFieldUser(_) => {
-                subs_to_poke
-                    .insert(server_methods::Subscribe::TableAccessControlForCompanyBranchFieldUser);
-            }
-            server_methods::Resource::TableAccessControlForCompanyBranchFieldDataGroup(_) => {
-                subs_to_poke.insert(
-                    server_methods::Subscribe::TableAccessControlForCompanyBranchFieldDataGroup,
-                );
+                    .insert(db_types::Subscribe::TableAccessControlForCompanyBranchFieldDataGroup);
             }
         }
     }
@@ -491,8 +493,8 @@ pub fn collect_subs_to_poke(
 
 async fn poke_the_subs<At: AllClientTypes>(
     pool_of_pokers: &mut HashMap<u16, <At::Mpsc as MultiProducerSingleConsumer>::Sender<()>>,
-    pool_of_subscribes: &HashMap<server_methods::Subscribe, HashSet<u16>>,
-    subs_to_poke: &HashSet<server_methods::Subscribe>,
+    pool_of_subscribes: &HashMap<db_types::Subscribe, HashSet<u16>>,
+    subs_to_poke: &HashSet<db_types::Subscribe>,
 ) {
     let mut components_to_poke = HashSet::new();
 

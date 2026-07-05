@@ -1,37 +1,12 @@
 use crate::{
-    cache_actor, db_types, mbg, process_manager,
-    request_response::HashimError,
-    traits::{AllClientTypes, MultiProducerSingleConsumer, Receiver, Runtime, Sender},
-    ui_model::{self, HashimSignal},
-    ui_updaters::Mvu,
+    cache_actor,
+    client_traits::{AllClientTypes, HashimSignal},
+    db_types, mbg, process_manager,
+    shared_traits::{MultiProducerSingleConsumer, Receiver, Runtime, Sender},
+    ui_model,
+    ui_updaters::{self, Mvu},
 };
 use std::sync::{Arc, Mutex};
-
-// message
-
-#[derive(Debug)]
-pub enum Message {
-    CloseError,
-
-    SignIn(ui_updaters::sign_in::Msg),
-    SignUp(ui_updaters::sign_up::Msg),
-    CompanyAndBranchSelection(ui_updaters::company_and_branch_selection::Msg),
-    CreateCompany(ui_updaters::create_company::Msg),
-    CreateCompanyBranch(ui_updaters::create_company_branch::Msg),
-}
-
-pub(crate) struct CommanderLocalState<At: AllClientTypes> {
-    pub(crate) sender_to_commander:
-        Mutex<<At::Mpsc as MultiProducerSingleConsumer>::Sender<ui_model::Message>>,
-    pub(crate) sender_to_process_manager: Mutex<
-        <At::Mpsc as MultiProducerSingleConsumer>::Sender<
-            process_manager::MessageToProcessManager<At>,
-        >,
-    >,
-    pub(crate) user_uuid: Mutex<Option<db_types::UuidType>>,
-    pub(crate) selected_company_branch: Mutex<Option<db_types::UuidType>>,
-    pub(crate) aborter_to_company_and_branch_listener: Mutex<Option<Box<dyn FnOnce()>>>,
-}
 
 pub struct Commander<At: AllClientTypes> {
     sender: <At::Mpsc as MultiProducerSingleConsumer>::Sender<ui_model::Message>,
@@ -47,7 +22,9 @@ impl<At: AllClientTypes> Clone for Commander<At> {
 
 impl<At: AllClientTypes> Commander<At> {
     pub(crate) fn new(
-        receiver_to_error: <At::Mpsc as MultiProducerSingleConsumer>::Receiver<HashimError>,
+        receiver_to_error: <At::Mpsc as MultiProducerSingleConsumer>::Receiver<
+            db_types::HashimError,
+        >,
         sender_to_process_manager: <At::Mpsc as MultiProducerSingleConsumer>::Sender<
             process_manager::MessageToProcessManager<At>,
         >,
@@ -88,13 +65,10 @@ impl<At: AllClientTypes> Commander<At> {
         cache: cache_actor::CacheStruct<At>,
     ) {
         At::Rt::spawn_local(async move {
-            let commander_local_state = Arc::new(CommanderLocalState {
-                sender_to_commander: Mutex::new(sender_to_commander),
-                sender_to_process_manager: Mutex::new(sender_to_process_manager),
-                user_uuid: Mutex::default(),
-                selected_company_branch: Mutex::default(),
-                aborter_to_company_and_branch_listener: Mutex::default(),
-            });
+            let commander_local_state = Arc::new(ui_updaters::CommanderLocalState::new(
+                sender_to_commander,
+                sender_to_process_manager,
+            ));
 
             loop {
                 let message = receiver.recv().await.unwrap();
@@ -131,7 +105,9 @@ impl<At: AllClientTypes> Commander<At> {
 }
 
 fn listen_to_error_actor<At: AllClientTypes>(
-    mut receiver_to_error: <At::Mpsc as MultiProducerSingleConsumer>::Receiver<HashimError>,
+    mut receiver_to_error: <At::Mpsc as MultiProducerSingleConsumer>::Receiver<
+        db_types::HashimError,
+    >,
     external_errors_signal: &'static At::StringVec,
 ) {
     At::Rt::spawn_local(async move {

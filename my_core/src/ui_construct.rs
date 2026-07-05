@@ -1,10 +1,19 @@
 use crate::{
-    cache_actor, network_actor, process_manager,
-    request_response::ADDRESS,
-    traits::{AllClientTypes, MultiProducerSingleConsumer},
-    ui_effect, ui_model,
+    cache_actor, client_traits::AllClientTypes, db_types, network_actor, process_manager,
+    shared_traits::MultiProducerSingleConsumer, ui_effect, ui_model,
 };
 use std::sync::{Arc, RwLock};
+
+struct Abc {}
+impl network_actor::Network for Abc {
+    async fn from_network_status(&mut self, are_we_online: bool) {
+        todo!()
+    }
+
+    async fn sender_to_network(&mut self, data: Vec<u8>) {
+        todo!()
+    }
+}
 
 pub fn new<At: AllClientTypes>(model: &'static ui_model::Model<At>) -> ui_effect::Commander<At> {
     let (sender_to_network, receiver_to_network) = At::Mpsc::channel();
@@ -13,12 +22,12 @@ pub fn new<At: AllClientTypes>(model: &'static ui_model::Model<At>) -> ui_effect
 
     let is_online = Arc::new(RwLock::new(false));
 
-    network_actor::network_actor::<At>(
+    network_actor::network_actor::<At, Abc>(
         receiver_to_network,
-        sender_to_cache.clone(),
+        Abc {},
         sender_to_error.clone(),
         is_online.clone(),
-        format!("ws://{}/ws", ADDRESS),
+        format!("ws://{}/ws", db_types::ADDRESS),
     );
 
     let cache = cache_actor::CacheStruct::<At>::new(

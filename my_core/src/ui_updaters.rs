@@ -1,47 +1,73 @@
 use crate::{
-    cache_actor, db_types, decider, mbg,
+    cache_actor,
+    client_traits::{AllClientTypes, HashimSignal},
+    client_types, db_types, decider,
+    decider::RowId,
+    mbg,
     operations::{self, ViewType1, ViewType2},
     process_manager,
-    traits::{
-        AllClientTypes, JoinHandle, MultiProducerSingleConsumer, RandomNumber, Receiver, RowId,
-        Runtime, Sender,
+    shared_traits::{
+        JoinHandle, MultiProducerSingleConsumer, RandomNumber, Receiver, Runtime, Sender,
     },
-    ui_effect,
-    ui_model::{self, HashimSignal},
+    ui_model,
 };
-use std::{str::FromStr, sync::Arc};
+use std::{
+    str::FromStr,
+    sync::{Arc, Mutex},
+};
+
+pub(crate) struct CommanderLocalState<At: AllClientTypes> {
+    pub(crate) sender_to_commander:
+        Mutex<<At::Mpsc as MultiProducerSingleConsumer>::Sender<ui_model::Message>>,
+    pub(crate) sender_to_process_manager: Mutex<
+        <At::Mpsc as MultiProducerSingleConsumer>::Sender<
+            process_manager::MessageToProcessManager<At>,
+        >,
+    >,
+    pub(crate) user_uuid: Mutex<Option<db_types::UuidType>>,
+    pub(crate) selected_company_branch: Mutex<Option<db_types::UuidType>>,
+    pub(crate) aborter_to_company_and_branch_listener: Mutex<Option<Box<dyn FnOnce()>>>,
+}
+
+impl<At: AllClientTypes> CommanderLocalState<At> {
+    pub(crate) fn new(
+        sender_to_commander: <At::Mpsc as MultiProducerSingleConsumer>::Sender<ui_model::Message>,
+        sender_to_process_manager: <At::Mpsc as MultiProducerSingleConsumer>::Sender<
+            process_manager::MessageToProcessManager<At>,
+        >,
+    ) -> Self {
+        CommanderLocalState {
+            sender_to_commander: Mutex::new(sender_to_commander),
+            sender_to_process_manager: Mutex::new(sender_to_process_manager),
+            user_uuid: Mutex::default(),
+            selected_company_branch: Mutex::default(),
+            aborter_to_company_and_branch_listener: Mutex::default(),
+        }
+    }
+}
 
 pub(crate) trait Mvu {
     async fn update<At: AllClientTypes>(
         self,
         model: &'static ui_model::Model<At>,
         cache: cache_actor::CacheStruct<At>,
-        commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
+        commander_local_state: Arc<CommanderLocalState<At>>,
     );
 }
 
 pub mod sign_up {
     use super::*;
 
-    #[derive(Debug)]
-    pub enum Msg {
-        Submit,
-        Consent(process_manager::UserConsent),
-        UserName(String),
-        UserId(String),
-        Password(String),
-    }
-
-    impl Mvu for Msg {
+    impl Mvu for ui_model::SignUp {
         async fn update<At: AllClientTypes>(
             self,
             model: &'static ui_model::Model<At>,
             cache: cache_actor::CacheStruct<At>,
-            commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
+            commander_local_state: Arc<CommanderLocalState<At>>,
         ) {
             match self {
-                Msg::Submit => handle_submit(model, cache, commander_local_state).await,
-                Msg::Consent(i) => commander_local_state
+                Self::Submit => handle_submit(model, cache, commander_local_state).await,
+                Self::Consent(i) => commander_local_state
                     .sender_to_process_manager
                     .lock()
                     .unwrap()
@@ -51,15 +77,15 @@ pub mod sign_up {
                     })
                     .await
                     .unwrap(),
-                Msg::UserName(i) => {
+                Self::UserName(i) => {
                     model.page_root.page_auth.page_sign_up.user_name.set(i);
                     handle_check(model, cache, commander_local_state).await;
                 }
-                Msg::UserId(i) => {
+                Self::UserId(i) => {
                     model.page_root.page_auth.auth_feature_state.user_id.set(i);
                     handle_check(model, cache, commander_local_state).await;
                 }
-                Msg::Password(i) => {
+                Self::Password(i) => {
                     model
                         .page_root
                         .page_auth
@@ -75,7 +101,7 @@ pub mod sign_up {
     async fn handle_submit<At: AllClientTypes>(
         model: &'static ui_model::Model<At>,
         mut cache: cache_actor::CacheStruct<At>,
-        commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
+        commander_local_state: Arc<CommanderLocalState<At>>,
     ) {
         let feature_state = &model.page_root.page_auth.auth_feature_state;
         let local_state = &model.page_root.page_auth.page_sign_up;
@@ -190,7 +216,7 @@ pub mod sign_up {
                     .lock()
                     .unwrap()
                     .send(ui_model::Message::CompanyAndBranchSelection(
-                        company_and_branch_selection::Msg::Subscribe,
+                        ui_model::CompanyAndBranchSelection::Subscribe,
                     ))
                     .await
                     .unwrap();
@@ -205,7 +231,7 @@ pub mod sign_up {
     async fn handle_check<At: AllClientTypes>(
         model: &'static ui_model::Model<At>,
         mut cache: cache_actor::CacheStruct<At>,
-        commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
+        commander_local_state: Arc<CommanderLocalState<At>>,
     ) {
         let feature_state = &model.page_root.page_auth.auth_feature_state;
         let local_state = &model.page_root.page_auth.page_sign_up;
@@ -245,8 +271,8 @@ pub mod sign_up {
 
     fn handle_apply_result<At: AllClientTypes>(
         model: &ui_model::Model<At>,
-        commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
-        result: decider::sign_up::Result,
+        commander_local_state: Arc<CommanderLocalState<At>>,
+        result: decider::sign_up::MyResult,
     ) {
         let local_state = &model.page_root.page_auth.page_sign_up;
         match result {
@@ -268,26 +294,18 @@ pub mod sign_up {
 pub mod sign_in {
     use super::*;
 
-    #[derive(Debug)]
-    pub enum Msg {
-        Submit,
-        Consent(process_manager::UserConsent),
-        UserId(String),
-        Password(String),
-    }
-
-    impl Mvu for Msg {
+    impl Mvu for ui_model::SignIn {
         async fn update<At: AllClientTypes>(
             self,
             model: &'static ui_model::Model<At>,
             cache: cache_actor::CacheStruct<At>,
-            commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
+            commander_local_state: Arc<CommanderLocalState<At>>,
         ) {
             match self {
-                Msg::Submit => {
+                Self::Submit => {
                     handle_submit(model, cache, commander_local_state).await;
                 }
-                Msg::Consent(i) => commander_local_state
+                Self::Consent(i) => commander_local_state
                     .sender_to_process_manager
                     .lock()
                     .unwrap()
@@ -297,11 +315,11 @@ pub mod sign_in {
                     })
                     .await
                     .unwrap(),
-                Msg::UserId(i) => {
+                Self::UserId(i) => {
                     model.page_root.page_auth.auth_feature_state.user_id.set(i);
                     handle_check(model, cache, commander_local_state).await;
                 }
-                Msg::Password(i) => {
+                Self::Password(i) => {
                     model
                         .page_root
                         .page_auth
@@ -317,7 +335,7 @@ pub mod sign_in {
     async fn handle_submit<At: AllClientTypes>(
         model: &'static ui_model::Model<At>,
         mut cache: cache_actor::CacheStruct<At>,
-        commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
+        commander_local_state: Arc<CommanderLocalState<At>>,
     ) {
         let feature_state = &model.page_root.page_auth.auth_feature_state;
         let local_state = &model.page_root.page_auth.page_sign_in;
@@ -411,14 +429,14 @@ pub mod sign_in {
                             .lock()
                             .unwrap()
                             .send(ui_model::Message::CompanyAndBranchSelection(
-                                company_and_branch_selection::Msg::Subscribe,
+                                ui_model::CompanyAndBranchSelection::Subscribe,
                             ))
                             .await
                             .unwrap();
 
                         model.page_root.page_after_auth.user_id.set(user_id);
                     }
-                    None => local_state.show_dialog.set(ui_model::Dialog::Error),
+                    None => local_state.show_dialog.set(client_types::Dialog::Error),
                 }
             }
             process_manager::ProceedResult::No => {}
@@ -431,7 +449,7 @@ pub mod sign_in {
     async fn handle_check<At: AllClientTypes>(
         model: &'static ui_model::Model<At>,
         mut cache: cache_actor::CacheStruct<At>,
-        commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
+        commander_local_state: Arc<CommanderLocalState<At>>,
     ) {
         let feature_state = &model.page_root.page_auth.auth_feature_state;
         let local_state = &model.page_root.page_auth.page_sign_in;
@@ -462,7 +480,7 @@ pub mod sign_in {
 
     fn handle_apply_result<At: AllClientTypes>(
         model: &ui_model::Model<At>,
-        commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
+        commander_local_state: Arc<CommanderLocalState<At>>,
         result: operations::sign_in::Type4,
     ) {
         match result.0 {
@@ -494,29 +512,19 @@ pub mod sign_in {
 pub mod company_and_branch_selection {
     use super::*;
 
-    #[derive(Debug)]
-    pub enum Msg {
-        Subscribe,
-        UnSubscribe,
-        ShowCreateCompany,
-        ShowCreateCompanyBranch,
-        SelectedCompany(db_types::UuidType),
-        SelectedCompanyBranch(db_types::UuidType),
-    }
-
-    impl Mvu for Msg {
+    impl Mvu for ui_model::CompanyAndBranchSelection {
         async fn update<At: AllClientTypes>(
             self,
             model: &'static ui_model::Model<At>,
             cache: cache_actor::CacheStruct<At>,
-            commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
+            commander_local_state: Arc<CommanderLocalState<At>>,
         ) {
             match self {
-                Msg::Subscribe => {
+                Self::Subscribe => {
                     model
                         .navigator
-                        .set(ui_model::Navigator::CompanyBranchSelection(
-                            ui_model::CompanyBranchSelection::None,
+                        .set(client_types::Navigator::CompanyBranchSelection(
+                            client_types::CompanyBranchSelection::None,
                         ));
 
                     handle_list_company_and_branch(
@@ -537,7 +545,7 @@ pub mod company_and_branch_selection {
                         .lock()
                         .unwrap() = Some(Box::new(listener_aborter));
                 }
-                Msg::UnSubscribe => {
+                Self::UnSubscribe => {
                     let mut guard = commander_local_state
                         .aborter_to_company_and_branch_listener
                         .lock()
@@ -547,21 +555,21 @@ pub mod company_and_branch_selection {
                         f();
                     }
                 }
-                Msg::ShowCreateCompany => {
+                Self::ShowCreateCompany => {
                     model
                         .navigator
-                        .set(ui_model::Navigator::CompanyBranchSelection(
-                            ui_model::CompanyBranchSelection::CreateCompany,
+                        .set(client_types::Navigator::CompanyBranchSelection(
+                            client_types::CompanyBranchSelection::CreateCompany,
                         ));
                 }
-                Msg::ShowCreateCompanyBranch => {
+                Self::ShowCreateCompanyBranch => {
                     model
                         .navigator
-                        .set(ui_model::Navigator::CompanyBranchSelection(
-                            ui_model::CompanyBranchSelection::CreateCompanyBranch,
+                        .set(client_types::Navigator::CompanyBranchSelection(
+                            client_types::CompanyBranchSelection::CreateCompanyBranch,
                         ));
                 }
-                Msg::SelectedCompany(i) => {
+                Self::SelectedCompany(i) => {
                     let selected_company = &model
                         .page_root
                         .page_after_auth
@@ -579,7 +587,7 @@ pub mod company_and_branch_selection {
                         None => selected_company.set(Some(i)),
                     }
                 }
-                Msg::SelectedCompanyBranch(i) => {
+                Self::SelectedCompanyBranch(i) => {
                     *commander_local_state
                         .selected_company_branch
                         .lock()
@@ -592,7 +600,7 @@ pub mod company_and_branch_selection {
     fn handle_list_company_and_branch_listener<At: AllClientTypes>(
         model: &'static ui_model::Model<At>,
         mut cache: cache_actor::CacheStruct<At>,
-        commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
+        commander_local_state: Arc<CommanderLocalState<At>>,
     ) -> impl FnOnce() {
         let component_id = At::Rn::generate() as u16;
         let mut cache1 = cache.clone();
@@ -646,7 +654,7 @@ pub mod company_and_branch_selection {
                     Err(_) => {
                         model
                             .navigator
-                            .set(ui_model::Navigator::Auth(ui_model::Auth::SignIn));
+                            .set(client_types::Navigator::Auth(client_types::Auth::SignIn));
                         break;
                     }
                 };
@@ -666,7 +674,7 @@ pub mod company_and_branch_selection {
     async fn handle_list_company_and_branch<At: AllClientTypes>(
         model: &'static ui_model::Model<At>,
         mut cache: cache_actor::CacheStruct<At>,
-        commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
+        commander_local_state: Arc<CommanderLocalState<At>>,
     ) {
         let user_uuid = commander_local_state
             .user_uuid
@@ -701,7 +709,7 @@ pub mod company_and_branch_selection {
                 Err(_) => {
                     model
                         .navigator
-                        .set(ui_model::Navigator::Auth(ui_model::Auth::SignIn));
+                        .set(client_types::Navigator::Auth(client_types::Auth::SignIn));
                     break;
                 }
             };
@@ -712,20 +720,12 @@ pub mod company_and_branch_selection {
 pub mod create_company {
     use super::*;
 
-    #[derive(Debug)]
-    pub enum Msg {
-        Submit,
-        Close,
-        Name(String),
-        Currency(String),
-    }
-
-    impl Mvu for Msg {
+    impl Mvu for ui_model::CreateCompany {
         async fn update<At: AllClientTypes>(
             self,
             model: &'static ui_model::Model<At>,
             cache: cache_actor::CacheStruct<At>,
-            commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
+            commander_local_state: Arc<CommanderLocalState<At>>,
         ) {
             let page_create_company = &model
                 .page_root
@@ -734,10 +734,10 @@ pub mod create_company {
                 .page_create_company;
 
             match self {
-                Msg::Submit => handle_submit(model, cache, commander_local_state).await,
-                Msg::Close => handle_close(model),
-                Msg::Name(i) => page_create_company.company_name.set(i),
-                Msg::Currency(i) => page_create_company
+                Self::Submit => handle_submit(model, cache, commander_local_state).await,
+                Self::Close => handle_close(model),
+                Self::Name(i) => page_create_company.company_name.set(i),
+                Self::Currency(i) => page_create_company
                     .currency
                     .set(db_types::Currency::from_str(i.as_str()).unwrap()),
             }
@@ -756,15 +756,15 @@ pub mod create_company {
 
         model
             .navigator
-            .set(ui_model::Navigator::CompanyBranchSelection(
-                ui_model::CompanyBranchSelection::None,
+            .set(client_types::Navigator::CompanyBranchSelection(
+                client_types::CompanyBranchSelection::None,
             ));
     }
 
     async fn handle_submit<At: AllClientTypes>(
         model: &'static ui_model::Model<At>,
         mut cache: cache_actor::CacheStruct<At>,
-        commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
+        commander_local_state: Arc<CommanderLocalState<At>>,
     ) {
         let data = commander_local_state
             .user_uuid
@@ -798,27 +798,20 @@ pub mod create_company {
 }
 
 pub mod create_company_branch {
+    use crate::client_types;
+
     use super::*;
 
-    #[derive(Debug)]
-    pub enum Msg {
-        Submit,
-        Consent(process_manager::UserConsent),
-        Close,
-        Name(String),
-        Currency(String),
-    }
-
-    impl Mvu for Msg {
+    impl Mvu for ui_model::CreateCompanyBranch {
         async fn update<At: AllClientTypes>(
             self,
             model: &'static ui_model::Model<At>,
             cache: cache_actor::CacheStruct<At>,
-            commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
+            commander_local_state: Arc<CommanderLocalState<At>>,
         ) {
             match self {
-                Msg::Submit => handle_submit(model, cache, commander_local_state).await,
-                Msg::Consent(i) => {
+                Self::Submit => handle_submit(model, cache, commander_local_state).await,
+                Self::Consent(i) => {
                     commander_local_state
                         .sender_to_process_manager
                         .lock()
@@ -830,8 +823,8 @@ pub mod create_company_branch {
                         .await
                         .unwrap();
                 }
-                Msg::Close => handle_close(model),
-                Msg::Name(i) => {
+                Self::Close => handle_close(model),
+                Self::Name(i) => {
                     model
                         .page_root
                         .page_after_auth
@@ -842,7 +835,7 @@ pub mod create_company_branch {
 
                     handle_check(model, cache, commander_local_state).await;
                 }
-                Msg::Currency(i) => model
+                Self::Currency(i) => model
                     .page_root
                     .page_after_auth
                     .page_company_branch_selection
@@ -856,7 +849,7 @@ pub mod create_company_branch {
     async fn handle_submit<At: AllClientTypes>(
         model: &'static ui_model::Model<At>,
         mut cache: cache_actor::CacheStruct<At>,
-        commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
+        commander_local_state: Arc<CommanderLocalState<At>>,
     ) {
         let local_state = &model
             .page_root
@@ -979,7 +972,7 @@ pub mod create_company_branch {
     async fn handle_check<At: AllClientTypes>(
         model: &'static ui_model::Model<At>,
         mut cache: cache_actor::CacheStruct<At>,
-        commander_local_state: Arc<ui_effect::CommanderLocalState<At>>,
+        commander_local_state: Arc<CommanderLocalState<At>>,
     ) {
         let local_state = &model
             .page_root
@@ -1040,7 +1033,7 @@ pub mod create_company_branch {
             .page_company_branch_selection
             .page_create_company_branch;
 
-        if page_create_company_branch.show_dialog.read() == ui_model::Dialog::Show {
+        if page_create_company_branch.show_dialog.read() == client_types::Dialog::Show {
             return;
         }
 
@@ -1054,8 +1047,8 @@ pub mod create_company_branch {
 
         model
             .navigator
-            .set(ui_model::Navigator::CompanyBranchSelection(
-                ui_model::CompanyBranchSelection::None,
+            .set(client_types::Navigator::CompanyBranchSelection(
+                client_types::CompanyBranchSelection::None,
             ));
     }
 }

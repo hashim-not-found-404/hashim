@@ -114,6 +114,24 @@ pub const ADDRESS: &str = "127.0.0.1:8081";
 
 // there should be no generic in all the below types
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum Subscribe {
+    TableUserFieldName,
+    TableUserFieldId,
+    TableCompanyFieldName,
+    TableCompanyFieldCurrency,
+    TableCompanyBranchFieldName,
+    TableCompanyBranchFieldCompanyBelong,
+    TableCompanyBranchFieldLocation,
+    TableCompanyBranchFieldCurrency,
+    TableAccessControlForCompanyFieldRole,
+    TableAccessControlForCompanyFieldUser,
+    TableAccessControlForCompanyFieldDataGroup,
+    TableAccessControlForCompanyBranchFieldRole,
+    TableAccessControlForCompanyBranchFieldUser,
+    TableAccessControlForCompanyBranchFieldDataGroup,
+}
+
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub enum Resource {
     Jwt(JsonWebTokenType),

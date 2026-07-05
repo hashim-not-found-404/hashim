@@ -1,19 +1,17 @@
 use crate::{
     cache::{self, State},
-    cache_actor, db_types,
-    decider::{self, EventMaker},
-    request_response::{ResourceInfo, push_data},
-    server_methods,
-    traits::{AllClientTypes, Cache, HashedPassword, JWT},
+    cache_actor,
+    client_traits::{AllClientTypes, Cache},
+    db_types, decider, request_response,
     utils::MyUpSert,
 };
 use std::collections::{HashMap, HashSet};
 
 pub(crate) trait ViewType1 {
-    fn subs() -> &'static [server_methods::Subscribe] {
+    fn subs() -> &'static [db_types::Subscribe] {
         unreachable!("we dont need it here")
     }
-    fn wrap_input(self) -> push_data::OperationsInput;
+    fn wrap_input(self) -> request_response::push_data::OperationsInput;
 }
 
 pub(crate) trait CacheAndServerType1: Clone {
@@ -27,33 +25,33 @@ pub(crate) trait CacheAndServerType1: Clone {
 }
 
 pub(crate) trait CacheAndServerType2 {
-    fn extract_resource(&self) -> Vec<ResourceInfo>;
-    fn wrap_output(self) -> push_data::OperationsResult;
+    fn extract_resource(&self) -> Vec<db_types::ResourceInfo>;
+    fn wrap_output(self) -> request_response::push_data::OperationsResult;
 }
 
 pub(crate) trait ViewType2 {
-    fn unwrap_output(output: push_data::OperationsResult) -> Self;
+    fn unwrap_output(output: request_response::push_data::OperationsResult) -> Self;
 }
 
-impl push_data::OperationsInput {
+impl request_response::push_data::OperationsInput {
     pub(crate) async fn run_operation_check<At: AllClientTypes>(
         &self,
         state: &mut cache::State<At>,
-    ) -> push_data::OperationsResult {
+    ) -> request_response::push_data::OperationsResult {
         match self {
-            push_data::OperationsInput::SignUp(i) => {
+            request_response::push_data::OperationsInput::SignUp(i) => {
                 operation_check_handler::<_, At>(i, state).await
             }
-            push_data::OperationsInput::SignIn(i) => {
+            request_response::push_data::OperationsInput::SignIn(i) => {
                 operation_check_handler::<_, At>(i, state).await
             }
-            push_data::OperationsInput::CreateCompany(i) => {
+            request_response::push_data::OperationsInput::CreateCompany(i) => {
                 operation_check_handler::<_, At>(i, state).await
             }
-            push_data::OperationsInput::CreateCompanyBranch(i) => {
+            request_response::push_data::OperationsInput::CreateCompanyBranch(i) => {
                 operation_check_handler::<_, At>(i, state).await
             }
-            push_data::OperationsInput::ListCompanyAndBranch(i) => {
+            request_response::push_data::OperationsInput::ListCompanyAndBranch(i) => {
                 operation_check_handler::<_, At>(i, state).await
             }
         }
@@ -62,22 +60,22 @@ impl push_data::OperationsInput {
     pub(crate) async fn run_operation_check_apply<At: AllClientTypes>(
         &self,
         state: &mut cache::State<At>,
-        subs_to_poke: &mut HashSet<server_methods::Subscribe>,
+        subs_to_poke: &mut HashSet<db_types::Subscribe>,
     ) {
         match self {
-            push_data::OperationsInput::SignUp(i) => {
+            request_response::push_data::OperationsInput::SignUp(i) => {
                 operation_check_apply_handler::<_, At>(i, state, subs_to_poke).await
             }
-            push_data::OperationsInput::SignIn(i) => {
+            request_response::push_data::OperationsInput::SignIn(i) => {
                 operation_check_apply_handler::<_, At>(i, state, subs_to_poke).await
             }
-            push_data::OperationsInput::CreateCompany(i) => {
+            request_response::push_data::OperationsInput::CreateCompany(i) => {
                 operation_check_apply_handler::<_, At>(i, state, subs_to_poke).await
             }
-            push_data::OperationsInput::CreateCompanyBranch(i) => {
+            request_response::push_data::OperationsInput::CreateCompanyBranch(i) => {
                 operation_check_apply_handler::<_, At>(i, state, subs_to_poke).await
             }
-            push_data::OperationsInput::ListCompanyAndBranch(i) => {
+            request_response::push_data::OperationsInput::ListCompanyAndBranch(i) => {
                 operation_check_apply_handler::<_, At>(i, state, subs_to_poke).await
             }
         }
@@ -87,30 +85,30 @@ impl push_data::OperationsInput {
         &self,
         txn_number: u64,
         state: &mut cache::State<At>,
-        subs_to_poke: &mut HashSet<server_methods::Subscribe>,
-    ) -> push_data::OperationsResult {
+        subs_to_poke: &mut HashSet<db_types::Subscribe>,
+    ) -> request_response::push_data::OperationsResult {
         state
             .cache
-            .write_txn_input(&push_data::Txn {
+            .write_txn_input(&request_response::push_data::Txn {
                 txn_number,
                 operation: self.clone(),
             })
             .await;
 
         match self {
-            push_data::OperationsInput::SignUp(i) => {
+            request_response::push_data::OperationsInput::SignUp(i) => {
                 operation_check_apply_write_handler::<_, At>(i, state, subs_to_poke).await
             }
-            push_data::OperationsInput::SignIn(i) => {
+            request_response::push_data::OperationsInput::SignIn(i) => {
                 operation_check_apply_write_handler::<_, At>(i, state, subs_to_poke).await
             }
-            push_data::OperationsInput::CreateCompany(i) => {
+            request_response::push_data::OperationsInput::CreateCompany(i) => {
                 operation_check_apply_write_handler::<_, At>(i, state, subs_to_poke).await
             }
-            push_data::OperationsInput::CreateCompanyBranch(i) => {
+            request_response::push_data::OperationsInput::CreateCompanyBranch(i) => {
                 operation_check_apply_write_handler::<_, At>(i, state, subs_to_poke).await
             }
-            push_data::OperationsInput::ListCompanyAndBranch(i) => {
+            request_response::push_data::OperationsInput::ListCompanyAndBranch(i) => {
                 operation_check_apply_write_handler::<_, At>(i, state, subs_to_poke).await
             }
         }
@@ -118,33 +116,37 @@ impl push_data::OperationsInput {
 
     pub(crate) fn get_user_uuid(&self) -> Option<&db_types::UuidType> {
         match self {
-            push_data::OperationsInput::SignUp(i) => i.user_uuid(),
-            push_data::OperationsInput::SignIn(i) => i.user_uuid(),
-            push_data::OperationsInput::CreateCompany(i) => i.user_uuid(),
-            push_data::OperationsInput::CreateCompanyBranch(i) => i.user_uuid(),
-            push_data::OperationsInput::ListCompanyAndBranch(i) => i.user_uuid(),
+            request_response::push_data::OperationsInput::SignUp(i) => i.user_uuid(),
+            request_response::push_data::OperationsInput::SignIn(i) => i.user_uuid(),
+            request_response::push_data::OperationsInput::CreateCompany(i) => i.user_uuid(),
+            request_response::push_data::OperationsInput::CreateCompanyBranch(i) => i.user_uuid(),
+            request_response::push_data::OperationsInput::ListCompanyAndBranch(i) => i.user_uuid(),
         }
     }
 }
 
-impl push_data::OperationsResult {
-    pub(crate) fn extract_resource(&self) -> Vec<ResourceInfo> {
+impl request_response::push_data::OperationsResult {
+    pub(crate) fn extract_resource(&self) -> Vec<db_types::ResourceInfo> {
         match self {
-            push_data::OperationsResult::SignUp(i) => i.extract_resource(),
-            push_data::OperationsResult::SignIn(i) => i.extract_resource(),
-            push_data::OperationsResult::CreateCompany(i) => i.extract_resource(),
-            push_data::OperationsResult::CreateCompanyBranch(i) => i.extract_resource(),
-            push_data::OperationsResult::ListCompanyAndBranch(i) => i.extract_resource(),
+            request_response::push_data::OperationsResult::SignUp(i) => i.extract_resource(),
+            request_response::push_data::OperationsResult::SignIn(i) => i.extract_resource(),
+            request_response::push_data::OperationsResult::CreateCompany(i) => i.extract_resource(),
+            request_response::push_data::OperationsResult::CreateCompanyBranch(i) => {
+                i.extract_resource()
+            }
+            request_response::push_data::OperationsResult::ListCompanyAndBranch(i) => {
+                i.extract_resource()
+            }
         }
     }
 
     pub(crate) fn is_ok(&self) -> bool {
         match self {
-            push_data::OperationsResult::SignUp(i) => i.is_ok(),
-            push_data::OperationsResult::SignIn(i) => i.is_ok(),
-            push_data::OperationsResult::CreateCompany(i) => i.is_ok(),
-            push_data::OperationsResult::CreateCompanyBranch(i) => i.is_ok(),
-            push_data::OperationsResult::ListCompanyAndBranch(i) => i.is_ok(),
+            request_response::push_data::OperationsResult::SignUp(i) => i.is_ok(),
+            request_response::push_data::OperationsResult::SignIn(i) => i.is_ok(),
+            request_response::push_data::OperationsResult::CreateCompany(i) => i.is_ok(),
+            request_response::push_data::OperationsResult::CreateCompanyBranch(i) => i.is_ok(),
+            request_response::push_data::OperationsResult::ListCompanyAndBranch(i) => i.is_ok(),
         }
     }
 }
@@ -152,14 +154,14 @@ impl push_data::OperationsResult {
 async fn operation_check_handler<T: CacheAndServerType1, At: AllClientTypes>(
     input: &T,
     state: &mut cache::State<At>,
-) -> push_data::OperationsResult {
+) -> request_response::push_data::OperationsResult {
     return input.state_full_operation::<At>(state).await.wrap_output();
 }
 
 async fn operation_check_apply_handler<T: CacheAndServerType1, At: AllClientTypes>(
     input: &T,
     state: &mut cache::State<At>,
-    subs_to_poke: &mut HashSet<server_methods::Subscribe>,
+    subs_to_poke: &mut HashSet<db_types::Subscribe>,
 ) {
     apply_change(
         input
@@ -175,8 +177,8 @@ async fn operation_check_apply_handler<T: CacheAndServerType1, At: AllClientType
 async fn operation_check_apply_write_handler<T: CacheAndServerType1, At: AllClientTypes>(
     input: &T,
     state: &mut cache::State<At>,
-    subs_to_poke: &mut HashSet<server_methods::Subscribe>,
-) -> push_data::OperationsResult {
+    subs_to_poke: &mut HashSet<db_types::Subscribe>,
+) -> request_response::push_data::OperationsResult {
     let result = input.state_full_operation::<At>(state).await;
 
     apply_change(
@@ -190,9 +192,9 @@ async fn operation_check_apply_write_handler<T: CacheAndServerType1, At: AllClie
 }
 
 async fn apply_change(
-    resources: Vec<ResourceInfo>,
+    resources: Vec<db_types::ResourceInfo>,
     state: &mut cache::StateOfPendingTxn,
-    subs_to_poke: &mut HashSet<server_methods::Subscribe>,
+    subs_to_poke: &mut HashSet<db_types::Subscribe>,
 ) {
     cache_actor::collect_subs_to_poke(subs_to_poke, &resources);
 
@@ -200,47 +202,47 @@ async fn apply_change(
         let row_uuid = resource.row_uuid;
 
         match resource.resource {
-            server_methods::Resource::Jwt(_) => {}
-            server_methods::Resource::TableUserFieldName(r) => {
+            db_types::Resource::Jwt(_) => {}
+            db_types::Resource::TableUserFieldName(r) => {
                 state.user.upsert(row_uuid, |table| table.name = Some(r))
             }
-            server_methods::Resource::TableUserFieldId(r) => {
+            db_types::Resource::TableUserFieldId(r) => {
                 state.user.upsert(row_uuid, |table| table.id = r)
             }
-            server_methods::Resource::TableCompanyFieldName(r) => {
+            db_types::Resource::TableCompanyFieldName(r) => {
                 state.company.upsert(row_uuid, |table| table.name = r)
             }
-            server_methods::Resource::TableCompanyBranchFieldName(r) => state
+            db_types::Resource::TableCompanyBranchFieldName(r) => state
                 .company_branch
                 .upsert(row_uuid, |table| table.name = r),
-            server_methods::Resource::TableCompanyBranchFieldCompanyBelong(r) => state
+            db_types::Resource::TableCompanyBranchFieldCompanyBelong(r) => state
                 .company_branch
                 .upsert(row_uuid, |table| table.company_belong = r),
-            server_methods::Resource::TableCompanyBranchFieldCurrency(r) => state
+            db_types::Resource::TableCompanyBranchFieldCurrency(r) => state
                 .company_branch
                 .upsert(row_uuid, |table| table.currency = r),
-            server_methods::Resource::TableCompanyBranchFieldLocation(r) => state
+            db_types::Resource::TableCompanyBranchFieldLocation(r) => state
                 .company_branch
                 .upsert(row_uuid, |table| table.location = r),
-            server_methods::Resource::TableCompanyFieldCurrency(r) => {
+            db_types::Resource::TableCompanyFieldCurrency(r) => {
                 state.company.upsert(row_uuid, |table| table.currency = r)
             }
-            server_methods::Resource::TableAccessControlForCompanyFieldRole(r) => state
+            db_types::Resource::TableAccessControlForCompanyFieldRole(r) => state
                 .access_control_for_company
                 .upsert(row_uuid, |table| table.role = r),
-            server_methods::Resource::TableAccessControlForCompanyFieldUser(r) => state
+            db_types::Resource::TableAccessControlForCompanyFieldUser(r) => state
                 .access_control_for_company
                 .upsert(row_uuid, |table| table.user_ = r),
-            server_methods::Resource::TableAccessControlForCompanyFieldDataGroup(r) => state
+            db_types::Resource::TableAccessControlForCompanyFieldDataGroup(r) => state
                 .access_control_for_company
                 .upsert(row_uuid, |table| table.data_group = r),
-            server_methods::Resource::TableAccessControlForCompanyBranchFieldRole(r) => state
+            db_types::Resource::TableAccessControlForCompanyBranchFieldRole(r) => state
                 .access_control_for_company_branch
                 .upsert(row_uuid, |table| table.role = r),
-            server_methods::Resource::TableAccessControlForCompanyBranchFieldUser(r) => state
+            db_types::Resource::TableAccessControlForCompanyBranchFieldUser(r) => state
                 .access_control_for_company_branch
                 .upsert(row_uuid, |table| table.user_ = r),
-            server_methods::Resource::TableAccessControlForCompanyBranchFieldDataGroup(r) => state
+            db_types::Resource::TableAccessControlForCompanyBranchFieldDataGroup(r) => state
                 .access_control_for_company_branch
                 .upsert(row_uuid, |table| table.data_group = r),
         }
@@ -249,43 +251,17 @@ async fn apply_change(
 
 // all imples down
 
-struct SodoJwt;
-impl JWT for SodoJwt {
-    fn new() -> Self {
-        Self
-    }
-
-    fn sign(&self, user_uuid: &db_types::UuidType) -> db_types::JsonWebTokenType {
-        db_types::JsonWebTokenType(String::new())
-    }
-
-    fn validate(&self, token: db_types::JsonWebTokenType) -> Option<db_types::UuidType> {
-        unreachable!("this is not callable at client side")
-    }
-}
-
-struct SodoAuth;
-impl HashedPassword for SodoAuth {
-    fn sign_up(password: &String) -> String {
-        password.clone()
-    }
-
-    fn sign_in(password: &String, password_hash: &String) -> bool {
-        unreachable!("this is not callable at client side")
-    }
-}
-
 pub(crate) mod sign_up {
     use super::*;
 
     pub(crate) type Type1 = decider::sign_up::Input;
     type Type2 = decider::sign_up::Input;
-    type Type3 = decider::sign_up::Result;
-    pub(crate) type Type4 = decider::sign_up::Result;
+    type Type3 = decider::sign_up::MyResult;
+    pub(crate) type Type4 = decider::sign_up::MyResult;
 
     impl ViewType1 for Type1 {
-        fn wrap_input(self) -> push_data::OperationsInput {
-            push_data::OperationsInput::SignUp(self)
+        fn wrap_input(self) -> request_response::push_data::OperationsInput {
+            request_response::push_data::OperationsInput::SignUp(self)
         }
     }
 
@@ -299,31 +275,28 @@ pub(crate) mod sign_up {
             &self,
             state: &mut cache::State<At>,
         ) -> Self::Output {
-            let result = self
-                .handle::<State<_>, At::Rn, At::Rt, At::Id, At::Mpsc, At::Ed, At::Rg, SodoAuth, SodoJwt>(&mut server_methods::SideEffects::default(), state, &SodoJwt)
-                .await
-                .unwrap();
+            let result = todo!();
 
             return result;
         }
     }
 
     impl CacheAndServerType2 for Type3 {
-        fn extract_resource(&self) -> Vec<ResourceInfo> {
+        fn extract_resource(&self) -> Vec<db_types::ResourceInfo> {
             match self {
-                Ok(ok) => ok.clone().into(),
+                Ok(ok) => todo!("ok.clone().into()"),
                 Err(_) => Vec::new(),
             }
         }
 
-        fn wrap_output(self) -> push_data::OperationsResult {
-            push_data::OperationsResult::SignUp(self)
+        fn wrap_output(self) -> request_response::push_data::OperationsResult {
+            request_response::push_data::OperationsResult::SignUp(self)
         }
     }
 
     impl ViewType2 for Type4 {
-        fn unwrap_output(result: push_data::OperationsResult) -> Self {
-            if let push_data::OperationsResult::SignUp(result) = result {
+        fn unwrap_output(result: request_response::push_data::OperationsResult) -> Self {
+            if let request_response::push_data::OperationsResult::SignUp(result) = result {
                 return result;
             }
             unreachable!("{:?}", result)
@@ -336,7 +309,7 @@ pub(crate) mod sign_in {
 
     pub(crate) type Type1 = decider::sign_in::Input;
     type Type2 = decider::sign_in::Input;
-    type Type3 = decider::sign_in::Result;
+    type Type3 = decider::sign_in::MyResult;
     pub(crate) struct Type4(pub(crate) Result<SignInOk, decider::sign_in::Error>);
 
     pub(crate) struct SignInOk {
@@ -345,8 +318,8 @@ pub(crate) mod sign_in {
     }
 
     impl ViewType1 for Type1 {
-        fn wrap_input(self) -> push_data::OperationsInput {
-            push_data::OperationsInput::SignIn(self)
+        fn wrap_input(self) -> request_response::push_data::OperationsInput {
+            request_response::push_data::OperationsInput::SignIn(self)
         }
     }
 
@@ -407,21 +380,21 @@ pub(crate) mod sign_in {
     }
 
     impl CacheAndServerType2 for Type3 {
-        fn extract_resource(&self) -> Vec<ResourceInfo> {
+        fn extract_resource(&self) -> Vec<db_types::ResourceInfo> {
             match self {
-                Ok(ok) => ok.clone().into(),
+                Ok(ok) => todo!("ok.clone().into()"),
                 Err(_) => Vec::new(),
             }
         }
 
-        fn wrap_output(self) -> push_data::OperationsResult {
-            push_data::OperationsResult::SignIn(self)
+        fn wrap_output(self) -> request_response::push_data::OperationsResult {
+            request_response::push_data::OperationsResult::SignIn(self)
         }
     }
 
     impl ViewType2 for Type4 {
-        fn unwrap_output(result: push_data::OperationsResult) -> Self {
-            if let push_data::OperationsResult::SignIn(result) = result {
+        fn unwrap_output(result: request_response::push_data::OperationsResult) -> Self {
+            if let request_response::push_data::OperationsResult::SignIn(result) = result {
                 match result {
                     Ok(ok) => {
                         let mut user_uuid = ok.user_uuid;
@@ -446,12 +419,12 @@ pub(crate) mod create_company {
 
     pub(crate) type Type1 = decider::create_company::Input;
     type Type2 = decider::create_company::Input;
-    type Type3 = decider::create_company::Result;
-    pub(crate) type Type4 = decider::create_company::Result;
+    type Type3 = decider::create_company::MyResult;
+    pub(crate) type Type4 = decider::create_company::MyResult;
 
     impl ViewType1 for Type1 {
-        fn wrap_input(self) -> push_data::OperationsInput {
-            push_data::OperationsInput::CreateCompany(self)
+        fn wrap_input(self) -> request_response::push_data::OperationsInput {
+            request_response::push_data::OperationsInput::CreateCompany(self)
         }
     }
 
@@ -466,31 +439,28 @@ pub(crate) mod create_company {
             &self,
             state: &mut cache::State<At>,
         ) -> Self::Output {
-            let result = self
-                .handle::<State<_>, At::Rn, At::Rt, At::Id, At::Mpsc, At::Ed, At::Rg, SodoAuth, SodoJwt>(&mut server_methods::SideEffects::default(), state, &SodoJwt)
-                .await
-                .unwrap();
+            let result = todo!();
 
             return result;
         }
     }
 
     impl CacheAndServerType2 for Type3 {
-        fn extract_resource(&self) -> Vec<ResourceInfo> {
+        fn extract_resource(&self) -> Vec<db_types::ResourceInfo> {
             match self {
-                Ok(ok) => ok.clone().into(),
+                Ok(ok) => todo!("ok.clone().into()"),
                 Err(_) => Vec::new(),
             }
         }
 
-        fn wrap_output(self) -> push_data::OperationsResult {
-            push_data::OperationsResult::CreateCompany(self)
+        fn wrap_output(self) -> request_response::push_data::OperationsResult {
+            request_response::push_data::OperationsResult::CreateCompany(self)
         }
     }
 
     impl ViewType2 for Type4 {
-        fn unwrap_output(result: push_data::OperationsResult) -> Self {
-            if let push_data::OperationsResult::CreateCompany(result) = result {
+        fn unwrap_output(result: request_response::push_data::OperationsResult) -> Self {
+            if let request_response::push_data::OperationsResult::CreateCompany(result) = result {
                 return result;
             }
             unreachable!("{:?}", result)
@@ -503,12 +473,12 @@ pub(crate) mod create_company_branch {
 
     pub(crate) type Type1 = decider::create_company_branch::Input;
     type Type2 = decider::create_company_branch::Input;
-    type Type3 = decider::create_company_branch::Result;
-    pub(crate) type Type4 = decider::create_company_branch::Result;
+    type Type3 = decider::create_company_branch::MyResult;
+    pub(crate) type Type4 = decider::create_company_branch::MyResult;
 
     impl ViewType1 for Type1 {
-        fn wrap_input(self) -> push_data::OperationsInput {
-            push_data::OperationsInput::CreateCompanyBranch(self)
+        fn wrap_input(self) -> request_response::push_data::OperationsInput {
+            request_response::push_data::OperationsInput::CreateCompanyBranch(self)
         }
     }
 
@@ -523,31 +493,30 @@ pub(crate) mod create_company_branch {
             &self,
             state: &mut cache::State<At>,
         ) -> Self::Output {
-            let result = self
-                .handle::<State<_>, At::Rn, At::Rt, At::Id, At::Mpsc, At::Ed, At::Rg, SodoAuth, SodoJwt>(&mut server_methods::SideEffects::default(), state, &SodoJwt)
-                .await
-                .unwrap();
+            let result = todo!();
 
             return result;
         }
     }
 
     impl CacheAndServerType2 for Type3 {
-        fn extract_resource(&self) -> Vec<ResourceInfo> {
+        fn extract_resource(&self) -> Vec<db_types::ResourceInfo> {
             match self {
-                Ok(ok) => ok.clone().into(),
+                Ok(ok) => todo!("ok.clone().into()"),
                 Err(_) => Vec::new(),
             }
         }
 
-        fn wrap_output(self) -> push_data::OperationsResult {
-            push_data::OperationsResult::CreateCompanyBranch(self)
+        fn wrap_output(self) -> request_response::push_data::OperationsResult {
+            request_response::push_data::OperationsResult::CreateCompanyBranch(self)
         }
     }
 
     impl ViewType2 for Type4 {
-        fn unwrap_output(result: push_data::OperationsResult) -> Self {
-            if let push_data::OperationsResult::CreateCompanyBranch(result) = result {
+        fn unwrap_output(result: request_response::push_data::OperationsResult) -> Self {
+            if let request_response::push_data::OperationsResult::CreateCompanyBranch(result) =
+                result
+            {
                 return result;
             }
             unreachable!("{:?}", result)
@@ -560,20 +529,20 @@ pub(crate) mod list_company_and_branch {
 
     pub(crate) type Type1 = decider::list_company_and_branch::Input;
     type Type2 = decider::list_company_and_branch::Input;
-    type Type3 = decider::list_company_and_branch::Result;
+    type Type3 = decider::list_company_and_branch::MyResult;
     pub(crate) struct Type4(pub(crate) Result<db_types::ListOfCompanies, ()>);
 
     impl ViewType1 for Type1 {
-        fn subs() -> &'static [server_methods::Subscribe] {
+        fn subs() -> &'static [db_types::Subscribe] {
             &[
-                server_methods::Subscribe::TableCompanyBranchFieldName,
-                server_methods::Subscribe::TableCompanyFieldName,
-                server_methods::Subscribe::TableAccessControlForCompanyFieldRole,
+                db_types::Subscribe::TableCompanyBranchFieldName,
+                db_types::Subscribe::TableCompanyFieldName,
+                db_types::Subscribe::TableAccessControlForCompanyFieldRole,
             ]
         }
 
-        fn wrap_input(self) -> push_data::OperationsInput {
-            push_data::OperationsInput::ListCompanyAndBranch(self)
+        fn wrap_input(self) -> request_response::push_data::OperationsInput {
+            request_response::push_data::OperationsInput::ListCompanyAndBranch(self)
         }
     }
 
@@ -588,31 +557,29 @@ pub(crate) mod list_company_and_branch {
             &self,
             state: &mut cache::State<At>,
         ) -> Self::Output {
-            let result = self
-                .handle::<State<_>, At::Rn, At::Rt, At::Id, At::Mpsc, At::Ed, At::Rg, SodoAuth, SodoJwt>(&mut server_methods::SideEffects::default(), state, &SodoJwt)
-                .await
-                .unwrap();
+            let result = todo!();
 
             return result;
         }
     }
 
     impl CacheAndServerType2 for Type3 {
-        fn extract_resource(&self) -> Vec<ResourceInfo> {
+        fn extract_resource(&self) -> Vec<db_types::ResourceInfo> {
             match self {
-                Ok(ok) => ok.clone().into(),
+                Ok(ok) => todo!("ok.clone().into()"),
                 Err(_) => Vec::new(),
             }
         }
 
-        fn wrap_output(self) -> push_data::OperationsResult {
-            push_data::OperationsResult::ListCompanyAndBranch(self)
+        fn wrap_output(self) -> request_response::push_data::OperationsResult {
+            request_response::push_data::OperationsResult::ListCompanyAndBranch(self)
         }
     }
 
     impl ViewType2 for Type4 {
-        fn unwrap_output(result: push_data::OperationsResult) -> Self {
-            if let push_data::OperationsResult::ListCompanyAndBranch(res) = result {
+        fn unwrap_output(result: request_response::push_data::OperationsResult) -> Self {
+            if let request_response::push_data::OperationsResult::ListCompanyAndBranch(res) = result
+            {
                 match res {
                     Ok(ok) => {
                         #[derive(Default)]
@@ -637,21 +604,19 @@ pub(crate) mod list_company_and_branch {
                         for r in resources {
                             let uuid = r.row_uuid.clone();
                             match r.resource {
-                                server_methods::Resource::TableCompanyFieldName(name) => {
+                                db_types::Resource::TableCompanyFieldName(name) => {
                                     company_data.upsert(uuid, |data| data.name = name);
                                 }
-                                server_methods::Resource::TableCompanyFieldCurrency(currency) => {
+                                db_types::Resource::TableCompanyFieldCurrency(currency) => {
                                     company_data.upsert(uuid, |data| data.currency = currency);
                                 }
-                                server_methods::Resource::TableAccessControlForCompanyFieldRole(
-                                    role,
-                                ) => {
+                                db_types::Resource::TableAccessControlForCompanyFieldRole(role) => {
                                     company_data.upsert(uuid, |data| data.role = role);
                                 }
-                                server_methods::Resource::TableCompanyBranchFieldName(name) => {
+                                db_types::Resource::TableCompanyBranchFieldName(name) => {
                                     branch_data.upsert(uuid, |data| data.name = name);
                                 }
-                                server_methods::Resource::TableCompanyBranchFieldCompanyBelong(
+                                db_types::Resource::TableCompanyBranchFieldCompanyBelong(
                                     company_uuid,
                                 ) => {
                                     branch_data

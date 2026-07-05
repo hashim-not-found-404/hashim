@@ -1,10 +1,6 @@
 use crate::{
-    db_types,
-    decider::StateOp,
-    request_response::ResourceInfo,
-    server_methods,
-    traits::{AllClientTypes, Cache},
-    utils,
+    client_traits::{AllClientTypes, Cache},
+    db_types, utils,
 };
 use std::collections::{HashMap, HashSet};
 
@@ -78,7 +74,7 @@ impl<At: AllClientTypes> State<At> {
     }
 }
 
-impl<At: AllClientTypes> StateOp for State<At> {
+impl<At: AllClientTypes> State<At> {
     async fn read_sign_up(
         &mut self,
         new_uuid: &db_types::UuidType,
@@ -122,7 +118,7 @@ impl<At: AllClientTypes> StateOp for State<At> {
     async fn read_list_company_and_branch(
         &mut self,
         user_uuid: &db_types::UuidType,
-    ) -> Result<Vec<ResourceInfo>, utils::DynamicError> {
+    ) -> Result<Vec<db_types::ResourceInfo>, utils::DynamicError> {
         // Start with resources from the cache (already stored in DB)
         let mut resources = self.cache.read_list_company_and_branch(&user_uuid).await;
 
@@ -132,53 +128,49 @@ impl<At: AllClientTypes> StateOp for State<At> {
                 let company_uuid = acf.data_group.clone();
                 if let Some(company) = self.state_of_pending_txn.company.get(&company_uuid) {
                     // Company name
-                    resources.push(ResourceInfo {
+                    resources.push(db_types::ResourceInfo {
                         row_uuid: company_uuid.clone(),
-                        resource: server_methods::Resource::TableCompanyFieldName(
-                            company.name.clone(),
-                        ),
+                        resource: db_types::Resource::TableCompanyFieldName(company.name.clone()),
                     });
 
                     // Access control: role
-                    resources.push(ResourceInfo {
+                    resources.push(db_types::ResourceInfo {
                         row_uuid: company_uuid.clone(),
-                        resource: server_methods::Resource::TableAccessControlForCompanyFieldRole(
+                        resource: db_types::Resource::TableAccessControlForCompanyFieldRole(
                             acf.role.clone(),
                         ),
                     });
 
                     // Access control: user_
-                    resources.push(ResourceInfo {
+                    resources.push(db_types::ResourceInfo {
                         row_uuid: company_uuid.clone(),
-                        resource: server_methods::Resource::TableAccessControlForCompanyFieldUser(
+                        resource: db_types::Resource::TableAccessControlForCompanyFieldUser(
                             user_uuid.clone(),
                         ),
                     });
 
                     // Access control: data_group
-                    resources.push(ResourceInfo {
+                    resources.push(db_types::ResourceInfo {
                         row_uuid: company_uuid.clone(),
-                        resource:
-                            server_methods::Resource::TableAccessControlForCompanyFieldDataGroup(
-                                company_uuid.clone(),
-                            ),
+                        resource: db_types::Resource::TableAccessControlForCompanyFieldDataGroup(
+                            company_uuid.clone(),
+                        ),
                     });
 
                     // Pending branches for this company
                     for (branch_uuid, branch) in &self.state_of_pending_txn.company_branch {
                         if branch.company_belong == company_uuid {
-                            resources.push(ResourceInfo {
+                            resources.push(db_types::ResourceInfo {
                                 row_uuid: branch_uuid.clone(),
-                                resource: server_methods::Resource::TableCompanyBranchFieldName(
+                                resource: db_types::Resource::TableCompanyBranchFieldName(
                                     branch.name.clone(),
                                 ),
                             });
-                            resources.push(ResourceInfo {
+                            resources.push(db_types::ResourceInfo {
                                 row_uuid: branch_uuid.clone(),
-                                resource:
-                                    server_methods::Resource::TableCompanyBranchFieldCompanyBelong(
-                                        company_uuid.clone(),
-                                    ),
+                                resource: db_types::Resource::TableCompanyBranchFieldCompanyBelong(
+                                    company_uuid.clone(),
+                                ),
                             });
                         }
                     }

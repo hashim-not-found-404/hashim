@@ -1,6 +1,7 @@
 use crate::{
-    traits::{AllClientTypes, JoinHandle, MultiProducerSingleConsumer, Receiver, Runtime, Sender},
-    ui_model::{self, HashimSignal},
+    client_traits::{AllClientTypes, HashimSignal},
+    client_types,
+    shared_traits::{JoinHandle, MultiProducerSingleConsumer, Receiver, Runtime, Sender},
 };
 use std::{collections::HashMap, hash::Hash, time::Duration};
 
@@ -97,7 +98,7 @@ pub(crate) fn process_manager_actor<At: AllClientTypes>()
                 } => {
                     let table = process_states.get_mut(&process_name).unwrap();
 
-                    table.dialog.set(ui_model::Dialog::Hide);
+                    table.dialog.set(client_types::Dialog::Hide);
                     table.is_user_want_to_proceed = consent;
                     table.timer_handle.abort().await;
 
@@ -162,13 +163,13 @@ pub(crate) fn process_manager_actor<At: AllClientTypes>()
                     IsProceed::Wait => {}
                     IsProceed::Yes => {
                         process_info.timer_handle.abort().await;
-                        process_info.dialog.set(ui_model::Dialog::Hide);
+                        process_info.dialog.set(client_types::Dialog::Hide);
                         process_info.sender.send(ProceedResult::Yes).await.unwrap();
                         process_states.remove(&process_name);
                     }
                     IsProceed::No => {
                         process_info.timer_handle.abort().await;
-                        process_info.dialog.set(ui_model::Dialog::Hide);
+                        process_info.dialog.set(client_types::Dialog::Hide);
                         process_info.sender.send(ProceedResult::No).await.unwrap();
                         process_states.remove(&process_name);
                     }
@@ -185,6 +186,6 @@ fn timer_handle<At: AllClientTypes>(
 ) -> <At::Rt as Runtime>::JoinHandle<()> {
     At::Rt::abortable_spawn_local(async move {
         At::Rt::sleep(Duration::from_secs(5)).await;
-        dialog_clone.set(ui_model::Dialog::Show);
+        dialog_clone.set(client_types::Dialog::Show);
     })
 }
