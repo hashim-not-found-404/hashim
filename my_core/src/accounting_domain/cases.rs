@@ -21,7 +21,7 @@ pub trait JWT {
 pub mod sign_up {
     use super::*;
 
-    pub type MyResult = Result<Ok, Error>;
+    pub(crate) type MyResult = Result<Ok, Error>;
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Input {
@@ -107,7 +107,7 @@ pub mod sign_up {
 pub(crate) mod sign_in {
     use super::*;
 
-    pub type MyResult = Result<Ok, Error>;
+    pub(crate) type MyResult = Result<Ok, Error>;
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Input {
@@ -174,7 +174,7 @@ pub(crate) mod sign_in {
 pub mod create_company {
     use super::*;
 
-    pub type MyResult = Result<Ok, Error>;
+    pub(crate) type MyResult = Result<Ok, Error>;
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Input {
@@ -238,7 +238,7 @@ pub mod create_company {
 pub(crate) mod list_company_and_branch {
     use super::*;
 
-    pub type MyResult = Result<Ok, Error>;
+    pub(crate) type MyResult = Result<Ok, Error>;
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Input {
@@ -271,7 +271,7 @@ pub(crate) mod list_company_and_branch {
 pub mod create_company_branch {
     use super::*;
 
-    pub type MyResult = Result<Ok, Error>;
+    pub(crate) type MyResult = Result<Ok, Error>;
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Input {
