@@ -8,6 +8,8 @@ dot -Tpng graph.dot -o graph.png
 
 cargo-cycles --topo-sort
 
+cargo sort -w
+
 clear && cockroach start-single-node --insecure
 clear && cockroach sql --insecure
 clear && cockroach sql --file db_client_cockroach/schema/tables.sql --insecure
