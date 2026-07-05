@@ -1,20 +1,13 @@
 pub mod my_types;
 pub mod web_socket_server;
 
-pub mod prelude {
-    pub use crate::{my_types, web_socket_server};
-    pub(crate) use adapters::prelude::*;
-    pub(crate) use db_client_cockroach::prelude::*;
-    pub(crate) use my_core::prelude::*;
-}
-
-use crate::prelude::*;
 use actix_web::{
     App, HttpRequest, HttpResponse, HttpServer,
     web::{self, Data, Payload},
 };
+use my_core::{accounting_domain::db_types, server::server_methods};
 
-type ServerMethodsType = server_methods::ServerMethods<my_types::target::S>;
+type ServerMethodsType = server_methods::ServerMethods<my_types::S>;
 
 #[actix_web::main]
 async fn main() {
@@ -34,7 +27,7 @@ async fn main() {
             .route("/ws", web::get().to(ws_handler))
     })
     // .bind_rustls_0_23((HOST, PORT), get_tls_config())
-    .bind((HOST, PORT))
+    .bind((db_types::HOST, db_types::PORT))
     .unwrap()
     .run()
     .await
@@ -54,7 +47,7 @@ async fn ws_handler(req: HttpRequest, stream: Payload) -> HttpResponse {
         .aggregate_continuations()
         .max_continuation_size(2_usize.pow(16));
 
-    let session = web_socket_server::target::S::new(session, stream);
+    let session = web_socket_server::S::new(session, stream);
     let state = req.app_data::<Data<ServerMethodsType>>().unwrap();
     state.clone().into_inner().server_actor(session);
 
