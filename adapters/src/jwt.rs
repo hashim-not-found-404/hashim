@@ -2,7 +2,7 @@
 pub mod target {
     use chrono::{Duration, Utc};
     use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode};
-    use my_core::accounting_domain::{db_types, decider::JWT};
+    use my_core::accounting_domain::{cases::JWT, types};
     use serde::{Deserialize, Serialize};
     use std::sync::Arc;
 
@@ -17,7 +17,7 @@ pub mod target {
 
     #[derive(Serialize, Deserialize)]
     struct Claims {
-        id: db_types::UuidType,
+        id: types::UuidType,
         exp: u64,
     }
 
@@ -28,13 +28,13 @@ pub mod target {
             }
         }
 
-        fn sign(&self, id: &db_types::UuidType) -> db_types::JsonWebTokenType {
+        fn sign(&self, id: &types::UuidType) -> types::JsonWebTokenType {
             let claims = Claims {
                 id: id.clone(),
                 exp: exp_time(),
             };
 
-            db_types::JsonWebTokenType(
+            types::JsonWebTokenType(
                 encode(
                     &Header::default(),
                     &claims,
@@ -44,7 +44,7 @@ pub mod target {
             )
         }
 
-        fn validate(&self, token: db_types::JsonWebTokenType) -> Option<db_types::UuidType> {
+        fn validate(&self, token: types::JsonWebTokenType) -> Option<types::UuidType> {
             let result = decode::<Claims>(
                 &token.0,
                 &DecodingKey::from_secret(&self.key),

@@ -6,7 +6,7 @@ pub mod target {
     };
     use my_core::{
         accounting_client::client_traits::WSClient,
-        accounting_domain::db_types::HashimError,
+        accounting_domain::types::HashimError,
         utility::utils::{DynamicError, LogError},
     };
     use std::sync::Mutex;
@@ -65,7 +65,7 @@ pub mod target {
     use gloo_net::websocket::{Message, futures::WebSocket};
     use my_core::{
         accounting_client::client_traits::WSClient,
-        accounting_domain::db_types::HashimError,
+        accounting_domain::types::HashimError,
         utility::utils::{DynamicError, LogError},
     };
     use std::sync::Mutex;

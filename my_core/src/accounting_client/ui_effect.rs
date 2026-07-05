@@ -5,7 +5,7 @@ use crate::{
         process_manager, ui_model,
         ui_updaters::{self, Mvu},
     },
-    accounting_domain::db_types,
+    accounting_domain::types,
     mbg,
     utility::traits::{MultiProducerSingleConsumer, Receiver, Runtime, Sender},
 };
@@ -26,7 +26,7 @@ impl<At: AllClientTypes> Clone for Commander<At> {
 impl<At: AllClientTypes> Commander<At> {
     pub(crate) fn new(
         receiver_to_error: <At::Mpsc as MultiProducerSingleConsumer>::Receiver<
-            db_types::HashimError,
+            types::HashimError,
         >,
         sender_to_process_manager: <At::Mpsc as MultiProducerSingleConsumer>::Sender<
             process_manager::MessageToProcessManager<At>,
@@ -109,7 +109,7 @@ impl<At: AllClientTypes> Commander<At> {
 
 fn listen_to_error_actor<At: AllClientTypes>(
     mut receiver_to_error: <At::Mpsc as MultiProducerSingleConsumer>::Receiver<
-        db_types::HashimError,
+        types::HashimError,
     >,
     external_errors_signal: &'static At::StringVec,
 ) {

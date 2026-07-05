@@ -1,10 +1,10 @@
-use crate::accounting_domain::db_types;
+use crate::accounting_domain::types;
 use serde::{Deserialize, Serialize};
 
 pub trait RowId {
-    fn generate() -> db_types::UuidType;
-    fn get_time_as_seconds(uuid: &db_types::UuidType) -> Option<u64>;
-    fn validate(uuid: &db_types::UuidType) -> bool;
+    fn generate() -> types::UuidType;
+    fn get_time_as_seconds(uuid: &types::UuidType) -> Option<u64>;
+    fn validate(uuid: &types::UuidType) -> bool;
 }
 
 pub trait HashedPassword {
@@ -14,8 +14,8 @@ pub trait HashedPassword {
 
 pub trait JWT {
     fn new() -> Self;
-    fn sign(&self, user_uuid: &db_types::UuidType) -> db_types::JsonWebTokenType;
-    fn validate(&self, token: db_types::JsonWebTokenType) -> Option<db_types::UuidType>;
+    fn sign(&self, user_uuid: &types::UuidType) -> types::JsonWebTokenType;
+    fn validate(&self, token: types::JsonWebTokenType) -> Option<types::UuidType>;
 }
 
 pub mod sign_up {
@@ -25,7 +25,7 @@ pub mod sign_up {
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Input {
-        pub new_uuid: db_types::UuidType,
+        pub new_uuid: types::UuidType,
         pub name: Option<String>,
         pub user_id: String,
         pub password: String,
@@ -33,16 +33,16 @@ pub mod sign_up {
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Ok {
-        pub new_uuid: db_types::UuidType,
+        pub new_uuid: types::UuidType,
         pub user_id: String,
         pub user_name: Option<String>,
         pub hashed_password: String,
-        jwt: db_types::JsonWebTokenType,
+        jwt: types::JsonWebTokenType,
     }
 
     #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
     pub struct Error {
-        pub new_uuid: Option<db_types::RowIdError>,
+        pub new_uuid: Option<types::RowIdError>,
         pub user_id: Option<UserIdError>,
         pub name: Option<String>,
     }
@@ -65,7 +65,7 @@ pub mod sign_up {
             let mut errr = Error::default();
 
             if !Id::validate(&self.new_uuid) {
-                errr.new_uuid = Some(db_types::RowIdError::Invalid);
+                errr.new_uuid = Some(types::RowIdError::Invalid);
             }
 
             errr
@@ -79,7 +79,7 @@ pub mod sign_up {
             let mut errr = Error::default();
 
             if is_new_uuid_exist {
-                errr.new_uuid = Some(db_types::RowIdError::Duplicated);
+                errr.new_uuid = Some(types::RowIdError::Duplicated);
             }
 
             if is_user_id_exist {
@@ -117,8 +117,8 @@ pub mod sign_in {
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Ok {
-        pub user_uuid: db_types::UuidType,
-        pub jwt: db_types::JsonWebTokenType,
+        pub user_uuid: types::UuidType,
+        pub jwt: types::JsonWebTokenType,
     }
 
     #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
@@ -143,7 +143,7 @@ pub mod sign_in {
         fn handle<Auth: HashedPassword, Jwt: JWT>(
             &self,
             jwt: &Jwt,
-            user_rowid_and_password_hash: &Option<(db_types::UuidType, String)>,
+            user_rowid_and_password_hash: &Option<(types::UuidType, String)>,
         ) -> MyResult {
             let mut errr = Error::default();
 
@@ -178,25 +178,25 @@ pub mod create_company {
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Input {
-        pub user_uuid: db_types::UuidType,
-        pub new_uuid: db_types::UuidType,
+        pub user_uuid: types::UuidType,
+        pub new_uuid: types::UuidType,
         pub company_name: String,
-        pub currency: db_types::Currency,
+        pub currency: types::Currency,
     }
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Ok {
-        pub new_uuid: db_types::UuidType,
+        pub new_uuid: types::UuidType,
         pub company_name: String,
-        pub currency: db_types::Currency,
-        pub user_uuid: db_types::UuidType,
-        pub role: db_types::Role,
+        pub currency: types::Currency,
+        pub user_uuid: types::UuidType,
+        pub role: types::Role,
     }
 
     #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
     pub struct Error {
-        pub user_uuid: Option<db_types::UserUuidError>,
-        pub new_uuid: Option<db_types::RowIdError>,
+        pub user_uuid: Option<types::UserUuidError>,
+        pub new_uuid: Option<types::RowIdError>,
     }
 
     impl Input {
@@ -204,11 +204,11 @@ pub mod create_company {
             let mut errr = Error::default();
 
             if !Id::validate(&self.new_uuid) {
-                errr.new_uuid = Some(db_types::RowIdError::Invalid);
+                errr.new_uuid = Some(types::RowIdError::Invalid);
             }
 
             if !Id::validate(&self.user_uuid) {
-                errr.user_uuid = Some(db_types::UserUuidError::Invalid);
+                errr.user_uuid = Some(types::UserUuidError::Invalid);
             }
             errr
         }
@@ -216,13 +216,13 @@ pub mod create_company {
         fn state_full_check<Id: RowId>(&self, is_new_uuid_used: bool) -> Error {
             let mut errr = Error::default();
             if is_new_uuid_used {
-                errr.new_uuid = Some(db_types::RowIdError::Duplicated);
+                errr.new_uuid = Some(types::RowIdError::Duplicated);
             }
             errr
         }
 
         fn handle(&self) -> Ok {
-            const ROLE: db_types::Role = db_types::Role::Manager;
+            const ROLE: types::Role = types::Role::Manager;
 
             Ok {
                 new_uuid: self.new_uuid.clone(),
@@ -242,17 +242,17 @@ pub mod list_company_and_branch {
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Input {
-        pub user_uuid: db_types::UuidType,
+        pub user_uuid: types::UuidType,
     }
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Ok {
-        pub resource: Vec<db_types::ResourceInfo>,
+        pub resource: Vec<types::ResourceInfo>,
     }
 
     #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
     pub struct Error {
-        pub user_uuid: Option<db_types::UserUuidError>,
+        pub user_uuid: Option<types::UserUuidError>,
     }
 
     impl Input {
@@ -260,7 +260,7 @@ pub mod list_company_and_branch {
             let mut errr = Error::default();
 
             if !Id::validate(&self.user_uuid) {
-                errr.user_uuid = Some(db_types::UserUuidError::Invalid);
+                errr.user_uuid = Some(types::UserUuidError::Invalid);
             }
 
             errr
@@ -275,29 +275,29 @@ pub mod create_company_branch {
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Input {
-        pub user_uuid: db_types::UuidType,
-        pub new_uuid: db_types::UuidType,
-        pub company_belong: db_types::UuidType,
+        pub user_uuid: types::UuidType,
+        pub new_uuid: types::UuidType,
+        pub company_belong: types::UuidType,
         pub branch_name: String,
-        pub location: db_types::Location,
-        pub currency: db_types::Currency,
+        pub location: types::Location,
+        pub currency: types::Currency,
     }
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Ok {
-        pub new_uuid: db_types::UuidType,
+        pub new_uuid: types::UuidType,
         pub branch_name: String,
-        pub company_belong: db_types::UuidType,
-        pub user_uuid: db_types::UuidType,
-        pub currency: db_types::Currency,
-        pub location: db_types::Location,
-        pub role: db_types::Role,
+        pub company_belong: types::UuidType,
+        pub user_uuid: types::UuidType,
+        pub currency: types::Currency,
+        pub location: types::Location,
+        pub role: types::Role,
     }
 
     #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
     pub struct Error {
-        pub user_uuid: Option<db_types::UserUuidError>,
-        pub new_uuid: Option<db_types::RowIdError>,
+        pub user_uuid: Option<types::UserUuidError>,
+        pub new_uuid: Option<types::RowIdError>,
         pub company_belong: Option<CompanyBelongError>,
         pub branch_name: Option<BranchNameError>,
         pub location: Option<LocationError>,
@@ -326,11 +326,11 @@ pub mod create_company_branch {
             let mut errr = Error::default();
 
             if !Id::validate(&self.new_uuid) {
-                errr.new_uuid = Some(db_types::RowIdError::Invalid);
+                errr.new_uuid = Some(types::RowIdError::Invalid);
             }
 
             if !Id::validate(&self.user_uuid) {
-                errr.user_uuid = Some(db_types::UserUuidError::Invalid);
+                errr.user_uuid = Some(types::UserUuidError::Invalid);
             };
 
             if !Id::validate(&self.company_belong) {
@@ -342,22 +342,22 @@ pub mod create_company_branch {
 
         fn state_full_check<Id: RowId>(
             &self,
-            user_roles: &Vec<db_types::Role>,
+            user_roles: &Vec<types::Role>,
             is_new_uuid_used: bool,
             is_company_exist: bool,
             is_branch_name_used: bool,
         ) -> Error {
             let mut errr = Error::default();
 
-            if !db_types::Role::has_any(
+            if !types::Role::has_any(
                 &user_roles,
-                &[db_types::Role::Manager, db_types::Role::CoManager],
+                &[types::Role::Manager, types::Role::CoManager],
             ) {
-                errr.user_uuid = Some(db_types::UserUuidError::YouDontHavePermissionToDoThat);
+                errr.user_uuid = Some(types::UserUuidError::YouDontHavePermissionToDoThat);
             }
 
             if is_new_uuid_used {
-                errr.new_uuid = Some(db_types::RowIdError::Duplicated);
+                errr.new_uuid = Some(types::RowIdError::Duplicated);
             }
 
             if !is_company_exist {
@@ -376,7 +376,7 @@ pub mod create_company_branch {
         }
 
         fn handel(&self) -> Ok {
-            const ROLE: db_types::Role = db_types::Role::CoManager;
+            const ROLE: types::Role = types::Role::CoManager;
 
             Ok {
                 new_uuid: self.new_uuid.clone(),

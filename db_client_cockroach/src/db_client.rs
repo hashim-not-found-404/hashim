@@ -3,7 +3,7 @@ use crate::{
     utils::{MyUuidConverter, MyUuidConverter1},
 };
 use my_core::{
-    accounting_domain::db_types,
+    accounting_domain::types,
     server::{server_traits::DBClient, server_types},
     utility::utils::{DynamicError, LogError},
 };
@@ -29,7 +29,7 @@ impl DBClient for S {
     async fn read_sign_in(
         &mut self,
         user_id: &String,
-    ) -> Result<Option<(db_types::UuidType, String)>, DynamicError> {
+    ) -> Result<Option<(types::UuidType, String)>, DynamicError> {
         let query = "SELECT rowid,pass FROM accounting_app.user WHERE id = $1 LIMIT 1;";
         let stmt = self.client.prepare_cached(query).await.log()?;
         let row = self.client.query_opt(&stmt, &[user_id]).await.log()?;
@@ -46,7 +46,7 @@ impl DBClient for S {
 
     async fn read_roles_for_user(
         &mut self,
-        users_uuid: &HashSet<db_types::UuidType>,
+        users_uuid: &HashSet<types::UuidType>,
     ) -> Result<server_types::AllRoles, DynamicError> {
         let query = r#"
             SELECT
@@ -88,11 +88,11 @@ impl DBClient for S {
                 let user_id: Uuid = row.try_get("user_").log()?;
 
                 // Parse role from string
-                let role = db_types::Role::from_str(&role_str).log()?;
+                let role = types::Role::from_str(&role_str).log()?;
 
                 // Convert Uuid to your RowId type
-                let data_group_id = db_types::UuidType(data_group.into_bytes());
-                let user_id_typed = db_types::UuidType(user_id.into_bytes());
+                let data_group_id = types::UuidType(data_group.into_bytes());
+                let user_id_typed = types::UuidType(user_id.into_bytes());
 
                 match entity_type.as_str() {
                     "company" => {
@@ -123,7 +123,7 @@ impl DBClient for S {
 
     async fn write_nonce_if_not_used(
         &mut self,
-        nonce: &db_types::UuidType,
+        nonce: &types::UuidType,
     ) -> Result<bool /* is nonce used */, DynamicError> {
         let row = self
             .client
@@ -142,8 +142,8 @@ impl DBClient for S {
 
     async fn read_list_company_and_branch(
         &mut self,
-        user_uuid: &db_types::UuidType,
-    ) -> Result<Vec<db_types::ResourceInfo>, DynamicError> {
+        user_uuid: &types::UuidType,
+    ) -> Result<Vec<types::ResourceInfo>, DynamicError> {
         let query = "
             WITH user_companies AS (
                 SELECT
@@ -186,51 +186,51 @@ impl DBClient for S {
 
         for row in rows {
             let company_uuid_str: Uuid = row.try_get(0).log()?;
-            let company_uuid_db = db_types::UuidType(company_uuid_str.into_bytes());
+            let company_uuid_db = types::UuidType(company_uuid_str.into_bytes());
             let company_name: String = row.try_get(1).log()?;
             let user_role_str: String = row.try_get(2).log()?;
             let branches_json: serde_json::Value = row.try_get(3).log()?;
 
-            let branches: Vec<db_types::Branch> = serde_json::from_value(branches_json).log()?;
-            let role = db_types::Role::from_str(&user_role_str).log()?;
+            let branches: Vec<types::Branch> = serde_json::from_value(branches_json).log()?;
+            let role = types::Role::from_str(&user_role_str).log()?;
 
             // 1. Company name
-            resources.push(db_types::ResourceInfo {
+            resources.push(types::ResourceInfo {
                 row_uuid: company_uuid_db.clone(),
-                resource: db_types::Resource::TableCompanyFieldName(company_name),
+                resource: types::Resource::TableCompanyFieldName(company_name),
             });
 
             // 2. Access Control: role
-            resources.push(db_types::ResourceInfo {
+            resources.push(types::ResourceInfo {
                 row_uuid: company_uuid_db.clone(),
-                resource: db_types::Resource::TableAccessControlForCompanyFieldRole(role),
+                resource: types::Resource::TableAccessControlForCompanyFieldRole(role),
             });
 
             // 3. Access Control: user_ (so cache can query by user)
-            resources.push(db_types::ResourceInfo {
+            resources.push(types::ResourceInfo {
                 row_uuid: company_uuid_db.clone(),
-                resource: db_types::Resource::TableAccessControlForCompanyFieldUser(
+                resource: types::Resource::TableAccessControlForCompanyFieldUser(
                     user_uuid.clone(),
                 ),
             });
 
             // 4. Access Control: data_group (self-reference)
-            resources.push(db_types::ResourceInfo {
+            resources.push(types::ResourceInfo {
                 row_uuid: company_uuid_db.clone(),
-                resource: db_types::Resource::TableAccessControlForCompanyFieldDataGroup(
+                resource: types::Resource::TableAccessControlForCompanyFieldDataGroup(
                     company_uuid_db.clone(),
                 ),
             });
 
             // 5. Branches
             for branch in branches {
-                resources.push(db_types::ResourceInfo {
+                resources.push(types::ResourceInfo {
                     row_uuid: branch.uuid.clone(),
-                    resource: db_types::Resource::TableCompanyBranchFieldName(branch.name),
+                    resource: types::Resource::TableCompanyBranchFieldName(branch.name),
                 });
-                resources.push(db_types::ResourceInfo {
+                resources.push(types::ResourceInfo {
                     row_uuid: branch.uuid,
-                    resource: db_types::Resource::TableCompanyBranchFieldCompanyBelong(
+                    resource: types::Resource::TableCompanyBranchFieldCompanyBelong(
                         company_uuid_db.clone(),
                     ),
                 });

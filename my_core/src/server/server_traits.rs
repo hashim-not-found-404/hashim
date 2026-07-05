@@ -1,5 +1,5 @@
 use crate::{
-    accounting_domain::{db_types, decider},
+    accounting_domain::{cases, types},
     server::server_types,
     utility::{traits, utils},
 };
@@ -20,7 +20,7 @@ pub trait DBTransaction {
 
     fn read_sign_up(
         &mut self,
-        new_uuid: &db_types::UuidType,
+        new_uuid: &types::UuidType,
         user_id: &String,
     ) -> impl Future<
         Output = Result<
@@ -33,38 +33,38 @@ pub trait DBTransaction {
     >;
     fn write_sign_up(
         &mut self,
-        data: &decider::sign_up::Ok,
+        data: &cases::sign_up::Ok,
     ) -> impl Future<Output = Result<(), utils::DynamicError>>;
 
     fn read_create_company(
         &mut self,
-        new_uuid: &db_types::UuidType,
+        new_uuid: &types::UuidType,
     ) -> impl Future<Output = Result<bool /* is new_uuid exist */, utils::DynamicError>>;
     fn write_create_company(
         &mut self,
-        data: &decider::create_company::Ok,
+        data: &cases::create_company::Ok,
     ) -> impl Future<Output = Result<(), utils::DynamicError>>;
 
     fn read_create_company_branch(
         &mut self,
-        new_uuid: &db_types::UuidType,
-        user_uuid: &db_types::UuidType,
-        company_belong: &db_types::UuidType,
+        new_uuid: &types::UuidType,
+        user_uuid: &types::UuidType,
+        company_belong: &types::UuidType,
         branch_name: &String,
     ) -> impl Future<
         Output = Result<
             (
-                Vec<db_types::Role>, /* user roles */
-                bool,                /* is new_uuid exist */
-                bool,                /* is company_belong exist */
-                bool,                /* is branch_name used */
+                Vec<types::Role>, /* user roles */
+                bool,             /* is new_uuid exist */
+                bool,             /* is company_belong exist */
+                bool,             /* is branch_name used */
             ),
             utils::DynamicError,
         >,
     >;
     fn write_create_company_branch(
         &mut self,
-        data: &decider::create_company_branch::Ok,
+        data: &cases::create_company_branch::Ok,
     ) -> impl Future<Output = Result<(), utils::DynamicError>>;
 }
 
@@ -79,7 +79,7 @@ pub trait DBClient {
 
     fn write_nonce_if_not_used(
         &mut self,
-        nonce: &db_types::UuidType,
+        nonce: &types::UuidType,
     ) -> impl Future<Output = Result<bool /* is nonce used */, utils::DynamicError>>;
 
     // here we just do read we dont do here any set or check
@@ -87,15 +87,15 @@ pub trait DBClient {
     fn read_sign_in(
         &mut self,
         user_id: &String,
-    ) -> impl Future<Output = Result<Option<(db_types::UuidType, String)>, utils::DynamicError>>;
+    ) -> impl Future<Output = Result<Option<(types::UuidType, String)>, utils::DynamicError>>;
     fn read_roles_for_user(
         &mut self,
-        users_uuids: &HashSet<db_types::UuidType>,
+        users_uuids: &HashSet<types::UuidType>,
     ) -> impl Future<Output = Result<server_types::AllRoles, utils::DynamicError>>;
     fn read_list_company_and_branch(
         &mut self,
-        user_uuid: &db_types::UuidType,
-    ) -> impl Future<Output = Result<Vec<db_types::ResourceInfo>, utils::DynamicError>>;
+        user_uuid: &types::UuidType,
+    ) -> impl Future<Output = Result<Vec<types::ResourceInfo>, utils::DynamicError>>;
 }
 
 pub trait Database {
@@ -121,13 +121,13 @@ where
 {
     type Rn: traits::RandomNumber;
     type Rt: traits::Runtime;
-    type Id: decider::RowId;
+    type Id: cases::RowId;
     type Mpsc: traits::MultiProducerSingleConsumer;
     type Ed: traits::Coding;
     type Rg: traits::Regex;
 
-    type Auth: decider::HashedPassword;
-    type Jwt: decider::JWT;
+    type Auth: cases::HashedPassword;
+    type Jwt: cases::JWT;
 
     type Db: Database<Client = Self::Cli>;
     type Cli: DBClient;

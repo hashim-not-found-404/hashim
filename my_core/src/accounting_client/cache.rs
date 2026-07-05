@@ -1,12 +1,12 @@
 use crate::{
     accounting_client::client_traits::{AllClientTypes, Cache},
-    accounting_domain::db_types,
+    accounting_domain::types,
     utility::utils,
 };
 use std::collections::{HashMap, HashSet};
 
 pub mod tables {
-    use crate::accounting_domain::db_types;
+    use crate::accounting_domain::types;
 
     #[derive(Default)]
     pub struct User {
@@ -17,37 +17,37 @@ pub mod tables {
     #[derive(Default)]
     pub struct Company {
         pub name: String,
-        pub currency: db_types::Currency,
+        pub currency: types::Currency,
     }
     #[derive(Default)]
     pub struct AccessControlForCompany {
-        pub data_group: db_types::UuidType,
-        pub user_: db_types::UuidType,
-        pub role: db_types::Role,
+        pub data_group: types::UuidType,
+        pub user_: types::UuidType,
+        pub role: types::Role,
     }
     #[derive(Default)]
     pub struct CompanyBranch {
-        pub company_belong: db_types::UuidType,
+        pub company_belong: types::UuidType,
         pub name: String,
-        pub location: db_types::Location,
-        pub currency: db_types::Currency,
+        pub location: types::Location,
+        pub currency: types::Currency,
     }
     #[derive(Default)]
     pub struct AccessControlForCompanyBranch {
-        pub data_group: db_types::UuidType,
-        pub user_: db_types::UuidType,
-        pub role: db_types::Role,
+        pub data_group: types::UuidType,
+        pub user_: types::UuidType,
+        pub role: types::Role,
     }
 }
 
 #[derive(Default)]
 pub struct StateOfPendingTxn {
-    pub user: HashMap<db_types::UuidType, tables::User>,
-    pub company: HashMap<db_types::UuidType, tables::Company>,
-    pub access_control_for_company: HashMap<db_types::UuidType, tables::AccessControlForCompany>,
-    pub company_branch: HashMap<db_types::UuidType, tables::CompanyBranch>,
+    pub user: HashMap<types::UuidType, tables::User>,
+    pub company: HashMap<types::UuidType, tables::Company>,
+    pub access_control_for_company: HashMap<types::UuidType, tables::AccessControlForCompany>,
+    pub company_branch: HashMap<types::UuidType, tables::CompanyBranch>,
     pub access_control_for_company_branch:
-        HashMap<db_types::UuidType, tables::AccessControlForCompanyBranch>,
+        HashMap<types::UuidType, tables::AccessControlForCompanyBranch>,
 }
 
 pub struct State<At: AllClientTypes> {
@@ -78,7 +78,7 @@ impl<At: AllClientTypes> State<At> {
 impl<At: AllClientTypes> State<At> {
     async fn read_sign_up(
         &mut self,
-        new_uuid: &db_types::UuidType,
+        new_uuid: &types::UuidType,
         user_id: &String,
     ) -> Result<
         (
@@ -105,21 +105,21 @@ impl<At: AllClientTypes> State<At> {
     async fn read_sign_in(
         &mut self,
         user_id: &String,
-    ) -> Result<Option<(db_types::UuidType, String)>, utils::DynamicError> {
+    ) -> Result<Option<(types::UuidType, String)>, utils::DynamicError> {
         unreachable!("this is not callable at client side")
     }
 
     async fn read_create_company(
         &mut self,
-        new_uuid: &db_types::UuidType,
+        new_uuid: &types::UuidType,
     ) -> Result<bool /* is new_uuid exist */, utils::DynamicError> {
         Ok(false)
     }
 
     async fn read_list_company_and_branch(
         &mut self,
-        user_uuid: &db_types::UuidType,
-    ) -> Result<Vec<db_types::ResourceInfo>, utils::DynamicError> {
+        user_uuid: &types::UuidType,
+    ) -> Result<Vec<types::ResourceInfo>, utils::DynamicError> {
         // Start with resources from the cache (already stored in DB)
         let mut resources = self.cache.read_list_company_and_branch(&user_uuid).await;
 
@@ -129,31 +129,31 @@ impl<At: AllClientTypes> State<At> {
                 let company_uuid = acf.data_group.clone();
                 if let Some(company) = self.state_of_pending_txn.company.get(&company_uuid) {
                     // Company name
-                    resources.push(db_types::ResourceInfo {
+                    resources.push(types::ResourceInfo {
                         row_uuid: company_uuid.clone(),
-                        resource: db_types::Resource::TableCompanyFieldName(company.name.clone()),
+                        resource: types::Resource::TableCompanyFieldName(company.name.clone()),
                     });
 
                     // Access control: role
-                    resources.push(db_types::ResourceInfo {
+                    resources.push(types::ResourceInfo {
                         row_uuid: company_uuid.clone(),
-                        resource: db_types::Resource::TableAccessControlForCompanyFieldRole(
+                        resource: types::Resource::TableAccessControlForCompanyFieldRole(
                             acf.role.clone(),
                         ),
                     });
 
                     // Access control: user_
-                    resources.push(db_types::ResourceInfo {
+                    resources.push(types::ResourceInfo {
                         row_uuid: company_uuid.clone(),
-                        resource: db_types::Resource::TableAccessControlForCompanyFieldUser(
+                        resource: types::Resource::TableAccessControlForCompanyFieldUser(
                             user_uuid.clone(),
                         ),
                     });
 
                     // Access control: data_group
-                    resources.push(db_types::ResourceInfo {
+                    resources.push(types::ResourceInfo {
                         row_uuid: company_uuid.clone(),
-                        resource: db_types::Resource::TableAccessControlForCompanyFieldDataGroup(
+                        resource: types::Resource::TableAccessControlForCompanyFieldDataGroup(
                             company_uuid.clone(),
                         ),
                     });
@@ -161,15 +161,15 @@ impl<At: AllClientTypes> State<At> {
                     // Pending branches for this company
                     for (branch_uuid, branch) in &self.state_of_pending_txn.company_branch {
                         if branch.company_belong == company_uuid {
-                            resources.push(db_types::ResourceInfo {
+                            resources.push(types::ResourceInfo {
                                 row_uuid: branch_uuid.clone(),
-                                resource: db_types::Resource::TableCompanyBranchFieldName(
+                                resource: types::Resource::TableCompanyBranchFieldName(
                                     branch.name.clone(),
                                 ),
                             });
-                            resources.push(db_types::ResourceInfo {
+                            resources.push(types::ResourceInfo {
                                 row_uuid: branch_uuid.clone(),
-                                resource: db_types::Resource::TableCompanyBranchFieldCompanyBelong(
+                                resource: types::Resource::TableCompanyBranchFieldCompanyBelong(
                                     company_uuid.clone(),
                                 ),
                             });
@@ -184,13 +184,13 @@ impl<At: AllClientTypes> State<At> {
 
     async fn read_create_company_branch(
         &mut self,
-        new_uuid: &db_types::UuidType,
-        user_uuid: &db_types::UuidType,
-        company_belong: &db_types::UuidType,
+        new_uuid: &types::UuidType,
+        user_uuid: &types::UuidType,
+        company_belong: &types::UuidType,
         branch_name: &String,
     ) -> Result<
         (
-            Vec<db_types::Role>, /* user roles */
+            Vec<types::Role>, /* user roles */
             bool,                /* is new_uuid exist */
             bool,                /* is company_belong exist */
             bool,                /* is branch_name used */

@@ -5,7 +5,7 @@ use actix_web::{
     App, HttpRequest, HttpResponse, HttpServer,
     web::{self, Data, Payload},
 };
-use my_core::{accounting_domain::db_types, server::server_methods};
+use my_core::{accounting_domain::types, server::server_methods};
 
 type ServerMethodsType = server_methods::ServerMethods<my_types::S>;
 
@@ -27,7 +27,7 @@ async fn main() {
             .route("/ws", web::get().to(ws_handler))
     })
     // .bind_rustls_0_23((HOST, PORT), get_tls_config())
-    .bind((db_types::HOST, db_types::PORT))
+    .bind((types::HOST, types::PORT))
     .unwrap()
     .run()
     .await

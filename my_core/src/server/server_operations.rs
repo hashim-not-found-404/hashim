@@ -1,5 +1,5 @@
 use crate::{
-    accounting_domain::decider,
+    accounting_domain::cases,
     server::{
         server_traits::{self, DBClient, DBTransaction},
         server_types,
@@ -19,9 +19,9 @@ pub(crate) trait ServerOperations {
     ) -> Result<Result<Self::Ok, Self::Error>, utils::DynamicError>;
 }
 
-impl ServerOperations for decider::sign_up::Input {
-    type Ok = decider::sign_up::Ok;
-    type Error = decider::sign_up::Error;
+impl ServerOperations for cases::sign_up::Input {
+    type Ok = cases::sign_up::Ok;
+    type Error = cases::sign_up::Error;
 
     async fn handle_operation<At: server_traits::AllServerTypes>(
         &self,
@@ -45,9 +45,9 @@ impl ServerOperations for decider::sign_up::Input {
     }
 }
 
-impl ServerOperations for decider::sign_in::Input {
-    type Ok = decider::sign_in::Ok;
-    type Error = decider::sign_in::Error;
+impl ServerOperations for cases::sign_in::Input {
+    type Ok = cases::sign_in::Ok;
+    type Error = cases::sign_in::Error;
 
     async fn handle_operation<At: server_traits::AllServerTypes>(
         &self,
@@ -63,9 +63,9 @@ impl ServerOperations for decider::sign_in::Input {
     }
 }
 
-impl ServerOperations for decider::create_company::Input {
-    type Ok = decider::create_company::Ok;
-    type Error = decider::create_company::Error;
+impl ServerOperations for cases::create_company::Input {
+    type Ok = cases::create_company::Ok;
+    type Error = cases::create_company::Error;
 
     async fn handle_operation<At: server_traits::AllServerTypes>(
         &self,
@@ -89,9 +89,9 @@ impl ServerOperations for decider::create_company::Input {
     }
 }
 
-impl ServerOperations for decider::list_company_and_branch::Input {
-    type Ok = decider::list_company_and_branch::Ok;
-    type Error = decider::list_company_and_branch::Error;
+impl ServerOperations for cases::list_company_and_branch::Input {
+    type Ok = cases::list_company_and_branch::Ok;
+    type Error = cases::list_company_and_branch::Error;
 
     async fn handle_operation<At: server_traits::AllServerTypes>(
         &self,
@@ -107,9 +107,9 @@ impl ServerOperations for decider::list_company_and_branch::Input {
     }
 }
 
-impl ServerOperations for decider::create_company_branch::Input {
-    type Ok = decider::create_company_branch::Ok;
-    type Error = decider::create_company_branch::Error;
+impl ServerOperations for cases::create_company_branch::Input {
+    type Ok = cases::create_company_branch::Ok;
+    type Error = cases::create_company_branch::Error;
 
     async fn handle_operation<At: server_traits::AllServerTypes>(
         &self,

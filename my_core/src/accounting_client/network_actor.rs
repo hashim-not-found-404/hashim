@@ -1,6 +1,6 @@
 use crate::{
     accounting_client::client_traits::{AllClientTypes, WSClient},
-    accounting_domain::db_types,
+    accounting_domain::types,
     utility::{
         traits::{Either, MultiProducerSingleConsumer, Receiver, Runtime, Sender},
         utils::{self, ReadAndSet},
@@ -23,7 +23,7 @@ async fn network_radar<At: AllClientTypes>(
 ) -> Result<Vec<u8>, utils::DynamicError> {
     match &ws {
         Some(ws) => ws.receive_bin().await,
-        None => Err(db_types::HashimError::ConnectionClosed.into()),
+        None => Err(types::HashimError::ConnectionClosed.into()),
     }
 }
 
@@ -50,7 +50,7 @@ async fn connect<At: AllClientTypes, Nw: Network>(
 pub(crate) fn network_actor<At: AllClientTypes, Nw: Network + 'static>(
     mut receiver_to_network: <At::Mpsc as MultiProducerSingleConsumer>::Receiver<MessageToNetwork>,
     mut sender_to_cache: Nw,
-    mut sender_to_error: <At::Mpsc as MultiProducerSingleConsumer>::Sender<db_types::HashimError>,
+    mut sender_to_error: <At::Mpsc as MultiProducerSingleConsumer>::Sender<types::HashimError>,
     is_online: Arc<RwLock<bool>>,
     url: String,
 ) {
@@ -82,7 +82,7 @@ pub(crate) fn network_actor<At: AllClientTypes, Nw: Network + 'static>(
                     }
                     Err(_) => {
                         sender_to_error
-                            .send(db_types::HashimError::ConnectionClosed)
+                            .send(types::HashimError::ConnectionClosed)
                             .await
                             .unwrap();
                         connect::<At, Nw>(is_online.clone(), &mut sender_to_cache, &url, &mut ws)

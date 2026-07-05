@@ -5,7 +5,7 @@ pub mod target {
         password_hash::{SaltString, rand_core::OsRng},
     };
     use derive_more::From;
-    use my_core::accounting_domain::decider::HashedPassword;
+    use my_core::accounting_domain::cases::HashedPassword;
 
     #[derive(Clone, From)]
     pub struct S;

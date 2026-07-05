@@ -1,8 +1,7 @@
 use crate::{
     accounting_domain::{
-        db_types,
-        decider::{JWT, RowId},
-        request_response,
+        cases::{JWT, RowId},
+        request_response, types,
     },
     server::{
         server_operations::ServerOperations,
@@ -45,7 +44,7 @@ impl<At: server_traits::AllServerTypes> ServerMethods<At> {
         At::Rt::spawn_local(async move {
             let mut sender_to_broker = self.sender_to_broker.clone();
             let (sender_to_server, mut receiver_to_server) =
-                At::Mpsc::channel::<Vec<db_types::ResourceInfo>>();
+                At::Mpsc::channel::<Vec<types::ResourceInfo>>();
             let connection_id = At::Rn::generate();
 
             loop {
@@ -69,7 +68,7 @@ impl<At: server_traits::AllServerTypes> ServerMethods<At> {
                                         if session
                                             .send_bin(At::Ed::encode(
                                                 &request_response::messages::FromServer::Error(
-                                                    db_types::HashimError::InvalidDataFormat,
+                                                    types::HashimError::InvalidDataFormat,
                                                 ),
                                             ))
                                             .await
@@ -87,7 +86,7 @@ impl<At: server_traits::AllServerTypes> ServerMethods<At> {
                                         if session
                                             .send_bin(At::Ed::encode(
                                                 &request_response::messages::FromServer::Error(
-                                                    db_types::HashimError::InternalServerError,
+                                                    types::HashimError::InternalServerError,
                                                 ),
                                             ))
                                             .await
@@ -128,7 +127,7 @@ impl<At: server_traits::AllServerTypes> ServerMethods<At> {
                                         if session
                                             .send_bin(At::Ed::encode(
                                                 &request_response::messages::FromServer::Error(
-                                                    db_types::HashimError::InternalServerError,
+                                                    types::HashimError::InternalServerError,
                                                 ),
                                             ))
                                             .await
@@ -151,7 +150,7 @@ impl<At: server_traits::AllServerTypes> ServerMethods<At> {
                                             if session
                                                 .send_bin(At::Ed::encode(
                                                     &request_response::messages::FromServer::Error(
-                                                        db_types::HashimError::InternalServerError,
+                                                        types::HashimError::InternalServerError,
                                                     ),
                                                 ))
                                                 .await
@@ -345,9 +344,7 @@ async fn push_data<At: server_traits::AllServerTypes>(
                 side_effects.authenticated_users.insert(user_uuid);
             }
             None => {
-                the_return_result
-                    .jwts
-                    .push(Err(db_types::JWTError::Invalid));
+                the_return_result.jwts.push(Err(types::JWTError::Invalid));
 
                 is_there_error = true;
             }
@@ -355,14 +352,14 @@ async fn push_data<At: server_traits::AllServerTypes>(
     }
 
     if !At::Id::validate(&input.nonce) {
-        the_return_result.nonce = Err(db_types::NonceError::Invalid);
+        the_return_result.nonce = Err(types::NonceError::Invalid);
         return Ok(the_return_result);
     };
 
     let is_nonce_used = client.write_nonce_if_not_used(&input.nonce).await?;
 
     if !check_nonce_if_valid::<At::Id>(&input.nonce, is_nonce_used) {
-        the_return_result.nonce = Err(db_types::NonceError::Invalid);
+        the_return_result.nonce = Err(types::NonceError::Invalid);
     }
 
     if is_there_error {
@@ -419,7 +416,7 @@ async fn push_data<At: server_traits::AllServerTypes>(
     return Ok(the_return_result);
 }
 
-fn check_nonce_if_valid<Id: RowId>(nonce: &db_types::UuidType, is_used: bool) -> bool {
+fn check_nonce_if_valid<Id: RowId>(nonce: &types::UuidType, is_used: bool) -> bool {
     if is_used {
         return false;
     }
@@ -453,7 +450,7 @@ fn check_nonce_if_valid<Id: RowId>(nonce: &db_types::UuidType, is_used: bool) ->
 
 async fn get_table_of_subscribed_data<At: server_traits::AllServerTypes>(
     client: &mut At::Cli,
-    users_uuids: &HashSet<db_types::UuidType>,
+    users_uuids: &HashSet<types::UuidType>,
 ) -> Result<AllSubscribes, utils::DynamicError> {
     let roles = client.read_roles_for_user(users_uuids).await?;
 
@@ -514,7 +511,7 @@ mod broker_functions {
         }
     }
 
-    pub fn unsubscribe(pool_of_pubsub: &mut UserSubscribes, user_uuid: &db_types::UuidType) {
+    pub fn unsubscribe(pool_of_pubsub: &mut UserSubscribes, user_uuid: &types::UuidType) {
         pool_of_pubsub.retain(|_, users_and_subs| {
             users_and_subs.remove(user_uuid);
             !users_and_subs.is_empty()
@@ -533,94 +530,90 @@ mod broker_functions {
     }
 
     fn resource_filtering_based_on_subscribe(
-        subscribe: &HashSet<db_types::Subscribe>,
-        resource: &Vec<db_types::ResourceInfo>,
-    ) -> Vec<db_types::ResourceInfo> {
+        subscribe: &HashSet<types::Subscribe>,
+        resource: &Vec<types::ResourceInfo>,
+    ) -> Vec<types::ResourceInfo> {
         let mut new_resource = Vec::new();
 
         for one_resource in resource {
             match one_resource.resource {
-                db_types::Resource::Jwt(_) => {}
-                db_types::Resource::TableUserFieldName(_) => {
-                    if subscribe.contains(&db_types::Subscribe::TableUserFieldName) {
+                types::Resource::Jwt(_) => {}
+                types::Resource::TableUserFieldName(_) => {
+                    if subscribe.contains(&types::Subscribe::TableUserFieldName) {
                         new_resource.push(one_resource.clone());
                     }
                 }
-                db_types::Resource::TableUserFieldId(_) => {
-                    if subscribe.contains(&db_types::Subscribe::TableUserFieldId) {
+                types::Resource::TableUserFieldId(_) => {
+                    if subscribe.contains(&types::Subscribe::TableUserFieldId) {
                         new_resource.push(one_resource.clone());
                     }
                 }
-                db_types::Resource::TableCompanyFieldName(_) => {
-                    if subscribe.contains(&db_types::Subscribe::TableCompanyFieldName) {
+                types::Resource::TableCompanyFieldName(_) => {
+                    if subscribe.contains(&types::Subscribe::TableCompanyFieldName) {
                         new_resource.push(one_resource.clone());
                     }
                 }
-                db_types::Resource::TableCompanyBranchFieldName(_) => {
-                    if subscribe.contains(&db_types::Subscribe::TableCompanyBranchFieldName) {
+                types::Resource::TableCompanyBranchFieldName(_) => {
+                    if subscribe.contains(&types::Subscribe::TableCompanyBranchFieldName) {
                         new_resource.push(one_resource.clone());
                     }
                 }
-                db_types::Resource::TableCompanyBranchFieldCompanyBelong(_) => {
-                    if subscribe
-                        .contains(&db_types::Subscribe::TableCompanyBranchFieldCompanyBelong)
+                types::Resource::TableCompanyBranchFieldCompanyBelong(_) => {
+                    if subscribe.contains(&types::Subscribe::TableCompanyBranchFieldCompanyBelong) {
+                        new_resource.push(one_resource.clone());
+                    }
+                }
+                types::Resource::TableCompanyBranchFieldCurrency(_) => {
+                    if subscribe.contains(&types::Subscribe::TableCompanyBranchFieldCurrency) {
+                        new_resource.push(one_resource.clone());
+                    }
+                }
+                types::Resource::TableCompanyBranchFieldLocation(_) => {
+                    if subscribe.contains(&types::Subscribe::TableCompanyBranchFieldLocation) {
+                        new_resource.push(one_resource.clone());
+                    }
+                }
+                types::Resource::TableCompanyFieldCurrency(_) => {
+                    if subscribe.contains(&types::Subscribe::TableCompanyFieldCurrency) {
+                        new_resource.push(one_resource.clone());
+                    }
+                }
+                types::Resource::TableAccessControlForCompanyFieldRole(_) => {
+                    if subscribe.contains(&types::Subscribe::TableAccessControlForCompanyFieldRole)
                     {
                         new_resource.push(one_resource.clone());
                     }
                 }
-                db_types::Resource::TableCompanyBranchFieldCurrency(_) => {
-                    if subscribe.contains(&db_types::Subscribe::TableCompanyBranchFieldCurrency) {
-                        new_resource.push(one_resource.clone());
-                    }
-                }
-                db_types::Resource::TableCompanyBranchFieldLocation(_) => {
-                    if subscribe.contains(&db_types::Subscribe::TableCompanyBranchFieldLocation) {
-                        new_resource.push(one_resource.clone());
-                    }
-                }
-                db_types::Resource::TableCompanyFieldCurrency(_) => {
-                    if subscribe.contains(&db_types::Subscribe::TableCompanyFieldCurrency) {
-                        new_resource.push(one_resource.clone());
-                    }
-                }
-                db_types::Resource::TableAccessControlForCompanyFieldRole(_) => {
-                    if subscribe
-                        .contains(&db_types::Subscribe::TableAccessControlForCompanyFieldRole)
+                types::Resource::TableAccessControlForCompanyFieldUser(_) => {
+                    if subscribe.contains(&types::Subscribe::TableAccessControlForCompanyFieldUser)
                     {
                         new_resource.push(one_resource.clone());
                     }
                 }
-                db_types::Resource::TableAccessControlForCompanyFieldUser(_) => {
+                types::Resource::TableAccessControlForCompanyFieldDataGroup(_) => {
                     if subscribe
-                        .contains(&db_types::Subscribe::TableAccessControlForCompanyFieldUser)
+                        .contains(&types::Subscribe::TableAccessControlForCompanyFieldDataGroup)
                     {
                         new_resource.push(one_resource.clone());
                     }
                 }
-                db_types::Resource::TableAccessControlForCompanyFieldDataGroup(_) => {
+                types::Resource::TableAccessControlForCompanyBranchFieldRole(_) => {
                     if subscribe
-                        .contains(&db_types::Subscribe::TableAccessControlForCompanyFieldDataGroup)
+                        .contains(&types::Subscribe::TableAccessControlForCompanyBranchFieldRole)
                     {
                         new_resource.push(one_resource.clone());
                     }
                 }
-                db_types::Resource::TableAccessControlForCompanyBranchFieldRole(_) => {
+                types::Resource::TableAccessControlForCompanyBranchFieldUser(_) => {
                     if subscribe
-                        .contains(&db_types::Subscribe::TableAccessControlForCompanyBranchFieldRole)
+                        .contains(&types::Subscribe::TableAccessControlForCompanyBranchFieldUser)
                     {
                         new_resource.push(one_resource.clone());
                     }
                 }
-                db_types::Resource::TableAccessControlForCompanyBranchFieldUser(_) => {
-                    if subscribe
-                        .contains(&db_types::Subscribe::TableAccessControlForCompanyBranchFieldUser)
-                    {
-                        new_resource.push(one_resource.clone());
-                    }
-                }
-                db_types::Resource::TableAccessControlForCompanyBranchFieldDataGroup(_) => {
+                types::Resource::TableAccessControlForCompanyBranchFieldDataGroup(_) => {
                     if subscribe.contains(
-                        &db_types::Subscribe::TableAccessControlForCompanyBranchFieldDataGroup,
+                        &types::Subscribe::TableAccessControlForCompanyBranchFieldDataGroup,
                     ) {
                         new_resource.push(one_resource.clone());
                     }
@@ -632,23 +625,23 @@ mod broker_functions {
     }
 }
 
-fn role_to_subscribe_mapping(roles: Vec<db_types::Role>) -> HashSet<db_types::Subscribe> {
+fn role_to_subscribe_mapping(roles: Vec<types::Role>) -> HashSet<types::Subscribe> {
     let mut subscribes = HashSet::with_capacity(200);
 
     for role in roles {
         match role {
-            db_types::Role::Manager => {
-                subscribes.insert(db_types::Subscribe::TableUserFieldName);
-                subscribes.insert(db_types::Subscribe::TableUserFieldId);
-                subscribes.insert(db_types::Subscribe::TableCompanyFieldName);
-                subscribes.insert(db_types::Subscribe::TableCompanyFieldCurrency);
-                subscribes.insert(db_types::Subscribe::TableCompanyBranchFieldName);
-                subscribes.insert(db_types::Subscribe::TableCompanyBranchFieldCompanyBelong);
-                subscribes.insert(db_types::Subscribe::TableAccessControlForCompanyFieldRole);
-                subscribes.insert(db_types::Subscribe::TableAccessControlForCompanyFieldUser);
-                subscribes.insert(db_types::Subscribe::TableAccessControlForCompanyFieldDataGroup);
+            types::Role::Manager => {
+                subscribes.insert(types::Subscribe::TableUserFieldName);
+                subscribes.insert(types::Subscribe::TableUserFieldId);
+                subscribes.insert(types::Subscribe::TableCompanyFieldName);
+                subscribes.insert(types::Subscribe::TableCompanyFieldCurrency);
+                subscribes.insert(types::Subscribe::TableCompanyBranchFieldName);
+                subscribes.insert(types::Subscribe::TableCompanyBranchFieldCompanyBelong);
+                subscribes.insert(types::Subscribe::TableAccessControlForCompanyFieldRole);
+                subscribes.insert(types::Subscribe::TableAccessControlForCompanyFieldUser);
+                subscribes.insert(types::Subscribe::TableAccessControlForCompanyFieldDataGroup);
             }
-            db_types::Role::CoManager => todo!(),
+            types::Role::CoManager => todo!(),
         }
     }
 
@@ -662,24 +655,24 @@ pub struct AllSubscribes {
 }
 
 type UserSubscribes = HashMap<
-    db_types::UuidType, // company uuid or branch
+    types::UuidType, // company uuid or branch
     HashMap<
-        db_types::UuidType, // user uuid
-        HashSet<db_types::Subscribe>,
+        types::UuidType, // user uuid
+        HashSet<types::Subscribe>,
     >,
 >;
 
 type UserSenders<Mpsc: traits::MultiProducerSingleConsumer> = HashMap<
-    db_types::UuidType,                                      // user uuid
-    HashMap<u64, Mpsc::Sender<Vec<db_types::ResourceInfo>>>, // because user may have multiple web socket connection
+    types::UuidType,                                      // user uuid
+    HashMap<u64, Mpsc::Sender<Vec<types::ResourceInfo>>>, // because user may have multiple web socket connection
 >;
 
 pub enum MessageToBroker<Mpsc: traits::MultiProducerSingleConsumer> {
     Subscribe {
         connection_id: u64,
         list_of_subscribtion: AllSubscribes,
-        users_uuids: HashSet<db_types::UuidType>,
-        sender_to_server: Mpsc::Sender<Vec<db_types::ResourceInfo>>,
+        users_uuids: HashSet<types::UuidType>,
+        sender_to_server: Mpsc::Sender<Vec<types::ResourceInfo>>,
     },
     Unsubscribe {
         connection_id: u64,

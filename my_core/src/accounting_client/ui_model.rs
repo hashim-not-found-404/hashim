@@ -1,6 +1,6 @@
 use crate::{
     accounting_client::{client_traits::AllClientTypes, process_manager},
-    accounting_domain::db_types,
+    accounting_domain::types,
 };
 
 // model
@@ -121,8 +121,8 @@ pub enum CompanyAndBranchSelection {
     UnSubscribe,
     ShowCreateCompany,
     ShowCreateCompanyBranch,
-    SelectedCompany(db_types::UuidType),
-    SelectedCompanyBranch(db_types::UuidType),
+    SelectedCompany(types::UuidType),
+    SelectedCompanyBranch(types::UuidType),
 }
 
 #[derive(Debug)]

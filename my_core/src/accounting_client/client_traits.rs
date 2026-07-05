@@ -1,6 +1,6 @@
 use crate::{
     accounting_client::client_types,
-    accounting_domain::{db_types, decider, request_response},
+    accounting_domain::{cases, request_response, types},
     utility::{traits, utils},
 };
 
@@ -31,15 +31,15 @@ pub trait Cache: Sized {
     fn mark_txn_input_as_faild(&self, txn_number: &u64) -> impl Future<Output = ()>;
     fn delete_txn_input(&self, txn_number: &u64) -> impl Future<Output = ()>;
 
-    fn write_resource(&self, resource: &Vec<db_types::ResourceInfo>) -> impl Future<Output = ()>;
+    fn write_resource(&self, resource: &Vec<types::ResourceInfo>) -> impl Future<Output = ()>;
     fn get_jwt(
         &self,
-        user_uuid: &db_types::UuidType,
-    ) -> impl Future<Output = Option<db_types::JsonWebTokenType>>;
+        user_uuid: &types::UuidType,
+    ) -> impl Future<Output = Option<types::JsonWebTokenType>>;
 
     fn read_sign_up(
         &self,
-        new_uuid: &db_types::UuidType,
+        new_uuid: &types::UuidType,
         user_id: &String,
     ) -> impl Future<
         Output = (
@@ -52,25 +52,25 @@ pub trait Cache: Sized {
         user_id: &String,
     ) -> impl Future<
         Output = Option<(
-            db_types::UuidType, /* user uuid */
-            Option<String>,     /* user name */
-            bool,               /* does he have jwt */
+            types::UuidType, /* user uuid */
+            Option<String>,  /* user name */
+            bool,            /* does he have jwt */
         )>,
     >;
     fn read_list_company_and_branch(
         &self,
-        user_uuid: &db_types::UuidType,
-    ) -> impl Future<Output = Vec<db_types::ResourceInfo>>;
+        user_uuid: &types::UuidType,
+    ) -> impl Future<Output = Vec<types::ResourceInfo>>;
     fn read_create_company_branch(
         &self,
-        user_uuid: &db_types::UuidType,
-        company_belong: &db_types::UuidType,
+        user_uuid: &types::UuidType,
+        company_belong: &types::UuidType,
         company_branch_name: &String,
     ) -> impl Future<
         Output = (
-            Vec<db_types::Role>, /* roles at company */
-            bool,                /* is company exist */
-            bool,                /* is branch name used */
+            Vec<types::Role>, /* roles at company */
+            bool,             /* is company exist */
+            bool,             /* is branch name used */
         ),
     >;
 }
@@ -86,7 +86,7 @@ pub trait HashimSignal<T: Default + Clone>: Default {
 pub trait AllClientTypes: 'static + Default + Clone {
     type Rn: traits::RandomNumber;
     type Rt: traits::Runtime;
-    type Id: decider::RowId;
+    type Id: cases::RowId;
     type Mpsc: traits::MultiProducerSingleConsumer;
     type Ed: traits::Coding;
     type Rg: traits::Regex;
@@ -97,13 +97,13 @@ pub trait AllClientTypes: 'static + Default + Clone {
     // signals
     type String: HashimSignal<String>;
     type Dialog: HashimSignal<client_types::Dialog>;
-    type Uuid: HashimSignal<db_types::UuidType>;
-    type OptionUuid: HashimSignal<Option<db_types::UuidType>>;
+    type Uuid: HashimSignal<types::UuidType>;
+    type OptionUuid: HashimSignal<Option<types::UuidType>>;
     type Bool: HashimSignal<bool>;
     type StringVec: HashimSignal<String>;
-    type Currency: HashimSignal<db_types::Currency>;
-    type Location: HashimSignal<db_types::Location>;
-    type CompanyAndBranchList: HashimSignal<Vec<db_types::Company>>;
+    type Currency: HashimSignal<types::Currency>;
+    type Location: HashimSignal<types::Location>;
+    type CompanyAndBranchList: HashimSignal<Vec<types::Company>>;
 
     type Navigator: HashimSignal<client_types::Navigator>;
 }

@@ -7,8 +7,8 @@ use crate::{
         process_manager, ui_model,
     },
     accounting_domain::{
-        db_types,
-        decider::{self, RowId},
+        cases::{self, RowId},
+        types,
     },
     mbg,
     utility::traits::{
@@ -28,8 +28,8 @@ pub(crate) struct CommanderLocalState<At: AllClientTypes> {
             process_manager::MessageToProcessManager<At>,
         >,
     >,
-    pub(crate) user_uuid: Mutex<Option<db_types::UuidType>>,
-    pub(crate) selected_company_branch: Mutex<Option<db_types::UuidType>>,
+    pub(crate) user_uuid: Mutex<Option<types::UuidType>>,
+    pub(crate) selected_company_branch: Mutex<Option<types::UuidType>>,
     pub(crate) aborter_to_company_and_branch_listener: Mutex<Option<Box<dyn FnOnce()>>>,
 }
 
@@ -120,7 +120,7 @@ pub mod sign_up {
         local_state.user_name_error.reset();
 
         let new_uuid = At::Id::generate();
-        let input = decider::sign_up::Input {
+        let input = cases::sign_up::Input {
             new_uuid: new_uuid.clone(),
             name: {
                 let name = local_state.user_name.read();
@@ -247,7 +247,7 @@ pub mod sign_up {
         let mut receiver_to_response = cache
             .send_to_cache_actor(
                 cache_actor::CachingStrategy::ReadCacheOnly,
-                decider::sign_up::Input {
+                cases::sign_up::Input {
                     new_uuid: new_uuid.clone(),
                     name: {
                         let name = local_state.user_name.read();
@@ -276,7 +276,7 @@ pub mod sign_up {
     fn handle_apply_result<At: AllClientTypes>(
         model: &ui_model::Model<At>,
         commander_local_state: Arc<CommanderLocalState<At>>,
-        result: decider::sign_up::MyResult,
+        result: cases::sign_up::MyResult,
     ) {
         let local_state = &model.page_root.page_auth.page_sign_up;
         match result {
@@ -357,7 +357,7 @@ pub mod sign_in {
         let mut receiver_to_response = cache
             .send_to_cache_actor(
                 cache_actor::CachingStrategy::WriteCacheAndServer,
-                decider::sign_in::Input {
+                cases::sign_in::Input {
                     user_id: user_id.clone(),
                     password: feature_state.user_password.read(),
                 }
@@ -464,7 +464,7 @@ pub mod sign_in {
         let mut receiver_to_response = cache
             .send_to_cache_actor(
                 cache_actor::CachingStrategy::ReadCacheOnly,
-                decider::sign_in::Input {
+                cases::sign_in::Input {
                     user_id: feature_state.user_id.read(),
                     password: feature_state.user_password.read(),
                 }
@@ -617,7 +617,7 @@ pub mod company_and_branch_selection {
                 )
                 .await;
 
-            let data: db_types::UuidType = commander_local_state
+            let data: types::UuidType = commander_local_state
                 .user_uuid
                 .lock()
                 .unwrap()
@@ -743,7 +743,7 @@ pub mod create_company {
                 Self::Name(i) => page_create_company.company_name.set(i),
                 Self::Currency(i) => page_create_company
                     .currency
-                    .set(db_types::Currency::from_str(i.as_str()).unwrap()),
+                    .set(types::Currency::from_str(i.as_str()).unwrap()),
             }
         }
     }
@@ -783,7 +783,7 @@ pub mod create_company {
             .page_company_branch_selection
             .page_create_company;
 
-        let input = decider::create_company::Input {
+        let input = cases::create_company::Input {
             user_uuid: data,
             new_uuid: At::Id::generate(),
             company_name: local_state.company_name.read(),
@@ -843,7 +843,7 @@ pub mod create_company_branch {
                     .page_company_branch_selection
                     .page_create_company_branch
                     .currency
-                    .set(db_types::Currency::from_str(i.as_str()).unwrap()),
+                    .set(types::Currency::from_str(i.as_str()).unwrap()),
             }
         }
     }
@@ -871,7 +871,7 @@ pub mod create_company_branch {
             .clone()
             .unwrap();
 
-        let input = decider::create_company_branch::Input {
+        let input = cases::create_company_branch::Input {
             user_uuid: data,
             new_uuid: At::Id::generate(),
             company_belong: model
@@ -989,7 +989,7 @@ pub mod create_company_branch {
             .clone()
             .unwrap();
 
-        let input = decider::create_company_branch::Input {
+        let input = cases::create_company_branch::Input {
             user_uuid: data,
             new_uuid: At::Id::generate(),
             company_belong: model

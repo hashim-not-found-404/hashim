@@ -1,5 +1,5 @@
 use my_core::{
-    accounting_domain::{db_types, decider},
+    accounting_domain::{cases, types},
     server::server_traits::{DBTransaction, domain_errors},
     utility::utils::{DynamicError, LogError},
 };
@@ -33,7 +33,7 @@ impl DBTransaction for S<'_> {
 
     async fn read_sign_up(
         &mut self,
-        new_uuid: &db_types::UuidType,
+        new_uuid: &types::UuidType,
         user_id: &String,
     ) -> Result<
         (
@@ -61,7 +61,7 @@ impl DBTransaction for S<'_> {
         Ok((uuid_exists, user_id_exists))
     }
 
-    async fn write_sign_up(&mut self, data: &decider::sign_up::Ok) -> Result<(), DynamicError> {
+    async fn write_sign_up(&mut self, data: &cases::sign_up::Ok) -> Result<(), DynamicError> {
         let query =
             "INSERT INTO accounting_app.user (rowid, id, pass, name) VALUES ($1, $2, $3, $4)";
 
@@ -85,7 +85,7 @@ impl DBTransaction for S<'_> {
 
     async fn read_create_company(
         &mut self,
-        new_uuid: &db_types::UuidType,
+        new_uuid: &types::UuidType,
     ) -> Result<bool /* is new_uuid exist */, DynamicError> {
         let query = "SELECT EXISTS(SELECT 1 FROM accounting_app.company WHERE rowid = $1)";
         let stmt = self.txn.prepare_cached(query).await.log()?;
@@ -101,7 +101,7 @@ impl DBTransaction for S<'_> {
 
     async fn write_create_company(
         &mut self,
-        data: &decider::create_company::Ok,
+        data: &cases::create_company::Ok,
     ) -> Result<(), DynamicError> {
         let query = "
             WITH company_insert AS (
@@ -133,16 +133,16 @@ impl DBTransaction for S<'_> {
 
     async fn read_create_company_branch(
         &mut self,
-        new_uuid: &db_types::UuidType,
-        user_uuid: &db_types::UuidType,
-        company_belong: &db_types::UuidType,
+        new_uuid: &types::UuidType,
+        user_uuid: &types::UuidType,
+        company_belong: &types::UuidType,
         branch_name: &String,
     ) -> Result<
         (
-            Vec<db_types::Role>, /* user roles */
-            bool,                /* is new_uuid exist */
-            bool,                /* is company_belong exist */
-            bool,                /* is branch_name used */
+            Vec<types::Role>, /* user roles */
+            bool,             /* is new_uuid exist */
+            bool,             /* is company_belong exist */
+            bool,             /* is branch_name used */
         ),
         DynamicError,
     > {
@@ -183,7 +183,7 @@ impl DBTransaction for S<'_> {
         let role_strings: Vec<String> = row.try_get(0).log()?;
         let roles = role_strings
             .into_iter()
-            .map(|s| db_types::Role::from_str(&s))
+            .map(|s| types::Role::from_str(&s))
             .collect::<Result<Vec<_>, _>>()
             .log()?;
         let is_new_uuid_exist: bool = row.try_get(1).log()?;
@@ -200,7 +200,7 @@ impl DBTransaction for S<'_> {
 
     async fn write_create_company_branch(
         &mut self,
-        data: &decider::create_company_branch::Ok,
+        data: &cases::create_company_branch::Ok,
     ) -> Result<(), DynamicError> {
         let query = "
             WITH inserted_branch AS (
@@ -217,10 +217,10 @@ impl DBTransaction for S<'_> {
         ";
 
         let lat = Decimal::from_f64(data.location.latitude)
-            .ok_or(db_types::HashimError::InternalServerError)
+            .ok_or(types::HashimError::InternalServerError)
             .log()?;
         let lng = Decimal::from_f64(data.location.longitude)
-            .ok_or(db_types::HashimError::InternalServerError)
+            .ok_or(types::HashimError::InternalServerError)
             .log()?;
 
         self.txn

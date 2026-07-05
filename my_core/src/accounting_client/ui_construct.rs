@@ -3,7 +3,7 @@ use crate::{
         cache_actor, client_traits::AllClientTypes, network_actor, process_manager, ui_effect,
         ui_model,
     },
-    accounting_domain::db_types,
+    accounting_domain::types,
     utility::traits::MultiProducerSingleConsumer,
 };
 use std::sync::{Arc, RwLock};
@@ -31,7 +31,7 @@ pub fn new<At: AllClientTypes>(model: &'static ui_model::Model<At>) -> ui_effect
         Abc {},
         sender_to_error.clone(),
         is_online.clone(),
-        format!("ws://{}/ws", db_types::ADDRESS),
+        format!("ws://{}/ws", types::ADDRESS),
     );
 
     let cache = cache_actor::CacheStruct::<At>::new(
