@@ -1,16 +1,18 @@
 use crate::{
-    cache_actor,
-    request_response::HashimError,
-    traits::{
-        AllClientTypes, Either, MultiProducerSingleConsumer, Receiver, Runtime, Sender, WSClient,
-    },
-    ui_model::HashimSignal,
-    utils,
+    client_traits::{AllClientTypes, WSClient},
+    db_types,
+    shared_traits::{Either, MultiProducerSingleConsumer, Receiver, Runtime, Sender},
+    utils::{self, ReadAndSet},
 };
 use std::{
     sync::{Arc, RwLock},
     time::Duration,
 };
+
+pub(crate) trait Network {
+    async fn from_network_status(&mut self, are_we_online: bool);
+    async fn sender_to_network(&mut self, data: Vec<u8>);
+}
 
 pub(crate) type MessageToNetwork = Vec<u8>;
 
@@ -19,15 +21,13 @@ async fn network_radar<At: AllClientTypes>(
 ) -> Result<Vec<u8>, utils::DynamicError> {
     match &ws {
         Some(ws) => ws.receive_bin().await,
-        None => Err(HashimError::ConnectionClosed.into()),
+        None => Err(db_types::HashimError::ConnectionClosed.into()),
     }
 }
 
-async fn connect<At: AllClientTypes>(
+async fn connect<At: AllClientTypes, Nw: Network>(
     is_online: Arc<RwLock<bool>>,
-    sender_to_cache: &mut <At::Mpsc as MultiProducerSingleConsumer>::Sender<
-        cache_actor::MessageToCache<At>,
-    >,
+    sender_to_cache: &mut Nw,
     url: &String,
     ws: &mut Option<At::Ws>,
 ) {
@@ -36,10 +36,7 @@ async fn connect<At: AllClientTypes>(
     if let Ok(ok) = At::Ws::connect(url.as_str()).await {
         *ws = Some(ok);
 
-        sender_to_cache
-            .send(cache_actor::MessageToCache::WeAreBackOnline)
-            .await
-            .unwrap();
+        sender_to_cache.from_network_status(true).await;
 
         is_online.set(true);
 
@@ -48,12 +45,10 @@ async fn connect<At: AllClientTypes>(
     At::Rt::sleep(Duration::from_secs(5)).await;
 }
 
-pub(crate) fn network_actor<At: AllClientTypes>(
+pub(crate) fn network_actor<At: AllClientTypes, Nw: Network + 'static>(
     mut receiver_to_network: <At::Mpsc as MultiProducerSingleConsumer>::Receiver<MessageToNetwork>,
-    mut sender_to_cache: <At::Mpsc as MultiProducerSingleConsumer>::Sender<
-        cache_actor::MessageToCache<At>,
-    >,
-    mut sender_to_error: <At::Mpsc as MultiProducerSingleConsumer>::Sender<HashimError>,
+    mut sender_to_cache: Nw,
+    mut sender_to_error: <At::Mpsc as MultiProducerSingleConsumer>::Sender<db_types::HashimError>,
     is_online: Arc<RwLock<bool>>,
     url: String,
 ) {
@@ -67,7 +62,7 @@ pub(crate) fn network_actor<At: AllClientTypes>(
                         Some(ws1) => {
                             let result = ws1.send_bin(&data).await;
                             if result.is_err() {
-                                connect::<At>(
+                                connect::<At, Nw>(
                                     is_online.clone(),
                                     &mut sender_to_cache,
                                     &url,
@@ -81,17 +76,15 @@ pub(crate) fn network_actor<At: AllClientTypes>(
                 },
                 Either::Two(from_network) => match from_network {
                     Ok(data) => {
-                        sender_to_cache
-                            .send(cache_actor::MessageToCache::DataFromServer(data))
-                            .await
-                            .unwrap();
+                        sender_to_cache.sender_to_network(data).await;
                     }
                     Err(_) => {
                         sender_to_error
-                            .send(HashimError::ConnectionClosed)
+                            .send(db_types::HashimError::ConnectionClosed)
                             .await
                             .unwrap();
-                        connect::<At>(is_online.clone(), &mut sender_to_cache, &url, &mut ws).await;
+                        connect::<At, Nw>(is_online.clone(), &mut sender_to_cache, &url, &mut ws)
+                            .await;
                     }
                 },
             }

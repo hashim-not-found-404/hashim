@@ -7,6 +7,19 @@ use crate::{
 };
 use std::sync::{Arc, Mutex};
 
+// message
+
+#[derive(Debug)]
+pub enum Message {
+    CloseError,
+
+    SignIn(ui_updaters::sign_in::Msg),
+    SignUp(ui_updaters::sign_up::Msg),
+    CompanyAndBranchSelection(ui_updaters::company_and_branch_selection::Msg),
+    CreateCompany(ui_updaters::create_company::Msg),
+    CreateCompanyBranch(ui_updaters::create_company_branch::Msg),
+}
+
 pub(crate) struct CommanderLocalState<At: AllClientTypes> {
     pub(crate) sender_to_commander:
         Mutex<<At::Mpsc as MultiProducerSingleConsumer>::Sender<ui_model::Message>>,

@@ -1,12 +1,4 @@
-use crate::{traits::AllClientTypes, ui_updaters};
-
-pub trait HashimSignal<T: Default + Clone>: Default {
-    fn reset(&self) {
-        self.set(T::default());
-    }
-    fn read(&self) -> T;
-    fn set(&self, v: T);
-}
+use crate::client_traits::AllClientTypes;
 
 // model
 
@@ -88,55 +80,4 @@ pub struct PageCreateCompanyBranch<At: AllClientTypes> {
     pub currency: At::Currency,
     pub branch_name: At::String,
     pub location: At::Location,
-}
-
-// navigator types
-
-#[derive(Clone)]
-pub enum Navigator {
-    Auth(Auth),
-    CompanyBranchSelection(CompanyBranchSelection),
-    Home,
-}
-
-#[derive(Clone)]
-pub enum Auth {
-    SignIn,
-    SignUp,
-}
-
-#[derive(Clone)]
-pub enum CompanyBranchSelection {
-    None,
-    CreateCompany,
-    CreateCompanyBranch,
-}
-
-impl Default for Navigator {
-    fn default() -> Self {
-        Self::Auth(Auth::SignIn)
-    }
-}
-
-// message
-
-#[derive(Debug)]
-pub enum Message {
-    CloseError,
-
-    SignIn(ui_updaters::sign_in::Msg),
-    SignUp(ui_updaters::sign_up::Msg),
-    CompanyAndBranchSelection(ui_updaters::company_and_branch_selection::Msg),
-    CreateCompany(ui_updaters::create_company::Msg),
-    CreateCompanyBranch(ui_updaters::create_company_branch::Msg),
-}
-
-// helper types
-
-#[derive(Default, Clone, PartialEq)]
-pub enum Dialog {
-    #[default]
-    Hide,
-    Show,
-    Error,
 }
