@@ -4,8 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-my_core = { workspace = true }
 adapters = { workspace = true }
-
-uuid = { workspace = true }
+my_core = { workspace = true }
 rusqlite = { version = "0.40.1", features = ["bundled"] }
+uuid = { workspace = true }

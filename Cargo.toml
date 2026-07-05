@@ -3,27 +3,26 @@ resolver = "2"
 members = [
     # "accounting_lib",
     "accounting_ui",
-    "my_core",
-    "db_client_cockroach",
-    "server_actix",
     "adapters",
     "cache_rusqlite",
+    "db_client_cockroach",
+    "my_core",
+    "server_actix",
 ]
 
 [workspace.dependencies]
-my_core = {path = "./my_core"}
-adapters = {path = "./adapters"}
-cache_rusqlite = {path = "./cache_rusqlite"}
-db_client_cockroach = {path = "./db_client_cockroach"}
-
+adapters = { path = "./adapters" }
+cache_rusqlite = { path = "./cache_rusqlite" }
+db_client_cockroach = { path = "./db_client_cockroach" }
+derive_more = { version = "2.1.1", features = ["full"] }
 dioxus-logger = "0.7.9"
 futures-util = "0.3.32"
+my_core = { path = "./my_core" }
 rustls = "0.23.41"
 rustls-pemfile = "2.2.0"
 serde = { version = "1.0.228", features = ["derive"] }
 tokio = "1.52.3"
-uuid ={version = "1.23.4",features = ["v7","serde","js"]}
-derive_more ={version = "2.1.1",features = ["full"]}
+uuid = { version = "1.23.4", features = ["v7", "serde", "js"] }
 
 [profile.dev]
 opt-level = 0
