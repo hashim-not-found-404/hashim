@@ -1,8 +1,15 @@
-use crate::prelude::*;
+use my_core::accounting_domain::db_types;
+use my_core::accounting_domain::decider;
+use my_core::server::server_traits::DBTransaction;
+use my_core::server::server_traits::domain_errors;
+use my_core::utility::utils::DynamicError;
+use my_core::utility::utils::LogError;
 use rust_decimal::Decimal;
 use rust_decimal::prelude::FromPrimitive;
 use std::str::FromStr;
 use tokio_postgres::error::SqlState;
+
+use crate::utils::MyUuidConverter;
 
 pub struct S<'a> {
     pub(crate) txn: deadpool_postgres::Transaction<'a>,
@@ -212,10 +219,10 @@ impl DBTransaction for S<'_> {
         ";
 
         let lat = Decimal::from_f64(data.location.latitude)
-            .ok_or(HashimError::InternalServerError)
+            .ok_or(db_types::HashimError::InternalServerError)
             .log()?;
         let lng = Decimal::from_f64(data.location.longitude)
-            .ok_or(HashimError::InternalServerError)
+            .ok_or(db_types::HashimError::InternalServerError)
             .log()?;
 
         self.txn

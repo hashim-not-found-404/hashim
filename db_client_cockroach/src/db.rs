@@ -1,5 +1,9 @@
-use crate::prelude::*;
+use crate::db_client;
 use deadpool_postgres::{Config, Pool, Runtime};
+use my_core::{
+    server::server_traits::Database,
+    utility::utils::{self, LogError},
+};
 use tokio_postgres::NoTls;
 
 pub struct S {
@@ -23,7 +27,7 @@ impl Database for S {
         S { pool }
     }
 
-    async fn get_client(&self) -> Result<Self::Client, DynamicError> {
+    async fn get_client(&self) -> Result<Self::Client, utils::DynamicError> {
         Ok(db_client::S {
             client: self.pool.get().await.log()?,
         })

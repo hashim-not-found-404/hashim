@@ -1,8 +1,13 @@
-use crate::prelude::*;
-use std::{
-    collections::{HashMap, HashSet},
-    str::FromStr,
-};
+use crate::db_transaction;
+use crate::utils::MyUuidConverter;
+use crate::utils::MyUuidConverter1;
+use my_core::accounting_domain::db_types;
+use my_core::server::server_traits::DBClient;
+use my_core::server::server_types;
+use my_core::utility::utils::DynamicError;
+use my_core::utility::utils::LogError;
+use std::collections::{HashMap, HashSet};
+use std::str::FromStr;
 use uuid::Uuid;
 
 pub struct S {
@@ -39,7 +44,7 @@ impl DBClient for S {
     async fn read_roles_for_user(
         &mut self,
         users_uuid: &HashSet<db_types::UuidType>,
-    ) -> Result<server_methods::AllRoles, DynamicError> {
+    ) -> Result<server_types::AllRoles, DynamicError> {
         let query = r#"
             SELECT
                 'company' as type,
@@ -62,7 +67,7 @@ impl DBClient for S {
 
         let stmt = self.client.prepare_cached(query).await.log()?;
 
-        let mut result = server_methods::AllRoles {
+        let mut result = server_types::AllRoles {
             companies: HashMap::new(),
             branches: HashMap::new(),
         };
@@ -135,7 +140,7 @@ impl DBClient for S {
     async fn read_list_company_and_branch(
         &mut self,
         user_uuid: &db_types::UuidType,
-    ) -> Result<Vec<ResourceInfo>, DynamicError> {
+    ) -> Result<Vec<db_types::ResourceInfo>, DynamicError> {
         let query = "
             WITH user_companies AS (
                 SELECT
@@ -187,42 +192,42 @@ impl DBClient for S {
             let role = db_types::Role::from_str(&user_role_str).log()?;
 
             // 1. Company name
-            resources.push(ResourceInfo {
+            resources.push(db_types::ResourceInfo {
                 row_uuid: company_uuid_db.clone(),
-                resource: server_methods::Resource::TableCompanyFieldName(company_name),
+                resource: db_types::Resource::TableCompanyFieldName(company_name),
             });
 
             // 2. Access Control: role
-            resources.push(ResourceInfo {
+            resources.push(db_types::ResourceInfo {
                 row_uuid: company_uuid_db.clone(),
-                resource: server_methods::Resource::TableAccessControlForCompanyFieldRole(role),
+                resource: db_types::Resource::TableAccessControlForCompanyFieldRole(role),
             });
 
             // 3. Access Control: user_ (so cache can query by user)
-            resources.push(ResourceInfo {
+            resources.push(db_types::ResourceInfo {
                 row_uuid: company_uuid_db.clone(),
-                resource: server_methods::Resource::TableAccessControlForCompanyFieldUser(
+                resource: db_types::Resource::TableAccessControlForCompanyFieldUser(
                     user_uuid.clone(),
                 ),
             });
 
             // 4. Access Control: data_group (self-reference)
-            resources.push(ResourceInfo {
+            resources.push(db_types::ResourceInfo {
                 row_uuid: company_uuid_db.clone(),
-                resource: server_methods::Resource::TableAccessControlForCompanyFieldDataGroup(
+                resource: db_types::Resource::TableAccessControlForCompanyFieldDataGroup(
                     company_uuid_db.clone(),
                 ),
             });
 
             // 5. Branches
             for branch in branches {
-                resources.push(ResourceInfo {
+                resources.push(db_types::ResourceInfo {
                     row_uuid: branch.uuid.clone(),
-                    resource: server_methods::Resource::TableCompanyBranchFieldName(branch.name),
+                    resource: db_types::Resource::TableCompanyBranchFieldName(branch.name),
                 });
-                resources.push(ResourceInfo {
+                resources.push(db_types::ResourceInfo {
                     row_uuid: branch.uuid,
-                    resource: server_methods::Resource::TableCompanyBranchFieldCompanyBelong(
+                    resource: db_types::Resource::TableCompanyBranchFieldCompanyBelong(
                         company_uuid_db.clone(),
                     ),
                 });
