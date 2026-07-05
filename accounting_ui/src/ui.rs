@@ -1,13 +1,18 @@
-use crate::prelude::*;
 use dioxus::prelude::*;
+use my_core::accounting_client::{
+    client_traits::{AllClientTypes, HashimSignal},
+    client_types, process_manager, ui_construct, ui_effect, ui_model,
+};
 use std::sync::LazyLock;
 
-type TheModel = ui_model::Model<my_types::target::S>;
-type TheCommander = ui_effect::Commander<my_types::target::S>;
+use crate::my_types;
+
+type TheModel = ui_model::Model<my_types::S>;
+type TheCommander = ui_effect::Commander<my_types::S>;
 
 static MODEL: LazyLock<TheModel> = LazyLock::new(|| TheModel::default());
 static COMMANDER: LazyLock<TheCommander> =
-    LazyLock::new(|| ui_construct::new::<my_types::target::S>(&MODEL));
+    LazyLock::new(|| ui_construct::new::<my_types::S>(&MODEL));
 
 const ICONS_SHOW: Asset = asset!("/assets/icons/show.png");
 const ICONS_HIDE: Asset = asset!("/assets/icons/hide.png");
@@ -40,13 +45,13 @@ pub fn App() -> Element {
 fn Dialog(
     consent_callback: EventHandler<process_manager::UserConsent>,
     operation_name: &'static str,
-    show_dialog: <my_types::target::S as AllClientTypes>::Dialog,
+    show_dialog: <my_types::S as AllClientTypes>::Dialog,
 ) -> Element {
     let consent_callback1 = consent_callback.clone();
 
     match show_dialog.read() {
-        ui_model::Dialog::Hide => rsx! {},
-        ui_model::Dialog::Show => {
+        client_types::Dialog::Hide => rsx! {},
+        client_types::Dialog::Show => {
             rsx! {
                 div {
                     label { "do you want to proceed operation {operation_name} offline" }
@@ -63,7 +68,7 @@ fn Dialog(
 
             }
         }
-        ui_model::Dialog::Error => {
+        client_types::Dialog::Error => {
             rsx! {
                 label { "sorry you can't proceed now" }
             }
@@ -74,13 +79,13 @@ fn Dialog(
 #[component]
 fn AuthenticationPage() -> Element {
     match MODEL.navigator.read() {
-        ui_model::Navigator::Auth(_) => {
+        client_types::Navigator::Auth(_) => {
             navigator().push(Route::SignIn {});
         }
-        ui_model::Navigator::CompanyBranchSelection(_) => {
+        client_types::Navigator::CompanyBranchSelection(_) => {
             navigator().push(Route::CompanyAndBranchSelection {});
         }
-        ui_model::Navigator::Home => todo!(),
+        client_types::Navigator::Home => todo!(),
     }
 
     rsx! {
@@ -98,15 +103,15 @@ fn SignIn() -> Element {
     };
 
     let consent_callback = move |consent: process_manager::UserConsent| {
-        COMMANDER.send(ui_model::Message::SignIn(
-            ui_updaters::sign_in::Msg::Consent(consent),
-        ));
+        COMMANDER.send(ui_model::Message::SignIn(ui_model::SignIn::Consent(
+            consent,
+        )));
     };
 
     let password_callback = move |password: String| {
-        COMMANDER.send(ui_model::Message::SignIn(
-            ui_updaters::sign_in::Msg::Password(password),
-        ));
+        COMMANDER.send(ui_model::Message::SignIn(ui_model::SignIn::Password(
+            password,
+        )));
     };
 
     rsx! {
@@ -122,7 +127,7 @@ fn SignIn() -> Element {
                     COMMANDER
                         .send(
                             ui_model::Message::SignIn(
-                                ui_updaters::sign_in::Msg::UserId(event.value()),
+                                ui_model::SignIn::UserId(event.value()),
                             ),
                         );
                 },
@@ -135,7 +140,7 @@ fn SignIn() -> Element {
                 onclick: move |_| {
                     COMMANDER
                         .send(
-                            ui_model::Message::SignIn(ui_updaters::sign_in::Msg::Submit),
+                            ui_model::Message::SignIn(ui_model::SignIn::Submit),
                         );
                 },
                 "Sign In"
@@ -155,15 +160,15 @@ fn SignUp() -> Element {
     };
 
     let consent_callback = move |consent: process_manager::UserConsent| {
-        COMMANDER.send(ui_model::Message::SignUp(
-            ui_updaters::sign_up::Msg::Consent(consent),
-        ));
+        COMMANDER.send(ui_model::Message::SignUp(ui_model::SignUp::Consent(
+            consent,
+        )));
     };
 
     let password_callback = move |password: String| {
-        COMMANDER.send(ui_model::Message::SignUp(
-            ui_updaters::sign_up::Msg::Password(password),
-        ));
+        COMMANDER.send(ui_model::Message::SignUp(ui_model::SignUp::Password(
+            password,
+        )));
     };
 
     rsx! {
@@ -179,7 +184,7 @@ fn SignUp() -> Element {
                     COMMANDER
                         .send(
                             ui_model::Message::SignUp(
-                                ui_updaters::sign_up::Msg::UserName(event.value()),
+                                ui_model::SignUp::UserName(event.value()),
                             ),
                         );
                 },
@@ -192,7 +197,7 @@ fn SignUp() -> Element {
                     COMMANDER
                         .send(
                             ui_model::Message::SignUp(
-                                ui_updaters::sign_up::Msg::UserId(event.value()),
+                                ui_model::SignUp::UserId(event.value()),
                             ),
                         );
                 },
@@ -204,7 +209,7 @@ fn SignUp() -> Element {
                 onclick: move |_| {
                     COMMANDER
                         .send(
-                            ui_model::Message::SignUp(ui_updaters::sign_up::Msg::Submit),
+                            ui_model::Message::SignUp(ui_model::SignUp::Submit),
                         );
                 },
                 "Sign Up"
@@ -281,13 +286,13 @@ fn CompanyAndBranchSelection() -> Element {
     rsx! {
         div {
             match MODEL.navigator.read() {
-                ui_model::Navigator::CompanyBranchSelection(n) => {
+                client_types::Navigator::CompanyBranchSelection(n) => {
                     match n {
-                        ui_model::CompanyBranchSelection::None => rsx! {},
-                        ui_model::CompanyBranchSelection::CreateCompany => rsx! {
+                        client_types::CompanyBranchSelection::None => rsx! {},
+                        client_types::CompanyBranchSelection::CreateCompany => rsx! {
                             CreateCompany {}
                         },
-                        ui_model::CompanyBranchSelection::CreateCompanyBranch => rsx! {
+                        client_types::CompanyBranchSelection::CreateCompanyBranch => rsx! {
                             CreateCompanyBranch {}
                         },
                     }
@@ -300,7 +305,7 @@ fn CompanyAndBranchSelection() -> Element {
                     COMMANDER
                         .send(
                             ui_model::Message::CompanyAndBranchSelection(
-                                ui_updaters::company_and_branch_selection::Msg::ShowCreateCompany,
+                                ui_model::CompanyAndBranchSelection::ShowCreateCompany,
                             ),
                         )
                 },
@@ -316,7 +321,7 @@ fn CompanyAndBranchSelection() -> Element {
                                     COMMANDER
                                         .send(
                                             ui_model::Message::CompanyAndBranchSelection(
-                                                ui_updaters::company_and_branch_selection::Msg::SelectedCompany(
+                                                ui_model::CompanyAndBranchSelection::SelectedCompany(
                                                     company.uuid.clone(),
                                                 ),
                                             ),
@@ -331,7 +336,7 @@ fn CompanyAndBranchSelection() -> Element {
                                         COMMANDER
                                             .send(
                                                 ui_model::Message::CompanyAndBranchSelection(
-                                                    ui_updaters::company_and_branch_selection::Msg::ShowCreateCompanyBranch,
+                                                    ui_model::CompanyAndBranchSelection::ShowCreateCompanyBranch,
                                                 ),
                                             )
                                     },
@@ -347,7 +352,7 @@ fn CompanyAndBranchSelection() -> Element {
                                                             COMMANDER
                                                                 .send(
                                                                     ui_model::Message::CompanyAndBranchSelection(
-                                                                        ui_updaters::company_and_branch_selection::Msg::SelectedCompanyBranch(
+                                                                        ui_model::CompanyAndBranchSelection::SelectedCompanyBranch(
                                                                             branch.uuid.clone(),
                                                                         ),
                                                                     ),
@@ -385,7 +390,7 @@ fn CreateCompany() -> Element {
                     COMMANDER
                         .send(
                             ui_model::Message::CreateCompany(
-                                ui_updaters::create_company::Msg::Name(event.value()),
+                                ui_model::CreateCompany::Name(event.value()),
                             ),
                         );
                 },
@@ -397,7 +402,7 @@ fn CreateCompany() -> Element {
                     COMMANDER
                         .send(
                             ui_model::Message::CreateCompany(
-                                ui_updaters::create_company::Msg::Currency(event.value()),
+                                ui_model::CreateCompany::Currency(event.value()),
                             ),
                         );
                 },
@@ -409,7 +414,7 @@ fn CreateCompany() -> Element {
                     COMMANDER
                         .send(
                             ui_model::Message::CreateCompany(
-                                ui_updaters::create_company::Msg::Submit,
+                                ui_model::CreateCompany::Submit,
                             ),
                         );
                 },
@@ -419,7 +424,7 @@ fn CreateCompany() -> Element {
                 onclick: move |_| {
                     COMMANDER
                         .send(
-                            ui_model::Message::CreateCompany(ui_updaters::create_company::Msg::Close),
+                            ui_model::Message::CreateCompany(ui_model::CreateCompany::Close),
                         );
                 },
                 "X"
@@ -438,7 +443,7 @@ fn CreateCompanyBranch() -> Element {
 
     let consent_callback = move |consent: process_manager::UserConsent| {
         COMMANDER.send(ui_model::Message::CreateCompanyBranch(
-            ui_updaters::create_company_branch::Msg::Consent(consent),
+            ui_model::CreateCompanyBranch::Consent(consent),
         ));
     };
 
@@ -455,7 +460,7 @@ fn CreateCompanyBranch() -> Element {
                     COMMANDER
                         .send(
                             ui_model::Message::CreateCompanyBranch(
-                                ui_updaters::create_company_branch::Msg::Name(event.value()),
+                                ui_model::CreateCompanyBranch::Name(event.value()),
                             ),
                         );
                 },
@@ -467,7 +472,7 @@ fn CreateCompanyBranch() -> Element {
                     COMMANDER
                         .send(
                             ui_model::Message::CreateCompanyBranch(
-                                ui_updaters::create_company_branch::Msg::Currency(event.value()),
+                                ui_model::CreateCompanyBranch::Currency(event.value()),
                             ),
                         );
                 },
@@ -479,7 +484,7 @@ fn CreateCompanyBranch() -> Element {
                     COMMANDER
                         .send(
                             ui_model::Message::CreateCompanyBranch(
-                                ui_updaters::create_company_branch::Msg::Submit,
+                                ui_model::CreateCompanyBranch::Submit,
                             ),
                         );
                 },
@@ -490,7 +495,7 @@ fn CreateCompanyBranch() -> Element {
                     COMMANDER
                         .send(
                             ui_model::Message::CreateCompanyBranch(
-                                ui_updaters::create_company_branch::Msg::Close,
+                                ui_model::CreateCompanyBranch::Close,
                             ),
                         );
                 },
