@@ -24,7 +24,7 @@ use std::{
 pub struct ServerMethods<At: server_traits::AllServerTypes> {
     database: At::Db,
     jwt: At::Jwt,
-    pub sender_to_broker:
+    pub(crate) sender_to_broker:
         <At::Mpsc as traits::MultiProducerSingleConsumer>::Sender<MessageToBroker<At::Mpsc>>,
 }
 
@@ -214,7 +214,7 @@ impl<At: server_traits::AllServerTypes> ServerMethods<At> {
         });
     }
 
-    pub fn broker_actor(
+    pub(crate) fn broker_actor(
         mut receiver_to_broker: <At::Mpsc as traits::MultiProducerSingleConsumer>::Receiver<
             MessageToBroker<At::Mpsc>,
         >,
@@ -487,7 +487,7 @@ async fn get_table_of_subscribed_data<At: server_traits::AllServerTypes>(
 mod broker_functions {
     use super::*;
 
-    pub fn map_resource_to_subscribes(
+    pub(crate) fn map_resource_to_subscribes(
         pool_of_pubsub: &UserSubscribes,
         list_of_resources: server_types::ListOfResources,
         resource_to_send: &mut server_types::ListOfResources,
@@ -511,14 +511,14 @@ mod broker_functions {
         }
     }
 
-    pub fn unsubscribe(pool_of_pubsub: &mut UserSubscribes, user_uuid: &types::UuidType) {
+    pub(crate) fn unsubscribe(pool_of_pubsub: &mut UserSubscribes, user_uuid: &types::UuidType) {
         pool_of_pubsub.retain(|_, users_and_subs| {
             users_and_subs.remove(user_uuid);
             !users_and_subs.is_empty()
         });
     }
 
-    pub fn merge_subscribes(
+    pub(crate) fn merge_subscribes(
         pool_of_pubsub: &mut UserSubscribes,
         list_of_subscribtion: UserSubscribes,
     ) {
@@ -649,9 +649,9 @@ fn role_to_subscribe_mapping(roles: Vec<types::Role>) -> HashSet<types::Subscrib
     subscribes
 }
 
-pub struct AllSubscribes {
-    pub companies: UserSubscribes,
-    pub branches: UserSubscribes,
+pub(crate) struct AllSubscribes {
+    pub(crate) companies: UserSubscribes,
+    pub(crate) branches: UserSubscribes,
 }
 
 type UserSubscribes = HashMap<
@@ -667,7 +667,7 @@ type UserSenders<Mpsc: traits::MultiProducerSingleConsumer> = HashMap<
     HashMap<u64, Mpsc::Sender<Vec<types::ResourceInfo>>>, // because user may have multiple web socket connection
 >;
 
-pub enum MessageToBroker<Mpsc: traits::MultiProducerSingleConsumer> {
+pub(crate) enum MessageToBroker<Mpsc: traits::MultiProducerSingleConsumer> {
     Subscribe {
         connection_id: u64,
         list_of_subscribtion: AllSubscribes,
