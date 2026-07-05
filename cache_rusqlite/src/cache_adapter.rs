@@ -2,7 +2,7 @@ use crate::utils::{MyUuidConverter, MyUuidConverter1};
 use adapters::encode_decode;
 use my_core::{
     accounting_client::client_traits::Cache,
-    accounting_domain::{types, request_response},
+    accounting_domain::{request_response, types},
     utility::traits::Coding,
 };
 use rusqlite::{Connection, OptionalExtension, params};
@@ -150,14 +150,12 @@ impl Cache for S {
                         .as_str(),
                     )
                 }
-                types::Resource::TableCompanyFieldCurrency(value) => {
-                    make_sql_statment_for_string(
-                        "company",
-                        "currency",
-                        uuid,
-                        &value.as_str().to_string(),
-                    )
-                }
+                types::Resource::TableCompanyFieldCurrency(value) => make_sql_statment_for_string(
+                    "company",
+                    "currency",
+                    uuid,
+                    &value.as_str().to_string(),
+                ),
                 types::Resource::TableAccessControlForCompanyFieldRole(value) => {
                     make_sql_statment_for_string(
                         "access_control_for_company",
@@ -255,8 +253,8 @@ impl Cache for S {
         user_id: &String,
     ) -> Option<(
         types::UuidType, /* user uuid */
-        Option<String>,     /* user name */
-        bool,               /* does he have jwt */
+        Option<String>,  /* user name */
+        bool,            /* does he have jwt */
     )> {
         let query = "SELECT rowid, name, jwt FROM user WHERE id = ?1;";
 
@@ -384,8 +382,8 @@ impl Cache for S {
         company_branch_name: &String,
     ) -> (
         Vec<types::Role>, /* roles at company */
-        bool,                /* is company exist */
-        bool,                /* is branch name used */
+        bool,             /* is company exist */
+        bool,             /* is branch name used */
     ) {
         // 1. Get the user's roles in the company
         let mut stmt = self

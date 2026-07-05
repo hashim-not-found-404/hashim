@@ -1,2 +1,2 @@
 pub mod cache_adapter;
-pub mod utils;
+pub(crate) mod utils;
