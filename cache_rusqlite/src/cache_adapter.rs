@@ -1,4 +1,10 @@
-use crate::prelude::*;
+use crate::utils::{MyUuidConverter, MyUuidConverter1};
+use adapters::encode_decode;
+use my_core::{
+    accounting_client::client_traits::Cache,
+    accounting_domain::{db_types, request_response},
+    utility::shared_traits::Coding,
+};
 use rusqlite::{Connection, OptionalExtension, params};
 use std::{ops::Add, str::FromStr};
 
@@ -16,7 +22,9 @@ impl Cache for S {
         Self { db: conn }
     }
 
-    async fn get_all_txn_input(&self) -> Vec<push_data::Txn<push_data::OperationsInput>> {
+    async fn get_all_txn_input(
+        &self,
+    ) -> Vec<request_response::push_data::Txn<request_response::push_data::OperationsInput>> {
         let mut stmt = self
             .db
             .prepare(
@@ -26,7 +34,7 @@ impl Cache for S {
 
         let rows = stmt
             .query_map([], |row| {
-                Ok(push_data::Txn {
+                Ok(request_response::push_data::Txn {
                     txn_number: row.get::<usize, i64>(0).unwrap() as u64,
                     operation: encode_decode::target::S::decode(
                         &row.get::<usize, Vec<u8>>(1).unwrap(),
@@ -43,7 +51,10 @@ impl Cache for S {
         transactions
     }
 
-    async fn write_txn_input(&self, txn: &push_data::Txn<push_data::OperationsInput>) -> () {
+    async fn write_txn_input(
+        &self,
+        txn: &request_response::push_data::Txn<request_response::push_data::OperationsInput>,
+    ) -> () {
         let txn_data = encode_decode::target::S::encode(&txn.operation);
         self.db
             .execute(
@@ -53,7 +64,10 @@ impl Cache for S {
             .unwrap();
     }
 
-    async fn write_txn_result(&self, txn: &push_data::Txn<push_data::OperationsResult>) {
+    async fn write_txn_result(
+        &self,
+        txn: &request_response::push_data::Txn<request_response::push_data::OperationsResult>,
+    ) {
         let txn_data = encode_decode::target::S::encode(&txn.operation);
         self.db
             .execute(
@@ -81,29 +95,29 @@ impl Cache for S {
             .unwrap();
     }
 
-    async fn write_resource(&self, resource: &Vec<ResourceInfo>) {
+    async fn write_resource(&self, resource: &Vec<db_types::ResourceInfo>) {
         let mut stmts = Vec::with_capacity(resource.len());
 
         for reso in resource {
             let uuid = &reso.row_uuid.to_string();
 
             let stmt = match &reso.resource {
-                server_methods::Resource::Jwt(value) => {
+                db_types::Resource::Jwt(value) => {
                     make_sql_statment_for_string("user", "jwt", uuid, &value.0)
                 }
-                server_methods::Resource::TableUserFieldName(value) => {
+                db_types::Resource::TableUserFieldName(value) => {
                     make_sql_statment_for_string("user", "name", uuid, value)
                 }
-                server_methods::Resource::TableUserFieldId(value) => {
+                db_types::Resource::TableUserFieldId(value) => {
                     make_sql_statment_for_string("user", "id", uuid, value)
                 }
-                server_methods::Resource::TableCompanyFieldName(value) => {
+                db_types::Resource::TableCompanyFieldName(value) => {
                     make_sql_statment_for_string("company", "name", uuid, value)
                 }
-                server_methods::Resource::TableCompanyBranchFieldName(value) => {
+                db_types::Resource::TableCompanyBranchFieldName(value) => {
                     make_sql_statment_for_string("company_branch", "name", uuid, value)
                 }
-                server_methods::Resource::TableCompanyBranchFieldCompanyBelong(value) => {
+                db_types::Resource::TableCompanyBranchFieldCompanyBelong(value) => {
                     make_sql_statment_for_string(
                         "company_branch",
                         "company_belong",
@@ -111,7 +125,7 @@ impl Cache for S {
                         &value.to_string(),
                     )
                 }
-                server_methods::Resource::TableCompanyBranchFieldCurrency(value) => {
+                db_types::Resource::TableCompanyBranchFieldCurrency(value) => {
                     make_sql_statment_for_string(
                         "company_branch",
                         "currency",
@@ -119,7 +133,7 @@ impl Cache for S {
                         &value.as_str().to_string(),
                     )
                 }
-                server_methods::Resource::TableCompanyBranchFieldLocation(value) => {
+                db_types::Resource::TableCompanyBranchFieldLocation(value) => {
                     make_sql_statment_for_number(
                         "company_branch",
                         "location_latitude",
@@ -136,7 +150,7 @@ impl Cache for S {
                         .as_str(),
                     )
                 }
-                server_methods::Resource::TableCompanyFieldCurrency(value) => {
+                db_types::Resource::TableCompanyFieldCurrency(value) => {
                     make_sql_statment_for_string(
                         "company",
                         "currency",
@@ -144,7 +158,7 @@ impl Cache for S {
                         &value.as_str().to_string(),
                     )
                 }
-                server_methods::Resource::TableAccessControlForCompanyFieldRole(value) => {
+                db_types::Resource::TableAccessControlForCompanyFieldRole(value) => {
                     make_sql_statment_for_string(
                         "access_control_for_company",
                         "role",
@@ -152,7 +166,7 @@ impl Cache for S {
                         &value.as_str().to_string(),
                     )
                 }
-                server_methods::Resource::TableAccessControlForCompanyFieldUser(value) => {
+                db_types::Resource::TableAccessControlForCompanyFieldUser(value) => {
                     make_sql_statment_for_string(
                         "access_control_for_company",
                         "user_",
@@ -160,7 +174,7 @@ impl Cache for S {
                         &value.to_string(),
                     )
                 }
-                server_methods::Resource::TableAccessControlForCompanyFieldDataGroup(value) => {
+                db_types::Resource::TableAccessControlForCompanyFieldDataGroup(value) => {
                     make_sql_statment_for_string(
                         "access_control_for_company",
                         "data_group",
@@ -168,7 +182,7 @@ impl Cache for S {
                         &value.to_string(),
                     )
                 }
-                server_methods::Resource::TableAccessControlForCompanyBranchFieldRole(value) => {
+                db_types::Resource::TableAccessControlForCompanyBranchFieldRole(value) => {
                     make_sql_statment_for_string(
                         "access_control_for_company_branch",
                         "role",
@@ -176,7 +190,7 @@ impl Cache for S {
                         &value.as_str().to_string(),
                     )
                 }
-                server_methods::Resource::TableAccessControlForCompanyBranchFieldUser(value) => {
+                db_types::Resource::TableAccessControlForCompanyBranchFieldUser(value) => {
                     make_sql_statment_for_string(
                         "access_control_for_company_branch",
                         "user_",
@@ -184,14 +198,14 @@ impl Cache for S {
                         &value.to_string(),
                     )
                 }
-                server_methods::Resource::TableAccessControlForCompanyBranchFieldDataGroup(
-                    value,
-                ) => make_sql_statment_for_string(
-                    "access_control_for_company_branch",
-                    "data_group",
-                    uuid,
-                    &value.to_string(),
-                ),
+                db_types::Resource::TableAccessControlForCompanyBranchFieldDataGroup(value) => {
+                    make_sql_statment_for_string(
+                        "access_control_for_company_branch",
+                        "data_group",
+                        uuid,
+                        &value.to_string(),
+                    )
+                }
             };
 
             stmts.push(stmt);
@@ -265,7 +279,7 @@ impl Cache for S {
     async fn read_list_company_and_branch(
         &self,
         user_uuid: &db_types::UuidType,
-    ) -> Vec<ResourceInfo> {
+    ) -> Vec<db_types::ResourceInfo> {
         let query = "
             SELECT
                 c.rowid as company_uuid,
@@ -314,29 +328,29 @@ impl Cache for S {
                 let role = db_types::Role::from_str(&user_role_str).unwrap();
 
                 // Company name
-                resources.push(ResourceInfo {
+                resources.push(db_types::ResourceInfo {
                     row_uuid: company_uuid_db.clone(),
-                    resource: server_methods::Resource::TableCompanyFieldName(company_name),
+                    resource: db_types::Resource::TableCompanyFieldName(company_name),
                 });
 
                 // Access control: role
-                resources.push(ResourceInfo {
+                resources.push(db_types::ResourceInfo {
                     row_uuid: company_uuid_db.clone(),
-                    resource: server_methods::Resource::TableAccessControlForCompanyFieldRole(role),
+                    resource: db_types::Resource::TableAccessControlForCompanyFieldRole(role),
                 });
 
                 // Access control: user
-                resources.push(ResourceInfo {
+                resources.push(db_types::ResourceInfo {
                     row_uuid: company_uuid_db.clone(),
-                    resource: server_methods::Resource::TableAccessControlForCompanyFieldUser(
+                    resource: db_types::Resource::TableAccessControlForCompanyFieldUser(
                         user_uuid.clone(),
                     ),
                 });
 
                 // Access control: data_group (self)
-                resources.push(ResourceInfo {
+                resources.push(db_types::ResourceInfo {
                     row_uuid: company_uuid_db.clone(),
-                    resource: server_methods::Resource::TableAccessControlForCompanyFieldDataGroup(
+                    resource: db_types::Resource::TableAccessControlForCompanyFieldDataGroup(
                         company_uuid_db.clone(),
                     ),
                 });
@@ -347,13 +361,13 @@ impl Cache for S {
                 let branch_uuid_db = branch_uuid_str.to_uuid();
                 let company_uuid_db = company_uuid_str.to_uuid();
 
-                resources.push(ResourceInfo {
+                resources.push(db_types::ResourceInfo {
                     row_uuid: branch_uuid_db.clone(),
-                    resource: server_methods::Resource::TableCompanyBranchFieldName(branch_name),
+                    resource: db_types::Resource::TableCompanyBranchFieldName(branch_name),
                 });
-                resources.push(ResourceInfo {
+                resources.push(db_types::ResourceInfo {
                     row_uuid: branch_uuid_db,
-                    resource: server_methods::Resource::TableCompanyBranchFieldCompanyBelong(
+                    resource: db_types::Resource::TableCompanyBranchFieldCompanyBelong(
                         company_uuid_db,
                     ),
                 });
