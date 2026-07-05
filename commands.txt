@@ -6,6 +6,8 @@ dep_graph_rs ./my_core | dot -Tpng > graph.png
 clear && cargo-cycles --dot graph.dot
 dot -Tpng graph.dot -o graph.png
 
+cargo-cycles --topo-sort
+
 clear && cockroach start-single-node --insecure
 clear && cockroach sql --insecure
 clear && cockroach sql --file db_client_cockroach/schema/tables.sql --insecure
