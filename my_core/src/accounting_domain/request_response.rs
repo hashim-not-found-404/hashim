@@ -1,34 +1,34 @@
 use crate::accounting_domain::{cases, types};
 use serde::{Deserialize, Serialize};
 
-pub mod messages {
+pub(crate) mod messages {
     use super::*;
 
     #[derive(Debug, Deserialize, Serialize)]
-    pub enum FromServer {
+    pub(crate) enum FromServer {
         Error(types::HashimError),
         PushData(push_data::MyResult),
         Resources(Vec<types::ResourceInfo>),
     }
 
-    pub type FromClient = push_data::Input;
+    pub(crate) type FromClient = push_data::Input;
 }
 
 pub mod push_data {
     use super::*;
 
     #[derive(Debug, Deserialize, Serialize)]
-    pub struct Input {
-        pub jwts: Vec<types::JsonWebTokenType>,
-        pub nonce: types::UuidType,
-        pub operations: Vec<Txn<OperationsInput>>,
+    pub(crate) struct Input {
+        pub(crate) jwts: Vec<types::JsonWebTokenType>,
+        pub(crate) nonce: types::UuidType,
+        pub(crate) operations: Vec<Txn<OperationsInput>>,
     }
 
     #[derive(Debug, Deserialize, Serialize)]
-    pub struct MyResult {
-        pub jwts: Vec<Result<(), types::JWTError>>,
-        pub nonce: Result<(), types::NonceError>,
-        pub operations: Vec<Txn<OperationsResult>>,
+    pub(crate) struct MyResult {
+        pub(crate) jwts: Vec<Result<(), types::JWTError>>,
+        pub(crate) nonce: Result<(), types::NonceError>,
+        pub(crate) operations: Vec<Txn<OperationsResult>>,
     }
 
     // utility types

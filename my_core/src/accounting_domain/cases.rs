@@ -25,10 +25,10 @@ pub mod sign_up {
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Input {
-        pub new_uuid: types::UuidType,
-        pub name: Option<String>,
-        pub user_id: String,
-        pub password: String,
+        pub(crate) new_uuid: types::UuidType,
+        pub(crate) name: Option<String>,
+        pub(crate) user_id: String,
+        pub(crate) password: String,
     }
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -41,16 +41,16 @@ pub mod sign_up {
     }
 
     #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
-    pub struct Error {
-        pub new_uuid: Option<types::RowIdError>,
-        pub user_id: Option<UserIdError>,
-        pub name: Option<String>,
+    pub(crate) struct Error {
+        pub(crate) new_uuid: Option<types::RowIdError>,
+        pub(crate) user_id: Option<UserIdError>,
+        pub(crate) name: Option<String>,
     }
 
     // utility types
 
     #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
-    pub enum UserIdError {
+    pub(crate) enum UserIdError {
         Duplicated,
     }
 
@@ -104,38 +104,38 @@ pub mod sign_up {
     }
 }
 
-pub mod sign_in {
+pub(crate) mod sign_in {
     use super::*;
 
     pub type MyResult = Result<Ok, Error>;
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Input {
-        pub user_id: String,
-        pub password: String,
+        pub(crate) user_id: String,
+        pub(crate) password: String,
     }
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
-    pub struct Ok {
-        pub user_uuid: types::UuidType,
-        pub jwt: types::JsonWebTokenType,
+    pub(crate) struct Ok {
+        pub(crate) user_uuid: types::UuidType,
+        pub(crate) jwt: types::JsonWebTokenType,
     }
 
     #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
-    pub struct Error {
-        pub user_id: Option<UserIdError>,
-        pub password: Option<PasswordError>,
+    pub(crate) struct Error {
+        pub(crate) user_id: Option<UserIdError>,
+        pub(crate) password: Option<PasswordError>,
     }
 
     // utility types
 
     #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
-    pub enum UserIdError {
+    pub(crate) enum UserIdError {
         NotExist,
     }
 
     #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
-    pub enum PasswordError {
+    pub(crate) enum PasswordError {
         WrongPassword,
     }
 
@@ -178,10 +178,10 @@ pub mod create_company {
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Input {
-        pub user_uuid: types::UuidType,
-        pub new_uuid: types::UuidType,
-        pub company_name: String,
-        pub currency: types::Currency,
+        pub(crate) user_uuid: types::UuidType,
+        pub(crate) new_uuid: types::UuidType,
+        pub(crate) company_name: String,
+        pub(crate) currency: types::Currency,
     }
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -194,9 +194,9 @@ pub mod create_company {
     }
 
     #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
-    pub struct Error {
-        pub user_uuid: Option<types::UserUuidError>,
-        pub new_uuid: Option<types::RowIdError>,
+    pub(crate) struct Error {
+        pub(crate) user_uuid: Option<types::UserUuidError>,
+        pub(crate) new_uuid: Option<types::RowIdError>,
     }
 
     impl Input {
@@ -235,24 +235,24 @@ pub mod create_company {
     }
 }
 
-pub mod list_company_and_branch {
+pub(crate) mod list_company_and_branch {
     use super::*;
 
     pub type MyResult = Result<Ok, Error>;
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Input {
-        pub user_uuid: types::UuidType,
+        pub(crate) user_uuid: types::UuidType,
     }
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
-    pub struct Ok {
-        pub resource: Vec<types::ResourceInfo>,
+    pub(crate) struct Ok {
+        pub(crate) resource: Vec<types::ResourceInfo>,
     }
 
     #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
-    pub struct Error {
-        pub user_uuid: Option<types::UserUuidError>,
+    pub(crate) struct Error {
+        pub(crate) user_uuid: Option<types::UserUuidError>,
     }
 
     impl Input {
@@ -275,12 +275,12 @@ pub mod create_company_branch {
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Input {
-        pub user_uuid: types::UuidType,
-        pub new_uuid: types::UuidType,
-        pub company_belong: types::UuidType,
-        pub branch_name: String,
-        pub location: types::Location,
-        pub currency: types::Currency,
+        pub(crate) user_uuid: types::UuidType,
+        pub(crate) new_uuid: types::UuidType,
+        pub(crate) company_belong: types::UuidType,
+        pub(crate) branch_name: String,
+        pub(crate) location: types::Location,
+        pub(crate) currency: types::Currency,
     }
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -295,29 +295,29 @@ pub mod create_company_branch {
     }
 
     #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
-    pub struct Error {
-        pub user_uuid: Option<types::UserUuidError>,
-        pub new_uuid: Option<types::RowIdError>,
-        pub company_belong: Option<CompanyBelongError>,
-        pub branch_name: Option<BranchNameError>,
-        pub location: Option<LocationError>,
+    pub(crate) struct Error {
+        pub(crate) user_uuid: Option<types::UserUuidError>,
+        pub(crate) new_uuid: Option<types::RowIdError>,
+        pub(crate) company_belong: Option<CompanyBelongError>,
+        pub(crate) branch_name: Option<BranchNameError>,
+        pub(crate) location: Option<LocationError>,
     }
 
     // utility types
 
     #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
-    pub enum CompanyBelongError {
+    pub(crate) enum CompanyBelongError {
         IdInWrongFormat,
         NotExist,
     }
 
     #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
-    pub enum BranchNameError {
+    pub(crate) enum BranchNameError {
         Duplicated,
     }
 
     #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
-    pub enum LocationError {
+    pub(crate) enum LocationError {
         Invalid,
     }
 
@@ -349,10 +349,7 @@ pub mod create_company_branch {
         ) -> Error {
             let mut errr = Error::default();
 
-            if !types::Role::has_any(
-                &user_roles,
-                &[types::Role::Manager, types::Role::CoManager],
-            ) {
+            if !types::Role::has_any(&user_roles, &[types::Role::Manager, types::Role::CoManager]) {
                 errr.user_uuid = Some(types::UserUuidError::YouDontHavePermissionToDoThat);
             }
 

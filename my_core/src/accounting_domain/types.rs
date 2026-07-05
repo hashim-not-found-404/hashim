@@ -14,7 +14,7 @@ pub type ListOfCompanies = Vec<Company>;
 pub struct Company {
     pub uuid: UuidType,
     pub name: String,
-    pub role: Role,
+    pub(crate) role: Role,
     pub branches: Vec<Branch>,
 }
 
@@ -31,7 +31,7 @@ pub struct Location {
 }
 
 impl Location {
-    pub fn is_valid(&self) -> bool {
+    pub(crate) fn is_valid(&self) -> bool {
         // Check bounds for latitude and longitude
         // Also ensure the values are finite (not NaN or Infinity)
         self.latitude >= -90.0
@@ -98,7 +98,7 @@ impl Role {
         }
     }
 
-    pub fn has_any(user_roles: &Vec<Self>, roles: &[Role]) -> bool {
+    pub(crate) fn has_any(user_roles: &Vec<Self>, roles: &[Role]) -> bool {
         for role in roles {
             if user_roles.contains(role) {
                 return true;
@@ -115,7 +115,7 @@ pub const ADDRESS: &str = "127.0.0.1:8081";
 // there should be no generic in all the below types
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum Subscribe {
+pub(crate) enum Subscribe {
     TableUserFieldName,
     TableUserFieldId,
     TableCompanyFieldName,
@@ -159,25 +159,25 @@ pub struct ResourceInfo {
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
-pub enum UserUuidError {
+pub(crate) enum UserUuidError {
     Invalid,
     NotAuthenticated,
     YouDontHavePermissionToDoThat,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
-pub enum RowIdError {
+pub(crate) enum RowIdError {
     Invalid,
     Duplicated,
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
-pub enum NonceError {
+pub(crate) enum NonceError {
     Invalid,
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
-pub enum JWTError {
+pub(crate) enum JWTError {
     Invalid,
 }
 
