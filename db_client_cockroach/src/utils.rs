@@ -1,7 +1,7 @@
 use my_core::accounting_domain::types;
 use uuid::Uuid;
 
-pub trait MyUuidConverter {
+pub(crate) trait MyUuidConverter {
     fn to_externel_uuid(&self) -> Uuid;
 }
 
@@ -11,7 +11,7 @@ impl MyUuidConverter for types::UuidType {
     }
 }
 
-pub trait MyUuidConverter1 {
+pub(crate) trait MyUuidConverter1 {
     fn to_uuid(self) -> types::UuidType;
 }
 

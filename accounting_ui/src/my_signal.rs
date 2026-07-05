@@ -5,7 +5,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-pub struct S<T> {
+pub(crate) struct S<T> {
     value: Arc<Mutex<T>>,
     subscribers: Arc<Mutex<HashSet<ReactiveContext>>>,
 }

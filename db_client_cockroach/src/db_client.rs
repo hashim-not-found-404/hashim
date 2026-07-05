@@ -209,9 +209,7 @@ impl DBClient for S {
             // 3. Access Control: user_ (so cache can query by user)
             resources.push(types::ResourceInfo {
                 row_uuid: company_uuid_db.clone(),
-                resource: types::Resource::TableAccessControlForCompanyFieldUser(
-                    user_uuid.clone(),
-                ),
+                resource: types::Resource::TableAccessControlForCompanyFieldUser(user_uuid.clone()),
             });
 
             // 4. Access Control: data_group (self-reference)

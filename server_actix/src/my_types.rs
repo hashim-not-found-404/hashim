@@ -5,7 +5,7 @@ use adapters::{
 use db_client_cockroach::{db, db_client};
 use my_core::server::server_traits::AllServerTypes;
 
-pub struct S;
+pub(crate) struct S;
 impl AllServerTypes for S {
     type Db = db::S;
     type Cli = db_client::S;

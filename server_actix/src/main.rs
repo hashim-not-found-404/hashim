@@ -1,5 +1,5 @@
-pub mod my_types;
-pub mod web_socket_server;
+pub(crate) mod my_types;
+pub(crate) mod web_socket_server;
 
 use actix_web::{
     App, HttpRequest, HttpResponse, HttpServer,

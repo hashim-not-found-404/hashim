@@ -5,13 +5,13 @@ use my_core::{
     utility::utils::{self, LogError},
 };
 
-pub struct S {
+pub(crate) struct S {
     session: Session,
     stream: AggregatedMessageStream,
 }
 
 impl S {
-    pub fn new(session: Session, stream: AggregatedMessageStream) -> Self {
+    pub(crate) fn new(session: Session, stream: AggregatedMessageStream) -> Self {
         Self { session, stream }
     }
 }

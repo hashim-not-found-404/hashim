@@ -9,7 +9,7 @@ use my_core::{
 };
 
 #[derive(Default, Clone)]
-pub struct S;
+pub(crate) struct S;
 
 impl AllClientTypes for S {
     type Rn = random_number::target::S;
