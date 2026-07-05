@@ -4,9 +4,9 @@ use crate::{
         request_response, types,
     },
     server::{
-        server_operations::ServerOperations,
         server_traits::{self, DBClient, Database, WSServer},
         server_types,
+        use_cases::ServerOperations,
     },
     utility::{
         traits::{

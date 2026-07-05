@@ -2,9 +2,8 @@ use crate::{
     accounting_client::{
         cache_actor,
         client_traits::{AllClientTypes, HashimSignal},
-        client_types,
-        operations::{self, ViewType1, ViewType2},
-        process_manager, ui_model,
+        client_types, process_manager, ui_model,
+        use_cases::{self, ViewType1, ViewType2},
     },
     accounting_domain::{
         cases::{self, RowId},
@@ -177,7 +176,7 @@ pub(crate) mod sign_up {
                                 .unwrap();
                         }
 
-                        let result = operations::sign_up::Type4::unwrap_output(data.data);
+                        let result = use_cases::sign_up::Type4::unwrap_output(data.data);
                         handle_apply_result(&model, commander_local_state1.clone(), result);
                     }
                 }
@@ -267,7 +266,7 @@ pub(crate) mod sign_up {
             cache_actor::Response::CloseTheChannel => {}
             cache_actor::Response::ServerCannotBeReached => {}
             cache_actor::Response::Data(data) => {
-                let result = operations::sign_up::Type4::unwrap_output(data.data);
+                let result = use_cases::sign_up::Type4::unwrap_output(data.data);
                 handle_apply_result(&model, commander_local_state.clone(), result);
             }
         }
@@ -402,7 +401,7 @@ pub(crate) mod sign_in {
                                 .unwrap();
                         }
 
-                        let result = operations::sign_in::Type4::unwrap_output(data.data);
+                        let result = use_cases::sign_in::Type4::unwrap_output(data.data);
                         handle_apply_result(&model, commander_local_state1.clone(), result);
                     }
                 }
@@ -476,7 +475,7 @@ pub(crate) mod sign_in {
             cache_actor::Response::CloseTheChannel => {}
             cache_actor::Response::ServerCannotBeReached => {}
             cache_actor::Response::Data(data) => {
-                let result = operations::sign_in::Type4::unwrap_output(data.data);
+                let result = use_cases::sign_in::Type4::unwrap_output(data.data);
                 handle_apply_result(&model, commander_local_state.clone(), result);
             }
         }
@@ -485,7 +484,7 @@ pub(crate) mod sign_in {
     fn handle_apply_result<At: AllClientTypes>(
         model: &ui_model::Model<At>,
         commander_local_state: Arc<CommanderLocalState<At>>,
-        result: operations::sign_in::Type4,
+        result: use_cases::sign_in::Type4,
     ) {
         match result.0 {
             Ok(ok) => {
@@ -613,7 +612,7 @@ pub(crate) mod company_and_branch_selection {
             let mut receiver_to_poke = cache
                 .send_subs_to_cache_actor(
                     component_id,
-                    operations::list_company_and_branch::Type1::subs(),
+                    use_cases::list_company_and_branch::Type1::subs(),
                 )
                 .await;
 
@@ -630,7 +629,7 @@ pub(crate) mod company_and_branch_selection {
                 let value = cache
                     .send_to_cache_actor(
                         cache_actor::CachingStrategy::ReadCacheOnly,
-                        operations::list_company_and_branch::Type1 {
+                        use_cases::list_company_and_branch::Type1 {
                             user_uuid: data.clone(),
                         }
                         .wrap_input(),
@@ -644,7 +643,7 @@ pub(crate) mod company_and_branch_selection {
                     cache_actor::Response::CloseTheChannel => break,
                     cache_actor::Response::ServerCannotBeReached => break,
                     cache_actor::Response::Data(data) => {
-                        operations::list_company_and_branch::Type4::unwrap_output(data.data)
+                        use_cases::list_company_and_branch::Type4::unwrap_output(data.data)
                     }
                 };
 
@@ -690,7 +689,7 @@ pub(crate) mod company_and_branch_selection {
         let mut receiver_to_response = cache
             .send_to_cache_actor(
                 cache_actor::CachingStrategy::ReadCacheAndServer,
-                operations::list_company_and_branch::Type1 { user_uuid }.wrap_input(),
+                use_cases::list_company_and_branch::Type1 { user_uuid }.wrap_input(),
             )
             .await;
 
@@ -699,7 +698,7 @@ pub(crate) mod company_and_branch_selection {
                 cache_actor::Response::CloseTheChannel => break,
                 cache_actor::Response::ServerCannotBeReached => break,
                 cache_actor::Response::Data(data) => {
-                    operations::list_company_and_branch::Type4::unwrap_output(data.data)
+                    use_cases::list_company_and_branch::Type4::unwrap_output(data.data)
                 }
             };
 
@@ -931,7 +930,7 @@ pub(crate) mod create_company_branch {
                         }
 
                         let result =
-                            operations::create_company_branch::Type4::unwrap_output(data.data);
+                            use_cases::create_company_branch::Type4::unwrap_output(data.data);
 
                         match result {
                             Ok(_) => {}
@@ -1015,7 +1014,7 @@ pub(crate) mod create_company_branch {
             cache_actor::Response::CloseTheChannel => {}
             cache_actor::Response::ServerCannotBeReached => {}
             cache_actor::Response::Data(data) => {
-                let result = operations::create_company_branch::Type4::unwrap_output(data.data);
+                let result = use_cases::create_company_branch::Type4::unwrap_output(data.data);
 
                 match result {
                     Ok(_) => {}
