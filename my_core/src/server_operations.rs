@@ -1,16 +1,16 @@
 use crate::{
-    db_types, decider, server_methods,
-    traits::{AllServerTypes, DBClient, DBTransaction},
-    utils,
+    decider,
+    server_traits::{self, DBClient, DBTransaction},
+    server_types, utils,
 };
 
 pub(crate) trait ServerOperations {
     type Ok;
     type Error;
 
-    async fn handle_operation<At: AllServerTypes>(
+    async fn handle_operation<At: server_traits::AllServerTypes>(
         &self,
-        side_effects: &mut server_methods::SideEffects,
+        side_effects: &mut server_types::SideEffects,
         client: &mut At::Cli,
         jwt: &At::Jwt,
     ) -> Result<Result<Self::Ok, Self::Error>, utils::DynamicError>;
@@ -20,9 +20,9 @@ impl ServerOperations for decider::sign_up::Input {
     type Ok = decider::sign_up::Ok;
     type Error = decider::sign_up::Error;
 
-    async fn handle_operation<At: AllServerTypes>(
+    async fn handle_operation<At: server_traits::AllServerTypes>(
         &self,
-        side_effects: &mut server_methods::SideEffects,
+        side_effects: &mut server_types::SideEffects,
         client: &mut At::Cli,
         jwt: &At::Jwt,
     ) -> Result<Result<Self::Ok, Self::Error>, utils::DynamicError> {
@@ -46,9 +46,9 @@ impl ServerOperations for decider::sign_in::Input {
     type Ok = decider::sign_in::Ok;
     type Error = decider::sign_in::Error;
 
-    async fn handle_operation<At: AllServerTypes>(
+    async fn handle_operation<At: server_traits::AllServerTypes>(
         &self,
-        side_effects: &mut server_methods::SideEffects,
+        side_effects: &mut server_types::SideEffects,
         client: &mut At::Cli,
         jwt: &At::Jwt,
     ) -> Result<Result<Self::Ok, Self::Error>, utils::DynamicError> {
@@ -64,9 +64,9 @@ impl ServerOperations for decider::create_company::Input {
     type Ok = decider::create_company::Ok;
     type Error = decider::create_company::Error;
 
-    async fn handle_operation<At: AllServerTypes>(
+    async fn handle_operation<At: server_traits::AllServerTypes>(
         &self,
-        side_effects: &mut server_methods::SideEffects,
+        side_effects: &mut server_types::SideEffects,
         client: &mut At::Cli,
         jwt: &At::Jwt,
     ) -> Result<Result<Self::Ok, Self::Error>, utils::DynamicError> {
@@ -90,9 +90,9 @@ impl ServerOperations for decider::list_company_and_branch::Input {
     type Ok = decider::list_company_and_branch::Ok;
     type Error = decider::list_company_and_branch::Error;
 
-    async fn handle_operation<At: AllServerTypes>(
+    async fn handle_operation<At: server_traits::AllServerTypes>(
         &self,
-        side_effects: &mut server_methods::SideEffects,
+        side_effects: &mut server_types::SideEffects,
         client: &mut At::Cli,
         jwt: &At::Jwt,
     ) -> Result<Result<Self::Ok, Self::Error>, utils::DynamicError> {
@@ -108,9 +108,9 @@ impl ServerOperations for decider::create_company_branch::Input {
     type Ok = decider::create_company_branch::Ok;
     type Error = decider::create_company_branch::Error;
 
-    async fn handle_operation<At: AllServerTypes>(
+    async fn handle_operation<At: server_traits::AllServerTypes>(
         &self,
-        side_effects: &mut server_methods::SideEffects,
+        side_effects: &mut server_types::SideEffects,
         client: &mut At::Cli,
         jwt: &At::Jwt,
     ) -> Result<Result<Self::Ok, Self::Error>, utils::DynamicError> {

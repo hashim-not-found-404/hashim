@@ -1,30 +1,30 @@
 use crate::{
     db_types,
-    request_response::{HashimError, JWTError, NonceError, ResourceInfo, messages, push_data},
+    decider::{JWT, RowId},
+    request_response,
     server_operations::ServerOperations,
-    traits::{
-        AllServerTypes, Coding, DBClient, Database, Either, JWT, MultiProducerSingleConsumer,
-        RandomNumber, Receiver, RowId, Runtime, Sender,
+    server_traits::{self, DBClient, Database, WSServer},
+    server_types,
+    shared_traits::{
+        self, Coding, MultiProducerSingleConsumer, RandomNumber, Receiver, Runtime, Sender,
     },
     utils::{self, HashMapWithHashMapValue, HashMapWithVectorValue},
 };
-use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashMap, HashSet},
-    future::Future,
     hash::Hash,
     sync::Arc,
     time::{SystemTime, UNIX_EPOCH},
 };
 
-pub struct ServerMethods<At: AllServerTypes> {
+pub struct ServerMethods<At: server_traits::AllServerTypes> {
     database: At::Db,
     jwt: At::Jwt,
     pub sender_to_broker:
-        <At::Mpsc as MultiProducerSingleConsumer>::Sender<MessageToBroker<At::Mpsc>>,
+        <At::Mpsc as shared_traits::MultiProducerSingleConsumer>::Sender<MessageToBroker<At::Mpsc>>,
 }
 
-impl<At: AllServerTypes> ServerMethods<At> {
+impl<At: server_traits::AllServerTypes> ServerMethods<At> {
     pub async fn new() -> Self {
         let (sender_to_broker, receiver_to_broker) = At::Mpsc::channel();
         Self::broker_actor(receiver_to_broker);
@@ -40,47 +40,51 @@ impl<At: AllServerTypes> ServerMethods<At> {
         At::Rt::spawn_local(async move {
             let mut sender_to_broker = self.sender_to_broker.clone();
             let (sender_to_server, mut receiver_to_server) =
-                At::Mpsc::channel::<Vec<ResourceInfo>>();
+                At::Mpsc::channel::<Vec<db_types::ResourceInfo>>();
             let connection_id = At::Rn::generate();
 
             loop {
                 let result = At::Rt::select(session.receive(), receiver_to_server.recv()).await;
                 match result {
-                    Either::One(msg) => {
+                    shared_traits::Either::One(msg) => {
                         let msg = match msg {
                             Ok(msg) => msg,
                             Err(_) => break,
                         };
 
                         match msg {
-                            WSMessage::Close => break,
-                            WSMessage::Binary(received_data) => {
-                                let input =
-                                    match At::Ed::decode::<messages::FromClient>(&received_data) {
-                                        Ok(ok) => ok,
-                                        Err(_) => {
-                                            if session
-                                                .send_bin(At::Ed::encode(
-                                                    &messages::FromServer::Error(
-                                                        HashimError::InvalidDataFormat,
-                                                    ),
-                                                ))
-                                                .await
-                                                .is_err()
-                                            {
-                                                break;
-                                            }
-                                            continue;
+                            server_traits::WSMessage::Close => break,
+                            server_traits::WSMessage::Binary(received_data) => {
+                                let input = match At::Ed::decode::<
+                                    request_response::messages::FromClient,
+                                >(&received_data)
+                                {
+                                    Ok(ok) => ok,
+                                    Err(_) => {
+                                        if session
+                                            .send_bin(At::Ed::encode(
+                                                &request_response::messages::FromServer::Error(
+                                                    db_types::HashimError::InvalidDataFormat,
+                                                ),
+                                            ))
+                                            .await
+                                            .is_err()
+                                        {
+                                            break;
                                         }
-                                    };
+                                        continue;
+                                    }
+                                };
 
                                 let mut client = match self.database.get_client().await {
                                     Ok(ok) => ok,
                                     Err(_) => {
                                         if session
-                                            .send_bin(At::Ed::encode(&messages::FromServer::Error(
-                                                HashimError::InternalServerError,
-                                            )))
+                                            .send_bin(At::Ed::encode(
+                                                &request_response::messages::FromServer::Error(
+                                                    db_types::HashimError::InternalServerError,
+                                                ),
+                                            ))
                                             .await
                                             .is_err()
                                         {
@@ -91,7 +95,7 @@ impl<At: AllServerTypes> ServerMethods<At> {
                                 };
 
                                 dbg!(&input);
-                                let mut side_effects = SideEffects::default();
+                                let mut side_effects = server_types::SideEffects::default();
                                 let output = push_data::<At>(
                                     &input,
                                     &mut side_effects,
@@ -105,7 +109,9 @@ impl<At: AllServerTypes> ServerMethods<At> {
                                     Ok(ok) => {
                                         if session
                                             .send_bin(At::Ed::encode(
-                                                &messages::FromServer::PushData(ok),
+                                                &request_response::messages::FromServer::PushData(
+                                                    ok,
+                                                ),
                                             ))
                                             .await
                                             .is_err()
@@ -115,9 +121,11 @@ impl<At: AllServerTypes> ServerMethods<At> {
                                     }
                                     Err(_) => {
                                         if session
-                                            .send_bin(At::Ed::encode(&messages::FromServer::Error(
-                                                HashimError::InternalServerError,
-                                            )))
+                                            .send_bin(At::Ed::encode(
+                                                &request_response::messages::FromServer::Error(
+                                                    db_types::HashimError::InternalServerError,
+                                                ),
+                                            ))
                                             .await
                                             .is_err()
                                         {
@@ -137,8 +145,8 @@ impl<At: AllServerTypes> ServerMethods<At> {
                                         Err(_) => {
                                             if session
                                                 .send_bin(At::Ed::encode(
-                                                    &messages::FromServer::Error(
-                                                        HashimError::InternalServerError,
+                                                    &request_response::messages::FromServer::Error(
+                                                        db_types::HashimError::InternalServerError,
                                                     ),
                                                 ))
                                                 .await
@@ -178,10 +186,12 @@ impl<At: AllServerTypes> ServerMethods<At> {
                             }
                         }
                     }
-                    Either::Two(wraped_resource) => {
+                    shared_traits::Either::Two(wraped_resource) => {
                         let resource = wraped_resource.unwrap();
                         if session
-                            .send_bin(At::Ed::encode(&messages::FromServer::Resources(resource)))
+                            .send_bin(At::Ed::encode(
+                                &request_response::messages::FromServer::Resources(resource),
+                            ))
                             .await
                             .is_err()
                         {
@@ -201,7 +211,7 @@ impl<At: AllServerTypes> ServerMethods<At> {
     }
 
     pub fn broker_actor(
-        mut receiver_to_broker: <At::Mpsc as MultiProducerSingleConsumer>::Receiver<
+        mut receiver_to_broker: <At::Mpsc as shared_traits::MultiProducerSingleConsumer>::Receiver<
             MessageToBroker<At::Mpsc>,
         >,
     ) {
@@ -266,7 +276,7 @@ impl<At: AllServerTypes> ServerMethods<At> {
                         list_of_resources_for_company,
                         list_of_resources_for_branch,
                     } => {
-                        let mut resource_to_send: ListOfResources = HashMap::new();
+                        let mut resource_to_send: server_types::ListOfResources = HashMap::new();
 
                         broker_functions::map_resource_to_subscribes(
                             &pool_of_pubsub_for_company,
@@ -310,13 +320,13 @@ impl<At: AllServerTypes> ServerMethods<At> {
     }
 }
 
-async fn push_data<At: AllServerTypes>(
-    input: &push_data::Input,
-    side_effects: &mut SideEffects,
+async fn push_data<At: server_traits::AllServerTypes>(
+    input: &request_response::push_data::Input,
+    side_effects: &mut server_types::SideEffects,
     client: &mut At::Cli,
     jwt: &At::Jwt,
-) -> Result<push_data::Result, utils::DynamicError> {
-    let mut the_return_result = push_data::Result {
+) -> Result<request_response::push_data::MyResult, utils::DynamicError> {
+    let mut the_return_result = request_response::push_data::MyResult {
         jwts: Vec::with_capacity(input.jwts.len()),
         nonce: Ok(()),
         operations: Vec::with_capacity(input.operations.len()),
@@ -330,7 +340,9 @@ async fn push_data<At: AllServerTypes>(
                 side_effects.authenticated_users.insert(user_uuid);
             }
             None => {
-                the_return_result.jwts.push(Err(JWTError::Invalid));
+                the_return_result
+                    .jwts
+                    .push(Err(db_types::JWTError::Invalid));
 
                 is_there_error = true;
             }
@@ -338,14 +350,14 @@ async fn push_data<At: AllServerTypes>(
     }
 
     if !At::Id::validate(&input.nonce) {
-        the_return_result.nonce = Err(NonceError::Invalid);
+        the_return_result.nonce = Err(db_types::NonceError::Invalid);
         return Ok(the_return_result);
     };
 
     let is_nonce_used = client.write_nonce_if_not_used(&input.nonce).await?;
 
     if !check_nonce_if_valid::<At::Id>(&input.nonce, is_nonce_used) {
-        the_return_result.nonce = Err(NonceError::Invalid);
+        the_return_result.nonce = Err(db_types::NonceError::Invalid);
     }
 
     if is_there_error {
@@ -354,32 +366,36 @@ async fn push_data<At: AllServerTypes>(
 
     for transaction in &input.operations {
         let result = match &transaction.operation {
-            push_data::OperationsInput::SignUp(input) => push_data::OperationsResult::SignUp(
-                input
-                    .handle_operation::<At>(side_effects, client, &jwt)
-                    .await?,
-            ),
-            push_data::OperationsInput::SignIn(input) => push_data::OperationsResult::SignIn(
-                input
-                    .handle_operation::<At>(side_effects, client, &jwt)
-                    .await?,
-            ),
-            push_data::OperationsInput::CreateCompany(input) => {
-                push_data::OperationsResult::CreateCompany(
+            request_response::push_data::OperationsInput::SignUp(input) => {
+                request_response::push_data::OperationsResult::SignUp(
                     input
                         .handle_operation::<At>(side_effects, client, &jwt)
                         .await?,
                 )
             }
-            push_data::OperationsInput::CreateCompanyBranch(input) => {
-                push_data::OperationsResult::CreateCompanyBranch(
+            request_response::push_data::OperationsInput::SignIn(input) => {
+                request_response::push_data::OperationsResult::SignIn(
                     input
                         .handle_operation::<At>(side_effects, client, &jwt)
                         .await?,
                 )
             }
-            push_data::OperationsInput::ListCompanyAndBranch(input) => {
-                push_data::OperationsResult::ListCompanyAndBranch(
+            request_response::push_data::OperationsInput::CreateCompany(input) => {
+                request_response::push_data::OperationsResult::CreateCompany(
+                    input
+                        .handle_operation::<At>(side_effects, client, &jwt)
+                        .await?,
+                )
+            }
+            request_response::push_data::OperationsInput::CreateCompanyBranch(input) => {
+                request_response::push_data::OperationsResult::CreateCompanyBranch(
+                    input
+                        .handle_operation::<At>(side_effects, client, &jwt)
+                        .await?,
+                )
+            }
+            request_response::push_data::OperationsInput::ListCompanyAndBranch(input) => {
+                request_response::push_data::OperationsResult::ListCompanyAndBranch(
                     input
                         .handle_operation::<At>(side_effects, client, &jwt)
                         .await?,
@@ -387,10 +403,12 @@ async fn push_data<At: AllServerTypes>(
             }
         };
 
-        the_return_result.operations.push(push_data::Txn {
-            txn_number: transaction.txn_number,
-            operation: result,
-        });
+        the_return_result
+            .operations
+            .push(request_response::push_data::Txn {
+                txn_number: transaction.txn_number,
+                operation: result,
+            });
     }
 
     return Ok(the_return_result);
@@ -428,7 +446,7 @@ fn check_nonce_if_valid<Id: RowId>(nonce: &db_types::UuidType, is_used: bool) ->
     true
 }
 
-async fn get_table_of_subscribed_data<At: AllServerTypes>(
+async fn get_table_of_subscribed_data<At: server_traits::AllServerTypes>(
     client: &mut At::Cli,
     users_uuids: &HashSet<db_types::UuidType>,
 ) -> Result<AllSubscribes, utils::DynamicError> {
@@ -464,24 +482,13 @@ async fn get_table_of_subscribed_data<At: AllServerTypes>(
     Ok(subs)
 }
 
-pub enum WSMessage {
-    Binary(Vec<u8>),
-    Close,
-}
-
-pub trait WSServer {
-    fn send_bin(&mut self, bin: Vec<u8>) -> impl Future<Output = Result<(), utils::DynamicError>>;
-    fn receive(&mut self) -> impl Future<Output = Result<WSMessage, utils::DynamicError>>;
-    fn close(self) -> impl Future<Output = Result<(), utils::DynamicError>>;
-}
 mod broker_functions {
-
     use super::*;
 
     pub fn map_resource_to_subscribes(
         pool_of_pubsub: &UserSubscribes,
-        list_of_resources: ListOfResources,
-        resource_to_send: &mut ListOfResources,
+        list_of_resources: server_types::ListOfResources,
+        resource_to_send: &mut server_types::ListOfResources,
     ) {
         for (company, resource) in list_of_resources {
             let user_and_subscribe = pool_of_pubsub.get(&company);
@@ -522,79 +529,79 @@ mod broker_functions {
 
     fn resource_filtering_based_on_subscribe(
         subscribe: &HashSet<Subscribe>,
-        resource: &Vec<ResourceInfo>,
-    ) -> Vec<ResourceInfo> {
+        resource: &Vec<db_types::ResourceInfo>,
+    ) -> Vec<db_types::ResourceInfo> {
         let mut new_resource = Vec::new();
 
         for one_resource in resource {
             match one_resource.resource {
-                Resource::Jwt(_) => {}
-                Resource::TableUserFieldName(_) => {
+                db_types::Resource::Jwt(_) => {}
+                db_types::Resource::TableUserFieldName(_) => {
                     if subscribe.contains(&Subscribe::TableUserFieldName) {
                         new_resource.push(one_resource.clone());
                     }
                 }
-                Resource::TableUserFieldId(_) => {
+                db_types::Resource::TableUserFieldId(_) => {
                     if subscribe.contains(&Subscribe::TableUserFieldId) {
                         new_resource.push(one_resource.clone());
                     }
                 }
-                Resource::TableCompanyFieldName(_) => {
+                db_types::Resource::TableCompanyFieldName(_) => {
                     if subscribe.contains(&Subscribe::TableCompanyFieldName) {
                         new_resource.push(one_resource.clone());
                     }
                 }
-                Resource::TableCompanyBranchFieldName(_) => {
+                db_types::Resource::TableCompanyBranchFieldName(_) => {
                     if subscribe.contains(&Subscribe::TableCompanyBranchFieldName) {
                         new_resource.push(one_resource.clone());
                     }
                 }
-                Resource::TableCompanyBranchFieldCompanyBelong(_) => {
+                db_types::Resource::TableCompanyBranchFieldCompanyBelong(_) => {
                     if subscribe.contains(&Subscribe::TableCompanyBranchFieldCompanyBelong) {
                         new_resource.push(one_resource.clone());
                     }
                 }
-                Resource::TableCompanyBranchFieldCurrency(_) => {
+                db_types::Resource::TableCompanyBranchFieldCurrency(_) => {
                     if subscribe.contains(&Subscribe::TableCompanyBranchFieldCurrency) {
                         new_resource.push(one_resource.clone());
                     }
                 }
-                Resource::TableCompanyBranchFieldLocation(_) => {
+                db_types::Resource::TableCompanyBranchFieldLocation(_) => {
                     if subscribe.contains(&Subscribe::TableCompanyBranchFieldLocation) {
                         new_resource.push(one_resource.clone());
                     }
                 }
-                Resource::TableCompanyFieldCurrency(_) => {
+                db_types::Resource::TableCompanyFieldCurrency(_) => {
                     if subscribe.contains(&Subscribe::TableCompanyFieldCurrency) {
                         new_resource.push(one_resource.clone());
                     }
                 }
-                Resource::TableAccessControlForCompanyFieldRole(_) => {
+                db_types::Resource::TableAccessControlForCompanyFieldRole(_) => {
                     if subscribe.contains(&Subscribe::TableAccessControlForCompanyFieldRole) {
                         new_resource.push(one_resource.clone());
                     }
                 }
-                Resource::TableAccessControlForCompanyFieldUser(_) => {
+                db_types::Resource::TableAccessControlForCompanyFieldUser(_) => {
                     if subscribe.contains(&Subscribe::TableAccessControlForCompanyFieldUser) {
                         new_resource.push(one_resource.clone());
                     }
                 }
-                Resource::TableAccessControlForCompanyFieldDataGroup(_) => {
+                db_types::Resource::TableAccessControlForCompanyFieldDataGroup(_) => {
                     if subscribe.contains(&Subscribe::TableAccessControlForCompanyFieldDataGroup) {
                         new_resource.push(one_resource.clone());
                     }
                 }
-                Resource::TableAccessControlForCompanyBranchFieldRole(_) => {
+                db_types::Resource::TableAccessControlForCompanyBranchFieldRole(_) => {
                     if subscribe.contains(&Subscribe::TableAccessControlForCompanyBranchFieldRole) {
                         new_resource.push(one_resource.clone());
                     }
                 }
-                Resource::TableAccessControlForCompanyBranchFieldUser(_) => {
+                db_types::Resource::TableAccessControlForCompanyBranchFieldUser(_) => {
                     if subscribe.contains(&Subscribe::TableAccessControlForCompanyBranchFieldUser) {
                         new_resource.push(one_resource.clone());
                     }
                 }
-                Resource::TableAccessControlForCompanyBranchFieldDataGroup(_) => {
+                db_types::Resource::TableAccessControlForCompanyBranchFieldDataGroup(_) => {
                     if subscribe
                         .contains(&Subscribe::TableAccessControlForCompanyBranchFieldDataGroup)
                     {
@@ -625,26 +632,6 @@ pub enum Subscribe {
     TableAccessControlForCompanyBranchFieldDataGroup,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
-pub enum Resource {
-    Jwt(db_types::JsonWebTokenType),
-
-    TableUserFieldName(String),
-    TableUserFieldId(String),
-    TableCompanyFieldName(String),
-    TableCompanyFieldCurrency(db_types::Currency),
-    TableCompanyBranchFieldName(String),
-    TableCompanyBranchFieldCompanyBelong(db_types::UuidType),
-    TableCompanyBranchFieldLocation(db_types::Location),
-    TableCompanyBranchFieldCurrency(db_types::Currency),
-    TableAccessControlForCompanyFieldRole(db_types::Role),
-    TableAccessControlForCompanyFieldUser(db_types::UuidType),
-    TableAccessControlForCompanyFieldDataGroup(db_types::UuidType),
-    TableAccessControlForCompanyBranchFieldRole(db_types::Role),
-    TableAccessControlForCompanyBranchFieldUser(db_types::UuidType),
-    TableAccessControlForCompanyBranchFieldDataGroup(db_types::UuidType),
-}
-
 fn role_to_subscribe_mapping(roles: Vec<db_types::Role>) -> HashSet<Subscribe> {
     let mut subscribes = HashSet::with_capacity(200);
 
@@ -669,23 +656,6 @@ fn role_to_subscribe_mapping(roles: Vec<db_types::Role>) -> HashSet<Subscribe> {
     subscribes
 }
 
-pub struct AllRoles {
-    pub companies: HashMap<
-        db_types::UuidType, // company uuid
-        HashMap<
-            db_types::UuidType, // user uuid
-            Vec<db_types::Role>,
-        >,
-    >,
-    pub branches: HashMap<
-        db_types::UuidType, // branch uuid
-        HashMap<
-            db_types::UuidType, // user uuid
-            Vec<db_types::Role>,
-        >,
-    >,
-}
-
 pub struct AllSubscribes {
     pub companies: UserSubscribes,
     pub branches: UserSubscribes,
@@ -699,34 +669,24 @@ type UserSubscribes = HashMap<
     >,
 >;
 
-type UserSenders<Mpsc: MultiProducerSingleConsumer> = HashMap<
-    db_types::UuidType,                            // user uuid
-    HashMap<u64, Mpsc::Sender<Vec<ResourceInfo>>>, // because user may have multiple web socket connection
+type UserSenders<Mpsc: shared_traits::MultiProducerSingleConsumer> = HashMap<
+    db_types::UuidType,                                      // user uuid
+    HashMap<u64, Mpsc::Sender<Vec<db_types::ResourceInfo>>>, // because user may have multiple web socket connection
 >;
 
-type ListOfResources = HashMap<db_types::UuidType, Vec<ResourceInfo>>;
-
-pub enum MessageToBroker<Mpsc: MultiProducerSingleConsumer> {
+pub enum MessageToBroker<Mpsc: shared_traits::MultiProducerSingleConsumer> {
     Subscribe {
         connection_id: u64,
         list_of_subscribtion: AllSubscribes,
         users_uuids: HashSet<db_types::UuidType>,
-        sender_to_server: Mpsc::Sender<Vec<ResourceInfo>>,
+        sender_to_server: Mpsc::Sender<Vec<db_types::ResourceInfo>>,
     },
     Unsubscribe {
         connection_id: u64,
     },
     Publish {
         connection_id: u64,
-        list_of_resources_for_company: ListOfResources,
-        list_of_resources_for_branch: ListOfResources,
+        list_of_resources_for_company: server_types::ListOfResources,
+        list_of_resources_for_branch: server_types::ListOfResources,
     },
-}
-
-#[derive(Default)]
-pub(crate) struct SideEffects {
-    pub(crate) authenticated_users: HashSet<db_types::UuidType>,
-    pub(crate) users_to_resubscribe: HashSet<db_types::UuidType>,
-    pub(crate) resource_to_broadcast_for_company: ListOfResources,
-    pub(crate) resource_to_broadcast_for_branch: ListOfResources,
 }
