@@ -1,5 +1,5 @@
 use crate::{
-    accounting_domain::db_types, client::client_traits::AllClientTypes, client::process_manager,
+    accounting_domain::db_types, accounting_client::client_traits::AllClientTypes, accounting_client::process_manager,
 };
 
 // model

@@ -2,9 +2,9 @@ use crate::{
     accounting_domain::db_types,
     accounting_domain::decider,
     accounting_domain::request_response,
-    client::cache,
-    client::cache_actor,
-    client::client_traits::{AllClientTypes, Cache},
+    accounting_client::cache,
+    accounting_client::cache_actor,
+    accounting_client::client_traits::{AllClientTypes, Cache},
     utility::utils::MyUpSert,
 };
 use std::collections::{HashMap, HashSet};

@@ -1,6 +1,6 @@
 use crate::{
     accounting_domain::db_types,
-    client::{
+    accounting_client::{
         cache_actor, client_traits::AllClientTypes, network_actor, process_manager, ui_effect,
         ui_model,
     },

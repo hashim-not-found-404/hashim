@@ -1,6 +1,6 @@
 use crate::{
     accounting_domain::db_types,
-    client::client_traits::{AllClientTypes, WSClient},
+    accounting_client::client_traits::{AllClientTypes, WSClient},
     utility::shared_traits::{Either, MultiProducerSingleConsumer, Receiver, Runtime, Sender},
     utility::utils::{self, ReadAndSet},
 };

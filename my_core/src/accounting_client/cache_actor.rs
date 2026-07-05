@@ -1,10 +1,10 @@
 use crate::{
+    accounting_client::cache,
+    accounting_client::client_traits::{AllClientTypes, Cache},
+    accounting_client::network_actor,
     accounting_domain::db_types,
     accounting_domain::decider::RowId,
     accounting_domain::request_response,
-    client::cache,
-    client::client_traits::{AllClientTypes, Cache},
-    client::network_actor,
     utility::shared_traits::{
         Coding, MultiProducerSingleConsumer, RandomNumber, Receiver, Runtime, Sender,
     },

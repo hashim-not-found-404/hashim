@@ -3,7 +3,7 @@ use crate::{
         db_types,
         decider::{self, RowId},
     },
-    client::{
+    accounting_client::{
         cache_actor,
         client_traits::{AllClientTypes, HashimSignal},
         client_types,

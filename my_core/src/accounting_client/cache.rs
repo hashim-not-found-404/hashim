@@ -1,6 +1,6 @@
 use crate::{
+    accounting_client::client_traits::{AllClientTypes, Cache},
     accounting_domain::db_types,
-    client::client_traits::{AllClientTypes, Cache},
     utility::utils,
 };
 use std::collections::{HashMap, HashSet};
