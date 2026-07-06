@@ -124,11 +124,7 @@ fn SignIn() -> Element {
                 placeholder: "User ID",
                 oninput: move |event| {
                     COMMANDER
-                        .send(
-                            ui_model::Message::SignIn(
-                                ui_model::SignIn::UserId(event.value()),
-                            ),
-                        );
+                        .send(ui_model::Message::SignIn(ui_model::SignIn::UserId(event.value())));
                 },
                 value: auth_state.user_id.read(),
             }
@@ -181,11 +177,7 @@ fn SignUp() -> Element {
                 placeholder: "Name (Optional)",
                 oninput: move |event| {
                     COMMANDER
-                        .send(
-                            ui_model::Message::SignUp(
-                                ui_model::SignUp::UserName(event.value()),
-                            ),
-                        );
+                        .send(ui_model::Message::SignUp(ui_model::SignUp::UserName(event.value())));
                 },
                 value: local_state.user_name.read(),
             }
@@ -194,11 +186,7 @@ fn SignUp() -> Element {
                 placeholder: "User Id",
                 oninput: move |event| {
                     COMMANDER
-                        .send(
-                            ui_model::Message::SignUp(
-                                ui_model::SignUp::UserId(event.value()),
-                            ),
-                        );
+                        .send(ui_model::Message::SignUp(ui_model::SignUp::UserId(event.value())));
                 },
                 value: auth_state.user_id.read(),
             }
@@ -291,9 +279,11 @@ fn CompanyAndBranchSelection() -> Element {
                         client_types::CompanyBranchSelection::CreateCompany => rsx! {
                             CreateCompany {}
                         },
-                        client_types::CompanyBranchSelection::CreateCompanyBranch => rsx! {
-                            CreateCompanyBranch {}
-                        },
+                        client_types::CompanyBranchSelection::CreateCompanyBranch => {
+                            rsx! {
+                                CreateCompanyBranch {}
+                            }
+                        }
                     }
                 }
                 _ => rsx! {},
@@ -411,11 +401,7 @@ fn CreateCompany() -> Element {
             button {
                 onclick: move |_| {
                     COMMANDER
-                        .send(
-                            ui_model::Message::CreateCompany(
-                                ui_model::CreateCompany::Submit,
-                            ),
-                        );
+                        .send(ui_model::Message::CreateCompany(ui_model::CreateCompany::Submit));
                 },
                 "Create"
             }
