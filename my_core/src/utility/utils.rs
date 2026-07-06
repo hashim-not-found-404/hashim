@@ -3,7 +3,7 @@ use std::{
     collections::HashMap,
     error::Error,
     hash::Hash,
-    sync::{Arc, RwLock},
+    sync::{Arc, Mutex, RwLock},
 };
 
 pub type DynamicError = Box<dyn Error>;
@@ -79,7 +79,7 @@ impl<K: Eq + Hash, V: Default> MyUpSert<K, V> for HashMap<K, V> {
 
 pub(crate) trait ReadAndSet<T: Clone> {
     fn read(&self) -> T;
-    fn set(&self, v: T);
+    fn put(&self, v: T);
 }
 
 impl<T: Clone> ReadAndSet<T> for Arc<RwLock<T>> {
@@ -87,8 +87,18 @@ impl<T: Clone> ReadAndSet<T> for Arc<RwLock<T>> {
         RwLock::read(self).unwrap().clone()
     }
 
-    fn set(&self, v: T) {
+    fn put(&self, v: T) {
         *self.write().unwrap() = v;
+    }
+}
+
+impl<T: Clone> ReadAndSet<T> for Mutex<T> {
+    fn read(&self) -> T {
+        Mutex::lock(self).unwrap().clone()
+    }
+
+    fn put(&self, v: T) {
+        *self.lock().unwrap() = v;
     }
 }
 

@@ -10,8 +10,11 @@ use crate::{
         types,
     },
     mbg,
-    utility::traits::{
-        JoinHandle, MultiProducerSingleConsumer, RandomNumber, Receiver, Runtime, Sender,
+    utility::{
+        traits::{
+            JoinHandle, MultiProducerSingleConsumer, RandomNumber, Receiver, Runtime, Sender,
+        },
+        utils::ReadAndSet,
     },
 };
 use std::{
@@ -72,8 +75,7 @@ pub(crate) mod sign_up {
                 Self::Submit => handle_submit(model, cache, commander_local_state).await,
                 Self::Consent(i) => commander_local_state
                     .sender_to_process_manager
-                    .lock()
-                    .unwrap()
+                    .read()
                     .send(process_manager::MessageToProcessManager::FromUser {
                         process_name: process_manager::ProcessName::SignUp,
                         consent: i,
@@ -151,8 +153,7 @@ pub(crate) mod sign_up {
                         if data.is_response_from_server {
                             commander_local_state1
                                 .sender_to_process_manager
-                                .lock()
-                                .unwrap()
+                                .read()
                                 .send(process_manager::MessageToProcessManager::FromProcess {
                                     process_name: process_manager::ProcessName::SignUp,
                                     event: process_manager::Event::Completed {
@@ -164,8 +165,7 @@ pub(crate) mod sign_up {
                         } else {
                             commander_local_state1
                                 .sender_to_process_manager
-                                .lock()
-                                .unwrap()
+                                .read()
                                 .send(process_manager::MessageToProcessManager::FromProcess {
                                     process_name: process_manager::ProcessName::SignUp,
                                     event: process_manager::Event::GotResponseFromCache {
@@ -186,8 +186,7 @@ pub(crate) mod sign_up {
         let (sender_to_process, mut receiver_to_process) = At::Mpsc::channel();
         commander_local_state
             .sender_to_process_manager
-            .lock()
-            .unwrap()
+            .read()
             .send(process_manager::MessageToProcessManager::FromProcess {
                 process_name: process_manager::ProcessName::SignUp,
                 event: process_manager::Event::Subscribe {
@@ -212,12 +211,11 @@ pub(crate) mod sign_up {
                     .user_name
                     .set(local_state.user_name.read());
 
-                *commander_local_state.user_uuid.lock().unwrap() = Some(new_uuid);
+                commander_local_state.user_uuid.put(Some(new_uuid));
 
                 commander_local_state
                     .sender_to_commander
-                    .lock()
-                    .unwrap()
+                    .read()
                     .send(ui_model::Message::CompanyAndBranchSelection(
                         ui_model::CompanyAndBranchSelection::Subscribe,
                     ))
@@ -310,8 +308,7 @@ pub(crate) mod sign_in {
                 }
                 Self::Consent(i) => commander_local_state
                     .sender_to_process_manager
-                    .lock()
-                    .unwrap()
+                    .read()
                     .send(process_manager::MessageToProcessManager::FromUser {
                         process_name: process_manager::ProcessName::SignIn,
                         consent: i,
@@ -376,8 +373,7 @@ pub(crate) mod sign_in {
                         if data.is_response_from_server {
                             commander_local_state1
                                 .sender_to_process_manager
-                                .lock()
-                                .unwrap()
+                                .read()
                                 .send(process_manager::MessageToProcessManager::FromProcess {
                                     process_name: process_manager::ProcessName::SignIn,
                                     event: process_manager::Event::Completed {
@@ -389,8 +385,7 @@ pub(crate) mod sign_in {
                         } else {
                             commander_local_state1
                                 .sender_to_process_manager
-                                .lock()
-                                .unwrap()
+                                .read()
                                 .send(process_manager::MessageToProcessManager::FromProcess {
                                     process_name: process_manager::ProcessName::SignIn,
                                     event: process_manager::Event::GotResponseFromCache {
@@ -411,8 +406,7 @@ pub(crate) mod sign_in {
         let (sender_to_process, mut receiver_to_process) = At::Mpsc::channel();
         commander_local_state
             .sender_to_process_manager
-            .lock()
-            .unwrap()
+            .read()
             .send(process_manager::MessageToProcessManager::FromProcess {
                 process_name: process_manager::ProcessName::SignIn,
                 event: process_manager::Event::Subscribe {
@@ -425,12 +419,11 @@ pub(crate) mod sign_in {
 
         match receiver_to_process.recv().await.unwrap() {
             process_manager::ProceedResult::Yes => {
-                match commander_local_state.user_uuid.lock().unwrap().clone() {
+                match commander_local_state.user_uuid.read().clone() {
                     Some(_) => {
                         commander_local_state
                             .sender_to_commander
-                            .lock()
-                            .unwrap()
+                            .read()
                             .send(ui_model::Message::CompanyAndBranchSelection(
                                 ui_model::CompanyAndBranchSelection::Subscribe,
                             ))
@@ -488,7 +481,7 @@ pub(crate) mod sign_in {
     ) {
         match result.0 {
             Ok(ok) => {
-                *commander_local_state.user_uuid.lock().unwrap() = Some(ok.user_uuid);
+                commander_local_state.user_uuid.put(Some(ok.user_uuid));
                 model.page_root.page_after_auth.user_name.set(ok.user_name);
             }
             Err(business_error) => {
@@ -591,10 +584,7 @@ pub(crate) mod company_and_branch_selection {
                     }
                 }
                 Self::SelectedCompanyBranch(i) => {
-                    *commander_local_state
-                        .selected_company_branch
-                        .lock()
-                        .unwrap() = Some(i);
+                    commander_local_state.selected_company_branch.put(Some(i));
                 }
             }
         }
@@ -616,12 +606,7 @@ pub(crate) mod company_and_branch_selection {
                 )
                 .await;
 
-            let data: types::UuidType = commander_local_state
-                .user_uuid
-                .lock()
-                .unwrap()
-                .clone()
-                .unwrap();
+            let data: types::UuidType = commander_local_state.user_uuid.read().clone().unwrap();
 
             loop {
                 receiver_to_poke.recv().await.unwrap();
@@ -679,12 +664,7 @@ pub(crate) mod company_and_branch_selection {
         mut cache: cache_actor::CacheStruct<At>,
         commander_local_state: Arc<CommanderLocalState<At>>,
     ) {
-        let user_uuid = commander_local_state
-            .user_uuid
-            .lock()
-            .unwrap()
-            .clone()
-            .unwrap();
+        let user_uuid = commander_local_state.user_uuid.read().clone().unwrap();
 
         let mut receiver_to_response = cache
             .send_to_cache_actor(
@@ -769,12 +749,7 @@ pub(crate) mod create_company {
         mut cache: cache_actor::CacheStruct<At>,
         commander_local_state: Arc<CommanderLocalState<At>>,
     ) {
-        let data = commander_local_state
-            .user_uuid
-            .lock()
-            .unwrap()
-            .clone()
-            .unwrap();
+        let data = commander_local_state.user_uuid.read().clone().unwrap();
 
         let local_state = &model
             .page_root
@@ -815,8 +790,7 @@ pub(crate) mod create_company_branch {
                 Self::Consent(i) => {
                     commander_local_state
                         .sender_to_process_manager
-                        .lock()
-                        .unwrap()
+                        .read()
                         .send(process_manager::MessageToProcessManager::FromUser {
                             process_name: process_manager::ProcessName::CreateCompanyBranch,
                             consent: i,
@@ -863,12 +837,7 @@ pub(crate) mod create_company_branch {
         }
         local_state.is_loading.set(true);
 
-        let data = commander_local_state
-            .user_uuid
-            .lock()
-            .unwrap()
-            .clone()
-            .unwrap();
+        let data = commander_local_state.user_uuid.read().clone().unwrap();
 
         let input = cases::create_company_branch::Input {
             user_uuid: data,
@@ -904,8 +873,7 @@ pub(crate) mod create_company_branch {
                         if data.is_response_from_server {
                             commander_local_state1
                                 .sender_to_process_manager
-                                .lock()
-                                .unwrap()
+                                .read()
                                 .send(process_manager::MessageToProcessManager::FromProcess {
                                     process_name: process_manager::ProcessName::CreateCompanyBranch,
                                     event: process_manager::Event::Completed {
@@ -917,8 +885,7 @@ pub(crate) mod create_company_branch {
                         } else {
                             commander_local_state1
                                 .sender_to_process_manager
-                                .lock()
-                                .unwrap()
+                                .read()
                                 .send(process_manager::MessageToProcessManager::FromProcess {
                                     process_name: process_manager::ProcessName::CreateCompanyBranch,
                                     event: process_manager::Event::GotResponseFromCache {
@@ -946,8 +913,7 @@ pub(crate) mod create_company_branch {
         let (sender_to_process, mut receiver_to_process) = At::Mpsc::channel();
         commander_local_state
             .sender_to_process_manager
-            .lock()
-            .unwrap()
+            .read()
             .send(process_manager::MessageToProcessManager::FromProcess {
                 process_name: process_manager::ProcessName::CreateCompanyBranch,
                 event: process_manager::Event::Subscribe {
@@ -981,12 +947,7 @@ pub(crate) mod create_company_branch {
             .page_company_branch_selection
             .page_create_company_branch;
 
-        let data = commander_local_state
-            .user_uuid
-            .lock()
-            .unwrap()
-            .clone()
-            .unwrap();
+        let data = commander_local_state.user_uuid.read().clone().unwrap();
 
         let input = cases::create_company_branch::Input {
             user_uuid: data,

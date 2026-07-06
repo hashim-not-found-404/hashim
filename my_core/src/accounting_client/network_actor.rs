@@ -33,14 +33,14 @@ async fn connect<At: AllClientTypes, Nw: Network>(
     url: &String,
     ws: &mut Option<At::Ws>,
 ) {
-    is_online.set(false);
+    is_online.put(false);
 
     if let Ok(ok) = At::Ws::connect(url.as_str()).await {
         *ws = Some(ok);
 
         sender_to_cache.from_network_status(true).await;
 
-        is_online.set(true);
+        is_online.put(true);
 
         return;
     }
