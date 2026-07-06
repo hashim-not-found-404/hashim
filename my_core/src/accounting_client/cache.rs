@@ -77,17 +77,14 @@ impl<At: AllClientTypes> State<At> {
 }
 
 impl<At: AllClientTypes> State<At> {
-    async fn read_sign_up(
+    pub(crate) async fn read_sign_up(
         &mut self,
         new_uuid: &types::UuidType,
         user_id: &String,
-    ) -> Result<
-        (
-            bool, /* is new_uuid exist */
-            bool, /* is user_id exist */
-        ),
-        utils::DynamicError,
-    > {
+    ) -> (
+        bool, /* is new_uuid exist */
+        bool, /* is user_id exist */
+    ) {
         let (mut is_new_uuid_exist, mut is_user_id_exist) =
             self.cache.read_sign_up(new_uuid, user_id).await;
 
@@ -100,27 +97,20 @@ impl<At: AllClientTypes> State<At> {
             }
         }
 
-        Ok((is_new_uuid_exist, is_user_id_exist))
+        (is_new_uuid_exist, is_user_id_exist)
     }
 
-    async fn read_sign_in(
+    pub(crate) async fn read_sign_in(
         &mut self,
         user_id: &String,
-    ) -> Result<Option<(types::UuidType, String)>, utils::DynamicError> {
+    ) -> Option<(types::UuidType, String)> {
         unreachable!("this is not callable at client side")
     }
 
-    async fn read_create_company(
-        &mut self,
-        new_uuid: &types::UuidType,
-    ) -> Result<bool /* is new_uuid exist */, utils::DynamicError> {
-        Ok(false)
-    }
-
-    async fn read_list_company_and_branch(
+    pub(crate) async fn read_list_company_and_branch(
         &mut self,
         user_uuid: &types::UuidType,
-    ) -> Result<Vec<types::ResourceInfo>, utils::DynamicError> {
+    ) -> Vec<types::ResourceInfo> {
         // Start with resources from the cache (already stored in DB)
         let mut resources = self.cache.read_list_company_and_branch(&user_uuid).await;
 
@@ -180,24 +170,21 @@ impl<At: AllClientTypes> State<At> {
             }
         }
 
-        return Ok(resources);
+        return resources;
     }
 
-    async fn read_create_company_branch(
+    pub(crate) async fn read_create_company_branch(
         &mut self,
         new_uuid: &types::UuidType,
         user_uuid: &types::UuidType,
         company_belong: &types::UuidType,
         branch_name: &String,
-    ) -> Result<
-        (
-            Vec<types::Role>, /* user roles */
-            bool,             /* is new_uuid exist */
-            bool,             /* is company_belong exist */
-            bool,             /* is branch_name used */
-        ),
-        utils::DynamicError,
-    > {
+    ) -> (
+        Vec<types::Role>, /* user roles */
+        bool,             /* is new_uuid exist */
+        bool,             /* is company_belong exist */
+        bool,             /* is branch_name used */
+    ) {
         // 1. Read from cache (database)
         let (mut user_roles, mut is_company_exist, mut is_branch_name_used) = self
             .cache
@@ -229,6 +216,6 @@ impl<At: AllClientTypes> State<At> {
             }
         }
 
-        Ok((user_roles, false, is_company_exist, is_branch_name_used))
+        (user_roles, false, is_company_exist, is_branch_name_used)
     }
 }

@@ -6,7 +6,7 @@ use crate::{
     accounting_domain::{cases, request_response, types},
     utility::utils::MyUpSert,
 };
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
 pub(crate) trait ViewType1 {
     fn subs() -> &'static [types::Subscribe] {
@@ -253,6 +253,8 @@ async fn apply_change(
 // all imples down
 
 pub(crate) mod sign_up {
+    use crate::accounting_domain::cases::MyErrorTrait;
+
     use super::*;
 
     pub(crate) type Type1 = cases::sign_up::Input;
@@ -276,6 +278,13 @@ pub(crate) mod sign_up {
             &self,
             state: &mut cache::State<At>,
         ) -> Self::Output {
+            let (is_new_uuid_exist, is_user_id_exist) =
+                state.read_sign_up(&self.new_uuid, &self.user_id).await;
+            let errr = self.state_full_check::<At::Id>(is_new_uuid_exist, is_user_id_exist);
+            if errr.is_there_error() {
+                return Err(errr);
+            }
+
             let result = todo!();
 
             return result;
@@ -440,9 +449,8 @@ pub(crate) mod create_company {
             &self,
             state: &mut cache::State<At>,
         ) -> Self::Output {
-            let result = todo!();
-
-            return result;
+            let result = self.state_less_operation();
+            return Ok(result);
         }
     }
 
@@ -470,6 +478,8 @@ pub(crate) mod create_company {
 }
 
 pub(crate) mod create_company_branch {
+    use crate::accounting_domain::cases::MyErrorTrait;
+
     use super::*;
 
     pub(crate) type Type1 = cases::create_company_branch::Input;
@@ -494,9 +504,29 @@ pub(crate) mod create_company_branch {
             &self,
             state: &mut cache::State<At>,
         ) -> Self::Output {
-            let result = todo!();
+            let (user_roles, is_new_uuid_used, is_company_belong_exist, is_branch_name_used) =
+                state
+                    .read_create_company_branch(
+                        &self.new_uuid,
+                        &self.user_uuid,
+                        &self.company_belong,
+                        &self.branch_name,
+                    )
+                    .await;
 
-            return result;
+            let errr = self.state_full_check::<At::Id>(
+                &user_roles,
+                is_new_uuid_used,
+                is_company_belong_exist,
+                is_branch_name_used,
+            );
+            if errr.is_there_error() {
+                return Err(errr);
+            }
+
+            let result = self.state_less_operation();
+
+            return Ok(result);
         }
     }
 
