@@ -15,7 +15,7 @@ clear && cockroach sql --insecure
 clear && cockroach sql --file db_client_cockroach/schema/tables.sql --insecure
 
 clear && RUSTFLAGS="-A warnings" dx fmt -p accounting_ui
-clear && RUSTFLAGS="-A warnings" dx serve -p accounting_ui
+clear && RUSTFLAGS="-A warnings" dx serve -p accounting_ui --hot-reload = false
 clear && RUSTFLAGS="-A warnings" cargo check
 clear && RUSTFLAGS="-A warnings" cargo check -p my_core
 clear && RUSTFLAGS="-A warnings" cargo run -p server_actix
