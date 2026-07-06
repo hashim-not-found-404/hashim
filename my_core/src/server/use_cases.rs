@@ -1,5 +1,8 @@
 use crate::{
-    accounting_domain::cases,
+    accounting_domain::{
+        cases::{self, MyErrorTrait},
+        types,
+    },
     server::{
         server_traits::{self, DBClient, DBTransaction},
         server_types,
@@ -29,19 +32,28 @@ impl ServerOperations for cases::sign_up::Input {
         client: &mut At::Cli,
         jwt: &At::Jwt,
     ) -> Result<Result<Self::Ok, Self::Error>, utils::DynamicError> {
-        let mut txn = client.begin_transaction().await?;
-        todo!();
-
-        let result = todo!();
-
-        if let Ok(Ok(resource)) = &result {
-            txn.write_sign_up(resource).await?;
-            let _ = txn.commit_transaction().await?;
-        } else {
-            let _ = txn.rollback_transaction().await?;
+        let errr = self.state_less_check::<At::Id>();
+        if errr.is_there_error() {
+            return Ok(Err(errr));
         }
 
-        return result;
+        let mut txn = client.begin_transaction().await?;
+        let (is_new_uuid, is_user_id) = txn.read_sign_up(&self.new_uuid, &self.user_id).await?;
+
+        let errr = self.state_full_check::<At::Id>(is_new_uuid, is_user_id);
+        if errr.is_there_error() {
+            let _ = txn.rollback_transaction().await?;
+            return Ok(Err(errr));
+        }
+        let result = self.state_full_operation::<At::Auth, At::Jwt>(jwt);
+        txn.write_sign_up(&result).await?;
+        let _ = txn.commit_transaction().await?;
+
+        side_effects
+            .authenticated_users
+            .insert(self.new_uuid.clone());
+
+        return Ok(Ok(result));
     }
 }
 
@@ -55,11 +67,22 @@ impl ServerOperations for cases::sign_in::Input {
         client: &mut At::Cli,
         jwt: &At::Jwt,
     ) -> Result<Result<Self::Ok, Self::Error>, utils::DynamicError> {
-        todo!();
+        let user_rowid_and_password_hash = client.read_sign_in(&self.user_id).await?;
+        let result = self.state_full_check_and_operation::<At::Auth, At::Jwt>(
+            jwt,
+            &user_rowid_and_password_hash,
+        );
 
-        let result = todo!();
+        if let Ok(ok) = &result {
+            side_effects
+                .authenticated_users
+                .insert(ok.user_uuid.clone());
+            side_effects
+                .users_to_resubscribe
+                .insert(ok.user_uuid.clone());
+        }
 
-        return result;
+        return Ok(result);
     }
 }
 
@@ -73,19 +96,27 @@ impl ServerOperations for cases::create_company::Input {
         client: &mut At::Cli,
         jwt: &At::Jwt,
     ) -> Result<Result<Self::Ok, Self::Error>, utils::DynamicError> {
-        let mut txn = client.begin_transaction().await?;
-        todo!();
-
-        let result = todo!();
-
-        if let Ok(Ok(resource)) = &result {
-            txn.write_create_company(resource).await?;
-            let _ = txn.commit_transaction().await?;
-        } else {
-            let _ = txn.rollback_transaction().await?;
+        let mut errr = self.state_less_check::<At::Id>();
+        if !side_effects.authenticated_users.contains(&self.user_uuid) {
+            errr.user_uuid = Some(types::UserUuidError::NotAuthenticated);
+        }
+        if errr.is_there_error() {
+            return Ok(Err(errr));
         }
 
-        return result;
+        let mut txn = client.begin_transaction().await?;
+        let is_new_uuid_exist = txn.read_create_company(&self.new_uuid).await?;
+        let errr = self.state_full_check::<At::Id>(is_new_uuid_exist);
+        if errr.is_there_error() {
+            let _ = txn.rollback_transaction().await?;
+            return Ok(Err(errr));
+        }
+
+        let result = self.state_less_operation();
+        txn.write_create_company(&result).await?;
+        let _ = txn.commit_transaction().await?;
+
+        return Ok(Ok(result));
     }
 }
 
@@ -97,13 +128,19 @@ impl ServerOperations for cases::list_company_and_branch::Input {
         &self,
         side_effects: &mut server_types::SideEffects,
         client: &mut At::Cli,
-        jwt: &At::Jwt,
+        _jwt: &At::Jwt,
     ) -> Result<Result<Self::Ok, Self::Error>, utils::DynamicError> {
-        todo!();
+        let mut errr = self.state_less_check::<At::Id>();
+        if !side_effects.authenticated_users.contains(&self.user_uuid) {
+            errr.user_uuid = Some(types::UserUuidError::NotAuthenticated);
+        }
+        if errr.is_there_error() {
+            return Ok(Err(errr));
+        }
 
-        let result = todo!();
+        let result = client.read_list_company_and_branch(&self.user_uuid).await?;
 
-        return result;
+        return Ok(Ok(result));
     }
 }
 
@@ -115,20 +152,41 @@ impl ServerOperations for cases::create_company_branch::Input {
         &self,
         side_effects: &mut server_types::SideEffects,
         client: &mut At::Cli,
-        jwt: &At::Jwt,
+        _jwt: &At::Jwt,
     ) -> Result<Result<Self::Ok, Self::Error>, utils::DynamicError> {
-        let mut txn = client.begin_transaction().await?;
-        todo!();
-
-        let result = todo!();
-
-        if let Ok(Ok(resource)) = &result {
-            txn.write_create_company_branch(resource).await?;
-            let _ = txn.commit_transaction().await?;
-        } else {
-            let _ = txn.rollback_transaction().await?;
+        let mut errr = self.state_less_check::<At::Id>();
+        if !side_effects.authenticated_users.contains(&self.user_uuid) {
+            errr.user_uuid = Some(types::UserUuidError::NotAuthenticated);
+        }
+        if errr.is_there_error() {
+            return Ok(Err(errr));
         }
 
-        return result;
+        let mut txn = client.begin_transaction().await?;
+        let (user_roles, is_new_uuid_used, is_company_belong_exist, is_branch_name_used) = txn
+            .read_create_company_branch(
+                &self.new_uuid,
+                &self.user_uuid,
+                &self.company_belong,
+                &self.branch_name,
+            )
+            .await?;
+
+        let errr = self.state_full_check::<At::Id>(
+            &user_roles,
+            is_new_uuid_used,
+            is_company_belong_exist,
+            is_branch_name_used,
+        );
+        if errr.is_there_error() {
+            let _ = txn.rollback_transaction().await?;
+            return Ok(Err(errr));
+        }
+
+        let result = self.state_less_operation();
+        txn.write_create_company_branch(&result).await?;
+        let _ = txn.commit_transaction().await?;
+
+        return Ok(Ok(result));
     }
 }

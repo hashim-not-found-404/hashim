@@ -18,6 +18,12 @@ pub trait JWT {
     fn validate(&self, token: types::JsonWebTokenType) -> Option<types::UuidType>;
 }
 
+pub(crate) trait MyErrorTrait: Default + PartialEq {
+    fn is_there_error(&self) -> bool {
+        *self != Self::default()
+    }
+}
+
 pub mod sign_up {
     use super::*;
 
@@ -47,6 +53,8 @@ pub mod sign_up {
         pub(crate) name: Option<String>,
     }
 
+    impl MyErrorTrait for Error {}
+
     // utility types
 
     #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
@@ -54,14 +62,8 @@ pub mod sign_up {
         Duplicated,
     }
 
-    impl Error {
-        fn is_empty(&self) -> bool {
-            *self != Error::default()
-        }
-    }
-
     impl Input {
-        fn state_less_check<Id: RowId>(&self) -> Error {
+        pub(crate) fn state_less_check<Id: RowId>(&self) -> Error {
             let mut errr = Error::default();
 
             if !Id::validate(&self.new_uuid) {
@@ -71,7 +73,7 @@ pub mod sign_up {
             errr
         }
 
-        fn state_full_check<Id: RowId>(
+        pub(crate) fn state_full_check<Id: RowId>(
             &self,
             is_new_uuid_exist: bool,
             is_user_id_exist: bool,
@@ -89,7 +91,7 @@ pub mod sign_up {
             errr
         }
 
-        fn handle<Auth: HashedPassword, Jwt: JWT>(&self, jwt: &Jwt) -> Ok {
+        pub(crate) fn state_full_operation<Auth: HashedPassword, Jwt: JWT>(&self, jwt: &Jwt) -> Ok {
             let hashed_password = Auth::sign_up(&self.password);
             let jwt = jwt.sign(&self.new_uuid);
 
@@ -127,6 +129,8 @@ pub(crate) mod sign_in {
         pub(crate) password: Option<PasswordError>,
     }
 
+    impl MyErrorTrait for Error {}
+
     // utility types
 
     #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
@@ -140,7 +144,7 @@ pub(crate) mod sign_in {
     }
 
     impl Input {
-        fn handle<Auth: HashedPassword, Jwt: JWT>(
+        pub(crate) fn state_full_check_and_operation<Auth: HashedPassword, Jwt: JWT>(
             &self,
             jwt: &Jwt,
             user_rowid_and_password_hash: &Option<(types::UuidType, String)>,
@@ -199,8 +203,10 @@ pub mod create_company {
         pub(crate) new_uuid: Option<types::RowIdError>,
     }
 
+    impl MyErrorTrait for Error {}
+
     impl Input {
-        fn state_less_check<Id: RowId>(&self) -> Error {
+        pub(crate) fn state_less_check<Id: RowId>(&self) -> Error {
             let mut errr = Error::default();
 
             if !Id::validate(&self.new_uuid) {
@@ -213,7 +219,7 @@ pub mod create_company {
             errr
         }
 
-        fn state_full_check<Id: RowId>(&self, is_new_uuid_used: bool) -> Error {
+        pub(crate) fn state_full_check<Id: RowId>(&self, is_new_uuid_used: bool) -> Error {
             let mut errr = Error::default();
             if is_new_uuid_used {
                 errr.new_uuid = Some(types::RowIdError::Duplicated);
@@ -221,7 +227,7 @@ pub mod create_company {
             errr
         }
 
-        fn handle(&self) -> Ok {
+        pub(crate) fn state_less_operation(&self) -> Ok {
             const ROLE: types::Role = types::Role::Manager;
 
             Ok {
@@ -235,19 +241,36 @@ pub mod create_company {
     }
 }
 
-pub(crate) mod list_company_and_branch {
+pub mod list_company_and_branch {
     use super::*;
 
     pub(crate) type MyResult = Result<Ok, Error>;
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
-    pub struct Input {
+    pub(crate) struct Input {
         pub(crate) user_uuid: types::UuidType,
     }
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
-    pub(crate) struct Ok {
-        pub(crate) resource: Vec<types::ResourceInfo>,
+    pub struct Ok {
+        data: Vec<AllCompaniesThatUserInWithRoles>,
+    }
+
+    #[derive(Debug, Deserialize, Serialize, Clone)]
+    pub struct AllCompaniesThatUserInWithRoles {
+        pub company_uuid: types::UuidType,
+        pub company_name: String,
+        pub company_currancy: types::Currency,
+        pub user_roles: Vec<types::Role>,
+        pub branches: Vec<AllBranchesThatUserInWithRoles>,
+    }
+
+    #[derive(Debug, Deserialize, Serialize, Clone)]
+    pub struct AllBranchesThatUserInWithRoles {
+        pub branch_uuid: types::UuidType,
+        pub branch_name: String,
+        pub branch_currancy: types::Currency,
+        pub user_roles: Vec<types::Role>,
     }
 
     #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
@@ -255,8 +278,10 @@ pub(crate) mod list_company_and_branch {
         pub(crate) user_uuid: Option<types::UserUuidError>,
     }
 
+    impl MyErrorTrait for Error {}
+
     impl Input {
-        fn state_less_check<Id: RowId>(&self) -> Error {
+        pub(crate) fn state_less_check<Id: RowId>(&self) -> Error {
             let mut errr = Error::default();
 
             if !Id::validate(&self.user_uuid) {
@@ -303,6 +328,8 @@ pub mod create_company_branch {
         pub(crate) location: Option<LocationError>,
     }
 
+    impl MyErrorTrait for Error {}
+
     // utility types
 
     #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
@@ -322,7 +349,7 @@ pub mod create_company_branch {
     }
 
     impl Input {
-        fn state_less_check<Id: RowId>(&self) -> Error {
+        pub(crate) fn state_less_check<Id: RowId>(&self) -> Error {
             let mut errr = Error::default();
 
             if !Id::validate(&self.new_uuid) {
@@ -340,7 +367,7 @@ pub mod create_company_branch {
             errr
         }
 
-        fn state_full_check<Id: RowId>(
+        pub(crate) fn state_full_check<Id: RowId>(
             &self,
             user_roles: &Vec<types::Role>,
             is_new_uuid_used: bool,
@@ -372,7 +399,7 @@ pub mod create_company_branch {
             errr
         }
 
-        fn handel(&self) -> Ok {
+        pub(crate) fn state_less_operation(&self) -> Ok {
             const ROLE: types::Role = types::Role::CoManager;
 
             Ok {

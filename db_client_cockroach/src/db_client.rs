@@ -3,7 +3,7 @@ use crate::{
     utils::{MyUuidConverter, MyUuidConverter1},
 };
 use my_core::{
-    accounting_domain::types,
+    accounting_domain::{cases, types},
     server::{server_traits::DBClient, server_types},
     utility::utils::{DynamicError, LogError},
 };
@@ -143,7 +143,7 @@ impl DBClient for S {
     async fn read_list_company_and_branch(
         &mut self,
         user_uuid: &types::UuidType,
-    ) -> Result<Vec<types::ResourceInfo>, DynamicError> {
+    ) -> Result<cases::list_company_and_branch::Ok, DynamicError> {
         let query = "
             WITH user_companies AS (
                 SELECT

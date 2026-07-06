@@ -581,80 +581,81 @@ pub(crate) mod list_company_and_branch {
         fn unwrap_output(result: request_response::push_data::OperationsResult) -> Self {
             if let request_response::push_data::OperationsResult::ListCompanyAndBranch(res) = result
             {
-                match res {
-                    Ok(ok) => {
-                        #[derive(Default)]
-                        struct CompanyData {
-                            name: String,
-                            currency: types::Currency,
-                            role: types::Role,
-                        }
+                todo!()
+                // match res {
+                //     Ok(ok) => {
+                //         #[derive(Default)]
+                //         struct CompanyData {
+                //             name: String,
+                //             currency: types::Currency,
+                //             role: types::Role,
+                //         }
 
-                        #[derive(Default)]
-                        struct BranchData {
-                            name: String,
-                            company_belong: types::UuidType,
-                        }
+                //         #[derive(Default)]
+                //         struct BranchData {
+                //             name: String,
+                //             company_belong: types::UuidType,
+                //         }
 
-                        let resources = ok.resource;
-                        let mut company_data: HashMap<types::UuidType, CompanyData> =
-                            HashMap::new();
-                        let mut branch_data: HashMap<types::UuidType, BranchData> = HashMap::new();
+                //         let resources = ok.resource;
+                //         let mut company_data: HashMap<types::UuidType, CompanyData> =
+                //             HashMap::new();
+                //         let mut branch_data: HashMap<types::UuidType, BranchData> = HashMap::new();
 
-                        for r in resources {
-                            let uuid = r.row_uuid.clone();
-                            match r.resource {
-                                types::Resource::TableCompanyFieldName(name) => {
-                                    company_data.upsert(uuid, |data| data.name = name);
-                                }
-                                types::Resource::TableCompanyFieldCurrency(currency) => {
-                                    company_data.upsert(uuid, |data| data.currency = currency);
-                                }
-                                types::Resource::TableAccessControlForCompanyFieldRole(role) => {
-                                    company_data.upsert(uuid, |data| data.role = role);
-                                }
-                                types::Resource::TableCompanyBranchFieldName(name) => {
-                                    branch_data.upsert(uuid, |data| data.name = name);
-                                }
-                                types::Resource::TableCompanyBranchFieldCompanyBelong(
-                                    company_uuid,
-                                ) => {
-                                    branch_data
-                                        .upsert(uuid, |data| data.company_belong = company_uuid);
-                                }
-                                _ => {} // ignore other resources (Jwt, etc.)
-                            }
-                        }
+                //         for r in resources {
+                //             let uuid = r.row_uuid.clone();
+                //             match r.resource {
+                //                 types::Resource::TableCompanyFieldName(name) => {
+                //                     company_data.upsert(uuid, |data| data.name = name);
+                //                 }
+                //                 types::Resource::TableCompanyFieldCurrency(currency) => {
+                //                     company_data.upsert(uuid, |data| data.currency = currency);
+                //                 }
+                //                 types::Resource::TableAccessControlForCompanyFieldRole(role) => {
+                //                     company_data.upsert(uuid, |data| data.role = role);
+                //                 }
+                //                 types::Resource::TableCompanyBranchFieldName(name) => {
+                //                     branch_data.upsert(uuid, |data| data.name = name);
+                //                 }
+                //                 types::Resource::TableCompanyBranchFieldCompanyBelong(
+                //                     company_uuid,
+                //                 ) => {
+                //                     branch_data
+                //                         .upsert(uuid, |data| data.company_belong = company_uuid);
+                //                 }
+                //                 _ => {} // ignore other resources (Jwt, etc.)
+                //             }
+                //         }
 
-                        // Build companies from the aggregated data
-                        let mut companies = Vec::with_capacity(company_data.len());
-                        for (uuid, data) in company_data {
-                            let branches = branch_data
-                                .iter()
-                                .filter_map(|(branch_uuid, branch)| {
-                                    if branch.company_belong == uuid {
-                                        Some(types::Branch {
-                                            uuid: branch_uuid.clone(),
-                                            name: branch.name.clone(),
-                                        })
-                                    } else {
-                                        None
-                                    }
-                                })
-                                .collect();
+                //         // Build companies from the aggregated data
+                //         let mut companies = Vec::with_capacity(company_data.len());
+                //         for (uuid, data) in company_data {
+                //             let branches = branch_data
+                //                 .iter()
+                //                 .filter_map(|(branch_uuid, branch)| {
+                //                     if branch.company_belong == uuid {
+                //                         Some(types::Branch {
+                //                             uuid: branch_uuid.clone(),
+                //                             name: branch.name.clone(),
+                //                         })
+                //                     } else {
+                //                         None
+                //                     }
+                //                 })
+                //                 .collect();
 
-                            companies.push(types::Company {
-                                uuid,
-                                name: data.name,
-                                role: data.role,
-                                branches,
-                            });
-                        }
+                //             companies.push(types::Company {
+                //                 uuid,
+                //                 name: data.name,
+                //                 role: data.role,
+                //                 branches,
+                //             });
+                //         }
 
-                        Type4(Ok(companies))
-                    }
-                    Err(_) => Type4(Err(())),
-                }
+                //         Type4(Ok(companies))
+                //     }
+                //     Err(_) => Type4(Err(())),
+                // }
             } else {
                 unreachable!("{:?}", result)
             }
