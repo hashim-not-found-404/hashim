@@ -12,7 +12,7 @@ use std::{
 };
 
 pub(crate) trait Network {
-    async fn from_network_status(&mut self, are_we_online: bool);
+    async fn from_network_status(&mut self);
     async fn sender_to_network(&mut self, data: Vec<u8>);
 }
 
@@ -38,7 +38,7 @@ async fn connect<At: AllClientTypes, Nw: Network>(
     if let Ok(ok) = At::Ws::connect(url.as_str()).await {
         *ws = Some(ok);
 
-        sender_to_cache.from_network_status(true).await;
+        sender_to_cache.from_network_status().await;
 
         is_online.put(true);
 

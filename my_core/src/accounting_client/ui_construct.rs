@@ -4,20 +4,9 @@ use crate::{
         ui_model,
     },
     accounting_domain::types,
-    utility::traits::MultiProducerSingleConsumer,
+    utility::traits::{MultiProducerSingleConsumer, Sender},
 };
 use std::sync::{Arc, RwLock};
-
-struct Abc {}
-impl network_actor::Network for Abc {
-    async fn from_network_status(&mut self, are_we_online: bool) {
-        todo!()
-    }
-
-    async fn sender_to_network(&mut self, data: Vec<u8>) {
-        todo!()
-    }
-}
 
 pub fn new<At: AllClientTypes>(model: &'static ui_model::Model<At>) -> ui_effect::Commander<At> {
     let (sender_to_network, receiver_to_network) = At::Mpsc::channel();
@@ -26,9 +15,11 @@ pub fn new<At: AllClientTypes>(model: &'static ui_model::Model<At>) -> ui_effect
 
     let is_online = Arc::new(RwLock::new(false));
 
-    network_actor::network_actor::<At, Abc>(
+    network_actor::network_actor::<At, cache_actor::NetworkStruct<At>>(
         receiver_to_network,
-        Abc {},
+        cache_actor::NetworkStruct::<At> {
+            sender: sender_to_cache.clone(),
+        },
         sender_to_error.clone(),
         is_online.clone(),
         format!("ws://{}/ws", types::ADDRESS),
