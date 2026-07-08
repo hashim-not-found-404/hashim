@@ -43,7 +43,7 @@ pub mod sign_up {
         pub user_id: String,
         pub user_name: Option<String>,
         pub hashed_password: String,
-        jwt: types::JsonWebTokenType,
+        pub(crate) jwt: types::JsonWebTokenType,
     }
 
     #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]

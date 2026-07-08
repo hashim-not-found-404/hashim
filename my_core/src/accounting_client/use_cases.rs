@@ -3,7 +3,10 @@ use crate::{
         cache, cache_actor,
         client_traits::{AllClientTypes, Cache},
     },
-    accounting_domain::{cases, request_response, types},
+    accounting_domain::{
+        cases::{self, MyErrorTrait},
+        request_response, types,
+    },
     utility::utils::MyUpSert,
 };
 use std::collections::HashSet;
@@ -253,14 +256,32 @@ async fn apply_change(
 // all imples down
 
 pub(crate) mod sign_up {
-    use crate::accounting_domain::cases::MyErrorTrait;
-
     use super::*;
 
     pub(crate) type Type1 = cases::sign_up::Input;
     type Type2 = cases::sign_up::Input;
     type Type3 = cases::sign_up::MyResult;
     pub(crate) type Type4 = cases::sign_up::MyResult;
+
+    impl Into<Vec<types::ResourceInfo>> for &cases::sign_up::Ok {
+        fn into(self) -> Vec<types::ResourceInfo> {
+            let mut resource = Vec::with_capacity(2);
+
+            resource.push(types::ResourceInfo {
+                row_uuid: self.new_uuid.clone(),
+                resource: types::Resource::TableUserFieldId(self.user_id.clone()),
+            });
+
+            if let Some(user_name) = &self.user_name {
+                resource.push(types::ResourceInfo {
+                    row_uuid: self.new_uuid.clone(),
+                    resource: types::Resource::TableUserFieldName(user_name.clone()),
+                });
+            }
+
+            resource
+        }
+    }
 
     impl ViewType1 for Type1 {
         fn wrap_input(self) -> request_response::push_data::OperationsInput {
@@ -285,16 +306,22 @@ pub(crate) mod sign_up {
                 return Err(errr);
             }
 
-            let result = todo!();
+            let result = cases::sign_up::Ok {
+                new_uuid: self.new_uuid.clone(),
+                user_id: self.user_id.clone(),
+                user_name: self.name.clone(),
+                hashed_password: String::new(),
+                jwt: types::JsonWebTokenType(String::new()),
+            };
 
-            return result;
+            return Ok(result);
         }
     }
 
     impl CacheAndServerType2 for Type3 {
         fn extract_resource(&self) -> Vec<types::ResourceInfo> {
             match self {
-                Ok(ok) => todo!("ok.clone().into()"),
+                Ok(ok) => ok.into(),
                 Err(_) => Vec::new(),
             }
         }
@@ -478,8 +505,6 @@ pub(crate) mod create_company {
 }
 
 pub(crate) mod create_company_branch {
-    use crate::accounting_domain::cases::MyErrorTrait;
-
     use super::*;
 
     pub(crate) type Type1 = cases::create_company_branch::Input;
