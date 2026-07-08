@@ -551,46 +551,50 @@ pub(crate) mod create_company_branch {
 
     impl Into<Vec<types::ResourceInfo>> for &cases::create_company_branch::Ok {
         fn into(self) -> Vec<types::ResourceInfo> {
-            use types::{Resource, ResourceInfo};
-
             let branch_uuid = self.new_uuid.clone();
 
             vec![
                 // Branch fields
-                ResourceInfo {
+                types::ResourceInfo {
                     row_uuid: branch_uuid.clone(),
-                    resource: Resource::TableCompanyBranchFieldName(self.branch_name.clone()),
+                    resource: types::Resource::TableCompanyBranchFieldName(
+                        self.branch_name.clone(),
+                    ),
                 },
-                ResourceInfo {
+                types::ResourceInfo {
                     row_uuid: branch_uuid.clone(),
-                    resource: Resource::TableCompanyBranchFieldCompanyBelong(
+                    resource: types::Resource::TableCompanyBranchFieldCompanyBelong(
                         self.company_belong.clone(),
                     ),
                 },
-                ResourceInfo {
+                types::ResourceInfo {
                     row_uuid: branch_uuid.clone(),
-                    resource: Resource::TableCompanyBranchFieldLocation(self.location.clone()),
+                    resource: types::Resource::TableCompanyBranchFieldLocation(
+                        self.location.clone(),
+                    ),
                 },
-                ResourceInfo {
+                types::ResourceInfo {
                     row_uuid: branch_uuid.clone(),
-                    resource: Resource::TableCompanyBranchFieldCurrency(self.currency.clone()),
+                    resource: types::Resource::TableCompanyBranchFieldCurrency(
+                        self.currency.clone(),
+                    ),
                 },
                 // Access control for this branch (row_uuid is the branch UUID)
-                ResourceInfo {
+                types::ResourceInfo {
                     row_uuid: branch_uuid.clone(),
-                    resource: Resource::TableAccessControlForCompanyBranchFieldRole(
+                    resource: types::Resource::TableAccessControlForCompanyBranchFieldRole(
                         self.role.clone(),
                     ),
                 },
-                ResourceInfo {
+                types::ResourceInfo {
                     row_uuid: branch_uuid.clone(),
-                    resource: Resource::TableAccessControlForCompanyBranchFieldUser(
+                    resource: types::Resource::TableAccessControlForCompanyBranchFieldUser(
                         self.user_uuid.clone(),
                     ),
                 },
-                ResourceInfo {
+                types::ResourceInfo {
                     row_uuid: branch_uuid,
-                    resource: Resource::TableAccessControlForCompanyBranchFieldDataGroup(
+                    resource: types::Resource::TableAccessControlForCompanyBranchFieldDataGroup(
                         self.new_uuid.clone(),
                     ),
                 },
