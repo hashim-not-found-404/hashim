@@ -277,7 +277,7 @@ impl Cache for S {
     async fn read_list_company_and_branch(
         &self,
         user_uuid: &types::UuidType,
-    ) -> cases::list_company_and_branch::Ok {
+    ) -> Vec<cases::list_company_and_branch::AllCompaniesThatUserInWithRoles> {
         // ---- 1. Get company-level roles ----
         let company_query = "
             SELECT c.rowid, c.name, c.currency, acf.role
@@ -394,7 +394,7 @@ impl Cache for S {
             );
         }
 
-        cases::list_company_and_branch::Ok { data: result }
+        result
     }
 
     async fn read_create_company_branch(

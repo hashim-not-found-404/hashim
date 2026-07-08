@@ -109,9 +109,9 @@ impl<At: AllClientTypes> State<At> {
     pub(crate) async fn read_list_company_and_branch(
         &mut self,
         user_uuid: &types::UuidType,
-    ) -> cases::list_company_and_branch::Ok {
+    ) -> Vec<cases::list_company_and_branch::AllCompaniesThatUserInWithRoles> {
         // Start with data from the cache (hierarchical, not flat resources)
-        let mut result = self.cache.read_list_company_and_branch(user_uuid).await;
+        let result = self.cache.read_list_company_and_branch(user_uuid).await;
 
         // Build a map for O(1) lookup and updates
         use std::collections::HashMap;
@@ -119,7 +119,6 @@ impl<At: AllClientTypes> State<At> {
             types::UuidType,
             cases::list_company_and_branch::AllCompaniesThatUserInWithRoles,
         > = result
-            .data
             .into_iter()
             .map(|c| (c.company_uuid.clone(), c))
             .collect();
@@ -181,7 +180,7 @@ impl<At: AllClientTypes> State<At> {
 
         // Convert the map back into a vector
         let data = company_map.into_values().collect();
-        cases::list_company_and_branch::Ok { data }
+        data
     }
 
     pub(crate) async fn read_create_company_branch(

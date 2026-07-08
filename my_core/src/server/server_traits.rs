@@ -95,7 +95,12 @@ pub trait DBClient {
     fn read_list_company_and_branch(
         &mut self,
         user_uuid: &types::UuidType,
-    ) -> impl Future<Output = Result<cases::list_company_and_branch::Ok, utils::DynamicError>>;
+    ) -> impl Future<
+        Output = Result<
+            Vec<cases::list_company_and_branch::AllCompaniesThatUserInWithRoles>,
+            utils::DynamicError,
+        >,
+    >;
 }
 
 pub trait Database {

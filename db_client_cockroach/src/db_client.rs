@@ -144,7 +144,8 @@ impl DBClient for S {
     async fn read_list_company_and_branch(
         &mut self,
         user_uuid: &types::UuidType,
-    ) -> Result<cases::list_company_and_branch::Ok, DynamicError> {
+    ) -> Result<Vec<cases::list_company_and_branch::AllCompaniesThatUserInWithRoles>, DynamicError>
+    {
         let query = "
             WITH user_companies AS (
                 SELECT
@@ -273,6 +274,6 @@ impl DBClient for S {
             })
             .collect();
 
-        Ok(cases::list_company_and_branch::Ok { data })
+        Ok(data)
     }
 }

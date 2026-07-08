@@ -252,8 +252,9 @@ pub mod list_company_and_branch {
     }
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
-    pub struct Ok {
-        pub data: Vec<AllCompaniesThatUserInWithRoles>,
+    pub(crate) struct Ok {
+        pub(crate) user_uuid: types::UuidType, // <-- add this
+        pub(crate) data: Vec<AllCompaniesThatUserInWithRoles>,
     }
 
     #[derive(Debug, Deserialize, Serialize, Clone)]

@@ -140,7 +140,10 @@ impl ServerOperations for cases::list_company_and_branch::Input {
 
         let result = client.read_list_company_and_branch(&self.user_uuid).await?;
 
-        return Ok(Ok(result));
+        return Ok(Ok(cases::list_company_and_branch::Ok {
+            user_uuid: self.user_uuid.clone(),
+            data: result,
+        }));
     }
 }
 

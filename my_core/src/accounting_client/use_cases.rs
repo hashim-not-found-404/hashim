@@ -683,6 +683,96 @@ pub(crate) mod list_company_and_branch {
     type Type3 = cases::list_company_and_branch::MyResult;
     pub(crate) struct Type4(pub(crate) Result<types::ListOfCompanies, ()>);
 
+    impl Into<Vec<types::ResourceInfo>> for &cases::list_company_and_branch::Ok {
+        fn into(self) -> Vec<types::ResourceInfo> {
+            use types::{Resource, ResourceInfo};
+
+            let mut resources = Vec::new();
+            let user_uuid = &self.user_uuid;
+
+            for company in &self.data {
+                let company_uuid = &company.company_uuid;
+
+                // ---- Company fields ----
+                resources.push(ResourceInfo {
+                    row_uuid: company_uuid.clone(),
+                    resource: Resource::TableCompanyFieldName(company.company_name.clone()),
+                });
+                resources.push(ResourceInfo {
+                    row_uuid: company_uuid.clone(),
+                    resource: Resource::TableCompanyFieldCurrency(company.company_currancy.clone()),
+                });
+
+                // ---- Company access control ----
+                // One resource per role (multiple roles possible)
+                for role in &company.user_roles {
+                    resources.push(ResourceInfo {
+                        row_uuid: company_uuid.clone(),
+                        resource: Resource::TableAccessControlForCompanyFieldRole(role.clone()),
+                    });
+                }
+                // Always add the user and data_group (self) once per company
+                resources.push(ResourceInfo {
+                    row_uuid: company_uuid.clone(),
+                    resource: Resource::TableAccessControlForCompanyFieldUser(user_uuid.clone()),
+                });
+                resources.push(ResourceInfo {
+                    row_uuid: company_uuid.clone(),
+                    resource: Resource::TableAccessControlForCompanyFieldDataGroup(
+                        company_uuid.clone(),
+                    ),
+                });
+
+                // ---- Branches ----
+                for branch in &company.branches {
+                    let branch_uuid = &branch.branch_uuid;
+
+                    resources.push(ResourceInfo {
+                        row_uuid: branch_uuid.clone(),
+                        resource: Resource::TableCompanyBranchFieldName(branch.branch_name.clone()),
+                    });
+                    resources.push(ResourceInfo {
+                        row_uuid: branch_uuid.clone(),
+                        resource: Resource::TableCompanyBranchFieldCurrency(
+                            branch.branch_currancy.clone(),
+                        ),
+                    });
+                    resources.push(ResourceInfo {
+                        row_uuid: branch_uuid.clone(),
+                        resource: Resource::TableCompanyBranchFieldCompanyBelong(
+                            company_uuid.clone(),
+                        ),
+                    });
+
+                    // Branch access control (roles)
+                    for role in &branch.user_roles {
+                        resources.push(ResourceInfo {
+                            row_uuid: branch_uuid.clone(),
+                            resource: Resource::TableAccessControlForCompanyBranchFieldRole(
+                                role.clone(),
+                            ),
+                        });
+                    }
+                    // Add user and data_group for each branch
+                    resources.push(ResourceInfo {
+                        row_uuid: branch_uuid.clone(),
+                        resource: Resource::TableAccessControlForCompanyBranchFieldUser(
+                            user_uuid.clone(),
+                        ),
+                    });
+                    resources.push(ResourceInfo {
+                        row_uuid: branch_uuid.clone(),
+                        resource: Resource::TableAccessControlForCompanyBranchFieldDataGroup(
+                            branch_uuid.clone(),
+                        ),
+                    });
+                }
+            }
+
+            resources
+        }
+    }
+
     impl ViewType1 for Type1 {
         fn subs() -> &'static [types::Subscribe] {
             &[
@@ -709,14 +799,17 @@ pub(crate) mod list_company_and_branch {
             state: &mut cache::State<At>,
         ) -> Self::Output {
             let result = state.read_list_company_and_branch(&self.user_uuid).await;
-            return Ok(result);
+            return Ok(cases::list_company_and_branch::Ok {
+                user_uuid: self.user_uuid.clone(),
+                data: result,
+            });
         }
     }
 
     impl CacheAndServerType2 for Type3 {
         fn extract_resource(&self) -> Vec<types::ResourceInfo> {
             match self {
-                Ok(ok) => todo!("ok.clone().into()"),
+                Ok(ok) => ok.into(),
                 Err(_) => Vec::new(),
             }
         }
