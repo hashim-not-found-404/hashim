@@ -242,7 +242,7 @@ impl Cache for S {
         ";
 
         self.db
-            .query_one(query, params![new_uuid.0, user_id], |row| {
+            .query_one(query, params![new_uuid.to_string(), user_id], |row| {
                 Ok((row.get(0).unwrap(), row.get(1).unwrap()))
             })
             .unwrap()
@@ -287,7 +287,7 @@ impl Cache for S {
         ";
         let mut stmt = self.db.prepare(company_query).unwrap();
         let company_rows = stmt
-            .query_map(params![user_uuid.0], |row| {
+            .query_map(params![user_uuid.to_string()], |row| {
                 let uuid: String = row.get(0).unwrap();
                 let name: String = row.get(1).unwrap();
                 let currency: String = row.get(2).unwrap();
@@ -317,7 +317,7 @@ impl Cache for S {
         ";
         let mut stmt = self.db.prepare(branch_query).unwrap();
         let branch_rows = stmt
-            .query_map(params![user_uuid.0], |row| {
+            .query_map(params![user_uuid.to_string()], |row| {
                 let branch_uuid: String = row.get(0).unwrap();
                 let branch_name: String = row.get(1).unwrap();
                 let branch_currency: String = row.get(2).unwrap();
@@ -416,11 +416,14 @@ impl Cache for S {
             .unwrap();
 
         let roles_iter = stmt
-            .query_map(params![company_belong.0, user_uuid.0], |row| {
-                let role_str: String = row.get(0)?;
-                let role = types::Role::from_str(role_str.as_str()).unwrap();
-                Ok(role)
-            })
+            .query_map(
+                params![company_belong.to_string(), user_uuid.to_string()],
+                |row| {
+                    let role_str: String = row.get(0)?;
+                    let role = types::Role::from_str(role_str.as_str()).unwrap();
+                    Ok(role)
+                },
+            )
             .unwrap();
 
         let mut roles = Vec::new();
@@ -433,7 +436,7 @@ impl Cache for S {
             .db
             .prepare("SELECT 1 FROM company WHERE rowid = ?1")
             .unwrap();
-        let company_exists = stmt.exists(params![company_belong.0]).unwrap();
+        let company_exists = stmt.exists(params![company_belong.to_string()]).unwrap();
 
         // 3. Check if the branch name is already used under this company
         let mut stmt = self
@@ -441,7 +444,7 @@ impl Cache for S {
             .prepare("SELECT 1 FROM company_branch WHERE company_belong = ?1 AND name = ?2")
             .unwrap();
         let branch_name_used = stmt
-            .exists(params![company_belong.0, company_branch_name])
+            .exists(params![company_belong.to_string(), company_branch_name])
             .unwrap();
 
         (roles, company_exists, branch_name_used)
