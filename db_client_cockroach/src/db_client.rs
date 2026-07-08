@@ -7,6 +7,7 @@ use my_core::{
     server::{server_traits::DBClient, server_types},
     utility::utils::{DynamicError, LogError},
 };
+use serde::Deserialize;
 use std::{
     collections::{HashMap, HashSet},
     str::FromStr,
@@ -149,6 +150,7 @@ impl DBClient for S {
                 SELECT
                     c.rowid as company_uuid,
                     c.name as company_name,
+                    c.currency as company_currency,
                     acf.role as user_role
                 FROM accounting_app.access_control_for_company acf
                 JOIN accounting_app.company c ON acf.data_group = c.rowid
@@ -160,7 +162,8 @@ impl DBClient for S {
                     json_agg(
                         json_build_object(
                             'uuid', cb.rowid::text,
-                            'name', cb.name
+                            'name', cb.name,
+                            'currency', cb.currency
                         ) ORDER BY cb.name
                     ) as branches
                 FROM accounting_app.company_branch cb
@@ -170,6 +173,7 @@ impl DBClient for S {
             SELECT
                 uc.company_uuid::text,
                 uc.company_name,
+                uc.company_currency,
                 uc.user_role,
                 COALESCE(cb.branches, '[]'::json) as branches
             FROM user_companies uc
@@ -182,59 +186,93 @@ impl DBClient for S {
             .await
             .log()?;
 
-        let mut resources = Vec::new();
+        // Intermediate structs for grouping
+        use std::collections::HashMap;
+
+        #[derive(Deserialize)]
+        struct BranchJson {
+            uuid: String,
+            name: String,
+            currency: String,
+        }
+
+        struct CompanyAgg {
+            name: String,
+            currency: types::Currency,
+            roles: Vec<types::Role>,
+            branches: Vec<cases::list_company_and_branch::AllBranchesThatUserInWithRoles>,
+        }
+
+        let mut company_map: HashMap<types::UuidType, CompanyAgg> = HashMap::new();
 
         for row in rows {
             let company_uuid_str: Uuid = row.try_get(0).log()?;
-            let company_uuid_db = types::UuidType(company_uuid_str.into_bytes());
+            let company_uuid = types::UuidType(company_uuid_str.into_bytes());
             let company_name: String = row.try_get(1).log()?;
-            let user_role_str: String = row.try_get(2).log()?;
-            let branches_json: serde_json::Value = row.try_get(3).log()?;
+            let company_currency_str: String = row.try_get(2).log()?;
+            let user_role_str: String = row.try_get(3).log()?;
+            let branches_json: serde_json::Value = row.try_get(4).log()?;
 
-            let branches: Vec<types::Branch> = serde_json::from_value(branches_json).log()?;
+            let company_currency = types::Currency::from_str(&company_currency_str).log()?;
             let role = types::Role::from_str(&user_role_str).log()?;
 
-            // 1. Company name
-            resources.push(types::ResourceInfo {
-                row_uuid: company_uuid_db.clone(),
-                resource: types::Resource::TableCompanyFieldName(company_name),
-            });
+            // Parse branches JSON
+            let branches: Vec<BranchJson> = serde_json::from_value(branches_json).log()?;
+            let branch_entries: Vec<
+                cases::list_company_and_branch::AllBranchesThatUserInWithRoles,
+            > = branches
+                .into_iter()
+                .map(|bj| {
+                    let uuid = Uuid::parse_str(&bj.uuid).log()?;
+                    let branch_uuid = types::UuidType(uuid.into_bytes());
+                    let branch_currency = types::Currency::from_str(&bj.currency).log()?;
+                    Ok(
+                        cases::list_company_and_branch::AllBranchesThatUserInWithRoles {
+                            branch_uuid,
+                            branch_name: bj.name,
+                            branch_currancy: branch_currency,
+                            user_roles: Vec::new(), // no branch roles in this query
+                        },
+                    )
+                })
+                .collect::<Result<Vec<_>, DynamicError>>()
+                .log()?;
 
-            // 2. Access Control: role
-            resources.push(types::ResourceInfo {
-                row_uuid: company_uuid_db.clone(),
-                resource: types::Resource::TableAccessControlForCompanyFieldRole(role),
-            });
-
-            // 3. Access Control: user_ (so cache can query by user)
-            resources.push(types::ResourceInfo {
-                row_uuid: company_uuid_db.clone(),
-                resource: types::Resource::TableAccessControlForCompanyFieldUser(user_uuid.clone()),
-            });
-
-            // 4. Access Control: data_group (self-reference)
-            resources.push(types::ResourceInfo {
-                row_uuid: company_uuid_db.clone(),
-                resource: types::Resource::TableAccessControlForCompanyFieldDataGroup(
-                    company_uuid_db.clone(),
-                ),
-            });
-
-            // 5. Branches
-            for branch in branches {
-                resources.push(types::ResourceInfo {
-                    row_uuid: branch.uuid.clone(),
-                    resource: types::Resource::TableCompanyBranchFieldName(branch.name),
+            // Merge into company_map
+            let entry = company_map
+                .entry(company_uuid)
+                .or_insert_with(|| CompanyAgg {
+                    name: company_name.clone(),
+                    currency: company_currency.clone(),
+                    roles: Vec::new(),
+                    branches: Vec::new(),
                 });
-                resources.push(types::ResourceInfo {
-                    row_uuid: branch.uuid,
-                    resource: types::Resource::TableCompanyBranchFieldCompanyBelong(
-                        company_uuid_db.clone(),
-                    ),
-                });
+
+            // Overwrite company name/currency (in case of multiple roles, they should be the same)
+            entry.name = company_name;
+            entry.currency = company_currency;
+            if !entry.roles.contains(&role) {
+                entry.roles.push(role);
             }
+            // Merge branches (avoid duplicates by branch_uuid, but since we get same branches per company row, we can just replace)
+            // Since we join with branches, each row has the same branches, so we can just assign.
+            entry.branches = branch_entries;
         }
 
-        Ok(resources)
+        // Build final result
+        let data = company_map
+            .into_iter()
+            .map(|(company_uuid, agg)| {
+                cases::list_company_and_branch::AllCompaniesThatUserInWithRoles {
+                    company_uuid,
+                    company_name: agg.name,
+                    company_currancy: agg.currency,
+                    user_roles: agg.roles,
+                    branches: agg.branches,
+                }
+            })
+            .collect();
+
+        Ok(cases::list_company_and_branch::Ok { data })
     }
 }
