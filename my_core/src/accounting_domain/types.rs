@@ -2,7 +2,7 @@ use crate::utility::utils;
 use serde::{Deserialize, Serialize};
 use std::{error::Error, fmt::Display, str::FromStr};
 
-#[derive(Debug, Deserialize, Serialize, Clone, Default, PartialEq, Hash, Eq)]
+#[derive(Debug, Deserialize, Serialize, Clone, Default, PartialEq, Hash, Eq, PartialOrd, Ord)]
 pub struct UuidType(pub [u8; 16]);
 
 #[derive(Debug, Deserialize, Serialize, Clone)]

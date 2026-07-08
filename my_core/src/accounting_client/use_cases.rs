@@ -711,11 +711,35 @@ pub(crate) mod create_company_branch {
 
 pub(crate) mod list_company_and_branch {
     use super::*;
+    use std::cmp::Ordering;
 
     pub(crate) type Type1 = cases::list_company_and_branch::Input;
     type Type2 = cases::list_company_and_branch::Input;
     type Type3 = cases::list_company_and_branch::MyResult;
     pub(crate) struct Type4(pub(crate) Result<types::ListOfCompanies, ()>);
+
+    /// Sort a list of companies by name then by UUID, and sort branches inside each company similarly.
+    pub fn sort_companies(companies: &mut types::ListOfCompanies) {
+        companies.sort_by(|a, b| compare_by_name_then_uuid(&a.name, &a.uuid, &b.name, &b.uuid));
+        for company in companies {
+            company
+                .branches
+                .sort_by(|a, b| compare_by_name_then_uuid(&a.name, &a.uuid, &b.name, &b.uuid));
+        }
+    }
+
+    /// Helper that compares two items by name (lexicographically) and, if equal, by UUID.
+    fn compare_by_name_then_uuid(
+        name_a: &str,
+        uuid_a: &types::UuidType,
+        name_b: &str,
+        uuid_b: &types::UuidType,
+    ) -> Ordering {
+        match name_a.cmp(name_b) {
+            Ordering::Equal => uuid_a.cmp(uuid_b),
+            other => other,
+        }
+    }
 
     impl Into<Vec<types::ResourceInfo>> for &cases::list_company_and_branch::Ok {
         fn into(self) -> Vec<types::ResourceInfo> {
@@ -887,6 +911,8 @@ pub(crate) mod list_company_and_branch {
                                 branches,
                             });
                         }
+
+                        sort_companies(&mut companies);
 
                         Type4(Ok(companies))
                     }
