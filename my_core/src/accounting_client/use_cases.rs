@@ -269,6 +269,11 @@ pub(crate) mod sign_up {
 
             resource.push(types::ResourceInfo {
                 row_uuid: self.new_uuid.clone(),
+                resource: types::Resource::Jwt(self.jwt.clone()),
+            });
+
+            resource.push(types::ResourceInfo {
+                row_uuid: self.new_uuid.clone(),
                 resource: types::Resource::TableUserFieldId(self.user_id.clone()),
             });
 
