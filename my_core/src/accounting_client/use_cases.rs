@@ -265,7 +265,7 @@ pub(crate) mod sign_up {
 
     impl Into<Vec<types::ResourceInfo>> for &cases::sign_up::Ok {
         fn into(self) -> Vec<types::ResourceInfo> {
-            let mut resource = Vec::with_capacity(2);
+            let mut resource = Vec::with_capacity(3);
 
             resource.push(types::ResourceInfo {
                 row_uuid: self.new_uuid.clone(),
