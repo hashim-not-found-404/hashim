@@ -219,7 +219,7 @@ impl Cache for S {
             .prepare("SELECT jwt FROM user WHERE rowid = ?1")
             .unwrap();
 
-        let json_web_token_type = stmt.query_one([&user_uuid.0], |row| row.get(0));
+        let json_web_token_type = stmt.query_one([&user_uuid.to_string()], |row| row.get(0));
 
         match json_web_token_type {
             Ok(a) => Some(types::JsonWebTokenType(a)),
