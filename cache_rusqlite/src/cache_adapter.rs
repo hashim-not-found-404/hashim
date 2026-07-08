@@ -278,6 +278,9 @@ impl Cache for S {
         &self,
         user_uuid: &types::UuidType,
     ) -> Vec<cases::list_company_and_branch::AllCompaniesThatUserInWithRoles> {
+        use std::collections::HashMap;
+        use types::Role;
+
         // ---- 1. Get company-level roles ----
         let company_query = "
             SELECT c.rowid, c.name, c.currency, acf.role
@@ -291,21 +294,27 @@ impl Cache for S {
                 let uuid: String = row.get(0).unwrap();
                 let name: String = row.get(1).unwrap();
                 let currency: String = row.get(2).unwrap();
-                let role: String = row.get(3).unwrap();
+                let role: Option<String> = row.get(3).unwrap(); // read as Option<String>
                 Ok((uuid, name, currency, role))
             })
             .unwrap();
 
         // Group company roles by company UUID
-        let mut company_map: HashMap<String, (String, String, Vec<types::Role>)> = HashMap::new();
+        let mut company_map: HashMap<String, (String, String, Vec<Role>)> = HashMap::new();
         for row in company_rows {
-            let (uuid, name, currency, role_str) = row.unwrap();
-            let role = types::Role::from_str(&role_str).unwrap();
-            company_map
-                .entry(uuid)
-                .or_insert_with(|| (name, currency, Vec::new()))
-                .2
-                .push(role);
+            let (uuid, name, currency, role_opt) = row.unwrap();
+            if let Some(role_str) = role_opt {
+                let role = Role::from_str(&role_str).unwrap();
+                company_map
+                    .entry(uuid)
+                    .or_insert_with(|| (name, currency, Vec::new()))
+                    .2
+                    .push(role);
+            }
+            // If role is None, skip? Or still create company entry with empty roles?
+            // The code above creates the entry only when a role exists.
+            // To include companies with no roles, you'd need to create the entry regardless.
+            // But since we only get rows for companies with at least one role (due to the JOIN), it's fine.
         }
 
         // ---- 2. Get branch-level roles ----
@@ -322,7 +331,7 @@ impl Cache for S {
                 let branch_name: String = row.get(1).unwrap();
                 let branch_currency: String = row.get(2).unwrap();
                 let company_belong: String = row.get(3).unwrap();
-                let role: String = row.get(4).unwrap();
+                let role: Option<String> = row.get(4).unwrap(); // read as Option<String>
                 Ok((
                     branch_uuid,
                     branch_name,
@@ -339,24 +348,28 @@ impl Cache for S {
             branch_name: String,
             branch_currency: String,
             company_belong: String,
-            roles: Vec<types::Role>,
+            roles: Vec<Role>,
         }
         let mut branch_map: HashMap<String, BranchAccumulator> = HashMap::new();
         for row in branch_rows {
-            let (branch_uuid, branch_name, branch_currency, company_belong, role_str) =
+            let (branch_uuid, branch_name, branch_currency, company_belong, role_opt) =
                 row.unwrap();
-            let role = types::Role::from_str(&role_str).unwrap();
-            branch_map
-                .entry(branch_uuid.clone())
-                .or_insert_with(|| BranchAccumulator {
-                    branch_uuid: branch_uuid.clone(),
-                    branch_name: branch_name.clone(),
-                    branch_currency: branch_currency.clone(),
-                    company_belong: company_belong.clone(),
-                    roles: Vec::new(),
-                })
-                .roles
-                .push(role);
+            // Create entry for the branch (even if role is None)
+            let entry =
+                branch_map
+                    .entry(branch_uuid.clone())
+                    .or_insert_with(|| BranchAccumulator {
+                        branch_uuid: branch_uuid.clone(),
+                        branch_name: branch_name.clone(),
+                        branch_currency: branch_currency.clone(),
+                        company_belong: company_belong.clone(),
+                        roles: Vec::new(),
+                    });
+            if let Some(role_str) = role_opt {
+                let role = Role::from_str(&role_str).unwrap();
+                entry.roles.push(role);
+            }
+            // If role is None, we still keep the branch entry with empty roles.
         }
 
         // ---- 3. Build the final result ----
@@ -377,7 +390,7 @@ impl Cache for S {
                         cases::list_company_and_branch::AllBranchesThatUserInWithRoles {
                             branch_uuid,
                             branch_name: info.branch_name.clone(),
-                            branch_currancy: branch_currency, // field name has typo "currancy"
+                            branch_currancy: branch_currency,
                             user_roles: info.roles.clone(),
                         }
                     })
@@ -387,7 +400,7 @@ impl Cache for S {
                 cases::list_company_and_branch::AllCompaniesThatUserInWithRoles {
                     company_uuid,
                     company_name,
-                    company_currancy: company_currency, // field name has typo "currancy"
+                    company_currancy: company_currency,
                     user_roles: company_roles,
                     branches,
                 },
