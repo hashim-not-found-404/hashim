@@ -119,7 +119,9 @@ pub(crate) mod sign_in {
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub(crate) struct Ok {
-        pub(crate) user_uuid: types::UuidType,
+        pub user_uuid: types::UuidType,
+        pub user_id: String,
+        pub user_name: Option<String>,
         pub(crate) jwt: types::JsonWebTokenType,
     }
 
@@ -144,15 +146,22 @@ pub(crate) mod sign_in {
     }
 
     impl Input {
-        pub(crate) fn state_full_check_and_operation<Auth: HashedPassword, Jwt: JWT>(
+        pub(crate) fn state_full_check<Auth: HashedPassword, Jwt: JWT>(
             &self,
             jwt: &Jwt,
-            user_rowid_and_password_hash: &Option<(types::UuidType, String)>,
+            user_rowid_and_password_hash_and_name: &Option<(
+                types::UuidType,
+                String,
+                Option<String>,
+            )>,
         ) -> MyResult {
             let mut errr = Error::default();
 
-            let (user_rowid, password_hash) = match user_rowid_and_password_hash {
-                Some((user_rowid, password_hash)) => (user_rowid, password_hash),
+            let (user_rowid, password_hash, user_name) = match user_rowid_and_password_hash_and_name
+            {
+                Some((user_rowid, password_hash, user_name)) => {
+                    (user_rowid, password_hash, user_name)
+                }
                 None => {
                     errr.user_id = Some(UserIdError::NotExist);
                     return Err(errr);
@@ -164,12 +173,28 @@ pub(crate) mod sign_in {
                     return Ok(Ok {
                         user_uuid: user_rowid.clone(),
                         jwt: jwt.sign(&user_rowid),
+                        user_id: self.user_id.clone(),
+                        user_name: user_name.clone(),
                     });
                 }
                 false => {
                     errr.password = Some(PasswordError::WrongPassword);
                     return Err(errr);
                 }
+            };
+        }
+
+        pub(crate) fn state_full_operation(
+            &self,
+            jwt: &types::JsonWebTokenType,
+            user_uuid: &types::UuidType,
+            user_name: &Option<String>,
+        ) -> Ok {
+            return Ok {
+                user_uuid: user_uuid.clone(),
+                user_id: self.user_id.clone(),
+                user_name: user_name.clone(),
+                jwt: jwt.clone(),
             };
         }
     }

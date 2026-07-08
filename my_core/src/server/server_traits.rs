@@ -87,7 +87,9 @@ pub trait DBClient {
     fn read_sign_in(
         &mut self,
         user_id: &String,
-    ) -> impl Future<Output = Result<Option<(types::UuidType, String)>, utils::DynamicError>>;
+    ) -> impl Future<
+        Output = Result<Option<(types::UuidType, String, Option<String>)>, utils::DynamicError>,
+    >;
     fn read_roles_for_user(
         &mut self,
         users_uuids: &HashSet<types::UuidType>,

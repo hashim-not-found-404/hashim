@@ -359,6 +359,37 @@ pub(crate) mod sign_in {
         pub(crate) user_name: String,
     }
 
+    impl Into<Vec<types::ResourceInfo>> for &cases::sign_in::Ok {
+        fn into(self) -> Vec<types::ResourceInfo> {
+            use types::{Resource, ResourceInfo};
+
+            let mut resources = Vec::with_capacity(3);
+            let user_uuid = &self.user_uuid;
+
+            // JWT
+            resources.push(ResourceInfo {
+                row_uuid: user_uuid.clone(),
+                resource: Resource::Jwt(self.jwt.clone()),
+            });
+
+            // User ID
+            resources.push(ResourceInfo {
+                row_uuid: user_uuid.clone(),
+                resource: Resource::TableUserFieldId(self.user_id.clone()),
+            });
+
+            // User name (optional)
+            if let Some(name) = &self.user_name {
+                resources.push(ResourceInfo {
+                    row_uuid: user_uuid.clone(),
+                    resource: Resource::TableUserFieldName(name.clone()),
+                });
+            }
+
+            resources
+        }
+    }
+
     impl ViewType1 for Type1 {
         fn wrap_input(self) -> request_response::push_data::OperationsInput {
             request_response::push_data::OperationsInput::SignIn(self)
@@ -383,6 +414,8 @@ pub(crate) mod sign_in {
                     return Ok(cases::sign_in::Ok {
                         user_uuid,
                         jwt: types::JsonWebTokenType(String::new()),
+                        user_id: self.user_id.clone(),
+                        user_name,
                     });
                 }
             }
@@ -402,10 +435,11 @@ pub(crate) mod sign_in {
             match password {
                 Some(password) => {
                     if password == self.password {
-                        return Ok(cases::sign_in::Ok {
-                            user_uuid: user_uuid.unwrap().clone(),
-                            jwt: types::JsonWebTokenType(String::new()),
-                        });
+                        return Ok(self.state_full_operation(
+                            &types::JsonWebTokenType(String::new()),
+                            &user_uuid.unwrap(),
+                            &user_name,
+                        ));
                     } else {
                         return Err(cases::sign_in::Error {
                             user_id: None,
@@ -424,7 +458,7 @@ pub(crate) mod sign_in {
     impl CacheAndServerType2 for Type3 {
         fn extract_resource(&self) -> Vec<types::ResourceInfo> {
             match self {
-                Ok(ok) => todo!("ok.clone().into()"),
+                Ok(ok) => ok.into(),
                 Err(_) => Vec::new(),
             }
         }
@@ -440,7 +474,7 @@ pub(crate) mod sign_in {
                 match result {
                     Ok(ok) => {
                         let mut user_uuid = ok.user_uuid;
-                        let mut user_name = todo!();
+                        let mut user_name = ok.user_name.unwrap_or_default();
 
                         Type4(Ok(SignInOk {
                             user_uuid,

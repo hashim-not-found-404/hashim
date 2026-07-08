@@ -67,11 +67,9 @@ impl ServerOperations for cases::sign_in::Input {
         client: &mut At::Cli,
         jwt: &At::Jwt,
     ) -> Result<Result<Self::Ok, Self::Error>, utils::DynamicError> {
-        let user_rowid_and_password_hash = client.read_sign_in(&self.user_id).await?;
-        let result = self.state_full_check_and_operation::<At::Auth, At::Jwt>(
-            jwt,
-            &user_rowid_and_password_hash,
-        );
+        let user_rowid_and_password_hash_and_name = client.read_sign_in(&self.user_id).await?;
+        let result =
+            self.state_full_check::<At::Auth, At::Jwt>(jwt, &user_rowid_and_password_hash_and_name);
 
         if let Ok(ok) = &result {
             side_effects

@@ -30,8 +30,8 @@ impl DBClient for S {
     async fn read_sign_in(
         &mut self,
         user_id: &String,
-    ) -> Result<Option<(types::UuidType, String)>, DynamicError> {
-        let query = "SELECT rowid,pass FROM accounting_app.user WHERE id = $1 LIMIT 1;";
+    ) -> Result<Option<(types::UuidType, String, Option<String>)>, DynamicError> {
+        let query = "SELECT rowid,pass,name FROM accounting_app.user WHERE id = $1 LIMIT 1;";
         let stmt = self.client.prepare_cached(query).await.log()?;
         let row = self.client.query_opt(&stmt, &[user_id]).await.log()?;
 
@@ -39,7 +39,8 @@ impl DBClient for S {
             Some(row) => {
                 let row_id = row.try_get::<_, Uuid>(0).log()?;
                 let hashed_password = row.try_get::<_, String>(1).log()?;
-                Ok(Some((row_id.to_uuid(), hashed_password.into())))
+                let name = row.try_get::<_, Option<String>>(2).log()?;
+                Ok(Some((row_id.to_uuid(), hashed_password.into(), name)))
             }
             None => Ok(None),
         }
@@ -172,7 +173,7 @@ impl DBClient for S {
                 GROUP BY cb.company_belong
             )
             SELECT
-                uc.company_uuid::text,
+                uc.company_uuid::text,       -- cast to text to match JSON representation
                 uc.company_name,
                 uc.company_currency,
                 uc.user_role,
@@ -186,9 +187,6 @@ impl DBClient for S {
             .query(query, &[&user_uuid.to_externel_uuid()])
             .await
             .log()?;
-
-        // Intermediate structs for grouping
-        use std::collections::HashMap;
 
         #[derive(Deserialize)]
         struct BranchJson {
@@ -207,8 +205,11 @@ impl DBClient for S {
         let mut company_map: HashMap<types::UuidType, CompanyAgg> = HashMap::new();
 
         for row in rows {
-            let company_uuid_str: Uuid = row.try_get(0).log()?;
-            let company_uuid = types::UuidType(company_uuid_str.into_bytes());
+            // ---- FIX: read as String, then parse to Uuid ----
+            let company_uuid_str: String = row.try_get(0).log()?;
+            let company_uuid_parsed = Uuid::parse_str(&company_uuid_str).log()?;
+            let company_uuid = types::UuidType(company_uuid_parsed.into_bytes());
+
             let company_name: String = row.try_get(1).log()?;
             let company_currency_str: String = row.try_get(2).log()?;
             let user_role_str: String = row.try_get(3).log()?;
@@ -232,14 +233,13 @@ impl DBClient for S {
                             branch_uuid,
                             branch_name: bj.name,
                             branch_currancy: branch_currency,
-                            user_roles: Vec::new(), // no branch roles in this query
+                            user_roles: Vec::new(),
                         },
                     )
                 })
                 .collect::<Result<Vec<_>, DynamicError>>()
                 .log()?;
 
-            // Merge into company_map
             let entry = company_map
                 .entry(company_uuid)
                 .or_insert_with(|| CompanyAgg {
@@ -249,14 +249,11 @@ impl DBClient for S {
                     branches: Vec::new(),
                 });
 
-            // Overwrite company name/currency (in case of multiple roles, they should be the same)
             entry.name = company_name;
             entry.currency = company_currency;
             if !entry.roles.contains(&role) {
                 entry.roles.push(role);
             }
-            // Merge branches (avoid duplicates by branch_uuid, but since we get same branches per company row, we can just replace)
-            // Since we join with branches, each row has the same branches, so we can just assign.
             entry.branches = branch_entries;
         }
 
