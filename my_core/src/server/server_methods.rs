@@ -641,7 +641,17 @@ fn role_to_subscribe_mapping(roles: Vec<types::Role>) -> HashSet<types::Subscrib
                 subscribes.insert(types::Subscribe::TableAccessControlForCompanyFieldUser);
                 subscribes.insert(types::Subscribe::TableAccessControlForCompanyFieldDataGroup);
             }
-            types::Role::CoManager => todo!(),
+            types::Role::CoManager => {
+                subscribes.insert(types::Subscribe::TableUserFieldName);
+                subscribes.insert(types::Subscribe::TableUserFieldId);
+                subscribes.insert(types::Subscribe::TableCompanyFieldName);
+                subscribes.insert(types::Subscribe::TableCompanyFieldCurrency);
+                subscribes.insert(types::Subscribe::TableCompanyBranchFieldName);
+                subscribes.insert(types::Subscribe::TableCompanyBranchFieldCompanyBelong);
+                subscribes.insert(types::Subscribe::TableAccessControlForCompanyFieldRole);
+                subscribes.insert(types::Subscribe::TableAccessControlForCompanyFieldUser);
+                subscribes.insert(types::Subscribe::TableAccessControlForCompanyFieldDataGroup);
+            }
         }
     }
 
