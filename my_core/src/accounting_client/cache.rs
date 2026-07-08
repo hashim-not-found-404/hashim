@@ -1,7 +1,6 @@
 use crate::{
     accounting_client::client_traits::{AllClientTypes, Cache},
-    accounting_domain::types,
-    utility::utils,
+    accounting_domain::{cases, types},
 };
 use std::collections::{HashMap, HashSet};
 
@@ -110,67 +109,79 @@ impl<At: AllClientTypes> State<At> {
     pub(crate) async fn read_list_company_and_branch(
         &mut self,
         user_uuid: &types::UuidType,
-    ) -> Vec<types::ResourceInfo> {
-        // Start with resources from the cache (already stored in DB)
-        let mut resources = self.cache.read_list_company_and_branch(&user_uuid).await;
+    ) -> cases::list_company_and_branch::Ok {
+        // Start with data from the cache (hierarchical, not flat resources)
+        let mut result = self.cache.read_list_company_and_branch(user_uuid).await;
 
-        // Add pending companies and branches from the current transaction
+        // Build a map for O(1) lookup and updates
+        use std::collections::HashMap;
+        let mut company_map: HashMap<
+            types::UuidType,
+            cases::list_company_and_branch::AllCompaniesThatUserInWithRoles,
+        > = result
+            .data
+            .into_iter()
+            .map(|c| (c.company_uuid.clone(), c))
+            .collect();
+
+        // Process pending access controls for this user
         for (_, acf) in &self.state_of_pending_txn.access_control_for_company {
-            if acf.user_ == user_uuid.clone() {
-                let company_uuid = acf.data_group.clone();
-                if let Some(company) = self.state_of_pending_txn.company.get(&company_uuid) {
-                    // Company name
-                    resources.push(types::ResourceInfo {
-                        row_uuid: company_uuid.clone(),
-                        resource: types::Resource::TableCompanyFieldName(company.name.clone()),
-                    });
+            if acf.user_ != *user_uuid {
+                continue;
+            }
 
-                    // Access control: role
-                    resources.push(types::ResourceInfo {
-                        row_uuid: company_uuid.clone(),
-                        resource: types::Resource::TableAccessControlForCompanyFieldRole(
-                            acf.role.clone(),
-                        ),
-                    });
+            let company_uuid = acf.data_group.clone();
 
-                    // Access control: user_
-                    resources.push(types::ResourceInfo {
-                        row_uuid: company_uuid.clone(),
-                        resource: types::Resource::TableAccessControlForCompanyFieldUser(
-                            user_uuid.clone(),
-                        ),
-                    });
+            // If the company exists in pending transaction, use its data
+            if let Some(company) = self.state_of_pending_txn.company.get(&company_uuid) {
+                // Get or create the company entry in the map
+                let company_entry = company_map.entry(company_uuid.clone()).or_insert_with(|| {
+                    cases::list_company_and_branch::AllCompaniesThatUserInWithRoles {
+                        company_uuid: company_uuid.clone(),
+                        company_name: company.name.clone(),
+                        company_currancy: company.currency.clone(),
+                        user_roles: Vec::new(),
+                        branches: Vec::new(),
+                    }
+                });
 
-                    // Access control: data_group
-                    resources.push(types::ResourceInfo {
-                        row_uuid: company_uuid.clone(),
-                        resource: types::Resource::TableAccessControlForCompanyFieldDataGroup(
-                            company_uuid.clone(),
-                        ),
-                    });
+                // Overwrite with pending data (pending is more recent)
+                company_entry.company_name = company.name.clone();
+                company_entry.company_currancy = company.currency.clone();
 
-                    // Pending branches for this company
-                    for (branch_uuid, branch) in &self.state_of_pending_txn.company_branch {
-                        if branch.company_belong == company_uuid {
-                            resources.push(types::ResourceInfo {
-                                row_uuid: branch_uuid.clone(),
-                                resource: types::Resource::TableCompanyBranchFieldName(
-                                    branch.name.clone(),
-                                ),
-                            });
-                            resources.push(types::ResourceInfo {
-                                row_uuid: branch_uuid.clone(),
-                                resource: types::Resource::TableCompanyBranchFieldCompanyBelong(
-                                    company_uuid.clone(),
-                                ),
-                            });
+                // Add the role from this access control (avoid duplicates)
+                if !company_entry.user_roles.contains(&acf.role) {
+                    company_entry.user_roles.push(acf.role.clone());
+                }
+
+                // Add pending branches that belong to this company
+                for (branch_uuid, branch) in &self.state_of_pending_txn.company_branch {
+                    if branch.company_belong == company_uuid {
+                        // Check if branch already exists (by UUID)
+                        let exists = company_entry
+                            .branches
+                            .iter()
+                            .any(|b| b.branch_uuid == *branch_uuid);
+                        if !exists {
+                            company_entry.branches.push(
+                                cases::list_company_and_branch::AllBranchesThatUserInWithRoles {
+                                    branch_uuid: branch_uuid.clone(),
+                                    branch_name: branch.name.clone(),
+                                    branch_currancy: branch.currency.clone(),
+                                    user_roles: Vec::new(), // No branch roles in pending transaction
+                                },
+                            );
                         }
                     }
                 }
             }
+            // else: no pending company – this shouldn't happen if there's an access control,
+            // but we ignore it to avoid incomplete data.
         }
 
-        return resources;
+        // Convert the map back into a vector
+        let data = company_map.into_values().collect();
+        cases::list_company_and_branch::Ok { data }
     }
 
     pub(crate) async fn read_create_company_branch(

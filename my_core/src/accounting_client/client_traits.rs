@@ -60,7 +60,7 @@ pub trait Cache: Sized {
     fn read_list_company_and_branch(
         &self,
         user_uuid: &types::UuidType,
-    ) -> impl Future<Output = Vec<types::ResourceInfo>>;
+    ) -> impl Future<Output = cases::list_company_and_branch::Ok>;
     fn read_create_company_branch(
         &self,
         user_uuid: &types::UuidType,

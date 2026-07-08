@@ -459,6 +459,43 @@ pub(crate) mod create_company {
     type Type3 = cases::create_company::MyResult;
     pub(crate) type Type4 = cases::create_company::MyResult;
 
+    impl Into<Vec<types::ResourceInfo>> for &cases::create_company::Ok {
+        fn into(self) -> Vec<types::ResourceInfo> {
+            let company_uuid = self.new_uuid.clone();
+
+            vec![
+                // Company fields
+                types::ResourceInfo {
+                    row_uuid: company_uuid.clone(),
+                    resource: types::Resource::TableCompanyFieldName(self.company_name.clone()),
+                },
+                types::ResourceInfo {
+                    row_uuid: company_uuid.clone(),
+                    resource: types::Resource::TableCompanyFieldCurrency(self.currency.clone()),
+                },
+                // Access control fields (using the same UUID as the row identifier)
+                types::ResourceInfo {
+                    row_uuid: company_uuid.clone(),
+                    resource: types::Resource::TableAccessControlForCompanyFieldRole(
+                        self.role.clone(),
+                    ),
+                },
+                types::ResourceInfo {
+                    row_uuid: company_uuid.clone(),
+                    resource: types::Resource::TableAccessControlForCompanyFieldUser(
+                        self.user_uuid.clone(),
+                    ),
+                },
+                types::ResourceInfo {
+                    row_uuid: company_uuid.clone(),
+                    resource: types::Resource::TableAccessControlForCompanyFieldDataGroup(
+                        company_uuid,
+                    ),
+                },
+            ]
+        }
+    }
+
     impl ViewType1 for Type1 {
         fn wrap_input(self) -> request_response::push_data::OperationsInput {
             request_response::push_data::OperationsInput::CreateCompany(self)
@@ -484,7 +521,7 @@ pub(crate) mod create_company {
     impl CacheAndServerType2 for Type3 {
         fn extract_resource(&self) -> Vec<types::ResourceInfo> {
             match self {
-                Ok(ok) => todo!("ok.clone().into()"),
+                Ok(ok) => ok.into(),
                 Err(_) => Vec::new(),
             }
         }
@@ -613,9 +650,8 @@ pub(crate) mod list_company_and_branch {
             &self,
             state: &mut cache::State<At>,
         ) -> Self::Output {
-            let result = todo!();
-
-            return result;
+            let result = state.read_list_company_and_branch(&self.user_uuid).await;
+            return Ok(result);
         }
     }
 
@@ -636,83 +672,43 @@ pub(crate) mod list_company_and_branch {
         fn unwrap_output(result: request_response::push_data::OperationsResult) -> Self {
             if let request_response::push_data::OperationsResult::ListCompanyAndBranch(res) = result
             {
-                todo!()
-                // match res {
-                //     Ok(ok) => {
-                //         #[derive(Default)]
-                //         struct CompanyData {
-                //             name: String,
-                //             currency: types::Currency,
-                //             role: types::Role,
-                //         }
+                match res {
+                    Ok(ok) => {
+                        let mut companies = Vec::with_capacity(ok.data.len());
 
-                //         #[derive(Default)]
-                //         struct BranchData {
-                //             name: String,
-                //             company_belong: types::UuidType,
-                //         }
+                        for company_entry in ok.data {
+                            // Convert branches for this company
+                            let branches = company_entry
+                                .branches
+                                .into_iter()
+                                .map(|branch_entry| types::Branch {
+                                    uuid: branch_entry.branch_uuid,
+                                    name: branch_entry.branch_name,
+                                })
+                                .collect();
 
-                //         let resources = ok.resource;
-                //         let mut company_data: HashMap<types::UuidType, CompanyData> =
-                //             HashMap::new();
-                //         let mut branch_data: HashMap<types::UuidType, BranchData> = HashMap::new();
+                            // Pick a single role (e.g., the first one, or highest privilege)
+                            // If no role, provide a sensible default (adjust as needed)
+                            let role = company_entry
+                                .user_roles
+                                .first()
+                                .cloned()
+                                .unwrap_or_default();
 
-                //         for r in resources {
-                //             let uuid = r.row_uuid.clone();
-                //             match r.resource {
-                //                 types::Resource::TableCompanyFieldName(name) => {
-                //                     company_data.upsert(uuid, |data| data.name = name);
-                //                 }
-                //                 types::Resource::TableCompanyFieldCurrency(currency) => {
-                //                     company_data.upsert(uuid, |data| data.currency = currency);
-                //                 }
-                //                 types::Resource::TableAccessControlForCompanyFieldRole(role) => {
-                //                     company_data.upsert(uuid, |data| data.role = role);
-                //                 }
-                //                 types::Resource::TableCompanyBranchFieldName(name) => {
-                //                     branch_data.upsert(uuid, |data| data.name = name);
-                //                 }
-                //                 types::Resource::TableCompanyBranchFieldCompanyBelong(
-                //                     company_uuid,
-                //                 ) => {
-                //                     branch_data
-                //                         .upsert(uuid, |data| data.company_belong = company_uuid);
-                //                 }
-                //                 _ => {} // ignore other resources (Jwt, etc.)
-                //             }
-                //         }
+                            companies.push(types::Company {
+                                uuid: company_entry.company_uuid,
+                                name: company_entry.company_name,
+                                role,
+                                branches,
+                            });
+                        }
 
-                //         // Build companies from the aggregated data
-                //         let mut companies = Vec::with_capacity(company_data.len());
-                //         for (uuid, data) in company_data {
-                //             let branches = branch_data
-                //                 .iter()
-                //                 .filter_map(|(branch_uuid, branch)| {
-                //                     if branch.company_belong == uuid {
-                //                         Some(types::Branch {
-                //                             uuid: branch_uuid.clone(),
-                //                             name: branch.name.clone(),
-                //                         })
-                //                     } else {
-                //                         None
-                //                     }
-                //                 })
-                //                 .collect();
-
-                //             companies.push(types::Company {
-                //                 uuid,
-                //                 name: data.name,
-                //                 role: data.role,
-                //                 branches,
-                //             });
-                //         }
-
-                //         Type4(Ok(companies))
-                //     }
-                //     Err(_) => Type4(Err(())),
-                // }
+                        Type4(Ok(companies))
+                    }
+                    Err(_) => Type4(Err(())),
+                }
             } else {
-                unreachable!("{:?}", result)
+                unreachable!("Expected ListCompanyAndBranch, got {:?}", result)
             }
         }
     }

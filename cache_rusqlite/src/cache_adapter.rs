@@ -2,11 +2,11 @@ use crate::utils::{MyUuidConverter, MyUuidConverter1};
 use adapters::encode_decode;
 use my_core::{
     accounting_client::client_traits::Cache,
-    accounting_domain::{request_response, types},
+    accounting_domain::{cases, request_response, types},
     utility::traits::Coding,
 };
 use rusqlite::{Connection, OptionalExtension, params};
-use std::{ops::Add, str::FromStr};
+use std::{collections::HashMap, ops::Add, str::FromStr};
 
 pub struct S {
     db: Connection,
@@ -277,102 +277,124 @@ impl Cache for S {
     async fn read_list_company_and_branch(
         &self,
         user_uuid: &types::UuidType,
-    ) -> Vec<types::ResourceInfo> {
-        let query = "
-            SELECT
-                c.rowid as company_uuid,
-                c.name as company_name,
-                acf.role as user_role,
-                cb.rowid as branch_uuid,
-                cb.name as branch_name
+    ) -> cases::list_company_and_branch::Ok {
+        // ---- 1. Get company-level roles ----
+        let company_query = "
+            SELECT c.rowid, c.name, c.currency, acf.role
             FROM access_control_for_company acf
             JOIN company c ON acf.data_group = c.rowid
-            LEFT JOIN company_branch cb ON c.rowid = cb.company_belong
             WHERE acf.user_ = ?1
-            ORDER BY c.rowid, cb.rowid
         ";
-
-        let mut stmt = self.db.prepare(query).unwrap();
-        let rows = stmt
+        let mut stmt = self.db.prepare(company_query).unwrap();
+        let company_rows = stmt
             .query_map(params![user_uuid.0], |row| {
-                let company_uuid_str: String = row.get(0)?;
-                let company_name: String = row.get(1)?;
-                let user_role_str: String = row.get(2)?;
-                let branch_uuid_opt: Option<String> = row.get(3)?;
-                let branch_name_opt: Option<String> = row.get(4)?;
+                let uuid: String = row.get(0).unwrap();
+                let name: String = row.get(1).unwrap();
+                let currency: String = row.get(2).unwrap();
+                let role: String = row.get(3).unwrap();
+                Ok((uuid, name, currency, role))
+            })
+            .unwrap();
 
+        // Group company roles by company UUID
+        let mut company_map: HashMap<String, (String, String, Vec<types::Role>)> = HashMap::new();
+        for row in company_rows {
+            let (uuid, name, currency, role_str) = row.unwrap();
+            let role = types::Role::from_str(&role_str).unwrap();
+            company_map
+                .entry(uuid)
+                .or_insert_with(|| (name, currency, Vec::new()))
+                .2
+                .push(role);
+        }
+
+        // ---- 2. Get branch-level roles ----
+        let branch_query = "
+            SELECT cb.rowid, cb.name, cb.currency, cb.company_belong, acfb.role
+            FROM access_control_for_company_branch acfb
+            JOIN company_branch cb ON acfb.data_group = cb.rowid
+            WHERE acfb.user_ = ?1
+        ";
+        let mut stmt = self.db.prepare(branch_query).unwrap();
+        let branch_rows = stmt
+            .query_map(params![user_uuid.0], |row| {
+                let branch_uuid: String = row.get(0).unwrap();
+                let branch_name: String = row.get(1).unwrap();
+                let branch_currency: String = row.get(2).unwrap();
+                let company_belong: String = row.get(3).unwrap();
+                let role: String = row.get(4).unwrap();
                 Ok((
-                    company_uuid_str,
-                    company_name,
-                    user_role_str,
-                    branch_uuid_opt,
-                    branch_name_opt,
+                    branch_uuid,
+                    branch_name,
+                    branch_currency,
+                    company_belong,
+                    role,
                 ))
             })
             .unwrap();
 
-        let mut resources = Vec::new();
-        let mut last_company_uuid: Option<String> = None;
-
-        for row in rows {
-            let (company_uuid_str, company_name, user_role_str, branch_uuid_opt, branch_name_opt) =
+        // Group branch roles by branch UUID, and remember which company it belongs to
+        struct BranchAccumulator {
+            branch_uuid: String,
+            branch_name: String,
+            branch_currency: String,
+            company_belong: String,
+            roles: Vec<types::Role>,
+        }
+        let mut branch_map: HashMap<String, BranchAccumulator> = HashMap::new();
+        for row in branch_rows {
+            let (branch_uuid, branch_name, branch_currency, company_belong, role_str) =
                 row.unwrap();
-
-            // If this is a new company, add company-level resources once
-            if last_company_uuid.as_ref() != Some(&company_uuid_str) {
-                last_company_uuid = Some(company_uuid_str.clone());
-
-                let company_uuid_db = company_uuid_str.clone().to_uuid();
-                let role = types::Role::from_str(&user_role_str).unwrap();
-
-                // Company name
-                resources.push(types::ResourceInfo {
-                    row_uuid: company_uuid_db.clone(),
-                    resource: types::Resource::TableCompanyFieldName(company_name),
-                });
-
-                // Access control: role
-                resources.push(types::ResourceInfo {
-                    row_uuid: company_uuid_db.clone(),
-                    resource: types::Resource::TableAccessControlForCompanyFieldRole(role),
-                });
-
-                // Access control: user
-                resources.push(types::ResourceInfo {
-                    row_uuid: company_uuid_db.clone(),
-                    resource: types::Resource::TableAccessControlForCompanyFieldUser(
-                        user_uuid.clone(),
-                    ),
-                });
-
-                // Access control: data_group (self)
-                resources.push(types::ResourceInfo {
-                    row_uuid: company_uuid_db.clone(),
-                    resource: types::Resource::TableAccessControlForCompanyFieldDataGroup(
-                        company_uuid_db.clone(),
-                    ),
-                });
-            }
-
-            // Add branch resources if branch exists
-            if let (Some(branch_uuid_str), Some(branch_name)) = (branch_uuid_opt, branch_name_opt) {
-                let branch_uuid_db = branch_uuid_str.to_uuid();
-                let company_uuid_db = company_uuid_str.to_uuid();
-
-                resources.push(types::ResourceInfo {
-                    row_uuid: branch_uuid_db.clone(),
-                    resource: types::Resource::TableCompanyBranchFieldName(branch_name),
-                });
-                resources.push(types::ResourceInfo {
-                    row_uuid: branch_uuid_db,
-                    resource: types::Resource::TableCompanyBranchFieldCompanyBelong(
-                        company_uuid_db,
-                    ),
-                });
-            }
+            let role = types::Role::from_str(&role_str).unwrap();
+            branch_map
+                .entry(branch_uuid.clone())
+                .or_insert_with(|| BranchAccumulator {
+                    branch_uuid: branch_uuid.clone(),
+                    branch_name: branch_name.clone(),
+                    branch_currency: branch_currency.clone(),
+                    company_belong: company_belong.clone(),
+                    roles: Vec::new(),
+                })
+                .roles
+                .push(role);
         }
 
-        resources
+        // ---- 3. Build the final result ----
+        let mut result = Vec::new();
+        for (company_uuid_str, (company_name, company_currency_str, company_roles)) in company_map {
+            let company_uuid = company_uuid_str.clone().to_uuid();
+            let company_currency = types::Currency::from_str(&company_currency_str).unwrap();
+
+            // Collect branches that belong to this company
+            let branches: Vec<cases::list_company_and_branch::AllBranchesThatUserInWithRoles> =
+                branch_map
+                    .iter()
+                    .filter(|(_, info)| info.company_belong == company_uuid_str)
+                    .map(|(_, info)| {
+                        let branch_uuid = info.branch_uuid.clone().to_uuid();
+                        let branch_currency =
+                            types::Currency::from_str(&info.branch_currency).unwrap();
+                        cases::list_company_and_branch::AllBranchesThatUserInWithRoles {
+                            branch_uuid,
+                            branch_name: info.branch_name.clone(),
+                            branch_currancy: branch_currency, // field name has typo "currancy"
+                            user_roles: info.roles.clone(),
+                        }
+                    })
+                    .collect::<Vec<_>>();
+
+            result.push(
+                cases::list_company_and_branch::AllCompaniesThatUserInWithRoles {
+                    company_uuid,
+                    company_name,
+                    company_currancy: company_currency, // field name has typo "currancy"
+                    user_roles: company_roles,
+                    branches,
+                },
+            );
+        }
+
+        cases::list_company_and_branch::Ok { data: result }
     }
 
     async fn read_create_company_branch(

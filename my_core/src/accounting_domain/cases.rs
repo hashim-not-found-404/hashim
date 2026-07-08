@@ -253,7 +253,7 @@ pub mod list_company_and_branch {
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Ok {
-        data: Vec<AllCompaniesThatUserInWithRoles>,
+        pub data: Vec<AllCompaniesThatUserInWithRoles>,
     }
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
