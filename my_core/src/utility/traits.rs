@@ -7,11 +7,11 @@ pub trait Coding {
     fn decode<'de, T: Deserialize<'de>>(data: &'de Vec<u8>) -> Result<T, utils::DynamicError>;
 }
 
-pub trait Regex {
+pub trait Regex: 'static {
     fn is_regex(s: &String) -> Result<(), String>;
 }
 
-pub trait RandomNumber {
+pub trait RandomNumber: 'static {
     fn generate() -> u64;
 }
 
@@ -24,7 +24,7 @@ pub trait JoinHandle {
     fn abort(&mut self) -> impl Future<Output = ()>;
 }
 
-pub trait Runtime {
+pub trait Runtime: 'static {
     type JoinHandle<T>: JoinHandle;
 
     #[must_use = "this `output` you may want to abort"]

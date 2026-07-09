@@ -1,7 +1,7 @@
 use crate::accounting_domain::types;
 use serde::{Deserialize, Serialize};
 
-pub trait RowId {
+pub trait RowId: 'static {
     fn generate() -> types::UuidType;
     fn get_time_as_seconds(uuid: &types::UuidType) -> Option<u64>;
     fn validate(uuid: &types::UuidType) -> bool;
