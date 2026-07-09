@@ -7,6 +7,8 @@ dep_graph_rs ./my_core | dot -Tpng > graph.png
 clear && cargo-cycles --dot graph.dot
 dot -Tpng graph.dot -o graph.png
 
+        splines=ortho;
+
 cargo-cycles --topo-sort
 
 cargo sort -w
