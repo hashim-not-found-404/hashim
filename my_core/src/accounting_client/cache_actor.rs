@@ -1,7 +1,6 @@
 use crate::{
     accounting_client::{
-        cache,
-        client_traits::{self, Cache},
+        cache::{self, Cache},
         network_actor,
     },
     accounting_domain::{
@@ -86,7 +85,7 @@ where
     pub(crate) fn new<
         Rt: traits::Runtime,
         Id: cases::RowId,
-        Ch: client_traits::Cache,
+        Ch: cache::Cache,
         Ed: traits::Coding,
         Rn: traits::RandomNumber,
     >(
@@ -158,7 +157,7 @@ where
     fn cache_actor<
         Rt: traits::Runtime,
         Id: cases::RowId,
-        Ch: client_traits::Cache,
+        Ch: cache::Cache,
         Ed: traits::Coding,
         Rn: traits::RandomNumber,
     >(
@@ -408,7 +407,7 @@ where
     }
 
     async fn prepare_txn_and_send_to_network<
-        Ch: client_traits::Cache,
+        Ch: cache::Cache,
         Id: cases::RowId,
         Ed: traits::Coding,
     >(

@@ -1,13 +1,10 @@
 use crate::{
-    accounting_client::{
-        cache, cache_actor,
-        client_traits::{self, Cache},
-    },
+    accounting_client::{cache, cache::Cache, cache_actor},
     accounting_domain::{
         cases::{self, MyErrorTrait},
         request_response, types,
     },
-    utility::{traits, utils::MyUpSert},
+    utility::utils::MyUpSert,
 };
 use std::collections::HashSet;
 
@@ -22,7 +19,7 @@ pub(crate) trait CacheAndServerType1: Clone {
     fn user_uuid(&self) -> Option<&types::UuidType>;
 
     type Output: CacheAndServerType2;
-    async fn state_full_operation<Id: cases::RowId, Ch: client_traits::Cache>(
+    async fn state_full_operation<Id: cases::RowId, Ch: cache::Cache>(
         &self,
         state: &mut cache::State<Ch>,
     ) -> Self::Output;
@@ -38,7 +35,7 @@ pub(crate) trait ViewType2 {
 }
 
 impl request_response::push_data::OperationsInput {
-    pub(crate) async fn run_operation_check<Id: cases::RowId, Ch: client_traits::Cache>(
+    pub(crate) async fn run_operation_check<Id: cases::RowId, Ch: cache::Cache>(
         &self,
         state: &mut cache::State<Ch>,
     ) -> request_response::push_data::OperationsResult {
@@ -61,7 +58,7 @@ impl request_response::push_data::OperationsInput {
         }
     }
 
-    pub(crate) async fn run_operation_check_apply<Id: cases::RowId, Ch: client_traits::Cache>(
+    pub(crate) async fn run_operation_check_apply<Id: cases::RowId, Ch: cache::Cache>(
         &self,
         state: &mut cache::State<Ch>,
         subs_to_poke: &mut HashSet<types::Subscribe>,
@@ -85,10 +82,7 @@ impl request_response::push_data::OperationsInput {
         }
     }
 
-    pub(crate) async fn run_operation_check_apply_write<
-        Id: cases::RowId,
-        Ch: client_traits::Cache,
-    >(
+    pub(crate) async fn run_operation_check_apply_write<Id: cases::RowId, Ch: cache::Cache>(
         &self,
         txn_number: u64,
         state: &mut cache::State<Ch>,
@@ -158,11 +152,7 @@ impl request_response::push_data::OperationsResult {
     }
 }
 
-async fn operation_check_handler<
-    T: CacheAndServerType1,
-    Id: cases::RowId,
-    Ch: client_traits::Cache,
->(
+async fn operation_check_handler<T: CacheAndServerType1, Id: cases::RowId, Ch: cache::Cache>(
     input: &T,
     state: &mut cache::State<Ch>,
 ) -> request_response::push_data::OperationsResult {
@@ -175,7 +165,7 @@ async fn operation_check_handler<
 async fn operation_check_apply_handler<
     T: CacheAndServerType1,
     Id: cases::RowId,
-    Ch: client_traits::Cache,
+    Ch: cache::Cache,
 >(
     input: &T,
     state: &mut cache::State<Ch>,
@@ -195,7 +185,7 @@ async fn operation_check_apply_handler<
 async fn operation_check_apply_write_handler<
     T: CacheAndServerType1,
     Id: cases::RowId,
-    Ch: client_traits::Cache,
+    Ch: cache::Cache,
 >(
     input: &T,
     state: &mut cache::State<Ch>,
@@ -318,7 +308,7 @@ pub(crate) mod sign_up {
         }
 
         type Output = Type3;
-        async fn state_full_operation<Id: cases::RowId, Ch: client_traits::Cache>(
+        async fn state_full_operation<Id: cases::RowId, Ch: cache::Cache>(
             &self,
             state: &mut cache::State<Ch>,
         ) -> Self::Output {
@@ -421,7 +411,7 @@ pub(crate) mod sign_in {
 
         type Output = Type3;
 
-        async fn state_full_operation<Id: cases::RowId, Ch: client_traits::Cache>(
+        async fn state_full_operation<Id: cases::RowId, Ch: cache::Cache>(
             &self,
             state: &mut cache::State<Ch>,
         ) -> Self::Output {
@@ -566,7 +556,7 @@ pub(crate) mod create_company {
 
         type Output = Type3;
 
-        async fn state_full_operation<Id: cases::RowId, Ch: client_traits::Cache>(
+        async fn state_full_operation<Id: cases::RowId, Ch: cache::Cache>(
             &self,
             state: &mut cache::State<Ch>,
         ) -> Self::Output {
@@ -672,7 +662,7 @@ pub(crate) mod create_company_branch {
 
         type Output = Type3;
 
-        async fn state_full_operation<Id: cases::RowId, Ch: client_traits::Cache>(
+        async fn state_full_operation<Id: cases::RowId, Ch: cache::Cache>(
             &self,
             state: &mut cache::State<Ch>,
         ) -> Self::Output {
@@ -870,7 +860,7 @@ pub(crate) mod list_company_and_branch {
 
         type Output = Type3;
 
-        async fn state_full_operation<Id: cases::RowId, Ch: client_traits::Cache>(
+        async fn state_full_operation<Id: cases::RowId, Ch: cache::Cache>(
             &self,
             state: &mut cache::State<Ch>,
         ) -> Self::Output {

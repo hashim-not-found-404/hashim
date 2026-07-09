@@ -1,7 +1,5 @@
 use crate::{
-    accounting_client::{
-        cache_actor, client_traits, network_actor, process_manager, ui_effect, ui_model,
-    },
+    accounting_client::{cache, cache_actor, network_actor, process_manager, ui_effect, ui_model},
     accounting_domain::{cases, types},
     utility::traits,
 };
@@ -14,7 +12,7 @@ pub fn new<
     Mpsc: traits::MultiProducerSingleConsumer,
     Ed: traits::Coding,
     Rg: traits::Regex,
-    Ch: client_traits::Cache,
+    Ch: cache::Cache,
     Ws: network_actor::WSClient,
     As: ui_model::AllSignalTypes,
 >(
