@@ -1,7 +1,7 @@
 use crate::{
     accounting_client::{
         cache_actor,
-        client_traits::{AllClientTypes, HashimSignal},
+        client_traits::{self, HashimSignal},
         client_types, process_manager, ui_model,
         use_cases::{self, ViewType1, ViewType2},
     },
@@ -12,22 +12,26 @@ use crate::{
     mbg,
     utility::{
         traits::{
-            JoinHandle, MultiProducerSingleConsumer, RandomNumber, Receiver, Runtime, Sender,
+            self, JoinHandle, MultiProducerSingleConsumer, RandomNumber, Receiver, Runtime, Sender,
         },
         utils::ReadAndSet,
     },
 };
+
 use std::{
     str::FromStr,
     sync::{Arc, Mutex},
 };
 
-pub(crate) struct CommanderLocalState<At: AllClientTypes> {
+pub(crate) struct CommanderLocalState<
+    Mpsc: traits::MultiProducerSingleConsumer,
+    As: client_traits::AllSignalTypes,
+> {
     pub(crate) sender_to_commander:
-        Mutex<<At::Mpsc as MultiProducerSingleConsumer>::Sender<ui_model::Message>>,
+        Mutex<<Mpsc as MultiProducerSingleConsumer>::Sender<ui_model::Message>>,
     pub(crate) sender_to_process_manager: Mutex<
-        <At::Mpsc as MultiProducerSingleConsumer>::Sender<
-            process_manager::MessageToProcessManager<At>,
+        <Mpsc as MultiProducerSingleConsumer>::Sender<
+            process_manager::MessageToProcessManager<Mpsc, As>,
         >,
     >,
     pub(crate) user_uuid: Mutex<Option<types::UuidType>>,
@@ -35,11 +39,13 @@ pub(crate) struct CommanderLocalState<At: AllClientTypes> {
     pub(crate) aborter_to_company_and_branch_listener: Mutex<Option<Box<dyn FnOnce()>>>,
 }
 
-impl<At: AllClientTypes> CommanderLocalState<At> {
+impl<Mpsc: traits::MultiProducerSingleConsumer, As: client_traits::AllSignalTypes>
+    CommanderLocalState<Mpsc, As>
+{
     pub(crate) fn new(
-        sender_to_commander: <At::Mpsc as MultiProducerSingleConsumer>::Sender<ui_model::Message>,
-        sender_to_process_manager: <At::Mpsc as MultiProducerSingleConsumer>::Sender<
-            process_manager::MessageToProcessManager<At>,
+        sender_to_commander: <Mpsc as MultiProducerSingleConsumer>::Sender<ui_model::Message>,
+        sender_to_process_manager: <Mpsc as MultiProducerSingleConsumer>::Sender<
+            process_manager::MessageToProcessManager<Mpsc, As>,
         >,
     ) -> Self {
         CommanderLocalState {
@@ -53,11 +59,18 @@ impl<At: AllClientTypes> CommanderLocalState<At> {
 }
 
 pub(crate) trait Mvu {
-    async fn update<At: AllClientTypes>(
+    async fn update<
+        Rn: traits::RandomNumber,
+        Rt: traits::Runtime,
+        Id: cases::RowId,
+        Mpsc: traits::MultiProducerSingleConsumer,
+        Rg: traits::Regex,
+        As: client_traits::AllSignalTypes,
+    >(
         self,
-        model: &'static ui_model::Model<At>,
-        cache: cache_actor::CacheStruct<At>,
-        commander_local_state: Arc<CommanderLocalState<At>>,
+        model: &'static ui_model::Model<As>,
+        cache: cache_actor::CacheStruct<Mpsc>,
+        commander_local_state: Arc<CommanderLocalState<Mpsc, As>>,
     );
 }
 
@@ -65,14 +78,24 @@ pub(crate) mod sign_up {
     use super::*;
 
     impl Mvu for ui_model::SignUp {
-        async fn update<At: AllClientTypes>(
+        async fn update<
+            Rn: traits::RandomNumber,
+            Rt: traits::Runtime,
+            Id: cases::RowId,
+            Mpsc: traits::MultiProducerSingleConsumer,
+            Rg: traits::Regex,
+            As: client_traits::AllSignalTypes,
+        >(
             self,
-            model: &'static ui_model::Model<At>,
-            cache: cache_actor::CacheStruct<At>,
-            commander_local_state: Arc<CommanderLocalState<At>>,
+            model: &'static ui_model::Model<As>,
+            cache: cache_actor::CacheStruct<Mpsc>,
+            commander_local_state: Arc<CommanderLocalState<Mpsc, As>>,
         ) {
             match self {
-                Self::Submit => handle_submit(model, cache, commander_local_state).await,
+                Self::Submit => {
+                    handle_submit::<Rn, Rt, Id, Mpsc, Rg, As>(model, cache, commander_local_state)
+                        .await
+                }
                 Self::Consent(i) => commander_local_state
                     .sender_to_process_manager
                     .read()
@@ -84,11 +107,13 @@ pub(crate) mod sign_up {
                     .unwrap(),
                 Self::UserName(i) => {
                     model.page_root.page_auth.page_sign_up.user_name.set(i);
-                    handle_check(model, cache, commander_local_state).await;
+                    handle_check::<Rn, Rt, Id, Mpsc, Rg, As>(model, cache, commander_local_state)
+                        .await;
                 }
                 Self::UserId(i) => {
                     model.page_root.page_auth.auth_feature_state.user_id.set(i);
-                    handle_check(model, cache, commander_local_state).await;
+                    handle_check::<Rn, Rt, Id, Mpsc, Rg, As>(model, cache, commander_local_state)
+                        .await;
                 }
                 Self::Password(i) => {
                     model
@@ -97,16 +122,24 @@ pub(crate) mod sign_up {
                         .auth_feature_state
                         .user_password
                         .set(i);
-                    handle_check(model, cache, commander_local_state).await;
+                    handle_check::<Rn, Rt, Id, Mpsc, Rg, As>(model, cache, commander_local_state)
+                        .await;
                 }
             }
         }
     }
 
-    async fn handle_submit<At: AllClientTypes>(
-        model: &'static ui_model::Model<At>,
-        mut cache: cache_actor::CacheStruct<At>,
-        commander_local_state: Arc<CommanderLocalState<At>>,
+    async fn handle_submit<
+        Rn: traits::RandomNumber,
+        Rt: traits::Runtime,
+        Id: cases::RowId,
+        Mpsc: traits::MultiProducerSingleConsumer,
+        Rg: traits::Regex,
+        As: client_traits::AllSignalTypes,
+    >(
+        model: &'static ui_model::Model<As>,
+        mut cache: cache_actor::CacheStruct<Mpsc>,
+        commander_local_state: Arc<CommanderLocalState<Mpsc, As>>,
     ) {
         let feature_state = &model.page_root.page_auth.auth_feature_state;
         let local_state = &model.page_root.page_auth.page_sign_up;
@@ -120,7 +153,7 @@ pub(crate) mod sign_up {
         local_state.user_id_error.reset();
         local_state.user_name_error.reset();
 
-        let new_uuid = At::Id::generate();
+        let new_uuid = Id::generate();
         let input = cases::sign_up::Input {
             new_uuid: new_uuid.clone(),
             name: {
@@ -142,7 +175,7 @@ pub(crate) mod sign_up {
             .await;
 
         let commander_local_state1 = commander_local_state.clone();
-        let mut handle = At::Rt::abortable_spawn_local(async move {
+        let mut handle = Rt::abortable_spawn_local(async move {
             loop {
                 match receiver_to_response.recv().await.unwrap() {
                     cache_actor::Response::CloseTheChannel => break,
@@ -177,13 +210,17 @@ pub(crate) mod sign_up {
                         }
 
                         let result = use_cases::sign_up::Type4::unwrap_output(data.data);
-                        handle_apply_result(&model, commander_local_state1.clone(), result);
+                        handle_apply_result::<Rn, Rt, Id, Mpsc, Rg, As>(
+                            &model,
+                            commander_local_state1.clone(),
+                            result,
+                        );
                     }
                 }
             }
         });
 
-        let (sender_to_process, mut receiver_to_process) = At::Mpsc::channel();
+        let (sender_to_process, mut receiver_to_process) = Mpsc::channel();
         commander_local_state
             .sender_to_process_manager
             .read()
@@ -229,10 +266,17 @@ pub(crate) mod sign_up {
         feature_state.is_loading.reset();
     }
 
-    async fn handle_check<At: AllClientTypes>(
-        model: &'static ui_model::Model<At>,
-        mut cache: cache_actor::CacheStruct<At>,
-        commander_local_state: Arc<CommanderLocalState<At>>,
+    async fn handle_check<
+        Rn: traits::RandomNumber,
+        Rt: traits::Runtime,
+        Id: cases::RowId,
+        Mpsc: traits::MultiProducerSingleConsumer,
+        Rg: traits::Regex,
+        As: client_traits::AllSignalTypes,
+    >(
+        model: &'static ui_model::Model<As>,
+        mut cache: cache_actor::CacheStruct<Mpsc>,
+        commander_local_state: Arc<CommanderLocalState<Mpsc, As>>,
     ) {
         let feature_state = &model.page_root.page_auth.auth_feature_state;
         let local_state = &model.page_root.page_auth.page_sign_up;
@@ -240,7 +284,7 @@ pub(crate) mod sign_up {
         local_state.user_id_error.reset();
         local_state.user_name_error.reset();
 
-        let new_uuid = At::Id::generate();
+        let new_uuid = Id::generate();
         let mut receiver_to_response = cache
             .send_to_cache_actor(
                 cache_actor::CachingStrategy::ReadCacheOnly,
@@ -265,14 +309,25 @@ pub(crate) mod sign_up {
             cache_actor::Response::ServerCannotBeReached => {}
             cache_actor::Response::Data(data) => {
                 let result = use_cases::sign_up::Type4::unwrap_output(data.data);
-                handle_apply_result(&model, commander_local_state.clone(), result);
+                handle_apply_result::<Rn, Rt, Id, Mpsc, Rg, As>(
+                    &model,
+                    commander_local_state.clone(),
+                    result,
+                );
             }
         }
     }
 
-    fn handle_apply_result<At: AllClientTypes>(
-        model: &ui_model::Model<At>,
-        commander_local_state: Arc<CommanderLocalState<At>>,
+    fn handle_apply_result<
+        Rn: traits::RandomNumber,
+        Rt: traits::Runtime,
+        Id: cases::RowId,
+        Mpsc: traits::MultiProducerSingleConsumer,
+        Rg: traits::Regex,
+        As: client_traits::AllSignalTypes,
+    >(
+        model: &ui_model::Model<As>,
+        commander_local_state: Arc<CommanderLocalState<Mpsc, As>>,
         result: cases::sign_up::MyResult,
     ) {
         let local_state = &model.page_root.page_auth.page_sign_up;
@@ -296,15 +351,23 @@ pub(crate) mod sign_in {
     use super::*;
 
     impl Mvu for ui_model::SignIn {
-        async fn update<At: AllClientTypes>(
+        async fn update<
+            Rn: traits::RandomNumber,
+            Rt: traits::Runtime,
+            Id: cases::RowId,
+            Mpsc: traits::MultiProducerSingleConsumer,
+            Rg: traits::Regex,
+            As: client_traits::AllSignalTypes,
+        >(
             self,
-            model: &'static ui_model::Model<At>,
-            cache: cache_actor::CacheStruct<At>,
-            commander_local_state: Arc<CommanderLocalState<At>>,
+            model: &'static ui_model::Model<As>,
+            cache: cache_actor::CacheStruct<Mpsc>,
+            commander_local_state: Arc<CommanderLocalState<Mpsc, As>>,
         ) {
             match self {
                 Self::Submit => {
-                    handle_submit(model, cache, commander_local_state).await;
+                    handle_submit::<Rn, Rt, Id, Mpsc, Rg, As>(model, cache, commander_local_state)
+                        .await;
                 }
                 Self::Consent(i) => commander_local_state
                     .sender_to_process_manager
@@ -317,7 +380,8 @@ pub(crate) mod sign_in {
                     .unwrap(),
                 Self::UserId(i) => {
                     model.page_root.page_auth.auth_feature_state.user_id.set(i);
-                    handle_check(model, cache, commander_local_state).await;
+                    handle_check::<Rn, Rt, Id, Mpsc, Rg, As>(model, cache, commander_local_state)
+                        .await;
                 }
                 Self::Password(i) => {
                     model
@@ -326,16 +390,24 @@ pub(crate) mod sign_in {
                         .auth_feature_state
                         .user_password
                         .set(i);
-                    handle_check(model, cache, commander_local_state).await;
+                    handle_check::<Rn, Rt, Id, Mpsc, Rg, As>(model, cache, commander_local_state)
+                        .await;
                 }
             }
         }
     }
 
-    async fn handle_submit<At: AllClientTypes>(
-        model: &'static ui_model::Model<At>,
-        mut cache: cache_actor::CacheStruct<At>,
-        commander_local_state: Arc<CommanderLocalState<At>>,
+    async fn handle_submit<
+        Rn: traits::RandomNumber,
+        Rt: traits::Runtime,
+        Id: cases::RowId,
+        Mpsc: traits::MultiProducerSingleConsumer,
+        Rg: traits::Regex,
+        As: client_traits::AllSignalTypes,
+    >(
+        model: &'static ui_model::Model<As>,
+        mut cache: cache_actor::CacheStruct<Mpsc>,
+        commander_local_state: Arc<CommanderLocalState<Mpsc, As>>,
     ) {
         let feature_state = &model.page_root.page_auth.auth_feature_state;
         let local_state = &model.page_root.page_auth.page_sign_in;
@@ -362,7 +434,7 @@ pub(crate) mod sign_in {
             .await;
 
         let commander_local_state1 = commander_local_state.clone();
-        let mut handle = At::Rt::abortable_spawn_local(async move {
+        let mut handle = Rt::abortable_spawn_local(async move {
             loop {
                 match receiver_to_response.recv().await.unwrap() {
                     cache_actor::Response::CloseTheChannel => break,
@@ -397,13 +469,17 @@ pub(crate) mod sign_in {
                         }
 
                         let result = use_cases::sign_in::Type4::unwrap_output(data.data);
-                        handle_apply_result(&model, commander_local_state1.clone(), result);
+                        handle_apply_result::<Rn, Rt, Id, Mpsc, Rg, As>(
+                            &model,
+                            commander_local_state1.clone(),
+                            result,
+                        );
                     }
                 }
             }
         });
 
-        let (sender_to_process, mut receiver_to_process) = At::Mpsc::channel();
+        let (sender_to_process, mut receiver_to_process) = Mpsc::channel();
         commander_local_state
             .sender_to_process_manager
             .read()
@@ -442,10 +518,17 @@ pub(crate) mod sign_in {
         feature_state.is_loading.reset();
     }
 
-    async fn handle_check<At: AllClientTypes>(
-        model: &'static ui_model::Model<At>,
-        mut cache: cache_actor::CacheStruct<At>,
-        commander_local_state: Arc<CommanderLocalState<At>>,
+    async fn handle_check<
+        Rn: traits::RandomNumber,
+        Rt: traits::Runtime,
+        Id: cases::RowId,
+        Mpsc: traits::MultiProducerSingleConsumer,
+        Rg: traits::Regex,
+        As: client_traits::AllSignalTypes,
+    >(
+        model: &'static ui_model::Model<As>,
+        mut cache: cache_actor::CacheStruct<Mpsc>,
+        commander_local_state: Arc<CommanderLocalState<Mpsc, As>>,
     ) {
         let feature_state = &model.page_root.page_auth.auth_feature_state;
         let local_state = &model.page_root.page_auth.page_sign_in;
@@ -469,14 +552,25 @@ pub(crate) mod sign_in {
             cache_actor::Response::ServerCannotBeReached => {}
             cache_actor::Response::Data(data) => {
                 let result = use_cases::sign_in::Type4::unwrap_output(data.data);
-                handle_apply_result(&model, commander_local_state.clone(), result);
+                handle_apply_result::<Rn, Rt, Id, Mpsc, Rg, As>(
+                    &model,
+                    commander_local_state.clone(),
+                    result,
+                );
             }
         }
     }
 
-    fn handle_apply_result<At: AllClientTypes>(
-        model: &ui_model::Model<At>,
-        commander_local_state: Arc<CommanderLocalState<At>>,
+    fn handle_apply_result<
+        Rn: traits::RandomNumber,
+        Rt: traits::Runtime,
+        Id: cases::RowId,
+        Mpsc: traits::MultiProducerSingleConsumer,
+        Rg: traits::Regex,
+        As: client_traits::AllSignalTypes,
+    >(
+        model: &ui_model::Model<As>,
+        commander_local_state: Arc<CommanderLocalState<Mpsc, As>>,
         result: use_cases::sign_in::Type4,
     ) {
         match result.0 {
@@ -509,11 +603,18 @@ pub(crate) mod company_and_branch_selection {
     use super::*;
 
     impl Mvu for ui_model::CompanyAndBranchSelection {
-        async fn update<At: AllClientTypes>(
+        async fn update<
+            Rn: traits::RandomNumber,
+            Rt: traits::Runtime,
+            Id: cases::RowId,
+            Mpsc: traits::MultiProducerSingleConsumer,
+            Rg: traits::Regex,
+            As: client_traits::AllSignalTypes,
+        >(
             self,
-            model: &'static ui_model::Model<At>,
-            cache: cache_actor::CacheStruct<At>,
-            commander_local_state: Arc<CommanderLocalState<At>>,
+            model: &'static ui_model::Model<As>,
+            cache: cache_actor::CacheStruct<Mpsc>,
+            commander_local_state: Arc<CommanderLocalState<Mpsc, As>>,
         ) {
             match self {
                 Self::Subscribe => {
@@ -523,18 +624,19 @@ pub(crate) mod company_and_branch_selection {
                             client_types::CompanyBranchSelection::None,
                         ));
 
-                    handle_list_company_and_branch(
+                    handle_list_company_and_branch::<Rn, Rt, Id, Mpsc, Rg, As>(
                         model,
                         cache.clone(),
                         commander_local_state.clone(),
                     )
                     .await;
 
-                    let listener_aborter = handle_list_company_and_branch_listener(
-                        model,
-                        cache,
-                        commander_local_state.clone(),
-                    );
+                    let listener_aborter =
+                        handle_list_company_and_branch_listener::<Rn, Rt, Id, Mpsc, Rg, As>(
+                            model,
+                            cache,
+                            commander_local_state.clone(),
+                        );
 
                     *commander_local_state
                         .aborter_to_company_and_branch_listener
@@ -590,15 +692,22 @@ pub(crate) mod company_and_branch_selection {
         }
     }
 
-    fn handle_list_company_and_branch_listener<At: AllClientTypes>(
-        model: &'static ui_model::Model<At>,
-        mut cache: cache_actor::CacheStruct<At>,
-        commander_local_state: Arc<CommanderLocalState<At>>,
+    fn handle_list_company_and_branch_listener<
+        Rn: traits::RandomNumber,
+        Rt: traits::Runtime,
+        Id: cases::RowId,
+        Mpsc: traits::MultiProducerSingleConsumer,
+        Rg: traits::Regex,
+        As: client_traits::AllSignalTypes,
+    >(
+        model: &'static ui_model::Model<As>,
+        mut cache: cache_actor::CacheStruct<Mpsc>,
+        commander_local_state: Arc<CommanderLocalState<Mpsc, As>>,
     ) -> impl FnOnce() {
-        let component_id = At::Rn::generate() as u16;
+        let component_id = Rn::generate() as u16;
         let mut cache1 = cache.clone();
 
-        let mut handle = At::Rt::abortable_spawn_local(async move {
+        let mut handle = Rt::abortable_spawn_local(async move {
             let mut receiver_to_poke = cache
                 .send_subs_to_cache_actor(
                     component_id,
@@ -652,17 +761,24 @@ pub(crate) mod company_and_branch_selection {
         });
 
         move || {
-            At::Rt::spawn_local(async move {
+            Rt::spawn_local(async move {
                 handle.abort().await;
                 cache1.send_unsubs_to_cache_actor(component_id).await;
             });
         }
     }
 
-    async fn handle_list_company_and_branch<At: AllClientTypes>(
-        model: &'static ui_model::Model<At>,
-        mut cache: cache_actor::CacheStruct<At>,
-        commander_local_state: Arc<CommanderLocalState<At>>,
+    async fn handle_list_company_and_branch<
+        Rn: traits::RandomNumber,
+        Rt: traits::Runtime,
+        Id: cases::RowId,
+        Mpsc: traits::MultiProducerSingleConsumer,
+        Rg: traits::Regex,
+        As: client_traits::AllSignalTypes,
+    >(
+        model: &'static ui_model::Model<As>,
+        mut cache: cache_actor::CacheStruct<Mpsc>,
+        commander_local_state: Arc<CommanderLocalState<Mpsc, As>>,
     ) {
         let user_uuid = commander_local_state.user_uuid.read().clone().unwrap();
 
@@ -704,11 +820,18 @@ pub(crate) mod create_company {
     use super::*;
 
     impl Mvu for ui_model::CreateCompany {
-        async fn update<At: AllClientTypes>(
+        async fn update<
+            Rn: traits::RandomNumber,
+            Rt: traits::Runtime,
+            Id: cases::RowId,
+            Mpsc: traits::MultiProducerSingleConsumer,
+            Rg: traits::Regex,
+            As: client_traits::AllSignalTypes,
+        >(
             self,
-            model: &'static ui_model::Model<At>,
-            cache: cache_actor::CacheStruct<At>,
-            commander_local_state: Arc<CommanderLocalState<At>>,
+            model: &'static ui_model::Model<As>,
+            cache: cache_actor::CacheStruct<Mpsc>,
+            commander_local_state: Arc<CommanderLocalState<Mpsc, As>>,
         ) {
             let page_create_company = &model
                 .page_root
@@ -717,8 +840,11 @@ pub(crate) mod create_company {
                 .page_create_company;
 
             match self {
-                Self::Submit => handle_submit(model, cache, commander_local_state).await,
-                Self::Close => handle_close(model),
+                Self::Submit => {
+                    handle_submit::<Rn, Rt, Id, Mpsc, Rg, As>(model, cache, commander_local_state)
+                        .await
+                }
+                Self::Close => handle_close::<Rn, Rt, Id, Mpsc, Rg, As>(model),
                 Self::Name(i) => page_create_company.company_name.set(i),
                 Self::Currency(i) => page_create_company
                     .currency
@@ -727,7 +853,16 @@ pub(crate) mod create_company {
         }
     }
 
-    fn handle_close<At: AllClientTypes>(model: &'static ui_model::Model<At>) {
+    fn handle_close<
+        Rn: traits::RandomNumber,
+        Rt: traits::Runtime,
+        Id: cases::RowId,
+        Mpsc: traits::MultiProducerSingleConsumer,
+        Rg: traits::Regex,
+        As: client_traits::AllSignalTypes,
+    >(
+        model: &'static ui_model::Model<As>,
+    ) {
         let page_create_company = &model
             .page_root
             .page_after_auth
@@ -744,10 +879,17 @@ pub(crate) mod create_company {
             ));
     }
 
-    async fn handle_submit<At: AllClientTypes>(
-        model: &'static ui_model::Model<At>,
-        mut cache: cache_actor::CacheStruct<At>,
-        commander_local_state: Arc<CommanderLocalState<At>>,
+    async fn handle_submit<
+        Rn: traits::RandomNumber,
+        Rt: traits::Runtime,
+        Id: cases::RowId,
+        Mpsc: traits::MultiProducerSingleConsumer,
+        Rg: traits::Regex,
+        As: client_traits::AllSignalTypes,
+    >(
+        model: &'static ui_model::Model<As>,
+        mut cache: cache_actor::CacheStruct<Mpsc>,
+        commander_local_state: Arc<CommanderLocalState<Mpsc, As>>,
     ) {
         let data = commander_local_state.user_uuid.read().clone().unwrap();
 
@@ -759,7 +901,7 @@ pub(crate) mod create_company {
 
         let input = cases::create_company::Input {
             user_uuid: data,
-            new_uuid: At::Id::generate(),
+            new_uuid: Id::generate(),
             company_name: local_state.company_name.read(),
             currency: local_state.currency.read(),
         };
@@ -771,7 +913,7 @@ pub(crate) mod create_company {
             )
             .await;
 
-        handle_close(model);
+        handle_close::<Rn, Rt, Id, Mpsc, Rg, As>(model);
     }
 }
 
@@ -779,14 +921,24 @@ pub(crate) mod create_company_branch {
     use super::*;
 
     impl Mvu for ui_model::CreateCompanyBranch {
-        async fn update<At: AllClientTypes>(
+        async fn update<
+            Rn: traits::RandomNumber,
+            Rt: traits::Runtime,
+            Id: cases::RowId,
+            Mpsc: traits::MultiProducerSingleConsumer,
+            Rg: traits::Regex,
+            As: client_traits::AllSignalTypes,
+        >(
             self,
-            model: &'static ui_model::Model<At>,
-            cache: cache_actor::CacheStruct<At>,
-            commander_local_state: Arc<CommanderLocalState<At>>,
+            model: &'static ui_model::Model<As>,
+            cache: cache_actor::CacheStruct<Mpsc>,
+            commander_local_state: Arc<CommanderLocalState<Mpsc, As>>,
         ) {
             match self {
-                Self::Submit => handle_submit(model, cache, commander_local_state).await,
+                Self::Submit => {
+                    handle_submit::<Rn, Rt, Id, Mpsc, Rg, As>(model, cache, commander_local_state)
+                        .await
+                }
                 Self::Consent(i) => {
                     commander_local_state
                         .sender_to_process_manager
@@ -798,7 +950,7 @@ pub(crate) mod create_company_branch {
                         .await
                         .unwrap();
                 }
-                Self::Close => handle_close(model),
+                Self::Close => handle_close::<Rn, Rt, Id, Mpsc, Rg, As>(model),
                 Self::Name(i) => {
                     model
                         .page_root
@@ -808,7 +960,8 @@ pub(crate) mod create_company_branch {
                         .branch_name
                         .set(i);
 
-                    handle_check(model, cache, commander_local_state).await;
+                    handle_check::<Rn, Rt, Id, Mpsc, Rg, As>(model, cache, commander_local_state)
+                        .await;
                 }
                 Self::Currency(i) => model
                     .page_root
@@ -821,10 +974,17 @@ pub(crate) mod create_company_branch {
         }
     }
 
-    async fn handle_submit<At: AllClientTypes>(
-        model: &'static ui_model::Model<At>,
-        mut cache: cache_actor::CacheStruct<At>,
-        commander_local_state: Arc<CommanderLocalState<At>>,
+    async fn handle_submit<
+        Rn: traits::RandomNumber,
+        Rt: traits::Runtime,
+        Id: cases::RowId,
+        Mpsc: traits::MultiProducerSingleConsumer,
+        Rg: traits::Regex,
+        As: client_traits::AllSignalTypes,
+    >(
+        model: &'static ui_model::Model<As>,
+        mut cache: cache_actor::CacheStruct<Mpsc>,
+        commander_local_state: Arc<CommanderLocalState<Mpsc, As>>,
     ) {
         let local_state = &model
             .page_root
@@ -841,7 +1001,7 @@ pub(crate) mod create_company_branch {
 
         let input = cases::create_company_branch::Input {
             user_uuid: data,
-            new_uuid: At::Id::generate(),
+            new_uuid: Id::generate(),
             company_belong: model
                 .page_root
                 .page_after_auth
@@ -862,7 +1022,7 @@ pub(crate) mod create_company_branch {
             .await;
 
         let commander_local_state1 = commander_local_state.clone();
-        let mut handle = At::Rt::abortable_spawn_local(async move {
+        let mut handle = Rt::abortable_spawn_local(async move {
             loop {
                 match receiver_to_response.recv().await.unwrap() {
                     cache_actor::Response::CloseTheChannel => break,
@@ -910,7 +1070,7 @@ pub(crate) mod create_company_branch {
             }
         });
 
-        let (sender_to_process, mut receiver_to_process) = At::Mpsc::channel();
+        let (sender_to_process, mut receiver_to_process) = Mpsc::channel();
         commander_local_state
             .sender_to_process_manager
             .read()
@@ -927,7 +1087,7 @@ pub(crate) mod create_company_branch {
         match receiver_to_process.recv().await.unwrap() {
             process_manager::ProceedResult::Yes => {
                 local_state.is_loading.reset();
-                handle_close(model);
+                handle_close::<Rn, Rt, Id, Mpsc, Rg, As>(model);
             }
             process_manager::ProceedResult::No => {}
         };
@@ -936,10 +1096,17 @@ pub(crate) mod create_company_branch {
         local_state.is_loading.reset();
     }
 
-    async fn handle_check<At: AllClientTypes>(
-        model: &'static ui_model::Model<At>,
-        mut cache: cache_actor::CacheStruct<At>,
-        commander_local_state: Arc<CommanderLocalState<At>>,
+    async fn handle_check<
+        Rn: traits::RandomNumber,
+        Rt: traits::Runtime,
+        Id: cases::RowId,
+        Mpsc: traits::MultiProducerSingleConsumer,
+        Rg: traits::Regex,
+        As: client_traits::AllSignalTypes,
+    >(
+        model: &'static ui_model::Model<As>,
+        mut cache: cache_actor::CacheStruct<Mpsc>,
+        commander_local_state: Arc<CommanderLocalState<Mpsc, As>>,
     ) {
         let local_state = &model
             .page_root
@@ -951,7 +1118,7 @@ pub(crate) mod create_company_branch {
 
         let input = cases::create_company_branch::Input {
             user_uuid: data,
-            new_uuid: At::Id::generate(),
+            new_uuid: Id::generate(),
             company_belong: model
                 .page_root
                 .page_after_auth
@@ -988,7 +1155,16 @@ pub(crate) mod create_company_branch {
         }
     }
 
-    fn handle_close<At: AllClientTypes>(model: &'static ui_model::Model<At>) {
+    fn handle_close<
+        Rn: traits::RandomNumber,
+        Rt: traits::Runtime,
+        Id: cases::RowId,
+        Mpsc: traits::MultiProducerSingleConsumer,
+        Rg: traits::Regex,
+        As: client_traits::AllSignalTypes,
+    >(
+        model: &'static ui_model::Model<As>,
+    ) {
         let page_create_company_branch = &model
             .page_root
             .page_after_auth

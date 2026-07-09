@@ -1,8 +1,7 @@
 use crate::{
-    accounting_client::client_traits::{AllClientTypes, WSClient},
     accounting_domain::types,
     utility::{
-        traits::{Either, MultiProducerSingleConsumer, Receiver, Runtime, Sender},
+        traits::{self, Either, MultiProducerSingleConsumer, Receiver, Runtime, Sender},
         utils::{self, ReadAndSet},
     },
 };
@@ -11,6 +10,12 @@ use std::{
     time::Duration,
 };
 
+pub trait WSClient: Sized {
+    fn connect(url: &str) -> impl Future<Output = Result<Self, utils::DynamicError>>;
+    fn send_bin(&self, data: &Vec<u8>) -> impl Future<Output = Result<(), utils::DynamicError>>;
+    fn receive_bin(&self) -> impl Future<Output = Result<Vec<u8>, utils::DynamicError>>;
+}
+
 pub(crate) trait Network {
     async fn from_network_status(&mut self);
     async fn sender_to_network(&mut self, data: Vec<u8>);
@@ -18,8 +23,12 @@ pub(crate) trait Network {
 
 pub(crate) type MessageToNetwork = Vec<u8>;
 
-async fn network_radar<At: AllClientTypes>(
-    ws: &Option<At::Ws>,
+async fn network_radar<
+    Rt: traits::Runtime,
+    Mpsc: traits::MultiProducerSingleConsumer,
+    Ws: WSClient,
+>(
+    ws: &Option<Ws>,
 ) -> Result<Vec<u8>, utils::DynamicError> {
     match &ws {
         Some(ws) => ws.receive_bin().await,
@@ -27,15 +36,20 @@ async fn network_radar<At: AllClientTypes>(
     }
 }
 
-async fn connect<At: AllClientTypes, Nw: Network>(
+async fn connect<
+    Rt: traits::Runtime,
+    Mpsc: traits::MultiProducerSingleConsumer,
+    Ws: WSClient,
+    Nw: Network,
+>(
     is_online: Arc<RwLock<bool>>,
     sender_to_cache: &mut Nw,
     url: &String,
-    ws: &mut Option<At::Ws>,
+    ws: &mut Option<Ws>,
 ) {
     is_online.put(false);
 
-    if let Ok(ok) = At::Ws::connect(url.as_str()).await {
+    if let Ok(ok) = Ws::connect(url.as_str()).await {
         *ws = Some(ok);
 
         sender_to_cache.from_network_status().await;
@@ -44,27 +58,37 @@ async fn connect<At: AllClientTypes, Nw: Network>(
 
         return;
     }
-    At::Rt::sleep(Duration::from_secs(5)).await;
+    Rt::sleep(Duration::from_secs(5)).await;
 }
 
-pub(crate) fn network_actor<At: AllClientTypes, Nw: Network + 'static>(
-    mut receiver_to_network: <At::Mpsc as MultiProducerSingleConsumer>::Receiver<MessageToNetwork>,
+pub(crate) fn network_actor<
+    Rt: traits::Runtime,
+    Mpsc: traits::MultiProducerSingleConsumer,
+    Ws: WSClient,
+    Nw: Network + 'static,
+>(
+    mut receiver_to_network: <Mpsc as MultiProducerSingleConsumer>::Receiver<MessageToNetwork>,
     mut sender_to_cache: Nw,
-    mut sender_to_error: <At::Mpsc as MultiProducerSingleConsumer>::Sender<types::HashimError>,
+    mut sender_to_error: <Mpsc as MultiProducerSingleConsumer>::Sender<types::HashimError>,
     is_online: Arc<RwLock<bool>>,
     url: String,
 ) {
-    At::Rt::spawn_local(async move {
-        let mut ws: Option<At::Ws> = None;
+    Rt::spawn_local(async move {
+        let mut ws: Option<Ws> = None;
 
         loop {
-            match At::Rt::select(receiver_to_network.recv(), network_radar::<At>(&ws)).await {
+            match Rt::select(
+                receiver_to_network.recv(),
+                network_radar::<Rt, Mpsc, Ws>(&ws),
+            )
+            .await
+            {
                 Either::One(r) => match r.unwrap() {
                     data => match &ws {
                         Some(ws1) => {
                             let result = ws1.send_bin(&data).await;
                             if result.is_err() {
-                                connect::<At, Nw>(
+                                connect::<Rt, Mpsc, Ws, Nw>(
                                     is_online.clone(),
                                     &mut sender_to_cache,
                                     &url,
@@ -73,7 +97,7 @@ pub(crate) fn network_actor<At: AllClientTypes, Nw: Network + 'static>(
                                 .await;
                             }
                         }
-                        None => At::Rt::sleep(Duration::from_secs(5)).await,
+                        None => Rt::sleep(Duration::from_secs(5)).await,
                     },
                 },
                 Either::Two(from_network) => match from_network {
@@ -85,8 +109,13 @@ pub(crate) fn network_actor<At: AllClientTypes, Nw: Network + 'static>(
                             .send(types::HashimError::ConnectionClosed)
                             .await
                             .unwrap();
-                        connect::<At, Nw>(is_online.clone(), &mut sender_to_cache, &url, &mut ws)
-                            .await;
+                        connect::<Rt, Mpsc, Ws, Nw>(
+                            is_online.clone(),
+                            &mut sender_to_cache,
+                            &url,
+                            &mut ws,
+                        )
+                        .await;
                     }
                 },
             }

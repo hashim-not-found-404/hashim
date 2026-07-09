@@ -1,5 +1,5 @@
 use crate::{
-    accounting_client::client_traits::{AllClientTypes, Cache},
+    accounting_client::client_traits::{self, Cache},
     accounting_domain::{cases, types},
 };
 use std::collections::{HashMap, HashSet};
@@ -50,14 +50,14 @@ pub(crate) struct StateOfPendingTxn {
         HashMap<types::UuidType, tables::AccessControlForCompanyBranch>,
 }
 
-pub(crate) struct State<At: AllClientTypes> {
+pub(crate) struct State<Ch: client_traits::Cache> {
     pub(crate) state_of_pending_txn: StateOfPendingTxn,
-    pub(crate) cache: At::Ch,
+    pub(crate) cache: Ch,
 }
 
-impl<At: AllClientTypes> State<At> {
-    pub(crate) async fn new() -> Self {
-        let cache = At::Ch::new().await;
+impl<Ch: client_traits::Cache> State<Ch> {
+    pub(crate) async fn new<Id: cases::RowId>() -> Self {
+        let cache = Ch::new().await;
         let txns = cache.get_all_txn_input().await;
 
         let mut state = Self {
@@ -67,7 +67,7 @@ impl<At: AllClientTypes> State<At> {
 
         for op in txns {
             op.operation
-                .run_operation_check_apply::<At>(&mut state, &mut HashSet::new())
+                .run_operation_check_apply::<Id, Ch>(&mut state, &mut HashSet::new())
                 .await;
         }
 
@@ -75,7 +75,7 @@ impl<At: AllClientTypes> State<At> {
     }
 }
 
-impl<At: AllClientTypes> State<At> {
+impl<Ch: client_traits::Cache> State<Ch> {
     pub(crate) async fn read_sign_up(
         &mut self,
         new_uuid: &types::UuidType,

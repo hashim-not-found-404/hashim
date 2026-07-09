@@ -1,12 +1,17 @@
 use crate::{
     accounting_client::{
         cache,
-        client_traits::{AllClientTypes, Cache},
+        client_traits::{self, Cache},
         network_actor,
     },
-    accounting_domain::{cases::RowId, request_response, types},
+    accounting_domain::{
+        cases::{self, RowId},
+        request_response, types,
+    },
     utility::{
-        traits::{Coding, MultiProducerSingleConsumer, RandomNumber, Receiver, Runtime, Sender},
+        traits::{
+            self, Coding, MultiProducerSingleConsumer, RandomNumber, Receiver, Runtime, Sender,
+        },
         utils::ReadAndSet,
     },
 };
@@ -41,32 +46,32 @@ pub(crate) enum CachingStrategy {
     WriteServerOnly,
 }
 
-pub(crate) enum MessageToCache<At: AllClientTypes> {
+pub(crate) enum MessageToCache<Mpsc: traits::MultiProducerSingleConsumer> {
     WeAreBackOnline,
     DataFromServer(Vec<u8>),
     Subscribe {
         component_id: u16,
         list_of_subscribtion: &'static [types::Subscribe],
-        sender: <At::Mpsc as MultiProducerSingleConsumer>::Sender<()>,
+        sender: <Mpsc as MultiProducerSingleConsumer>::Sender<()>,
     },
     UnSubscribe {
         component_id: u16,
     },
     Query {
         strategy: CachingStrategy,
-        sender: <At::Mpsc as MultiProducerSingleConsumer>::Sender<Response>,
+        sender: <Mpsc as MultiProducerSingleConsumer>::Sender<Response>,
         data: request_response::push_data::OperationsInput,
     },
 }
 
-pub(crate) struct CacheStruct<At>
+pub(crate) struct CacheStruct<Mpsc>
 where
-    At: AllClientTypes,
+    Mpsc: traits::MultiProducerSingleConsumer,
 {
-    sender: <At::Mpsc as MultiProducerSingleConsumer>::Sender<MessageToCache<At>>,
+    sender: <Mpsc as MultiProducerSingleConsumer>::Sender<MessageToCache<Mpsc>>,
 }
 
-impl<At: AllClientTypes> Clone for CacheStruct<At> {
+impl<Mpsc: traits::MultiProducerSingleConsumer> Clone for CacheStruct<Mpsc> {
     fn clone(&self) -> Self {
         Self {
             sender: self.sender.clone(),
@@ -74,20 +79,26 @@ impl<At: AllClientTypes> Clone for CacheStruct<At> {
     }
 }
 
-impl<At> CacheStruct<At>
+impl<Mpsc> CacheStruct<Mpsc>
 where
-    At: AllClientTypes,
+    Mpsc: traits::MultiProducerSingleConsumer,
 {
-    pub(crate) fn new(
-        receiver_to_cache: <At::Mpsc as MultiProducerSingleConsumer>::Receiver<MessageToCache<At>>,
-        sender_to_cache: <At::Mpsc as MultiProducerSingleConsumer>::Sender<MessageToCache<At>>,
-        sender_to_network: <At::Mpsc as MultiProducerSingleConsumer>::Sender<
+    pub(crate) fn new<
+        Rt: traits::Runtime,
+        Id: cases::RowId,
+        Ch: client_traits::Cache,
+        Ed: traits::Coding,
+        Rn: traits::RandomNumber,
+    >(
+        receiver_to_cache: <Mpsc as MultiProducerSingleConsumer>::Receiver<MessageToCache<Mpsc>>,
+        sender_to_cache: <Mpsc as MultiProducerSingleConsumer>::Sender<MessageToCache<Mpsc>>,
+        sender_to_network: <Mpsc as MultiProducerSingleConsumer>::Sender<
             network_actor::MessageToNetwork,
         >,
-        sender_to_error: <At::Mpsc as MultiProducerSingleConsumer>::Sender<types::HashimError>,
+        sender_to_error: <Mpsc as MultiProducerSingleConsumer>::Sender<types::HashimError>,
         is_online: Arc<RwLock<bool>>,
     ) -> Self {
-        Self::cache_actor(
+        Self::cache_actor::<Rt, Id, Ch, Ed, Rn>(
             receiver_to_cache,
             sender_to_network.clone(),
             sender_to_error.clone(),
@@ -103,8 +114,8 @@ where
         &mut self,
         strategy: CachingStrategy,
         data: request_response::push_data::OperationsInput,
-    ) -> <At::Mpsc as MultiProducerSingleConsumer>::Receiver<Response> {
-        let (sender, receiver) = At::Mpsc::channel();
+    ) -> <Mpsc as MultiProducerSingleConsumer>::Receiver<Response> {
+        let (sender, receiver) = Mpsc::channel();
 
         self.sender
             .send(MessageToCache::Query {
@@ -122,8 +133,8 @@ where
         &mut self,
         component_id: u16,
         list_of_subscribtion: &'static [types::Subscribe],
-    ) -> <At::Mpsc as MultiProducerSingleConsumer>::Receiver<()> {
-        let (sender, receiver) = At::Mpsc::channel();
+    ) -> <Mpsc as MultiProducerSingleConsumer>::Receiver<()> {
+        let (sender, receiver) = Mpsc::channel();
 
         self.sender
             .send(MessageToCache::Subscribe {
@@ -144,36 +155,42 @@ where
             .unwrap();
     }
 
-    fn cache_actor(
-        mut receiver_to_cache: <At::Mpsc as MultiProducerSingleConsumer>::Receiver<
-            MessageToCache<At>,
+    fn cache_actor<
+        Rt: traits::Runtime,
+        Id: cases::RowId,
+        Ch: client_traits::Cache,
+        Ed: traits::Coding,
+        Rn: traits::RandomNumber,
+    >(
+        mut receiver_to_cache: <Mpsc as MultiProducerSingleConsumer>::Receiver<
+            MessageToCache<Mpsc>,
         >,
-        mut sender_to_network: <At::Mpsc as MultiProducerSingleConsumer>::Sender<
+        mut sender_to_network: <Mpsc as MultiProducerSingleConsumer>::Sender<
             network_actor::MessageToNetwork,
         >,
-        mut sender_to_error: <At::Mpsc as MultiProducerSingleConsumer>::Sender<types::HashimError>,
+        mut sender_to_error: <Mpsc as MultiProducerSingleConsumer>::Sender<types::HashimError>,
         is_online: Arc<RwLock<bool>>,
     ) {
-        At::Rt::spawn_local(async move {
+        Rt::spawn_local(async move {
             let mut pool_of_senders = HashMap::<
                 u64,
-                <At::Mpsc as MultiProducerSingleConsumer>::Sender<Response>,
+                <Mpsc as MultiProducerSingleConsumer>::Sender<Response>,
             >::with_capacity(100);
             let mut pool_of_pokers = HashMap::<
                 u16,
-                <At::Mpsc as MultiProducerSingleConsumer>::Sender<()>,
+                <Mpsc as MultiProducerSingleConsumer>::Sender<()>,
             >::with_capacity(10);
             let mut pool_of_subscribes =
                 HashMap::<types::Subscribe, HashSet<u16>>::with_capacity(100);
 
-            let mut state = cache::State::<At>::new().await;
+            let mut state = cache::State::<Ch>::new::<Id>().await;
 
             loop {
                 match receiver_to_cache.recv().await.unwrap() {
                     MessageToCache::WeAreBackOnline => {
                         let operations = state.cache.get_all_txn_input().await;
 
-                        Self::prepare_txn_and_send_to_network(
+                        Self::prepare_txn_and_send_to_network::<Ch, Id, Ed>(
                             &mut sender_to_network,
                             operations,
                             &state,
@@ -181,19 +198,17 @@ where
                         .await;
                     }
                     MessageToCache::DataFromServer(raw_data) => {
-                        let message_type = match At::Ed::decode::<
-                            request_response::messages::FromServer,
-                        >(&raw_data)
-                        {
-                            Ok(message_type) => message_type,
-                            Err(_) => {
-                                sender_to_error
-                                    .send(types::HashimError::InvalidDataFormat.into())
-                                    .await
-                                    .unwrap();
-                                continue;
-                            }
-                        };
+                        let message_type =
+                            match Ed::decode::<request_response::messages::FromServer>(&raw_data) {
+                                Ok(message_type) => message_type,
+                                Err(_) => {
+                                    sender_to_error
+                                        .send(types::HashimError::InvalidDataFormat.into())
+                                        .await
+                                        .unwrap();
+                                    continue;
+                                }
+                            };
 
                         match message_type {
                             request_response::messages::FromServer::Error(err) => {
@@ -238,14 +253,14 @@ where
 
                                 for op in txns {
                                     op.operation
-                                        .run_operation_check_apply::<At>(
+                                        .run_operation_check_apply::<Id, Ch>(
                                             &mut state,
                                             &mut subs_to_poke,
                                         )
                                         .await;
                                 }
 
-                                poke_the_subs::<At>(
+                                poke_the_subs::<Mpsc>(
                                     &mut pool_of_pokers,
                                     &pool_of_subscribes,
                                     &subs_to_poke,
@@ -257,7 +272,7 @@ where
 
                                 let mut subs_to_poke = HashSet::new();
                                 collect_subs_to_poke(&mut subs_to_poke, &resource);
-                                poke_the_subs::<At>(
+                                poke_the_subs::<Mpsc>(
                                     &mut pool_of_pokers,
                                     &pool_of_subscribes,
                                     &subs_to_poke,
@@ -294,7 +309,7 @@ where
                         data,
                     } => match strategy {
                         CachingStrategy::ReadCacheOnly => {
-                            let result = data.run_operation_check::<At>(&mut state).await;
+                            let result = data.run_operation_check::<Id, Ch>(&mut state).await;
                             let _ = sender
                                 .send(Response::Data(Data {
                                     is_response_from_server: false,
@@ -305,9 +320,9 @@ where
                         }
                         CachingStrategy::ReadCacheFirst => todo!(),
                         CachingStrategy::ReadCacheAndServer => {
-                            let txn_number = At::Rn::generate();
+                            let txn_number = Rn::generate();
 
-                            let result = data.run_operation_check::<At>(&mut state).await;
+                            let result = data.run_operation_check::<Id, Ch>(&mut state).await;
 
                             let _ = sender
                                 .send(Response::Data(Data {
@@ -322,7 +337,7 @@ where
                             }];
 
                             if is_online.read() {
-                                Self::prepare_txn_and_send_to_network(
+                                Self::prepare_txn_and_send_to_network::<Ch, Id, Ed>(
                                     &mut sender_to_network,
                                     operations,
                                     &state,
@@ -340,18 +355,18 @@ where
                         CachingStrategy::WriteCacheOnly => todo!(),
                         CachingStrategy::WriteCacheFirst => todo!(),
                         CachingStrategy::WriteCacheAndServer => {
-                            let txn_number = At::Rn::generate();
+                            let txn_number = Rn::generate();
 
                             let mut subs_to_poke = HashSet::new();
                             let result = data
-                                .run_operation_check_apply_write::<At>(
+                                .run_operation_check_apply_write::<Id, Ch>(
                                     txn_number,
                                     &mut state,
                                     &mut subs_to_poke,
                                 )
                                 .await;
 
-                            poke_the_subs::<At>(
+                            poke_the_subs::<Mpsc>(
                                 &mut pool_of_pokers,
                                 &pool_of_subscribes,
                                 &subs_to_poke,
@@ -371,7 +386,7 @@ where
                             }];
 
                             if is_online.read() {
-                                Self::prepare_txn_and_send_to_network(
+                                Self::prepare_txn_and_send_to_network::<Ch, Id, Ed>(
                                     &mut sender_to_network,
                                     operations,
                                     &state,
@@ -392,14 +407,18 @@ where
         });
     }
 
-    async fn prepare_txn_and_send_to_network(
-        sender_to_network: &mut <At::Mpsc as MultiProducerSingleConsumer>::Sender<
+    async fn prepare_txn_and_send_to_network<
+        Ch: client_traits::Cache,
+        Id: cases::RowId,
+        Ed: traits::Coding,
+    >(
+        sender_to_network: &mut <Mpsc as MultiProducerSingleConsumer>::Sender<
             network_actor::MessageToNetwork,
         >,
         operations: Vec<
             request_response::push_data::Txn<request_response::push_data::OperationsInput>,
         >,
-        state: &cache::State<At>,
+        state: &cache::State<Ch>,
     ) {
         if operations.is_empty() {
             return;
@@ -425,11 +444,11 @@ where
 
         let t = request_response::messages::FromClient {
             jwts,
-            nonce: At::Id::generate(),
+            nonce: Id::generate(),
             operations: operations1,
         };
 
-        let t = At::Ed::encode(&t);
+        let t = Ed::encode(&t);
 
         sender_to_network.send(t).await.unwrap();
     }
@@ -489,8 +508,8 @@ pub(crate) fn collect_subs_to_poke(
     }
 }
 
-async fn poke_the_subs<At: AllClientTypes>(
-    pool_of_pokers: &mut HashMap<u16, <At::Mpsc as MultiProducerSingleConsumer>::Sender<()>>,
+async fn poke_the_subs<Mpsc: traits::MultiProducerSingleConsumer>(
+    pool_of_pokers: &mut HashMap<u16, <Mpsc as MultiProducerSingleConsumer>::Sender<()>>,
     pool_of_subscribes: &HashMap<types::Subscribe, HashSet<u16>>,
     subs_to_poke: &HashSet<types::Subscribe>,
 ) {
@@ -513,11 +532,11 @@ async fn poke_the_subs<At: AllClientTypes>(
     }
 }
 
-pub(crate) struct NetworkStruct<At: AllClientTypes> {
-    pub(crate) sender: <At::Mpsc as MultiProducerSingleConsumer>::Sender<MessageToCache<At>>,
+pub(crate) struct NetworkStruct<Mpsc: traits::MultiProducerSingleConsumer> {
+    pub(crate) sender: <Mpsc as MultiProducerSingleConsumer>::Sender<MessageToCache<Mpsc>>,
 }
 
-impl<At: AllClientTypes> network_actor::Network for NetworkStruct<At> {
+impl<Mpsc: traits::MultiProducerSingleConsumer> network_actor::Network for NetworkStruct<Mpsc> {
     async fn from_network_status(&mut self) {
         self.sender
             .send(MessageToCache::WeAreBackOnline)

@@ -1,88 +1,88 @@
 use crate::{
-    accounting_client::{client_traits::AllClientTypes, process_manager},
+    accounting_client::{client_traits::AllSignalTypes, process_manager},
     accounting_domain::types,
 };
 
 // model
 
 #[derive(Default)]
-pub struct Model<At: AllClientTypes> {
-    pub navigator: At::Navigator,
-    pub page_root: PageRoot<At>,
-    pub external_errors: At::StringVec,
+pub struct Model<As: AllSignalTypes> {
+    pub navigator: As::Navigator,
+    pub page_root: PageRoot<As>,
+    pub external_errors: As::StringVec,
 }
 
 #[derive(Default)]
-pub struct PageRoot<At: AllClientTypes> {
-    pub page_auth: PageAuth<At>,
-    pub page_after_auth: PageAfterAuth<At>,
+pub struct PageRoot<As: AllSignalTypes> {
+    pub page_auth: PageAuth<As>,
+    pub page_after_auth: PageAfterAuth<As>,
 }
 
 #[derive(Default)]
-pub struct PageAuth<At: AllClientTypes> {
-    pub auth_feature_state: AuthFeatureState<At>,
-    pub page_sign_up: PageSignUp<At>,
-    pub page_sign_in: PageSignIn<At>,
+pub struct PageAuth<As: AllSignalTypes> {
+    pub auth_feature_state: AuthFeatureState<As>,
+    pub page_sign_up: PageSignUp<As>,
+    pub page_sign_in: PageSignIn<As>,
 }
 
 #[derive(Default)]
-pub struct PageAfterAuth<At: AllClientTypes> {
-    pub user_id: At::String,
-    pub user_name: At::String,
+pub struct PageAfterAuth<As: AllSignalTypes> {
+    pub user_id: As::String,
+    pub user_name: As::String,
 
-    pub page_company_branch_selection: PageCompanyBranchSelection<At>,
-    pub page_home: PageHome<At>,
+    pub page_company_branch_selection: PageCompanyBranchSelection<As>,
+    pub page_home: PageHome<As>,
 }
 
 #[derive(Default)]
-pub struct PageCompanyBranchSelection<At: AllClientTypes> {
-    pub list: At::CompanyAndBranchList,
-    pub selected_company: At::OptionUuid,
+pub struct PageCompanyBranchSelection<As: AllSignalTypes> {
+    pub list: As::CompanyAndBranchList,
+    pub selected_company: As::OptionUuid,
 
-    pub page_create_company: PageCreateCompany<At>,
-    pub page_create_company_branch: PageCreateCompanyBranch<At>,
+    pub page_create_company: PageCreateCompany<As>,
+    pub page_create_company_branch: PageCreateCompanyBranch<As>,
 }
 
 #[derive(Default)]
-pub struct PageHome<At: AllClientTypes> {
-    selected_branch: At::String,
+pub struct PageHome<As: AllSignalTypes> {
+    selected_branch: As::String,
 }
 
 #[derive(Default)]
-pub struct AuthFeatureState<At: AllClientTypes> {
-    pub user_id: At::String,
-    pub user_password: At::String,
-    pub is_loading: At::Bool,
+pub struct AuthFeatureState<As: AllSignalTypes> {
+    pub user_id: As::String,
+    pub user_password: As::String,
+    pub is_loading: As::Bool,
 }
 
 #[derive(Default)]
-pub struct PageSignIn<At: AllClientTypes> {
-    pub show_dialog: At::Dialog,
-    pub user_id_error: At::String,
-    pub user_password_error: At::String,
+pub struct PageSignIn<As: AllSignalTypes> {
+    pub show_dialog: As::Dialog,
+    pub user_id_error: As::String,
+    pub user_password_error: As::String,
 }
 
 #[derive(Default)]
-pub struct PageSignUp<At: AllClientTypes> {
-    pub show_dialog: At::Dialog,
-    pub user_name: At::String,
-    pub user_id_error: At::String,
-    pub user_name_error: At::String,
+pub struct PageSignUp<As: AllSignalTypes> {
+    pub show_dialog: As::Dialog,
+    pub user_name: As::String,
+    pub user_id_error: As::String,
+    pub user_name_error: As::String,
 }
 
 #[derive(Default)]
-pub struct PageCreateCompany<At: AllClientTypes> {
-    pub company_name: At::String,
-    pub currency: At::Currency,
+pub struct PageCreateCompany<As: AllSignalTypes> {
+    pub company_name: As::String,
+    pub currency: As::Currency,
 }
 
 #[derive(Default)]
-pub struct PageCreateCompanyBranch<At: AllClientTypes> {
-    pub is_loading: At::Bool,
-    pub show_dialog: At::Dialog,
-    pub currency: At::Currency,
-    pub branch_name: At::String,
-    pub location: At::Location,
+pub struct PageCreateCompanyBranch<As: AllSignalTypes> {
+    pub is_loading: As::Bool,
+    pub show_dialog: As::Dialog,
+    pub currency: As::Currency,
+    pub branch_name: As::String,
+    pub location: As::Location,
 }
 
 // message

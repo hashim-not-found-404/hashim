@@ -1,14 +1,7 @@
 use crate::{
     accounting_client::client_types,
     accounting_domain::{cases, request_response, types},
-    utility::{traits, utils},
 };
-
-pub trait WSClient: Sized {
-    fn connect(url: &str) -> impl Future<Output = Result<Self, utils::DynamicError>>;
-    fn send_bin(&self, data: &Vec<u8>) -> impl Future<Output = Result<(), utils::DynamicError>>;
-    fn receive_bin(&self) -> impl Future<Output = Result<Vec<u8>, utils::DynamicError>>;
-}
 
 pub trait Cache: Sized {
     fn new() -> impl Future<Output = Self>;
@@ -83,18 +76,7 @@ pub trait HashimSignal<T: Default + Clone>: Default {
     fn set(&self, v: T);
 }
 
-pub trait AllClientTypes: 'static + Default + Clone {
-    type Rn: traits::RandomNumber;
-    type Rt: traits::Runtime;
-    type Id: cases::RowId;
-    type Mpsc: traits::MultiProducerSingleConsumer;
-    type Ed: traits::Coding;
-    type Rg: traits::Regex;
-
-    type Ch: Cache;
-    type Ws: WSClient;
-
-    // signals
+pub trait AllSignalTypes: 'static + Default + Clone {
     type String: HashimSignal<String>;
     type Dialog: HashimSignal<client_types::Dialog>;
     type Uuid: HashimSignal<types::UuidType>;

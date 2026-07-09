@@ -1,13 +1,13 @@
 use crate::{
     accounting_client::{
         cache, cache_actor,
-        client_traits::{AllClientTypes, Cache},
+        client_traits::{self, Cache},
     },
     accounting_domain::{
         cases::{self, MyErrorTrait},
         request_response, types,
     },
-    utility::utils::MyUpSert,
+    utility::{traits, utils::MyUpSert},
 };
 use std::collections::HashSet;
 
@@ -22,9 +22,9 @@ pub(crate) trait CacheAndServerType1: Clone {
     fn user_uuid(&self) -> Option<&types::UuidType>;
 
     type Output: CacheAndServerType2;
-    async fn state_full_operation<At: AllClientTypes>(
+    async fn state_full_operation<Id: cases::RowId, Ch: client_traits::Cache>(
         &self,
-        state: &mut cache::State<At>,
+        state: &mut cache::State<Ch>,
     ) -> Self::Output;
 }
 
@@ -38,57 +38,60 @@ pub(crate) trait ViewType2 {
 }
 
 impl request_response::push_data::OperationsInput {
-    pub(crate) async fn run_operation_check<At: AllClientTypes>(
+    pub(crate) async fn run_operation_check<Id: cases::RowId, Ch: client_traits::Cache>(
         &self,
-        state: &mut cache::State<At>,
+        state: &mut cache::State<Ch>,
     ) -> request_response::push_data::OperationsResult {
         match self {
             request_response::push_data::OperationsInput::SignUp(i) => {
-                operation_check_handler::<_, At>(i, state).await
+                operation_check_handler::<_, Id, Ch>(i, state).await
             }
             request_response::push_data::OperationsInput::SignIn(i) => {
-                operation_check_handler::<_, At>(i, state).await
+                operation_check_handler::<_, Id, Ch>(i, state).await
             }
             request_response::push_data::OperationsInput::CreateCompany(i) => {
-                operation_check_handler::<_, At>(i, state).await
+                operation_check_handler::<_, Id, Ch>(i, state).await
             }
             request_response::push_data::OperationsInput::CreateCompanyBranch(i) => {
-                operation_check_handler::<_, At>(i, state).await
+                operation_check_handler::<_, Id, Ch>(i, state).await
             }
             request_response::push_data::OperationsInput::ListCompanyAndBranch(i) => {
-                operation_check_handler::<_, At>(i, state).await
+                operation_check_handler::<_, Id, Ch>(i, state).await
             }
         }
     }
 
-    pub(crate) async fn run_operation_check_apply<At: AllClientTypes>(
+    pub(crate) async fn run_operation_check_apply<Id: cases::RowId, Ch: client_traits::Cache>(
         &self,
-        state: &mut cache::State<At>,
+        state: &mut cache::State<Ch>,
         subs_to_poke: &mut HashSet<types::Subscribe>,
     ) {
         match self {
             request_response::push_data::OperationsInput::SignUp(i) => {
-                operation_check_apply_handler::<_, At>(i, state, subs_to_poke).await
+                operation_check_apply_handler::<_, Id, Ch>(i, state, subs_to_poke).await
             }
             request_response::push_data::OperationsInput::SignIn(i) => {
-                operation_check_apply_handler::<_, At>(i, state, subs_to_poke).await
+                operation_check_apply_handler::<_, Id, Ch>(i, state, subs_to_poke).await
             }
             request_response::push_data::OperationsInput::CreateCompany(i) => {
-                operation_check_apply_handler::<_, At>(i, state, subs_to_poke).await
+                operation_check_apply_handler::<_, Id, Ch>(i, state, subs_to_poke).await
             }
             request_response::push_data::OperationsInput::CreateCompanyBranch(i) => {
-                operation_check_apply_handler::<_, At>(i, state, subs_to_poke).await
+                operation_check_apply_handler::<_, Id, Ch>(i, state, subs_to_poke).await
             }
             request_response::push_data::OperationsInput::ListCompanyAndBranch(i) => {
-                operation_check_apply_handler::<_, At>(i, state, subs_to_poke).await
+                operation_check_apply_handler::<_, Id, Ch>(i, state, subs_to_poke).await
             }
         }
     }
 
-    pub(crate) async fn run_operation_check_apply_write<At: AllClientTypes>(
+    pub(crate) async fn run_operation_check_apply_write<
+        Id: cases::RowId,
+        Ch: client_traits::Cache,
+    >(
         &self,
         txn_number: u64,
-        state: &mut cache::State<At>,
+        state: &mut cache::State<Ch>,
         subs_to_poke: &mut HashSet<types::Subscribe>,
     ) -> request_response::push_data::OperationsResult {
         state
@@ -101,19 +104,19 @@ impl request_response::push_data::OperationsInput {
 
         match self {
             request_response::push_data::OperationsInput::SignUp(i) => {
-                operation_check_apply_write_handler::<_, At>(i, state, subs_to_poke).await
+                operation_check_apply_write_handler::<_, Id, Ch>(i, state, subs_to_poke).await
             }
             request_response::push_data::OperationsInput::SignIn(i) => {
-                operation_check_apply_write_handler::<_, At>(i, state, subs_to_poke).await
+                operation_check_apply_write_handler::<_, Id, Ch>(i, state, subs_to_poke).await
             }
             request_response::push_data::OperationsInput::CreateCompany(i) => {
-                operation_check_apply_write_handler::<_, At>(i, state, subs_to_poke).await
+                operation_check_apply_write_handler::<_, Id, Ch>(i, state, subs_to_poke).await
             }
             request_response::push_data::OperationsInput::CreateCompanyBranch(i) => {
-                operation_check_apply_write_handler::<_, At>(i, state, subs_to_poke).await
+                operation_check_apply_write_handler::<_, Id, Ch>(i, state, subs_to_poke).await
             }
             request_response::push_data::OperationsInput::ListCompanyAndBranch(i) => {
-                operation_check_apply_write_handler::<_, At>(i, state, subs_to_poke).await
+                operation_check_apply_write_handler::<_, Id, Ch>(i, state, subs_to_poke).await
             }
         }
     }
@@ -155,21 +158,32 @@ impl request_response::push_data::OperationsResult {
     }
 }
 
-async fn operation_check_handler<T: CacheAndServerType1, At: AllClientTypes>(
+async fn operation_check_handler<
+    T: CacheAndServerType1,
+    Id: cases::RowId,
+    Ch: client_traits::Cache,
+>(
     input: &T,
-    state: &mut cache::State<At>,
+    state: &mut cache::State<Ch>,
 ) -> request_response::push_data::OperationsResult {
-    return input.state_full_operation::<At>(state).await.wrap_output();
+    return input
+        .state_full_operation::<Id, Ch>(state)
+        .await
+        .wrap_output();
 }
 
-async fn operation_check_apply_handler<T: CacheAndServerType1, At: AllClientTypes>(
+async fn operation_check_apply_handler<
+    T: CacheAndServerType1,
+    Id: cases::RowId,
+    Ch: client_traits::Cache,
+>(
     input: &T,
-    state: &mut cache::State<At>,
+    state: &mut cache::State<Ch>,
     subs_to_poke: &mut HashSet<types::Subscribe>,
 ) {
     apply_change(
         input
-            .state_full_operation::<At>(state)
+            .state_full_operation::<Id, Ch>(state)
             .await
             .extract_resource(),
         &mut state.state_of_pending_txn,
@@ -178,12 +192,16 @@ async fn operation_check_apply_handler<T: CacheAndServerType1, At: AllClientType
     .await;
 }
 
-async fn operation_check_apply_write_handler<T: CacheAndServerType1, At: AllClientTypes>(
+async fn operation_check_apply_write_handler<
+    T: CacheAndServerType1,
+    Id: cases::RowId,
+    Ch: client_traits::Cache,
+>(
     input: &T,
-    state: &mut cache::State<At>,
+    state: &mut cache::State<Ch>,
     subs_to_poke: &mut HashSet<types::Subscribe>,
 ) -> request_response::push_data::OperationsResult {
-    let result = input.state_full_operation::<At>(state).await;
+    let result = input.state_full_operation::<Id, Ch>(state).await;
 
     apply_change(
         result.extract_resource(),
@@ -300,13 +318,13 @@ pub(crate) mod sign_up {
         }
 
         type Output = Type3;
-        async fn state_full_operation<At: AllClientTypes>(
+        async fn state_full_operation<Id: cases::RowId, Ch: client_traits::Cache>(
             &self,
-            state: &mut cache::State<At>,
+            state: &mut cache::State<Ch>,
         ) -> Self::Output {
             let (is_new_uuid_exist, is_user_id_exist) =
                 state.read_sign_up(&self.new_uuid, &self.user_id).await;
-            let errr = self.state_full_check::<At::Id>(is_new_uuid_exist, is_user_id_exist);
+            let errr = self.state_full_check::<Id>(is_new_uuid_exist, is_user_id_exist);
             if errr.is_there_error() {
                 return Err(errr);
             }
@@ -403,9 +421,9 @@ pub(crate) mod sign_in {
 
         type Output = Type3;
 
-        async fn state_full_operation<At: AllClientTypes>(
+        async fn state_full_operation<Id: cases::RowId, Ch: client_traits::Cache>(
             &self,
-            state: &mut cache::State<At>,
+            state: &mut cache::State<Ch>,
         ) -> Self::Output {
             let user_uuid_and_is_jwt_exist = state.cache.read_sign_in(&self.user_id).await;
 
@@ -548,9 +566,9 @@ pub(crate) mod create_company {
 
         type Output = Type3;
 
-        async fn state_full_operation<At: AllClientTypes>(
+        async fn state_full_operation<Id: cases::RowId, Ch: client_traits::Cache>(
             &self,
-            state: &mut cache::State<At>,
+            state: &mut cache::State<Ch>,
         ) -> Self::Output {
             let result = self.state_less_operation();
             return Ok(result);
@@ -654,9 +672,9 @@ pub(crate) mod create_company_branch {
 
         type Output = Type3;
 
-        async fn state_full_operation<At: AllClientTypes>(
+        async fn state_full_operation<Id: cases::RowId, Ch: client_traits::Cache>(
             &self,
-            state: &mut cache::State<At>,
+            state: &mut cache::State<Ch>,
         ) -> Self::Output {
             let (user_roles, is_new_uuid_used, is_company_belong_exist, is_branch_name_used) =
                 state
@@ -668,7 +686,7 @@ pub(crate) mod create_company_branch {
                     )
                     .await;
 
-            let errr = self.state_full_check::<At::Id>(
+            let errr = self.state_full_check::<Id>(
                 &user_roles,
                 is_new_uuid_used,
                 is_company_belong_exist,
@@ -852,9 +870,9 @@ pub(crate) mod list_company_and_branch {
 
         type Output = Type3;
 
-        async fn state_full_operation<At: AllClientTypes>(
+        async fn state_full_operation<Id: cases::RowId, Ch: client_traits::Cache>(
             &self,
-            state: &mut cache::State<At>,
+            state: &mut cache::State<Ch>,
         ) -> Self::Output {
             let result = state.read_list_company_and_branch(&self.user_uuid).await;
             return Ok(cases::list_company_and_branch::Ok {
