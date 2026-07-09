@@ -12,7 +12,7 @@ pub trait HashedPassword {
     fn sign_in(password: &String, password_hash: &String) -> bool;
 }
 
-pub trait JWT {
+pub trait JWT: 'static {
     fn new() -> Self;
     fn sign(&self, user_uuid: &types::UuidType) -> types::JsonWebTokenType;
     fn validate(&self, token: types::JsonWebTokenType) -> Option<types::UuidType>;

@@ -1,17 +1,11 @@
 use crate::{
     accounting_domain::{
-        cases::{JWT, RowId},
+        cases::{self, RowId},
         request_response, types,
     },
-    server::{
-        server_traits::{self, DBClient, Database, WSServer},
-        server_types,
-        use_cases::ServerOperations,
-    },
+    server::{server_traits::DBClient, server_types, use_cases::ServerOperations},
     utility::{
-        traits::{
-            self, Coding, MultiProducerSingleConsumer, RandomNumber, Receiver, Runtime, Sender,
-        },
+        traits::{self, Receiver, Sender},
         utils::{self, HashMapWithHashMapValue, HashMapWithVectorValue},
     },
 };
@@ -21,34 +15,68 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-pub struct ServerMethods<At: server_traits::AllServerTypes> {
-    database: At::Db,
-    jwt: At::Jwt,
-    pub(crate) sender_to_broker:
-        <At::Mpsc as traits::MultiProducerSingleConsumer>::Sender<MessageToBroker<At::Mpsc>>,
+pub trait Database: 'static {
+    type Client: DBClient;
+    fn new() -> impl Future<Output = Self>;
+    fn get_client(&self) -> impl Future<Output = Result<Self::Client, utils::DynamicError>>;
 }
 
-impl<At: server_traits::AllServerTypes> ServerMethods<At> {
-    pub async fn new() -> Self {
-        let (sender_to_broker, receiver_to_broker) = At::Mpsc::channel();
-        Self::broker_actor(receiver_to_broker);
+pub enum WSMessage {
+    Binary(Vec<u8>),
+    Close,
+}
+
+pub trait WSServer: 'static {
+    fn send_bin(&mut self, bin: Vec<u8>) -> impl Future<Output = Result<(), utils::DynamicError>>;
+    fn receive(&mut self) -> impl Future<Output = Result<WSMessage, utils::DynamicError>>;
+    fn close(self) -> impl Future<Output = Result<(), utils::DynamicError>>;
+}
+
+pub struct ServerMethods<Mpsc: traits::MultiProducerSingleConsumer, Jwt: cases::JWT, Db: Database> {
+    database: Db,
+    jwt: Jwt,
+    pub(crate) sender_to_broker:
+        <Mpsc as traits::MultiProducerSingleConsumer>::Sender<MessageToBroker<Mpsc>>,
+}
+
+impl<
+    Mpsc: traits::MultiProducerSingleConsumer,
+    Jwt: cases::JWT,
+    Db: Database<Client = Cli>,
+    Cli: DBClient,
+> ServerMethods<Mpsc, Jwt, Db>
+{
+    pub async fn new<Rt: traits::Runtime>() -> Self {
+        let (sender_to_broker, receiver_to_broker) = Mpsc::channel();
+        Self::broker_actor::<Rt>(receiver_to_broker);
 
         Self {
-            database: At::Db::new().await,
-            jwt: At::Jwt::new(),
+            database: Db::new().await,
+            jwt: Jwt::new(),
             sender_to_broker,
         }
     }
 
-    pub fn server_actor(self: Arc<Self>, mut session: At::Ws) {
-        At::Rt::spawn_local(async move {
+    pub fn server_actor<
+        Rt: traits::Runtime,
+        Ws: WSServer,
+        Rn: traits::RandomNumber,
+        Ed: traits::Coding,
+        Id: cases::RowId,
+        Rg: traits::Regex,
+        Auth: cases::HashedPassword,
+    >(
+        self: Arc<Self>,
+        mut session: Ws,
+    ) {
+        Rt::spawn_local(async move {
             let mut sender_to_broker = self.sender_to_broker.clone();
             let (sender_to_server, mut receiver_to_server) =
-                At::Mpsc::channel::<Vec<types::ResourceInfo>>();
-            let connection_id = At::Rn::generate();
+                Mpsc::channel::<Vec<types::ResourceInfo>>();
+            let connection_id = Rn::generate();
 
             loop {
-                let result = At::Rt::select(session.receive(), receiver_to_server.recv()).await;
+                let result = Rt::select(session.receive(), receiver_to_server.recv()).await;
                 match result {
                     traits::Either::One(msg) => {
                         let msg = match msg {
@@ -57,16 +85,15 @@ impl<At: server_traits::AllServerTypes> ServerMethods<At> {
                         };
 
                         match msg {
-                            server_traits::WSMessage::Close => break,
-                            server_traits::WSMessage::Binary(received_data) => {
-                                let input = match At::Ed::decode::<
-                                    request_response::messages::FromClient,
-                                >(&received_data)
-                                {
+                            WSMessage::Close => break,
+                            WSMessage::Binary(received_data) => {
+                                let input = match Ed::decode::<request_response::messages::FromClient>(
+                                    &received_data,
+                                ) {
                                     Ok(ok) => ok,
                                     Err(_) => {
                                         if session
-                                            .send_bin(At::Ed::encode(
+                                            .send_bin(Ed::encode(
                                                 &request_response::messages::FromServer::Error(
                                                     types::HashimError::InvalidDataFormat,
                                                 ),
@@ -84,7 +111,7 @@ impl<At: server_traits::AllServerTypes> ServerMethods<At> {
                                     Ok(ok) => ok,
                                     Err(_) => {
                                         if session
-                                            .send_bin(At::Ed::encode(
+                                            .send_bin(Ed::encode(
                                                 &request_response::messages::FromServer::Error(
                                                     types::HashimError::InternalServerError,
                                                 ),
@@ -100,7 +127,7 @@ impl<At: server_traits::AllServerTypes> ServerMethods<At> {
 
                                 dbg!(&input);
                                 let mut side_effects = server_types::SideEffects::default();
-                                let output = push_data::<At>(
+                                let output = push_data::<Rn, Id, Rg, Auth, Jwt, Cli>(
                                     &input,
                                     &mut side_effects,
                                     &mut client,
@@ -112,7 +139,7 @@ impl<At: server_traits::AllServerTypes> ServerMethods<At> {
                                 match output {
                                     Ok(ok) => {
                                         if session
-                                            .send_bin(At::Ed::encode(
+                                            .send_bin(Ed::encode(
                                                 &request_response::messages::FromServer::PushData(
                                                     ok,
                                                 ),
@@ -125,7 +152,7 @@ impl<At: server_traits::AllServerTypes> ServerMethods<At> {
                                     }
                                     Err(_) => {
                                         if session
-                                            .send_bin(At::Ed::encode(
+                                            .send_bin(Ed::encode(
                                                 &request_response::messages::FromServer::Error(
                                                     types::HashimError::InternalServerError,
                                                 ),
@@ -139,7 +166,7 @@ impl<At: server_traits::AllServerTypes> ServerMethods<At> {
                                 }
 
                                 if !side_effects.users_to_resubscribe.is_empty() {
-                                    let subs = match get_table_of_subscribed_data::<At>(
+                                    let subs = match get_table_of_subscribed_data::<Cli>(
                                         &mut client,
                                         &side_effects.users_to_resubscribe,
                                     )
@@ -148,7 +175,7 @@ impl<At: server_traits::AllServerTypes> ServerMethods<At> {
                                         Ok(ok) => ok,
                                         Err(_) => {
                                             if session
-                                                .send_bin(At::Ed::encode(
+                                                .send_bin(Ed::encode(
                                                     &request_response::messages::FromServer::Error(
                                                         types::HashimError::InternalServerError,
                                                     ),
@@ -193,7 +220,7 @@ impl<At: server_traits::AllServerTypes> ServerMethods<At> {
                     traits::Either::Two(wraped_resource) => {
                         let resource = wraped_resource.unwrap();
                         if session
-                            .send_bin(At::Ed::encode(
+                            .send_bin(Ed::encode(
                                 &request_response::messages::FromServer::Resources(resource),
                             ))
                             .await
@@ -214,15 +241,15 @@ impl<At: server_traits::AllServerTypes> ServerMethods<At> {
         });
     }
 
-    pub(crate) fn broker_actor(
-        mut receiver_to_broker: <At::Mpsc as traits::MultiProducerSingleConsumer>::Receiver<
-            MessageToBroker<At::Mpsc>,
+    pub(crate) fn broker_actor<Rt: traits::Runtime>(
+        mut receiver_to_broker: <Mpsc as traits::MultiProducerSingleConsumer>::Receiver<
+            MessageToBroker<Mpsc>,
         >,
     ) {
-        At::Rt::spawn_local(async move {
+        Rt::spawn_local(async move {
             let mut pool_of_pubsub_for_company: UserSubscribes = HashMap::with_capacity(1000);
             let mut pool_of_pubsub_for_branch: UserSubscribes = HashMap::with_capacity(10000);
-            let mut pool_of_server_facad_channels: UserSenders<At::Mpsc> =
+            let mut pool_of_server_facad_channels: UserSenders<Mpsc> =
                 HashMap::with_capacity(10000);
 
             loop {
@@ -324,11 +351,18 @@ impl<At: server_traits::AllServerTypes> ServerMethods<At> {
     }
 }
 
-async fn push_data<At: server_traits::AllServerTypes>(
+async fn push_data<
+    Rn: traits::RandomNumber,
+    Id: cases::RowId,
+    Rg: traits::Regex,
+    Auth: cases::HashedPassword,
+    Jwt: cases::JWT,
+    Cli: DBClient,
+>(
     input: &request_response::push_data::Input,
     side_effects: &mut server_types::SideEffects,
-    client: &mut At::Cli,
-    jwt: &At::Jwt,
+    client: &mut Cli,
+    jwt: &Jwt,
 ) -> Result<request_response::push_data::MyResult, utils::DynamicError> {
     let mut the_return_result = request_response::push_data::MyResult {
         jwts: Vec::with_capacity(input.jwts.len()),
@@ -351,14 +385,14 @@ async fn push_data<At: server_traits::AllServerTypes>(
         }
     }
 
-    if !At::Id::validate(&input.nonce) {
+    if !Id::validate(&input.nonce) {
         the_return_result.nonce = Err(types::NonceError::Invalid);
         return Ok(the_return_result);
     };
 
     let is_nonce_used = client.write_nonce_if_not_used(&input.nonce).await?;
 
-    if !check_nonce_if_valid::<At::Id>(&input.nonce, is_nonce_used) {
+    if !check_nonce_if_valid::<Id>(&input.nonce, is_nonce_used) {
         the_return_result.nonce = Err(types::NonceError::Invalid);
     }
 
@@ -371,35 +405,35 @@ async fn push_data<At: server_traits::AllServerTypes>(
             request_response::push_data::OperationsInput::SignUp(input) => {
                 request_response::push_data::OperationsResult::SignUp(
                     input
-                        .handle_operation::<At>(side_effects, client, &jwt)
+                        .handle_operation::<Rn, Id, Rg, Auth, Jwt, Cli>(side_effects, client, &jwt)
                         .await?,
                 )
             }
             request_response::push_data::OperationsInput::SignIn(input) => {
                 request_response::push_data::OperationsResult::SignIn(
                     input
-                        .handle_operation::<At>(side_effects, client, &jwt)
+                        .handle_operation::<Rn, Id, Rg, Auth, Jwt, Cli>(side_effects, client, &jwt)
                         .await?,
                 )
             }
             request_response::push_data::OperationsInput::CreateCompany(input) => {
                 request_response::push_data::OperationsResult::CreateCompany(
                     input
-                        .handle_operation::<At>(side_effects, client, &jwt)
+                        .handle_operation::<Rn, Id, Rg, Auth, Jwt, Cli>(side_effects, client, &jwt)
                         .await?,
                 )
             }
             request_response::push_data::OperationsInput::CreateCompanyBranch(input) => {
                 request_response::push_data::OperationsResult::CreateCompanyBranch(
                     input
-                        .handle_operation::<At>(side_effects, client, &jwt)
+                        .handle_operation::<Rn, Id, Rg, Auth, Jwt, Cli>(side_effects, client, &jwt)
                         .await?,
                 )
             }
             request_response::push_data::OperationsInput::ListCompanyAndBranch(input) => {
                 request_response::push_data::OperationsResult::ListCompanyAndBranch(
                     input
-                        .handle_operation::<At>(side_effects, client, &jwt)
+                        .handle_operation::<Rn, Id, Rg, Auth, Jwt, Cli>(side_effects, client, &jwt)
                         .await?,
                 )
             }
@@ -448,8 +482,8 @@ fn check_nonce_if_valid<Id: RowId>(nonce: &types::UuidType, is_used: bool) -> bo
     true
 }
 
-async fn get_table_of_subscribed_data<At: server_traits::AllServerTypes>(
-    client: &mut At::Cli,
+async fn get_table_of_subscribed_data<Cli: DBClient>(
+    client: &mut Cli,
     users_uuids: &HashSet<types::UuidType>,
 ) -> Result<AllSubscribes, utils::DynamicError> {
     let roles = client.read_roles_for_user(users_uuids).await?;

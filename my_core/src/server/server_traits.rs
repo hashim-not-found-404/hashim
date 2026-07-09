@@ -1,7 +1,7 @@
 use crate::{
     accounting_domain::{cases, types},
     server::server_types,
-    utility::{traits, utils},
+    utility::utils,
 };
 use std::collections::HashSet;
 
@@ -103,40 +103,4 @@ pub trait DBClient {
             utils::DynamicError,
         >,
     >;
-}
-
-pub trait Database {
-    type Client: DBClient;
-    fn new() -> impl Future<Output = Self>;
-    fn get_client(&self) -> impl Future<Output = Result<Self::Client, utils::DynamicError>>;
-}
-
-pub enum WSMessage {
-    Binary(Vec<u8>),
-    Close,
-}
-
-pub trait WSServer {
-    fn send_bin(&mut self, bin: Vec<u8>) -> impl Future<Output = Result<(), utils::DynamicError>>;
-    fn receive(&mut self) -> impl Future<Output = Result<WSMessage, utils::DynamicError>>;
-    fn close(self) -> impl Future<Output = Result<(), utils::DynamicError>>;
-}
-
-pub trait AllServerTypes: 'static
-where
-    for<'a> <Self::Cli as DBClient>::Txn<'a>: DBTransaction,
-{
-    type Rn: traits::RandomNumber;
-    type Rt: traits::Runtime;
-    type Id: cases::RowId;
-    type Mpsc: traits::MultiProducerSingleConsumer;
-    type Ed: traits::Coding;
-    type Rg: traits::Regex;
-
-    type Auth: cases::HashedPassword;
-    type Jwt: cases::JWT;
-
-    type Db: Database<Client = Self::Cli>;
-    type Cli: DBClient;
-    type Ws: WSServer;
 }

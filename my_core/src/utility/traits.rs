@@ -59,7 +59,7 @@ pub trait Receiver<T> {
     fn recv(&mut self) -> impl Future<Output = Result<T, utils::DynamicError>>;
 }
 
-pub trait MultiProducerSingleConsumer {
+pub trait MultiProducerSingleConsumer: 'static {
     type Sender<T>: Sender<T>;
     type Receiver<T>: Receiver<T>;
     fn channel<T>() -> (Self::Sender<T>, Self::Receiver<T>);
