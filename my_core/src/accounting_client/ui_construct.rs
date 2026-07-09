@@ -16,7 +16,7 @@ pub fn new<
     Rg: traits::Regex,
     Ch: client_traits::Cache,
     Ws: network_actor::WSClient,
-    As: client_traits::AllSignalTypes,
+    As: ui_model::AllSignalTypes,
 >(
     model: &'static ui_model::Model<As>,
 ) -> ui_effect::Commander<Mpsc> {

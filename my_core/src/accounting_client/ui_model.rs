@@ -1,7 +1,26 @@
-use crate::{
-    accounting_client::{client_traits::AllSignalTypes, process_manager},
-    accounting_domain::types,
-};
+use crate::accounting_domain::types;
+
+pub trait HashimSignal<T: Default + Clone>: Default {
+    fn reset(&self) {
+        self.set(T::default());
+    }
+    fn read(&self) -> T;
+    fn set(&self, v: T);
+}
+
+pub trait AllSignalTypes: 'static + Default + Clone {
+    type String: HashimSignal<String>;
+    type Dialog: HashimSignal<Dialog>;
+    type Uuid: HashimSignal<types::UuidType>;
+    type OptionUuid: HashimSignal<Option<types::UuidType>>;
+    type Bool: HashimSignal<bool>;
+    type StringVec: HashimSignal<String>;
+    type Currency: HashimSignal<types::Currency>;
+    type Location: HashimSignal<types::Location>;
+    type CompanyAndBranchList: HashimSignal<Vec<types::Company>>;
+
+    type Navigator: HashimSignal<Navigator>;
+}
 
 // model
 
@@ -87,6 +106,12 @@ pub struct PageCreateCompanyBranch<As: AllSignalTypes> {
 
 // message
 
+#[derive(Debug, Clone, Copy)]
+pub enum UserConsent {
+    WaitForServerResponse,
+    DontWaitForServerResponse,
+}
+
 #[derive(Debug)]
 pub enum Message {
     CloseError,
@@ -101,7 +126,7 @@ pub enum Message {
 #[derive(Debug)]
 pub enum SignUp {
     Submit,
-    Consent(process_manager::UserConsent),
+    Consent(UserConsent),
     UserName(String),
     UserId(String),
     Password(String),
@@ -110,7 +135,7 @@ pub enum SignUp {
 #[derive(Debug)]
 pub enum SignIn {
     Submit,
-    Consent(process_manager::UserConsent),
+    Consent(UserConsent),
     UserId(String),
     Password(String),
 }
@@ -136,8 +161,46 @@ pub enum CreateCompany {
 #[derive(Debug)]
 pub enum CreateCompanyBranch {
     Submit,
-    Consent(process_manager::UserConsent),
+    Consent(UserConsent),
     Close,
     Name(String),
     Currency(String),
+}
+
+// navigator types
+
+#[derive(Clone)]
+pub enum Navigator {
+    Auth(Auth),
+    CompanyBranchSelection(CompanyBranchSelection),
+    Home,
+}
+
+#[derive(Clone)]
+pub enum Auth {
+    SignIn,
+    SignUp,
+}
+
+#[derive(Clone)]
+pub enum CompanyBranchSelection {
+    None,
+    CreateCompany,
+    CreateCompanyBranch,
+}
+
+impl Default for Navigator {
+    fn default() -> Self {
+        Self::Auth(Auth::SignIn)
+    }
+}
+
+// helper types
+
+#[derive(Default, Clone, PartialEq)]
+pub enum Dialog {
+    #[default]
+    Hide,
+    Show,
+    Error,
 }

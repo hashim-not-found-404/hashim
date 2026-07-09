@@ -1,8 +1,7 @@
 use crate::{
     accounting_client::{
-        cache_actor,
-        client_traits::{self, HashimSignal},
-        client_types, process_manager, ui_model,
+        cache_actor, process_manager, ui_model,
+        ui_model::HashimSignal,
         use_cases::{self, ViewType1, ViewType2},
     },
     accounting_domain::{
@@ -25,7 +24,7 @@ use std::{
 
 pub(crate) struct CommanderLocalState<
     Mpsc: traits::MultiProducerSingleConsumer,
-    As: client_traits::AllSignalTypes,
+    As: ui_model::AllSignalTypes,
 > {
     pub(crate) sender_to_commander:
         Mutex<<Mpsc as MultiProducerSingleConsumer>::Sender<ui_model::Message>>,
@@ -39,7 +38,7 @@ pub(crate) struct CommanderLocalState<
     pub(crate) aborter_to_company_and_branch_listener: Mutex<Option<Box<dyn FnOnce()>>>,
 }
 
-impl<Mpsc: traits::MultiProducerSingleConsumer, As: client_traits::AllSignalTypes>
+impl<Mpsc: traits::MultiProducerSingleConsumer, As: ui_model::AllSignalTypes>
     CommanderLocalState<Mpsc, As>
 {
     pub(crate) fn new(
@@ -65,7 +64,7 @@ pub(crate) trait Mvu {
         Id: cases::RowId,
         Mpsc: traits::MultiProducerSingleConsumer,
         Rg: traits::Regex,
-        As: client_traits::AllSignalTypes,
+        As: ui_model::AllSignalTypes,
     >(
         self,
         model: &'static ui_model::Model<As>,
@@ -84,7 +83,7 @@ pub(crate) mod sign_up {
             Id: cases::RowId,
             Mpsc: traits::MultiProducerSingleConsumer,
             Rg: traits::Regex,
-            As: client_traits::AllSignalTypes,
+            As: ui_model::AllSignalTypes,
         >(
             self,
             model: &'static ui_model::Model<As>,
@@ -135,7 +134,7 @@ pub(crate) mod sign_up {
         Id: cases::RowId,
         Mpsc: traits::MultiProducerSingleConsumer,
         Rg: traits::Regex,
-        As: client_traits::AllSignalTypes,
+        As: ui_model::AllSignalTypes,
     >(
         model: &'static ui_model::Model<As>,
         mut cache: cache_actor::CacheStruct<Mpsc>,
@@ -272,7 +271,7 @@ pub(crate) mod sign_up {
         Id: cases::RowId,
         Mpsc: traits::MultiProducerSingleConsumer,
         Rg: traits::Regex,
-        As: client_traits::AllSignalTypes,
+        As: ui_model::AllSignalTypes,
     >(
         model: &'static ui_model::Model<As>,
         mut cache: cache_actor::CacheStruct<Mpsc>,
@@ -324,7 +323,7 @@ pub(crate) mod sign_up {
         Id: cases::RowId,
         Mpsc: traits::MultiProducerSingleConsumer,
         Rg: traits::Regex,
-        As: client_traits::AllSignalTypes,
+        As: ui_model::AllSignalTypes,
     >(
         model: &ui_model::Model<As>,
         commander_local_state: Arc<CommanderLocalState<Mpsc, As>>,
@@ -357,7 +356,7 @@ pub(crate) mod sign_in {
             Id: cases::RowId,
             Mpsc: traits::MultiProducerSingleConsumer,
             Rg: traits::Regex,
-            As: client_traits::AllSignalTypes,
+            As: ui_model::AllSignalTypes,
         >(
             self,
             model: &'static ui_model::Model<As>,
@@ -403,7 +402,7 @@ pub(crate) mod sign_in {
         Id: cases::RowId,
         Mpsc: traits::MultiProducerSingleConsumer,
         Rg: traits::Regex,
-        As: client_traits::AllSignalTypes,
+        As: ui_model::AllSignalTypes,
     >(
         model: &'static ui_model::Model<As>,
         mut cache: cache_actor::CacheStruct<Mpsc>,
@@ -508,7 +507,7 @@ pub(crate) mod sign_in {
 
                         model.page_root.page_after_auth.user_id.set(user_id);
                     }
-                    None => local_state.show_dialog.set(client_types::Dialog::Error),
+                    None => local_state.show_dialog.set(ui_model::Dialog::Error),
                 }
             }
             process_manager::ProceedResult::No => {}
@@ -524,7 +523,7 @@ pub(crate) mod sign_in {
         Id: cases::RowId,
         Mpsc: traits::MultiProducerSingleConsumer,
         Rg: traits::Regex,
-        As: client_traits::AllSignalTypes,
+        As: ui_model::AllSignalTypes,
     >(
         model: &'static ui_model::Model<As>,
         mut cache: cache_actor::CacheStruct<Mpsc>,
@@ -567,7 +566,7 @@ pub(crate) mod sign_in {
         Id: cases::RowId,
         Mpsc: traits::MultiProducerSingleConsumer,
         Rg: traits::Regex,
-        As: client_traits::AllSignalTypes,
+        As: ui_model::AllSignalTypes,
     >(
         model: &ui_model::Model<As>,
         commander_local_state: Arc<CommanderLocalState<Mpsc, As>>,
@@ -609,7 +608,7 @@ pub(crate) mod company_and_branch_selection {
             Id: cases::RowId,
             Mpsc: traits::MultiProducerSingleConsumer,
             Rg: traits::Regex,
-            As: client_traits::AllSignalTypes,
+            As: ui_model::AllSignalTypes,
         >(
             self,
             model: &'static ui_model::Model<As>,
@@ -620,8 +619,8 @@ pub(crate) mod company_and_branch_selection {
                 Self::Subscribe => {
                     model
                         .navigator
-                        .set(client_types::Navigator::CompanyBranchSelection(
-                            client_types::CompanyBranchSelection::None,
+                        .set(ui_model::Navigator::CompanyBranchSelection(
+                            ui_model::CompanyBranchSelection::None,
                         ));
 
                     handle_list_company_and_branch::<Rn, Rt, Id, Mpsc, Rg, As>(
@@ -656,15 +655,15 @@ pub(crate) mod company_and_branch_selection {
                 Self::ShowCreateCompany => {
                     model
                         .navigator
-                        .set(client_types::Navigator::CompanyBranchSelection(
-                            client_types::CompanyBranchSelection::CreateCompany,
+                        .set(ui_model::Navigator::CompanyBranchSelection(
+                            ui_model::CompanyBranchSelection::CreateCompany,
                         ));
                 }
                 Self::ShowCreateCompanyBranch => {
                     model
                         .navigator
-                        .set(client_types::Navigator::CompanyBranchSelection(
-                            client_types::CompanyBranchSelection::CreateCompanyBranch,
+                        .set(ui_model::Navigator::CompanyBranchSelection(
+                            ui_model::CompanyBranchSelection::CreateCompanyBranch,
                         ));
                 }
                 Self::SelectedCompany(i) => {
@@ -698,7 +697,7 @@ pub(crate) mod company_and_branch_selection {
         Id: cases::RowId,
         Mpsc: traits::MultiProducerSingleConsumer,
         Rg: traits::Regex,
-        As: client_traits::AllSignalTypes,
+        As: ui_model::AllSignalTypes,
     >(
         model: &'static ui_model::Model<As>,
         mut cache: cache_actor::CacheStruct<Mpsc>,
@@ -751,7 +750,7 @@ pub(crate) mod company_and_branch_selection {
                     Err(_) => {
                         model
                             .navigator
-                            .set(client_types::Navigator::Auth(client_types::Auth::SignIn));
+                            .set(ui_model::Navigator::Auth(ui_model::Auth::SignIn));
                         break;
                     }
                 };
@@ -774,7 +773,7 @@ pub(crate) mod company_and_branch_selection {
         Id: cases::RowId,
         Mpsc: traits::MultiProducerSingleConsumer,
         Rg: traits::Regex,
-        As: client_traits::AllSignalTypes,
+        As: ui_model::AllSignalTypes,
     >(
         model: &'static ui_model::Model<As>,
         mut cache: cache_actor::CacheStruct<Mpsc>,
@@ -808,7 +807,7 @@ pub(crate) mod company_and_branch_selection {
                 Err(_) => {
                     model
                         .navigator
-                        .set(client_types::Navigator::Auth(client_types::Auth::SignIn));
+                        .set(ui_model::Navigator::Auth(ui_model::Auth::SignIn));
                     break;
                 }
             };
@@ -826,7 +825,7 @@ pub(crate) mod create_company {
             Id: cases::RowId,
             Mpsc: traits::MultiProducerSingleConsumer,
             Rg: traits::Regex,
-            As: client_traits::AllSignalTypes,
+            As: ui_model::AllSignalTypes,
         >(
             self,
             model: &'static ui_model::Model<As>,
@@ -859,7 +858,7 @@ pub(crate) mod create_company {
         Id: cases::RowId,
         Mpsc: traits::MultiProducerSingleConsumer,
         Rg: traits::Regex,
-        As: client_traits::AllSignalTypes,
+        As: ui_model::AllSignalTypes,
     >(
         model: &'static ui_model::Model<As>,
     ) {
@@ -874,8 +873,8 @@ pub(crate) mod create_company {
 
         model
             .navigator
-            .set(client_types::Navigator::CompanyBranchSelection(
-                client_types::CompanyBranchSelection::None,
+            .set(ui_model::Navigator::CompanyBranchSelection(
+                ui_model::CompanyBranchSelection::None,
             ));
     }
 
@@ -885,7 +884,7 @@ pub(crate) mod create_company {
         Id: cases::RowId,
         Mpsc: traits::MultiProducerSingleConsumer,
         Rg: traits::Regex,
-        As: client_traits::AllSignalTypes,
+        As: ui_model::AllSignalTypes,
     >(
         model: &'static ui_model::Model<As>,
         mut cache: cache_actor::CacheStruct<Mpsc>,
@@ -927,7 +926,7 @@ pub(crate) mod create_company_branch {
             Id: cases::RowId,
             Mpsc: traits::MultiProducerSingleConsumer,
             Rg: traits::Regex,
-            As: client_traits::AllSignalTypes,
+            As: ui_model::AllSignalTypes,
         >(
             self,
             model: &'static ui_model::Model<As>,
@@ -980,7 +979,7 @@ pub(crate) mod create_company_branch {
         Id: cases::RowId,
         Mpsc: traits::MultiProducerSingleConsumer,
         Rg: traits::Regex,
-        As: client_traits::AllSignalTypes,
+        As: ui_model::AllSignalTypes,
     >(
         model: &'static ui_model::Model<As>,
         mut cache: cache_actor::CacheStruct<Mpsc>,
@@ -1102,7 +1101,7 @@ pub(crate) mod create_company_branch {
         Id: cases::RowId,
         Mpsc: traits::MultiProducerSingleConsumer,
         Rg: traits::Regex,
-        As: client_traits::AllSignalTypes,
+        As: ui_model::AllSignalTypes,
     >(
         model: &'static ui_model::Model<As>,
         mut cache: cache_actor::CacheStruct<Mpsc>,
@@ -1161,7 +1160,7 @@ pub(crate) mod create_company_branch {
         Id: cases::RowId,
         Mpsc: traits::MultiProducerSingleConsumer,
         Rg: traits::Regex,
-        As: client_traits::AllSignalTypes,
+        As: ui_model::AllSignalTypes,
     >(
         model: &'static ui_model::Model<As>,
     ) {
@@ -1171,7 +1170,7 @@ pub(crate) mod create_company_branch {
             .page_company_branch_selection
             .page_create_company_branch;
 
-        if page_create_company_branch.show_dialog.read() == client_types::Dialog::Show {
+        if page_create_company_branch.show_dialog.read() == ui_model::Dialog::Show {
             return;
         }
 
@@ -1185,8 +1184,8 @@ pub(crate) mod create_company_branch {
 
         model
             .navigator
-            .set(client_types::Navigator::CompanyBranchSelection(
-                client_types::CompanyBranchSelection::None,
+            .set(ui_model::Navigator::CompanyBranchSelection(
+                ui_model::CompanyBranchSelection::None,
             ));
     }
 }

@@ -1,8 +1,5 @@
 use crate::{
-    accounting_client::{
-        client_traits::{self, HashimSignal},
-        client_types,
-    },
+    accounting_client::ui_model::{self, HashimSignal},
     utility::traits::{self, JoinHandle, MultiProducerSingleConsumer, Receiver, Runtime, Sender},
 };
 use std::{collections::HashMap, hash::Hash, time::Duration};
@@ -14,8 +11,7 @@ pub(crate) enum ProcessName {
     CreateCompanyBranch,
 }
 
-pub(crate) enum Event<Mpsc: traits::MultiProducerSingleConsumer, As: client_traits::AllSignalTypes>
-{
+pub(crate) enum Event<Mpsc: traits::MultiProducerSingleConsumer, As: ui_model::AllSignalTypes> {
     Subscribe {
         sender: <Mpsc as MultiProducerSingleConsumer>::Sender<ProceedResult>,
         dialog: &'static As::Dialog,
@@ -30,11 +26,11 @@ pub(crate) enum Event<Mpsc: traits::MultiProducerSingleConsumer, As: client_trai
 
 pub(crate) enum MessageToProcessManager<
     Mpsc: traits::MultiProducerSingleConsumer,
-    As: client_traits::AllSignalTypes,
+    As: ui_model::AllSignalTypes,
 > {
     FromUser {
         process_name: ProcessName,
-        consent: UserConsent,
+        consent: ui_model::UserConsent,
     },
     FromProcess {
         process_name: ProcessName,
@@ -49,12 +45,6 @@ pub(crate) enum ProceedResult {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub enum UserConsent {
-    WaitForServerResponse,
-    DontWaitForServerResponse,
-}
-
-#[derive(Debug, Clone, Copy)]
 pub(crate) enum IsProceed {
     Wait,
     Yes,
@@ -64,23 +54,23 @@ pub(crate) enum IsProceed {
 pub(crate) fn is_proceed(
     is_ok: bool,
     is_response_from_server: bool,
-    is_user_want_to_proceed: UserConsent,
+    is_user_want_to_proceed: ui_model::UserConsent,
 ) -> IsProceed {
     match (is_response_from_server, is_ok, is_user_want_to_proceed) {
-        (true, true, UserConsent::WaitForServerResponse) => IsProceed::Yes,
-        (true, true, UserConsent::DontWaitForServerResponse) => IsProceed::Yes,
-        (true, false, UserConsent::WaitForServerResponse) => IsProceed::No,
-        (true, false, UserConsent::DontWaitForServerResponse) => IsProceed::No,
-        (false, true, UserConsent::WaitForServerResponse) => IsProceed::Wait,
-        (false, true, UserConsent::DontWaitForServerResponse) => IsProceed::Yes,
-        (false, false, UserConsent::WaitForServerResponse) => IsProceed::Wait,
-        (false, false, UserConsent::DontWaitForServerResponse) => IsProceed::Yes,
+        (true, true, ui_model::UserConsent::WaitForServerResponse) => IsProceed::Yes,
+        (true, true, ui_model::UserConsent::DontWaitForServerResponse) => IsProceed::Yes,
+        (true, false, ui_model::UserConsent::WaitForServerResponse) => IsProceed::No,
+        (true, false, ui_model::UserConsent::DontWaitForServerResponse) => IsProceed::No,
+        (false, true, ui_model::UserConsent::WaitForServerResponse) => IsProceed::Wait,
+        (false, true, ui_model::UserConsent::DontWaitForServerResponse) => IsProceed::Yes,
+        (false, false, ui_model::UserConsent::WaitForServerResponse) => IsProceed::Wait,
+        (false, false, ui_model::UserConsent::DontWaitForServerResponse) => IsProceed::Yes,
     }
 }
 
 pub(crate) fn process_manager_actor<
     Mpsc: traits::MultiProducerSingleConsumer,
-    As: client_traits::AllSignalTypes,
+    As: ui_model::AllSignalTypes,
     Rt: traits::Runtime,
 >() -> <Mpsc as MultiProducerSingleConsumer>::Sender<MessageToProcessManager<Mpsc, As>> {
     let (sender, mut receiver) = Mpsc::channel();
@@ -89,14 +79,14 @@ pub(crate) fn process_manager_actor<
         struct ProcessInfo<
             Rt: traits::Runtime,
             Mpsc: traits::MultiProducerSingleConsumer,
-            As: client_traits::AllSignalTypes,
+            As: ui_model::AllSignalTypes,
         > {
             sender: <Mpsc as MultiProducerSingleConsumer>::Sender<ProceedResult>,
             dialog: &'static As::Dialog,
             timer_handle: <Rt as Runtime>::JoinHandle<()>,
             is_response_from_server: Option<bool>,
             is_ok: Option<bool>,
-            is_user_want_to_proceed: UserConsent,
+            is_user_want_to_proceed: ui_model::UserConsent,
         }
 
         let mut process_states = HashMap::<ProcessName, ProcessInfo<Rt, Mpsc, As>>::new();
@@ -111,15 +101,15 @@ pub(crate) fn process_manager_actor<
                 } => {
                     let table = process_states.get_mut(&process_name).unwrap();
 
-                    table.dialog.set(client_types::Dialog::Hide);
+                    table.dialog.set(ui_model::Dialog::Hide);
                     table.is_user_want_to_proceed = consent;
                     table.timer_handle.abort().await;
 
                     match consent {
-                        UserConsent::WaitForServerResponse => {
+                        ui_model::UserConsent::WaitForServerResponse => {
                             table.timer_handle = timer_handle::<Rt, As>(&table.dialog);
                         }
-                        UserConsent::DontWaitForServerResponse => {}
+                        ui_model::UserConsent::DontWaitForServerResponse => {}
                     };
 
                     process_name
@@ -140,7 +130,8 @@ pub(crate) fn process_manager_actor<
                                     timer_handle,
                                     is_response_from_server: None,
                                     is_ok: None,
-                                    is_user_want_to_proceed: UserConsent::WaitForServerResponse,
+                                    is_user_want_to_proceed:
+                                        ui_model::UserConsent::WaitForServerResponse,
                                 },
                             );
                         }
@@ -176,13 +167,13 @@ pub(crate) fn process_manager_actor<
                     IsProceed::Wait => {}
                     IsProceed::Yes => {
                         process_info.timer_handle.abort().await;
-                        process_info.dialog.set(client_types::Dialog::Hide);
+                        process_info.dialog.set(ui_model::Dialog::Hide);
                         process_info.sender.send(ProceedResult::Yes).await.unwrap();
                         process_states.remove(&process_name);
                     }
                     IsProceed::No => {
                         process_info.timer_handle.abort().await;
-                        process_info.dialog.set(client_types::Dialog::Hide);
+                        process_info.dialog.set(ui_model::Dialog::Hide);
                         process_info.sender.send(ProceedResult::No).await.unwrap();
                         process_states.remove(&process_name);
                     }
@@ -194,11 +185,11 @@ pub(crate) fn process_manager_actor<
     sender
 }
 
-fn timer_handle<Rt: traits::Runtime, As: client_traits::AllSignalTypes>(
+fn timer_handle<Rt: traits::Runtime, As: ui_model::AllSignalTypes>(
     dialog_clone: &'static As::Dialog,
 ) -> <Rt as Runtime>::JoinHandle<()> {
     Rt::abortable_spawn_local(async move {
         Rt::sleep(Duration::from_secs(5)).await;
-        dialog_clone.set(client_types::Dialog::Show);
+        dialog_clone.set(ui_model::Dialog::Show);
     })
 }

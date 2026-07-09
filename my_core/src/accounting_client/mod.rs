@@ -1,7 +1,6 @@
 pub(crate) mod cache;
 pub(crate) mod cache_actor;
 pub mod client_traits;
-pub mod client_types;
 pub(crate) mod network_actor;
 pub mod process_manager;
 pub(crate) mod translations;

@@ -1,8 +1,7 @@
 use crate::{
     accounting_client::{
-        cache_actor,
-        client_traits::{self, AllSignalTypes, HashimSignal},
-        process_manager, ui_model,
+        cache_actor, process_manager, ui_model,
+        ui_model::{AllSignalTypes, HashimSignal},
         ui_updaters::{self, Mvu},
     },
     accounting_domain::{cases, types},
@@ -145,7 +144,7 @@ impl<Mpsc: traits::MultiProducerSingleConsumer> Commander<Mpsc> {
 fn listen_to_error_actor<
     Rt: traits::Runtime,
     Mpsc: traits::MultiProducerSingleConsumer,
-    As: client_traits::AllSignalTypes,
+    As: ui_model::AllSignalTypes,
 >(
     mut receiver_to_error: <Mpsc as MultiProducerSingleConsumer>::Receiver<types::HashimError>,
     external_errors_signal: &'static As::StringVec,

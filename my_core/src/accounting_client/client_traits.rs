@@ -1,7 +1,4 @@
-use crate::{
-    accounting_client::client_types,
-    accounting_domain::{cases, request_response, types},
-};
+use crate::accounting_domain::{cases, request_response, types};
 
 pub trait Cache: Sized {
     fn new() -> impl Future<Output = Self>;
@@ -66,26 +63,4 @@ pub trait Cache: Sized {
             bool,             /* is branch name used */
         ),
     >;
-}
-
-pub trait HashimSignal<T: Default + Clone>: Default {
-    fn reset(&self) {
-        self.set(T::default());
-    }
-    fn read(&self) -> T;
-    fn set(&self, v: T);
-}
-
-pub trait AllSignalTypes: 'static + Default + Clone {
-    type String: HashimSignal<String>;
-    type Dialog: HashimSignal<client_types::Dialog>;
-    type Uuid: HashimSignal<types::UuidType>;
-    type OptionUuid: HashimSignal<Option<types::UuidType>>;
-    type Bool: HashimSignal<bool>;
-    type StringVec: HashimSignal<String>;
-    type Currency: HashimSignal<types::Currency>;
-    type Location: HashimSignal<types::Location>;
-    type CompanyAndBranchList: HashimSignal<Vec<types::Company>>;
-
-    type Navigator: HashimSignal<client_types::Navigator>;
 }
