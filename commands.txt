@@ -1,4 +1,5 @@
 git ls-files "*.rs" | xargs wc -l | tail -1
+git checkout -b new_branch_name
 du -sh ./target
 
 dep_graph_rs ./my_core | dot -Tpng > graph.png
