@@ -3,7 +3,7 @@ use crate::{
         cases::{self, RowId},
         request_response, types,
     },
-    server::{server_traits::DBClient, server_types, use_cases::ServerOperations},
+    server::{server_traits::DBClient, server_types},
     utility::{
         traits::{self, Receiver, Sender},
         utils::{self, HashMapWithHashMapValue, HashMapWithVectorValue},
@@ -405,35 +405,35 @@ async fn push_data<
             request_response::push_data::OperationsInput::SignUp(input) => {
                 request_response::push_data::OperationsResult::SignUp(
                     input
-                        .handle_operation::<Rn, Id, Rg, Auth, Jwt, Cli>(side_effects, client, &jwt)
+                        .handle_operation::<Id, Auth, Jwt, Cli>(side_effects, client, &jwt)
                         .await?,
                 )
             }
             request_response::push_data::OperationsInput::SignIn(input) => {
                 request_response::push_data::OperationsResult::SignIn(
                     input
-                        .handle_operation::<Rn, Id, Rg, Auth, Jwt, Cli>(side_effects, client, &jwt)
+                        .handle_operation::<Auth, Jwt, Cli>(side_effects, client, &jwt)
                         .await?,
                 )
             }
             request_response::push_data::OperationsInput::CreateCompany(input) => {
                 request_response::push_data::OperationsResult::CreateCompany(
                     input
-                        .handle_operation::<Rn, Id, Rg, Auth, Jwt, Cli>(side_effects, client, &jwt)
+                        .handle_operation::<Id, Cli>(side_effects, client)
                         .await?,
                 )
             }
             request_response::push_data::OperationsInput::CreateCompanyBranch(input) => {
                 request_response::push_data::OperationsResult::CreateCompanyBranch(
                     input
-                        .handle_operation::<Rn, Id, Rg, Auth, Jwt, Cli>(side_effects, client, &jwt)
+                        .handle_operation::<Id, Cli>(side_effects, client)
                         .await?,
                 )
             }
             request_response::push_data::OperationsInput::ListCompanyAndBranch(input) => {
                 request_response::push_data::OperationsResult::ListCompanyAndBranch(
                     input
-                        .handle_operation::<Rn, Id, Rg, Auth, Jwt, Cli>(side_effects, client, &jwt)
+                        .handle_operation::<Id, Cli>(side_effects, client)
                         .await?,
                 )
             }

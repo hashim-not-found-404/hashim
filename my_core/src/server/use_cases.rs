@@ -10,14 +10,9 @@ use crate::{
     utility::{traits, utils},
 };
 
-pub(crate) trait ServerOperations {
-    type Ok;
-    type Error;
-
-    async fn handle_operation<
-        Rn: traits::RandomNumber,
+impl cases::sign_up::Input {
+    pub(crate) async fn handle_operation<
         Id: cases::RowId,
-        Rg: traits::Regex,
         Auth: cases::HashedPassword,
         Jwt: cases::JWT,
         Cli: DBClient,
@@ -26,26 +21,7 @@ pub(crate) trait ServerOperations {
         side_effects: &mut server_types::SideEffects,
         client: &mut Cli,
         jwt: &Jwt,
-    ) -> Result<Result<Self::Ok, Self::Error>, utils::DynamicError>;
-}
-
-impl ServerOperations for cases::sign_up::Input {
-    type Ok = cases::sign_up::Ok;
-    type Error = cases::sign_up::Error;
-
-    async fn handle_operation<
-        Rn: traits::RandomNumber,
-        Id: cases::RowId,
-        Rg: traits::Regex,
-        Auth: cases::HashedPassword,
-        Jwt: cases::JWT,
-        Cli: DBClient,
-    >(
-        &self,
-        side_effects: &mut server_types::SideEffects,
-        client: &mut Cli,
-        jwt: &Jwt,
-    ) -> Result<Result<Self::Ok, Self::Error>, utils::DynamicError> {
+    ) -> Result<Result<cases::sign_up::Ok, cases::sign_up::Error>, utils::DynamicError> {
         let errr = self.state_less_check::<Id>();
         if errr.is_there_error() {
             return Ok(Err(errr));
@@ -71,14 +47,8 @@ impl ServerOperations for cases::sign_up::Input {
     }
 }
 
-impl ServerOperations for cases::sign_in::Input {
-    type Ok = cases::sign_in::Ok;
-    type Error = cases::sign_in::Error;
-
-    async fn handle_operation<
-        Rn: traits::RandomNumber,
-        Id: cases::RowId,
-        Rg: traits::Regex,
+impl cases::sign_in::Input {
+    pub(crate) async fn handle_operation<
         Auth: cases::HashedPassword,
         Jwt: cases::JWT,
         Cli: DBClient,
@@ -87,7 +57,7 @@ impl ServerOperations for cases::sign_in::Input {
         side_effects: &mut server_types::SideEffects,
         client: &mut Cli,
         jwt: &Jwt,
-    ) -> Result<Result<Self::Ok, Self::Error>, utils::DynamicError> {
+    ) -> Result<Result<cases::sign_in::Ok, cases::sign_in::Error>, utils::DynamicError> {
         let user_rowid_and_password_hash_and_name = client.read_sign_in(&self.user_id).await?;
         let result =
             self.state_full_check::<Auth, Jwt>(jwt, &user_rowid_and_password_hash_and_name);
@@ -105,23 +75,13 @@ impl ServerOperations for cases::sign_in::Input {
     }
 }
 
-impl ServerOperations for cases::create_company::Input {
-    type Ok = cases::create_company::Ok;
-    type Error = cases::create_company::Error;
-
-    async fn handle_operation<
-        Rn: traits::RandomNumber,
-        Id: cases::RowId,
-        Rg: traits::Regex,
-        Auth: cases::HashedPassword,
-        Jwt: cases::JWT,
-        Cli: DBClient,
-    >(
+impl cases::create_company::Input {
+    pub(crate) async fn handle_operation<Id: cases::RowId, Cli: DBClient>(
         &self,
         side_effects: &mut server_types::SideEffects,
         client: &mut Cli,
-        jwt: &Jwt,
-    ) -> Result<Result<Self::Ok, Self::Error>, utils::DynamicError> {
+    ) -> Result<Result<cases::create_company::Ok, cases::create_company::Error>, utils::DynamicError>
+    {
         let mut errr = self.state_less_check::<Id>();
         if !side_effects.authenticated_users.contains(&self.user_uuid) {
             errr.user_uuid = Some(types::UserUuidError::NotAuthenticated);
@@ -146,23 +106,15 @@ impl ServerOperations for cases::create_company::Input {
     }
 }
 
-impl ServerOperations for cases::list_company_and_branch::Input {
-    type Ok = cases::list_company_and_branch::Ok;
-    type Error = cases::list_company_and_branch::Error;
-
-    async fn handle_operation<
-        Rn: traits::RandomNumber,
-        Id: cases::RowId,
-        Rg: traits::Regex,
-        Auth: cases::HashedPassword,
-        Jwt: cases::JWT,
-        Cli: DBClient,
-    >(
+impl cases::list_company_and_branch::Input {
+    pub(crate) async fn handle_operation<Id: cases::RowId, Cli: DBClient>(
         &self,
         side_effects: &mut server_types::SideEffects,
         client: &mut Cli,
-        _jwt: &Jwt,
-    ) -> Result<Result<Self::Ok, Self::Error>, utils::DynamicError> {
+    ) -> Result<
+        Result<cases::list_company_and_branch::Ok, cases::list_company_and_branch::Error>,
+        utils::DynamicError,
+    > {
         let mut errr = self.state_less_check::<Id>();
         if !side_effects.authenticated_users.contains(&self.user_uuid) {
             errr.user_uuid = Some(types::UserUuidError::NotAuthenticated);
@@ -180,23 +132,15 @@ impl ServerOperations for cases::list_company_and_branch::Input {
     }
 }
 
-impl ServerOperations for cases::create_company_branch::Input {
-    type Ok = cases::create_company_branch::Ok;
-    type Error = cases::create_company_branch::Error;
-
-    async fn handle_operation<
-        Rn: traits::RandomNumber,
-        Id: cases::RowId,
-        Rg: traits::Regex,
-        Auth: cases::HashedPassword,
-        Jwt: cases::JWT,
-        Cli: DBClient,
-    >(
+impl cases::create_company_branch::Input {
+    pub(crate) async fn handle_operation<Id: cases::RowId, Cli: DBClient>(
         &self,
         side_effects: &mut server_types::SideEffects,
         client: &mut Cli,
-        _jwt: &Jwt,
-    ) -> Result<Result<Self::Ok, Self::Error>, utils::DynamicError> {
+    ) -> Result<
+        Result<cases::create_company_branch::Ok, cases::create_company_branch::Error>,
+        utils::DynamicError,
+    > {
         let mut errr = self.state_less_check::<Id>();
         if !side_effects.authenticated_users.contains(&self.user_uuid) {
             errr.user_uuid = Some(types::UserUuidError::NotAuthenticated);
