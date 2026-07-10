@@ -5,7 +5,7 @@ use crate::{
 use my_core::{
     accounting_domain::{cases, types},
     server::{server_traits::DBClient, server_types},
-    utility::utils::{DynamicError, LogError},
+    utility::{traits::DynamicError, utils::LogError},
 };
 use serde::Deserialize;
 use std::{

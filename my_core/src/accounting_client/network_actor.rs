@@ -2,7 +2,7 @@ use crate::{
     accounting_domain::types,
     utility::{
         traits::{self, Either, Receiver, Sender},
-        utils::{self, ReadAndSet},
+        utils::ReadAndSet,
     },
 };
 use std::{
@@ -11,9 +11,9 @@ use std::{
 };
 
 pub trait WSClient: Sized {
-    fn connect(url: &str) -> impl Future<Output = Result<Self, utils::DynamicError>>;
-    fn send_bin(&self, data: &Vec<u8>) -> impl Future<Output = Result<(), utils::DynamicError>>;
-    fn receive_bin(&self) -> impl Future<Output = Result<Vec<u8>, utils::DynamicError>>;
+    fn connect(url: &str) -> impl Future<Output = Result<Self, traits::DynamicError>>;
+    fn send_bin(&self, data: &Vec<u8>) -> impl Future<Output = Result<(), traits::DynamicError>>;
+    fn receive_bin(&self) -> impl Future<Output = Result<Vec<u8>, traits::DynamicError>>;
 }
 
 pub(crate) trait Network {
@@ -29,7 +29,7 @@ async fn network_radar<
     Ws: WSClient,
 >(
     ws: &Option<Ws>,
-) -> Result<Vec<u8>, utils::DynamicError> {
+) -> Result<Vec<u8>, traits::DynamicError> {
     match &ws {
         Some(ws) => ws.receive_bin().await,
         None => Err(types::HashimError::ConnectionClosed.into()),

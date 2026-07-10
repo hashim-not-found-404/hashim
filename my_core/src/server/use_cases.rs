@@ -7,7 +7,7 @@ use crate::{
         server_traits::{DBClient, DBTransaction},
         server_types,
     },
-    utility::utils,
+    utility::traits,
 };
 
 impl cases::sign_up::Input {
@@ -21,7 +21,7 @@ impl cases::sign_up::Input {
         side_effects: &mut server_types::SideEffects,
         client: &mut Cli,
         jwt: &Jwt,
-    ) -> Result<Result<cases::sign_up::Ok, cases::sign_up::Error>, utils::DynamicError> {
+    ) -> Result<Result<cases::sign_up::Ok, cases::sign_up::Error>, traits::DynamicError> {
         let errr = self.state_less_check::<Id>();
         if errr.is_there_error() {
             return Ok(Err(errr));
@@ -57,7 +57,7 @@ impl cases::sign_in::Input {
         side_effects: &mut server_types::SideEffects,
         client: &mut Cli,
         jwt: &Jwt,
-    ) -> Result<Result<cases::sign_in::Ok, cases::sign_in::Error>, utils::DynamicError> {
+    ) -> Result<Result<cases::sign_in::Ok, cases::sign_in::Error>, traits::DynamicError> {
         let user_rowid_and_password_hash_and_name = client.read_sign_in(&self.user_id).await?;
         let result =
             self.state_full_check::<Auth, Jwt>(jwt, &user_rowid_and_password_hash_and_name);
@@ -80,7 +80,7 @@ impl cases::create_company::Input {
         &self,
         side_effects: &mut server_types::SideEffects,
         client: &mut Cli,
-    ) -> Result<Result<cases::create_company::Ok, cases::create_company::Error>, utils::DynamicError>
+    ) -> Result<Result<cases::create_company::Ok, cases::create_company::Error>, traits::DynamicError>
     {
         let mut errr = self.state_less_check::<Id>();
         if !side_effects.authenticated_users.contains(&self.user_uuid) {
@@ -113,7 +113,7 @@ impl cases::list_company_and_branch::Input {
         client: &mut Cli,
     ) -> Result<
         Result<cases::list_company_and_branch::Ok, cases::list_company_and_branch::Error>,
-        utils::DynamicError,
+        traits::DynamicError,
     > {
         let mut errr = self.state_less_check::<Id>();
         if !side_effects.authenticated_users.contains(&self.user_uuid) {
@@ -139,7 +139,7 @@ impl cases::create_company_branch::Input {
         client: &mut Cli,
     ) -> Result<
         Result<cases::create_company_branch::Ok, cases::create_company_branch::Error>,
-        utils::DynamicError,
+        traits::DynamicError,
     > {
         let mut errr = self.state_less_check::<Id>();
         if !side_effects.authenticated_users.contains(&self.user_uuid) {

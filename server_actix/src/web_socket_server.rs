@@ -2,7 +2,7 @@ use actix_ws::{AggregatedMessage, AggregatedMessageStream, Session};
 use futures_util::StreamExt;
 use my_core::{
     server::server_methods::{self, WSServer},
-    utility::utils::{self, LogError},
+    utility::{traits, utils::LogError},
 };
 
 pub(crate) struct S {
@@ -17,12 +17,12 @@ impl S {
 }
 
 impl WSServer for S {
-    async fn send_bin(&mut self, bin: Vec<u8>) -> Result<(), utils::DynamicError> {
+    async fn send_bin(&mut self, bin: Vec<u8>) -> Result<(), traits::DynamicError> {
         self.session.binary(bin).await.log()?;
         Ok(())
     }
 
-    async fn receive(&mut self) -> Result<server_methods::WSMessage, utils::DynamicError> {
+    async fn receive(&mut self) -> Result<server_methods::WSMessage, traits::DynamicError> {
         match self.stream.next().await {
             Some(msg) => match msg.log()? {
                 AggregatedMessage::Binary(data) => {
@@ -41,7 +41,7 @@ impl WSServer for S {
         }
     }
 
-    async fn close(self) -> Result<(), utils::DynamicError> {
+    async fn close(self) -> Result<(), traits::DynamicError> {
         self.session.clone().close(None).await.log()?;
         Ok(())
     }

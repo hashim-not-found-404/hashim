@@ -7,7 +7,7 @@ pub mod target {
     use my_core::{
         accounting_client::network_actor::WSClient,
         accounting_domain::types::HashimError,
-        utility::utils::{DynamicError, LogError},
+        utility::{traits::DynamicError, utils::LogError},
     };
     use std::sync::Mutex;
     use tokio_tungstenite::{MaybeTlsStream, WebSocketStream, connect_async, tungstenite::Message};
@@ -66,7 +66,7 @@ pub mod target {
     use my_core::{
         accounting_client::network_actor::WSClient,
         accounting_domain::types::HashimError,
-        utility::utils::{DynamicError, LogError},
+        utility::{traits::DynamicError, utils::LogError},
     };
     use std::sync::Mutex;
 

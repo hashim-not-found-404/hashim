@@ -1,10 +1,12 @@
-use crate::utility::utils;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
+use std::error::Error;
+
+pub type DynamicError = Box<dyn Error>;
 
 pub trait Coding {
     fn encode<T: Serialize>(data: &T) -> Vec<u8>;
-    fn decode<'de, T: Deserialize<'de>>(data: &'de Vec<u8>) -> Result<T, utils::DynamicError>;
+    fn decode<'de, T: Deserialize<'de>>(data: &'de Vec<u8>) -> Result<T, DynamicError>;
 }
 
 pub trait Regex: 'static {
@@ -39,7 +41,7 @@ pub trait Runtime: 'static {
     fn timeout<T, F>(
         duration: Duration,
         fut: F,
-    ) -> impl Future<Output = Result<T, utils::DynamicError>>
+    ) -> impl Future<Output = Result<T, DynamicError>>
     where
         F: Future<Output = T>;
 
@@ -52,11 +54,11 @@ pub trait Runtime: 'static {
 }
 
 pub trait Sender<T>: Clone {
-    fn send(&mut self, t: T) -> impl Future<Output = Result<(), utils::DynamicError>>;
+    fn send(&mut self, t: T) -> impl Future<Output = Result<(), DynamicError>>;
 }
 
 pub trait Receiver<T> {
-    fn recv(&mut self) -> impl Future<Output = Result<T, utils::DynamicError>>;
+    fn recv(&mut self) -> impl Future<Output = Result<T, DynamicError>>;
 }
 
 pub trait MultiProducerSingleConsumer: 'static {

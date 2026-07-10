@@ -6,7 +6,7 @@ use crate::{
     server::{server_traits::DBClient, server_types},
     utility::{
         traits::{self, Receiver, Sender},
-        utils::{self, HashMapWithHashMapValue, HashMapWithVectorValue},
+        utils::{HashMapWithHashMapValue, HashMapWithVectorValue},
     },
 };
 use std::{
@@ -18,7 +18,7 @@ use std::{
 pub trait Database: 'static {
     type Client: DBClient;
     fn new() -> impl Future<Output = Self>;
-    fn get_client(&self) -> impl Future<Output = Result<Self::Client, utils::DynamicError>>;
+    fn get_client(&self) -> impl Future<Output = Result<Self::Client, traits::DynamicError>>;
 }
 
 pub enum WSMessage {
@@ -27,9 +27,9 @@ pub enum WSMessage {
 }
 
 pub trait WSServer: 'static {
-    fn send_bin(&mut self, bin: Vec<u8>) -> impl Future<Output = Result<(), utils::DynamicError>>;
-    fn receive(&mut self) -> impl Future<Output = Result<WSMessage, utils::DynamicError>>;
-    fn close(self) -> impl Future<Output = Result<(), utils::DynamicError>>;
+    fn send_bin(&mut self, bin: Vec<u8>) -> impl Future<Output = Result<(), traits::DynamicError>>;
+    fn receive(&mut self) -> impl Future<Output = Result<WSMessage, traits::DynamicError>>;
+    fn close(self) -> impl Future<Output = Result<(), traits::DynamicError>>;
 }
 
 pub struct ServerMethods<Mpsc: traits::MultiProducerSingleConsumer, Jwt: cases::JWT, Db: Database> {
@@ -360,7 +360,7 @@ async fn push_data<
     side_effects: &mut server_types::SideEffects,
     client: &mut Cli,
     jwt: &Jwt,
-) -> Result<request_response::push_data::MyResult, utils::DynamicError> {
+) -> Result<request_response::push_data::MyResult, traits::DynamicError> {
     let mut the_return_result = request_response::push_data::MyResult {
         jwts: Vec::with_capacity(input.jwts.len()),
         nonce: Ok(()),
@@ -482,7 +482,7 @@ fn check_nonce_if_valid<Id: RowId>(nonce: &types::UuidType, is_used: bool) -> bo
 async fn get_table_of_subscribed_data<Cli: DBClient>(
     client: &mut Cli,
     users_uuids: &HashSet<types::UuidType>,
-) -> Result<AllSubscribes, utils::DynamicError> {
+) -> Result<AllSubscribes, traits::DynamicError> {
     let roles = client.read_roles_for_user(users_uuids).await?;
 
     let mut subs = AllSubscribes {

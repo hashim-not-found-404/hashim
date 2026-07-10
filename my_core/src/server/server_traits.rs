@@ -1,7 +1,7 @@
 use crate::{
     accounting_domain::{cases, types},
     server::server_types,
-    utility::utils,
+    utility::traits,
 };
 use std::collections::HashSet;
 
@@ -15,8 +15,8 @@ pub mod domain_errors {
 pub trait DBTransaction {
     fn commit_transaction(
         self,
-    ) -> impl Future<Output = Result<Result<(), domain_errors::AtCommit>, utils::DynamicError>>;
-    fn rollback_transaction(self) -> impl Future<Output = Result<(), utils::DynamicError>>;
+    ) -> impl Future<Output = Result<Result<(), domain_errors::AtCommit>, traits::DynamicError>>;
+    fn rollback_transaction(self) -> impl Future<Output = Result<(), traits::DynamicError>>;
 
     fn read_sign_up(
         &mut self,
@@ -28,22 +28,22 @@ pub trait DBTransaction {
                 bool, /* is new_uuid exist */
                 bool, /* is user_id exist */
             ),
-            utils::DynamicError,
+            traits::DynamicError,
         >,
     >;
     fn write_sign_up(
         &mut self,
         data: &cases::sign_up::Ok,
-    ) -> impl Future<Output = Result<(), utils::DynamicError>>;
+    ) -> impl Future<Output = Result<(), traits::DynamicError>>;
 
     fn read_create_company(
         &mut self,
         new_uuid: &types::UuidType,
-    ) -> impl Future<Output = Result<bool /* is new_uuid exist */, utils::DynamicError>>;
+    ) -> impl Future<Output = Result<bool /* is new_uuid exist */, traits::DynamicError>>;
     fn write_create_company(
         &mut self,
         data: &cases::create_company::Ok,
-    ) -> impl Future<Output = Result<(), utils::DynamicError>>;
+    ) -> impl Future<Output = Result<(), traits::DynamicError>>;
 
     fn read_create_company_branch(
         &mut self,
@@ -59,13 +59,13 @@ pub trait DBTransaction {
                 bool,             /* is company_belong exist */
                 bool,             /* is branch_name used */
             ),
-            utils::DynamicError,
+            traits::DynamicError,
         >,
     >;
     fn write_create_company_branch(
         &mut self,
         data: &cases::create_company_branch::Ok,
-    ) -> impl Future<Output = Result<(), utils::DynamicError>>;
+    ) -> impl Future<Output = Result<(), traits::DynamicError>>;
 }
 
 pub trait DBClient {
@@ -75,12 +75,12 @@ pub trait DBClient {
 
     fn begin_transaction(
         &mut self,
-    ) -> impl Future<Output = Result<Self::Txn<'_>, utils::DynamicError>>;
+    ) -> impl Future<Output = Result<Self::Txn<'_>, traits::DynamicError>>;
 
     fn write_nonce_if_not_used(
         &mut self,
         nonce: &types::UuidType,
-    ) -> impl Future<Output = Result<bool /* is nonce used */, utils::DynamicError>>;
+    ) -> impl Future<Output = Result<bool /* is nonce used */, traits::DynamicError>>;
 
     // here we just do read we dont do here any set or check
 
@@ -88,19 +88,19 @@ pub trait DBClient {
         &mut self,
         user_id: &String,
     ) -> impl Future<
-        Output = Result<Option<(types::UuidType, String, Option<String>)>, utils::DynamicError>,
+        Output = Result<Option<(types::UuidType, String, Option<String>)>, traits::DynamicError>,
     >;
     fn read_roles_for_user(
         &mut self,
         users_uuids: &HashSet<types::UuidType>,
-    ) -> impl Future<Output = Result<server_types::AllRoles, utils::DynamicError>>;
+    ) -> impl Future<Output = Result<server_types::AllRoles, traits::DynamicError>>;
     fn read_list_company_and_branch(
         &mut self,
         user_uuid: &types::UuidType,
     ) -> impl Future<
         Output = Result<
             Vec<cases::list_company_and_branch::AllCompaniesThatUserInWithRoles>,
-            utils::DynamicError,
+            traits::DynamicError,
         >,
     >;
 }

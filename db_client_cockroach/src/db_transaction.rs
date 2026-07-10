@@ -1,7 +1,7 @@
 use my_core::{
     accounting_domain::{cases, types},
     server::server_traits::{DBTransaction, domain_errors},
-    utility::utils::{DynamicError, LogError},
+    utility::{traits::DynamicError, utils::LogError},
 };
 use rust_decimal::{Decimal, prelude::FromPrimitive};
 use std::str::FromStr;

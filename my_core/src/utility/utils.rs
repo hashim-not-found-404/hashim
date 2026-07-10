@@ -1,12 +1,9 @@
 use core::fmt::Debug;
 use std::{
     collections::HashMap,
-    error::Error,
     hash::Hash,
     sync::{Arc, Mutex, RwLock},
 };
-
-pub type DynamicError = Box<dyn Error>;
 
 pub trait LogError {
     #[must_use = "this `Result` may be an `Err` variant, which should be handled"]
