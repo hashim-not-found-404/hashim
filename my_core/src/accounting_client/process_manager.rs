@@ -83,7 +83,7 @@ pub(crate) fn process_manager_actor<
         > {
             sender: Mpsc::Sender<ProceedResult>,
             dialog: &'static As::Dialog,
-            timer_handle: <Rt as Runtime>::JoinHandle<()>,
+            timer_handle: Rt::JoinHandle<()>,
             is_response_from_server: Option<bool>,
             is_ok: Option<bool>,
             is_user_want_to_proceed: ui_model::UserConsent,
@@ -187,7 +187,7 @@ pub(crate) fn process_manager_actor<
 
 fn timer_handle<Rt: traits::Runtime, As: ui_model::AllSignalTypes>(
     dialog_clone: &'static As::Dialog,
-) -> <Rt as Runtime>::JoinHandle<()> {
+) -> Rt::JoinHandle<()> {
     Rt::abortable_spawn_local(async move {
         Rt::sleep(Duration::from_secs(5)).await;
         dialog_clone.set(ui_model::Dialog::Show);
