@@ -24,6 +24,7 @@ pub(crate) enum Response {
     Data(Data),
 }
 
+#[allow(dead_code)]
 pub(crate) enum CachingStrategy {
     ReadCacheOnly,
     ReadCacheFirst,

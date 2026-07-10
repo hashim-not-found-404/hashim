@@ -62,6 +62,7 @@ async fn ws_handler(req: HttpRequest, stream: Payload) -> HttpResponse {
     response
 }
 
+#[allow(dead_code)]
 fn get_tls_config() -> rustls::ServerConfig {
     rustls::crypto::aws_lc_rs::default_provider()
         .install_default()

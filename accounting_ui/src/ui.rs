@@ -33,7 +33,7 @@ fn send(msg: ui_model::Message) {
 
 const ICONS_SHOW: Asset = asset!("/assets/icons/show.png");
 const ICONS_HIDE: Asset = asset!("/assets/icons/hide.png");
-const MAIN_CSS: Asset = asset!("/assets/main.css");
+// const MAIN_CSS: Asset = asset!("/assets/main.css");
 
 #[derive(Clone, PartialEq, Routable)]
 enum Route {
