@@ -1,18 +1,21 @@
-pub(crate) mod my_types;
-pub(crate) mod web_socket_server;
+pub mod web_socket_server;
 
 use actix_web::{
     App, HttpRequest, HttpResponse, HttpServer,
     web::{self, Data, Payload},
 };
+use adapters::{
+    actors, authentication, encode_decode, functions, jwt, random_number, row_id, runtime,
+};
 use my_core::{accounting_domain::types, server::server_methods};
 
-type ServerMethodsType = server_methods::ServerMethods<my_types::S>;
+type ServerMethodsType =
+    server_methods::ServerMethods<actors::target::S, jwt::target::S, db_client_cockroach::db::S>;
 
 #[actix_web::main]
 async fn main() {
     println!("started server");
-    let actions = Data::new(ServerMethodsType::new().await);
+    let actions = Data::new(ServerMethodsType::new::<runtime::target::S>().await);
 
     HttpServer::new(move || {
         let cors = actix_cors::Cors::default()
@@ -49,7 +52,12 @@ async fn ws_handler(req: HttpRequest, stream: Payload) -> HttpResponse {
 
     let session = web_socket_server::S::new(session, stream);
     let state = req.app_data::<Data<ServerMethodsType>>().unwrap();
-    state.clone().into_inner().server_actor(session);
+    state
+        .clone()
+        .into_inner()
+        .server_actor::<runtime::target::S, web_socket_server::S, random_number::target::S,encode_decode::target::S,row_id::target::S,functions::target::S,authentication::target::S>(
+            session,
+        );
 
     response
 }

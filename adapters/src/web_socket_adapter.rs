@@ -5,7 +5,7 @@ pub mod target {
         stream::{SplitSink, SplitStream},
     };
     use my_core::{
-        accounting_client::client_traits::WSClient,
+        accounting_client::network_actor::WSClient,
         accounting_domain::types::HashimError,
         utility::utils::{DynamicError, LogError},
     };
@@ -64,7 +64,7 @@ pub mod target {
     };
     use gloo_net::websocket::{Message, futures::WebSocket};
     use my_core::{
-        accounting_client::client_traits::WSClient,
+        accounting_client::network_actor::WSClient,
         accounting_domain::types::HashimError,
         utility::utils::{DynamicError, LogError},
     };

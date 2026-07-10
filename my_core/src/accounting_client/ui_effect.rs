@@ -6,7 +6,7 @@ use crate::{
     },
     accounting_domain::{cases, types},
     mbg,
-    utility::traits::{self, MultiProducerSingleConsumer, Receiver, Runtime, Sender},
+    utility::traits::{self, Receiver, Sender},
 };
 use std::sync::Arc;
 

@@ -1,5 +1,5 @@
 mod my_signal;
-mod my_types;
+mod my_signals;
 mod ui;
 
 fn main() {

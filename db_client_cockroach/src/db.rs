@@ -1,7 +1,7 @@
 use crate::db_client;
 use deadpool_postgres::{Config, Pool, Runtime};
 use my_core::{
-    server::server_traits::Database,
+    server::server_methods::Database,
     utility::utils::{self, LogError},
 };
 use tokio_postgres::NoTls;

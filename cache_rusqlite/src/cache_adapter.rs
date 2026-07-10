@@ -1,12 +1,12 @@
 use crate::utils::{MyUuidConverter, MyUuidConverter1};
 use adapters::encode_decode;
 use my_core::{
-    accounting_client::client_traits::Cache,
+    accounting_client::cache::Cache,
     accounting_domain::{cases, request_response, types},
     utility::traits::Coding,
 };
 use rusqlite::{Connection, OptionalExtension, params};
-use std::{collections::HashMap, ops::Add, str::FromStr};
+use std::{ops::Add, str::FromStr};
 
 pub struct S {
     db: Connection,

@@ -1,7 +1,7 @@
 use actix_ws::{AggregatedMessage, AggregatedMessageStream, Session};
 use futures_util::StreamExt;
 use my_core::{
-    server::server_traits::{self, WSServer},
+    server::server_methods::{self, WSServer},
     utility::utils::{self, LogError},
 };
 
@@ -22,11 +22,11 @@ impl WSServer for S {
         Ok(())
     }
 
-    async fn receive(&mut self) -> Result<server_traits::WSMessage, utils::DynamicError> {
+    async fn receive(&mut self) -> Result<server_methods::WSMessage, utils::DynamicError> {
         match self.stream.next().await {
             Some(msg) => match msg.log()? {
                 AggregatedMessage::Binary(data) => {
-                    Ok(server_traits::WSMessage::Binary(data.to_vec()))
+                    Ok(server_methods::WSMessage::Binary(data.to_vec()))
                 }
                 AggregatedMessage::Text(_) => Err("we dont use text".into()),
                 AggregatedMessage::Ping(data) => {
@@ -35,7 +35,7 @@ impl WSServer for S {
                 AggregatedMessage::Pong(data) => {
                     todo!()
                 }
-                AggregatedMessage::Close(_) => Ok(server_traits::WSMessage::Close),
+                AggregatedMessage::Close(_) => Ok(server_methods::WSMessage::Close),
             },
             None => Err(dbg!("WebSocket connection closed").into()),
         }

@@ -1,6 +1,6 @@
 use crate::{
     accounting_client::ui_model::{self, HashimSignal},
-    utility::traits::{self, JoinHandle, MultiProducerSingleConsumer, Receiver, Runtime, Sender},
+    utility::traits::{self, JoinHandle, Receiver, Sender},
 };
 use std::{collections::HashMap, hash::Hash, time::Duration};
 

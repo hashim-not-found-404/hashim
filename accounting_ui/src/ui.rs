@@ -1,17 +1,35 @@
-use crate::my_types;
+use crate::my_signals;
+use adapters::{
+    actors, encode_decode, functions, random_number, row_id, runtime, web_socket_adapter,
+};
 use dioxus::prelude::*;
 use my_core::accounting_client::{
-    client_traits::{AllClientTypes, HashimSignal},
-    client_types, process_manager, ui_construct, ui_effect, ui_model,
+    ui_construct, ui_effect,
+    ui_model::{self, AllSignalTypes, HashimSignal},
 };
 use std::sync::LazyLock;
 
-type TheModel = ui_model::Model<my_types::S>;
-type TheCommander = ui_effect::Commander<my_types::S>;
+type TheModel = ui_model::Model<my_signals::S>;
+type TheCommander = ui_effect::Commander<actors::target::S>;
 
 static MODEL: LazyLock<TheModel> = LazyLock::new(|| TheModel::default());
-static COMMANDER: LazyLock<TheCommander> =
-    LazyLock::new(|| ui_construct::new::<my_types::S>(&MODEL));
+static COMMANDER: LazyLock<TheCommander> = LazyLock::new(|| {
+    ui_construct::new::<
+        random_number::target::S,
+        runtime::target::S,
+        row_id::target::S,
+        actors::target::S,
+        encode_decode::target::S,
+        functions::target::S,
+        cache_rusqlite::cache_adapter::S,
+        web_socket_adapter::target::S,
+        my_signals::S,
+    >(&MODEL)
+});
+
+fn send(msg: ui_model::Message) {
+    COMMANDER.send::<runtime::target::S>(msg);
+}
 
 const ICONS_SHOW: Asset = asset!("/assets/icons/show.png");
 const ICONS_HIDE: Asset = asset!("/assets/icons/hide.png");
@@ -42,32 +60,29 @@ pub(crate) fn App() -> Element {
 
 #[component]
 fn Dialog(
-    consent_callback: EventHandler<process_manager::UserConsent>,
+    consent_callback: EventHandler<ui_model::UserConsent>,
     operation_name: &'static str,
-    show_dialog: <my_types::S as AllClientTypes>::Dialog,
+    show_dialog: <my_signals::S as AllSignalTypes>::Dialog,
 ) -> Element {
     let consent_callback1 = consent_callback.clone();
 
     match show_dialog.read() {
-        client_types::Dialog::Hide => rsx! {},
-        client_types::Dialog::Show => {
+        ui_model::Dialog::Hide => rsx! {},
+        ui_model::Dialog::Show => {
             rsx! {
                 div {
                     label { "do you want to proceed operation {operation_name} offline" }
-                    button {
-                        onclick: move |_| {
-                            consent_callback(process_manager::UserConsent::DontWaitForServerResponse)
-                        },
+                    button { onclick: move |_| { consent_callback(ui_model::UserConsent::DontWaitForServerResponse) },
                         "Yes"
                     }
-                    button { onclick: move |_| { consent_callback1(process_manager::UserConsent::WaitForServerResponse) },
+                    button { onclick: move |_| { consent_callback1(ui_model::UserConsent::WaitForServerResponse) },
                         "No"
                     }
                 }
 
             }
         }
-        client_types::Dialog::Error => {
+        ui_model::Dialog::Error => {
             rsx! {
                 label { "sorry you can't proceed now" }
             }
@@ -78,13 +93,13 @@ fn Dialog(
 #[component]
 fn AuthenticationPage() -> Element {
     match MODEL.navigator.read() {
-        client_types::Navigator::Auth(_) => {
+        ui_model::Navigator::Auth(_) => {
             navigator().push(Route::SignIn {});
         }
-        client_types::Navigator::CompanyBranchSelection(_) => {
+        ui_model::Navigator::CompanyBranchSelection(_) => {
             navigator().push(Route::CompanyAndBranchSelection {});
         }
-        client_types::Navigator::Home => todo!(),
+        ui_model::Navigator::Home => todo!(),
     }
 
     rsx! {
@@ -101,14 +116,14 @@ fn SignIn() -> Element {
         navigator().push(Route::SignUp {});
     };
 
-    let consent_callback = move |consent: process_manager::UserConsent| {
-        COMMANDER.send(ui_model::Message::SignIn(ui_model::SignIn::Consent(
+    let consent_callback = move |consent: ui_model::UserConsent| {
+        send(ui_model::Message::SignIn(ui_model::SignIn::Consent(
             consent,
         )));
     };
 
     let password_callback = move |password: String| {
-        COMMANDER.send(ui_model::Message::SignIn(ui_model::SignIn::Password(
+        send(ui_model::Message::SignIn(ui_model::SignIn::Password(
             password,
         )));
     };
@@ -123,8 +138,7 @@ fn SignIn() -> Element {
             input {
                 placeholder: "User ID",
                 oninput: move |event| {
-                    COMMANDER
-                        .send(ui_model::Message::SignIn(ui_model::SignIn::UserId(event.value())));
+                    send(ui_model::Message::SignIn(ui_model::SignIn::UserId(event.value())));
                 },
                 value: auth_state.user_id.read(),
             }
@@ -133,10 +147,7 @@ fn SignIn() -> Element {
             label { {local_state.user_password_error.read()} }
             button {
                 onclick: move |_| {
-                    COMMANDER
-                        .send(
-                            ui_model::Message::SignIn(ui_model::SignIn::Submit),
-                        );
+                    send(ui_model::Message::SignIn(ui_model::SignIn::Submit));
                 },
                 "Sign In"
             }
@@ -154,14 +165,14 @@ fn SignUp() -> Element {
         navigator().push(Route::SignIn {});
     };
 
-    let consent_callback = move |consent: process_manager::UserConsent| {
-        COMMANDER.send(ui_model::Message::SignUp(ui_model::SignUp::Consent(
+    let consent_callback = move |consent: ui_model::UserConsent| {
+        send(ui_model::Message::SignUp(ui_model::SignUp::Consent(
             consent,
         )));
     };
 
     let password_callback = move |password: String| {
-        COMMANDER.send(ui_model::Message::SignUp(ui_model::SignUp::Password(
+        send(ui_model::Message::SignUp(ui_model::SignUp::Password(
             password,
         )));
     };
@@ -176,8 +187,7 @@ fn SignUp() -> Element {
             input {
                 placeholder: "Name (Optional)",
                 oninput: move |event| {
-                    COMMANDER
-                        .send(ui_model::Message::SignUp(ui_model::SignUp::UserName(event.value())));
+                    send(ui_model::Message::SignUp(ui_model::SignUp::UserName(event.value())));
                 },
                 value: local_state.user_name.read(),
             }
@@ -185,8 +195,7 @@ fn SignUp() -> Element {
             input {
                 placeholder: "User Id",
                 oninput: move |event| {
-                    COMMANDER
-                        .send(ui_model::Message::SignUp(ui_model::SignUp::UserId(event.value())));
+                    send(ui_model::Message::SignUp(ui_model::SignUp::UserId(event.value())));
                 },
                 value: auth_state.user_id.read(),
             }
@@ -194,10 +203,7 @@ fn SignUp() -> Element {
             PasswordInput { password_callback }
             button {
                 onclick: move |_| {
-                    COMMANDER
-                        .send(
-                            ui_model::Message::SignUp(ui_model::SignUp::Submit),
-                        );
+                    send(ui_model::Message::SignUp(ui_model::SignUp::Submit));
                 },
                 "Sign Up"
             }
@@ -243,9 +249,7 @@ fn ErrorStack() -> Element {
 
     rsx! {
         div {
-            button { onclick: move |_| { COMMANDER.send(ui_model::Message::CloseError) },
-                "X"
-            }
+            button { onclick: move |_| { send(ui_model::Message::CloseError) }, "X" }
             label { {err} }
         }
     }
@@ -273,13 +277,13 @@ fn CompanyAndBranchSelection() -> Element {
     rsx! {
         div {
             match MODEL.navigator.read() {
-                client_types::Navigator::CompanyBranchSelection(n) => {
+                ui_model::Navigator::CompanyBranchSelection(n) => {
                     match n {
-                        client_types::CompanyBranchSelection::None => rsx! {},
-                        client_types::CompanyBranchSelection::CreateCompany => rsx! {
+                        ui_model::CompanyBranchSelection::None => rsx! {},
+                        ui_model::CompanyBranchSelection::CreateCompany => rsx! {
                             CreateCompany {}
                         },
-                        client_types::CompanyBranchSelection::CreateCompanyBranch => {
+                        ui_model::CompanyBranchSelection::CreateCompanyBranch => {
                             rsx! {
                                 CreateCompanyBranch {}
                             }
@@ -291,12 +295,11 @@ fn CompanyAndBranchSelection() -> Element {
 
             button {
                 onclick: move |_| {
-                    COMMANDER
-                        .send(
-                            ui_model::Message::CompanyAndBranchSelection(
-                                ui_model::CompanyAndBranchSelection::ShowCreateCompany,
-                            ),
-                        )
+                    send(
+                        ui_model::Message::CompanyAndBranchSelection(
+                            ui_model::CompanyAndBranchSelection::ShowCreateCompany,
+                        ),
+                    )
                 },
                 "Add New Company"
             }
@@ -307,14 +310,13 @@ fn CompanyAndBranchSelection() -> Element {
                         rsx! {
                             button {
                                 onclick: move |_| {
-                                    COMMANDER
-                                        .send(
-                                            ui_model::Message::CompanyAndBranchSelection(
-                                                ui_model::CompanyAndBranchSelection::SelectedCompany(
-                                                    company.uuid.clone(),
-                                                ),
+                                    send(
+                                        ui_model::Message::CompanyAndBranchSelection(
+                                            ui_model::CompanyAndBranchSelection::SelectedCompany(
+                                                company.uuid.clone(),
                                             ),
-                                        );
+                                        ),
+                                    );
                                 },
                                 "{company.name}"
                             }
@@ -322,12 +324,11 @@ fn CompanyAndBranchSelection() -> Element {
                             if selected_company.read() == Some(company.uuid.clone()) {
                                 button {
                                     onclick: move |_| {
-                                        COMMANDER
-                                            .send(
-                                                ui_model::Message::CompanyAndBranchSelection(
-                                                    ui_model::CompanyAndBranchSelection::ShowCreateCompanyBranch,
-                                                ),
-                                            )
+                                        send(
+                                            ui_model::Message::CompanyAndBranchSelection(
+                                                ui_model::CompanyAndBranchSelection::ShowCreateCompanyBranch,
+                                            ),
+                                        )
                                     },
                                     "Add New Branch"
                                 }
@@ -338,14 +339,13 @@ fn CompanyAndBranchSelection() -> Element {
                                                 button {
                                                     onclick: {
                                                         move |_| {
-                                                            COMMANDER
-                                                                .send(
-                                                                    ui_model::Message::CompanyAndBranchSelection(
-                                                                        ui_model::CompanyAndBranchSelection::SelectedCompanyBranch(
-                                                                            branch.uuid.clone(),
-                                                                        ),
+                                                            send(
+                                                                ui_model::Message::CompanyAndBranchSelection(
+                                                                    ui_model::CompanyAndBranchSelection::SelectedCompanyBranch(
+                                                                        branch.uuid.clone(),
                                                                     ),
-                                                                )
+                                                                ),
+                                                            )
                                                         }
                                                     },
                                                     "{branch.name}"
@@ -376,41 +376,35 @@ fn CreateCompany() -> Element {
             input {
                 placeholder: "Company Name",
                 oninput: move |event| {
-                    COMMANDER
-                        .send(
-                            ui_model::Message::CreateCompany(
-                                ui_model::CreateCompany::Name(event.value()),
-                            ),
-                        );
+                    send(
+                        ui_model::Message::CreateCompany(
+                            ui_model::CreateCompany::Name(event.value()),
+                        ),
+                    );
                 },
                 value: local_state.company_name.read(),
             }
             select {
                 value: local_state.currency.read().as_str(),
                 onchange: move |event| {
-                    COMMANDER
-                        .send(
-                            ui_model::Message::CreateCompany(
-                                ui_model::CreateCompany::Currency(event.value()),
-                            ),
-                        );
+                    send(
+                        ui_model::Message::CreateCompany(
+                            ui_model::CreateCompany::Currency(event.value()),
+                        ),
+                    );
                 },
                 option { value: "USD", "USD" }
                 option { value: "IQD", "IQD" }
             }
             button {
                 onclick: move |_| {
-                    COMMANDER
-                        .send(ui_model::Message::CreateCompany(ui_model::CreateCompany::Submit));
+                    send(ui_model::Message::CreateCompany(ui_model::CreateCompany::Submit));
                 },
                 "Create"
             }
             button {
                 onclick: move |_| {
-                    COMMANDER
-                        .send(
-                            ui_model::Message::CreateCompany(ui_model::CreateCompany::Close),
-                        );
+                    send(ui_model::Message::CreateCompany(ui_model::CreateCompany::Close));
                 },
                 "X"
             }
@@ -426,8 +420,8 @@ fn CreateCompanyBranch() -> Element {
         .page_company_branch_selection
         .page_create_company_branch;
 
-    let consent_callback = move |consent: process_manager::UserConsent| {
-        COMMANDER.send(ui_model::Message::CreateCompanyBranch(
+    let consent_callback = move |consent: ui_model::UserConsent| {
+        send(ui_model::Message::CreateCompanyBranch(
             ui_model::CreateCompanyBranch::Consent(consent),
         ));
     };
@@ -442,47 +436,39 @@ fn CreateCompanyBranch() -> Element {
             input {
                 placeholder: "Branch Name",
                 oninput: move |event| {
-                    COMMANDER
-                        .send(
-                            ui_model::Message::CreateCompanyBranch(
-                                ui_model::CreateCompanyBranch::Name(event.value()),
-                            ),
-                        );
+                    send(
+                        ui_model::Message::CreateCompanyBranch(
+                            ui_model::CreateCompanyBranch::Name(event.value()),
+                        ),
+                    );
                 },
                 value: local_state.branch_name.read(),
             }
             select {
                 value: local_state.currency.read().as_str(),
                 onchange: move |event| {
-                    COMMANDER
-                        .send(
-                            ui_model::Message::CreateCompanyBranch(
-                                ui_model::CreateCompanyBranch::Currency(event.value()),
-                            ),
-                        );
+                    send(
+                        ui_model::Message::CreateCompanyBranch(
+                            ui_model::CreateCompanyBranch::Currency(event.value()),
+                        ),
+                    );
                 },
                 option { value: "USD", "USD" }
                 option { value: "IQD", "IQD" }
             }
             button {
                 onclick: move |_| {
-                    COMMANDER
-                        .send(
-                            ui_model::Message::CreateCompanyBranch(
-                                ui_model::CreateCompanyBranch::Submit,
-                            ),
-                        );
+                    send(
+                        ui_model::Message::CreateCompanyBranch(ui_model::CreateCompanyBranch::Submit),
+                    );
                 },
                 "Create"
             }
             button {
                 onclick: move |_| {
-                    COMMANDER
-                        .send(
-                            ui_model::Message::CreateCompanyBranch(
-                                ui_model::CreateCompanyBranch::Close,
-                            ),
-                        );
+                    send(
+                        ui_model::Message::CreateCompanyBranch(ui_model::CreateCompanyBranch::Close),
+                    );
                 },
                 "X"
             }
