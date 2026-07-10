@@ -13,7 +13,7 @@ pub(crate) enum ProcessName {
 
 pub(crate) enum Event<Mpsc: traits::MultiProducerSingleConsumer, As: ui_model::AllSignalTypes> {
     Subscribe {
-        sender: <Mpsc as MultiProducerSingleConsumer>::Sender<ProceedResult>,
+        sender: Mpsc::Sender<ProceedResult>,
         dialog: &'static As::Dialog,
     },
     GotResponseFromCache {
@@ -72,7 +72,7 @@ pub(crate) fn process_manager_actor<
     Mpsc: traits::MultiProducerSingleConsumer,
     As: ui_model::AllSignalTypes,
     Rt: traits::Runtime,
->() -> <Mpsc as MultiProducerSingleConsumer>::Sender<MessageToProcessManager<Mpsc, As>> {
+>() -> Mpsc::Sender<MessageToProcessManager<Mpsc, As>> {
     let (sender, mut receiver) = Mpsc::channel();
 
     Rt::spawn_local(async move {
@@ -81,7 +81,7 @@ pub(crate) fn process_manager_actor<
             Mpsc: traits::MultiProducerSingleConsumer,
             As: ui_model::AllSignalTypes,
         > {
-            sender: <Mpsc as MultiProducerSingleConsumer>::Sender<ProceedResult>,
+            sender: Mpsc::Sender<ProceedResult>,
             dialog: &'static As::Dialog,
             timer_handle: <Rt as Runtime>::JoinHandle<()>,
             is_response_from_server: Option<bool>,

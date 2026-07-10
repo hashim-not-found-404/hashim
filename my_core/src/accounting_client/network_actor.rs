@@ -67,9 +67,9 @@ pub(crate) fn network_actor<
     Ws: WSClient,
     Nw: Network + 'static,
 >(
-    mut receiver_to_network: <Mpsc as MultiProducerSingleConsumer>::Receiver<MessageToNetwork>,
+    mut receiver_to_network: Mpsc::Receiver<MessageToNetwork>,
     mut sender_to_cache: Nw,
-    mut sender_to_error: <Mpsc as MultiProducerSingleConsumer>::Sender<types::HashimError>,
+    mut sender_to_error: Mpsc::Sender<types::HashimError>,
     is_online: Arc<RwLock<bool>>,
     url: String,
 ) {

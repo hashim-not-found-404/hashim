@@ -11,7 +11,7 @@ use crate::{
 use std::sync::Arc;
 
 pub struct Commander<Mpsc: traits::MultiProducerSingleConsumer> {
-    sender: <Mpsc as MultiProducerSingleConsumer>::Sender<ui_model::Message>,
+    sender: Mpsc::Sender<ui_model::Message>,
 }
 
 impl<Mpsc: traits::MultiProducerSingleConsumer> Clone for Commander<Mpsc> {
@@ -30,10 +30,8 @@ impl<Mpsc: traits::MultiProducerSingleConsumer> Commander<Mpsc> {
         Id: cases::RowId,
         Rg: traits::Regex,
     >(
-        receiver_to_error: <Mpsc as MultiProducerSingleConsumer>::Receiver<types::HashimError>,
-        sender_to_process_manager: <Mpsc as MultiProducerSingleConsumer>::Sender<
-            process_manager::MessageToProcessManager<Mpsc, As>,
-        >,
+        receiver_to_error: Mpsc::Receiver<types::HashimError>,
+        sender_to_process_manager: Mpsc::Sender<process_manager::MessageToProcessManager<Mpsc, As>>,
         model: &'static ui_model::Model<As>,
         cache: cache_actor::CacheStruct<Mpsc>,
     ) -> Self {
@@ -68,11 +66,9 @@ impl<Mpsc: traits::MultiProducerSingleConsumer> Commander<Mpsc> {
         Id: cases::RowId,
         Rg: traits::Regex,
     >(
-        mut receiver: <Mpsc as MultiProducerSingleConsumer>::Receiver<ui_model::Message>,
-        sender_to_commander: <Mpsc as MultiProducerSingleConsumer>::Sender<ui_model::Message>,
-        sender_to_process_manager: <Mpsc as MultiProducerSingleConsumer>::Sender<
-            process_manager::MessageToProcessManager<Mpsc, As>,
-        >,
+        mut receiver: Mpsc::Receiver<ui_model::Message>,
+        sender_to_commander: Mpsc::Sender<ui_model::Message>,
+        sender_to_process_manager: Mpsc::Sender<process_manager::MessageToProcessManager<Mpsc, As>>,
         model: &'static ui_model::Model<As>,
         cache: cache_actor::CacheStruct<Mpsc>,
     ) {
@@ -146,7 +142,7 @@ fn listen_to_error_actor<
     Mpsc: traits::MultiProducerSingleConsumer,
     As: ui_model::AllSignalTypes,
 >(
-    mut receiver_to_error: <Mpsc as MultiProducerSingleConsumer>::Receiver<types::HashimError>,
+    mut receiver_to_error: Mpsc::Receiver<types::HashimError>,
     external_errors_signal: &'static As::StringVec,
 ) {
     Rt::spawn_local(async move {

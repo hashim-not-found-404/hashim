@@ -51,14 +51,14 @@ pub(crate) enum MessageToCache<Mpsc: traits::MultiProducerSingleConsumer> {
     Subscribe {
         component_id: u16,
         list_of_subscribtion: &'static [types::Subscribe],
-        sender: <Mpsc as MultiProducerSingleConsumer>::Sender<()>,
+        sender: Mpsc::Sender<()>,
     },
     UnSubscribe {
         component_id: u16,
     },
     Query {
         strategy: CachingStrategy,
-        sender: <Mpsc as MultiProducerSingleConsumer>::Sender<Response>,
+        sender: Mpsc::Sender<Response>,
         data: request_response::push_data::OperationsInput,
     },
 }
@@ -67,7 +67,7 @@ pub(crate) struct CacheStruct<Mpsc>
 where
     Mpsc: traits::MultiProducerSingleConsumer,
 {
-    sender: <Mpsc as MultiProducerSingleConsumer>::Sender<MessageToCache<Mpsc>>,
+    sender: Mpsc::Sender<MessageToCache<Mpsc>>,
 }
 
 impl<Mpsc: traits::MultiProducerSingleConsumer> Clone for CacheStruct<Mpsc> {
@@ -89,12 +89,10 @@ where
         Ed: traits::Coding,
         Rn: traits::RandomNumber,
     >(
-        receiver_to_cache: <Mpsc as MultiProducerSingleConsumer>::Receiver<MessageToCache<Mpsc>>,
-        sender_to_cache: <Mpsc as MultiProducerSingleConsumer>::Sender<MessageToCache<Mpsc>>,
-        sender_to_network: <Mpsc as MultiProducerSingleConsumer>::Sender<
-            network_actor::MessageToNetwork,
-        >,
-        sender_to_error: <Mpsc as MultiProducerSingleConsumer>::Sender<types::HashimError>,
+        receiver_to_cache: Mpsc::Receiver<MessageToCache<Mpsc>>,
+        sender_to_cache: Mpsc::Sender<MessageToCache<Mpsc>>,
+        sender_to_network: Mpsc::Sender<network_actor::MessageToNetwork>,
+        sender_to_error: Mpsc::Sender<types::HashimError>,
         is_online: Arc<RwLock<bool>>,
     ) -> Self {
         Self::cache_actor::<Rt, Id, Ch, Ed, Rn>(
@@ -113,7 +111,7 @@ where
         &mut self,
         strategy: CachingStrategy,
         data: request_response::push_data::OperationsInput,
-    ) -> <Mpsc as MultiProducerSingleConsumer>::Receiver<Response> {
+    ) -> Mpsc::Receiver<Response> {
         let (sender, receiver) = Mpsc::channel();
 
         self.sender
@@ -132,7 +130,7 @@ where
         &mut self,
         component_id: u16,
         list_of_subscribtion: &'static [types::Subscribe],
-    ) -> <Mpsc as MultiProducerSingleConsumer>::Receiver<()> {
+    ) -> Mpsc::Receiver<()> {
         let (sender, receiver) = Mpsc::channel();
 
         self.sender
@@ -161,24 +159,14 @@ where
         Ed: traits::Coding,
         Rn: traits::RandomNumber,
     >(
-        mut receiver_to_cache: <Mpsc as MultiProducerSingleConsumer>::Receiver<
-            MessageToCache<Mpsc>,
-        >,
-        mut sender_to_network: <Mpsc as MultiProducerSingleConsumer>::Sender<
-            network_actor::MessageToNetwork,
-        >,
-        mut sender_to_error: <Mpsc as MultiProducerSingleConsumer>::Sender<types::HashimError>,
+        mut receiver_to_cache: Mpsc::Receiver<MessageToCache<Mpsc>>,
+        mut sender_to_network: Mpsc::Sender<network_actor::MessageToNetwork>,
+        mut sender_to_error: Mpsc::Sender<types::HashimError>,
         is_online: Arc<RwLock<bool>>,
     ) {
         Rt::spawn_local(async move {
-            let mut pool_of_senders = HashMap::<
-                u64,
-                <Mpsc as MultiProducerSingleConsumer>::Sender<Response>,
-            >::with_capacity(100);
-            let mut pool_of_pokers = HashMap::<
-                u16,
-                <Mpsc as MultiProducerSingleConsumer>::Sender<()>,
-            >::with_capacity(10);
+            let mut pool_of_senders = HashMap::<u64, Mpsc::Sender<Response>>::with_capacity(100);
+            let mut pool_of_pokers = HashMap::<u16, Mpsc::Sender<()>>::with_capacity(10);
             let mut pool_of_subscribes =
                 HashMap::<types::Subscribe, HashSet<u16>>::with_capacity(100);
 
@@ -411,9 +399,7 @@ where
         Id: cases::RowId,
         Ed: traits::Coding,
     >(
-        sender_to_network: &mut <Mpsc as MultiProducerSingleConsumer>::Sender<
-            network_actor::MessageToNetwork,
-        >,
+        sender_to_network: &mut Mpsc::Sender<network_actor::MessageToNetwork>,
         operations: Vec<
             request_response::push_data::Txn<request_response::push_data::OperationsInput>,
         >,
@@ -508,7 +494,7 @@ pub(crate) fn collect_subs_to_poke(
 }
 
 async fn poke_the_subs<Mpsc: traits::MultiProducerSingleConsumer>(
-    pool_of_pokers: &mut HashMap<u16, <Mpsc as MultiProducerSingleConsumer>::Sender<()>>,
+    pool_of_pokers: &mut HashMap<u16, Mpsc::Sender<()>>,
     pool_of_subscribes: &HashMap<types::Subscribe, HashSet<u16>>,
     subs_to_poke: &HashSet<types::Subscribe>,
 ) {
@@ -532,7 +518,7 @@ async fn poke_the_subs<Mpsc: traits::MultiProducerSingleConsumer>(
 }
 
 pub(crate) struct NetworkStruct<Mpsc: traits::MultiProducerSingleConsumer> {
-    pub(crate) sender: <Mpsc as MultiProducerSingleConsumer>::Sender<MessageToCache<Mpsc>>,
+    pub(crate) sender: Mpsc::Sender<MessageToCache<Mpsc>>,
 }
 
 impl<Mpsc: traits::MultiProducerSingleConsumer> network_actor::Network for NetworkStruct<Mpsc> {
