@@ -40,7 +40,7 @@ impl DBClient for S {
                 let row_id = row.try_get::<_, Uuid>(0).log()?;
                 let hashed_password = row.try_get::<_, String>(1).log()?;
                 let name = row.try_get::<_, Option<String>>(2).log()?;
-                Ok(Some((row_id.to_uuid(), hashed_password.into(), name)))
+                Ok(Some((row_id.to_uuid(), hashed_password, name)))
             }
             None => Ok(None),
         }
@@ -101,18 +101,18 @@ impl DBClient for S {
                         result
                             .companies
                             .entry(data_group_id)
-                            .or_insert_with(HashMap::new)
+                            .or_default()
                             .entry(user_id_typed)
-                            .or_insert_with(Vec::new)
+                            .or_default()
                             .push(role);
                     }
                     "branch" => {
                         result
                             .branches
                             .entry(data_group_id)
-                            .or_insert_with(HashMap::new)
+                            .or_default()
                             .entry(user_id_typed)
-                            .or_insert_with(Vec::new)
+                            .or_default()
                             .push(role);
                     }
                     _ => {}

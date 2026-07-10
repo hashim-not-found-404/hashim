@@ -29,10 +29,10 @@ impl WSServer for S {
                     Ok(server_methods::WSMessage::Binary(data.to_vec()))
                 }
                 AggregatedMessage::Text(_) => Err("we dont use text".into()),
-                AggregatedMessage::Ping(data) => {
+                AggregatedMessage::Ping(_data) => {
                     todo!()
                 }
-                AggregatedMessage::Pong(data) => {
+                AggregatedMessage::Pong(_data) => {
                     todo!()
                 }
                 AggregatedMessage::Close(_) => Ok(server_methods::WSMessage::Close),

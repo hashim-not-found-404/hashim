@@ -24,13 +24,13 @@ pub mod target {
         }
 
         async fn timeout<T, F: Future<Output = T>>(
-            duration: Duration,
-            fut: F,
+            _duration: Duration,
+            _fut: F,
         ) -> Result<T, DynamicError> {
             todo!()
         }
 
-        async fn sleep(duration: Duration) {
+        async fn sleep(_duration: Duration) {
             todo!()
         }
 

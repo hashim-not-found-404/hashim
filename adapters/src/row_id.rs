@@ -13,11 +13,7 @@ pub mod target {
         fn get_time_as_seconds(uuid: &types::UuidType) -> Option<u64> {
             // Convert bytes to Uuid and extract timestamp (for UUID v7)
             let u = Uuid::from_bytes(uuid.0);
-            if let Some(ts) = u.get_timestamp() {
-                Some(ts.to_unix().0)
-            } else {
-                None // v4 UUIDs have no timestamp
-            }
+            u.get_timestamp().map(|ts| ts.to_unix().0)
         }
 
         fn validate(uuid: &types::UuidType) -> bool {

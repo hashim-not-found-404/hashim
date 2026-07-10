@@ -114,7 +114,7 @@ impl DBTransaction for S<'_> {
             ;";
 
         let stmt = self.txn.prepare_cached(query).await.log()?;
-        let row = self
+        let _row = self
             .txn
             .execute(
                 &stmt,

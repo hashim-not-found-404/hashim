@@ -12,7 +12,7 @@ use std::sync::LazyLock;
 type TheModel = ui_model::Model<my_signals::S>;
 type TheCommander = ui_effect::Commander<actors::target::S>;
 
-static MODEL: LazyLock<TheModel> = LazyLock::new(|| TheModel::default());
+static MODEL: LazyLock<TheModel> = LazyLock::new(TheModel::default);
 static COMMANDER: LazyLock<TheCommander> = LazyLock::new(|| {
     ui_construct::new::<
         random_number::target::S,
@@ -64,7 +64,7 @@ fn Dialog(
     operation_name: &'static str,
     show_dialog: <my_signals::S as AllSignalTypes>::Dialog,
 ) -> Element {
-    let consent_callback1 = consent_callback.clone();
+    let consent_callback1 = consent_callback;
 
     match show_dialog.read() {
         ui_model::Dialog::Hide => rsx! {},

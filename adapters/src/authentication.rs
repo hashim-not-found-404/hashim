@@ -31,7 +31,7 @@ pub mod target {
 
         fn sign_in(password: &String, password_hash: &String) -> bool {
             // 1. Parse the stored PHC string
-            let parsed_hash = PasswordHash::new(&password_hash).unwrap();
+            let parsed_hash = PasswordHash::new(password_hash).unwrap();
 
             // 2. Verify the provided password against the parsed hash
             // The verification uses the parameters (salt, cost, etc.) embedded in the parsed hash.
