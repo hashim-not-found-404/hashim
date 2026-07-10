@@ -161,13 +161,6 @@ impl<Ch: Cache> State<Ch> {
         (is_new_uuid_exist, is_user_id_exist)
     }
 
-    pub(crate) async fn read_sign_in(
-        &mut self,
-        user_id: &String,
-    ) -> Option<(types::UuidType, String)> {
-        unreachable!("this is not callable at client side")
-    }
-
     pub(crate) async fn read_list_company_and_branch(
         &mut self,
         user_uuid: &types::UuidType,
@@ -247,13 +240,11 @@ impl<Ch: Cache> State<Ch> {
 
     pub(crate) async fn read_create_company_branch(
         &mut self,
-        new_uuid: &types::UuidType,
         user_uuid: &types::UuidType,
         company_belong: &types::UuidType,
         branch_name: &String,
     ) -> (
         Vec<types::Role>, /* user roles */
-        bool,             /* is new_uuid exist */
         bool,             /* is company_belong exist */
         bool,             /* is branch_name used */
     ) {
@@ -288,6 +279,6 @@ impl<Ch: Cache> State<Ch> {
             }
         }
 
-        (user_roles, false, is_company_exist, is_branch_name_used)
+        (user_roles, is_company_exist, is_branch_name_used)
     }
 }

@@ -50,7 +50,6 @@ pub struct PageAfterAuth<As: AllSignalTypes> {
     pub user_name: As::String,
 
     pub page_company_branch_selection: PageCompanyBranchSelection<As>,
-    pub page_home: PageHome<As>,
 }
 
 #[derive(Default)]
@@ -60,11 +59,6 @@ pub struct PageCompanyBranchSelection<As: AllSignalTypes> {
 
     pub page_create_company: PageCreateCompany<As>,
     pub page_create_company_branch: PageCreateCompanyBranch<As>,
-}
-
-#[derive(Default)]
-pub struct PageHome<As: AllSignalTypes> {
-    selected_branch: As::String,
 }
 
 #[derive(Default)]

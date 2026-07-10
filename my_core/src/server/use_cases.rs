@@ -7,7 +7,7 @@ use crate::{
         server_traits::{DBClient, DBTransaction},
         server_types,
     },
-    utility::{traits, utils},
+    utility::utils,
 };
 
 impl cases::sign_up::Input {

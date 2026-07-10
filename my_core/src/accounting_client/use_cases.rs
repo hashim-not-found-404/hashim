@@ -1,5 +1,5 @@
 use crate::{
-    accounting_client::{cache, cache::Cache, cache_actor},
+    accounting_client::{cache, cache_actor},
     accounting_domain::{
         cases::{self, MyErrorTrait},
         request_response, types,
@@ -480,15 +480,10 @@ pub(crate) mod sign_in {
         fn unwrap_output(result: request_response::push_data::OperationsResult) -> Self {
             if let request_response::push_data::OperationsResult::SignIn(result) = result {
                 match result {
-                    Ok(ok) => {
-                        let mut user_uuid = ok.user_uuid;
-                        let mut user_name = ok.user_name.unwrap_or_default();
-
-                        Type4(Ok(SignInOk {
-                            user_uuid,
-                            user_name,
-                        }))
-                    }
+                    Ok(ok) => Type4(Ok(SignInOk {
+                        user_uuid: ok.user_uuid,
+                        user_name: ok.user_name.unwrap_or_default(),
+                    })),
                     Err(err) => Type4(Err(err)),
                 }
             } else {
@@ -558,7 +553,7 @@ pub(crate) mod create_company {
 
         async fn state_full_operation<Id: cases::RowId, Ch: cache::Cache>(
             &self,
-            state: &mut cache::State<Ch>,
+            _: &mut cache::State<Ch>,
         ) -> Self::Output {
             let result = self.state_less_operation();
             return Ok(result);
@@ -666,19 +661,17 @@ pub(crate) mod create_company_branch {
             &self,
             state: &mut cache::State<Ch>,
         ) -> Self::Output {
-            let (user_roles, is_new_uuid_used, is_company_belong_exist, is_branch_name_used) =
-                state
-                    .read_create_company_branch(
-                        &self.new_uuid,
-                        &self.user_uuid,
-                        &self.company_belong,
-                        &self.branch_name,
-                    )
-                    .await;
+            let (user_roles, is_company_belong_exist, is_branch_name_used) = state
+                .read_create_company_branch(
+                    &self.user_uuid,
+                    &self.company_belong,
+                    &self.branch_name,
+                )
+                .await;
 
             let errr = self.state_full_check::<Id>(
                 &user_roles,
-                is_new_uuid_used,
+                false,
                 is_company_belong_exist,
                 is_branch_name_used,
             );

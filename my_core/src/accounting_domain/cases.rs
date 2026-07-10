@@ -27,7 +27,7 @@ pub(crate) trait MyErrorTrait: Default + PartialEq {
 pub mod sign_up {
     use super::*;
 
-    pub(crate) type MyResult = Result<Ok, Error>;
+    pub type MyResult = Result<Ok, Error>;
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Input {
@@ -47,7 +47,7 @@ pub mod sign_up {
     }
 
     #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
-    pub(crate) struct Error {
+    pub struct Error {
         pub(crate) new_uuid: Option<types::RowIdError>,
         pub(crate) user_id: Option<UserIdError>,
         pub(crate) name: Option<String>,
@@ -109,7 +109,7 @@ pub mod sign_up {
 pub(crate) mod sign_in {
     use super::*;
 
-    pub(crate) type MyResult = Result<Ok, Error>;
+    pub type MyResult = Result<Ok, Error>;
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Input {
@@ -118,7 +118,7 @@ pub(crate) mod sign_in {
     }
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
-    pub(crate) struct Ok {
+    pub struct Ok {
         pub user_uuid: types::UuidType,
         pub user_id: String,
         pub user_name: Option<String>,
@@ -126,7 +126,7 @@ pub(crate) mod sign_in {
     }
 
     #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
-    pub(crate) struct Error {
+    pub struct Error {
         pub(crate) user_id: Option<UserIdError>,
         pub(crate) password: Option<PasswordError>,
     }
@@ -203,7 +203,7 @@ pub(crate) mod sign_in {
 pub mod create_company {
     use super::*;
 
-    pub(crate) type MyResult = Result<Ok, Error>;
+    pub type MyResult = Result<Ok, Error>;
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Input {
@@ -223,7 +223,7 @@ pub mod create_company {
     }
 
     #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
-    pub(crate) struct Error {
+    pub struct Error {
         pub(crate) user_uuid: Option<types::UserUuidError>,
         pub(crate) new_uuid: Option<types::RowIdError>,
     }
@@ -269,15 +269,15 @@ pub mod create_company {
 pub mod list_company_and_branch {
     use super::*;
 
-    pub(crate) type MyResult = Result<Ok, Error>;
+    pub type MyResult = Result<Ok, Error>;
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
-    pub(crate) struct Input {
+    pub struct Input {
         pub(crate) user_uuid: types::UuidType,
     }
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
-    pub(crate) struct Ok {
+    pub struct Ok {
         pub(crate) user_uuid: types::UuidType, // <-- add this
         pub(crate) data: Vec<AllCompaniesThatUserInWithRoles>,
     }
@@ -300,7 +300,7 @@ pub mod list_company_and_branch {
     }
 
     #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
-    pub(crate) struct Error {
+    pub struct Error {
         pub(crate) user_uuid: Option<types::UserUuidError>,
     }
 
@@ -322,7 +322,7 @@ pub mod list_company_and_branch {
 pub mod create_company_branch {
     use super::*;
 
-    pub(crate) type MyResult = Result<Ok, Error>;
+    pub type MyResult = Result<Ok, Error>;
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
     pub struct Input {
@@ -346,7 +346,7 @@ pub mod create_company_branch {
     }
 
     #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
-    pub(crate) struct Error {
+    pub struct Error {
         pub(crate) user_uuid: Option<types::UserUuidError>,
         pub(crate) new_uuid: Option<types::RowIdError>,
         pub(crate) company_belong: Option<CompanyBelongError>,

@@ -4,15 +4,10 @@ use crate::{
         ui_model::HashimSignal,
         use_cases::{self, ViewType1, ViewType2},
     },
-    accounting_domain::{
-        cases::{self, RowId},
-        types,
-    },
+    accounting_domain::{cases, types},
     mbg,
     utility::{
-        traits::{
-            self, JoinHandle, MultiProducerSingleConsumer, RandomNumber, Receiver, Runtime, Sender,
-        },
+        traits::{self, JoinHandle, Receiver, Sender},
         utils::ReadAndSet,
     },
 };
@@ -320,7 +315,7 @@ pub(crate) mod sign_up {
         As: ui_model::AllSignalTypes,
     >(
         model: &ui_model::Model<As>,
-        commander_local_state: Arc<CommanderLocalState<Mpsc, As>>,
+        _: Arc<CommanderLocalState<Mpsc, As>>,
         result: cases::sign_up::MyResult,
     ) {
         let local_state = &model.page_root.page_auth.page_sign_up;

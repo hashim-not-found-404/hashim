@@ -32,15 +32,10 @@ impl<T, E: Debug> LogError for Result<T, E> {
 }
 
 pub(crate) trait HashMapWithVectorValue<K, V> {
-    fn insert_push(&mut self, k: K, v: V);
     fn insert_append(&mut self, k: K, v: Vec<V>);
 }
 
 impl<K: Eq + Hash, V> HashMapWithVectorValue<K, V> for HashMap<K, Vec<V>> {
-    fn insert_push(&mut self, k: K, v: V) {
-        self.entry(k).or_default().push(v);
-    }
-
     fn insert_append(&mut self, k: K, mut v: Vec<V>) {
         self.entry(k).or_default().append(&mut v);
     }

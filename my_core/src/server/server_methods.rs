@@ -703,9 +703,9 @@ type UserSubscribes = HashMap<
     >,
 >;
 
-type UserSenders<Mpsc: traits::MultiProducerSingleConsumer> = HashMap<
-    types::UuidType,                                      // user uuid
-    HashMap<u64, Mpsc::Sender<Vec<types::ResourceInfo>>>, // because user may have multiple web socket connection
+type UserSenders<Mpsc> = HashMap<
+    types::UuidType, // user uuid
+    HashMap<u64, <Mpsc as traits::MultiProducerSingleConsumer>::Sender<Vec<types::ResourceInfo>>>, // because user may have multiple web socket connection
 >;
 
 pub(crate) enum MessageToBroker<Mpsc: traits::MultiProducerSingleConsumer> {
