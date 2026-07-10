@@ -71,7 +71,7 @@ pub mod target {
         type JoinHandle<T> = join_handle::target::S<T>;
 
         fn abortable_spawn_local<F: Future + 'static>(fut: F) -> Self::JoinHandle<F::Output> {
-            let (sender_to_abort, mut receiver_to_abort) = oneshot::channel();
+            let (sender_to_abort, receiver_to_abort) = oneshot::channel();
             let join_handle = Self::JoinHandle::new(sender_to_abort);
 
             let output_place = join_handle.output.clone();
@@ -157,7 +157,7 @@ mod join_handle {
             async fn abort(&mut self) {
                 match self.aborter.take() {
                     Some(s) => {
-                        s.send(());
+                        let _ = s.send(());
                     }
                     None => return,
                 }
