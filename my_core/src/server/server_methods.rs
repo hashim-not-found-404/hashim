@@ -35,8 +35,7 @@ pub trait WSServer: 'static {
 pub struct ServerMethods<Mpsc: traits::MultiProducerSingleConsumer, Jwt: cases::JWT, Db: Database> {
     database: Db,
     jwt: Jwt,
-    pub(crate) sender_to_broker:
-        <Mpsc as traits::MultiProducerSingleConsumer>::Sender<MessageToBroker<Mpsc>>,
+    pub(crate) sender_to_broker: Mpsc::Sender<MessageToBroker<Mpsc>>,
 }
 
 impl<
@@ -242,9 +241,7 @@ impl<
     }
 
     pub(crate) fn broker_actor<Rt: traits::Runtime>(
-        mut receiver_to_broker: <Mpsc as traits::MultiProducerSingleConsumer>::Receiver<
-            MessageToBroker<Mpsc>,
-        >,
+        mut receiver_to_broker: Mpsc::Receiver<MessageToBroker<Mpsc>>,
     ) {
         Rt::spawn_local(async move {
             let mut pool_of_pubsub_for_company: UserSubscribes = HashMap::with_capacity(1000);
