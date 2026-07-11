@@ -4,7 +4,7 @@ use crate::{
 };
 use my_core::{
     accounting_domain::{cases, types},
-    server::{server_traits::DBClient, server_types},
+    server::server_traits::{self, DBClient},
     utility::{traits::DynamicError, utils::LogError},
 };
 use serde::Deserialize;
@@ -49,7 +49,7 @@ impl DBClient for S {
     async fn read_roles_for_user(
         &mut self,
         users_uuid: &HashSet<types::UuidType>,
-    ) -> Result<server_types::AllRoles, DynamicError> {
+    ) -> Result<server_traits::AllRoles, DynamicError> {
         let query = r#"
             SELECT
                 'company' as type,
@@ -72,7 +72,7 @@ impl DBClient for S {
 
         let stmt = self.client.prepare_cached(query).await.log()?;
 
-        let mut result = server_types::AllRoles {
+        let mut result = server_traits::AllRoles {
             companies: HashMap::new(),
             branches: HashMap::new(),
         };

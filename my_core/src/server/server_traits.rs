@@ -1,9 +1,25 @@
 use crate::{
     accounting_domain::{cases, types},
-    server::server_types,
     utility::traits,
 };
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
+
+pub struct AllRoles {
+    pub companies: HashMap<
+        types::UuidType, // company uuid
+        HashMap<
+            types::UuidType, // user uuid
+            Vec<types::Role>,
+        >,
+    >,
+    pub branches: HashMap<
+        types::UuidType, // branch uuid
+        HashMap<
+            types::UuidType, // user uuid
+            Vec<types::Role>,
+        >,
+    >,
+}
 
 pub mod domain_errors {
     #[derive(Debug)]
@@ -93,7 +109,7 @@ pub trait DBClient {
     fn read_roles_for_user(
         &mut self,
         users_uuids: &HashSet<types::UuidType>,
-    ) -> impl Future<Output = Result<server_types::AllRoles, traits::DynamicError>>;
+    ) -> impl Future<Output = Result<AllRoles, traits::DynamicError>>;
     fn read_list_company_and_branch(
         &mut self,
         user_uuid: &types::UuidType,

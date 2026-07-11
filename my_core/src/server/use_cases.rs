@@ -3,12 +3,20 @@ use crate::{
         cases::{self, MyErrorTrait},
         types,
     },
-    server::{
-        server_traits::{DBClient, DBTransaction},
-        server_types,
-    },
+    server::server_traits::{DBClient, DBTransaction},
     utility::traits,
 };
+use std::collections::{HashMap, HashSet};
+
+pub(crate) type ListOfResources = HashMap<types::UuidType, Vec<types::ResourceInfo>>;
+
+#[derive(Default)]
+pub(crate) struct SideEffects {
+    pub(crate) authenticated_users: HashSet<types::UuidType>,
+    pub(crate) users_to_resubscribe: HashSet<types::UuidType>,
+    pub(crate) resource_to_broadcast_for_company: ListOfResources,
+    pub(crate) resource_to_broadcast_for_branch: ListOfResources,
+}
 
 impl cases::sign_up::Input {
     pub(crate) async fn handle_operation<
@@ -18,7 +26,7 @@ impl cases::sign_up::Input {
         Cli: DBClient,
     >(
         &self,
-        side_effects: &mut server_types::SideEffects,
+        side_effects: &mut SideEffects,
         client: &mut Cli,
         jwt: &Jwt,
     ) -> Result<Result<cases::sign_up::Ok, cases::sign_up::Error>, traits::DynamicError> {
@@ -54,7 +62,7 @@ impl cases::sign_in::Input {
         Cli: DBClient,
     >(
         &self,
-        side_effects: &mut server_types::SideEffects,
+        side_effects: &mut SideEffects,
         client: &mut Cli,
         jwt: &Jwt,
     ) -> Result<Result<cases::sign_in::Ok, cases::sign_in::Error>, traits::DynamicError> {
@@ -78,7 +86,7 @@ impl cases::sign_in::Input {
 impl cases::create_company::Input {
     pub(crate) async fn handle_operation<Id: cases::RowId, Cli: DBClient>(
         &self,
-        side_effects: &mut server_types::SideEffects,
+        side_effects: &mut SideEffects,
         client: &mut Cli,
     ) -> Result<Result<cases::create_company::Ok, cases::create_company::Error>, traits::DynamicError>
     {
@@ -109,7 +117,7 @@ impl cases::create_company::Input {
 impl cases::list_company_and_branch::Input {
     pub(crate) async fn handle_operation<Id: cases::RowId, Cli: DBClient>(
         &self,
-        side_effects: &mut server_types::SideEffects,
+        side_effects: &mut SideEffects,
         client: &mut Cli,
     ) -> Result<
         Result<cases::list_company_and_branch::Ok, cases::list_company_and_branch::Error>,
@@ -135,7 +143,7 @@ impl cases::list_company_and_branch::Input {
 impl cases::create_company_branch::Input {
     pub(crate) async fn handle_operation<Id: cases::RowId, Cli: DBClient>(
         &self,
-        side_effects: &mut server_types::SideEffects,
+        side_effects: &mut SideEffects,
         client: &mut Cli,
     ) -> Result<
         Result<cases::create_company_branch::Ok, cases::create_company_branch::Error>,

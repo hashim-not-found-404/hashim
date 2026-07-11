@@ -3,7 +3,7 @@ use crate::{
         cases::{self, RowId},
         request_response, types,
     },
-    server::{server_traits::DBClient, server_types},
+    server::{server_traits::DBClient, use_cases},
     utility::{
         traits::{self, Receiver, Sender},
         utils::{HashMapWithHashMapValue, HashMapWithVectorValue},
@@ -125,7 +125,7 @@ impl<
                                 };
 
                                 dbg!(&input);
-                                let mut side_effects = server_types::SideEffects::default();
+                                let mut side_effects = use_cases::SideEffects::default();
                                 let output = push_data::<Rn, Id, Rg, Auth, Jwt, Cli>(
                                     &input,
                                     &mut side_effects,
@@ -304,7 +304,7 @@ impl<
                         list_of_resources_for_company,
                         list_of_resources_for_branch,
                     } => {
-                        let mut resource_to_send: server_types::ListOfResources = HashMap::new();
+                        let mut resource_to_send: use_cases::ListOfResources = HashMap::new();
 
                         broker_functions::map_resource_to_subscribes(
                             &pool_of_pubsub_for_company,
@@ -357,7 +357,7 @@ async fn push_data<
     Cli: DBClient,
 >(
     input: &request_response::push_data::Input,
-    side_effects: &mut server_types::SideEffects,
+    side_effects: &mut use_cases::SideEffects,
     client: &mut Cli,
     jwt: &Jwt,
 ) -> Result<request_response::push_data::MyResult, traits::DynamicError> {
@@ -520,8 +520,8 @@ mod broker_functions {
 
     pub(crate) fn map_resource_to_subscribes(
         pool_of_pubsub: &UserSubscribes,
-        list_of_resources: server_types::ListOfResources,
-        resource_to_send: &mut server_types::ListOfResources,
+        list_of_resources: use_cases::ListOfResources,
+        resource_to_send: &mut use_cases::ListOfResources,
     ) {
         for (company, resource) in list_of_resources {
             let user_and_subscribe = pool_of_pubsub.get(&company);
@@ -720,7 +720,7 @@ pub(crate) enum MessageToBroker<Mpsc: traits::MultiProducerSingleConsumer> {
     },
     Publish {
         connection_id: u64,
-        list_of_resources_for_company: server_types::ListOfResources,
-        list_of_resources_for_branch: server_types::ListOfResources,
+        list_of_resources_for_company: use_cases::ListOfResources,
+        list_of_resources_for_branch: use_cases::ListOfResources,
     },
 }
