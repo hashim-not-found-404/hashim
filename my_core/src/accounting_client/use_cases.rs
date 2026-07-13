@@ -205,7 +205,7 @@ async fn operation_check_apply_write_handler<
 
 async fn apply_change(
     resources: Vec<types::ResourceInfo>,
-    state: &mut cache::StateOfPendingTxn,
+    state: &mut cache::tables::StateOfPendingTxn,
     subs_to_poke: &mut HashSet<types::Subscribe>,
 ) {
     cache_actor::collect_subs_to_poke(subs_to_poke, &resources);

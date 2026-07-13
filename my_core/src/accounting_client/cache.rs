@@ -1,5 +1,5 @@
 use crate::accounting_domain::{cases, request_response, types};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
 pub trait Cache: Sized {
     fn new() -> impl Future<Output = Self>;
@@ -67,6 +67,8 @@ pub trait Cache: Sized {
 }
 
 pub(crate) mod tables {
+    use std::collections::HashMap;
+
     use crate::accounting_domain::types;
 
     #[derive(Default)]
@@ -99,21 +101,20 @@ pub(crate) mod tables {
         pub(crate) user_: types::UuidType,
         pub(crate) role: types::Role,
     }
-}
 
-#[derive(Default)]
-pub(crate) struct StateOfPendingTxn {
-    pub(crate) user: HashMap<types::UuidType, tables::User>,
-    pub(crate) company: HashMap<types::UuidType, tables::Company>,
-    pub(crate) access_control_for_company:
-        HashMap<types::UuidType, tables::AccessControlForCompany>,
-    pub(crate) company_branch: HashMap<types::UuidType, tables::CompanyBranch>,
-    pub(crate) access_control_for_company_branch:
-        HashMap<types::UuidType, tables::AccessControlForCompanyBranch>,
+    #[derive(Default)]
+    pub(crate) struct StateOfPendingTxn {
+        pub(crate) user: HashMap<types::UuidType, User>,
+        pub(crate) company: HashMap<types::UuidType, Company>,
+        pub(crate) access_control_for_company: HashMap<types::UuidType, AccessControlForCompany>,
+        pub(crate) company_branch: HashMap<types::UuidType, CompanyBranch>,
+        pub(crate) access_control_for_company_branch:
+            HashMap<types::UuidType, AccessControlForCompanyBranch>,
+    }
 }
 
 pub(crate) struct State<Ch: Cache> {
-    pub(crate) state_of_pending_txn: StateOfPendingTxn,
+    pub(crate) state_of_pending_txn: tables::StateOfPendingTxn,
     pub(crate) cache: Ch,
 }
 
@@ -123,7 +124,7 @@ impl<Ch: Cache> State<Ch> {
         let txns = cache.get_all_txn_input().await;
 
         let mut state = Self {
-            state_of_pending_txn: StateOfPendingTxn::default(),
+            state_of_pending_txn: tables::StateOfPendingTxn::default(),
             cache,
         };
 
