@@ -510,23 +510,3 @@ async fn poke_the_subs<Mpsc: traits::MultiProducerSingleConsumer>(
         sender.send(()).await.unwrap();
     }
 }
-
-pub(crate) struct NetworkStruct<Mpsc: traits::MultiProducerSingleConsumer> {
-    pub(crate) sender: Mpsc::Sender<MessageToCache<Mpsc>>,
-}
-
-impl<Mpsc: traits::MultiProducerSingleConsumer> network_actor::Network for NetworkStruct<Mpsc> {
-    async fn from_network_status(&mut self) {
-        self.sender
-            .send(MessageToCache::WeAreBackOnline)
-            .await
-            .unwrap();
-    }
-
-    async fn sender_to_network(&mut self, data: Vec<u8>) {
-        self.sender
-            .send(MessageToCache::DataFromServer(data))
-            .await
-            .unwrap();
-    }
-}
