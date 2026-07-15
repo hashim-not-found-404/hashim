@@ -121,26 +121,6 @@ pub(crate) struct State<Ch: Cache> {
 }
 
 impl<Ch: Cache> State<Ch> {
-    pub(crate) async fn new<Id: cases::RowId>() -> Self {
-        let cache = Ch::new().await;
-        let txns = cache.get_all_txn_input().await;
-
-        let mut state = Self {
-            state_of_pending_txn: tables::StateOfPendingTxn::default(),
-            cache,
-        };
-
-        for op in txns {
-            op.operation
-                .run_operation_check_apply::<Id, Ch>(&mut state)
-                .await;
-        }
-
-        state
-    }
-}
-
-impl<Ch: Cache> State<Ch> {
     pub(crate) async fn read_sign_up(
         &mut self,
         new_uuid: &types::UuidType,

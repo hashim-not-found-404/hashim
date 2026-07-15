@@ -33,6 +33,26 @@ pub(crate) trait ViewType2 {
     fn unwrap_output(output: request_response::push_data::OperationsResult) -> Self;
 }
 
+impl<Ch: cache::Cache> cache::State<Ch> {
+    pub(crate) async fn new<Id: cases::RowId>() -> Self {
+        let cache = Ch::new().await;
+        let txns = cache.get_all_txn_input().await;
+
+        let mut state = Self {
+            state_of_pending_txn: cache::tables::StateOfPendingTxn::default(),
+            cache,
+        };
+
+        for op in txns {
+            op.operation
+                .run_operation_check_apply::<Id, Ch>(&mut state)
+                .await;
+        }
+
+        state
+    }
+}
+
 impl request_response::push_data::OperationsInput {
     pub(crate) async fn run_operation_check<Id: cases::RowId, Ch: cache::Cache>(
         &self,
