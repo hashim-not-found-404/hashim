@@ -1,5 +1,4 @@
 use crate::accounting_domain::{cases, request_response, types};
-use std::collections::HashSet;
 
 pub trait Cache: Sized {
     fn new() -> impl Future<Output = Self>;
@@ -67,9 +66,8 @@ pub trait Cache: Sized {
 }
 
 pub(crate) mod tables {
-    use std::collections::HashMap;
-
     use crate::accounting_domain::types;
+    use std::collections::HashMap;
 
     #[derive(Default)]
     pub(crate) struct User {
@@ -77,17 +75,20 @@ pub(crate) mod tables {
         pub(crate) id: String,
         pub(crate) password: String,
     }
+
     #[derive(Default)]
     pub(crate) struct Company {
         pub(crate) name: String,
         pub(crate) currency: types::Currency,
     }
+
     #[derive(Default)]
     pub(crate) struct AccessControlForCompany {
         pub(crate) data_group: types::UuidType,
         pub(crate) user_: types::UuidType,
         pub(crate) role: types::Role,
     }
+
     #[derive(Default)]
     pub(crate) struct CompanyBranch {
         pub(crate) company_belong: types::UuidType,
@@ -95,6 +96,7 @@ pub(crate) mod tables {
         pub(crate) location: types::Location,
         pub(crate) currency: types::Currency,
     }
+
     #[derive(Default)]
     pub(crate) struct AccessControlForCompanyBranch {
         pub(crate) data_group: types::UuidType,
@@ -130,7 +132,7 @@ impl<Ch: Cache> State<Ch> {
 
         for op in txns {
             op.operation
-                .run_operation_check_apply::<Id, Ch>(&mut state, &mut HashSet::new())
+                .run_operation_check_apply::<Id, Ch>(&mut state)
                 .await;
         }
 

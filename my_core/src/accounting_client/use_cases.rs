@@ -1,12 +1,11 @@
 use crate::{
-    accounting_client::{cache, cache_actor},
+    accounting_client::cache,
     accounting_domain::{
         cases::{self, MyErrorTrait},
         request_response, types,
     },
     utility::utils::MyUpSert,
 };
-use std::collections::HashSet;
 
 pub(crate) trait ViewType1 {
     fn subs() -> &'static [types::Subscribe] {
@@ -61,23 +60,22 @@ impl request_response::push_data::OperationsInput {
     pub(crate) async fn run_operation_check_apply<Id: cases::RowId, Ch: cache::Cache>(
         &self,
         state: &mut cache::State<Ch>,
-        subs_to_poke: &mut HashSet<types::Subscribe>,
     ) {
         match self {
             request_response::push_data::OperationsInput::SignUp(i) => {
-                operation_check_apply_handler::<_, Id, Ch>(i, state, subs_to_poke).await
+                operation_check_apply_handler::<_, Id, Ch>(i, state).await
             }
             request_response::push_data::OperationsInput::SignIn(i) => {
-                operation_check_apply_handler::<_, Id, Ch>(i, state, subs_to_poke).await
+                operation_check_apply_handler::<_, Id, Ch>(i, state).await
             }
             request_response::push_data::OperationsInput::CreateCompany(i) => {
-                operation_check_apply_handler::<_, Id, Ch>(i, state, subs_to_poke).await
+                operation_check_apply_handler::<_, Id, Ch>(i, state).await
             }
             request_response::push_data::OperationsInput::CreateCompanyBranch(i) => {
-                operation_check_apply_handler::<_, Id, Ch>(i, state, subs_to_poke).await
+                operation_check_apply_handler::<_, Id, Ch>(i, state).await
             }
             request_response::push_data::OperationsInput::ListCompanyAndBranch(i) => {
-                operation_check_apply_handler::<_, Id, Ch>(i, state, subs_to_poke).await
+                operation_check_apply_handler::<_, Id, Ch>(i, state).await
             }
         }
     }
@@ -86,7 +84,6 @@ impl request_response::push_data::OperationsInput {
         &self,
         txn_number: u64,
         state: &mut cache::State<Ch>,
-        subs_to_poke: &mut HashSet<types::Subscribe>,
     ) -> request_response::push_data::OperationsResult {
         state
             .cache
@@ -98,19 +95,19 @@ impl request_response::push_data::OperationsInput {
 
         match self {
             request_response::push_data::OperationsInput::SignUp(i) => {
-                operation_check_apply_write_handler::<_, Id, Ch>(i, state, subs_to_poke).await
+                operation_check_apply_write_handler::<_, Id, Ch>(i, state).await
             }
             request_response::push_data::OperationsInput::SignIn(i) => {
-                operation_check_apply_write_handler::<_, Id, Ch>(i, state, subs_to_poke).await
+                operation_check_apply_write_handler::<_, Id, Ch>(i, state).await
             }
             request_response::push_data::OperationsInput::CreateCompany(i) => {
-                operation_check_apply_write_handler::<_, Id, Ch>(i, state, subs_to_poke).await
+                operation_check_apply_write_handler::<_, Id, Ch>(i, state).await
             }
             request_response::push_data::OperationsInput::CreateCompanyBranch(i) => {
-                operation_check_apply_write_handler::<_, Id, Ch>(i, state, subs_to_poke).await
+                operation_check_apply_write_handler::<_, Id, Ch>(i, state).await
             }
             request_response::push_data::OperationsInput::ListCompanyAndBranch(i) => {
-                operation_check_apply_write_handler::<_, Id, Ch>(i, state, subs_to_poke).await
+                operation_check_apply_write_handler::<_, Id, Ch>(i, state).await
             }
         }
     }
@@ -169,7 +166,6 @@ async fn operation_check_apply_handler<
 >(
     input: &T,
     state: &mut cache::State<Ch>,
-    subs_to_poke: &mut HashSet<types::Subscribe>,
 ) {
     apply_change(
         input
@@ -177,7 +173,6 @@ async fn operation_check_apply_handler<
             .await
             .extract_resource(),
         &mut state.state_of_pending_txn,
-        subs_to_poke,
     )
     .await;
 }
@@ -189,16 +184,10 @@ async fn operation_check_apply_write_handler<
 >(
     input: &T,
     state: &mut cache::State<Ch>,
-    subs_to_poke: &mut HashSet<types::Subscribe>,
 ) -> request_response::push_data::OperationsResult {
     let result = input.state_full_operation::<Id, Ch>(state).await;
 
-    apply_change(
-        result.extract_resource(),
-        &mut state.state_of_pending_txn,
-        subs_to_poke,
-    )
-    .await;
+    apply_change(result.extract_resource(), &mut state.state_of_pending_txn).await;
 
     return result.wrap_output();
 }
@@ -206,10 +195,7 @@ async fn operation_check_apply_write_handler<
 async fn apply_change(
     resources: Vec<types::ResourceInfo>,
     state: &mut cache::tables::StateOfPendingTxn,
-    subs_to_poke: &mut HashSet<types::Subscribe>,
 ) {
-    cache_actor::collect_subs_to_poke(subs_to_poke, &resources);
-
     for resource in resources {
         let row_uuid = resource.row_uuid;
 
