@@ -176,26 +176,65 @@ impl<Mpsc: traits::MultiProducerSingleConsumer, Ch: cache::Cache, Id: cases::Row
     async fn prepare_txn_for_send(
         cache: &Self::Cache,
         txns: Vec<(u64, Self::OpInput)>,
-    ) -> Self::SendingTxns {
-        todo!()
+    ) -> Option<Self::SendingTxns> {
+        if txns.is_empty() {
+            return None;
+        }
+
+        let mut jwts = Vec::new();
+        for (txn_number, txn) in &txns {
+            if let Some(user_uuid) = txn.get_user_uuid() {
+                if let Some(jwt) = cache.cache.get_jwt(user_uuid).await {
+                    jwts.push(jwt)
+                }
+            }
+        }
+
+        let mut operations1 = Vec::with_capacity(txns.len());
+
+        for i in txns {
+            operations1.push(request_response::push_data::Txn {
+                txn_number: i.0,
+                operation: i.1,
+            });
+        }
+
+        let t = request_response::messages::FromClient {
+            jwts,
+            nonce: Id::generate(),
+            operations: operations1,
+        };
+
+        Some(t)
     }
 
-    type E = bool;
-    type Response = bool;
-    type Resource = bool;
-    type MessageFromServer<'de> = bool;
+    type E = types::HashimError;
+    type Response = request_response::push_data::MyResult;
+    type Resource = types::ResourceInfo;
+    type MessageFromServer<'de> = request_response::messages::FromServer;
     fn to<'de>(
         msg: Self::MessageFromServer<'de>,
     ) -> cache_actor::FromServer<Self::E, Self::Response, Self::Resource> {
-        todo!()
+        match msg {
+            request_response::messages::FromServer::Error(a) => cache_actor::FromServer::Error(a),
+            request_response::messages::FromServer::PushData(a) => {
+                cache_actor::FromServer::Response(a)
+            }
+            request_response::messages::FromServer::Resources(a) => {
+                cache_actor::FromServer::Resources(a)
+            }
+        }
     }
 
     fn extract_resource(resp: &Self::Response) -> Vec<Self::Resource> {
-        todo!()
+        resp.operations
+            .iter()
+            .flat_map(|a| a.operation.extract_resource())
+            .collect()
     }
 
     async fn write_resource(cache: &Self::Cache, resource: &Vec<Self::Resource>) {
-        todo!()
+        cache.cache.write_resource(resource).await;
     }
 
     async fn delete_successful_txn_input(cache: &Self::Cache, resp: &Self::Response) {
