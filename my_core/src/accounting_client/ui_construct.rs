@@ -21,7 +21,7 @@ pub fn new<
     Mpsc: traits::MultiProducerSingleConsumer,
     Ed: traits::Coding,
     Rg: traits::Regex,
-    Ch: cache::Cache,
+    Ch: cache::Cache + 'static,
     Ws: network_actor::WSClient,
     As: ui_model::AllSignalTypes,
 >(
@@ -43,7 +43,7 @@ pub fn new<
         format!("ws://{}/ws", types::ADDRESS),
     );
 
-    let cache = client_traits::CacheActorStruct::new::<Rt, Ed, Rn, MyCache<Mpsc>>(
+    let cache = client_traits::CacheActorStruct::new::<Rt, Ed, Rn, MyCache<Mpsc, Ch, Id>>(
         receiver_to_cache,
         sender_to_cache,
         sender_to_network,
@@ -108,11 +108,13 @@ impl<Mpsc: traits::MultiProducerSingleConsumer> network_actor::Network for MyNet
     }
 }
 
-struct MyCache<Mpsc: traits::MultiProducerSingleConsumer> {
-    _ph: PhantomData<Mpsc>,
+struct MyCache<Mpsc: traits::MultiProducerSingleConsumer, Ch: cache::Cache, Id: cases::RowId> {
+    _ph: PhantomData<(Mpsc, Ch, Id)>,
 }
 
-impl<Mpsc: traits::MultiProducerSingleConsumer> cache_actor::CacheActorUtils for MyCache<Mpsc> {
+impl<Mpsc: traits::MultiProducerSingleConsumer, Ch: cache::Cache, Id: cases::RowId>
+    cache_actor::CacheActorUtils for MyCache<Mpsc, Ch, Id>
+{
     type Mpsc = Mpsc;
     type Subscribe = types::Subscribe;
     type OpInput = request_response::push_data::OperationsInput;
@@ -123,42 +125,54 @@ impl<Mpsc: traits::MultiProducerSingleConsumer> cache_actor::CacheActorUtils for
         >,
     ) -> cache_actor::MessageToCache<Self::Mpsc, Self::Subscribe, Self::OpInput, Self::OpResult>
     {
-        todo!()
+        receiver.recv().await.unwrap()
     }
 
     type NetworkSender = Mpsc::Sender<Vec<u8>>;
     async fn send_to_network(sender: &mut Self::NetworkSender, data: Vec<u8>) {
-        todo!()
+        sender.send(data).await.unwrap();
     }
 
     type ErrorSender = Mpsc::Sender<types::HashimError>;
     async fn internal_server_error(sender: &mut Self::ErrorSender) {
-        todo!()
+        sender
+            .send(types::HashimError::InternalServerError)
+            .await
+            .unwrap();
     }
 
     async fn invalid_format_error(sender: &mut Self::ErrorSender) {
-        todo!()
+        sender
+            .send(types::HashimError::InvalidDataFormat)
+            .await
+            .unwrap();
     }
 
     type NetworkStatus = Arc<RwLock<bool>>;
     async fn is_online(network_status: &Self::NetworkStatus) -> bool {
-        todo!()
+        network_status.read()
     }
 
-    type Cache = bool;
+    type Cache = cache::State<Ch>;
     async fn new_cache() -> Self::Cache {
-        todo!()
+        cache::State::<Ch>::new::<Id>().await
     }
 
     async fn get_all_pending_txn(cache: &Self::Cache) -> Vec<(u64, Self::OpInput)> {
-        todo!()
+        let txns = cache.cache.get_all_txn_input().await;
+
+        let mut result = Vec::with_capacity(txns.len());
+        for txn in txns {
+            result.push((txn.txn_number, txn.operation));
+        }
+        result
     }
 
-    async fn clear_state_pending_txn(cache: &Self::Cache) {
-        todo!()
+    async fn clear_state_pending_txn(cache: &mut Self::Cache) {
+        cache.state_of_pending_txn = Default::default();
     }
 
-    type SendingTxns = bool;
+    type SendingTxns = request_response::messages::FromClient;
     async fn prepare_txn_for_send(
         cache: &Self::Cache,
         txns: Vec<(u64, Self::OpInput)>,

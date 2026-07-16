@@ -71,7 +71,7 @@ pub(crate) trait CacheActorUtils {
     async fn new_cache() -> Self::Cache;
 
     async fn get_all_pending_txn(cache: &Self::Cache) -> Vec<(u64, Self::OpInput)>;
-    async fn clear_state_pending_txn(cache: &Self::Cache);
+    async fn clear_state_pending_txn(cache: &mut Self::Cache);
 
     type SendingTxns: serde::Serialize;
     async fn prepare_txn_for_send(
