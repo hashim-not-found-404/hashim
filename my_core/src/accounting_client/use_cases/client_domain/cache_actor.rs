@@ -1,4 +1,4 @@
-use crate::utility::traits::{self, Sender};
+use crate::utility::traits::{self, MultiProducerSingleConsumer, Sender};
 use std::{
     collections::{HashMap, HashSet},
     hash::Hash,
@@ -11,7 +11,7 @@ pub(crate) enum FromServer<E, Resp, Reso> {
 }
 
 #[derive(Clone)]
-pub(crate) enum Response<OpResult> {
+pub(crate) enum Response<OpResult: 'static> {
     CloseTheChannel,
     ServerCannotBeReached,
     Data {
@@ -23,8 +23,8 @@ pub(crate) enum Response<OpResult> {
 pub(crate) enum MessageToCache<
     Mpsc: traits::MultiProducerSingleConsumer,
     Subscribe: 'static + Hash + Eq + Clone,
-    OpInput,
-    OpResult,
+    OpInput: 'static,
+    OpResult: 'static,
 > {
     WeAreBackOnline,
     DataFromServer(Vec<u8>),
@@ -49,9 +49,10 @@ pub(crate) trait CacheActorUtils {
     type OpInput;
     type OpResult;
 
-    type ActorReceiver;
     async fn cache_receiver(
-        receiver: &mut Self::ActorReceiver,
+        receiver: &mut <Self::Mpsc as MultiProducerSingleConsumer>::Receiver<
+            MessageToCache<Self::Mpsc, Self::Subscribe, Self::OpInput, Self::OpResult>,
+        >,
     ) -> MessageToCache<Self::Mpsc, Self::Subscribe, Self::OpInput, Self::OpResult>;
 
     type NetworkSender;
@@ -126,6 +127,8 @@ pub(crate) struct CacheStruct<Mpsc, Subscribe, OpInput, OpResult>
 where
     Mpsc: traits::MultiProducerSingleConsumer,
     Subscribe: 'static + Hash + Eq + Clone,
+    OpInput: 'static,
+    OpResult: 'static,
 {
     sender: Mpsc::Sender<MessageToCache<Mpsc, Subscribe, OpInput, OpResult>>,
 }
@@ -153,7 +156,9 @@ where
         Rn: traits::RandomNumber,
         Cu: CacheActorUtils<OpResult = OpResult, Subscribe = Subscribe, Mpsc = Mpsc> + 'static,
     >(
-        receiver_to_cache: Cu::ActorReceiver,
+        receiver_to_cache: <Cu::Mpsc as MultiProducerSingleConsumer>::Receiver<
+            MessageToCache<Cu::Mpsc, Cu::Subscribe, Cu::OpInput, Cu::OpResult>,
+        >,
         sender_to_cache: Mpsc::Sender<MessageToCache<Mpsc, Subscribe, OpInput, OpResult>>,
         sender_to_network: Cu::NetworkSender,
         sender_to_error: Cu::ErrorSender,
@@ -222,7 +227,9 @@ where
         Rn: traits::RandomNumber,
         Cu: CacheActorUtils<OpResult = OpResult, Subscribe = Subscribe, Mpsc = Mpsc> + 'static,
     >(
-        mut receiver_to_cache: Cu::ActorReceiver,
+        mut receiver_to_cache: <Cu::Mpsc as MultiProducerSingleConsumer>::Receiver<
+            MessageToCache<Cu::Mpsc, Cu::Subscribe, Cu::OpInput, Cu::OpResult>,
+        >,
         mut sender_to_network: Cu::NetworkSender,
         mut sender_to_error: Cu::ErrorSender,
         is_online: Cu::NetworkStatus,
