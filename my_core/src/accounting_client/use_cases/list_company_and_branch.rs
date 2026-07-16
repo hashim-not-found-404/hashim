@@ -237,7 +237,7 @@ impl Mvu for ui_model::CompanyAndBranchSelection {
     >(
         self,
         model: &'static ui_model::Model<As>,
-        cache: client_traits::Type<Mpsc>,
+        cache: client_traits::CacheActorStruct<Mpsc>,
         commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
     ) {
         match self {
@@ -325,7 +325,7 @@ fn handle_list_company_and_branch_listener<
     As: ui_model::AllSignalTypes,
 >(
     model: &'static ui_model::Model<As>,
-    mut cache: client_traits::Type<Mpsc>,
+    mut cache: client_traits::CacheActorStruct<Mpsc>,
     commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
 ) -> impl FnOnce() {
     let component_id = Rn::generate() as u16;
@@ -399,7 +399,7 @@ async fn handle_list_company_and_branch<
     As: ui_model::AllSignalTypes,
 >(
     model: &'static ui_model::Model<As>,
-    mut cache: client_traits::Type<Mpsc>,
+    mut cache: client_traits::CacheActorStruct<Mpsc>,
     commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
 ) {
     let user_uuid = commander_local_state.user_uuid.read().clone().unwrap();

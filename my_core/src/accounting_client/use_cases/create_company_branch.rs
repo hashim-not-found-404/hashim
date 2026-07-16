@@ -141,7 +141,7 @@ impl Mvu for ui_model::CreateCompanyBranch {
     >(
         self,
         model: &'static ui_model::Model<As>,
-        cache: client_traits::Type<Mpsc>,
+        cache: client_traits::CacheActorStruct<Mpsc>,
         commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
     ) {
         match self {
@@ -191,7 +191,7 @@ async fn handle_submit<
     As: ui_model::AllSignalTypes,
 >(
     model: &'static ui_model::Model<As>,
-    mut cache: client_traits::Type<Mpsc>,
+    mut cache: client_traits::CacheActorStruct<Mpsc>,
     commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
 ) {
     let local_state = &model
@@ -239,7 +239,8 @@ async fn handle_submit<
                     is_response_from_server,
                     data,
                 } => {
-                    let is_ok = data.is_ok();
+                    let result = Type4::unwrap_output(data);
+                    let is_ok = result.is_ok();
 
                     if is_response_from_server {
                         commander_local_state1
@@ -266,8 +267,6 @@ async fn handle_submit<
                             .await
                             .unwrap();
                     }
-
-                    let result = Type4::unwrap_output(data);
 
                     match result {
                         Ok(_) => {}
@@ -315,7 +314,7 @@ async fn handle_check<
     As: ui_model::AllSignalTypes,
 >(
     model: &'static ui_model::Model<As>,
-    mut cache: client_traits::Type<Mpsc>,
+    mut cache: client_traits::CacheActorStruct<Mpsc>,
     commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
 ) {
     let local_state = &model

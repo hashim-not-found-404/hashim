@@ -31,12 +31,13 @@ pub(crate) trait ViewType2 {
     fn unwrap_output(output: request_response::push_data::OperationsResult) -> Self;
 }
 
-pub(crate) type Type<Mpsc: traits::MultiProducerSingleConsumer> = cache_actor::CacheStruct<
-    Mpsc,
-    types::Subscribe,
-    request_response::push_data::OperationsInput,
-    request_response::push_data::OperationsResult,
->;
+pub(crate) type CacheActorStruct<Mpsc: traits::MultiProducerSingleConsumer> =
+    cache_actor::CacheStruct<
+        Mpsc,
+        types::Subscribe,
+        request_response::push_data::OperationsInput,
+        request_response::push_data::OperationsResult,
+    >;
 
 pub(crate) trait Mvu {
     async fn update<
@@ -49,7 +50,7 @@ pub(crate) trait Mvu {
     >(
         self,
         model: &'static ui_model::Model<As>,
-        cache: Type<Mpsc>,
+        cache: CacheActorStruct<Mpsc>,
         commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
     );
 }

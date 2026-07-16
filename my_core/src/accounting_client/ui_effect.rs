@@ -33,7 +33,7 @@ impl<Mpsc: traits::MultiProducerSingleConsumer> Commander<Mpsc> {
         receiver_to_error: Mpsc::Receiver<types::HashimError>,
         sender_to_process_manager: Mpsc::Sender<process_manager::MessageToProcessManager<Mpsc, As>>,
         model: &'static ui_model::Model<As>,
-        cache: client_traits::Type<Mpsc>,
+        cache: client_traits::CacheActorStruct<Mpsc>,
     ) -> Self {
         let (sender_to_commander, receiver_to_commander) = Mpsc::channel();
 
@@ -70,7 +70,7 @@ impl<Mpsc: traits::MultiProducerSingleConsumer> Commander<Mpsc> {
         sender_to_commander: Mpsc::Sender<ui_model::Message>,
         sender_to_process_manager: Mpsc::Sender<process_manager::MessageToProcessManager<Mpsc, As>>,
         model: &'static ui_model::Model<As>,
-        cache: client_traits::Type<Mpsc>,
+        cache: client_traits::CacheActorStruct<Mpsc>,
     ) {
         Rt::spawn_local(async move {
             let commander_local_state = Arc::new(commander::CommanderLocalState::new(

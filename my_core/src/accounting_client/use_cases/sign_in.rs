@@ -164,7 +164,7 @@ impl Mvu for ui_model::SignIn {
     >(
         self,
         model: &'static ui_model::Model<As>,
-        cache: client_traits::Type<Mpsc>,
+        cache: client_traits::CacheActorStruct<Mpsc>,
         commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
     ) {
         match self {
@@ -207,7 +207,7 @@ async fn handle_submit<
     As: ui_model::AllSignalTypes,
 >(
     model: &'static ui_model::Model<As>,
-    mut cache: client_traits::Type<Mpsc>,
+    mut cache: client_traits::CacheActorStruct<Mpsc>,
     commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
 ) {
     let feature_state = &model.page_root.page_auth.auth_feature_state;
@@ -244,7 +244,8 @@ async fn handle_submit<
                     is_response_from_server,
                     data,
                 } => {
-                    let is_ok = data.is_ok();
+                    let result = Type4::unwrap_output(data);
+                    let is_ok = result.0.is_ok();
 
                     if is_response_from_server {
                         commander_local_state1
@@ -272,7 +273,6 @@ async fn handle_submit<
                             .unwrap();
                     }
 
-                    let result = Type4::unwrap_output(data);
                     handle_apply_result::<Rn, Rt, Id, Mpsc, Rg, As>(
                         &model,
                         commander_local_state1.clone(),
@@ -331,7 +331,7 @@ async fn handle_check<
     As: ui_model::AllSignalTypes,
 >(
     model: &'static ui_model::Model<As>,
-    mut cache: client_traits::Type<Mpsc>,
+    mut cache: client_traits::CacheActorStruct<Mpsc>,
     commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
 ) {
     let feature_state = &model.page_root.page_auth.auth_feature_state;

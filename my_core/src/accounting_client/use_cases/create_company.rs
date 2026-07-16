@@ -105,7 +105,7 @@ impl Mvu for ui_model::CreateCompany {
     >(
         self,
         model: &'static ui_model::Model<As>,
-        cache: client_traits::Type<Mpsc>,
+        cache: client_traits::CacheActorStruct<Mpsc>,
         commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
     ) {
         let page_create_company = &model
@@ -162,7 +162,7 @@ async fn handle_submit<
     As: ui_model::AllSignalTypes,
 >(
     model: &'static ui_model::Model<As>,
-    mut cache: client_traits::Type<Mpsc>,
+    mut cache: client_traits::CacheActorStruct<Mpsc>,
     commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
 ) {
     let data = commander_local_state.user_uuid.read().clone().unwrap();

@@ -29,7 +29,7 @@ pub fn new<
 
     network_actor::network_actor::<Rt, Ws>(format!("ws://{}/ws", types::ADDRESS));
 
-    let cache = client_traits::Type::new::<Rt, Ed, Rn>(
+    let cache = client_traits::CacheActorStruct::new::<Rt, Ed, Rn>(
         receiver_to_cache,
         sender_to_cache,
         sender_to_network,
