@@ -1,5 +1,8 @@
 use crate::{
-    accounting_client::{cache, cache_actor, network_actor, process_manager, ui_effect, ui_model},
+    accounting_client::{
+        network_actor, ui_effect,
+        use_cases::client_domain::{cache, cache_actor, client_traits, process_manager, ui_model},
+    },
     accounting_domain::{cases, types},
     utility::traits,
 };
@@ -24,17 +27,9 @@ pub fn new<
 
     let is_online = Arc::new(RwLock::new(false));
 
-    network_actor::network_actor::<Rt, Mpsc, Ws, cache_actor::NetworkStruct<Mpsc>>(
-        receiver_to_network,
-        cache_actor::NetworkStruct::<Mpsc> {
-            sender: sender_to_cache.clone(),
-        },
-        sender_to_error.clone(),
-        is_online.clone(),
-        format!("ws://{}/ws", types::ADDRESS),
-    );
+    network_actor::network_actor::<Rt, Ws>(format!("ws://{}/ws", types::ADDRESS));
 
-    let cache = cache_actor::CacheStruct::<Mpsc>::new::<Rt, Id, Ch, Ed, Rn>(
+    let cache = client_traits::Type::new::<Rt, Ed, Rn>(
         receiver_to_cache,
         sender_to_cache,
         sender_to_network,

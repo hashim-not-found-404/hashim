@@ -1,10 +1,22 @@
 use crate::{
-    accounting_client::{cache, cache_actor, process_manager, ui_model, use_cases},
-    accounting_domain::{cases, request_response, types},
-    utility::traits,
+    accounting_client::use_cases::client_domain::{
+        cache, cache_actor,
+        client_traits::{
+            self, CacheAndServerType1, CacheAndServerType2, Mvu, ViewType1, ViewType2,
+        },
+        commander,
+        ui_model::{self, HashimSignal},
+    },
+    accounting_domain::{
+        cases::{self},
+        request_response, types,
+    },
+    utility::{
+        traits::{self, JoinHandle, Receiver},
+        utils::ReadAndSet,
+    },
 };
-
-use std::cmp::Ordering;
+use std::{cmp::Ordering, sync::Arc};
 
 pub(crate) type Type1 = cases::list_company_and_branch::Input;
 type Type2 = cases::list_company_and_branch::Input;
@@ -225,8 +237,8 @@ impl Mvu for ui_model::CompanyAndBranchSelection {
     >(
         self,
         model: &'static ui_model::Model<As>,
-        cache: cache_actor::CacheStruct<Mpsc>,
-        commander_local_state: Arc<CommanderLocalState<Mpsc, As>>,
+        cache: client_traits::Type<Mpsc>,
+        commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
     ) {
         match self {
             Self::Subscribe => {
@@ -313,18 +325,15 @@ fn handle_list_company_and_branch_listener<
     As: ui_model::AllSignalTypes,
 >(
     model: &'static ui_model::Model<As>,
-    mut cache: cache_actor::CacheStruct<Mpsc>,
-    commander_local_state: Arc<CommanderLocalState<Mpsc, As>>,
+    mut cache: client_traits::Type<Mpsc>,
+    commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
 ) -> impl FnOnce() {
     let component_id = Rn::generate() as u16;
     let mut cache1 = cache.clone();
 
     let mut handle = Rt::abortable_spawn_local(async move {
         let mut receiver_to_poke = cache
-            .send_subs_to_cache_actor(
-                component_id,
-                use_cases::list_company_and_branch::Type1::subs(),
-            )
+            .send_subs_to_cache_actor(component_id, Type1::subs())
             .await;
 
         let data: types::UuidType = commander_local_state.user_uuid.read().clone().unwrap();
@@ -335,7 +344,7 @@ fn handle_list_company_and_branch_listener<
             let value = cache
                 .send_to_cache_actor(
                     cache_actor::CachingStrategy::ReadCacheOnly,
-                    use_cases::list_company_and_branch::Type1 {
+                    Type1 {
                         user_uuid: data.clone(),
                     }
                     .wrap_input(),
@@ -348,9 +357,10 @@ fn handle_list_company_and_branch_listener<
             let value = match value {
                 cache_actor::Response::CloseTheChannel => break,
                 cache_actor::Response::ServerCannotBeReached => break,
-                cache_actor::Response::Data(data) => {
-                    use_cases::list_company_and_branch::Type4::unwrap_output(data.data)
-                }
+                cache_actor::Response::Data {
+                    is_response_from_server,
+                    data,
+                } => Type4::unwrap_output(data),
             };
 
             match value.0 {
@@ -389,15 +399,15 @@ async fn handle_list_company_and_branch<
     As: ui_model::AllSignalTypes,
 >(
     model: &'static ui_model::Model<As>,
-    mut cache: cache_actor::CacheStruct<Mpsc>,
-    commander_local_state: Arc<CommanderLocalState<Mpsc, As>>,
+    mut cache: client_traits::Type<Mpsc>,
+    commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
 ) {
     let user_uuid = commander_local_state.user_uuid.read().clone().unwrap();
 
     let mut receiver_to_response = cache
         .send_to_cache_actor(
             cache_actor::CachingStrategy::ReadCacheAndServer,
-            use_cases::list_company_and_branch::Type1 { user_uuid }.wrap_input(),
+            Type1 { user_uuid }.wrap_input(),
         )
         .await;
 
@@ -405,9 +415,10 @@ async fn handle_list_company_and_branch<
         let value = match receiver_to_response.recv().await.unwrap() {
             cache_actor::Response::CloseTheChannel => break,
             cache_actor::Response::ServerCannotBeReached => break,
-            cache_actor::Response::Data(data) => {
-                use_cases::list_company_and_branch::Type4::unwrap_output(data.data)
-            }
+            cache_actor::Response::Data {
+                is_response_from_server,
+                data,
+            } => Type4::unwrap_output(data),
         };
 
         match value.0 {

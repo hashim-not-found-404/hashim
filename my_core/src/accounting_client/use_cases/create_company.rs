@@ -1,8 +1,16 @@
 use crate::{
-    accounting_client::{cache, cache_actor, process_manager, ui_model, use_cases},
+    accounting_client::use_cases::client_domain::{
+        cache, cache_actor,
+        client_traits::{
+            self, CacheAndServerType1, CacheAndServerType2, Mvu, ViewType1, ViewType2,
+        },
+        commander,
+        ui_model::{self, HashimSignal},
+    },
     accounting_domain::{cases, request_response, types},
-    utility::traits,
+    utility::{traits, utils::ReadAndSet},
 };
+use std::{str::FromStr, sync::Arc};
 
 pub(crate) type Type1 = cases::create_company::Input;
 type Type2 = cases::create_company::Input;
@@ -97,8 +105,8 @@ impl Mvu for ui_model::CreateCompany {
     >(
         self,
         model: &'static ui_model::Model<As>,
-        cache: cache_actor::CacheStruct<Mpsc>,
-        commander_local_state: Arc<CommanderLocalState<Mpsc, As>>,
+        cache: client_traits::Type<Mpsc>,
+        commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
     ) {
         let page_create_company = &model
             .page_root
@@ -154,8 +162,8 @@ async fn handle_submit<
     As: ui_model::AllSignalTypes,
 >(
     model: &'static ui_model::Model<As>,
-    mut cache: cache_actor::CacheStruct<Mpsc>,
-    commander_local_state: Arc<CommanderLocalState<Mpsc, As>>,
+    mut cache: client_traits::Type<Mpsc>,
+    commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
 ) {
     let data = commander_local_state.user_uuid.read().clone().unwrap();
 

@@ -1,8 +1,23 @@
 use crate::{
-    accounting_client::{cache, cache_actor, process_manager, ui_model, use_cases},
-    accounting_domain::{cases, request_response, types},
-    utility::traits,
+    accounting_client::use_cases::client_domain::{
+        cache, cache_actor,
+        client_traits::{
+            self, CacheAndServerType1, CacheAndServerType2, Mvu, ViewType1, ViewType2,
+        },
+        commander, process_manager,
+        ui_model::{self, HashimSignal},
+    },
+    accounting_domain::{
+        cases::{self, MyErrorTrait},
+        request_response, types,
+    },
+    mbg,
+    utility::{
+        traits::{self, JoinHandle, Receiver, Sender},
+        utils::ReadAndSet,
+    },
 };
+use std::{str::FromStr, sync::Arc};
 
 pub(crate) type Type1 = cases::create_company_branch::Input;
 type Type2 = cases::create_company_branch::Input;
@@ -126,8 +141,8 @@ impl Mvu for ui_model::CreateCompanyBranch {
     >(
         self,
         model: &'static ui_model::Model<As>,
-        cache: cache_actor::CacheStruct<Mpsc>,
-        commander_local_state: Arc<CommanderLocalState<Mpsc, As>>,
+        cache: client_traits::Type<Mpsc>,
+        commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
     ) {
         match self {
             Self::Submit => {
@@ -176,8 +191,8 @@ async fn handle_submit<
     As: ui_model::AllSignalTypes,
 >(
     model: &'static ui_model::Model<As>,
-    mut cache: cache_actor::CacheStruct<Mpsc>,
-    commander_local_state: Arc<CommanderLocalState<Mpsc, As>>,
+    mut cache: client_traits::Type<Mpsc>,
+    commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
 ) {
     let local_state = &model
         .page_root
@@ -220,10 +235,13 @@ async fn handle_submit<
             match receiver_to_response.recv().await.unwrap() {
                 cache_actor::Response::CloseTheChannel => break,
                 cache_actor::Response::ServerCannotBeReached => break,
-                cache_actor::Response::Data(data) => {
-                    let is_ok = data.data.is_ok();
+                cache_actor::Response::Data {
+                    is_response_from_server,
+                    data,
+                } => {
+                    let is_ok = data.is_ok();
 
-                    if data.is_response_from_server {
+                    if is_response_from_server {
                         commander_local_state1
                             .sender_to_process_manager
                             .read()
@@ -249,7 +267,7 @@ async fn handle_submit<
                             .unwrap();
                     }
 
-                    let result = use_cases::create_company_branch::Type4::unwrap_output(data.data);
+                    let result = Type4::unwrap_output(data);
 
                     match result {
                         Ok(_) => {}
@@ -297,8 +315,8 @@ async fn handle_check<
     As: ui_model::AllSignalTypes,
 >(
     model: &'static ui_model::Model<As>,
-    mut cache: cache_actor::CacheStruct<Mpsc>,
-    commander_local_state: Arc<CommanderLocalState<Mpsc, As>>,
+    mut cache: client_traits::Type<Mpsc>,
+    commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
 ) {
     let local_state = &model
         .page_root
@@ -333,8 +351,11 @@ async fn handle_check<
     match receiver_to_response.recv().await.unwrap() {
         cache_actor::Response::CloseTheChannel => {}
         cache_actor::Response::ServerCannotBeReached => {}
-        cache_actor::Response::Data(data) => {
-            let result = use_cases::create_company_branch::Type4::unwrap_output(data.data);
+        cache_actor::Response::Data {
+            is_response_from_server,
+            data,
+        } => {
+            let result = Type4::unwrap_output(data);
 
             match result {
                 Ok(_) => {}

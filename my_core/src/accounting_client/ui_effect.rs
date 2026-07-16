@@ -1,8 +1,8 @@
 use crate::{
-    accounting_client::{
-        cache_actor, process_manager, ui_model,
-        ui_model::{AllSignalTypes, HashimSignal},
-        ui_updaters::{self, Mvu},
+    accounting_client::use_cases::client_domain::{
+        client_traits::{self, Mvu},
+        commander, process_manager,
+        ui_model::{self, AllSignalTypes, HashimSignal},
     },
     accounting_domain::{cases, types},
     mbg,
@@ -33,7 +33,7 @@ impl<Mpsc: traits::MultiProducerSingleConsumer> Commander<Mpsc> {
         receiver_to_error: Mpsc::Receiver<types::HashimError>,
         sender_to_process_manager: Mpsc::Sender<process_manager::MessageToProcessManager<Mpsc, As>>,
         model: &'static ui_model::Model<As>,
-        cache: cache_actor::CacheStruct<Mpsc>,
+        cache: client_traits::Type<Mpsc>,
     ) -> Self {
         let (sender_to_commander, receiver_to_commander) = Mpsc::channel();
 
@@ -70,10 +70,10 @@ impl<Mpsc: traits::MultiProducerSingleConsumer> Commander<Mpsc> {
         sender_to_commander: Mpsc::Sender<ui_model::Message>,
         sender_to_process_manager: Mpsc::Sender<process_manager::MessageToProcessManager<Mpsc, As>>,
         model: &'static ui_model::Model<As>,
-        cache: cache_actor::CacheStruct<Mpsc>,
+        cache: client_traits::Type<Mpsc>,
     ) {
         Rt::spawn_local(async move {
-            let commander_local_state = Arc::new(ui_updaters::CommanderLocalState::new(
+            let commander_local_state = Arc::new(commander::CommanderLocalState::new(
                 sender_to_commander,
                 sender_to_process_manager,
             ));
