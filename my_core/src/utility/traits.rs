@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
-use std::time::Duration;
 use std::error::Error;
+use std::time::Duration;
 
 pub type DynamicError = Box<dyn Error>;
 
@@ -38,10 +38,7 @@ pub trait Runtime: 'static {
     where
         F: Future + 'static;
 
-    fn timeout<T, F>(
-        duration: Duration,
-        fut: F,
-    ) -> impl Future<Output = Result<T, DynamicError>>
+    fn timeout<T, F>(duration: Duration, fut: F) -> impl Future<Output = Result<T, DynamicError>>
     where
         F: Future<Output = T>;
 

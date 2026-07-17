@@ -1,8 +1,8 @@
 #[cfg(not(target_arch = "wasm32"))]
 pub mod target {
     use my_core::utility::{
-        traits::{Either, Runtime},
         traits::DynamicError,
+        traits::{Either, Runtime},
     };
     use std::time::Duration;
     use tokio;
@@ -59,8 +59,8 @@ pub mod target {
     };
     use gloo_timers::future::TimeoutFuture;
     use my_core::utility::{
-        traits::{Either, Runtime},
         traits::DynamicError,
+        traits::{Either, Runtime},
     };
     use std::{pin::pin, time::Duration};
     use wasm_bindgen_futures::spawn_local;

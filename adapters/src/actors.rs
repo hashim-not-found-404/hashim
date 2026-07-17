@@ -21,7 +21,7 @@ pub mod target {
 mod mpsc_receiver {
     pub mod target {
         use futures::channel::mpsc::UnboundedReceiver;
-        use my_core::utility::{traits::Receiver, traits::DynamicError};
+        use my_core::utility::{traits::DynamicError, traits::Receiver};
 
         pub struct S<T>(pub UnboundedReceiver<T>);
         impl<T> Receiver<T> for S<T> {
@@ -41,7 +41,7 @@ mod mpsc_receiver {
 mod mpsc_sender {
     pub mod target {
         use futures::{SinkExt, channel::mpsc::UnboundedSender};
-        use my_core::utility::{traits::Sender, traits::DynamicError};
+        use my_core::utility::{traits::DynamicError, traits::Sender};
 
         pub struct S<T>(pub UnboundedSender<T>);
         impl<T> Sender<T> for S<T> {
