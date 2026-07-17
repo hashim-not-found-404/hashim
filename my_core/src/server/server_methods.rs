@@ -6,7 +6,7 @@ use crate::{
     server::use_cases::utility::server_traits::{self, DBClient},
     utility::{
         traits::{self, Receiver, Sender},
-        utils::{HashMapWithHashMapValue, HashMapWithVectorValue},
+        utils::HashMapWithHashMapValue,
     },
 };
 use std::{
@@ -244,8 +244,10 @@ impl<
         mut receiver_to_broker: Mpsc::Receiver<MessageToBroker<Mpsc>>,
     ) {
         Rt::spawn_local(async move {
-            let mut pool_of_pubsub_for_company: UserSubscribes = HashMap::with_capacity(1000);
-            let mut pool_of_pubsub_for_branch: UserSubscribes = HashMap::with_capacity(10000);
+            let mut pool_of_pubsub_for_company: broker_functions::UserSubscribes =
+                HashMap::with_capacity(1000);
+            let mut pool_of_pubsub_for_branch: broker_functions::UserSubscribes =
+                HashMap::with_capacity(10000);
             let mut pool_of_server_facad_channels: UserSenders<Mpsc> =
                 HashMap::with_capacity(10000);
 
@@ -516,7 +518,21 @@ async fn get_table_of_subscribed_data<Cli: DBClient>(
 }
 
 mod broker_functions {
-    use super::*;
+    use std::collections::{HashMap, HashSet};
+
+    use crate::{
+        accounting_domain::cases::utility::types,
+        server::use_cases::utility::server_traits,
+        utility::utils::{HashMapWithHashMapValue, HashMapWithVectorValue},
+    };
+
+    pub(crate) type UserSubscribes = HashMap<
+        types::UuidType, // company uuid or branch
+        HashMap<
+            types::UuidType, // user uuid
+            HashSet<types::Subscribe>,
+        >,
+    >;
 
     pub(crate) fn map_resource_to_subscribes(
         pool_of_pubsub: &UserSubscribes,
@@ -691,17 +707,9 @@ fn role_to_subscribe_mapping(roles: Vec<types::Role>) -> HashSet<types::Subscrib
 }
 
 pub(crate) struct AllSubscribes {
-    pub(crate) companies: UserSubscribes,
-    pub(crate) branches: UserSubscribes,
+    pub(crate) companies: broker_functions::UserSubscribes,
+    pub(crate) branches: broker_functions::UserSubscribes,
 }
-
-type UserSubscribes = HashMap<
-    types::UuidType, // company uuid or branch
-    HashMap<
-        types::UuidType, // user uuid
-        HashSet<types::Subscribe>,
-    >,
->;
 
 type UserSenders<Mpsc> = HashMap<
     types::UuidType, // user uuid
