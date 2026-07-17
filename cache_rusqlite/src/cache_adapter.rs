@@ -1,8 +1,11 @@
 use crate::utils::{MyUuidConverter, MyUuidConverter1};
 use adapters::encode_decode;
 use my_core::{
-    accounting_client::cache::Cache,
-    accounting_domain::{cases, request_response, types},
+    accounting_client::use_cases::client_domain::cache::Cache,
+    accounting_domain::{
+        cases::{self, utility::types},
+        request_response,
+    },
     utility::traits::Coding,
 };
 use rusqlite::{Connection, OptionalExtension, params};

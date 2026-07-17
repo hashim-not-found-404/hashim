@@ -7,7 +7,7 @@ use actix_web::{
 use adapters::{
     actors, authentication, encode_decode, functions, jwt, random_number, row_id, runtime,
 };
-use my_core::{accounting_domain::types, server::server_methods};
+use my_core::{accounting_domain::cases::utility::types, server::server_methods};
 
 type ServerMethodsType =
     server_methods::ServerMethods<actors::target::S, jwt::target::S, db_client_cockroach::db::S>;

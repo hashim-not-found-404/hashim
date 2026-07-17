@@ -5,7 +5,7 @@ use adapters::{
 use dioxus::prelude::*;
 use my_core::accounting_client::{
     ui_construct, ui_effect,
-    ui_model::{self, AllSignalTypes, HashimSignal},
+    use_cases::client_domain::ui_model::{self, AllSignalTypes, HashimSignal},
 };
 use std::sync::LazyLock;
 
