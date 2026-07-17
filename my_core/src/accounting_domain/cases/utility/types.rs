@@ -2,6 +2,29 @@ use crate::utility::traits;
 use serde::{Deserialize, Serialize};
 use std::{error::Error, fmt::Display, str::FromStr};
 
+pub trait RowId: 'static {
+    fn generate() -> UuidType;
+    fn get_time_as_seconds(uuid: &UuidType) -> Option<u64>;
+    fn validate(uuid: &UuidType) -> bool;
+}
+
+pub trait HashedPassword {
+    fn sign_up(password: &String) -> String;
+    fn sign_in(password: &String, password_hash: &String) -> bool;
+}
+
+pub trait JWT: 'static {
+    fn new() -> Self;
+    fn sign(&self, user_uuid: &UuidType) -> JsonWebTokenType;
+    fn validate(&self, token: JsonWebTokenType) -> Option<UuidType>;
+}
+
+pub(crate) trait MyErrorTrait: Default + PartialEq {
+    fn is_there_error(&self) -> bool {
+        *self != Self::default()
+    }
+}
+
 #[derive(Debug, Deserialize, Serialize, Clone, Default, PartialEq, Hash, Eq, PartialOrd, Ord)]
 pub struct UuidType(pub [u8; 16]);
 
@@ -152,6 +175,47 @@ pub enum Resource {
     TableAccessControlForCompanyBranchFieldDataGroup(UuidType),
 }
 
+impl Resource {
+    pub(crate) fn map_to_subs(&self) -> Option<Subscribe> {
+        match self {
+            Resource::Jwt(_) => None,
+            Resource::TableUserFieldName(_) => Some(Subscribe::TableUserFieldName),
+            Resource::TableUserFieldId(_) => Some(Subscribe::TableUserFieldId),
+            Resource::TableCompanyFieldName(_) => Some(Subscribe::TableCompanyFieldName),
+            Resource::TableCompanyFieldCurrency(_) => Some(Subscribe::TableCompanyFieldCurrency),
+            Resource::TableCompanyBranchFieldName(_) => {
+                Some(Subscribe::TableCompanyBranchFieldName)
+            }
+            Resource::TableCompanyBranchFieldCompanyBelong(_) => {
+                Some(Subscribe::TableCompanyBranchFieldCompanyBelong)
+            }
+            Resource::TableCompanyBranchFieldLocation(_) => {
+                Some(Subscribe::TableCompanyBranchFieldLocation)
+            }
+            Resource::TableCompanyBranchFieldCurrency(_) => {
+                Some(Subscribe::TableCompanyBranchFieldCurrency)
+            }
+            Resource::TableAccessControlForCompanyFieldRole(_) => {
+                Some(Subscribe::TableAccessControlForCompanyFieldRole)
+            }
+            Resource::TableAccessControlForCompanyFieldUser(_) => {
+                Some(Subscribe::TableAccessControlForCompanyFieldUser)
+            }
+            Resource::TableAccessControlForCompanyFieldDataGroup(_) => {
+                Some(Subscribe::TableAccessControlForCompanyFieldDataGroup)
+            }
+            Resource::TableAccessControlForCompanyBranchFieldRole(_) => {
+                Some(Subscribe::TableAccessControlForCompanyBranchFieldRole)
+            }
+            Resource::TableAccessControlForCompanyBranchFieldUser(_) => {
+                Some(Subscribe::TableAccessControlForCompanyBranchFieldUser)
+            }
+            Resource::TableAccessControlForCompanyBranchFieldDataGroup(_) => {
+                Some(Subscribe::TableAccessControlForCompanyBranchFieldDataGroup)
+            }
+        }
+    }
+}
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ResourceInfo {
     pub row_uuid: UuidType,

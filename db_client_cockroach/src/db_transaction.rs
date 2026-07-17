@@ -1,6 +1,6 @@
 use my_core::{
-    accounting_domain::{cases, types},
-    server::server_traits::{DBTransaction, domain_errors},
+    accounting_domain::cases::{self, utility::types},
+    server::use_cases::utility::server_traits::{DBTransaction, domain_errors},
     utility::{traits::DynamicError, utils::LogError},
 };
 use rust_decimal::{Decimal, prelude::FromPrimitive};

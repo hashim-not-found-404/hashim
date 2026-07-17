@@ -2,7 +2,7 @@
 pub mod target {
     use chrono::{Duration, Utc};
     use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode};
-    use my_core::accounting_domain::{cases::JWT, types};
+    use my_core::accounting_domain::cases::utility::types::{self, JWT};
     use serde::{Deserialize, Serialize};
     use std::sync::Arc;
 

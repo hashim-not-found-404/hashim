@@ -3,8 +3,8 @@ use crate::{
     utils::{MyUuidConverter, MyUuidConverter1},
 };
 use my_core::{
-    accounting_domain::{cases, types},
-    server::server_traits::{self, DBClient},
+    accounting_domain::cases::{self, utility::types},
+    server::use_cases::utility::server_traits::{self, DBClient},
     utility::{traits::DynamicError, utils::LogError},
 };
 use serde::Deserialize;

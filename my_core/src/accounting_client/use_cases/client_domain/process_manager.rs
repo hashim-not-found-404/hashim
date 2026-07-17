@@ -1,5 +1,5 @@
 use crate::{
-    accounting_client::ui_model::{self, HashimSignal},
+    accounting_client::use_cases::client_domain::ui_model::{self, HashimSignal},
     utility::traits::{self, JoinHandle, Receiver, Sender},
 };
 use std::{collections::HashMap, hash::Hash, time::Duration};

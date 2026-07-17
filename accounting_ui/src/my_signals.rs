@@ -1,8 +1,9 @@
-use crate::my_signal;
 use my_core::{
-    accounting_client::ui_model::{self, AllSignalTypes},
-    accounting_domain::types,
+    accounting_client::use_cases::client_domain::ui_model::{self, AllSignalTypes},
+    accounting_domain::cases::utility::types,
 };
+
+use crate::my_signal;
 
 #[derive(Default, Clone)]
 pub(crate) struct S;

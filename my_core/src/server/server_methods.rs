@@ -1,9 +1,9 @@
 use crate::{
     accounting_domain::{
-        cases::{self, RowId},
-        request_response, types,
+        cases::utility::types::{self, RowId},
+        request_response,
     },
-    server::{server_traits::DBClient, use_cases},
+    server::use_cases::utility::server_traits::{self, DBClient},
     utility::{
         traits::{self, Receiver, Sender},
         utils::{HashMapWithHashMapValue, HashMapWithVectorValue},
@@ -32,7 +32,7 @@ pub trait WSServer: 'static {
     fn close(self) -> impl Future<Output = Result<(), traits::DynamicError>>;
 }
 
-pub struct ServerMethods<Mpsc: traits::MultiProducerSingleConsumer, Jwt: cases::JWT, Db: Database> {
+pub struct ServerMethods<Mpsc: traits::MultiProducerSingleConsumer, Jwt: types::JWT, Db: Database> {
     database: Db,
     jwt: Jwt,
     pub(crate) sender_to_broker: Mpsc::Sender<MessageToBroker<Mpsc>>,
@@ -40,7 +40,7 @@ pub struct ServerMethods<Mpsc: traits::MultiProducerSingleConsumer, Jwt: cases::
 
 impl<
     Mpsc: traits::MultiProducerSingleConsumer,
-    Jwt: cases::JWT,
+    Jwt: types::JWT,
     Db: Database<Client = Cli>,
     Cli: DBClient,
 > ServerMethods<Mpsc, Jwt, Db>
@@ -61,9 +61,9 @@ impl<
         Ws: WSServer,
         Rn: traits::RandomNumber,
         Ed: traits::Coding,
-        Id: cases::RowId,
+        Id: types::RowId,
         Rg: traits::Regex,
-        Auth: cases::HashedPassword,
+        Auth: types::HashedPassword,
     >(
         self: Arc<Self>,
         mut session: Ws,
@@ -125,7 +125,7 @@ impl<
                                 };
 
                                 dbg!(&input);
-                                let mut side_effects = use_cases::SideEffects::default();
+                                let mut side_effects = server_traits::SideEffects::default();
                                 let output = push_data::<Rn, Id, Rg, Auth, Jwt, Cli>(
                                     &input,
                                     &mut side_effects,
@@ -304,7 +304,7 @@ impl<
                         list_of_resources_for_company,
                         list_of_resources_for_branch,
                     } => {
-                        let mut resource_to_send: use_cases::ListOfResources = HashMap::new();
+                        let mut resource_to_send: server_traits::ListOfResources = HashMap::new();
 
                         broker_functions::map_resource_to_subscribes(
                             &pool_of_pubsub_for_company,
@@ -350,14 +350,14 @@ impl<
 
 async fn push_data<
     Rn: traits::RandomNumber,
-    Id: cases::RowId,
+    Id: types::RowId,
     Rg: traits::Regex,
-    Auth: cases::HashedPassword,
-    Jwt: cases::JWT,
+    Auth: types::HashedPassword,
+    Jwt: types::JWT,
     Cli: DBClient,
 >(
     input: &request_response::push_data::Input,
-    side_effects: &mut use_cases::SideEffects,
+    side_effects: &mut server_traits::SideEffects,
     client: &mut Cli,
     jwt: &Jwt,
 ) -> Result<request_response::push_data::MyResult, traits::DynamicError> {
@@ -520,8 +520,8 @@ mod broker_functions {
 
     pub(crate) fn map_resource_to_subscribes(
         pool_of_pubsub: &UserSubscribes,
-        list_of_resources: use_cases::ListOfResources,
-        resource_to_send: &mut use_cases::ListOfResources,
+        list_of_resources: server_traits::ListOfResources,
+        resource_to_send: &mut server_traits::ListOfResources,
     ) {
         for (company, resource) in list_of_resources {
             let user_and_subscribe = pool_of_pubsub.get(&company);
@@ -720,7 +720,7 @@ pub(crate) enum MessageToBroker<Mpsc: traits::MultiProducerSingleConsumer> {
     },
     Publish {
         connection_id: u64,
-        list_of_resources_for_company: use_cases::ListOfResources,
-        list_of_resources_for_branch: use_cases::ListOfResources,
+        list_of_resources_for_company: server_traits::ListOfResources,
+        list_of_resources_for_branch: server_traits::ListOfResources,
     },
 }

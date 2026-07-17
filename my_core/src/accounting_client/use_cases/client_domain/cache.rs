@@ -1,5 +1,7 @@
-use crate::accounting_domain::{cases, request_response, types};
-use std::collections::HashSet;
+use crate::accounting_domain::{
+    cases::{self, utility::types},
+    request_response,
+};
 
 pub trait Cache: Sized {
     fn new() -> impl Future<Output = Self>;
@@ -67,9 +69,8 @@ pub trait Cache: Sized {
 }
 
 pub(crate) mod tables {
+    use crate::accounting_domain::cases::utility::types;
     use std::collections::HashMap;
-
-    use crate::accounting_domain::types;
 
     #[derive(Default)]
     pub(crate) struct User {
@@ -77,17 +78,20 @@ pub(crate) mod tables {
         pub(crate) id: String,
         pub(crate) password: String,
     }
+
     #[derive(Default)]
     pub(crate) struct Company {
         pub(crate) name: String,
         pub(crate) currency: types::Currency,
     }
+
     #[derive(Default)]
     pub(crate) struct AccessControlForCompany {
         pub(crate) data_group: types::UuidType,
         pub(crate) user_: types::UuidType,
         pub(crate) role: types::Role,
     }
+
     #[derive(Default)]
     pub(crate) struct CompanyBranch {
         pub(crate) company_belong: types::UuidType,
@@ -95,6 +99,7 @@ pub(crate) mod tables {
         pub(crate) location: types::Location,
         pub(crate) currency: types::Currency,
     }
+
     #[derive(Default)]
     pub(crate) struct AccessControlForCompanyBranch {
         pub(crate) data_group: types::UuidType,
@@ -116,26 +121,6 @@ pub(crate) mod tables {
 pub(crate) struct State<Ch: Cache> {
     pub(crate) state_of_pending_txn: tables::StateOfPendingTxn,
     pub(crate) cache: Ch,
-}
-
-impl<Ch: Cache> State<Ch> {
-    pub(crate) async fn new<Id: cases::RowId>() -> Self {
-        let cache = Ch::new().await;
-        let txns = cache.get_all_txn_input().await;
-
-        let mut state = Self {
-            state_of_pending_txn: tables::StateOfPendingTxn::default(),
-            cache,
-        };
-
-        for op in txns {
-            op.operation
-                .run_operation_check_apply::<Id, Ch>(&mut state, &mut HashSet::new())
-                .await;
-        }
-
-        state
-    }
 }
 
 impl<Ch: Cache> State<Ch> {

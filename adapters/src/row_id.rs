@@ -1,5 +1,5 @@
 pub mod target {
-    use my_core::accounting_domain::{cases::RowId, types};
+    use my_core::accounting_domain::cases::utility::types::{self, RowId};
     use uuid::Uuid;
 
     pub struct S;
