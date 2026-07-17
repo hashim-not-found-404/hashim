@@ -167,8 +167,7 @@ async fn operation_check_apply_handler<
             .await
             .extract_resource(),
         &mut state.state_of_pending_txn,
-    )
-    .await;
+    );
 }
 
 async fn operation_check_apply_write_handler<
@@ -181,12 +180,12 @@ async fn operation_check_apply_write_handler<
 ) -> request_response::push_data::OperationsResult {
     let result = input.state_full_operation::<Id, Ch>(state).await;
 
-    apply_change(result.extract_resource(), &mut state.state_of_pending_txn).await;
+    apply_change(result.extract_resource(), &mut state.state_of_pending_txn);
 
     return result.wrap_output();
 }
 
-async fn apply_change(
+pub(crate) fn apply_change(
     resources: Vec<types::ResourceInfo>,
     state: &mut cache::tables::StateOfPendingTxn,
 ) {

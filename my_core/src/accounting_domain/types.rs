@@ -152,6 +152,47 @@ pub enum Resource {
     TableAccessControlForCompanyBranchFieldDataGroup(UuidType),
 }
 
+impl Resource {
+    pub(crate) fn map_to_subs(&self) -> Option<Subscribe> {
+        match self {
+            Resource::Jwt(_) => None,
+            Resource::TableUserFieldName(_) => Some(Subscribe::TableUserFieldName),
+            Resource::TableUserFieldId(_) => Some(Subscribe::TableUserFieldId),
+            Resource::TableCompanyFieldName(_) => Some(Subscribe::TableCompanyFieldName),
+            Resource::TableCompanyFieldCurrency(_) => Some(Subscribe::TableCompanyFieldCurrency),
+            Resource::TableCompanyBranchFieldName(_) => {
+                Some(Subscribe::TableCompanyBranchFieldName)
+            }
+            Resource::TableCompanyBranchFieldCompanyBelong(_) => {
+                Some(Subscribe::TableCompanyBranchFieldCompanyBelong)
+            }
+            Resource::TableCompanyBranchFieldLocation(_) => {
+                Some(Subscribe::TableCompanyBranchFieldLocation)
+            }
+            Resource::TableCompanyBranchFieldCurrency(_) => {
+                Some(Subscribe::TableCompanyBranchFieldCurrency)
+            }
+            Resource::TableAccessControlForCompanyFieldRole(_) => {
+                Some(Subscribe::TableAccessControlForCompanyFieldRole)
+            }
+            Resource::TableAccessControlForCompanyFieldUser(_) => {
+                Some(Subscribe::TableAccessControlForCompanyFieldUser)
+            }
+            Resource::TableAccessControlForCompanyFieldDataGroup(_) => {
+                Some(Subscribe::TableAccessControlForCompanyFieldDataGroup)
+            }
+            Resource::TableAccessControlForCompanyBranchFieldRole(_) => {
+                Some(Subscribe::TableAccessControlForCompanyBranchFieldRole)
+            }
+            Resource::TableAccessControlForCompanyBranchFieldUser(_) => {
+                Some(Subscribe::TableAccessControlForCompanyBranchFieldUser)
+            }
+            Resource::TableAccessControlForCompanyBranchFieldDataGroup(_) => {
+                Some(Subscribe::TableAccessControlForCompanyBranchFieldDataGroup)
+            }
+        }
+    }
+}
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ResourceInfo {
     pub row_uuid: UuidType,

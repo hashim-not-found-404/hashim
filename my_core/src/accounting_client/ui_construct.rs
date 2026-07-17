@@ -1,6 +1,6 @@
 use crate::{
     accounting_client::{
-        network_actor, ui_effect,
+        cache_op, network_actor, ui_effect,
         use_cases::client_domain::{cache, cache_actor, client_traits, process_manager, ui_model},
     },
     accounting_domain::{cases, request_response, types},
@@ -238,40 +238,66 @@ impl<Mpsc: traits::MultiProducerSingleConsumer, Ch: cache::Cache, Id: cases::Row
     }
 
     async fn delete_successful_txn_input(cache: &Self::Cache, resp: &Self::Response) {
-        todo!()
+        for i in &resp.operations {
+            if i.operation.is_ok() {
+                cache.cache.delete_txn_input(&i.txn_number).await;
+            }
+        }
     }
 
     async fn mark_txn_input_as_faild(cache: &Self::Cache, resp: &Self::Response) {
-        todo!()
+        for i in &resp.operations {
+            if !i.operation.is_ok() {
+                cache.cache.mark_txn_input_as_faild(&i.txn_number).await;
+            }
+        }
     }
 
     async fn write_faild_txn_result(cache: &Self::Cache, resp: &Self::Response) {
-        todo!()
+        for i in &resp.operations {
+            if !i.operation.is_ok() {
+                cache.cache.write_txn_result(i).await;
+            }
+        }
     }
 
     async fn get_all_response_txn_numbers(resp: &Self::Response) -> Vec<(u64, Self::OpResult)> {
-        todo!()
+        resp.operations
+            .iter()
+            .map(|a| (a.txn_number, a.operation.clone()))
+            .collect()
     }
 
     fn collect_subs_to_poke(
         subs_to_poke: &mut std::collections::HashSet<Self::Subscribe>,
         resource: &Vec<Self::Resource>,
     ) {
-        todo!()
+        for i in resource {
+            if let Some(value) = i.resource.map_to_subs() {
+                subs_to_poke.insert(value);
+            }
+        }
     }
 
-    async fn check_input(
-        cache: &Self::Cache,
-        data: &Self::OpInput,
-    ) -> (Self::OpResult, Vec<Self::Resource>) {
-        todo!()
+    async fn check_input(cache: &mut Self::Cache, data: &Self::OpInput) -> Self::OpResult {
+        data.run_operation_check::<Id, Ch>(cache).await
     }
 
-    async fn apply_input(cache: &Self::Cache, resource: &Vec<Self::Resource>) {
-        todo!()
+    fn extract_resource1(data: &Self::OpResult) -> Vec<Self::Resource> {
+        data.extract_resource()
     }
 
-    async fn write_input(cache: &Self::Cache, data: &Self::OpInput) {
-        todo!()
+    fn apply_input(cache: &mut Self::Cache, resource: &Vec<Self::Resource>) {
+        cache_op::apply_change(resource.clone(), &mut cache.state_of_pending_txn);
+    }
+
+    async fn write_input(cache: &Self::Cache, txn_number: u64, data: &Self::OpInput) {
+        cache
+            .cache
+            .write_txn_input(&request_response::push_data::Txn {
+                txn_number,
+                operation: data.clone(),
+            })
+            .await;
     }
 }

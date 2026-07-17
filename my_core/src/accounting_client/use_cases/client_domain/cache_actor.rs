@@ -101,12 +101,10 @@ pub(crate) trait CacheActorUtils {
         subs_to_poke: &mut HashSet<Self::Subscribe>,
         resource: &Vec<Self::Resource>,
     );
-    async fn check_input(
-        cache: &Self::Cache,
-        data: &Self::OpInput,
-    ) -> (Self::OpResult, Vec<Self::Resource>);
-    async fn apply_input(cache: &Self::Cache, resource: &Vec<Self::Resource>);
-    async fn write_input(cache: &Self::Cache, data: &Self::OpInput);
+    async fn check_input(cache: &mut Self::Cache, data: &Self::OpInput) -> Self::OpResult;
+    fn extract_resource1(data: &Self::OpResult) -> Vec<Self::Resource>;
+    fn apply_input(cache: &mut Self::Cache, resource: &Vec<Self::Resource>);
+    async fn write_input(cache: &Self::Cache, txn_number: u64, data: &Self::OpInput);
 }
 
 #[allow(dead_code)]
@@ -295,8 +293,9 @@ where
                                 let txns = Cu::get_all_pending_txn(&mut cache).await;
 
                                 for (txn_number, txn) in txns {
-                                    let (result, resource) = Cu::check_input(&cache, &txn).await;
-                                    Cu::apply_input(&cache, &resource).await;
+                                    let result = Cu::check_input(&mut cache, &txn).await;
+                                    let resource = Cu::extract_resource1(&result);
+                                    Cu::apply_input(&mut cache, &resource);
                                 }
 
                                 poke_the_subs::<Mpsc, Subscribe>(
@@ -348,7 +347,8 @@ where
                         data,
                     } => match strategy {
                         CachingStrategy::ReadCacheOnly => {
-                            let (result, resource) = Cu::check_input(&cache, &data).await;
+                            let result = Cu::check_input(&mut cache, &data).await;
+                            let resource = Cu::extract_resource1(&result);
                             let _ = sender
                                 .send(Response::Data {
                                     is_response_from_server: false,
@@ -361,7 +361,8 @@ where
                         CachingStrategy::ReadCacheAndServer => {
                             let txn_number = Rn::generate();
 
-                            let (result, resource) = Cu::check_input(&cache, &data).await;
+                            let result = Cu::check_input(&mut cache, &data).await;
+                            let resource = Cu::extract_resource1(&result);
 
                             let _ = sender
                                 .send(Response::Data {
@@ -395,9 +396,11 @@ where
                         CachingStrategy::WriteCacheAndServer => {
                             let txn_number = Rn::generate();
 
-                            let (result, resource) = Cu::check_input(&cache, &data).await;
-                            Cu::apply_input(&cache, &resource).await;
-                            Cu::write_input(&cache, &data).await;
+                            let result = Cu::check_input(&mut cache, &data).await;
+                            let resource = Cu::extract_resource1(&result);
+
+                            Cu::apply_input(&mut cache, &resource);
+                            Cu::write_input(&cache, txn_number, &data).await;
 
                             let mut subs_to_poke = HashSet::new();
 
