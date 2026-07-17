@@ -28,7 +28,7 @@ async fn connect<Rt: traits::Runtime, Ws: WSClient, Nw: Network>(
     url: &String,
     ws: &mut Option<Ws>,
 ) {
-    network_utils.network_state(false);
+    network_utils.network_state(false).await;
 
     if let Ok(ok) = Ws::connect(url.as_str()).await {
         *ws = Some(ok);

@@ -4,7 +4,7 @@ use crate::{
         commander, process_manager,
         ui_model::{self, AllSignalTypes, HashimSignal},
     },
-    accounting_domain::cases::{self, utility::types},
+    accounting_domain::cases::utility::types,
     mbg,
     utility::traits::{self, Receiver, Sender},
 };

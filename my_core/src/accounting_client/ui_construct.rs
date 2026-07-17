@@ -3,10 +3,7 @@ use crate::{
         cache_op, network_actor, ui_effect,
         use_cases::client_domain::{cache, cache_actor, client_traits, process_manager, ui_model},
     },
-    accounting_domain::{
-        cases::{self, utility::types},
-        request_response,
-    },
+    accounting_domain::{cases::utility::types, request_response},
     utility::{
         traits::{self, Receiver, Sender},
         utils::ReadAndSet,
@@ -103,7 +100,7 @@ impl<Mpsc: traits::MultiProducerSingleConsumer> network_actor::Network for MyNet
         self.receiver_to_network.recv().await.unwrap()
     }
 
-    async fn send_error(&mut self, error: traits::DynamicError) {
+    async fn send_error(&mut self, _: traits::DynamicError) {
         self.sender_to_error
             .send(types::HashimError::ConnectionClosed)
             .await
@@ -185,7 +182,7 @@ impl<Mpsc: traits::MultiProducerSingleConsumer, Ch: cache::Cache, Id: types::Row
         }
 
         let mut jwts = Vec::new();
-        for (txn_number, txn) in &txns {
+        for (_, txn) in &txns {
             if let Some(user_uuid) = txn.get_user_uuid() {
                 if let Some(jwt) = cache.cache.get_jwt(user_uuid).await {
                     jwts.push(jwt)

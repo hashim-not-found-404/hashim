@@ -1,9 +1,6 @@
 use crate::{
     accounting_client::use_cases::client_domain::{cache, cache_actor, commander, ui_model},
-    accounting_domain::{
-        cases::{self, utility::types},
-        request_response,
-    },
+    accounting_domain::{cases::utility::types, request_response},
     utility::traits,
 };
 use std::sync::Arc;
@@ -34,13 +31,12 @@ pub(crate) trait ViewType2 {
     fn unwrap_output(output: request_response::push_data::OperationsResult) -> Self;
 }
 
-pub(crate) type CacheActorStruct<Mpsc: traits::MultiProducerSingleConsumer> =
-    cache_actor::CacheStruct<
-        Mpsc,
-        types::Subscribe,
-        request_response::push_data::OperationsInput,
-        request_response::push_data::OperationsResult,
-    >;
+pub(crate) type CacheActorStruct<Mpsc> = cache_actor::CacheStruct<
+    Mpsc,
+    types::Subscribe,
+    request_response::push_data::OperationsInput,
+    request_response::push_data::OperationsResult,
+>;
 
 pub(crate) trait Mvu {
     async fn update<

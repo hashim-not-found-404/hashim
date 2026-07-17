@@ -16,7 +16,7 @@ use crate::{
         utils::ReadAndSet,
     },
 };
-use std::{cmp::Ordering, sync::Arc};
+use std::sync::Arc;
 
 pub(crate) type Type1 = cases::sign_in::Input;
 type Type2 = cases::sign_in::Input;
@@ -355,7 +355,7 @@ async fn handle_check<
         cache_actor::Response::CloseTheChannel => {}
         cache_actor::Response::ServerCannotBeReached => {}
         cache_actor::Response::Data {
-            is_response_from_server,
+            is_response_from_server: _,
             data,
         } => {
             let result = Type4::unwrap_output(data);

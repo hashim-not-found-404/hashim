@@ -3,10 +3,7 @@ use crate::{
         cache,
         client_traits::{CacheAndServerType1, CacheAndServerType2},
     },
-    accounting_domain::{
-        cases::{self, utility::types},
-        request_response,
-    },
+    accounting_domain::{cases::utility::types, request_response},
     utility::utils::MyUpSert,
 };
 
@@ -77,38 +74,6 @@ impl request_response::push_data::OperationsInput {
         }
     }
 
-    pub(crate) async fn run_operation_check_apply_write<Id: types::RowId, Ch: cache::Cache>(
-        &self,
-        txn_number: u64,
-        state: &mut cache::State<Ch>,
-    ) -> request_response::push_data::OperationsResult {
-        state
-            .cache
-            .write_txn_input(&request_response::push_data::Txn {
-                txn_number,
-                operation: self.clone(),
-            })
-            .await;
-
-        match self {
-            request_response::push_data::OperationsInput::SignUp(i) => {
-                operation_check_apply_write_handler::<_, Id, Ch>(i, state).await
-            }
-            request_response::push_data::OperationsInput::SignIn(i) => {
-                operation_check_apply_write_handler::<_, Id, Ch>(i, state).await
-            }
-            request_response::push_data::OperationsInput::CreateCompany(i) => {
-                operation_check_apply_write_handler::<_, Id, Ch>(i, state).await
-            }
-            request_response::push_data::OperationsInput::CreateCompanyBranch(i) => {
-                operation_check_apply_write_handler::<_, Id, Ch>(i, state).await
-            }
-            request_response::push_data::OperationsInput::ListCompanyAndBranch(i) => {
-                operation_check_apply_write_handler::<_, Id, Ch>(i, state).await
-            }
-        }
-    }
-
     pub(crate) fn get_user_uuid(&self) -> Option<&types::UuidType> {
         match self {
             request_response::push_data::OperationsInput::SignUp(i) => i.user_uuid(),
@@ -171,21 +136,6 @@ async fn operation_check_apply_handler<
             .extract_resource(),
         &mut state.state_of_pending_txn,
     );
-}
-
-async fn operation_check_apply_write_handler<
-    T: CacheAndServerType1,
-    Id: types::RowId,
-    Ch: cache::Cache,
->(
-    input: &T,
-    state: &mut cache::State<Ch>,
-) -> request_response::push_data::OperationsResult {
-    let result = input.state_full_operation::<Id, Ch>(state).await;
-
-    apply_change(result.extract_resource(), &mut state.state_of_pending_txn);
-
-    return result.wrap_output();
 }
 
 pub(crate) fn apply_change(

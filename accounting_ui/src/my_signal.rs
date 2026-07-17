@@ -1,5 +1,5 @@
 use dioxus::{core::ReactiveContext, prelude::*};
-use my_core::accounting_client::{self, use_cases::client_domain::ui_model::HashimSignal};
+use my_core::accounting_client::use_cases::client_domain::ui_model::HashimSignal;
 use std::{
     collections::HashSet,
     sync::{Arc, Mutex},

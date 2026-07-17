@@ -3,7 +3,7 @@ use crate::{
         self,
         utility::types::{self, MyErrorTrait},
     },
-    server::use_cases::utility::server_traits::{DBClient, DBTransaction, SideEffects},
+    server::use_cases::utility::server_traits::{DBClient, SideEffects},
     utility::traits,
 };
 

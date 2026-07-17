@@ -358,7 +358,7 @@ fn handle_list_company_and_branch_listener<
                 cache_actor::Response::CloseTheChannel => break,
                 cache_actor::Response::ServerCannotBeReached => break,
                 cache_actor::Response::Data {
-                    is_response_from_server,
+                    is_response_from_server: _,
                     data,
                 } => Type4::unwrap_output(data),
             };
@@ -416,7 +416,7 @@ async fn handle_list_company_and_branch<
             cache_actor::Response::CloseTheChannel => break,
             cache_actor::Response::ServerCannotBeReached => break,
             cache_actor::Response::Data {
-                is_response_from_server,
+                is_response_from_server: _,
                 data,
             } => Type4::unwrap_output(data),
         };

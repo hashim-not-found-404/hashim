@@ -262,17 +262,17 @@ where
                         };
 
                         match message_type {
-                            FromServer::Error(err) => {
+                            FromServer::Error(_) => {
                                 Cu::internal_server_error(&mut sender_to_error).await;
                             }
                             FromServer::Response(response) => {
                                 let mut subs_to_poke = HashSet::new();
 
                                 let resource = Cu::extract_resource(&response);
-                                Cu::write_resource(&mut cache, &resource);
-                                Cu::delete_successful_txn_input(&mut cache, &response);
-                                Cu::mark_txn_input_as_faild(&mut cache, &response);
-                                Cu::write_faild_txn_result(&mut cache, &response);
+                                Cu::write_resource(&mut cache, &resource).await;
+                                Cu::delete_successful_txn_input(&mut cache, &response).await;
+                                Cu::mark_txn_input_as_faild(&mut cache, &response).await;
+                                Cu::write_faild_txn_result(&mut cache, &response).await;
                                 Cu::collect_subs_to_poke(&mut subs_to_poke, &resource);
 
                                 let txn_numbers = Cu::get_all_response_txn_numbers(&response).await;
@@ -289,10 +289,10 @@ where
                                     }
                                 }
 
-                                Cu::clear_state_pending_txn(&mut cache);
+                                Cu::clear_state_pending_txn(&mut cache).await;
                                 let txns = Cu::get_all_pending_txn(&mut cache).await;
 
-                                for (txn_number, txn) in txns {
+                                for (_, txn) in txns {
                                     let result = Cu::check_input(&mut cache, &txn).await;
                                     let resource = Cu::extract_resource1(&result);
                                     Cu::apply_input(&mut cache, &resource);
@@ -348,7 +348,6 @@ where
                     } => match strategy {
                         CachingStrategy::ReadCacheOnly => {
                             let result = Cu::check_input(&mut cache, &data).await;
-                            let resource = Cu::extract_resource1(&result);
                             let _ = sender
                                 .send(Response::Data {
                                     is_response_from_server: false,
@@ -362,7 +361,6 @@ where
                             let txn_number = Rn::generate();
 
                             let result = Cu::check_input(&mut cache, &data).await;
-                            let resource = Cu::extract_resource1(&result);
 
                             let _ = sender
                                 .send(Response::Data {

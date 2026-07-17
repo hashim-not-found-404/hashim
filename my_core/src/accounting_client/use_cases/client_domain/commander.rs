@@ -1,6 +1,6 @@
 use crate::{
     accounting_client::use_cases::client_domain::{process_manager, ui_model},
-    accounting_domain::{self, cases::utility::types},
+    accounting_domain::cases::utility::types,
     utility::traits,
 };
 use std::sync::Mutex;
