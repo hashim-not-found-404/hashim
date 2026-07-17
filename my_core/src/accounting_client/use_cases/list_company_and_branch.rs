@@ -8,8 +8,8 @@ use crate::{
         ui_model::{self, HashimSignal},
     },
     accounting_domain::{
-        cases::{self},
-        request_response, types,
+        cases::{self, utility::types},
+        request_response,
     },
     utility::{
         traits::{self, JoinHandle, Receiver},
@@ -155,7 +155,7 @@ impl CacheAndServerType1 for Type2 {
 
     type Output = Type3;
 
-    async fn state_full_operation<Id: cases::RowId, Ch: cache::Cache>(
+    async fn state_full_operation<Id: types::RowId, Ch: cache::Cache>(
         &self,
         state: &mut cache::State<Ch>,
     ) -> Self::Output {
@@ -230,7 +230,7 @@ impl Mvu for ui_model::CompanyAndBranchSelection {
     async fn update<
         Rn: traits::RandomNumber,
         Rt: traits::Runtime,
-        Id: cases::RowId,
+        Id: types::RowId,
         Mpsc: traits::MultiProducerSingleConsumer,
         Rg: traits::Regex,
         As: ui_model::AllSignalTypes,
@@ -319,7 +319,7 @@ impl Mvu for ui_model::CompanyAndBranchSelection {
 fn handle_list_company_and_branch_listener<
     Rn: traits::RandomNumber,
     Rt: traits::Runtime,
-    Id: cases::RowId,
+    Id: types::RowId,
     Mpsc: traits::MultiProducerSingleConsumer,
     Rg: traits::Regex,
     As: ui_model::AllSignalTypes,
@@ -393,7 +393,7 @@ fn handle_list_company_and_branch_listener<
 async fn handle_list_company_and_branch<
     Rn: traits::RandomNumber,
     Rt: traits::Runtime,
-    Id: cases::RowId,
+    Id: types::RowId,
     Mpsc: traits::MultiProducerSingleConsumer,
     Rg: traits::Regex,
     As: ui_model::AllSignalTypes,

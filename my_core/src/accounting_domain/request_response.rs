@@ -1,4 +1,4 @@
-use crate::accounting_domain::{cases, types};
+use crate::accounting_domain::cases::{self, utility::types};
 use serde::{Deserialize, Serialize};
 
 pub(crate) mod messages {

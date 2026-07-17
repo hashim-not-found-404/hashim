@@ -4,7 +4,7 @@ use crate::{
         commander, process_manager,
         ui_model::{self, AllSignalTypes, HashimSignal},
     },
-    accounting_domain::{cases, types},
+    accounting_domain::cases::{self, utility::types},
     mbg,
     utility::traits::{self, Receiver, Sender},
 };
@@ -27,7 +27,7 @@ impl<Mpsc: traits::MultiProducerSingleConsumer> Commander<Mpsc> {
         As: AllSignalTypes,
         Rt: traits::Runtime,
         Rn: traits::RandomNumber,
-        Id: cases::RowId,
+        Id: types::RowId,
         Rg: traits::Regex,
     >(
         receiver_to_error: Mpsc::Receiver<types::HashimError>,
@@ -63,7 +63,7 @@ impl<Mpsc: traits::MultiProducerSingleConsumer> Commander<Mpsc> {
         As: AllSignalTypes,
         Rt: traits::Runtime,
         Rn: traits::RandomNumber,
-        Id: cases::RowId,
+        Id: types::RowId,
         Rg: traits::Regex,
     >(
         mut receiver: Mpsc::Receiver<ui_model::Message>,

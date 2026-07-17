@@ -3,7 +3,10 @@ use crate::{
         cache_op, network_actor, ui_effect,
         use_cases::client_domain::{cache, cache_actor, client_traits, process_manager, ui_model},
     },
-    accounting_domain::{cases, request_response, types},
+    accounting_domain::{
+        cases::{self, utility::types},
+        request_response,
+    },
     utility::{
         traits::{self, Receiver, Sender},
         utils::ReadAndSet,
@@ -17,7 +20,7 @@ use std::{
 pub fn new<
     Rn: traits::RandomNumber,
     Rt: traits::Runtime,
-    Id: cases::RowId,
+    Id: types::RowId,
     Mpsc: traits::MultiProducerSingleConsumer,
     Ed: traits::Coding,
     Rg: traits::Regex,
@@ -108,11 +111,11 @@ impl<Mpsc: traits::MultiProducerSingleConsumer> network_actor::Network for MyNet
     }
 }
 
-struct MyCache<Mpsc: traits::MultiProducerSingleConsumer, Ch: cache::Cache, Id: cases::RowId> {
+struct MyCache<Mpsc: traits::MultiProducerSingleConsumer, Ch: cache::Cache, Id: types::RowId> {
     _ph: PhantomData<(Mpsc, Ch, Id)>,
 }
 
-impl<Mpsc: traits::MultiProducerSingleConsumer, Ch: cache::Cache, Id: cases::RowId>
+impl<Mpsc: traits::MultiProducerSingleConsumer, Ch: cache::Cache, Id: types::RowId>
     cache_actor::CacheActorUtils for MyCache<Mpsc, Ch, Id>
 {
     type Mpsc = Mpsc;

@@ -7,7 +7,10 @@ use crate::{
         commander,
         ui_model::{self, HashimSignal},
     },
-    accounting_domain::{cases, request_response, types},
+    accounting_domain::{
+        cases::{self, utility::types},
+        request_response,
+    },
     utility::{traits, utils::ReadAndSet},
 };
 use std::{str::FromStr, sync::Arc};
@@ -63,7 +66,7 @@ impl CacheAndServerType1 for Type2 {
 
     type Output = Type3;
 
-    async fn state_full_operation<Id: cases::RowId, Ch: cache::Cache>(
+    async fn state_full_operation<Id: types::RowId, Ch: cache::Cache>(
         &self,
         _: &mut cache::State<Ch>,
     ) -> Self::Output {
@@ -98,7 +101,7 @@ impl Mvu for ui_model::CreateCompany {
     async fn update<
         Rn: traits::RandomNumber,
         Rt: traits::Runtime,
-        Id: cases::RowId,
+        Id: types::RowId,
         Mpsc: traits::MultiProducerSingleConsumer,
         Rg: traits::Regex,
         As: ui_model::AllSignalTypes,
@@ -130,7 +133,7 @@ impl Mvu for ui_model::CreateCompany {
 fn handle_close<
     Rn: traits::RandomNumber,
     Rt: traits::Runtime,
-    Id: cases::RowId,
+    Id: types::RowId,
     Mpsc: traits::MultiProducerSingleConsumer,
     Rg: traits::Regex,
     As: ui_model::AllSignalTypes,
@@ -156,7 +159,7 @@ fn handle_close<
 async fn handle_submit<
     Rn: traits::RandomNumber,
     Rt: traits::Runtime,
-    Id: cases::RowId,
+    Id: types::RowId,
     Mpsc: traits::MultiProducerSingleConsumer,
     Rg: traits::Regex,
     As: ui_model::AllSignalTypes,

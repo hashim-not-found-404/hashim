@@ -2,6 +2,29 @@ use crate::utility::traits;
 use serde::{Deserialize, Serialize};
 use std::{error::Error, fmt::Display, str::FromStr};
 
+pub trait RowId: 'static {
+    fn generate() -> UuidType;
+    fn get_time_as_seconds(uuid: &UuidType) -> Option<u64>;
+    fn validate(uuid: &UuidType) -> bool;
+}
+
+pub trait HashedPassword {
+    fn sign_up(password: &String) -> String;
+    fn sign_in(password: &String, password_hash: &String) -> bool;
+}
+
+pub trait JWT: 'static {
+    fn new() -> Self;
+    fn sign(&self, user_uuid: &UuidType) -> JsonWebTokenType;
+    fn validate(&self, token: JsonWebTokenType) -> Option<UuidType>;
+}
+
+pub(crate) trait MyErrorTrait: Default + PartialEq {
+    fn is_there_error(&self) -> bool {
+        *self != Self::default()
+    }
+}
+
 #[derive(Debug, Deserialize, Serialize, Clone, Default, PartialEq, Hash, Eq, PartialOrd, Ord)]
 pub struct UuidType(pub [u8; 16]);
 

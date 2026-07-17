@@ -1,4 +1,7 @@
-use crate::accounting_domain::{cases, request_response, types};
+use crate::accounting_domain::{
+    cases::{self, utility::types},
+    request_response,
+};
 
 pub trait Cache: Sized {
     fn new() -> impl Future<Output = Self>;
@@ -66,7 +69,7 @@ pub trait Cache: Sized {
 }
 
 pub(crate) mod tables {
-    use crate::accounting_domain::types;
+    use crate::accounting_domain::cases::utility::types;
     use std::collections::HashMap;
 
     #[derive(Default)]

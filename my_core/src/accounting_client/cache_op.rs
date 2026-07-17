@@ -3,12 +3,15 @@ use crate::{
         cache,
         client_traits::{CacheAndServerType1, CacheAndServerType2},
     },
-    accounting_domain::{cases, request_response, types},
+    accounting_domain::{
+        cases::{self, utility::types},
+        request_response,
+    },
     utility::utils::MyUpSert,
 };
 
 impl<Ch: cache::Cache> cache::State<Ch> {
-    pub(crate) async fn new<Id: cases::RowId>() -> Self {
+    pub(crate) async fn new<Id: types::RowId>() -> Self {
         let cache = Ch::new().await;
         let txns = cache.get_all_txn_input().await;
 
@@ -28,7 +31,7 @@ impl<Ch: cache::Cache> cache::State<Ch> {
 }
 
 impl request_response::push_data::OperationsInput {
-    pub(crate) async fn run_operation_check<Id: cases::RowId, Ch: cache::Cache>(
+    pub(crate) async fn run_operation_check<Id: types::RowId, Ch: cache::Cache>(
         &self,
         state: &mut cache::State<Ch>,
     ) -> request_response::push_data::OperationsResult {
@@ -51,7 +54,7 @@ impl request_response::push_data::OperationsInput {
         }
     }
 
-    pub(crate) async fn run_operation_check_apply<Id: cases::RowId, Ch: cache::Cache>(
+    pub(crate) async fn run_operation_check_apply<Id: types::RowId, Ch: cache::Cache>(
         &self,
         state: &mut cache::State<Ch>,
     ) {
@@ -74,7 +77,7 @@ impl request_response::push_data::OperationsInput {
         }
     }
 
-    pub(crate) async fn run_operation_check_apply_write<Id: cases::RowId, Ch: cache::Cache>(
+    pub(crate) async fn run_operation_check_apply_write<Id: types::RowId, Ch: cache::Cache>(
         &self,
         txn_number: u64,
         state: &mut cache::State<Ch>,
@@ -143,7 +146,7 @@ impl request_response::push_data::OperationsResult {
     }
 }
 
-async fn operation_check_handler<T: CacheAndServerType1, Id: cases::RowId, Ch: cache::Cache>(
+async fn operation_check_handler<T: CacheAndServerType1, Id: types::RowId, Ch: cache::Cache>(
     input: &T,
     state: &mut cache::State<Ch>,
 ) -> request_response::push_data::OperationsResult {
@@ -155,7 +158,7 @@ async fn operation_check_handler<T: CacheAndServerType1, Id: cases::RowId, Ch: c
 
 async fn operation_check_apply_handler<
     T: CacheAndServerType1,
-    Id: cases::RowId,
+    Id: types::RowId,
     Ch: cache::Cache,
 >(
     input: &T,
@@ -172,7 +175,7 @@ async fn operation_check_apply_handler<
 
 async fn operation_check_apply_write_handler<
     T: CacheAndServerType1,
-    Id: cases::RowId,
+    Id: types::RowId,
     Ch: cache::Cache,
 >(
     input: &T,
