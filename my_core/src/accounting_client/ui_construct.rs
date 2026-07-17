@@ -176,11 +176,7 @@ impl<Mpsc: traits::MultiProducerSingleConsumer, Ch: cache::Cache, Id: types::Row
     async fn prepare_txn_for_send(
         cache: &Self::Cache,
         txns: Vec<(u64, Self::OpInput)>,
-    ) -> Option<Self::SendingTxns> {
-        if txns.is_empty() {
-            return None;
-        }
-
+    ) -> Self::SendingTxns {
         let mut jwts = Vec::new();
         for (_, txn) in &txns {
             if let Some(user_uuid) = txn.get_user_uuid() {
@@ -205,7 +201,7 @@ impl<Mpsc: traits::MultiProducerSingleConsumer, Ch: cache::Cache, Id: types::Row
             operations: operations1,
         };
 
-        Some(t)
+        t
     }
 
     type E = types::HashimError;

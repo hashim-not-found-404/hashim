@@ -77,7 +77,7 @@ pub(crate) trait CacheActorUtils {
     async fn prepare_txn_for_send(
         cache: &Self::Cache,
         txns: Vec<(u64, Self::OpInput)>,
-    ) -> Option<Self::SendingTxns>;
+    ) -> Self::SendingTxns;
 
     type E;
     type Response;
@@ -244,10 +244,10 @@ where
                 match Cu::cache_receiver(&mut receiver_to_cache).await {
                     MessageToCache::WeAreBackOnline => {
                         let txns = Cu::get_all_pending_txn(&mut cache).await;
-                        let txns = Cu::prepare_txn_for_send(&mut cache, txns).await;
-                        if txns.is_none() {
+                        if txns.is_empty() {
                             continue;
                         }
+                        let txns = Cu::prepare_txn_for_send(&mut cache, txns).await;
                         let txns = Ed::encode(&txns);
                         Cu::send_to_network(&mut sender_to_network, txns).await;
                     }
@@ -374,9 +374,6 @@ where
                             if Cu::is_online(&is_online).await {
                                 let txn_to_send =
                                     Cu::prepare_txn_for_send(&mut cache, vec![operations]).await;
-                                if txn_to_send.is_none() {
-                                    continue;
-                                }
 
                                 let data = Ed::encode(&txn_to_send);
                                 Cu::send_to_network(&mut sender_to_network, data).await;
@@ -423,9 +420,6 @@ where
                             if Cu::is_online(&is_online).await {
                                 let txn_to_send =
                                     Cu::prepare_txn_for_send(&mut cache, vec![operations]).await;
-                                if txn_to_send.is_none() {
-                                    continue;
-                                }
 
                                 let data = Ed::encode(&txn_to_send);
                                 Cu::send_to_network(&mut sender_to_network, data).await;
