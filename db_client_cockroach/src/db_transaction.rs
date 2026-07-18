@@ -242,6 +242,22 @@ impl DBTransaction for S<'_> {
 
         Ok(())
     }
+
+    fn read_create_account(
+        &mut self,
+        input: &cases::create_account::ReadInput,
+    ) -> impl Future<
+        Output = Result<cases::create_account::ReadOutput, my_core::utility::traits::DynamicError>,
+    > {
+        todo!()
+    }
+
+    fn write_create_account(
+        &mut self,
+        input: &cases::create_account::Ok,
+    ) -> impl Future<Output = Result<(), my_core::utility::traits::DynamicError>> {
+        todo!()
+    }
 }
 
 fn get_sql_state(error: &tokio_postgres::Error) -> SqlState {

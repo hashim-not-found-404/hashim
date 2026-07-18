@@ -99,7 +99,7 @@ fn AuthenticationPage() -> Element {
         ui_model::Navigator::CompanyBranchSelection(_) => {
             navigator().push(Route::CompanyAndBranchSelection {});
         }
-        ui_model::Navigator::Home => todo!(),
+        ui_model::Navigator::Home(_) => todo!(),
     }
 
     rsx! {

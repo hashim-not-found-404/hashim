@@ -207,6 +207,24 @@ impl Cache for S {
                         &value.to_string(),
                     )
                 }
+                types::Resource::TableAccountFieldCompanyBelong(value) => {
+                    make_sql_statment_for_string("account", todo!(), uuid, &value.to_string())
+                }
+                types::Resource::TableAccountFieldIsDebit(value) => {
+                    make_sql_statment_for_bool("account", todo!(), uuid, value.clone())
+                }
+                types::Resource::TableAccountFieldIsPermanentAccount(value) => {
+                    make_sql_statment_for_bool("account", todo!(), uuid, value.clone())
+                }
+                types::Resource::TableAccountFieldName(value) => {
+                    make_sql_statment_for_string("account", todo!(), uuid, value)
+                }
+                types::Resource::TableAccountFieldNotes(value) => {
+                    make_sql_statment_for_string("account", todo!(), uuid, value)
+                }
+                types::Resource::TableAccountFieldUnitOfMeasurementOfQuantity(value) => {
+                    make_sql_statment_for_string("account", todo!(), uuid, value)
+                }
             };
 
             stmts.push(stmt);
@@ -465,6 +483,13 @@ impl Cache for S {
 
         (roles, company_exists, branch_name_used)
     }
+
+    fn read_create_account(
+        &self,
+        read_input: &cases::create_account::ReadInput,
+    ) -> impl Future<Output = cases::create_account::ReadOutput> {
+        todo!()
+    }
 }
 
 fn make_sql_statment_for_string(
@@ -484,6 +509,18 @@ fn make_sql_statment_for_number(
     field_name: &str,
     uuid: &String,
     value: &f64,
+) -> String {
+    format!(
+        "INSERT OR IGNORE INTO {table_name} (rowid) VALUES ('{uuid}');
+         UPDATE {table_name} SET {field_name} = {value} WHERE rowid = '{uuid}';"
+    )
+}
+
+fn make_sql_statment_for_bool(
+    table_name: &str,
+    field_name: &str,
+    uuid: &String,
+    value: bool,
 ) -> String {
     format!(
         "INSERT OR IGNORE INTO {table_name} (rowid) VALUES ('{uuid}');
