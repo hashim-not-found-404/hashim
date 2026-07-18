@@ -287,7 +287,25 @@ impl<Ch: Cache> State<Ch> {
         &mut self,
         read_input: &cases::create_account::ReadInput,
     ) -> cases::create_account::ReadOutput {
-        self.cache.read_create_account(read_input).await;
-        todo!()
+        let mut read_output = self.cache.read_create_account(read_input).await;
+        read_output.is_company_uuid_exist = true;
+        read_output.is_new_uuid_used = false;
+
+        for (_, table) in &self.state_of_pending_txn.account {
+            if read_input.account_name == table.name
+                && read_input.belong_to_company == table.company_belong
+            {
+                read_output.is_account_name_used = true;
+            }
+        }
+
+        let mut roles = Vec::new();
+        for (_, table) in &self.state_of_pending_txn.access_control_for_company {
+            if read_input.user_uuid == table.user_ {
+                roles.push(table.role.clone());
+            }
+        }
+
+        read_output
     }
 }

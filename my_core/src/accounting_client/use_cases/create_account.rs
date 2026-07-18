@@ -5,7 +5,7 @@ use crate::{
             self, CacheAndServerType1, CacheAndServerType2, Mvu, ViewType1, ViewType2,
         },
         commander, process_manager,
-        ui_model::{self, HashimSignal, PageCreateAccount},
+        ui_model::{self, HashimSignal},
     },
     accounting_domain::{
         cases::{
