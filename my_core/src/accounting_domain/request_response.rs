@@ -46,6 +46,7 @@ pub mod push_data {
         // write
         CreateCompany(cases::create_company::Input),
         CreateCompanyBranch(cases::create_company_branch::Input),
+        CreateAccount(cases::create_account::Input),
         // read
         ListCompanyAndBranch(cases::list_company_and_branch::Input),
     }
@@ -58,6 +59,7 @@ pub mod push_data {
         // write
         CreateCompany(cases::create_company::MyResult),
         CreateCompanyBranch(cases::create_company_branch::MyResult),
+        CreateAccount(cases::create_account::MyResult),
         // read
         ListCompanyAndBranch(cases::list_company_and_branch::MyResult),
     }

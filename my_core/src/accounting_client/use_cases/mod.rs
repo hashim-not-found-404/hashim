@@ -1,4 +1,5 @@
 pub mod client_domain;
+mod create_account;
 mod create_company;
 mod create_company_branch;
 mod list_company_and_branch;

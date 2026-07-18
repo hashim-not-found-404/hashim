@@ -48,6 +48,9 @@ impl request_response::push_data::OperationsInput {
             request_response::push_data::OperationsInput::ListCompanyAndBranch(i) => {
                 operation_check_handler::<_, Id, Ch>(i, state).await
             }
+            request_response::push_data::OperationsInput::CreateAccount(i) => {
+                operation_check_handler::<_, Id, Ch>(i, state).await
+            }
         }
     }
 
@@ -71,6 +74,9 @@ impl request_response::push_data::OperationsInput {
             request_response::push_data::OperationsInput::ListCompanyAndBranch(i) => {
                 operation_check_apply_handler::<_, Id, Ch>(i, state).await
             }
+            request_response::push_data::OperationsInput::CreateAccount(i) => {
+                operation_check_apply_handler::<_, Id, Ch>(i, state).await
+            }
         }
     }
 
@@ -81,6 +87,7 @@ impl request_response::push_data::OperationsInput {
             request_response::push_data::OperationsInput::CreateCompany(i) => i.user_uuid(),
             request_response::push_data::OperationsInput::CreateCompanyBranch(i) => i.user_uuid(),
             request_response::push_data::OperationsInput::ListCompanyAndBranch(i) => i.user_uuid(),
+            request_response::push_data::OperationsInput::CreateAccount(i) => i.user_uuid(),
         }
     }
 }
@@ -97,6 +104,7 @@ impl request_response::push_data::OperationsResult {
             request_response::push_data::OperationsResult::ListCompanyAndBranch(i) => {
                 i.extract_resource()
             }
+            request_response::push_data::OperationsResult::CreateAccount(i) => i.extract_resource(),
         }
     }
 
@@ -107,6 +115,7 @@ impl request_response::push_data::OperationsResult {
             request_response::push_data::OperationsResult::CreateCompany(i) => i.is_ok(),
             request_response::push_data::OperationsResult::CreateCompanyBranch(i) => i.is_ok(),
             request_response::push_data::OperationsResult::ListCompanyAndBranch(i) => i.is_ok(),
+            request_response::push_data::OperationsResult::CreateAccount(i) => i.is_ok(),
         }
     }
 }
@@ -189,6 +198,24 @@ pub(crate) fn apply_change(
             types::Resource::TableAccessControlForCompanyBranchFieldDataGroup(r) => state
                 .access_control_for_company_branch
                 .upsert(row_uuid, |table| table.data_group = r),
+            types::Resource::TableAccountFieldCompanyBelong(r) => state
+                .account
+                .upsert(row_uuid, |table| table.company_belong = r),
+            types::Resource::TableAccountFieldIsDebit(r) => {
+                state.account.upsert(row_uuid, |table| table.is_debit = r)
+            }
+            types::Resource::TableAccountFieldIsPermanentAccount(r) => state
+                .account
+                .upsert(row_uuid, |table| table.is_permanent_account = r),
+            types::Resource::TableAccountFieldName(r) => {
+                state.account.upsert(row_uuid, |table| table.name = r)
+            }
+            types::Resource::TableAccountFieldNotes(r) => {
+                state.account.upsert(row_uuid, |table| table.notes = r)
+            }
+            types::Resource::TableAccountFieldUnitOfMeasurementOfQuantity(r) => state
+                .account
+                .upsert(row_uuid, |table| table.unit_of_measurement_of_quantity = r),
         }
     }
 }

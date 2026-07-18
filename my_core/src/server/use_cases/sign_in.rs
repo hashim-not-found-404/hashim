@@ -14,7 +14,7 @@ impl cases::sign_in::Input {
         side_effects: &mut SideEffects,
         client: &mut Cli,
         jwt: &Jwt,
-    ) -> Result<Result<cases::sign_in::Ok, cases::sign_in::Error>, traits::DynamicError> {
+    ) -> Result<cases::sign_in::MyResult, traits::DynamicError> {
         let user_rowid_and_password_hash_and_name = client.read_sign_in(&self.user_id).await?;
         let result =
             self.state_full_check::<Auth, Jwt>(jwt, &user_rowid_and_password_hash_and_name);

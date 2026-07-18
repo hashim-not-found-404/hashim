@@ -436,6 +436,13 @@ async fn push_data<
                         .await?,
                 )
             }
+            request_response::push_data::OperationsInput::CreateAccount(input) => {
+                request_response::push_data::OperationsResult::CreateAccount(
+                    input
+                        .handle_operation::<Id, Cli>(side_effects, client)
+                        .await?,
+                )
+            }
         };
 
         the_return_result
@@ -662,6 +669,38 @@ mod broker_functions {
                     if subscribe.contains(
                         &types::Subscribe::TableAccessControlForCompanyBranchFieldDataGroup,
                     ) {
+                        new_resource.push(one_resource.clone());
+                    }
+                }
+                types::Resource::TableAccountFieldCompanyBelong(_) => {
+                    if subscribe.contains(&types::Subscribe::TableAccountFieldCompanyBelong) {
+                        new_resource.push(one_resource.clone());
+                    }
+                }
+                types::Resource::TableAccountFieldIsDebit(_) => {
+                    if subscribe.contains(&types::Subscribe::TableAccountFieldIsDebit) {
+                        new_resource.push(one_resource.clone());
+                    }
+                }
+                types::Resource::TableAccountFieldIsPermanentAccount(_) => {
+                    if subscribe.contains(&types::Subscribe::TableAccountFieldIsPermanentAccount) {
+                        new_resource.push(one_resource.clone());
+                    }
+                }
+                types::Resource::TableAccountFieldName(_) => {
+                    if subscribe.contains(&types::Subscribe::TableAccountFieldName) {
+                        new_resource.push(one_resource.clone());
+                    }
+                }
+                types::Resource::TableAccountFieldNotes(_) => {
+                    if subscribe.contains(&types::Subscribe::TableAccountFieldNotes) {
+                        new_resource.push(one_resource.clone());
+                    }
+                }
+                types::Resource::TableAccountFieldUnitOfMeasurementOfQuantity(_) => {
+                    if subscribe
+                        .contains(&types::Subscribe::TableAccountFieldUnitOfMeasurementOfQuantity)
+                    {
                         new_resource.push(one_resource.clone());
                     }
                 }

@@ -18,7 +18,7 @@ impl cases::sign_up::Input {
         side_effects: &mut SideEffects,
         client: &mut Cli,
         jwt: &Jwt,
-    ) -> Result<Result<cases::sign_up::Ok, cases::sign_up::Error>, traits::DynamicError> {
+    ) -> Result<cases::sign_up::MyResult, traits::DynamicError> {
         let errr = self.state_less_check::<Id>();
         if errr.is_there_error() {
             return Ok(Err(errr));

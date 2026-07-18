@@ -11,8 +11,6 @@ dot -Tpng graph.dot -o graph.png
 xdot graph.dot
 splines=ortho;
 
-cargo-cycles --topo-sort
-
 cargo sort -w
 
 clear && cockroach start-single-node --insecure

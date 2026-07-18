@@ -22,6 +22,16 @@ pub trait AllSignalTypes: 'static + Default + Clone {
     type Navigator: HashimSignal<Navigator>;
 }
 
+// helper types
+
+#[derive(Default, Clone, PartialEq)]
+pub enum Dialog {
+    #[default]
+    Hide,
+    Show,
+    Error,
+}
+
 // model
 
 #[derive(Default)]
@@ -50,6 +60,7 @@ pub struct PageAfterAuth<As: AllSignalTypes> {
     pub user_name: As::String,
 
     pub page_company_branch_selection: PageCompanyBranchSelection<As>,
+    pub page_home: PageHome<As>,
 }
 
 #[derive(Default)]
@@ -59,6 +70,11 @@ pub struct PageCompanyBranchSelection<As: AllSignalTypes> {
 
     pub page_create_company: PageCreateCompany<As>,
     pub page_create_company_branch: PageCreateCompanyBranch<As>,
+}
+
+#[derive(Default)]
+pub struct PageHome<As: AllSignalTypes> {
+    pub page_create_account: PageCreateAccount<As>,
 }
 
 #[derive(Default)]
@@ -98,6 +114,15 @@ pub struct PageCreateCompanyBranch<As: AllSignalTypes> {
     pub location: As::Location,
 }
 
+#[derive(Default)]
+pub struct PageCreateAccount<As: AllSignalTypes> {
+    pub is_debit: As::Bool,
+    pub is_permanent_account: As::Bool,
+    pub account_name: As::String,
+    pub notes: As::String,
+    pub unit_of_measurement_of_quantity: As::String,
+}
+
 // message
 
 #[derive(Debug, Clone, Copy)]
@@ -115,6 +140,7 @@ pub enum Message {
     CompanyAndBranchSelection(CompanyAndBranchSelection),
     CreateCompany(CreateCompany),
     CreateCompanyBranch(CreateCompanyBranch),
+    CreateAccount(CreateAccount),
 }
 
 #[derive(Debug)]
@@ -161,13 +187,24 @@ pub enum CreateCompanyBranch {
     Currency(String),
 }
 
+#[derive(Debug)]
+pub enum CreateAccount {
+    Submit,
+    Close,
+    IsDebit(bool),
+    IsPermanentAccount(bool),
+    AccountName(String),
+    Notes(String),
+    UnitOfMeasurementOfQuantity(String),
+}
+
 // navigator types
 
 #[derive(Clone)]
 pub enum Navigator {
     Auth(Auth),
     CompanyBranchSelection(CompanyBranchSelection),
-    Home,
+    Home(Menu),
 }
 
 #[derive(Clone)]
@@ -183,18 +220,13 @@ pub enum CompanyBranchSelection {
     CreateCompanyBranch,
 }
 
+#[derive(Clone)]
+pub enum Menu {
+    CreateAccount,
+}
+
 impl Default for Navigator {
     fn default() -> Self {
         Self::Auth(Auth::SignIn)
     }
-}
-
-// helper types
-
-#[derive(Default, Clone, PartialEq)]
-pub enum Dialog {
-    #[default]
-    Hide,
-    Show,
-    Error,
 }

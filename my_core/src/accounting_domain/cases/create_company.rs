@@ -42,7 +42,7 @@ impl Input {
         errr
     }
 
-    pub(crate) fn state_full_check<Id: types::RowId>(&self, is_new_uuid_used: bool) -> Error {
+    pub(crate) fn state_full_check(&self, is_new_uuid_used: bool) -> Error {
         let mut errr = Error::default();
         if is_new_uuid_used {
             errr.new_uuid = Some(types::RowIdError::Duplicated);

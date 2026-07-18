@@ -62,7 +62,6 @@ CREATE TABLE IF NOT EXISTS accounting_app.account(
     product_rowid                               UUID REFERENCES accounting_app.product(rowid) ON DELETE CASCADE,
     is_second_hand                              BOOL,
     job                                         STRING
-
 );
 
 CREATE TABLE IF NOT EXISTS accounting_app.account_flow_type(

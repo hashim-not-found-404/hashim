@@ -66,6 +66,10 @@ pub trait Cache: Sized {
             bool,             /* is branch name used */
         ),
     >;
+    fn read_create_account(
+        &self,
+        read_input: &cases::create_account::ReadInput,
+    ) -> impl Future<Output = cases::create_account::ReadOutput>;
 }
 
 pub(crate) mod tables {
@@ -108,6 +112,16 @@ pub(crate) mod tables {
     }
 
     #[derive(Default)]
+    pub(crate) struct Account {
+        pub(crate) company_belong: types::UuidType,
+        pub(crate) is_debit: bool,
+        pub(crate) is_permanent_account: bool,
+        pub(crate) name: String,
+        pub(crate) notes: String,
+        pub(crate) unit_of_measurement_of_quantity: String,
+    }
+
+    #[derive(Default)]
     pub(crate) struct StateOfPendingTxn {
         pub(crate) user: HashMap<types::UuidType, User>,
         pub(crate) company: HashMap<types::UuidType, Company>,
@@ -115,6 +129,7 @@ pub(crate) mod tables {
         pub(crate) company_branch: HashMap<types::UuidType, CompanyBranch>,
         pub(crate) access_control_for_company_branch:
             HashMap<types::UuidType, AccessControlForCompanyBranch>,
+        pub(crate) account: HashMap<types::UuidType, Account>,
     }
 }
 
@@ -266,5 +281,13 @@ impl<Ch: Cache> State<Ch> {
         }
 
         (user_roles, is_company_exist, is_branch_name_used)
+    }
+
+    pub(crate) async fn read_create_account(
+        &mut self,
+        read_input: &cases::create_account::ReadInput,
+    ) -> cases::create_account::ReadOutput {
+        self.cache.read_create_account(read_input).await;
+        todo!()
     }
 }

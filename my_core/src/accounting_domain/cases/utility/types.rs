@@ -139,40 +139,52 @@ pub const ADDRESS: &str = "127.0.0.1:8081";
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) enum Subscribe {
-    TableUserFieldName,
-    TableUserFieldId,
-    TableCompanyFieldName,
-    TableCompanyFieldCurrency,
-    TableCompanyBranchFieldName,
-    TableCompanyBranchFieldCompanyBelong,
-    TableCompanyBranchFieldLocation,
-    TableCompanyBranchFieldCurrency,
-    TableAccessControlForCompanyFieldRole,
-    TableAccessControlForCompanyFieldUser,
-    TableAccessControlForCompanyFieldDataGroup,
+    TableAccessControlForCompanyBranchFieldDataGroup,
     TableAccessControlForCompanyBranchFieldRole,
     TableAccessControlForCompanyBranchFieldUser,
-    TableAccessControlForCompanyBranchFieldDataGroup,
+    TableAccessControlForCompanyFieldDataGroup,
+    TableAccessControlForCompanyFieldRole,
+    TableAccessControlForCompanyFieldUser,
+    TableAccountFieldCompanyBelong,
+    TableAccountFieldIsDebit,
+    TableAccountFieldIsPermanentAccount,
+    TableAccountFieldName,
+    TableAccountFieldNotes,
+    TableAccountFieldUnitOfMeasurementOfQuantity,
+    TableCompanyBranchFieldCompanyBelong,
+    TableCompanyBranchFieldCurrency,
+    TableCompanyBranchFieldLocation,
+    TableCompanyBranchFieldName,
+    TableCompanyFieldCurrency,
+    TableCompanyFieldName,
+    TableUserFieldId,
+    TableUserFieldName,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub enum Resource {
     Jwt(JsonWebTokenType),
 
-    TableUserFieldName(String),
-    TableUserFieldId(String),
-    TableCompanyFieldName(String),
-    TableCompanyFieldCurrency(Currency),
-    TableCompanyBranchFieldName(String),
-    TableCompanyBranchFieldCompanyBelong(UuidType),
-    TableCompanyBranchFieldLocation(Location),
-    TableCompanyBranchFieldCurrency(Currency),
-    TableAccessControlForCompanyFieldRole(Role),
-    TableAccessControlForCompanyFieldUser(UuidType),
-    TableAccessControlForCompanyFieldDataGroup(UuidType),
+    TableAccessControlForCompanyBranchFieldDataGroup(UuidType),
     TableAccessControlForCompanyBranchFieldRole(Role),
     TableAccessControlForCompanyBranchFieldUser(UuidType),
-    TableAccessControlForCompanyBranchFieldDataGroup(UuidType),
+    TableAccessControlForCompanyFieldDataGroup(UuidType),
+    TableAccessControlForCompanyFieldRole(Role),
+    TableAccessControlForCompanyFieldUser(UuidType),
+    TableAccountFieldCompanyBelong(UuidType),
+    TableAccountFieldIsDebit(bool),
+    TableAccountFieldIsPermanentAccount(bool),
+    TableAccountFieldName(String),
+    TableAccountFieldNotes(String),
+    TableAccountFieldUnitOfMeasurementOfQuantity(String),
+    TableCompanyBranchFieldCompanyBelong(UuidType),
+    TableCompanyBranchFieldCurrency(Currency),
+    TableCompanyBranchFieldLocation(Location),
+    TableCompanyBranchFieldName(String),
+    TableCompanyFieldCurrency(Currency),
+    TableCompanyFieldName(String),
+    TableUserFieldId(String),
+    TableUserFieldName(String),
 }
 
 impl Resource {
@@ -213,6 +225,18 @@ impl Resource {
             Resource::TableAccessControlForCompanyBranchFieldDataGroup(_) => {
                 Some(Subscribe::TableAccessControlForCompanyBranchFieldDataGroup)
             }
+            Resource::TableAccountFieldCompanyBelong(_) => {
+                Some(Subscribe::TableAccountFieldCompanyBelong)
+            }
+            Resource::TableAccountFieldIsDebit(_) => Some(Subscribe::TableAccountFieldIsDebit),
+            Resource::TableAccountFieldIsPermanentAccount(_) => {
+                Some(Subscribe::TableAccountFieldIsPermanentAccount)
+            }
+            Resource::TableAccountFieldName(_) => Some(Subscribe::TableAccountFieldName),
+            Resource::TableAccountFieldNotes(_) => Some(Subscribe::TableAccountFieldNotes),
+            Resource::TableAccountFieldUnitOfMeasurementOfQuantity(_) => {
+                Some(Subscribe::TableAccountFieldUnitOfMeasurementOfQuantity)
+            }
         }
     }
 }
@@ -233,6 +257,7 @@ pub(crate) enum UserUuidError {
 pub(crate) enum RowIdError {
     Invalid,
     Duplicated,
+    NotExist,
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq)]

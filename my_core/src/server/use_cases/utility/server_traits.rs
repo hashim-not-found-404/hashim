@@ -92,6 +92,15 @@ pub trait DBTransaction {
         &mut self,
         data: &cases::create_company_branch::Ok,
     ) -> impl Future<Output = Result<(), traits::DynamicError>>;
+
+    fn read_create_account(
+        &mut self,
+        input: &cases::create_account::ReadInput,
+    ) -> impl Future<Output = Result<cases::create_account::ReadOutput, traits::DynamicError>>;
+    fn write_create_account(
+        &mut self,
+        input: &cases::create_account::Ok,
+    ) -> impl Future<Output = Result<(), traits::DynamicError>>;
 }
 
 pub trait DBClient {
