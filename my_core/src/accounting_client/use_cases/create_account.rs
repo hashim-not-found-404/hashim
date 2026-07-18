@@ -4,8 +4,8 @@ use crate::{
         client_traits::{
             self, CacheAndServerType1, CacheAndServerType2, Mvu, ViewType1, ViewType2,
         },
-        commander,
-        ui_model::{self, HashimSignal},
+        commander, process_manager,
+        ui_model::{self, HashimSignal, PageCreateAccount},
     },
     accounting_domain::{
         cases::{
@@ -14,7 +14,11 @@ use crate::{
         },
         request_response,
     },
-    utility::{traits, utils::ReadAndSet},
+    mbg,
+    utility::{
+        traits::{self, JoinHandle, Receiver, Sender},
+        utils::ReadAndSet,
+    },
 };
 use std::sync::Arc;
 
@@ -147,7 +151,7 @@ impl Mvu for ui_model::CreateAccount {
         cache: client_traits::CacheActorStruct<Mpsc>,
         commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
     ) {
-        let page_create_account = &model
+        let local_state = &model
             .page_root
             .page_after_auth
             .page_home
@@ -157,21 +161,35 @@ impl Mvu for ui_model::CreateAccount {
             ui_model::CreateAccount::Submit => {
                 handle_submit::<Rn, Rt, Id, Mpsc, Rg, As>(model, cache, commander_local_state).await
             }
-            ui_model::CreateAccount::Close => todo!(),
-            ui_model::CreateAccount::IsDebit(v) => page_create_account.is_debit.set(v),
-            ui_model::CreateAccount::IsPermanentAccount(v) => {
-                page_create_account.is_permanent_account.set(v)
+            Self::Consent(i) => {
+                commander_local_state
+                    .sender_to_process_manager
+                    .read()
+                    .send(process_manager::MessageToProcessManager::FromUser {
+                        process_name: process_manager::ProcessName::CreateAccount,
+                        consent: i,
+                    })
+                    .await
+                    .unwrap();
             }
-            ui_model::CreateAccount::AccountName(v) => page_create_account.account_name.set(v),
-            ui_model::CreateAccount::Notes(v) => page_create_account.notes.set(v),
+            ui_model::CreateAccount::Clean => handle_clean::<Rn, Rt, Id, Mpsc, Rg, As>(model),
+            ui_model::CreateAccount::IsDebit(v) => local_state.is_debit.set(v),
+            ui_model::CreateAccount::IsPermanentAccount(v) => {
+                local_state.is_permanent_account.set(v)
+            }
+            ui_model::CreateAccount::AccountName(v) => {
+                local_state.account_name.set(v);
+                handle_check::<Rn, Rt, Id, Mpsc, Rg, As>(model, cache, commander_local_state).await;
+            }
+            ui_model::CreateAccount::Notes(v) => local_state.notes.set(v),
             ui_model::CreateAccount::UnitOfMeasurementOfQuantity(v) => {
-                page_create_account.unit_of_measurement_of_quantity.set(v)
+                local_state.unit_of_measurement_of_quantity.set(v)
             }
         }
     }
 }
 
-fn handle_close<
+fn handle_clean<
     Rn: traits::RandomNumber,
     Rt: traits::Runtime,
     Id: types::RowId,
@@ -181,11 +199,18 @@ fn handle_close<
 >(
     model: &'static ui_model::Model<As>,
 ) {
-    todo!();
-    let page_create_account = &model
+    let local_state = &model
         .page_root
         .page_after_auth
-        .page_company_branch_selection;
+        .page_home
+        .page_create_account;
+
+    local_state.account_name.reset();
+    local_state.is_debit.reset();
+    local_state.is_permanent_account.reset();
+    local_state.notes.reset();
+    local_state.unit_of_measurement_of_quantity.reset();
+    local_state.is_loading.reset();
 }
 
 async fn handle_submit<
@@ -200,31 +225,178 @@ async fn handle_submit<
     mut cache: client_traits::CacheActorStruct<Mpsc>,
     commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
 ) {
-    todo!();
-    let data = commander_local_state.user_uuid.read().clone().unwrap();
+    let user_uuid = commander_local_state.user_uuid.read().clone().unwrap();
 
     let local_state = &model
         .page_root
         .page_after_auth
-        .page_company_branch_selection;
+        .page_home
+        .page_create_account;
 
     let input = cases::create_account::Input {
-        user_uuid: todo!(),
-        new_uuid: todo!(),
-        is_debit: todo!(),
-        is_permanent_account: todo!(),
-        account_name: todo!(),
-        notes: todo!(),
-        unit_of_measurement_of_quantity: todo!(),
-        belong_to_company: todo!(),
+        user_uuid,
+        new_uuid: Id::generate(),
+        is_debit: local_state.is_debit.read(),
+        is_permanent_account: local_state.is_permanent_account.read(),
+        account_name: local_state.account_name.read(),
+        notes: local_state.notes.read(),
+        unit_of_measurement_of_quantity: local_state.unit_of_measurement_of_quantity.read(),
+        belong_to_company: model
+            .page_root
+            .page_after_auth
+            .page_company_branch_selection
+            .selected_company
+            .read()
+            .unwrap(),
     };
 
-    cache
+    let mut receiver_to_response = cache
         .send_to_cache_actor(
             cache_actor::CachingStrategy::WriteCacheAndServer,
-            input.clone().wrap_input(),
+            input.wrap_input(),
         )
         .await;
 
-    handle_close::<Rn, Rt, Id, Mpsc, Rg, As>(model);
+    let commander_local_state1 = commander_local_state.clone();
+    let mut handle = Rt::abortable_spawn_local(async move {
+        loop {
+            match receiver_to_response.recv().await.unwrap() {
+                cache_actor::Response::CloseTheChannel => break,
+                cache_actor::Response::ServerCannotBeReached => break,
+                cache_actor::Response::Data {
+                    is_response_from_server,
+                    data,
+                } => {
+                    let result = Type4::unwrap_output(data);
+                    let is_ok = result.is_ok();
+
+                    if is_response_from_server {
+                        commander_local_state1
+                            .sender_to_process_manager
+                            .read()
+                            .send(process_manager::MessageToProcessManager::FromProcess {
+                                process_name: process_manager::ProcessName::CreateAccount,
+                                event: process_manager::Event::Completed {
+                                    is_response_ok: is_ok,
+                                },
+                            })
+                            .await
+                            .unwrap();
+                    } else {
+                        commander_local_state1
+                            .sender_to_process_manager
+                            .read()
+                            .send(process_manager::MessageToProcessManager::FromProcess {
+                                process_name: process_manager::ProcessName::CreateAccount,
+                                event: process_manager::Event::GotResponseFromCache {
+                                    is_response_ok: is_ok,
+                                },
+                            })
+                            .await
+                            .unwrap();
+                    }
+
+                    match result {
+                        Ok(_) => {}
+                        Err(business_error) => {
+                            mbg!(business_error);
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    let (sender_to_process, mut receiver_to_process) = Mpsc::channel();
+    commander_local_state
+        .sender_to_process_manager
+        .read()
+        .send(process_manager::MessageToProcessManager::FromProcess {
+            process_name: process_manager::ProcessName::CreateAccount,
+            event: process_manager::Event::Subscribe {
+                sender: sender_to_process,
+                dialog: &local_state.show_dialog,
+            },
+        })
+        .await
+        .unwrap();
+
+    match receiver_to_process.recv().await.unwrap() {
+        process_manager::ProceedResult::Yes => {
+            local_state.is_loading.reset();
+            handle_clean::<Rn, Rt, Id, Mpsc, Rg, As>(model);
+        }
+        process_manager::ProceedResult::No => {}
+    };
+
+    handle.abort().await;
+    local_state.is_loading.reset();
+}
+
+async fn handle_check<
+    Rn: traits::RandomNumber,
+    Rt: traits::Runtime,
+    Id: types::RowId,
+    Mpsc: traits::MultiProducerSingleConsumer,
+    Rg: traits::Regex,
+    As: ui_model::AllSignalTypes,
+>(
+    model: &'static ui_model::Model<As>,
+    mut cache: client_traits::CacheActorStruct<Mpsc>,
+    commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
+) {
+    let local_state = &model
+        .page_root
+        .page_after_auth
+        .page_home
+        .page_create_account;
+
+    let user_uuid = commander_local_state.user_uuid.read().clone().unwrap();
+
+    let input = cases::create_account::Input {
+        user_uuid,
+        new_uuid: Id::generate(),
+        is_debit: local_state.is_debit.read(),
+        is_permanent_account: local_state.is_permanent_account.read(),
+        account_name: local_state.account_name.read(),
+        notes: local_state.notes.read(),
+        unit_of_measurement_of_quantity: local_state.unit_of_measurement_of_quantity.read(),
+        belong_to_company: model
+            .page_root
+            .page_after_auth
+            .page_company_branch_selection
+            .selected_company
+            .read()
+            .unwrap(),
+    };
+
+    let mut receiver_to_response = cache
+        .send_to_cache_actor(
+            cache_actor::CachingStrategy::ReadCacheOnly,
+            input.wrap_input(),
+        )
+        .await;
+
+    match receiver_to_response.recv().await.unwrap() {
+        cache_actor::Response::CloseTheChannel => {}
+        cache_actor::Response::ServerCannotBeReached => {}
+        cache_actor::Response::Data {
+            is_response_from_server: _,
+            data,
+        } => {
+            let result = Type4::unwrap_output(data);
+
+            match result {
+                Ok(_) => {}
+                Err(business_error) => {
+                    local_state
+                        .account_name_error
+                        .set(match business_error.account_name {
+                            Some(_) => todo!(),
+                            None => None,
+                        });
+                }
+            }
+        }
+    }
 }

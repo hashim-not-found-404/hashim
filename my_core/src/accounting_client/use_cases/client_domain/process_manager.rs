@@ -9,6 +9,7 @@ pub(crate) enum ProcessName {
     SignIn,
     SignUp,
     CreateCompanyBranch,
+    CreateAccount,
 }
 
 pub(crate) enum Event<Mpsc: traits::MultiProducerSingleConsumer, As: ui_model::AllSignalTypes> {

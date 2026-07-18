@@ -369,12 +369,12 @@ fn handle_apply_result<
         Ok(_) => {}
         Err(business_error) => {
             local_state.user_id_error.set(match business_error.user_id {
-                Some(_) => String::from("duplicated user"),
-                None => String::new(),
+                Some(_) => Some(String::from("duplicated user")),
+                None => None,
             });
             local_state.user_name_error.set(match business_error.name {
-                Some(e) => e,
-                None => String::new(),
+                Some(e) => Some(e),
+                None => None,
             });
         }
     }

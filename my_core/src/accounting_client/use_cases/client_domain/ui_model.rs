@@ -10,6 +10,7 @@ pub trait HashimSignal<T: Default + Clone>: Default {
 
 pub trait AllSignalTypes: 'static + Default + Clone {
     type String: HashimSignal<String>;
+    type OptionString: HashimSignal<Option<String>>;
     type Dialog: HashimSignal<Dialog>;
     type Uuid: HashimSignal<types::UuidType>;
     type OptionUuid: HashimSignal<Option<types::UuidType>>;
@@ -87,16 +88,16 @@ pub struct AuthFeatureState<As: AllSignalTypes> {
 #[derive(Default)]
 pub struct PageSignIn<As: AllSignalTypes> {
     pub show_dialog: As::Dialog,
-    pub user_id_error: As::String,
-    pub user_password_error: As::String,
+    pub user_id_error: As::OptionString,
+    pub user_password_error: As::OptionString,
 }
 
 #[derive(Default)]
 pub struct PageSignUp<As: AllSignalTypes> {
     pub show_dialog: As::Dialog,
     pub user_name: As::String,
-    pub user_id_error: As::String,
-    pub user_name_error: As::String,
+    pub user_id_error: As::OptionString,
+    pub user_name_error: As::OptionString,
 }
 
 #[derive(Default)]
@@ -112,15 +113,20 @@ pub struct PageCreateCompanyBranch<As: AllSignalTypes> {
     pub currency: As::Currency,
     pub branch_name: As::String,
     pub location: As::Location,
+    pub branch_name_error: As::OptionString,
+    pub location_error: As::OptionString,
 }
 
 #[derive(Default)]
 pub struct PageCreateAccount<As: AllSignalTypes> {
+    pub is_loading: As::Bool,
+    pub show_dialog: As::Dialog,
     pub is_debit: As::Bool,
     pub is_permanent_account: As::Bool,
     pub account_name: As::String,
     pub notes: As::String,
     pub unit_of_measurement_of_quantity: As::String,
+    pub account_name_error: As::OptionString,
 }
 
 // message
@@ -190,7 +196,8 @@ pub enum CreateCompanyBranch {
 #[derive(Debug)]
 pub enum CreateAccount {
     Submit,
-    Close,
+    Consent(UserConsent),
+    Clean,
     IsDebit(bool),
     IsPermanentAccount(bool),
     AccountName(String),

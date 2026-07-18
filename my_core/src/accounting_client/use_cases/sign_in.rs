@@ -388,8 +388,8 @@ fn handle_apply_result<
         Err(business_error) => {
             model.page_root.page_auth.page_sign_in.user_id_error.set(
                 match business_error.user_id {
-                    Some(_) => String::from("user not exist"),
-                    None => String::new(),
+                    Some(_) => Some(String::from("user not exist")),
+                    None => None,
                 },
             );
             model
@@ -398,8 +398,8 @@ fn handle_apply_result<
                 .page_sign_in
                 .user_password_error
                 .set(match business_error.password {
-                    Some(_) => String::from("wrong password"),
-                    None => String::new(),
+                    Some(_) => Some(String::from("wrong password")),
+                    None => None,
                 });
         }
     }
