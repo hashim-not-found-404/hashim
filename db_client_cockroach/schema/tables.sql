@@ -54,14 +54,16 @@ CREATE TABLE IF NOT EXISTS accounting_app.account(
     is_permanent_account                        BOOL NOT NULL,
     name                                        STRING NOT NULL,
     notes                                       STRING,
+    unit_of_measurement_of_quantity             STRING,
+    belong_to_company                           UUID REFERENCES accounting_app.company(rowid) ON DELETE CASCADE NOT NULL
 
-    person_out_side_the_system_rowid            UUID REFERENCES accounting_app.person_out_side_the_system(rowid) ON DELETE CASCADE,
-    company_rowid                               UUID REFERENCES accounting_app.company(rowid) ON DELETE CASCADE,
-    company_branch_rowid                        UUID REFERENCES accounting_app.company_branch(rowid) ON DELETE CASCADE,
+    -- person_out_side_the_system_rowid            UUID REFERENCES accounting_app.person_out_side_the_system(rowid) ON DELETE CASCADE,
+    -- company_rowid                               UUID REFERENCES accounting_app.company(rowid) ON DELETE CASCADE,
+    -- company_branch_rowid                        UUID REFERENCES accounting_app.company_branch(rowid) ON DELETE CASCADE,
 
-    product_rowid                               UUID REFERENCES accounting_app.product(rowid) ON DELETE CASCADE,
-    is_second_hand                              BOOL,
-    job                                         STRING
+    -- product_rowid                               UUID REFERENCES accounting_app.product(rowid) ON DELETE CASCADE,
+    -- is_second_hand                              BOOL,
+    -- job                                         STRING
 );
 
 CREATE TABLE IF NOT EXISTS accounting_app.account_flow_type(

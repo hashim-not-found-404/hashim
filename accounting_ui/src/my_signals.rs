@@ -10,6 +10,7 @@ pub(crate) struct S;
 
 impl AllSignalTypes for S {
     type Uuid = my_signal::S<types::UuidType>;
+    type OptionString = my_signal::S<Option<String>>;
     type OptionUuid = my_signal::S<Option<types::UuidType>>;
     type Dialog = my_signal::S<ui_model::Dialog>;
     type String = my_signal::S<String>;

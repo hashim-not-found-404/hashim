@@ -130,6 +130,14 @@ impl<Mpsc: traits::MultiProducerSingleConsumer> Commander<Mpsc> {
                             )
                             .await
                         }
+                        ui_model::Message::Home(msg) => {
+                            msg.update::<Rn, Rt, Id, Mpsc, Rg, As>(
+                                model,
+                                cache,
+                                commander_local_state,
+                            )
+                            .await
+                        }
                         ui_model::Message::CreateAccount(msg) => {
                             msg.update::<Rn, Rt, Id, Mpsc, Rg, As>(
                                 model,

@@ -208,22 +208,37 @@ impl Cache for S {
                     )
                 }
                 types::Resource::TableAccountFieldCompanyBelong(value) => {
-                    make_sql_statment_for_string("account", todo!(), uuid, &value.to_string())
+                    make_sql_statment_for_string(
+                        "account",
+                        "belong_to_company",
+                        uuid,
+                        &value.to_string(),
+                    )
                 }
                 types::Resource::TableAccountFieldIsDebit(value) => {
-                    make_sql_statment_for_bool("account", todo!(), uuid, value.clone())
+                    make_sql_statment_for_bool("account", "is_debit", uuid, value.clone())
                 }
                 types::Resource::TableAccountFieldIsPermanentAccount(value) => {
-                    make_sql_statment_for_bool("account", todo!(), uuid, value.clone())
+                    make_sql_statment_for_bool(
+                        "account",
+                        "is_permanent_account",
+                        uuid,
+                        value.clone(),
+                    )
                 }
                 types::Resource::TableAccountFieldName(value) => {
-                    make_sql_statment_for_string("account", todo!(), uuid, value)
+                    make_sql_statment_for_string("account", "name", uuid, value)
                 }
                 types::Resource::TableAccountFieldNotes(value) => {
-                    make_sql_statment_for_string("account", todo!(), uuid, value)
+                    make_sql_statment_for_string("account", "notes", uuid, value)
                 }
                 types::Resource::TableAccountFieldUnitOfMeasurementOfQuantity(value) => {
-                    make_sql_statment_for_string("account", todo!(), uuid, value)
+                    make_sql_statment_for_string(
+                        "account",
+                        "unit_of_measurement_of_quantity",
+                        uuid,
+                        value,
+                    )
                 }
             };
 
@@ -484,11 +499,68 @@ impl Cache for S {
         (roles, company_exists, branch_name_used)
     }
 
-    fn read_create_account(
+    async fn read_create_account(
         &self,
         read_input: &cases::create_account::ReadInput,
-    ) -> impl Future<Output = cases::create_account::ReadOutput> {
-        todo!()
+    ) -> cases::create_account::ReadOutput {
+        // 1. User roles at the company
+        let mut stmt = self
+            .db
+            .prepare(
+                "SELECT role FROM access_control_for_company WHERE data_group = ?1 AND user_ = ?2",
+            )
+            .unwrap();
+        let roles_iter = stmt
+            .query_map(
+                params![
+                    read_input.belong_to_company.to_string(),
+                    read_input.user_uuid.to_string()
+                ],
+                |row| {
+                    let role_str: String = row.get(0)?;
+                    let role = types::Role::from_str(role_str.as_str()).unwrap();
+                    Ok(role)
+                },
+            )
+            .unwrap();
+        let user_roles: Vec<types::Role> = roles_iter.map(|r| r.unwrap()).collect();
+
+        // 2. Company exists
+        let mut stmt = self
+            .db
+            .prepare("SELECT 1 FROM company WHERE rowid = ?1")
+            .unwrap();
+        let is_company_uuid_exist = stmt
+            .exists(params![read_input.belong_to_company.to_string()])
+            .unwrap();
+
+        // 3. New UUID already used
+        let mut stmt = self
+            .db
+            .prepare("SELECT 1 FROM account WHERE rowid = ?1")
+            .unwrap();
+        let is_new_uuid_used = stmt
+            .exists(params![read_input.new_uuid.to_string()])
+            .unwrap();
+
+        // 4. Account name already used under the same company
+        let mut stmt = self
+            .db
+            .prepare("SELECT 1 FROM account WHERE belong_to_company = ?1 AND name = ?2")
+            .unwrap();
+        let is_account_name_used = stmt
+            .exists(params![
+                read_input.belong_to_company.to_string(),
+                &read_input.account_name
+            ])
+            .unwrap();
+
+        cases::create_account::ReadOutput {
+            is_company_uuid_exist,
+            is_new_uuid_used,
+            user_roles,
+            is_account_name_used,
+        }
     }
 }
 

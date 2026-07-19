@@ -313,7 +313,7 @@ impl Mvu for ui_model::CompanyAndBranchSelection {
                 commander_local_state.selected_company_branch.put(Some(i));
                 model
                     .navigator
-                    .set(ui_model::Navigator::Home(ui_model::Menu::CreateAccount));
+                    .set(ui_model::Navigator::Home(ui_model::Menu::Dashboard));
             }
         }
     }

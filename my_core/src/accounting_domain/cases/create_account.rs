@@ -88,7 +88,7 @@ impl Input {
             errr.account_name = Some(AccountNameError::Duplicated);
         }
 
-        if types::Role::has_any(
+        if !types::Role::has_any(
             &read_output.user_roles,
             &[types::Role::Manager, types::Role::CoManager],
         ) {

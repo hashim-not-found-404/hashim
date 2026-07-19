@@ -146,6 +146,7 @@ pub enum Message {
     CompanyAndBranchSelection(CompanyAndBranchSelection),
     CreateCompany(CreateCompany),
     CreateCompanyBranch(CreateCompanyBranch),
+    Home(Home),
     CreateAccount(CreateAccount),
 }
 
@@ -194,6 +195,12 @@ pub enum CreateCompanyBranch {
 }
 
 #[derive(Debug)]
+pub enum Home {
+    ShowDashboard,
+    ShowCreateAccount,
+}
+
+#[derive(Debug)]
 pub enum CreateAccount {
     Submit,
     Consent(UserConsent),
@@ -207,28 +214,29 @@ pub enum CreateAccount {
 
 // navigator types
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum Navigator {
     Auth(Auth),
     CompanyBranchSelection(CompanyBranchSelection),
     Home(Menu),
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum Auth {
     SignIn,
     SignUp,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum CompanyBranchSelection {
     None,
     CreateCompany,
     CreateCompanyBranch,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum Menu {
+    Dashboard,
     CreateAccount,
 }
 

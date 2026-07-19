@@ -50,15 +50,16 @@ CREATE TABLE IF NOT EXISTS account(
     is_permanent_account                        BOOLEAN,
     name                                        TEXT,
     notes                                       TEXT,
+    unit_of_measurement_of_quantity             TEXT,
+    belong_to_company                           TEXT REFERENCES company(rowid) ON DELETE CASCADE
 
-    person_out_side_the_system_rowid            TEXT REFERENCES person_out_side_the_system(rowid) ON DELETE CASCADE,
-    company_rowid                               TEXT REFERENCES company(rowid) ON DELETE CASCADE,
-    company_branch_rowid                        TEXT REFERENCES company_branch(rowid) ON DELETE CASCADE,
+    -- person_out_side_the_system_rowid            TEXT REFERENCES person_out_side_the_system(rowid) ON DELETE CASCADE,
+    -- company_rowid                               TEXT REFERENCES company(rowid) ON DELETE CASCADE,
+    -- company_branch_rowid                        TEXT REFERENCES company_branch(rowid) ON DELETE CASCADE,
 
-    product_rowid                               TEXT REFERENCES product(rowid) ON DELETE CASCADE,
-    is_second_hand                              BOOLEAN,
-    job                                         TEXT
-
+    -- product_rowid                               TEXT REFERENCES product(rowid) ON DELETE CASCADE,
+    -- is_second_hand                              BOOLEAN,
+    -- job                                         TEXT
 );
 
 CREATE TABLE IF NOT EXISTS account_flow_type(
