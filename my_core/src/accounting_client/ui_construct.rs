@@ -1,9 +1,12 @@
 use crate::{
     accounting_client::{
-        cache_op, network_actor, ui_effect,
+        network_actor, ui_effect,
         use_cases::client_domain::{cache, cache_actor, client_traits, process_manager, ui_model},
     },
-    accounting_domain::{cases::utility::types, request_response},
+    accounting_domain::{
+        cases::utility::{resource_utils, types},
+        request_response,
+    },
     utility::{
         traits::{self, Receiver, Sender},
         utils::ReadAndSet,
@@ -67,7 +70,7 @@ struct MyNetwork<Mpsc: traits::MultiProducerSingleConsumer> {
     sender_to_cache: Mpsc::Sender<
         cache_actor::MessageToCache<
             Mpsc,
-            types::Subscribe,
+            resource_utils::Subscribe,
             request_response::push_data::OperationsInput,
             request_response::push_data::OperationsResult,
         >,
@@ -116,7 +119,7 @@ impl<Mpsc: traits::MultiProducerSingleConsumer, Ch: cache::Cache, Id: types::Row
     cache_actor::CacheActorUtils for MyCache<Mpsc, Ch, Id>
 {
     type Mpsc = Mpsc;
-    type Subscribe = types::Subscribe;
+    type Subscribe = resource_utils::Subscribe;
     type OpInput = request_response::push_data::OperationsInput;
     type OpResult = request_response::push_data::OperationsResult;
     async fn cache_receiver(
@@ -206,7 +209,7 @@ impl<Mpsc: traits::MultiProducerSingleConsumer, Ch: cache::Cache, Id: types::Row
 
     type E = types::HashimError;
     type Response = request_response::push_data::MyResult;
-    type Resource = types::ResourceInfo;
+    type Resource = resource_utils::ResourceInfo;
     type MessageFromServer<'de> = request_response::messages::FromServer;
     fn to<'de>(
         msg: Self::MessageFromServer<'de>,
@@ -284,7 +287,7 @@ impl<Mpsc: traits::MultiProducerSingleConsumer, Ch: cache::Cache, Id: types::Row
     }
 
     fn apply_input(cache: &mut Self::Cache, resource: &Vec<Self::Resource>) {
-        cache_op::apply_change(resource.clone(), &mut cache.state_of_pending_txn);
+        resource_utils::apply_change(resource.clone(), &mut cache.state_of_pending_txn);
     }
 
     async fn write_input(cache: &Self::Cache, txn_number: u64, data: &Self::OpInput) {

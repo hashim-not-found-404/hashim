@@ -1,3 +1,4 @@
+use crate::accounting_domain::cases::utility::resource_utils;
 use crate::accounting_domain::cases::{self, utility::types};
 use serde::{Deserialize, Serialize};
 
@@ -8,7 +9,7 @@ pub(crate) mod messages {
     pub(crate) enum FromServer {
         Error(types::HashimError),
         PushData(push_data::MyResult),
-        Resources(Vec<types::ResourceInfo>),
+        Resources(Vec<resource_utils::ResourceInfo>),
     }
 
     pub(crate) type FromClient = push_data::Input;

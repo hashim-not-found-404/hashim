@@ -8,7 +8,10 @@ use crate::{
         ui_model::{self, HashimSignal},
     },
     accounting_domain::{
-        cases::{self, utility::types},
+        cases::{
+            self,
+            utility::{resource_utils, types},
+        },
         request_response,
     },
     utility::{
@@ -46,9 +49,9 @@ fn compare_by_name_then_uuid(
     }
 }
 
-impl Into<Vec<types::ResourceInfo>> for &cases::list_company_and_branch::Ok {
-    fn into(self) -> Vec<types::ResourceInfo> {
-        use types::{Resource, ResourceInfo};
+impl Into<Vec<resource_utils::ResourceInfo>> for &cases::list_company_and_branch::Ok {
+    fn into(self) -> Vec<resource_utils::ResourceInfo> {
+        use resource_utils::{Resource, ResourceInfo};
 
         let mut resources = Vec::new();
         let user_uuid = &self.user_uuid;
@@ -135,11 +138,11 @@ impl Into<Vec<types::ResourceInfo>> for &cases::list_company_and_branch::Ok {
 }
 
 impl ViewType1 for Type1 {
-    fn subs() -> &'static [types::Subscribe] {
+    fn subs() -> &'static [resource_utils::Subscribe] {
         &[
-            types::Subscribe::TableCompanyBranchFieldName,
-            types::Subscribe::TableCompanyFieldName,
-            types::Subscribe::TableAccessControlForCompanyFieldRole,
+            resource_utils::Subscribe::TableCompanyBranchFieldName,
+            resource_utils::Subscribe::TableCompanyFieldName,
+            resource_utils::Subscribe::TableAccessControlForCompanyFieldRole,
         ]
     }
 
@@ -168,7 +171,7 @@ impl CacheAndServerType1 for Type2 {
 }
 
 impl CacheAndServerType2 for Type3 {
-    fn extract_resource(&self) -> Vec<types::ResourceInfo> {
+    fn extract_resource(&self) -> Vec<resource_utils::ResourceInfo> {
         match self {
             Ok(ok) => ok.into(),
             Err(_) => Vec::new(),

@@ -8,7 +8,10 @@ use crate::{
         ui_model::{self, HashimSignal},
     },
     accounting_domain::{
-        cases::{self, utility::types},
+        cases::{
+            self,
+            utility::{resource_utils, types},
+        },
         request_response,
     },
     utility::{traits, utils::ReadAndSet},
@@ -20,34 +23,42 @@ type Type2 = cases::create_company::Input;
 type Type3 = cases::create_company::MyResult;
 pub(crate) type Type4 = cases::create_company::MyResult;
 
-impl Into<Vec<types::ResourceInfo>> for &cases::create_company::Ok {
-    fn into(self) -> Vec<types::ResourceInfo> {
+impl Into<Vec<resource_utils::ResourceInfo>> for &cases::create_company::Ok {
+    fn into(self) -> Vec<resource_utils::ResourceInfo> {
         let company_uuid = self.new_uuid.clone();
 
         vec![
             // Company fields
-            types::ResourceInfo {
+            resource_utils::ResourceInfo {
                 row_uuid: company_uuid.clone(),
-                resource: types::Resource::TableCompanyFieldName(self.company_name.clone()),
+                resource: resource_utils::Resource::TableCompanyFieldName(
+                    self.company_name.clone(),
+                ),
             },
-            types::ResourceInfo {
+            resource_utils::ResourceInfo {
                 row_uuid: company_uuid.clone(),
-                resource: types::Resource::TableCompanyFieldCurrency(self.currency.clone()),
+                resource: resource_utils::Resource::TableCompanyFieldCurrency(
+                    self.currency.clone(),
+                ),
             },
             // Access control fields (using the same UUID as the row identifier)
-            types::ResourceInfo {
+            resource_utils::ResourceInfo {
                 row_uuid: company_uuid.clone(),
-                resource: types::Resource::TableAccessControlForCompanyFieldRole(self.role.clone()),
+                resource: resource_utils::Resource::TableAccessControlForCompanyFieldRole(
+                    self.role.clone(),
+                ),
             },
-            types::ResourceInfo {
+            resource_utils::ResourceInfo {
                 row_uuid: company_uuid.clone(),
-                resource: types::Resource::TableAccessControlForCompanyFieldUser(
+                resource: resource_utils::Resource::TableAccessControlForCompanyFieldUser(
                     self.user_uuid.clone(),
                 ),
             },
-            types::ResourceInfo {
+            resource_utils::ResourceInfo {
                 row_uuid: company_uuid.clone(),
-                resource: types::Resource::TableAccessControlForCompanyFieldDataGroup(company_uuid),
+                resource: resource_utils::Resource::TableAccessControlForCompanyFieldDataGroup(
+                    company_uuid,
+                ),
             },
         ]
     }
@@ -76,7 +87,7 @@ impl CacheAndServerType1 for Type2 {
 }
 
 impl CacheAndServerType2 for Type3 {
-    fn extract_resource(&self) -> Vec<types::ResourceInfo> {
+    fn extract_resource(&self) -> Vec<resource_utils::ResourceInfo> {
         match self {
             Ok(ok) => ok.into(),
             Err(_) => Vec::new(),

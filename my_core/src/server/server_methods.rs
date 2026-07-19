@@ -1,6 +1,9 @@
 use crate::{
     accounting_domain::{
-        cases::utility::types::{self, RowId},
+        cases::utility::{
+            resource_utils,
+            types::{self, RowId},
+        },
         request_response,
     },
     server::use_cases::utility::server_traits::{self, DBClient},
@@ -71,7 +74,7 @@ impl<
         Rt::spawn_local(async move {
             let mut sender_to_broker = self.sender_to_broker.clone();
             let (sender_to_server, mut receiver_to_server) =
-                Mpsc::channel::<Vec<types::ResourceInfo>>();
+                Mpsc::channel::<Vec<resource_utils::ResourceInfo>>();
             let connection_id = Rn::generate();
 
             loop {
@@ -528,7 +531,7 @@ mod broker_functions {
     use std::collections::{HashMap, HashSet};
 
     use crate::{
-        accounting_domain::cases::utility::types,
+        accounting_domain::cases::utility::{resource_utils, types},
         server::use_cases::utility::server_traits,
         utility::utils::{HashMapWithHashMapValue, HashMapWithVectorValue},
     };
@@ -537,7 +540,7 @@ mod broker_functions {
         types::UuidType, // company uuid or branch
         HashMap<
             types::UuidType, // user uuid
-            HashSet<types::Subscribe>,
+            HashSet<resource_utils::Subscribe>,
         >,
     >;
 
@@ -584,125 +587,15 @@ mod broker_functions {
     }
 
     fn resource_filtering_based_on_subscribe(
-        subscribe: &HashSet<types::Subscribe>,
-        resource: &Vec<types::ResourceInfo>,
-    ) -> Vec<types::ResourceInfo> {
+        subscribe: &HashSet<resource_utils::Subscribe>,
+        resource: &Vec<resource_utils::ResourceInfo>,
+    ) -> Vec<resource_utils::ResourceInfo> {
         let mut new_resource = Vec::new();
 
         for one_resource in resource {
-            match one_resource.resource {
-                types::Resource::Jwt(_) => {}
-                types::Resource::TableUserFieldName(_) => {
-                    if subscribe.contains(&types::Subscribe::TableUserFieldName) {
-                        new_resource.push(one_resource.clone());
-                    }
-                }
-                types::Resource::TableUserFieldId(_) => {
-                    if subscribe.contains(&types::Subscribe::TableUserFieldId) {
-                        new_resource.push(one_resource.clone());
-                    }
-                }
-                types::Resource::TableCompanyFieldName(_) => {
-                    if subscribe.contains(&types::Subscribe::TableCompanyFieldName) {
-                        new_resource.push(one_resource.clone());
-                    }
-                }
-                types::Resource::TableCompanyBranchFieldName(_) => {
-                    if subscribe.contains(&types::Subscribe::TableCompanyBranchFieldName) {
-                        new_resource.push(one_resource.clone());
-                    }
-                }
-                types::Resource::TableCompanyBranchFieldCompanyBelong(_) => {
-                    if subscribe.contains(&types::Subscribe::TableCompanyBranchFieldCompanyBelong) {
-                        new_resource.push(one_resource.clone());
-                    }
-                }
-                types::Resource::TableCompanyBranchFieldCurrency(_) => {
-                    if subscribe.contains(&types::Subscribe::TableCompanyBranchFieldCurrency) {
-                        new_resource.push(one_resource.clone());
-                    }
-                }
-                types::Resource::TableCompanyBranchFieldLocation(_) => {
-                    if subscribe.contains(&types::Subscribe::TableCompanyBranchFieldLocation) {
-                        new_resource.push(one_resource.clone());
-                    }
-                }
-                types::Resource::TableCompanyFieldCurrency(_) => {
-                    if subscribe.contains(&types::Subscribe::TableCompanyFieldCurrency) {
-                        new_resource.push(one_resource.clone());
-                    }
-                }
-                types::Resource::TableAccessControlForCompanyFieldRole(_) => {
-                    if subscribe.contains(&types::Subscribe::TableAccessControlForCompanyFieldRole)
-                    {
-                        new_resource.push(one_resource.clone());
-                    }
-                }
-                types::Resource::TableAccessControlForCompanyFieldUser(_) => {
-                    if subscribe.contains(&types::Subscribe::TableAccessControlForCompanyFieldUser)
-                    {
-                        new_resource.push(one_resource.clone());
-                    }
-                }
-                types::Resource::TableAccessControlForCompanyFieldDataGroup(_) => {
-                    if subscribe
-                        .contains(&types::Subscribe::TableAccessControlForCompanyFieldDataGroup)
-                    {
-                        new_resource.push(one_resource.clone());
-                    }
-                }
-                types::Resource::TableAccessControlForCompanyBranchFieldRole(_) => {
-                    if subscribe
-                        .contains(&types::Subscribe::TableAccessControlForCompanyBranchFieldRole)
-                    {
-                        new_resource.push(one_resource.clone());
-                    }
-                }
-                types::Resource::TableAccessControlForCompanyBranchFieldUser(_) => {
-                    if subscribe
-                        .contains(&types::Subscribe::TableAccessControlForCompanyBranchFieldUser)
-                    {
-                        new_resource.push(one_resource.clone());
-                    }
-                }
-                types::Resource::TableAccessControlForCompanyBranchFieldDataGroup(_) => {
-                    if subscribe.contains(
-                        &types::Subscribe::TableAccessControlForCompanyBranchFieldDataGroup,
-                    ) {
-                        new_resource.push(one_resource.clone());
-                    }
-                }
-                types::Resource::TableAccountFieldCompanyBelong(_) => {
-                    if subscribe.contains(&types::Subscribe::TableAccountFieldCompanyBelong) {
-                        new_resource.push(one_resource.clone());
-                    }
-                }
-                types::Resource::TableAccountFieldIsDebit(_) => {
-                    if subscribe.contains(&types::Subscribe::TableAccountFieldIsDebit) {
-                        new_resource.push(one_resource.clone());
-                    }
-                }
-                types::Resource::TableAccountFieldIsPermanentAccount(_) => {
-                    if subscribe.contains(&types::Subscribe::TableAccountFieldIsPermanentAccount) {
-                        new_resource.push(one_resource.clone());
-                    }
-                }
-                types::Resource::TableAccountFieldName(_) => {
-                    if subscribe.contains(&types::Subscribe::TableAccountFieldName) {
-                        new_resource.push(one_resource.clone());
-                    }
-                }
-                types::Resource::TableAccountFieldNotes(_) => {
-                    if subscribe.contains(&types::Subscribe::TableAccountFieldNotes) {
-                        new_resource.push(one_resource.clone());
-                    }
-                }
-                types::Resource::TableAccountFieldUnitOfMeasurementOfQuantity(_) => {
-                    if subscribe
-                        .contains(&types::Subscribe::TableAccountFieldUnitOfMeasurementOfQuantity)
-                    {
-                        new_resource.push(one_resource.clone());
-                    }
+            if let Some(sub) = one_resource.resource.map_to_subs() {
+                if subscribe.contains(&sub) {
+                    new_resource.push(one_resource.clone());
                 }
             }
         }
@@ -711,32 +604,34 @@ mod broker_functions {
     }
 }
 
-fn role_to_subscribe_mapping(roles: Vec<types::Role>) -> HashSet<types::Subscribe> {
+fn role_to_subscribe_mapping(roles: Vec<types::Role>) -> HashSet<resource_utils::Subscribe> {
     let mut subscribes = HashSet::with_capacity(200);
 
     for role in roles {
         match role {
             types::Role::Manager => {
-                subscribes.insert(types::Subscribe::TableUserFieldName);
-                subscribes.insert(types::Subscribe::TableUserFieldId);
-                subscribes.insert(types::Subscribe::TableCompanyFieldName);
-                subscribes.insert(types::Subscribe::TableCompanyFieldCurrency);
-                subscribes.insert(types::Subscribe::TableCompanyBranchFieldName);
-                subscribes.insert(types::Subscribe::TableCompanyBranchFieldCompanyBelong);
-                subscribes.insert(types::Subscribe::TableAccessControlForCompanyFieldRole);
-                subscribes.insert(types::Subscribe::TableAccessControlForCompanyFieldUser);
-                subscribes.insert(types::Subscribe::TableAccessControlForCompanyFieldDataGroup);
+                subscribes.insert(resource_utils::Subscribe::TableUserFieldName);
+                subscribes.insert(resource_utils::Subscribe::TableUserFieldId);
+                subscribes.insert(resource_utils::Subscribe::TableCompanyFieldName);
+                subscribes.insert(resource_utils::Subscribe::TableCompanyFieldCurrency);
+                subscribes.insert(resource_utils::Subscribe::TableCompanyBranchFieldName);
+                subscribes.insert(resource_utils::Subscribe::TableCompanyBranchFieldCompanyBelong);
+                subscribes.insert(resource_utils::Subscribe::TableAccessControlForCompanyFieldRole);
+                subscribes.insert(resource_utils::Subscribe::TableAccessControlForCompanyFieldUser);
+                subscribes
+                    .insert(resource_utils::Subscribe::TableAccessControlForCompanyFieldDataGroup);
             }
             types::Role::CoManager => {
-                subscribes.insert(types::Subscribe::TableUserFieldName);
-                subscribes.insert(types::Subscribe::TableUserFieldId);
-                subscribes.insert(types::Subscribe::TableCompanyFieldName);
-                subscribes.insert(types::Subscribe::TableCompanyFieldCurrency);
-                subscribes.insert(types::Subscribe::TableCompanyBranchFieldName);
-                subscribes.insert(types::Subscribe::TableCompanyBranchFieldCompanyBelong);
-                subscribes.insert(types::Subscribe::TableAccessControlForCompanyFieldRole);
-                subscribes.insert(types::Subscribe::TableAccessControlForCompanyFieldUser);
-                subscribes.insert(types::Subscribe::TableAccessControlForCompanyFieldDataGroup);
+                subscribes.insert(resource_utils::Subscribe::TableUserFieldName);
+                subscribes.insert(resource_utils::Subscribe::TableUserFieldId);
+                subscribes.insert(resource_utils::Subscribe::TableCompanyFieldName);
+                subscribes.insert(resource_utils::Subscribe::TableCompanyFieldCurrency);
+                subscribes.insert(resource_utils::Subscribe::TableCompanyBranchFieldName);
+                subscribes.insert(resource_utils::Subscribe::TableCompanyBranchFieldCompanyBelong);
+                subscribes.insert(resource_utils::Subscribe::TableAccessControlForCompanyFieldRole);
+                subscribes.insert(resource_utils::Subscribe::TableAccessControlForCompanyFieldUser);
+                subscribes
+                    .insert(resource_utils::Subscribe::TableAccessControlForCompanyFieldDataGroup);
             }
         }
     }
@@ -752,7 +647,10 @@ pub(crate) struct AllSubscribes {
 
 type UserSenders<Mpsc> = HashMap<
     types::UuidType, // user uuid
-    HashMap<u64, <Mpsc as traits::MultiProducerSingleConsumer>::Sender<Vec<types::ResourceInfo>>>, // because user may have multiple web socket connection
+    HashMap<
+        u64,
+        <Mpsc as traits::MultiProducerSingleConsumer>::Sender<Vec<resource_utils::ResourceInfo>>,
+    >, // because user may have multiple web socket connection
 >;
 
 pub(crate) enum MessageToBroker<Mpsc: traits::MultiProducerSingleConsumer> {
@@ -760,7 +658,7 @@ pub(crate) enum MessageToBroker<Mpsc: traits::MultiProducerSingleConsumer> {
         connection_id: u64,
         list_of_subscribtion: AllSubscribes,
         users_uuids: HashSet<types::UuidType>,
-        sender_to_server: Mpsc::Sender<Vec<types::ResourceInfo>>,
+        sender_to_server: Mpsc::Sender<Vec<resource_utils::ResourceInfo>>,
     },
     Unsubscribe {
         connection_id: u64,

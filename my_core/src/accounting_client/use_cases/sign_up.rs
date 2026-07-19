@@ -12,7 +12,10 @@ use crate::{
     accounting_domain::{
         cases::{
             self,
-            utility::types::{self, MyErrorTrait},
+            utility::{
+                resource_utils,
+                types::{self, MyErrorTrait},
+            },
         },
         request_response,
     },
@@ -27,24 +30,24 @@ type Type2 = cases::sign_up::Input;
 type Type3 = cases::sign_up::MyResult;
 pub(crate) type Type4 = cases::sign_up::MyResult;
 
-impl Into<Vec<types::ResourceInfo>> for &cases::sign_up::Ok {
-    fn into(self) -> Vec<types::ResourceInfo> {
+impl Into<Vec<resource_utils::ResourceInfo>> for &cases::sign_up::Ok {
+    fn into(self) -> Vec<resource_utils::ResourceInfo> {
         let mut resource = Vec::with_capacity(3);
 
-        resource.push(types::ResourceInfo {
+        resource.push(resource_utils::ResourceInfo {
             row_uuid: self.new_uuid.clone(),
-            resource: types::Resource::Jwt(self.jwt.clone()),
+            resource: resource_utils::Resource::Jwt(self.jwt.clone()),
         });
 
-        resource.push(types::ResourceInfo {
+        resource.push(resource_utils::ResourceInfo {
             row_uuid: self.new_uuid.clone(),
-            resource: types::Resource::TableUserFieldId(self.user_id.clone()),
+            resource: resource_utils::Resource::TableUserFieldId(self.user_id.clone()),
         });
 
         if let Some(user_name) = &self.user_name {
-            resource.push(types::ResourceInfo {
+            resource.push(resource_utils::ResourceInfo {
                 row_uuid: self.new_uuid.clone(),
-                resource: types::Resource::TableUserFieldName(user_name.clone()),
+                resource: resource_utils::Resource::TableUserFieldName(user_name.clone()),
             });
         }
 
@@ -88,7 +91,7 @@ impl CacheAndServerType1 for Type2 {
 }
 
 impl CacheAndServerType2 for Type3 {
-    fn extract_resource(&self) -> Vec<types::ResourceInfo> {
+    fn extract_resource(&self) -> Vec<resource_utils::ResourceInfo> {
         match self {
             Ok(ok) => ok.into(),
             Err(_) => Vec::new(),

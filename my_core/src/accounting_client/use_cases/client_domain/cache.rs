@@ -1,5 +1,8 @@
 use crate::accounting_domain::{
-    cases::{self, utility::types},
+    cases::{
+        self,
+        utility::{resource_utils, types},
+    },
     request_response,
 };
 
@@ -24,7 +27,10 @@ pub trait Cache: Sized {
     fn mark_txn_input_as_faild(&self, txn_number: &u64) -> impl Future<Output = ()>;
     fn delete_txn_input(&self, txn_number: &u64) -> impl Future<Output = ()>;
 
-    fn write_resource(&self, resource: &Vec<types::ResourceInfo>) -> impl Future<Output = ()>;
+    fn write_resource(
+        &self,
+        resource: &Vec<resource_utils::ResourceInfo>,
+    ) -> impl Future<Output = ()>;
     fn get_jwt(
         &self,
         user_uuid: &types::UuidType,
@@ -72,69 +78,8 @@ pub trait Cache: Sized {
     ) -> impl Future<Output = cases::create_account::ReadOutput>;
 }
 
-pub(crate) mod tables {
-    use crate::accounting_domain::cases::utility::types;
-    use std::collections::HashMap;
-
-    #[derive(Default)]
-    pub(crate) struct User {
-        pub(crate) name: Option<String>,
-        pub(crate) id: String,
-        pub(crate) password: String,
-    }
-
-    #[derive(Default)]
-    pub(crate) struct Company {
-        pub(crate) name: String,
-        pub(crate) currency: types::Currency,
-    }
-
-    #[derive(Default)]
-    pub(crate) struct AccessControlForCompany {
-        pub(crate) data_group: types::UuidType,
-        pub(crate) user_: types::UuidType,
-        pub(crate) role: types::Role,
-    }
-
-    #[derive(Default)]
-    pub(crate) struct CompanyBranch {
-        pub(crate) company_belong: types::UuidType,
-        pub(crate) name: String,
-        pub(crate) location: types::Location,
-        pub(crate) currency: types::Currency,
-    }
-
-    #[derive(Default)]
-    pub(crate) struct AccessControlForCompanyBranch {
-        pub(crate) data_group: types::UuidType,
-        pub(crate) user_: types::UuidType,
-        pub(crate) role: types::Role,
-    }
-
-    #[derive(Default)]
-    pub(crate) struct Account {
-        pub(crate) company_belong: types::UuidType,
-        pub(crate) is_debit: bool,
-        pub(crate) is_permanent_account: bool,
-        pub(crate) name: String,
-        pub(crate) notes: String,
-        pub(crate) unit_of_measurement_of_quantity: String,
-    }
-
-    #[derive(Default)]
-    pub(crate) struct StateOfPendingTxn {
-        pub(crate) user: HashMap<types::UuidType, User>,
-        pub(crate) company: HashMap<types::UuidType, Company>,
-        pub(crate) access_control_for_company: HashMap<types::UuidType, AccessControlForCompany>,
-        pub(crate) company_branch: HashMap<types::UuidType, CompanyBranch>,
-        pub(crate) access_control_for_company_branch:
-            HashMap<types::UuidType, AccessControlForCompanyBranch>,
-        pub(crate) account: HashMap<types::UuidType, Account>,
-    }
-}
-
 pub(crate) struct State<Ch: Cache> {
-    pub(crate) state_of_pending_txn: tables::StateOfPendingTxn,
+    pub(crate) state_of_pending_txn: resource_utils::StateOfPendingTxn,
     pub(crate) cache: Ch,
 }
 

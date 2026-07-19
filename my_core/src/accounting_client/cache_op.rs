@@ -3,8 +3,10 @@ use crate::{
         cache,
         client_traits::{CacheAndServerType1, CacheAndServerType2},
     },
-    accounting_domain::{cases::utility::types, request_response},
-    utility::utils::MyUpSert,
+    accounting_domain::{
+        cases::utility::{resource_utils, types},
+        request_response,
+    },
 };
 
 impl<Ch: cache::Cache> cache::State<Ch> {
@@ -13,7 +15,7 @@ impl<Ch: cache::Cache> cache::State<Ch> {
         let txns = cache.get_all_txn_input().await;
 
         let mut state = Self {
-            state_of_pending_txn: cache::tables::StateOfPendingTxn::default(),
+            state_of_pending_txn: resource_utils::StateOfPendingTxn::default(),
             cache,
         };
 
@@ -93,7 +95,7 @@ impl request_response::push_data::OperationsInput {
 }
 
 impl request_response::push_data::OperationsResult {
-    pub(crate) fn extract_resource(&self) -> Vec<types::ResourceInfo> {
+    pub(crate) fn extract_resource(&self) -> Vec<resource_utils::ResourceInfo> {
         match self {
             request_response::push_data::OperationsResult::SignUp(i) => i.extract_resource(),
             request_response::push_data::OperationsResult::SignIn(i) => i.extract_resource(),
@@ -138,84 +140,11 @@ async fn operation_check_apply_handler<
     input: &T,
     state: &mut cache::State<Ch>,
 ) {
-    apply_change(
+    resource_utils::apply_change(
         input
             .state_full_operation::<Id, Ch>(state)
             .await
             .extract_resource(),
         &mut state.state_of_pending_txn,
     );
-}
-
-pub(crate) fn apply_change(
-    resources: Vec<types::ResourceInfo>,
-    state: &mut cache::tables::StateOfPendingTxn,
-) {
-    for resource in resources {
-        let row_uuid = resource.row_uuid;
-
-        match resource.resource {
-            types::Resource::Jwt(_) => {}
-            types::Resource::TableUserFieldName(r) => {
-                state.user.upsert(row_uuid, |table| table.name = Some(r))
-            }
-            types::Resource::TableUserFieldId(r) => {
-                state.user.upsert(row_uuid, |table| table.id = r)
-            }
-            types::Resource::TableCompanyFieldName(r) => {
-                state.company.upsert(row_uuid, |table| table.name = r)
-            }
-            types::Resource::TableCompanyBranchFieldName(r) => state
-                .company_branch
-                .upsert(row_uuid, |table| table.name = r),
-            types::Resource::TableCompanyBranchFieldCompanyBelong(r) => state
-                .company_branch
-                .upsert(row_uuid, |table| table.company_belong = r),
-            types::Resource::TableCompanyBranchFieldCurrency(r) => state
-                .company_branch
-                .upsert(row_uuid, |table| table.currency = r),
-            types::Resource::TableCompanyBranchFieldLocation(r) => state
-                .company_branch
-                .upsert(row_uuid, |table| table.location = r),
-            types::Resource::TableCompanyFieldCurrency(r) => {
-                state.company.upsert(row_uuid, |table| table.currency = r)
-            }
-            types::Resource::TableAccessControlForCompanyFieldRole(r) => state
-                .access_control_for_company
-                .upsert(row_uuid, |table| table.role = r),
-            types::Resource::TableAccessControlForCompanyFieldUser(r) => state
-                .access_control_for_company
-                .upsert(row_uuid, |table| table.user_ = r),
-            types::Resource::TableAccessControlForCompanyFieldDataGroup(r) => state
-                .access_control_for_company
-                .upsert(row_uuid, |table| table.data_group = r),
-            types::Resource::TableAccessControlForCompanyBranchFieldRole(r) => state
-                .access_control_for_company_branch
-                .upsert(row_uuid, |table| table.role = r),
-            types::Resource::TableAccessControlForCompanyBranchFieldUser(r) => state
-                .access_control_for_company_branch
-                .upsert(row_uuid, |table| table.user_ = r),
-            types::Resource::TableAccessControlForCompanyBranchFieldDataGroup(r) => state
-                .access_control_for_company_branch
-                .upsert(row_uuid, |table| table.data_group = r),
-            types::Resource::TableAccountFieldCompanyBelong(r) => state
-                .account
-                .upsert(row_uuid, |table| table.company_belong = r),
-            types::Resource::TableAccountFieldIsDebit(r) => {
-                state.account.upsert(row_uuid, |table| table.is_debit = r)
-            }
-            types::Resource::TableAccountFieldIsPermanentAccount(r) => state
-                .account
-                .upsert(row_uuid, |table| table.is_permanent_account = r),
-            types::Resource::TableAccountFieldName(r) => {
-                state.account.upsert(row_uuid, |table| table.name = r)
-            }
-            types::Resource::TableAccountFieldNotes(r) => {
-                state.account.upsert(row_uuid, |table| table.notes = r)
-            }
-            types::Resource::TableAccountFieldUnitOfMeasurementOfQuantity(r) => state
-                .account
-                .upsert(row_uuid, |table| table.unit_of_measurement_of_quantity = r),
-        }
-    }
 }

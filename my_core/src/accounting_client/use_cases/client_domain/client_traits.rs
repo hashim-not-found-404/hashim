@@ -1,12 +1,15 @@
 use crate::{
     accounting_client::use_cases::client_domain::{cache, cache_actor, commander, ui_model},
-    accounting_domain::{cases::utility::types, request_response},
+    accounting_domain::{
+        cases::utility::{resource_utils, types},
+        request_response,
+    },
     utility::traits,
 };
 use std::sync::Arc;
 
 pub(crate) trait ViewType1 {
-    fn subs() -> &'static [types::Subscribe] {
+    fn subs() -> &'static [resource_utils::Subscribe] {
         unreachable!("we dont need it here")
     }
     fn wrap_input(self) -> request_response::push_data::OperationsInput;
@@ -23,7 +26,7 @@ pub(crate) trait CacheAndServerType1: Clone {
 }
 
 pub(crate) trait CacheAndServerType2 {
-    fn extract_resource(&self) -> Vec<types::ResourceInfo>;
+    fn extract_resource(&self) -> Vec<resource_utils::ResourceInfo>;
     fn wrap_output(self) -> request_response::push_data::OperationsResult;
 }
 
@@ -33,7 +36,7 @@ pub(crate) trait ViewType2 {
 
 pub(crate) type CacheActorStruct<Mpsc> = cache_actor::CacheStruct<
     Mpsc,
-    types::Subscribe,
+    resource_utils::Subscribe,
     request_response::push_data::OperationsInput,
     request_response::push_data::OperationsResult,
 >;

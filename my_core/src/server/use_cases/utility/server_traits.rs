@@ -1,10 +1,13 @@
 use crate::{
-    accounting_domain::cases::{self, utility::types},
+    accounting_domain::cases::{
+        self,
+        utility::{resource_utils, types},
+    },
     utility::traits,
 };
 use std::collections::{HashMap, HashSet};
 
-pub(crate) type ListOfResources = HashMap<types::UuidType, Vec<types::ResourceInfo>>;
+pub(crate) type ListOfResources = HashMap<types::UuidType, Vec<resource_utils::ResourceInfo>>;
 
 #[derive(Default)]
 pub(crate) struct SideEffects {

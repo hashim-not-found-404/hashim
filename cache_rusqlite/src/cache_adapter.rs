@@ -3,7 +3,10 @@ use adapters::encode_decode;
 use my_core::{
     accounting_client::use_cases::client_domain::cache::Cache,
     accounting_domain::{
-        cases::{self, utility::types},
+        cases::{
+            self,
+            utility::{resource_utils, types},
+        },
         request_response,
     },
     utility::traits::Coding,
@@ -98,29 +101,29 @@ impl Cache for S {
             .unwrap();
     }
 
-    async fn write_resource(&self, resource: &Vec<types::ResourceInfo>) {
+    async fn write_resource(&self, resource: &Vec<resource_utils::ResourceInfo>) {
         let mut stmts = Vec::with_capacity(resource.len());
 
         for reso in resource {
             let uuid = &reso.row_uuid.to_string();
 
             let stmt = match &reso.resource {
-                types::Resource::Jwt(value) => {
+                resource_utils::Resource::Jwt(value) => {
                     make_sql_statment_for_string("user", "jwt", uuid, &value.0)
                 }
-                types::Resource::TableUserFieldName(value) => {
+                resource_utils::Resource::TableUserFieldName(value) => {
                     make_sql_statment_for_string("user", "name", uuid, value)
                 }
-                types::Resource::TableUserFieldId(value) => {
+                resource_utils::Resource::TableUserFieldId(value) => {
                     make_sql_statment_for_string("user", "id", uuid, value)
                 }
-                types::Resource::TableCompanyFieldName(value) => {
+                resource_utils::Resource::TableCompanyFieldName(value) => {
                     make_sql_statment_for_string("company", "name", uuid, value)
                 }
-                types::Resource::TableCompanyBranchFieldName(value) => {
+                resource_utils::Resource::TableCompanyBranchFieldName(value) => {
                     make_sql_statment_for_string("company_branch", "name", uuid, value)
                 }
-                types::Resource::TableCompanyBranchFieldCompanyBelong(value) => {
+                resource_utils::Resource::TableCompanyBranchFieldCompanyBelong(value) => {
                     make_sql_statment_for_string(
                         "company_branch",
                         "company_belong",
@@ -128,7 +131,7 @@ impl Cache for S {
                         &value.to_string(),
                     )
                 }
-                types::Resource::TableCompanyBranchFieldCurrency(value) => {
+                resource_utils::Resource::TableCompanyBranchFieldCurrency(value) => {
                     make_sql_statment_for_string(
                         "company_branch",
                         "currency",
@@ -136,7 +139,7 @@ impl Cache for S {
                         &value.as_str().to_string(),
                     )
                 }
-                types::Resource::TableCompanyBranchFieldLocation(value) => {
+                resource_utils::Resource::TableCompanyBranchFieldLocation(value) => {
                     make_sql_statment_for_number(
                         "company_branch",
                         "location_latitude",
@@ -153,61 +156,63 @@ impl Cache for S {
                         .as_str(),
                     )
                 }
-                types::Resource::TableCompanyFieldCurrency(value) => make_sql_statment_for_string(
-                    "company",
-                    "currency",
+                resource_utils::Resource::TableCompanyFieldCurrency(value) => {
+                    make_sql_statment_for_string(
+                        "company",
+                        "currency",
+                        uuid,
+                        &value.as_str().to_string(),
+                    )
+                }
+                resource_utils::Resource::TableAccessControlForCompanyFieldRole(value) => {
+                    make_sql_statment_for_string(
+                        "access_control_for_company",
+                        "role",
+                        uuid,
+                        &value.as_str().to_string(),
+                    )
+                }
+                resource_utils::Resource::TableAccessControlForCompanyFieldUser(value) => {
+                    make_sql_statment_for_string(
+                        "access_control_for_company",
+                        "user_",
+                        uuid,
+                        &value.to_string(),
+                    )
+                }
+                resource_utils::Resource::TableAccessControlForCompanyFieldDataGroup(value) => {
+                    make_sql_statment_for_string(
+                        "access_control_for_company",
+                        "data_group",
+                        uuid,
+                        &value.to_string(),
+                    )
+                }
+                resource_utils::Resource::TableAccessControlForCompanyBranchFieldRole(value) => {
+                    make_sql_statment_for_string(
+                        "access_control_for_company_branch",
+                        "role",
+                        uuid,
+                        &value.as_str().to_string(),
+                    )
+                }
+                resource_utils::Resource::TableAccessControlForCompanyBranchFieldUser(value) => {
+                    make_sql_statment_for_string(
+                        "access_control_for_company_branch",
+                        "user_",
+                        uuid,
+                        &value.to_string(),
+                    )
+                }
+                resource_utils::Resource::TableAccessControlForCompanyBranchFieldDataGroup(
+                    value,
+                ) => make_sql_statment_for_string(
+                    "access_control_for_company_branch",
+                    "data_group",
                     uuid,
-                    &value.as_str().to_string(),
+                    &value.to_string(),
                 ),
-                types::Resource::TableAccessControlForCompanyFieldRole(value) => {
-                    make_sql_statment_for_string(
-                        "access_control_for_company",
-                        "role",
-                        uuid,
-                        &value.as_str().to_string(),
-                    )
-                }
-                types::Resource::TableAccessControlForCompanyFieldUser(value) => {
-                    make_sql_statment_for_string(
-                        "access_control_for_company",
-                        "user_",
-                        uuid,
-                        &value.to_string(),
-                    )
-                }
-                types::Resource::TableAccessControlForCompanyFieldDataGroup(value) => {
-                    make_sql_statment_for_string(
-                        "access_control_for_company",
-                        "data_group",
-                        uuid,
-                        &value.to_string(),
-                    )
-                }
-                types::Resource::TableAccessControlForCompanyBranchFieldRole(value) => {
-                    make_sql_statment_for_string(
-                        "access_control_for_company_branch",
-                        "role",
-                        uuid,
-                        &value.as_str().to_string(),
-                    )
-                }
-                types::Resource::TableAccessControlForCompanyBranchFieldUser(value) => {
-                    make_sql_statment_for_string(
-                        "access_control_for_company_branch",
-                        "user_",
-                        uuid,
-                        &value.to_string(),
-                    )
-                }
-                types::Resource::TableAccessControlForCompanyBranchFieldDataGroup(value) => {
-                    make_sql_statment_for_string(
-                        "access_control_for_company_branch",
-                        "data_group",
-                        uuid,
-                        &value.to_string(),
-                    )
-                }
-                types::Resource::TableAccountFieldCompanyBelong(value) => {
+                resource_utils::Resource::TableAccountFieldCompanyBelong(value) => {
                     make_sql_statment_for_string(
                         "account",
                         "belong_to_company",
@@ -215,10 +220,10 @@ impl Cache for S {
                         &value.to_string(),
                     )
                 }
-                types::Resource::TableAccountFieldIsDebit(value) => {
+                resource_utils::Resource::TableAccountFieldIsDebit(value) => {
                     make_sql_statment_for_bool("account", "is_debit", uuid, value.clone())
                 }
-                types::Resource::TableAccountFieldIsPermanentAccount(value) => {
+                resource_utils::Resource::TableAccountFieldIsPermanentAccount(value) => {
                     make_sql_statment_for_bool(
                         "account",
                         "is_permanent_account",
@@ -226,13 +231,13 @@ impl Cache for S {
                         value.clone(),
                     )
                 }
-                types::Resource::TableAccountFieldName(value) => {
+                resource_utils::Resource::TableAccountFieldName(value) => {
                     make_sql_statment_for_string("account", "name", uuid, value)
                 }
-                types::Resource::TableAccountFieldNotes(value) => {
+                resource_utils::Resource::TableAccountFieldNotes(value) => {
                     make_sql_statment_for_string("account", "notes", uuid, value)
                 }
-                types::Resource::TableAccountFieldUnitOfMeasurementOfQuantity(value) => {
+                resource_utils::Resource::TableAccountFieldUnitOfMeasurementOfQuantity(value) => {
                     make_sql_statment_for_string(
                         "account",
                         "unit_of_measurement_of_quantity",

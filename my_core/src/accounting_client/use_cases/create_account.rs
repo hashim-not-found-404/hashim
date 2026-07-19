@@ -10,7 +10,10 @@ use crate::{
     accounting_domain::{
         cases::{
             self,
-            utility::types::{self, MyErrorTrait},
+            utility::{
+                resource_utils,
+                types::{self, MyErrorTrait},
+            },
         },
         request_response,
     },
@@ -27,42 +30,42 @@ type Type2 = cases::create_account::Input;
 type Type3 = cases::create_account::MyResult;
 pub(crate) type Type4 = cases::create_account::MyResult;
 
-impl Into<Vec<types::ResourceInfo>> for &cases::create_account::Ok {
-    fn into(self) -> Vec<types::ResourceInfo> {
+impl Into<Vec<resource_utils::ResourceInfo>> for &cases::create_account::Ok {
+    fn into(self) -> Vec<resource_utils::ResourceInfo> {
         let mut resources = Vec::new();
 
-        resources.push(types::ResourceInfo {
+        resources.push(resource_utils::ResourceInfo {
             row_uuid: self.new_uuid.clone(),
-            resource: types::Resource::TableAccountFieldCompanyBelong(
+            resource: resource_utils::Resource::TableAccountFieldCompanyBelong(
                 self.belong_to_company.clone(),
             ),
         });
 
-        resources.push(types::ResourceInfo {
+        resources.push(resource_utils::ResourceInfo {
             row_uuid: self.new_uuid.clone(),
-            resource: types::Resource::TableAccountFieldIsDebit(self.is_debit.clone()),
+            resource: resource_utils::Resource::TableAccountFieldIsDebit(self.is_debit.clone()),
         });
 
-        resources.push(types::ResourceInfo {
+        resources.push(resource_utils::ResourceInfo {
             row_uuid: self.new_uuid.clone(),
-            resource: types::Resource::TableAccountFieldIsPermanentAccount(
+            resource: resource_utils::Resource::TableAccountFieldIsPermanentAccount(
                 self.is_permanent_account.clone(),
             ),
         });
 
-        resources.push(types::ResourceInfo {
+        resources.push(resource_utils::ResourceInfo {
             row_uuid: self.new_uuid.clone(),
-            resource: types::Resource::TableAccountFieldName(self.account_name.clone()),
+            resource: resource_utils::Resource::TableAccountFieldName(self.account_name.clone()),
         });
 
-        resources.push(types::ResourceInfo {
+        resources.push(resource_utils::ResourceInfo {
             row_uuid: self.new_uuid.clone(),
-            resource: types::Resource::TableAccountFieldNotes(self.notes.clone()),
+            resource: resource_utils::Resource::TableAccountFieldNotes(self.notes.clone()),
         });
 
-        resources.push(types::ResourceInfo {
+        resources.push(resource_utils::ResourceInfo {
             row_uuid: self.new_uuid.clone(),
-            resource: types::Resource::TableAccountFieldUnitOfMeasurementOfQuantity(
+            resource: resource_utils::Resource::TableAccountFieldUnitOfMeasurementOfQuantity(
                 self.unit_of_measurement_of_quantity.clone(),
             ),
         });
@@ -116,7 +119,7 @@ impl CacheAndServerType1 for Type2 {
 }
 
 impl CacheAndServerType2 for Type3 {
-    fn extract_resource(&self) -> Vec<types::ResourceInfo> {
+    fn extract_resource(&self) -> Vec<resource_utils::ResourceInfo> {
         match self {
             Ok(ok) => ok.into(),
             Err(_) => Vec::new(),

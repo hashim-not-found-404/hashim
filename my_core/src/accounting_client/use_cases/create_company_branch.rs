@@ -10,7 +10,10 @@ use crate::{
     accounting_domain::{
         cases::{
             self,
-            utility::types::{self, MyErrorTrait},
+            utility::{
+                resource_utils,
+                types::{self, MyErrorTrait},
+            },
         },
         request_response,
     },
@@ -27,48 +30,55 @@ type Type2 = cases::create_company_branch::Input;
 type Type3 = cases::create_company_branch::MyResult;
 pub(crate) type Type4 = cases::create_company_branch::MyResult;
 
-impl Into<Vec<types::ResourceInfo>> for &cases::create_company_branch::Ok {
-    fn into(self) -> Vec<types::ResourceInfo> {
+impl Into<Vec<resource_utils::ResourceInfo>> for &cases::create_company_branch::Ok {
+    fn into(self) -> Vec<resource_utils::ResourceInfo> {
         let branch_uuid = self.new_uuid.clone();
 
         vec![
             // Branch fields
-            types::ResourceInfo {
+            resource_utils::ResourceInfo {
                 row_uuid: branch_uuid.clone(),
-                resource: types::Resource::TableCompanyBranchFieldName(self.branch_name.clone()),
+                resource: resource_utils::Resource::TableCompanyBranchFieldName(
+                    self.branch_name.clone(),
+                ),
             },
-            types::ResourceInfo {
+            resource_utils::ResourceInfo {
                 row_uuid: branch_uuid.clone(),
-                resource: types::Resource::TableCompanyBranchFieldCompanyBelong(
+                resource: resource_utils::Resource::TableCompanyBranchFieldCompanyBelong(
                     self.company_belong.clone(),
                 ),
             },
-            types::ResourceInfo {
+            resource_utils::ResourceInfo {
                 row_uuid: branch_uuid.clone(),
-                resource: types::Resource::TableCompanyBranchFieldLocation(self.location.clone()),
+                resource: resource_utils::Resource::TableCompanyBranchFieldLocation(
+                    self.location.clone(),
+                ),
             },
-            types::ResourceInfo {
+            resource_utils::ResourceInfo {
                 row_uuid: branch_uuid.clone(),
-                resource: types::Resource::TableCompanyBranchFieldCurrency(self.currency.clone()),
+                resource: resource_utils::Resource::TableCompanyBranchFieldCurrency(
+                    self.currency.clone(),
+                ),
             },
             // Access control for this branch (row_uuid is the branch UUID)
-            types::ResourceInfo {
+            resource_utils::ResourceInfo {
                 row_uuid: branch_uuid.clone(),
-                resource: types::Resource::TableAccessControlForCompanyBranchFieldRole(
+                resource: resource_utils::Resource::TableAccessControlForCompanyBranchFieldRole(
                     self.role.clone(),
                 ),
             },
-            types::ResourceInfo {
+            resource_utils::ResourceInfo {
                 row_uuid: branch_uuid.clone(),
-                resource: types::Resource::TableAccessControlForCompanyBranchFieldUser(
+                resource: resource_utils::Resource::TableAccessControlForCompanyBranchFieldUser(
                     self.user_uuid.clone(),
                 ),
             },
-            types::ResourceInfo {
+            resource_utils::ResourceInfo {
                 row_uuid: branch_uuid,
-                resource: types::Resource::TableAccessControlForCompanyBranchFieldDataGroup(
-                    self.new_uuid.clone(),
-                ),
+                resource:
+                    resource_utils::Resource::TableAccessControlForCompanyBranchFieldDataGroup(
+                        self.new_uuid.clone(),
+                    ),
             },
         ]
     }
@@ -112,7 +122,7 @@ impl CacheAndServerType1 for Type2 {
 }
 
 impl CacheAndServerType2 for Type3 {
-    fn extract_resource(&self) -> Vec<types::ResourceInfo> {
+    fn extract_resource(&self) -> Vec<resource_utils::ResourceInfo> {
         match self {
             Ok(ok) => ok.into(),
             Err(_) => Vec::new(),
