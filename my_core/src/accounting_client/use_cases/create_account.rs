@@ -299,8 +299,13 @@ async fn handle_submit<
                     match result {
                         Ok(_) => {}
                         Err(business_error) => {
-                            mbg!(business_error);
-                            todo!();
+                            mbg!(&business_error);
+                            local_state
+                                .account_name_error
+                                .set(match business_error.account_name {
+                                    Some(_) => Some(String::from("duplicated")),
+                                    None => None,
+                                });
                         }
                     }
                 }
