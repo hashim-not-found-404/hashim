@@ -20,8 +20,8 @@ impl Mvu for ui_model::Home {
     >(
         self,
         model: &'static ui_model::Model<As>,
-        cache: client_traits::CacheActorStruct<Mpsc>,
-        commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
+        _: client_traits::CacheActorStruct<Mpsc>,
+        _: Arc<commander::CommanderLocalState<Mpsc, As>>,
     ) {
         match self {
             ui_model::Home::ShowDashboard => model
