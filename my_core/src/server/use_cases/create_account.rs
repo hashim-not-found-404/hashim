@@ -8,7 +8,11 @@ use crate::{
 };
 
 impl cases::create_account::Input {
-    pub(crate) async fn handle_operation<Id: types::RowId, Cli: DBClient>(
+    pub(crate) async fn handle_operation<
+        Id: types::RowId,
+        Cli: DBClient,
+        Db: for<'a> cases::create_account::DatabaseRead<Db<'a> = Cli::Txn<'a>>,
+    >(
         &self,
         side_effects: &mut SideEffects,
         client: &mut Cli,
@@ -22,16 +26,7 @@ impl cases::create_account::Input {
         }
 
         let mut txn = client.begin_transaction().await?;
-        let read_output = txn
-            .read_create_account(&cases::create_account::ReadInput {
-                user_uuid: self.user_uuid.clone(),
-                new_uuid: self.new_uuid.clone(),
-                belong_to_company: self.belong_to_company.clone(),
-                account_name: self.account_name.clone(),
-            })
-            .await?;
-
-        let errr = self.state_full_check(&read_output);
+        let errr = self.state_full_check::<Db>(&mut txn).await?;
         if errr.is_there_error() {
             let _ = txn.rollback_transaction().await?;
             return Ok(Err(errr));

@@ -1,9 +1,7 @@
 use crate::{
     accounting_client::use_cases::client_domain::{
-        cache, cache_actor,
-        client_traits::{
-            self, CacheAndServerType1, CacheAndServerType2, Mvu, ViewType1, ViewType2,
-        },
+        self, cache, cache_actor,
+        client_traits::{self, ViewAndCache},
         commander, process_manager,
         ui_model::{self, HashimSignal},
     },
@@ -23,7 +21,7 @@ use crate::{
         utils::ReadAndSet,
     },
 };
-use std::sync::Arc;
+use std::{marker::PhantomData, sync::Arc};
 
 pub(crate) type Type1 = cases::create_account::Input;
 type Type2 = cases::create_account::Input;
@@ -74,73 +72,112 @@ impl Into<Vec<resource_utils::ResourceInfo>> for &cases::create_account::Ok {
     }
 }
 
-impl ViewType1 for Type1 {
-    fn wrap_input(self) -> request_response::push_data::OperationsInput {
-        request_response::push_data::OperationsInput::CreateAccount(self)
+struct Cache<Ch, LongCache>
+where
+    Ch: cache::Cache,
+    LongCache: for<'a> cases::create_account::DatabaseRead<Db<'a> = Ch>,
+{
+    _ph: PhantomData<(Ch, LongCache)>,
+}
+
+impl<Ch, LongCache> cases::create_account::DatabaseRead for Cache<Ch, LongCache>
+where
+    Ch: cache::Cache,
+    LongCache: for<'a> cases::create_account::DatabaseRead<Db<'a> = Ch>,
+{
+    type Db<'a> = cache::State<Ch>;
+
+    async fn read(
+        db: &mut Self::Db<'_>,
+        read_input: &cases::create_account::ReadInput,
+    ) -> Result<cases::create_account::ReadOutput, traits::DynamicError> {
+        let mut read_output = LongCache::read(&mut db.cache, read_input).await.unwrap();
+        read_output.is_company_uuid_exist = true;
+        read_output.is_new_uuid_used = false;
+
+        for (_, table) in &db.state_of_pending_txn.account {
+            if read_input.account_name == table.name
+                && read_input.belong_to_company == table.company_belong
+            {
+                read_output.is_account_name_used = true;
+            }
+        }
+
+        let mut roles = Vec::new();
+        for (_, table) in &db.state_of_pending_txn.access_control_for_company {
+            if read_input.user_uuid == table.user_ {
+                roles.push(table.role.clone());
+            }
+        }
+
+        Ok(read_output)
     }
 }
 
-impl CacheAndServerType1 for Type2 {
-    fn user_uuid(&self) -> Option<&types::UuidType> {
-        Some(&self.user_uuid)
+struct ViewAndCacheType;
+
+impl<Ch, LongCache> ViewAndCache<Ch, LongCache> for ViewAndCacheType
+where
+    Ch: cache::Cache,
+    LongCache: for<'a> cases::create_account::DatabaseRead<Db<'a> = Ch>,
+{
+    type Type1 = Type1;
+    type Type2 = Type2;
+    type Type3 = Type3;
+    type Type4 = Type4;
+
+    fn wrap_input(data: Self::Type1) -> request_response::push_data::OperationsInput {
+        request_response::push_data::OperationsInput::CreateAccount(data)
     }
 
-    type Output = Type3;
+    fn user_uuid(data: &Self::Type2) -> Option<&types::UuidType> {
+        Some(&data.user_uuid)
+    }
 
-    async fn state_full_operation<Id: types::RowId, Ch: cache::Cache>(
-        &self,
-        cache: &mut cache::State<Ch>,
-    ) -> Self::Output {
-        let errr = self.state_less_check::<Id>();
-
-        if errr.is_there_error() {
-            return Err(errr);
-        }
-
-        let read_output = cache
-            .read_create_account(&cases::create_account::ReadInput {
-                user_uuid: self.user_uuid.clone(),
-                new_uuid: self.new_uuid.clone(),
-                belong_to_company: self.belong_to_company.clone(),
-                account_name: self.account_name.clone(),
-            })
-            .await;
-
-        let errr = self.state_full_check(&read_output);
+    async fn state_full_operation<Id: types::RowId>(
+        data: &Self::Type2,
+        state: &mut cache::State<Ch>,
+    ) -> Self::Type3 {
+        let errr = data.state_less_check::<Id>();
 
         if errr.is_there_error() {
             return Err(errr);
         }
 
-        let ok = self.state_less_operation();
+        let errr = data
+            .state_full_check::<Cache<Ch, LongCache>>(state)
+            .await
+            .unwrap();
+
+        if errr.is_there_error() {
+            return Err(errr);
+        }
+
+        let ok = data.state_less_operation();
 
         return Ok(ok);
     }
-}
 
-impl CacheAndServerType2 for Type3 {
-    fn extract_resource(&self) -> Vec<resource_utils::ResourceInfo> {
-        match self {
+    fn extract_resource(data: &Self::Type3) -> Vec<resource_utils::ResourceInfo> {
+        match data {
             Ok(ok) => ok.into(),
             Err(_) => Vec::new(),
         }
     }
 
-    fn wrap_output(self) -> request_response::push_data::OperationsResult {
-        request_response::push_data::OperationsResult::CreateAccount(self)
+    fn wrap_output(data: Self::Type3) -> request_response::push_data::OperationsResult {
+        request_response::push_data::OperationsResult::CreateAccount(data)
     }
-}
 
-impl ViewType2 for Type4 {
-    fn unwrap_output(result: request_response::push_data::OperationsResult) -> Self {
-        if let request_response::push_data::OperationsResult::CreateAccount(result) = result {
+    fn unwrap_output(output: request_response::push_data::OperationsResult) -> Self::Type4 {
+        if let request_response::push_data::OperationsResult::CreateAccount(result) = output {
             return result;
         }
-        unreachable!("{:?}", result)
+        unreachable!("{:?}", output)
     }
 }
 
-impl Mvu for ui_model::CreateAccount {
+impl ui_model::CreateAccount {
     async fn update<
         Rn: traits::RandomNumber,
         Rt: traits::Runtime,
@@ -148,6 +185,8 @@ impl Mvu for ui_model::CreateAccount {
         Mpsc: traits::MultiProducerSingleConsumer,
         Rg: traits::Regex,
         As: ui_model::AllSignalTypes,
+        Ch: cache::Cache,
+        LongCache: for<'a> cases::create_account::DatabaseRead<Db<'a> = Ch>,
     >(
         self,
         model: &'static ui_model::Model<As>,
@@ -162,7 +201,12 @@ impl Mvu for ui_model::CreateAccount {
 
         match self {
             ui_model::CreateAccount::Submit => {
-                handle_submit::<Rn, Rt, Id, Mpsc, Rg, As>(model, cache, commander_local_state).await
+                handle_submit::<Rn, Rt, Id, Mpsc, Rg, As, Ch, LongCache>(
+                    model,
+                    cache,
+                    commander_local_state,
+                )
+                .await
             }
             Self::Consent(i) => {
                 commander_local_state
@@ -182,7 +226,12 @@ impl Mvu for ui_model::CreateAccount {
             }
             ui_model::CreateAccount::AccountName(v) => {
                 local_state.account_name.set(v);
-                handle_check::<Rn, Rt, Id, Mpsc, Rg, As>(model, cache, commander_local_state).await;
+                handle_check::<Rn, Rt, Id, Mpsc, Rg, As, Ch, LongCache>(
+                    model,
+                    cache,
+                    commander_local_state,
+                )
+                .await;
             }
             ui_model::CreateAccount::Notes(v) => local_state.notes.set(v),
             ui_model::CreateAccount::UnitOfMeasurementOfQuantity(v) => {
@@ -223,6 +272,8 @@ async fn handle_submit<
     Mpsc: traits::MultiProducerSingleConsumer,
     Rg: traits::Regex,
     As: ui_model::AllSignalTypes,
+    Ch: cache::Cache,
+    LongCache: for<'a> cases::create_account::DatabaseRead<Db<'a> = Ch>,
 >(
     model: &'static ui_model::Model<As>,
     mut cache: client_traits::CacheActorStruct<Mpsc>,
@@ -256,7 +307,7 @@ async fn handle_submit<
     let mut receiver_to_response = cache
         .send_to_cache_actor(
             cache_actor::CachingStrategy::WriteCacheAndServer,
-            input.wrap_input(),
+            <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::wrap_input(input),
         )
         .await;
 
@@ -270,7 +321,8 @@ async fn handle_submit<
                     is_response_from_server,
                     data,
                 } => {
-                    let result = Type4::unwrap_output(data);
+                    let result =
+                        <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::unwrap_output(data);
                     let is_ok = result.is_ok();
 
                     if is_response_from_server {
@@ -349,6 +401,8 @@ async fn handle_check<
     Mpsc: traits::MultiProducerSingleConsumer,
     Rg: traits::Regex,
     As: ui_model::AllSignalTypes,
+    Ch: cache::Cache,
+    LongCache: for<'a> cases::create_account::DatabaseRead<Db<'a> = Ch>,
 >(
     model: &'static ui_model::Model<As>,
     mut cache: client_traits::CacheActorStruct<Mpsc>,
@@ -382,7 +436,7 @@ async fn handle_check<
     let mut receiver_to_response = cache
         .send_to_cache_actor(
             cache_actor::CachingStrategy::ReadCacheOnly,
-            input.wrap_input(),
+            <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::wrap_input(input),
         )
         .await;
 
@@ -393,7 +447,7 @@ async fn handle_check<
             is_response_from_server: _,
             data,
         } => {
-            let result = Type4::unwrap_output(data);
+            let result = <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::unwrap_output(data);
 
             match result {
                 Ok(_) => {}

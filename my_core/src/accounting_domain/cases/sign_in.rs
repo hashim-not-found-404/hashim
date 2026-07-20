@@ -1,4 +1,4 @@
-use crate::accounting_domain::cases::utility::types;
+use crate::{accounting_domain::cases::utility::types, utility::traits};
 use serde::{Deserialize, Serialize};
 
 pub type MyResult = Result<Ok, Error>;
@@ -31,6 +31,14 @@ pub struct ReadInput {
 
 pub struct ReadOutput {
     pub user_rowid_and_password_hash_and_name: Option<(types::UuidType, String, Option<String>)>,
+}
+
+pub trait DatabaseRead {
+    type Db<'a>;
+    fn read(
+        db: &mut Self::Db<'_>,
+        read_input: &ReadInput,
+    ) -> impl Future<Output = Result<ReadOutput, traits::DynamicError>>;
 }
 
 // utility types

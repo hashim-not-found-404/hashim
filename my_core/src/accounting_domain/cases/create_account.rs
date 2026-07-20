@@ -1,4 +1,4 @@
-use crate::accounting_domain::cases::utility::types;
+use crate::{accounting_domain::cases::utility::types, utility::traits};
 use serde::{Deserialize, Serialize};
 
 pub type MyResult = Result<Ok, Error>;
@@ -55,6 +55,14 @@ pub struct ReadOutput {
     pub is_account_name_used: bool,
 }
 
+pub trait DatabaseRead {
+    type Db<'a>;
+    fn read(
+        db: &mut Self::Db<'_>,
+        read_input: &ReadInput,
+    ) -> impl Future<Output = Result<ReadOutput, traits::DynamicError>>;
+}
+
 impl Input {
     pub(crate) fn state_less_check<Id: types::RowId>(&self) -> Error {
         let mut errr = Error::default();
@@ -73,7 +81,21 @@ impl Input {
         errr
     }
 
-    pub(crate) fn state_full_check(&self, read_output: &ReadOutput) -> Error {
+    pub(crate) async fn state_full_check<Db: DatabaseRead>(
+        &self,
+        db: &mut Db::Db<'_>,
+    ) -> Result<Error, traits::DynamicError> {
+        let read_output = Db::read(
+            db,
+            &ReadInput {
+                user_uuid: self.user_uuid.clone(),
+                new_uuid: self.new_uuid.clone(),
+                belong_to_company: self.belong_to_company.clone(),
+                account_name: self.account_name.clone(),
+            },
+        )
+        .await?;
+
         let mut errr = Error::default();
 
         if read_output.is_new_uuid_used {
@@ -95,7 +117,7 @@ impl Input {
             errr.user_uuid = Some(types::UserUuidError::YouDontHavePermissionToDoThat);
         }
 
-        errr
+        Ok(errr)
     }
 
     pub(crate) fn state_less_operation(&self) -> Ok {
