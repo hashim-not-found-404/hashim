@@ -25,6 +25,14 @@ pub struct Error {
 
 impl types::MyErrorTrait for Error {}
 
+pub struct ReadInput {
+    pub user_id: String,
+}
+
+pub struct ReadOutput {
+    pub user_rowid_and_password_hash_and_name: Option<(types::UuidType, String, Option<String>)>,
+}
+
 // utility types
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
@@ -41,11 +49,13 @@ impl Input {
     pub(crate) fn state_full_check<Auth: types::HashedPassword, Jwt: types::JWT>(
         &self,
         jwt: &Jwt,
-        user_rowid_and_password_hash_and_name: &Option<(types::UuidType, String, Option<String>)>,
+        read_output: &ReadOutput,
     ) -> MyResult {
         let mut errr = Error::default();
 
-        let (user_rowid, password_hash, user_name) = match user_rowid_and_password_hash_and_name {
+        let (user_rowid, password_hash, user_name) = match &read_output
+            .user_rowid_and_password_hash_and_name
+        {
             Some((user_rowid, password_hash, user_name)) => (user_rowid, password_hash, user_name),
             None => {
                 errr.user_id = Some(UserIdError::NotExist);
@@ -53,7 +63,7 @@ impl Input {
             }
         };
 
-        match Auth::sign_in(&self.password, password_hash) {
+        match Auth::sign_in(&self.password, &password_hash) {
             true => {
                 return Ok(Ok {
                     user_uuid: user_rowid.clone(),

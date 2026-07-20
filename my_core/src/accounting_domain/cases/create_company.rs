@@ -28,6 +28,14 @@ pub struct Error {
 
 impl types::MyErrorTrait for Error {}
 
+pub struct ReadInput {
+    pub new_uuid: types::UuidType,
+}
+
+pub struct ReadOutput {
+    pub is_new_uuid_used: bool,
+}
+
 impl Input {
     pub(crate) fn state_less_check<Id: types::RowId>(&self) -> Error {
         let mut errr = Error::default();
@@ -42,9 +50,9 @@ impl Input {
         errr
     }
 
-    pub(crate) fn state_full_check(&self, is_new_uuid_used: bool) -> Error {
+    pub(crate) fn state_full_check(&self, read_output: &ReadOutput) -> Error {
         let mut errr = Error::default();
-        if is_new_uuid_used {
+        if read_output.is_new_uuid_used {
             errr.new_uuid = Some(types::RowIdError::Duplicated);
         }
         errr

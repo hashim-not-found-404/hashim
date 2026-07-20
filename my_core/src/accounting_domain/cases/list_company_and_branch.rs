@@ -10,7 +10,7 @@ pub struct Input {
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Ok {
-    pub(crate) user_uuid: types::UuidType, // <-- add this
+    pub(crate) user_uuid: types::UuidType,
     pub(crate) data: Vec<AllCompaniesThatUserInWithRoles>,
 }
 
@@ -37,6 +37,14 @@ pub struct Error {
 }
 
 impl types::MyErrorTrait for Error {}
+
+pub struct ReadInput {
+    pub user_uuid: types::UuidType,
+}
+
+pub struct ReadOutput {
+    pub data: Vec<AllCompaniesThatUserInWithRoles>,
+}
 
 impl Input {
     pub(crate) fn state_less_check<Id: types::RowId>(&self) -> Error {

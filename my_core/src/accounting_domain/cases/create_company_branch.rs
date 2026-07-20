@@ -35,6 +35,20 @@ pub struct Error {
 
 impl types::MyErrorTrait for Error {}
 
+pub struct ReadInput {
+    pub user_uuid: types::UuidType,
+    pub new_uuid: types::UuidType,
+    pub company_belong: types::UuidType,
+    pub branch_name: String,
+}
+
+pub struct ReadOutput {
+    pub user_roles: Vec<types::Role>,
+    pub is_new_uuid_used: bool,
+    pub is_company_exist: bool,
+    pub is_branch_name_used: bool,
+}
+
 // utility types
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
@@ -72,28 +86,25 @@ impl Input {
         errr
     }
 
-    pub(crate) fn state_full_check<Id: types::RowId>(
-        &self,
-        user_roles: &Vec<types::Role>,
-        is_new_uuid_used: bool,
-        is_company_exist: bool,
-        is_branch_name_used: bool,
-    ) -> Error {
+    pub(crate) fn state_full_check<Id: types::RowId>(&self, read_output: &ReadOutput) -> Error {
         let mut errr = Error::default();
 
-        if !types::Role::has_any(&user_roles, &[types::Role::Manager, types::Role::CoManager]) {
+        if !types::Role::has_any(
+            &read_output.user_roles,
+            &[types::Role::Manager, types::Role::CoManager],
+        ) {
             errr.user_uuid = Some(types::UserUuidError::YouDontHavePermissionToDoThat);
         }
 
-        if is_new_uuid_used {
+        if read_output.is_new_uuid_used {
             errr.new_uuid = Some(types::RowIdError::Duplicated);
         }
 
-        if !is_company_exist {
+        if !read_output.is_company_exist {
             errr.company_belong = Some(CompanyBelongError::NotExist);
         }
 
-        if is_branch_name_used {
+        if read_output.is_branch_name_used {
             errr.branch_name = Some(BranchNameError::Duplicated);
         }
 

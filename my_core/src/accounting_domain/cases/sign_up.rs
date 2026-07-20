@@ -29,6 +29,16 @@ pub struct Error {
 
 impl types::MyErrorTrait for Error {}
 
+pub struct ReadInput {
+    pub new_uuid: types::UuidType,
+    pub user_id: String,
+}
+
+pub struct ReadOutput {
+    pub is_new_uuid_exist: bool,
+    pub is_user_id_exist: bool,
+}
+
 // utility types
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
@@ -47,18 +57,14 @@ impl Input {
         errr
     }
 
-    pub(crate) fn state_full_check<Id: types::RowId>(
-        &self,
-        is_new_uuid_exist: bool,
-        is_user_id_exist: bool,
-    ) -> Error {
+    pub(crate) fn state_full_check<Id: types::RowId>(&self, read_output: &ReadOutput) -> Error {
         let mut errr = Error::default();
 
-        if is_new_uuid_exist {
+        if read_output.is_new_uuid_exist {
             errr.new_uuid = Some(types::RowIdError::Duplicated);
         }
 
-        if is_user_id_exist {
+        if read_output.is_user_id_exist {
             errr.user_id = Some(UserIdError::Duplicated);
         }
 
