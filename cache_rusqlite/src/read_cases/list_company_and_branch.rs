@@ -1,0 +1,152 @@
+use crate::read_cases::utils::{
+    cache_adapter,
+    utils::{MyUuidConverter, MyUuidConverter1},
+};
+use my_core::{
+    accounting_domain::cases::{self, utility::types},
+    utility::traits,
+};
+use rusqlite::params;
+use std::str::FromStr;
+
+pub struct S;
+
+impl cases::list_company_and_branch::DatabaseRead for S {
+    type Db<'a> = cache_adapter::S;
+
+    async fn read(
+        db: &mut Self::Db<'_>,
+        read_input: &cases::list_company_and_branch::ReadInput,
+    ) -> Result<cases::list_company_and_branch::ReadOutput, traits::DynamicError> {
+        use std::collections::HashMap;
+        use types::Role;
+
+        // ---- 1. Get company-level roles ----
+        let company_query = "
+            SELECT c.rowid, c.name, c.currency, acf.role
+            FROM access_control_for_company acf
+            JOIN company c ON acf.data_group = c.rowid
+            WHERE acf.user_ = ?1
+        ";
+        let mut stmt = db.db.prepare(company_query).unwrap();
+        let company_rows = stmt
+            .query_map(params![read_input.user_uuid.to_string()], |row| {
+                let uuid: String = row.get(0).unwrap();
+                let name: String = row.get(1).unwrap();
+                let currency: String = row.get(2).unwrap();
+                let role: Option<String> = row.get(3).unwrap(); // read as Option<String>
+                Ok((uuid, name, currency, role))
+            })
+            .unwrap();
+
+        // Group company roles by company UUID
+        let mut company_map: HashMap<String, (String, String, Vec<Role>)> = HashMap::new();
+        for row in company_rows {
+            let (uuid, name, currency, role_opt) = row.unwrap();
+            if let Some(role_str) = role_opt {
+                let role = Role::from_str(&role_str).unwrap();
+                company_map
+                    .entry(uuid)
+                    .or_insert_with(|| (name, currency, Vec::new()))
+                    .2
+                    .push(role);
+            }
+            // If role is None, skip? Or still create company entry with empty roles?
+            // The code above creates the entry only when a role exists.
+            // To include companies with no roles, you'd need to create the entry regardless.
+            // But since we only get rows for companies with at least one role (due to the JOIN), it's fine.
+        }
+
+        // ---- 2. Get branch-level roles ----
+        let branch_query = "
+            SELECT cb.rowid, cb.name, cb.currency, cb.company_belong, acfb.role
+            FROM access_control_for_company_branch acfb
+            JOIN company_branch cb ON acfb.data_group = cb.rowid
+            WHERE acfb.user_ = ?1
+        ";
+        let mut stmt = db.db.prepare(branch_query).unwrap();
+        let branch_rows = stmt
+            .query_map(params![read_input.user_uuid.to_string()], |row| {
+                let branch_uuid: String = row.get(0).unwrap();
+                let branch_name: String = row.get(1).unwrap();
+                let branch_currency: String = row.get(2).unwrap();
+                let company_belong: String = row.get(3).unwrap();
+                let role: Option<String> = row.get(4).unwrap(); // read as Option<String>
+                Ok((
+                    branch_uuid,
+                    branch_name,
+                    branch_currency,
+                    company_belong,
+                    role,
+                ))
+            })
+            .unwrap();
+
+        // Group branch roles by branch UUID, and remember which company it belongs to
+        struct BranchAccumulator {
+            branch_uuid: String,
+            branch_name: String,
+            branch_currency: String,
+            company_belong: String,
+            roles: Vec<Role>,
+        }
+        let mut branch_map: HashMap<String, BranchAccumulator> = HashMap::new();
+        for row in branch_rows {
+            let (branch_uuid, branch_name, branch_currency, company_belong, role_opt) =
+                row.unwrap();
+            // Create entry for the branch (even if role is None)
+            let entry =
+                branch_map
+                    .entry(branch_uuid.clone())
+                    .or_insert_with(|| BranchAccumulator {
+                        branch_uuid: branch_uuid.clone(),
+                        branch_name: branch_name.clone(),
+                        branch_currency: branch_currency.clone(),
+                        company_belong: company_belong.clone(),
+                        roles: Vec::new(),
+                    });
+            if let Some(role_str) = role_opt {
+                let role = Role::from_str(&role_str).unwrap();
+                entry.roles.push(role);
+            }
+            // If role is None, we still keep the branch entry with empty roles.
+        }
+
+        // ---- 3. Build the final result ----
+        let mut result = Vec::new();
+        for (company_uuid_str, (company_name, company_currency_str, company_roles)) in company_map {
+            let company_uuid = company_uuid_str.clone().to_uuid();
+            let company_currency = types::Currency::from_str(&company_currency_str).unwrap();
+
+            // Collect branches that belong to this company
+            let branches: Vec<cases::list_company_and_branch::AllBranchesThatUserInWithRoles> =
+                branch_map
+                    .iter()
+                    .filter(|(_, info)| info.company_belong == company_uuid_str)
+                    .map(|(_, info)| {
+                        let branch_uuid = info.branch_uuid.clone().to_uuid();
+                        let branch_currency =
+                            types::Currency::from_str(&info.branch_currency).unwrap();
+                        cases::list_company_and_branch::AllBranchesThatUserInWithRoles {
+                            branch_uuid,
+                            branch_name: info.branch_name.clone(),
+                            branch_currancy: branch_currency,
+                            user_roles: info.roles.clone(),
+                        }
+                    })
+                    .collect::<Vec<_>>();
+
+            result.push(
+                cases::list_company_and_branch::AllCompaniesThatUserInWithRoles {
+                    company_uuid,
+                    company_name,
+                    company_currancy: company_currency,
+                    user_roles: company_roles,
+                    branches,
+                },
+            );
+        }
+
+        Ok(cases::list_company_and_branch::ReadOutput { data: result })
+    }
+}

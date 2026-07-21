@@ -5,12 +5,12 @@ use actix_web::{
 use adapters::{
     actors, authentication, encode_decode, functions, jwt, random_number, row_id, runtime,
 };
+use db_client_cockroach::{db_bundle, read_write_cases::utils::db};
 use my_core::{accounting_domain::cases::utility::types, server::server_methods};
 
 use crate::web_socket_server;
 
-type ServerMethodsType =
-    server_methods::ServerMethods<actors::target::S, jwt::target::S, db_client_cockroach::db::S>;
+type ServerMethodsType = server_methods::ServerMethods<actors::target::S, jwt::target::S, db::S>;
 
 pub(crate) async fn main() {
     println!("started server");
@@ -54,7 +54,7 @@ async fn ws_handler(req: HttpRequest, stream: Payload) -> HttpResponse {
     state
         .clone()
         .into_inner()
-        .server_actor::<runtime::target::S, web_socket_server::S, random_number::target::S,encode_decode::target::S,row_id::target::S,functions::target::S,authentication::target::S>(
+        .server_actor::<runtime::target::S, web_socket_server::S, random_number::target::S,encode_decode::target::S,row_id::target::S,functions::target::S,authentication::target::S,db_bundle::S>(
             session,
         );
 

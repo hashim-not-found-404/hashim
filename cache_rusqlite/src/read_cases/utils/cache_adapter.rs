@@ -1,4 +1,4 @@
-use crate::utils::{MyUuidConverter, MyUuidConverter1};
+use crate::read_cases::utils::utils::{MyUuidConverter, MyUuidConverter1};
 use adapters::encode_decode;
 use my_core::{
     accounting_client::use_cases::client_domain::cache::Cache,
@@ -15,14 +15,14 @@ use rusqlite::{Connection, OptionalExtension, params};
 use std::{ops::Add, str::FromStr};
 
 pub struct S {
-    db: Connection,
+    pub(crate) db: Connection,
 }
 
 impl Cache for S {
     async fn new() -> Self {
         let conn = Connection::open("opfs-sahpool://my_persistent_database.db").unwrap();
 
-        const SCHEMA: &str = include_str!("../schema/tables.sql");
+        const SCHEMA: &str = include_str!("../../../schema/tables.sql");
         conn.execute_batch(SCHEMA).unwrap();
 
         Self { db: conn }
@@ -268,27 +268,6 @@ impl Cache for S {
         }
     }
 
-    async fn read_sign_up(
-        &self,
-        new_uuid: &types::UuidType,
-        user_id: &String,
-    ) -> (
-        bool, /* is new_uuid exist */
-        bool, /* is user_id exist */
-    ) {
-        let query = "
-            SELECT
-                EXISTS(SELECT 1 FROM user WHERE rowid = ?1),
-                EXISTS(SELECT 1 FROM user WHERE id = ?2)
-        ";
-
-        self.db
-            .query_one(query, params![new_uuid.to_string(), user_id], |row| {
-                Ok((row.get(0).unwrap(), row.get(1).unwrap()))
-            })
-            .unwrap()
-    }
-
     async fn read_sign_in(
         &self,
         user_id: &String,
@@ -313,259 +292,6 @@ impl Cache for S {
             })
             .optional()
             .unwrap()
-    }
-
-    async fn read_list_company_and_branch(
-        &self,
-        user_uuid: &types::UuidType,
-    ) -> Vec<cases::list_company_and_branch::AllCompaniesThatUserInWithRoles> {
-        use std::collections::HashMap;
-        use types::Role;
-
-        // ---- 1. Get company-level roles ----
-        let company_query = "
-            SELECT c.rowid, c.name, c.currency, acf.role
-            FROM access_control_for_company acf
-            JOIN company c ON acf.data_group = c.rowid
-            WHERE acf.user_ = ?1
-        ";
-        let mut stmt = self.db.prepare(company_query).unwrap();
-        let company_rows = stmt
-            .query_map(params![user_uuid.to_string()], |row| {
-                let uuid: String = row.get(0).unwrap();
-                let name: String = row.get(1).unwrap();
-                let currency: String = row.get(2).unwrap();
-                let role: Option<String> = row.get(3).unwrap(); // read as Option<String>
-                Ok((uuid, name, currency, role))
-            })
-            .unwrap();
-
-        // Group company roles by company UUID
-        let mut company_map: HashMap<String, (String, String, Vec<Role>)> = HashMap::new();
-        for row in company_rows {
-            let (uuid, name, currency, role_opt) = row.unwrap();
-            if let Some(role_str) = role_opt {
-                let role = Role::from_str(&role_str).unwrap();
-                company_map
-                    .entry(uuid)
-                    .or_insert_with(|| (name, currency, Vec::new()))
-                    .2
-                    .push(role);
-            }
-            // If role is None, skip? Or still create company entry with empty roles?
-            // The code above creates the entry only when a role exists.
-            // To include companies with no roles, you'd need to create the entry regardless.
-            // But since we only get rows for companies with at least one role (due to the JOIN), it's fine.
-        }
-
-        // ---- 2. Get branch-level roles ----
-        let branch_query = "
-            SELECT cb.rowid, cb.name, cb.currency, cb.company_belong, acfb.role
-            FROM access_control_for_company_branch acfb
-            JOIN company_branch cb ON acfb.data_group = cb.rowid
-            WHERE acfb.user_ = ?1
-        ";
-        let mut stmt = self.db.prepare(branch_query).unwrap();
-        let branch_rows = stmt
-            .query_map(params![user_uuid.to_string()], |row| {
-                let branch_uuid: String = row.get(0).unwrap();
-                let branch_name: String = row.get(1).unwrap();
-                let branch_currency: String = row.get(2).unwrap();
-                let company_belong: String = row.get(3).unwrap();
-                let role: Option<String> = row.get(4).unwrap(); // read as Option<String>
-                Ok((
-                    branch_uuid,
-                    branch_name,
-                    branch_currency,
-                    company_belong,
-                    role,
-                ))
-            })
-            .unwrap();
-
-        // Group branch roles by branch UUID, and remember which company it belongs to
-        struct BranchAccumulator {
-            branch_uuid: String,
-            branch_name: String,
-            branch_currency: String,
-            company_belong: String,
-            roles: Vec<Role>,
-        }
-        let mut branch_map: HashMap<String, BranchAccumulator> = HashMap::new();
-        for row in branch_rows {
-            let (branch_uuid, branch_name, branch_currency, company_belong, role_opt) =
-                row.unwrap();
-            // Create entry for the branch (even if role is None)
-            let entry =
-                branch_map
-                    .entry(branch_uuid.clone())
-                    .or_insert_with(|| BranchAccumulator {
-                        branch_uuid: branch_uuid.clone(),
-                        branch_name: branch_name.clone(),
-                        branch_currency: branch_currency.clone(),
-                        company_belong: company_belong.clone(),
-                        roles: Vec::new(),
-                    });
-            if let Some(role_str) = role_opt {
-                let role = Role::from_str(&role_str).unwrap();
-                entry.roles.push(role);
-            }
-            // If role is None, we still keep the branch entry with empty roles.
-        }
-
-        // ---- 3. Build the final result ----
-        let mut result = Vec::new();
-        for (company_uuid_str, (company_name, company_currency_str, company_roles)) in company_map {
-            let company_uuid = company_uuid_str.clone().to_uuid();
-            let company_currency = types::Currency::from_str(&company_currency_str).unwrap();
-
-            // Collect branches that belong to this company
-            let branches: Vec<cases::list_company_and_branch::AllBranchesThatUserInWithRoles> =
-                branch_map
-                    .iter()
-                    .filter(|(_, info)| info.company_belong == company_uuid_str)
-                    .map(|(_, info)| {
-                        let branch_uuid = info.branch_uuid.clone().to_uuid();
-                        let branch_currency =
-                            types::Currency::from_str(&info.branch_currency).unwrap();
-                        cases::list_company_and_branch::AllBranchesThatUserInWithRoles {
-                            branch_uuid,
-                            branch_name: info.branch_name.clone(),
-                            branch_currancy: branch_currency,
-                            user_roles: info.roles.clone(),
-                        }
-                    })
-                    .collect::<Vec<_>>();
-
-            result.push(
-                cases::list_company_and_branch::AllCompaniesThatUserInWithRoles {
-                    company_uuid,
-                    company_name,
-                    company_currancy: company_currency,
-                    user_roles: company_roles,
-                    branches,
-                },
-            );
-        }
-
-        result
-    }
-
-    async fn read_create_company_branch(
-        &self,
-        user_uuid: &types::UuidType,
-        company_belong: &types::UuidType,
-        company_branch_name: &String,
-    ) -> (
-        Vec<types::Role>, /* roles at company */
-        bool,             /* is company exist */
-        bool,             /* is branch name used */
-    ) {
-        // 1. Get the user's roles in the company
-        let mut stmt = self
-            .db
-            .prepare(
-                "SELECT role FROM access_control_for_company WHERE data_group = ?1 AND user_ = ?2",
-            )
-            .unwrap();
-
-        let roles_iter = stmt
-            .query_map(
-                params![company_belong.to_string(), user_uuid.to_string()],
-                |row| {
-                    let role_str: String = row.get(0)?;
-                    let role = types::Role::from_str(role_str.as_str()).unwrap();
-                    Ok(role)
-                },
-            )
-            .unwrap();
-
-        let mut roles = Vec::new();
-        for role in roles_iter {
-            roles.push(role.unwrap());
-        }
-
-        // 2. Check if the company exists
-        let mut stmt = self
-            .db
-            .prepare("SELECT 1 FROM company WHERE rowid = ?1")
-            .unwrap();
-        let company_exists = stmt.exists(params![company_belong.to_string()]).unwrap();
-
-        // 3. Check if the branch name is already used under this company
-        let mut stmt = self
-            .db
-            .prepare("SELECT 1 FROM company_branch WHERE company_belong = ?1 AND name = ?2")
-            .unwrap();
-        let branch_name_used = stmt
-            .exists(params![company_belong.to_string(), company_branch_name])
-            .unwrap();
-
-        (roles, company_exists, branch_name_used)
-    }
-
-    async fn read_create_account(
-        &self,
-        read_input: &cases::create_account::ReadInput,
-    ) -> cases::create_account::ReadOutput {
-        // 1. User roles at the company
-        let mut stmt = self
-            .db
-            .prepare(
-                "SELECT role FROM access_control_for_company WHERE data_group = ?1 AND user_ = ?2",
-            )
-            .unwrap();
-        let roles_iter = stmt
-            .query_map(
-                params![
-                    read_input.belong_to_company.to_string(),
-                    read_input.user_uuid.to_string()
-                ],
-                |row| {
-                    let role_str: String = row.get(0)?;
-                    let role = types::Role::from_str(role_str.as_str()).unwrap();
-                    Ok(role)
-                },
-            )
-            .unwrap();
-        let user_roles: Vec<types::Role> = roles_iter.map(|r| r.unwrap()).collect();
-
-        // 2. Company exists
-        let mut stmt = self
-            .db
-            .prepare("SELECT 1 FROM company WHERE rowid = ?1")
-            .unwrap();
-        let is_company_uuid_exist = stmt
-            .exists(params![read_input.belong_to_company.to_string()])
-            .unwrap();
-
-        // 3. New UUID already used
-        let mut stmt = self
-            .db
-            .prepare("SELECT 1 FROM account WHERE rowid = ?1")
-            .unwrap();
-        let is_new_uuid_used = stmt
-            .exists(params![read_input.new_uuid.to_string()])
-            .unwrap();
-
-        // 4. Account name already used under the same company
-        let mut stmt = self
-            .db
-            .prepare("SELECT 1 FROM account WHERE belong_to_company = ?1 AND name = ?2")
-            .unwrap();
-        let is_account_name_used = stmt
-            .exists(params![
-                read_input.belong_to_company.to_string(),
-                &read_input.account_name
-            ])
-            .unwrap();
-
-        cases::create_account::ReadOutput {
-            is_company_uuid_exist,
-            is_new_uuid_used,
-            user_roles,
-            is_account_name_used,
-        }
     }
 }
 

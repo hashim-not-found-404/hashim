@@ -2,6 +2,7 @@ use crate::my_signals;
 use adapters::{
     actors, encode_decode, functions, random_number, row_id, runtime, web_socket_adapter,
 };
+use cache_rusqlite::{db_bundle, read_cases::utils};
 use dioxus::prelude::*;
 use my_core::accounting_client::{
     ui_construct, ui_effect,
@@ -21,9 +22,10 @@ static COMMANDER: LazyLock<TheCommander> = LazyLock::new(|| {
         actors::target::S,
         encode_decode::target::S,
         functions::target::S,
-        cache_rusqlite::cache_adapter::S,
+        utils::cache_adapter::S,
         web_socket_adapter::target::S,
         my_signals::S,
+        db_bundle::S,
     >(&MODEL)
 });
 
