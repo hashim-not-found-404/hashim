@@ -87,7 +87,7 @@ where
     }
 }
 
-struct ViewAndCacheType;
+pub(crate) struct ViewAndCacheType;
 
 impl<Ch, LongCache> ViewAndCache<Ch, LongCache> for ViewAndCacheType
 where

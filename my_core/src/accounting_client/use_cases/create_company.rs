@@ -62,7 +62,7 @@ impl Into<Vec<resource_utils::ResourceInfo>> for &cases::create_company::Ok {
     }
 }
 
-struct ViewAndCacheType;
+pub(crate) struct ViewAndCacheType;
 
 impl<Ch, LongCache> ViewAndCache<Ch, LongCache> for ViewAndCacheType
 where

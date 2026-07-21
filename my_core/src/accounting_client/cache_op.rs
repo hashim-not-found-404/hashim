@@ -1,16 +1,30 @@
 use crate::{
-    accounting_client::use_cases::client_domain::{
-        cache,
-        client_traits::{CacheAndServerType1, CacheAndServerType2},
+    accounting_client::use_cases::{
+        self,
+        client_domain::{cache, client_traits::ViewAndCache},
     },
     accounting_domain::{
-        cases::utility::{resource_utils, types},
+        cases::{
+            self,
+            utility::{
+                resource_utils::{self, apply_change},
+                types,
+            },
+        },
         request_response,
     },
 };
 
 impl<Ch: cache::Cache> cache::State<Ch> {
-    pub(crate) async fn new<Id: types::RowId>() -> Self {
+    pub(crate) async fn new<
+        Id: types::RowId,
+        DbCreateAccount: for<'a> cases::create_account::DatabaseRead<Db<'a> = Ch>,
+        DbCreateCompany: for<'a> cases::create_company::DatabaseRead<Db<'a> = Ch>,
+        DbCreateCompanyBranch: for<'a> cases::create_company_branch::DatabaseRead<Db<'a> = Ch>,
+        DbListCompanyAndBranch: for<'a> cases::list_company_and_branch::DatabaseRead<Db<'a> = Ch>,
+        DbSignIn: for<'a> cases::sign_in::DatabaseRead<Db<'a> = Ch>,
+        DbSignUp: for<'a> cases::sign_up::DatabaseRead<Db<'a> = Ch>,
+    >() -> Self {
         let cache = Ch::new().await;
         let txns = cache.get_all_txn_input().await;
 
@@ -21,7 +35,13 @@ impl<Ch: cache::Cache> cache::State<Ch> {
 
         for op in txns {
             op.operation
-                .run_operation_check_apply::<Id, Ch>(&mut state)
+                .run_operation_check_apply::<Id, Ch,DbCreateAccount,
+        DbCreateCompany,
+        DbCreateCompanyBranch,
+        DbListCompanyAndBranch,
+        DbSignIn,
+        DbSignUp
+                >(&mut state)
                 .await;
         }
 
@@ -29,84 +49,190 @@ impl<Ch: cache::Cache> cache::State<Ch> {
     }
 }
 
+macro_rules! run_operation_check {
+    ($path:ident, $name:ident, $db:ty, $i:expr, $state:expr) => {
+        request_response::push_data::OperationsResult::$name(
+            <use_cases::$path::ViewAndCacheType as ViewAndCache<Ch, $db>>::state_full_operation::<
+                Id,
+            >($i, $state)
+            .await,
+        )
+    };
+}
+
+macro_rules! run_operation_check_apply {
+    ($path:ident, $db:ty, $i:expr, $state:expr) => {
+        let a= <use_cases::$path::ViewAndCacheType as ViewAndCache<Ch,$db>>::state_full_operation::<Id>($i, $state).await;
+        let resources=<use_cases::$path::ViewAndCacheType as ViewAndCache<Ch,$db>>::extract_resource(&a);
+        apply_change(resources,&mut $state.state_of_pending_txn);
+    };
+}
+
+macro_rules! get_user_uuid {
+    ($path:ident, $db:ty, $i:expr) => {
+        <use_cases::$path::ViewAndCacheType as ViewAndCache<Ch, $db>>::user_uuid(&$i)
+    };
+}
+
 impl request_response::push_data::OperationsInput {
-    pub(crate) async fn run_operation_check<Id: types::RowId, Ch: cache::Cache>(
+    pub(crate) async fn run_operation_check<
+        Id: types::RowId,
+        Ch: cache::Cache,
+        DbCreateAccount: for<'a> cases::create_account::DatabaseRead<Db<'a> = Ch>,
+        DbCreateCompany: for<'a> cases::create_company::DatabaseRead<Db<'a> = Ch>,
+        DbCreateCompanyBranch: for<'a> cases::create_company_branch::DatabaseRead<Db<'a> = Ch>,
+        DbListCompanyAndBranch: for<'a> cases::list_company_and_branch::DatabaseRead<Db<'a> = Ch>,
+        DbSignIn: for<'a> cases::sign_in::DatabaseRead<Db<'a> = Ch>,
+        DbSignUp: for<'a> cases::sign_up::DatabaseRead<Db<'a> = Ch>,
+    >(
         &self,
         state: &mut cache::State<Ch>,
     ) -> request_response::push_data::OperationsResult {
         match self {
             request_response::push_data::OperationsInput::SignUp(i) => {
-                operation_check_handler::<_, Id, Ch>(i, state).await
+                run_operation_check!(sign_up, SignUp, DbSignUp, i, state)
             }
             request_response::push_data::OperationsInput::SignIn(i) => {
-                operation_check_handler::<_, Id, Ch>(i, state).await
+                run_operation_check!(sign_in, SignIn, DbSignIn, i, state)
             }
             request_response::push_data::OperationsInput::CreateCompany(i) => {
-                operation_check_handler::<_, Id, Ch>(i, state).await
+                run_operation_check!(create_company, CreateCompany, DbCreateCompany, i, state)
             }
             request_response::push_data::OperationsInput::CreateCompanyBranch(i) => {
-                operation_check_handler::<_, Id, Ch>(i, state).await
+                run_operation_check!(
+                    create_company_branch,
+                    CreateCompanyBranch,
+                    DbCreateCompanyBranch,
+                    i,
+                    state
+                )
             }
             request_response::push_data::OperationsInput::ListCompanyAndBranch(i) => {
-                operation_check_handler::<_, Id, Ch>(i, state).await
+                run_operation_check!(
+                    list_company_and_branch,
+                    ListCompanyAndBranch,
+                    DbListCompanyAndBranch,
+                    i,
+                    state
+                )
             }
             request_response::push_data::OperationsInput::CreateAccount(i) => {
-                operation_check_handler::<_, Id, Ch>(i, state).await
+                run_operation_check!(create_account, CreateAccount, DbCreateAccount, i, state)
             }
         }
     }
 
-    pub(crate) async fn run_operation_check_apply<Id: types::RowId, Ch: cache::Cache>(
+    pub(crate) async fn run_operation_check_apply<
+        Id: types::RowId,
+        Ch: cache::Cache,
+        DbCreateAccount: for<'a> cases::create_account::DatabaseRead<Db<'a> = Ch>,
+        DbCreateCompany: for<'a> cases::create_company::DatabaseRead<Db<'a> = Ch>,
+        DbCreateCompanyBranch: for<'a> cases::create_company_branch::DatabaseRead<Db<'a> = Ch>,
+        DbListCompanyAndBranch: for<'a> cases::list_company_and_branch::DatabaseRead<Db<'a> = Ch>,
+        DbSignIn: for<'a> cases::sign_in::DatabaseRead<Db<'a> = Ch>,
+        DbSignUp: for<'a> cases::sign_up::DatabaseRead<Db<'a> = Ch>,
+    >(
         &self,
         state: &mut cache::State<Ch>,
     ) {
         match self {
             request_response::push_data::OperationsInput::SignUp(i) => {
-                operation_check_apply_handler::<_, Id, Ch>(i, state).await
+                run_operation_check_apply!(sign_up, DbSignUp, i, state);
             }
             request_response::push_data::OperationsInput::SignIn(i) => {
-                operation_check_apply_handler::<_, Id, Ch>(i, state).await
+                run_operation_check_apply!(sign_in, DbSignIn, i, state);
             }
             request_response::push_data::OperationsInput::CreateCompany(i) => {
-                operation_check_apply_handler::<_, Id, Ch>(i, state).await
+                run_operation_check_apply!(create_company, DbCreateCompany, i, state);
             }
             request_response::push_data::OperationsInput::CreateCompanyBranch(i) => {
-                operation_check_apply_handler::<_, Id, Ch>(i, state).await
+                run_operation_check_apply!(create_company_branch, DbCreateCompanyBranch, i, state);
             }
             request_response::push_data::OperationsInput::ListCompanyAndBranch(i) => {
-                operation_check_apply_handler::<_, Id, Ch>(i, state).await
+                run_operation_check_apply!(
+                    list_company_and_branch,
+                    DbListCompanyAndBranch,
+                    i,
+                    state
+                );
             }
             request_response::push_data::OperationsInput::CreateAccount(i) => {
-                operation_check_apply_handler::<_, Id, Ch>(i, state).await
+                run_operation_check_apply!(create_account, DbCreateAccount, i, state);
             }
         }
     }
 
-    pub(crate) fn get_user_uuid(&self) -> Option<&types::UuidType> {
+    pub(crate) fn get_user_uuid<
+        Ch: cache::Cache,
+        DbCreateAccount: for<'a> cases::create_account::DatabaseRead<Db<'a> = Ch>,
+        DbCreateCompany: for<'a> cases::create_company::DatabaseRead<Db<'a> = Ch>,
+        DbCreateCompanyBranch: for<'a> cases::create_company_branch::DatabaseRead<Db<'a> = Ch>,
+        DbListCompanyAndBranch: for<'a> cases::list_company_and_branch::DatabaseRead<Db<'a> = Ch>,
+        DbSignIn: for<'a> cases::sign_in::DatabaseRead<Db<'a> = Ch>,
+        DbSignUp: for<'a> cases::sign_up::DatabaseRead<Db<'a> = Ch>,
+    >(
+        &self,
+    ) -> Option<&types::UuidType> {
         match self {
-            request_response::push_data::OperationsInput::SignUp(i) => i.user_uuid(),
-            request_response::push_data::OperationsInput::SignIn(i) => i.user_uuid(),
-            request_response::push_data::OperationsInput::CreateCompany(i) => i.user_uuid(),
-            request_response::push_data::OperationsInput::CreateCompanyBranch(i) => i.user_uuid(),
-            request_response::push_data::OperationsInput::ListCompanyAndBranch(i) => i.user_uuid(),
-            request_response::push_data::OperationsInput::CreateAccount(i) => i.user_uuid(),
+            request_response::push_data::OperationsInput::SignUp(i) => {
+                get_user_uuid!(sign_up, DbSignUp, i)
+            }
+            request_response::push_data::OperationsInput::SignIn(i) => {
+                get_user_uuid!(sign_in, DbSignIn, i)
+            }
+            request_response::push_data::OperationsInput::CreateCompany(i) => {
+                get_user_uuid!(create_company, DbCreateCompany, i)
+            }
+            request_response::push_data::OperationsInput::CreateCompanyBranch(i) => {
+                get_user_uuid!(create_company_branch, DbCreateCompanyBranch, i)
+            }
+            request_response::push_data::OperationsInput::ListCompanyAndBranch(i) => {
+                get_user_uuid!(list_company_and_branch, DbListCompanyAndBranch, i)
+            }
+            request_response::push_data::OperationsInput::CreateAccount(i) => {
+                get_user_uuid!(create_account, DbCreateAccount, i)
+            }
         }
     }
 }
 
+macro_rules! extract_resource {
+    ($path:ident, $db:ty, $i:expr) => {
+        <use_cases::$path::ViewAndCacheType as ViewAndCache<Ch, $db>>::extract_resource($i)
+    };
+}
+
 impl request_response::push_data::OperationsResult {
-    pub(crate) fn extract_resource(&self) -> Vec<resource_utils::ResourceInfo> {
+    pub(crate) fn extract_resource<
+        Ch: cache::Cache,
+        DbCreateAccount: for<'a> cases::create_account::DatabaseRead<Db<'a> = Ch>,
+        DbCreateCompany: for<'a> cases::create_company::DatabaseRead<Db<'a> = Ch>,
+        DbCreateCompanyBranch: for<'a> cases::create_company_branch::DatabaseRead<Db<'a> = Ch>,
+        DbListCompanyAndBranch: for<'a> cases::list_company_and_branch::DatabaseRead<Db<'a> = Ch>,
+        DbSignIn: for<'a> cases::sign_in::DatabaseRead<Db<'a> = Ch>,
+        DbSignUp: for<'a> cases::sign_up::DatabaseRead<Db<'a> = Ch>,
+    >(
+        &self,
+    ) -> Vec<resource_utils::ResourceInfo> {
         match self {
-            request_response::push_data::OperationsResult::SignUp(i) => i.extract_resource(),
-            request_response::push_data::OperationsResult::SignIn(i) => i.extract_resource(),
-            request_response::push_data::OperationsResult::CreateCompany(i) => i.extract_resource(),
+            request_response::push_data::OperationsResult::SignIn(i) => {
+                extract_resource!(sign_in, DbSignIn, i)
+            }
+            request_response::push_data::OperationsResult::SignUp(i) => {
+                extract_resource!(sign_up, DbSignUp, i)
+            }
+            request_response::push_data::OperationsResult::CreateCompany(i) => {
+                extract_resource!(create_company, DbCreateCompany, i)
+            }
             request_response::push_data::OperationsResult::CreateCompanyBranch(i) => {
-                i.extract_resource()
+                extract_resource!(create_company_branch, DbCreateCompanyBranch, i)
             }
             request_response::push_data::OperationsResult::ListCompanyAndBranch(i) => {
-                i.extract_resource()
+                extract_resource!(list_company_and_branch, DbListCompanyAndBranch, i)
             }
-            request_response::push_data::OperationsResult::CreateAccount(i) => i.extract_resource(),
+            request_response::push_data::OperationsResult::CreateAccount(i) => {
+                extract_resource!(create_account, DbCreateAccount, i)
+            }
         }
     }
 
@@ -120,31 +246,4 @@ impl request_response::push_data::OperationsResult {
             request_response::push_data::OperationsResult::CreateAccount(i) => i.is_ok(),
         }
     }
-}
-
-async fn operation_check_handler<T: CacheAndServerType1, Id: types::RowId, Ch: cache::Cache>(
-    input: &T,
-    state: &mut cache::State<Ch>,
-) -> request_response::push_data::OperationsResult {
-    return input
-        .state_full_operation::<Id, Ch>(state)
-        .await
-        .wrap_output();
-}
-
-async fn operation_check_apply_handler<
-    T: CacheAndServerType1,
-    Id: types::RowId,
-    Ch: cache::Cache,
->(
-    input: &T,
-    state: &mut cache::State<Ch>,
-) {
-    resource_utils::apply_change(
-        input
-            .state_full_operation::<Id, Ch>(state)
-            .await
-            .extract_resource(),
-        &mut state.state_of_pending_txn,
-    );
 }
