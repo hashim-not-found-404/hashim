@@ -47,59 +47,21 @@ pub trait DBTransaction {
     ) -> impl Future<Output = Result<Result<(), domain_errors::AtCommit>, traits::DynamicError>>;
     fn rollback_transaction(self) -> impl Future<Output = Result<(), traits::DynamicError>>;
 
-    fn read_sign_up(
-        &mut self,
-        new_uuid: &types::UuidType,
-        user_id: &String,
-    ) -> impl Future<
-        Output = Result<
-            (
-                bool, /* is new_uuid exist */
-                bool, /* is user_id exist */
-            ),
-            traits::DynamicError,
-        >,
-    >;
     fn write_sign_up(
         &mut self,
         data: &cases::sign_up::Ok,
     ) -> impl Future<Output = Result<(), traits::DynamicError>>;
 
-    fn read_create_company(
-        &mut self,
-        new_uuid: &types::UuidType,
-    ) -> impl Future<Output = Result<bool /* is new_uuid exist */, traits::DynamicError>>;
     fn write_create_company(
         &mut self,
         data: &cases::create_company::Ok,
     ) -> impl Future<Output = Result<(), traits::DynamicError>>;
 
-    fn read_create_company_branch(
-        &mut self,
-        new_uuid: &types::UuidType,
-        user_uuid: &types::UuidType,
-        company_belong: &types::UuidType,
-        branch_name: &String,
-    ) -> impl Future<
-        Output = Result<
-            (
-                Vec<types::Role>, /* user roles */
-                bool,             /* is new_uuid exist */
-                bool,             /* is company_belong exist */
-                bool,             /* is branch_name used */
-            ),
-            traits::DynamicError,
-        >,
-    >;
     fn write_create_company_branch(
         &mut self,
         data: &cases::create_company_branch::Ok,
     ) -> impl Future<Output = Result<(), traits::DynamicError>>;
 
-    fn read_create_account(
-        &mut self,
-        input: &cases::create_account::ReadInput,
-    ) -> impl Future<Output = Result<cases::create_account::ReadOutput, traits::DynamicError>>;
     fn write_create_account(
         &mut self,
         input: &cases::create_account::Ok,
@@ -122,23 +84,8 @@ pub trait DBClient {
 
     // here we just do read we dont do here any set or check
 
-    fn read_sign_in(
-        &mut self,
-        user_id: &String,
-    ) -> impl Future<
-        Output = Result<Option<(types::UuidType, String, Option<String>)>, traits::DynamicError>,
-    >;
     fn read_roles_for_user(
         &mut self,
         users_uuids: &HashSet<types::UuidType>,
     ) -> impl Future<Output = Result<AllRoles, traits::DynamicError>>;
-    fn read_list_company_and_branch(
-        &mut self,
-        user_uuid: &types::UuidType,
-    ) -> impl Future<
-        Output = Result<
-            Vec<cases::list_company_and_branch::AllCompaniesThatUserInWithRoles>,
-            traits::DynamicError,
-        >,
-    >;
 }
