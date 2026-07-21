@@ -1,4 +1,4 @@
-use crate::db_client;
+use crate::read_write_cases::utils::db_client;
 use deadpool_postgres::{Config, Pool, Runtime};
 use my_core::{
     server::server_methods::Database,

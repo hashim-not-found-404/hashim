@@ -1,0 +1,45 @@
+use crate::read_write_cases::utils::{db_client, utils::MyUuidConverter1};
+use my_core::{
+    accounting_domain::cases,
+    utility::{traits, utils::LogError},
+};
+use uuid::Uuid;
+
+pub struct S;
+
+impl cases::sign_in::DatabaseRead for S {
+    type Db<'a> = db_client::S;
+
+    async fn read(
+        db: &mut Self::Db<'_>,
+        read_input: &cases::sign_in::ReadInput,
+    ) -> Result<cases::sign_in::ReadOutput, traits::DynamicError> {
+        let query = "SELECT rowid,pass,name FROM accounting_app.user WHERE id = $1 LIMIT 1;";
+        let stmt = db.client.prepare_cached(query).await.log()?;
+        let row = db
+            .client
+            .query_opt(&stmt, &[&read_input.user_id])
+            .await
+            .log()?;
+
+        match row {
+            Some(row) => {
+                let row_id = row.try_get::<_, Uuid>(0).log()?;
+                let hashed_password = row.try_get::<_, String>(1).log()?;
+                let name = row.try_get::<_, Option<String>>(2).log()?;
+
+                let a = cases::sign_in::ReadOutput {
+                    user_rowid_and_password_hash_and_name: Some((
+                        row_id.to_uuid(),
+                        hashed_password,
+                        name,
+                    )),
+                };
+                Ok(a)
+            }
+            None => Ok(cases::sign_in::ReadOutput {
+                user_rowid_and_password_hash_and_name: None,
+            }),
+        }
+    }
+}
