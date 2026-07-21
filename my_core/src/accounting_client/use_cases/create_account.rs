@@ -178,7 +178,7 @@ where
 }
 
 impl ui_model::CreateAccount {
-    async fn update<
+    pub(crate) async fn update<
         Rn: traits::RandomNumber,
         Rt: traits::Runtime,
         Id: types::RowId,

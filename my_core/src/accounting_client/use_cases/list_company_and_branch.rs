@@ -327,7 +327,7 @@ where
 }
 
 impl ui_model::CompanyAndBranchSelection {
-    async fn update<
+    pub(crate) async fn update<
         Rn: traits::RandomNumber,
         Rt: traits::Runtime,
         Id: types::RowId,
