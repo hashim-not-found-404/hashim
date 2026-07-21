@@ -15,16 +15,18 @@ use crate::{
     },
 };
 
+pub trait DbBundle<Ch: cache::Cache>: 'static {
+    type CreateAccount: for<'a> cases::create_account::DatabaseRead<Db<'a> = Ch>;
+    type CreateCompany: for<'a> cases::create_company::DatabaseRead<Db<'a> = Ch>;
+    type CreateCompanyBranch: for<'a> cases::create_company_branch::DatabaseRead<Db<'a> = Ch>;
+    type ListCompanyAndBranch: for<'a> cases::list_company_and_branch::DatabaseRead<Db<'a> = Ch>
+        + 'static;
+    type SignIn: for<'a> cases::sign_in::DatabaseRead<Db<'a> = Ch>;
+    type SignUp: for<'a> cases::sign_up::DatabaseRead<Db<'a> = Ch>;
+}
+
 impl<Ch: cache::Cache> cache::State<Ch> {
-    pub(crate) async fn new<
-        Id: types::RowId,
-        DbCreateAccount: for<'a> cases::create_account::DatabaseRead<Db<'a> = Ch>,
-        DbCreateCompany: for<'a> cases::create_company::DatabaseRead<Db<'a> = Ch>,
-        DbCreateCompanyBranch: for<'a> cases::create_company_branch::DatabaseRead<Db<'a> = Ch>,
-        DbListCompanyAndBranch: for<'a> cases::list_company_and_branch::DatabaseRead<Db<'a> = Ch>,
-        DbSignIn: for<'a> cases::sign_in::DatabaseRead<Db<'a> = Ch>,
-        DbSignUp: for<'a> cases::sign_up::DatabaseRead<Db<'a> = Ch>,
-    >() -> Self {
+    pub(crate) async fn new<Id: types::RowId, Db: DbBundle<Ch>>() -> Self {
         let cache = Ch::new().await;
         let txns = cache.get_all_txn_input().await;
 
@@ -35,13 +37,7 @@ impl<Ch: cache::Cache> cache::State<Ch> {
 
         for op in txns {
             op.operation
-                .run_operation_check_apply::<Id, Ch,DbCreateAccount,
-        DbCreateCompany,
-        DbCreateCompanyBranch,
-        DbListCompanyAndBranch,
-        DbSignIn,
-        DbSignUp
-                >(&mut state)
+                .run_operation_check_apply::<Id, Ch, Db>(&mut state)
                 .await;
         }
 
@@ -78,31 +74,26 @@ impl request_response::push_data::OperationsInput {
     pub(crate) async fn run_operation_check<
         Id: types::RowId,
         Ch: cache::Cache,
-        DbCreateAccount: for<'a> cases::create_account::DatabaseRead<Db<'a> = Ch>,
-        DbCreateCompany: for<'a> cases::create_company::DatabaseRead<Db<'a> = Ch>,
-        DbCreateCompanyBranch: for<'a> cases::create_company_branch::DatabaseRead<Db<'a> = Ch>,
-        DbListCompanyAndBranch: for<'a> cases::list_company_and_branch::DatabaseRead<Db<'a> = Ch>,
-        DbSignIn: for<'a> cases::sign_in::DatabaseRead<Db<'a> = Ch>,
-        DbSignUp: for<'a> cases::sign_up::DatabaseRead<Db<'a> = Ch>,
+        Db: DbBundle<Ch>,
     >(
         &self,
         state: &mut cache::State<Ch>,
     ) -> request_response::push_data::OperationsResult {
         match self {
             request_response::push_data::OperationsInput::SignUp(i) => {
-                run_operation_check!(sign_up, SignUp, DbSignUp, i, state)
+                run_operation_check!(sign_up, SignUp, Db::SignUp, i, state)
             }
             request_response::push_data::OperationsInput::SignIn(i) => {
-                run_operation_check!(sign_in, SignIn, DbSignIn, i, state)
+                run_operation_check!(sign_in, SignIn, Db::SignIn, i, state)
             }
             request_response::push_data::OperationsInput::CreateCompany(i) => {
-                run_operation_check!(create_company, CreateCompany, DbCreateCompany, i, state)
+                run_operation_check!(create_company, CreateCompany, Db::CreateCompany, i, state)
             }
             request_response::push_data::OperationsInput::CreateCompanyBranch(i) => {
                 run_operation_check!(
                     create_company_branch,
                     CreateCompanyBranch,
-                    DbCreateCompanyBranch,
+                    Db::CreateCompanyBranch,
                     i,
                     state
                 )
@@ -111,13 +102,13 @@ impl request_response::push_data::OperationsInput {
                 run_operation_check!(
                     list_company_and_branch,
                     ListCompanyAndBranch,
-                    DbListCompanyAndBranch,
+                    Db::ListCompanyAndBranch,
                     i,
                     state
                 )
             }
             request_response::push_data::OperationsInput::CreateAccount(i) => {
-                run_operation_check!(create_account, CreateAccount, DbCreateAccount, i, state)
+                run_operation_check!(create_account, CreateAccount, Db::CreateAccount, i, state)
             }
         }
     }
@@ -125,72 +116,64 @@ impl request_response::push_data::OperationsInput {
     pub(crate) async fn run_operation_check_apply<
         Id: types::RowId,
         Ch: cache::Cache,
-        DbCreateAccount: for<'a> cases::create_account::DatabaseRead<Db<'a> = Ch>,
-        DbCreateCompany: for<'a> cases::create_company::DatabaseRead<Db<'a> = Ch>,
-        DbCreateCompanyBranch: for<'a> cases::create_company_branch::DatabaseRead<Db<'a> = Ch>,
-        DbListCompanyAndBranch: for<'a> cases::list_company_and_branch::DatabaseRead<Db<'a> = Ch>,
-        DbSignIn: for<'a> cases::sign_in::DatabaseRead<Db<'a> = Ch>,
-        DbSignUp: for<'a> cases::sign_up::DatabaseRead<Db<'a> = Ch>,
+        Db: DbBundle<Ch>,
     >(
         &self,
         state: &mut cache::State<Ch>,
     ) {
         match self {
             request_response::push_data::OperationsInput::SignUp(i) => {
-                run_operation_check_apply!(sign_up, DbSignUp, i, state);
+                run_operation_check_apply!(sign_up, Db::SignUp, i, state);
             }
             request_response::push_data::OperationsInput::SignIn(i) => {
-                run_operation_check_apply!(sign_in, DbSignIn, i, state);
+                run_operation_check_apply!(sign_in, Db::SignIn, i, state);
             }
             request_response::push_data::OperationsInput::CreateCompany(i) => {
-                run_operation_check_apply!(create_company, DbCreateCompany, i, state);
+                run_operation_check_apply!(create_company, Db::CreateCompany, i, state);
             }
             request_response::push_data::OperationsInput::CreateCompanyBranch(i) => {
-                run_operation_check_apply!(create_company_branch, DbCreateCompanyBranch, i, state);
+                run_operation_check_apply!(
+                    create_company_branch,
+                    Db::CreateCompanyBranch,
+                    i,
+                    state
+                );
             }
             request_response::push_data::OperationsInput::ListCompanyAndBranch(i) => {
                 run_operation_check_apply!(
                     list_company_and_branch,
-                    DbListCompanyAndBranch,
+                    Db::ListCompanyAndBranch,
                     i,
                     state
                 );
             }
             request_response::push_data::OperationsInput::CreateAccount(i) => {
-                run_operation_check_apply!(create_account, DbCreateAccount, i, state);
+                run_operation_check_apply!(create_account, Db::CreateAccount, i, state);
             }
         }
     }
 
-    pub(crate) fn get_user_uuid<
-        Ch: cache::Cache,
-        DbCreateAccount: for<'a> cases::create_account::DatabaseRead<Db<'a> = Ch>,
-        DbCreateCompany: for<'a> cases::create_company::DatabaseRead<Db<'a> = Ch>,
-        DbCreateCompanyBranch: for<'a> cases::create_company_branch::DatabaseRead<Db<'a> = Ch>,
-        DbListCompanyAndBranch: for<'a> cases::list_company_and_branch::DatabaseRead<Db<'a> = Ch>,
-        DbSignIn: for<'a> cases::sign_in::DatabaseRead<Db<'a> = Ch>,
-        DbSignUp: for<'a> cases::sign_up::DatabaseRead<Db<'a> = Ch>,
-    >(
+    pub(crate) fn get_user_uuid<Ch: cache::Cache, Db: DbBundle<Ch>>(
         &self,
     ) -> Option<&types::UuidType> {
         match self {
             request_response::push_data::OperationsInput::SignUp(i) => {
-                get_user_uuid!(sign_up, DbSignUp, i)
+                get_user_uuid!(sign_up, Db::SignUp, i)
             }
             request_response::push_data::OperationsInput::SignIn(i) => {
-                get_user_uuid!(sign_in, DbSignIn, i)
+                get_user_uuid!(sign_in, Db::SignIn, i)
             }
             request_response::push_data::OperationsInput::CreateCompany(i) => {
-                get_user_uuid!(create_company, DbCreateCompany, i)
+                get_user_uuid!(create_company, Db::CreateCompany, i)
             }
             request_response::push_data::OperationsInput::CreateCompanyBranch(i) => {
-                get_user_uuid!(create_company_branch, DbCreateCompanyBranch, i)
+                get_user_uuid!(create_company_branch, Db::CreateCompanyBranch, i)
             }
             request_response::push_data::OperationsInput::ListCompanyAndBranch(i) => {
-                get_user_uuid!(list_company_and_branch, DbListCompanyAndBranch, i)
+                get_user_uuid!(list_company_and_branch, Db::ListCompanyAndBranch, i)
             }
             request_response::push_data::OperationsInput::CreateAccount(i) => {
-                get_user_uuid!(create_account, DbCreateAccount, i)
+                get_user_uuid!(create_account, Db::CreateAccount, i)
             }
         }
     }
@@ -203,35 +186,27 @@ macro_rules! extract_resource {
 }
 
 impl request_response::push_data::OperationsResult {
-    pub(crate) fn extract_resource<
-        Ch: cache::Cache,
-        DbCreateAccount: for<'a> cases::create_account::DatabaseRead<Db<'a> = Ch>,
-        DbCreateCompany: for<'a> cases::create_company::DatabaseRead<Db<'a> = Ch>,
-        DbCreateCompanyBranch: for<'a> cases::create_company_branch::DatabaseRead<Db<'a> = Ch>,
-        DbListCompanyAndBranch: for<'a> cases::list_company_and_branch::DatabaseRead<Db<'a> = Ch>,
-        DbSignIn: for<'a> cases::sign_in::DatabaseRead<Db<'a> = Ch>,
-        DbSignUp: for<'a> cases::sign_up::DatabaseRead<Db<'a> = Ch>,
-    >(
+    pub(crate) fn extract_resource<Ch: cache::Cache, Db: DbBundle<Ch>>(
         &self,
     ) -> Vec<resource_utils::ResourceInfo> {
         match self {
             request_response::push_data::OperationsResult::SignIn(i) => {
-                extract_resource!(sign_in, DbSignIn, i)
+                extract_resource!(sign_in, Db::SignIn, i)
             }
             request_response::push_data::OperationsResult::SignUp(i) => {
-                extract_resource!(sign_up, DbSignUp, i)
+                extract_resource!(sign_up, Db::SignUp, i)
             }
             request_response::push_data::OperationsResult::CreateCompany(i) => {
-                extract_resource!(create_company, DbCreateCompany, i)
+                extract_resource!(create_company, Db::CreateCompany, i)
             }
             request_response::push_data::OperationsResult::CreateCompanyBranch(i) => {
-                extract_resource!(create_company_branch, DbCreateCompanyBranch, i)
+                extract_resource!(create_company_branch, Db::CreateCompanyBranch, i)
             }
             request_response::push_data::OperationsResult::ListCompanyAndBranch(i) => {
-                extract_resource!(list_company_and_branch, DbListCompanyAndBranch, i)
+                extract_resource!(list_company_and_branch, Db::ListCompanyAndBranch, i)
             }
             request_response::push_data::OperationsResult::CreateAccount(i) => {
-                extract_resource!(create_account, DbCreateAccount, i)
+                extract_resource!(create_account, Db::CreateAccount, i)
             }
         }
     }

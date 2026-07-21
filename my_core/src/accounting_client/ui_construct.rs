@@ -1,6 +1,6 @@
 use crate::{
     accounting_client::{
-        network_actor, ui_effect,
+        cache_op, network_actor, ui_effect,
         use_cases::client_domain::{cache, cache_actor, client_traits, process_manager, ui_model},
     },
     accounting_domain::{
@@ -30,12 +30,7 @@ pub fn new<
     Ch: cache::Cache + 'static,
     Ws: network_actor::WSClient,
     As: ui_model::AllSignalTypes,
-    DbCreateAccount: for<'a> cases::create_account::DatabaseRead<Db<'a> = Ch> + 'static,
-    DbCreateCompany: for<'a> cases::create_company::DatabaseRead<Db<'a> = Ch> + 'static,
-    DbCreateCompanyBranch: for<'a> cases::create_company_branch::DatabaseRead<Db<'a> = Ch> + 'static,
-    DbListCompanyAndBranch: for<'a> cases::list_company_and_branch::DatabaseRead<Db<'a> = Ch> + 'static + 'static,
-    DbSignIn: for<'a> cases::sign_in::DatabaseRead<Db<'a> = Ch> + 'static,
-    DbSignUp: for<'a> cases::sign_up::DatabaseRead<Db<'a> = Ch> + 'static,
+    Db: cache_op::DbBundle<Ch>,
 >(
     model: &'static ui_model::Model<As>,
 ) -> ui_effect::Commander<Mpsc> {
@@ -55,22 +50,7 @@ pub fn new<
         format!("ws://{}/ws", types::ADDRESS),
     );
 
-    let cache = client_traits::CacheActorStruct::new::<
-        Rt,
-        Ed,
-        Rn,
-        MyCache<
-            Mpsc,
-            Ch,
-            Id,
-            DbCreateAccount,
-            DbCreateCompany,
-            DbCreateCompanyBranch,
-            DbListCompanyAndBranch,
-            DbSignIn,
-            DbSignUp,
-        >,
-    >(
+    let cache = client_traits::CacheActorStruct::new::<Rt, Ed, Rn, MyCache<Mpsc, Ch, Id, Db>>(
         receiver_to_cache,
         sender_to_cache,
         sender_to_network,
@@ -80,20 +60,12 @@ pub fn new<
 
     let sender_to_process_manager = process_manager::process_manager_actor::<Mpsc, As, Rt>();
 
-    let commander = ui_effect::Commander::new::<
-        As,
-        Rt,
-        Rn,
-        Id,
-        Rg,
-        Ch,
-        DbCreateAccount,
-        DbCreateCompany,
-        DbCreateCompanyBranch,
-        DbListCompanyAndBranch,
-        DbSignIn,
-        DbSignUp,
-    >(receiver_to_error, sender_to_process_manager, model, cache);
+    let commander = ui_effect::Commander::new::<As, Rt, Rn, Id, Rg, Ch, Db>(
+        receiver_to_error,
+        sender_to_process_manager,
+        model,
+        cache,
+    );
 
     commander
 }
@@ -147,48 +119,17 @@ struct MyCache<
     Mpsc: traits::MultiProducerSingleConsumer,
     Ch: cache::Cache,
     Id: types::RowId,
-    DbCreateAccount: for<'a> cases::create_account::DatabaseRead<Db<'a> = Ch>,
-    DbCreateCompany: for<'a> cases::create_company::DatabaseRead<Db<'a> = Ch>,
-    DbCreateCompanyBranch: for<'a> cases::create_company_branch::DatabaseRead<Db<'a> = Ch>,
-    DbListCompanyAndBranch: for<'a> cases::list_company_and_branch::DatabaseRead<Db<'a> = Ch>,
-    DbSignIn: for<'a> cases::sign_in::DatabaseRead<Db<'a> = Ch>,
-    DbSignUp: for<'a> cases::sign_up::DatabaseRead<Db<'a> = Ch>,
+    Db: cache_op::DbBundle<Ch>,
 > {
-    _ph: PhantomData<(
-        Mpsc,
-        Ch,
-        Id,
-        DbCreateAccount,
-        DbCreateCompany,
-        DbCreateCompanyBranch,
-        DbListCompanyAndBranch,
-        DbSignIn,
-        DbSignUp,
-    )>,
+    _ph: PhantomData<(Mpsc, Ch, Id, Db)>,
 }
 
 impl<
     Mpsc: traits::MultiProducerSingleConsumer,
     Ch: cache::Cache,
     Id: types::RowId,
-    DbCreateAccount: for<'a> cases::create_account::DatabaseRead<Db<'a> = Ch>,
-    DbCreateCompany: for<'a> cases::create_company::DatabaseRead<Db<'a> = Ch>,
-    DbCreateCompanyBranch: for<'a> cases::create_company_branch::DatabaseRead<Db<'a> = Ch>,
-    DbListCompanyAndBranch: for<'a> cases::list_company_and_branch::DatabaseRead<Db<'a> = Ch>,
-    DbSignIn: for<'a> cases::sign_in::DatabaseRead<Db<'a> = Ch>,
-    DbSignUp: for<'a> cases::sign_up::DatabaseRead<Db<'a> = Ch>,
-> cache_actor::CacheActorUtils
-    for MyCache<
-        Mpsc,
-        Ch,
-        Id,
-        DbCreateAccount,
-        DbCreateCompany,
-        DbCreateCompanyBranch,
-        DbListCompanyAndBranch,
-        DbSignIn,
-        DbSignUp,
-    >
+    Db: cache_op::DbBundle<Ch>,
+> cache_actor::CacheActorUtils for MyCache<Mpsc, Ch, Id, Db>
 {
     type Mpsc = Mpsc;
     type Subscribe = resource_utils::Subscribe;
@@ -230,16 +171,7 @@ impl<
 
     type Cache = cache::State<Ch>;
     async fn new_cache() -> Self::Cache {
-        cache::State::<Ch>::new::<
-            Id,
-            DbCreateAccount,
-            DbCreateCompany,
-            DbCreateCompanyBranch,
-            DbListCompanyAndBranch,
-            DbSignIn,
-            DbSignUp,
-        >()
-        .await
+        cache::State::<Ch>::new::<Id, Db>().await
     }
 
     async fn get_all_pending_txn(cache: &Self::Cache) -> Vec<(u64, Self::OpInput)> {
@@ -263,13 +195,7 @@ impl<
     ) -> Self::SendingTxns {
         let mut jwts = Vec::new();
         for (_, txn) in &txns {
-            if let Some(user_uuid) = txn.get_user_uuid::<Ch,        DbCreateAccount,
-            DbCreateCompany,
-            DbCreateCompanyBranch,
-            DbListCompanyAndBranch,
-            DbSignIn,
-            DbSignUp,
->() {
+            if let Some(user_uuid) = txn.get_user_uuid::<Ch, Db>() {
                 if let Some(jwt) = cache.cache.get_jwt(user_uuid).await {
                     jwts.push(jwt)
                 }
@@ -315,15 +241,7 @@ impl<
     fn extract_resource(resp: &Self::Response) -> Vec<Self::Resource> {
         resp.operations
             .iter()
-            .flat_map(|a| {
-                a.operation.extract_resource::<Ch,        DbCreateAccount,
-            DbCreateCompany,
-            DbCreateCompanyBranch,
-            DbListCompanyAndBranch,
-            DbSignIn,
-            DbSignUp,
->()
-            })
+            .flat_map(|a| a.operation.extract_resource::<Ch, Db>())
             .collect()
     }
 
@@ -374,23 +292,11 @@ impl<
     }
 
     async fn check_input(cache: &mut Self::Cache, data: &Self::OpInput) -> Self::OpResult {
-        data.run_operation_check::<Id, Ch,        DbCreateAccount,
-        DbCreateCompany,
-        DbCreateCompanyBranch,
-        DbListCompanyAndBranch,
-        DbSignIn,
-        DbSignUp,
->(cache).await
+        data.run_operation_check::<Id, Ch, Db>(cache).await
     }
 
     fn extract_resource1(data: &Self::OpResult) -> Vec<Self::Resource> {
-        data.extract_resource::<Ch,        DbCreateAccount,
-        DbCreateCompany,
-        DbCreateCompanyBranch,
-        DbListCompanyAndBranch,
-        DbSignIn,
-        DbSignUp,
->()
+        data.extract_resource::<Ch, Db>()
     }
 
     fn apply_input(cache: &mut Self::Cache, resource: &Vec<Self::Resource>) {
