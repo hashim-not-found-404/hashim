@@ -27,7 +27,7 @@ pub fn new<
     Ch: cache::Cache + 'static,
     Ws: network_actor::WSClient,
     As: ui_model::AllSignalTypes,
-    Db: cache_op::DbBundle<Ch>,
+    Dbb: cache_op::DbBundle<Ch>,
 >(
     model: &'static ui_model::Model<As>,
 ) -> ui_effect::Commander<Mpsc> {
@@ -47,7 +47,7 @@ pub fn new<
         format!("ws://{}/ws", types::ADDRESS),
     );
 
-    let cache = client_traits::CacheActorStruct::new::<Rt, Ed, Rn, MyCache<Mpsc, Ch, Id, Db>>(
+    let cache = client_traits::CacheActorStruct::new::<Rt, Ed, Rn, MyCache<Mpsc, Ch, Id, Dbb>>(
         receiver_to_cache,
         sender_to_cache,
         sender_to_network,
@@ -57,7 +57,7 @@ pub fn new<
 
     let sender_to_process_manager = process_manager::process_manager_actor::<Mpsc, As, Rt>();
 
-    let commander = ui_effect::Commander::new::<As, Rt, Rn, Id, Rg, Ch, Db>(
+    let commander = ui_effect::Commander::new::<As, Rt, Rn, Id, Rg, Ch, Dbb>(
         receiver_to_error,
         sender_to_process_manager,
         model,
@@ -116,17 +116,17 @@ struct MyCache<
     Mpsc: traits::MultiProducerSingleConsumer,
     Ch: cache::Cache,
     Id: types::RowId,
-    Db: cache_op::DbBundle<Ch>,
+    Dbb: cache_op::DbBundle<Ch>,
 > {
-    _ph: PhantomData<(Mpsc, Ch, Id, Db)>,
+    _ph: PhantomData<(Mpsc, Ch, Id, Dbb)>,
 }
 
 impl<
     Mpsc: traits::MultiProducerSingleConsumer,
     Ch: cache::Cache,
     Id: types::RowId,
-    Db: cache_op::DbBundle<Ch>,
-> cache_actor::CacheActorUtils for MyCache<Mpsc, Ch, Id, Db>
+    Dbb: cache_op::DbBundle<Ch>,
+> cache_actor::CacheActorUtils for MyCache<Mpsc, Ch, Id, Dbb>
 {
     type Mpsc = Mpsc;
     type Subscribe = resource_utils::Subscribe;
@@ -168,7 +168,7 @@ impl<
 
     type Cache = cache::State<Ch>;
     async fn new_cache() -> Self::Cache {
-        cache::State::<Ch>::new::<Id, Db>().await
+        cache::State::<Ch>::new::<Id, Dbb>().await
     }
 
     async fn get_all_pending_txn(cache: &Self::Cache) -> Vec<(u64, Self::OpInput)> {
@@ -192,7 +192,7 @@ impl<
     ) -> Self::SendingTxns {
         let mut jwts = Vec::new();
         for (_, txn) in &txns {
-            if let Some(user_uuid) = txn.get_user_uuid::<Ch, Db>() {
+            if let Some(user_uuid) = txn.get_user_uuid::<Ch, Dbb>() {
                 if let Some(jwt) = cache.cache.get_jwt(user_uuid).await {
                     jwts.push(jwt)
                 }
@@ -238,7 +238,7 @@ impl<
     fn extract_resource(resp: &Self::Response) -> Vec<Self::Resource> {
         resp.operations
             .iter()
-            .flat_map(|a| a.operation.extract_resource::<Ch, Db>())
+            .flat_map(|a| a.operation.extract_resource::<Ch, Dbb>())
             .collect()
     }
 
@@ -289,11 +289,11 @@ impl<
     }
 
     async fn check_input(cache: &mut Self::Cache, data: &Self::OpInput) -> Self::OpResult {
-        data.run_operation_check::<Id, Ch, Db>(cache).await
+        data.run_operation_check::<Id, Ch, Dbb>(cache).await
     }
 
     fn extract_resource1(data: &Self::OpResult) -> Vec<Self::Resource> {
-        data.extract_resource::<Ch, Db>()
+        data.extract_resource::<Ch, Dbb>()
     }
 
     fn apply_input(cache: &mut Self::Cache, resource: &Vec<Self::Resource>) {

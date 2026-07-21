@@ -32,7 +32,7 @@ impl<Mpsc: traits::MultiProducerSingleConsumer> Commander<Mpsc> {
         Id: types::RowId,
         Rg: traits::Regex,
         Ch: cache::Cache + 'static,
-        Db: cache_op::DbBundle<Ch>,
+        Dbb: cache_op::DbBundle<Ch>,
     >(
         receiver_to_error: Mpsc::Receiver<types::HashimError>,
         sender_to_process_manager: Mpsc::Sender<process_manager::MessageToProcessManager<Mpsc, As>>,
@@ -43,7 +43,7 @@ impl<Mpsc: traits::MultiProducerSingleConsumer> Commander<Mpsc> {
 
         listen_to_error_actor::<Rt, Mpsc, As>(receiver_to_error, &model.external_errors);
 
-        Self::commander_actor::<As, Rt, Rn, Id, Rg, Ch, Db>(
+        Self::commander_actor::<As, Rt, Rn, Id, Rg, Ch, Dbb>(
             receiver_to_commander,
             sender_to_commander.clone(),
             sender_to_process_manager,
@@ -70,7 +70,7 @@ impl<Mpsc: traits::MultiProducerSingleConsumer> Commander<Mpsc> {
         Id: types::RowId,
         Rg: traits::Regex,
         Ch: cache::Cache + 'static,
-        Db: cache_op::DbBundle<Ch>,
+        Dbb: cache_op::DbBundle<Ch>,
     >(
         mut receiver: Mpsc::Receiver<ui_model::Message>,
         sender_to_commander: Mpsc::Sender<ui_model::Message>,
@@ -97,7 +97,7 @@ impl<Mpsc: traits::MultiProducerSingleConsumer> Commander<Mpsc> {
                             model.external_errors.reset();
                         }
                         ui_model::Message::SignIn(msg) => {
-                            msg.update::<Rn, Rt, Id, Mpsc, Rg, As, Ch, Db::SignIn>(
+                            msg.update::<Rn, Rt, Id, Mpsc, Rg, As, Ch, Dbb::SignIn>(
                                 model,
                                 cache,
                                 commander_local_state,
@@ -105,7 +105,7 @@ impl<Mpsc: traits::MultiProducerSingleConsumer> Commander<Mpsc> {
                             .await
                         }
                         ui_model::Message::SignUp(msg) => {
-                            msg.update::<Rn, Rt, Id, Mpsc, Rg, As, Ch, Db::SignUp>(
+                            msg.update::<Rn, Rt, Id, Mpsc, Rg, As, Ch, Dbb::SignUp>(
                                 model,
                                 cache,
                                 commander_local_state,
@@ -113,7 +113,7 @@ impl<Mpsc: traits::MultiProducerSingleConsumer> Commander<Mpsc> {
                             .await
                         }
                         ui_model::Message::CompanyAndBranchSelection(msg) => {
-                            msg.update::<Rn, Rt, Id, Mpsc, Rg, As, Ch, Db::ListCompanyAndBranch>(
+                            msg.update::<Rn, Rt, Id, Mpsc, Rg, As, Ch, Dbb::ListCompanyAndBranch>(
                                 model,
                                 cache,
                                 commander_local_state,
@@ -121,7 +121,7 @@ impl<Mpsc: traits::MultiProducerSingleConsumer> Commander<Mpsc> {
                             .await
                         }
                         ui_model::Message::CreateCompany(msg) => {
-                            msg.update::<Rn, Rt, Id, Mpsc, Rg, As, Ch, Db::CreateCompany>(
+                            msg.update::<Rn, Rt, Id, Mpsc, Rg, As, Ch, Dbb::CreateCompany>(
                                 model,
                                 cache,
                                 commander_local_state,
@@ -129,7 +129,7 @@ impl<Mpsc: traits::MultiProducerSingleConsumer> Commander<Mpsc> {
                             .await
                         }
                         ui_model::Message::CreateCompanyBranch(msg) => {
-                            msg.update::<Rn, Rt, Id, Mpsc, Rg, As, Ch, Db::CreateCompanyBranch>(
+                            msg.update::<Rn, Rt, Id, Mpsc, Rg, As, Ch, Dbb::CreateCompanyBranch>(
                                 model,
                                 cache,
                                 commander_local_state,
@@ -145,7 +145,7 @@ impl<Mpsc: traits::MultiProducerSingleConsumer> Commander<Mpsc> {
                             .await
                         }
                         ui_model::Message::CreateAccount(msg) => {
-                            msg.update::<Rn, Rt, Id, Mpsc, Rg, As, Ch, Db::CreateAccount>(
+                            msg.update::<Rn, Rt, Id, Mpsc, Rg, As, Ch, Dbb::CreateAccount>(
                                 model,
                                 cache,
                                 commander_local_state,
