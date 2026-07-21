@@ -8,7 +8,11 @@ use crate::{
 };
 
 impl cases::create_company::Input {
-    pub(crate) async fn handle_operation<Id: types::RowId, Cli: DBClient>(
+    pub(crate) async fn handle_operation<
+        Id: types::RowId,
+        Cli: DBClient,
+        Db: for<'a> cases::create_company::DatabaseRead<Db<'a> = Cli::Txn<'a>>,
+    >(
         &self,
         side_effects: &mut SideEffects,
         client: &mut Cli,
@@ -22,8 +26,7 @@ impl cases::create_company::Input {
         }
 
         let mut txn = client.begin_transaction().await?;
-        let is_new_uuid_exist = txn.read_create_company(&self.new_uuid).await?;
-        let errr = self.state_full_check(is_new_uuid_exist);
+        let errr = self.state_full_check::<Db>(&mut txn).await?;
         if errr.is_there_error() {
             let _ = txn.rollback_transaction().await?;
             return Ok(Err(errr));

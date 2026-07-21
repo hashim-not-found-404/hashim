@@ -8,7 +8,11 @@ use crate::{
 };
 
 impl cases::list_company_and_branch::Input {
-    pub(crate) async fn handle_operation<Id: types::RowId, Cli: DBClient>(
+    pub(crate) async fn handle_operation<
+        Id: types::RowId,
+        Cli: DBClient,
+        Db: for<'a> cases::list_company_and_branch::DatabaseRead<Db<'a> = Cli>,
+    >(
         &self,
         side_effects: &mut SideEffects,
         client: &mut Cli,
@@ -24,11 +28,8 @@ impl cases::list_company_and_branch::Input {
             return Ok(Err(errr));
         }
 
-        let result = client.read_list_company_and_branch(&self.user_uuid).await?;
+        let result = self.state_full_operation::<Db>(client).await?;
 
-        return Ok(Ok(cases::list_company_and_branch::Ok {
-            user_uuid: self.user_uuid.clone(),
-            data: result,
-        }));
+        return Ok(result);
     }
 }

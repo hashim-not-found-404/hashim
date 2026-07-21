@@ -71,6 +71,11 @@ impl<
         Rg: traits::Regex,
         Auth: types::HashedPassword,
         DbCreateAccount: for<'a> cases::create_account::DatabaseRead<Db<'a> = Cli::Txn<'a>>,
+        DbCreateCompany: for<'a> cases::create_company::DatabaseRead<Db<'a> = Cli::Txn<'a>>,
+        DbCreateCompanyBranch: for<'a> cases::create_company_branch::DatabaseRead<Db<'a> = Cli::Txn<'a>>,
+        DbListCompanyAndBranch: for<'a> cases::list_company_and_branch::DatabaseRead<Db<'a> = Cli>,
+        DbSignIn: for<'a> cases::sign_in::DatabaseRead<Db<'a> = Cli>,
+        DbSignUp: for<'a> cases::sign_up::DatabaseRead<Db<'a> = Cli::Txn<'a>>,
     >(
         self: Arc<Self>,
         mut session: Ws,
@@ -133,14 +138,23 @@ impl<
 
                                 dbg!(&input);
                                 let mut side_effects = server_traits::SideEffects::default();
-                                let output =
-                                    push_data::<Rn, Id, Rg, Auth, Jwt, Cli, DbCreateAccount>(
-                                        &input,
-                                        &mut side_effects,
-                                        &mut client,
-                                        &self.jwt,
-                                    )
-                                    .await;
+                                let output = push_data::<
+                                    Rn,
+                                    Id,
+                                    Rg,
+                                    Auth,
+                                    Jwt,
+                                    Cli,
+                                    DbCreateAccount,
+                                    DbCreateCompany,
+                                    DbCreateCompanyBranch,
+                                    DbListCompanyAndBranch,
+                                    DbSignIn,
+                                    DbSignUp,
+                                >(
+                                    &input, &mut side_effects, &mut client, &self.jwt
+                                )
+                                .await;
 
                                 dbg!(&output);
                                 match output {
@@ -366,6 +380,11 @@ async fn push_data<
     Jwt: types::JWT,
     Cli: DBClient,
     DbCreateAccount: for<'a> cases::create_account::DatabaseRead<Db<'a> = Cli::Txn<'a>>,
+    DbCreateCompany: for<'a> cases::create_company::DatabaseRead<Db<'a> = Cli::Txn<'a>>,
+    DbCreateCompanyBranch: for<'a> cases::create_company_branch::DatabaseRead<Db<'a> = Cli::Txn<'a>>,
+    DbListCompanyAndBranch: for<'a> cases::list_company_and_branch::DatabaseRead<Db<'a> = Cli>,
+    DbSignIn: for<'a> cases::sign_in::DatabaseRead<Db<'a> = Cli>,
+    DbSignUp: for<'a> cases::sign_up::DatabaseRead<Db<'a> = Cli::Txn<'a>>,
 >(
     input: &request_response::push_data::Input,
     side_effects: &mut server_traits::SideEffects,
@@ -413,35 +432,39 @@ async fn push_data<
             request_response::push_data::OperationsInput::SignUp(input) => {
                 request_response::push_data::OperationsResult::SignUp(
                     input
-                        .handle_operation::<Id, Auth, Jwt, Cli>(side_effects, client, &jwt)
+                        .handle_operation::<Id, Auth, Jwt, Cli, DbSignUp>(
+                            side_effects,
+                            client,
+                            &jwt,
+                        )
                         .await?,
                 )
             }
             request_response::push_data::OperationsInput::SignIn(input) => {
                 request_response::push_data::OperationsResult::SignIn(
                     input
-                        .handle_operation::<Auth, Jwt, Cli>(side_effects, client, &jwt)
+                        .handle_operation::<Auth, Jwt, Cli, DbSignIn>(side_effects, client, &jwt)
                         .await?,
                 )
             }
             request_response::push_data::OperationsInput::CreateCompany(input) => {
                 request_response::push_data::OperationsResult::CreateCompany(
                     input
-                        .handle_operation::<Id, Cli>(side_effects, client)
+                        .handle_operation::<Id, Cli, DbCreateCompany>(side_effects, client)
                         .await?,
                 )
             }
             request_response::push_data::OperationsInput::CreateCompanyBranch(input) => {
                 request_response::push_data::OperationsResult::CreateCompanyBranch(
                     input
-                        .handle_operation::<Id, Cli>(side_effects, client)
+                        .handle_operation::<Id, Cli, DbCreateCompanyBranch>(side_effects, client)
                         .await?,
                 )
             }
             request_response::push_data::OperationsInput::ListCompanyAndBranch(input) => {
                 request_response::push_data::OperationsResult::ListCompanyAndBranch(
                     input
-                        .handle_operation::<Id, Cli>(side_effects, client)
+                        .handle_operation::<Id, Cli, DbListCompanyAndBranch>(side_effects, client)
                         .await?,
                 )
             }
