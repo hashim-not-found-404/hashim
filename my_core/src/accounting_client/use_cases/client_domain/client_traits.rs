@@ -1,12 +1,10 @@
 use crate::{
-    accounting_client::use_cases::client_domain::{cache, cache_actor, commander, ui_model},
+    accounting_client::use_cases::client_domain::{cache, cache_actor},
     accounting_domain::{
         cases::utility::{resource_utils, types},
         request_response,
     },
-    utility::traits,
 };
-use std::sync::Arc;
 
 pub(crate) trait ViewAndCache<Ch: cache::Cache, T> {
     type Type1;
@@ -28,8 +26,6 @@ pub(crate) trait ViewAndCache<Ch: cache::Cache, T> {
     ) -> Self::Type3;
 
     fn extract_resource(data: &Self::Type3) -> Vec<resource_utils::ResourceInfo>;
-
-    fn wrap_output(data: Self::Type3) -> request_response::push_data::OperationsResult;
 
     fn unwrap_output(output: request_response::push_data::OperationsResult) -> Self::Type4;
 }

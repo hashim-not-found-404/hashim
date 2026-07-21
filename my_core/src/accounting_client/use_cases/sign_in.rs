@@ -17,7 +17,7 @@ use crate::{
         utils::ReadAndSet,
     },
 };
-use std::{marker::PhantomData, sync::Arc};
+use std::sync::Arc;
 
 pub(crate) type Type1 = cases::sign_in::Input;
 type Type2 = cases::sign_in::Input;
@@ -76,7 +76,7 @@ where
         request_response::push_data::OperationsInput::SignIn(data)
     }
 
-    fn user_uuid(data: &Self::Type2) -> Option<&types::UuidType> {
+    fn user_uuid(_: &Self::Type2) -> Option<&types::UuidType> {
         None
     }
 
@@ -136,10 +136,6 @@ where
             Ok(ok) => ok.into(),
             Err(_) => Vec::new(),
         }
-    }
-
-    fn wrap_output(data: Self::Type3) -> request_response::push_data::OperationsResult {
-        request_response::push_data::OperationsResult::SignIn(data)
     }
 
     fn unwrap_output(output: request_response::push_data::OperationsResult) -> Self::Type4 {

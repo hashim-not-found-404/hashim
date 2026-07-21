@@ -277,10 +277,6 @@ where
         }
     }
 
-    fn wrap_output(data: Self::Type3) -> request_response::push_data::OperationsResult {
-        request_response::push_data::OperationsResult::ListCompanyAndBranch(data)
-    }
-
     fn unwrap_output(output: request_response::push_data::OperationsResult) -> Self::Type4 {
         if let request_response::push_data::OperationsResult::ListCompanyAndBranch(res) = output {
             match res {

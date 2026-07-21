@@ -4,10 +4,7 @@ use crate::{
         use_cases::client_domain::{cache, cache_actor, client_traits, process_manager, ui_model},
     },
     accounting_domain::{
-        cases::{
-            self,
-            utility::{resource_utils, types},
-        },
+        cases::utility::{resource_utils, types},
         request_response,
     },
     utility::{

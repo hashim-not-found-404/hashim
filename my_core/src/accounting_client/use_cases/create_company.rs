@@ -84,7 +84,7 @@ where
 
     async fn state_full_operation<Id: types::RowId>(
         data: &Self::Type2,
-        state: &mut cache::State<Ch>,
+        _: &mut cache::State<Ch>,
     ) -> Self::Type3 {
         let result = data.state_less_operation();
         return Ok(result);
@@ -95,10 +95,6 @@ where
             Ok(ok) => ok.into(),
             Err(_) => Vec::new(),
         }
-    }
-
-    fn wrap_output(data: Self::Type3) -> request_response::push_data::OperationsResult {
-        request_response::push_data::OperationsResult::CreateCompany(data)
     }
 
     fn unwrap_output(output: request_response::push_data::OperationsResult) -> Self::Type4 {
