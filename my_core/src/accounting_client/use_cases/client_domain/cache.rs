@@ -32,17 +32,6 @@ pub trait Cache: Sized {
         &self,
         user_uuid: &types::UuidType,
     ) -> impl Future<Output = Option<types::JsonWebTokenType>>;
-
-    fn read_sign_in(
-        &self,
-        user_id: &String,
-    ) -> impl Future<
-        Output = Option<(
-            types::UuidType, /* user uuid */
-            Option<String>,  /* user name */
-            bool,            /* does he have jwt */
-        )>,
-    >;
 }
 
 pub(crate) struct State<Ch: Cache> {

@@ -267,32 +267,6 @@ impl Cache for S {
             Err(_) => None,
         }
     }
-
-    async fn read_sign_in(
-        &self,
-        user_id: &String,
-    ) -> Option<(
-        types::UuidType, /* user uuid */
-        Option<String>,  /* user name */
-        bool,            /* does he have jwt */
-    )> {
-        let query = "SELECT rowid, name, jwt FROM user WHERE id = ?1;";
-
-        self.db
-            .query_row(query, params![user_id], |row| {
-                let user_uuid_str: String = row.get(0).unwrap();
-                let user_name: Option<String> = row.get(1).unwrap();
-                let jwt: Option<String> = row.get(2).unwrap();
-
-                Ok((
-                    user_uuid_str.to_uuid(),
-                    user_name,
-                    jwt.is_some(), // true if JWT exists
-                ))
-            })
-            .optional()
-            .unwrap()
-    }
 }
 
 fn make_sql_statment_for_string(

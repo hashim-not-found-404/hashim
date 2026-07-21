@@ -17,7 +17,7 @@ use crate::{
         utils::ReadAndSet,
     },
 };
-use std::sync::Arc;
+use std::{marker::PhantomData, sync::Arc};
 
 pub(crate) type Type1 = cases::sign_in::Input;
 type Type2 = cases::sign_in::Input;
@@ -84,10 +84,18 @@ where
         data: &Self::Type2,
         state: &mut cache::State<Ch>,
     ) -> Self::Type3 {
-        let user_uuid_and_is_jwt_exist = state.cache.read_sign_in(&data.user_id).await;
+        let mut read_output = LongCache::read(
+            &mut state.cache,
+            &cases::sign_in::ReadInput {
+                user_id: data.user_id.clone(),
+            },
+        )
+        .await
+        .unwrap();
 
-        if let Some((user_uuid, user_name, is_jwt_exist)) = user_uuid_and_is_jwt_exist {
-            if is_jwt_exist {
+        if let Some((user_uuid, jwt, user_name)) = read_output.user_rowid_and_password_hash_and_name
+        {
+            if !jwt.is_empty() {
                 return Ok(cases::sign_in::Ok {
                     user_uuid,
                     jwt: types::JsonWebTokenType(String::new()),
