@@ -60,30 +60,6 @@ impl Into<Vec<resource_utils::ResourceInfo>> for &cases::sign_in::Ok {
     }
 }
 
-struct Cache<Ch, LongCache>
-where
-    Ch: cache::Cache,
-    LongCache: for<'a> cases::sign_in::DatabaseRead<Db<'a> = Ch>,
-{
-    _ph: PhantomData<(Ch, LongCache)>,
-}
-
-impl<Ch, LongCache> cases::sign_in::DatabaseRead for Cache<Ch, LongCache>
-where
-    Ch: cache::Cache,
-    LongCache: for<'a> cases::sign_in::DatabaseRead<Db<'a> = Ch>,
-{
-    type Db<'a> = cache::State<Ch>;
-
-    async fn read(
-        db: &mut Self::Db<'_>,
-        read_input: &cases::sign_in::ReadInput,
-    ) -> Result<cases::sign_in::ReadOutput, traits::DynamicError> {
-        let mut read_output = LongCache::read(&mut db.cache, read_input).await.unwrap();
-        Ok(read_output)
-    }
-}
-
 struct ViewAndCacheType;
 
 impl<Ch, LongCache> ViewAndCache<Ch, LongCache> for ViewAndCacheType

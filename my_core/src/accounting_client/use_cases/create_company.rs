@@ -14,7 +14,7 @@ use crate::{
     },
     utility::{traits, utils::ReadAndSet},
 };
-use std::{marker::PhantomData, str::FromStr, sync::Arc};
+use std::{str::FromStr, sync::Arc};
 
 pub(crate) type Type1 = cases::create_company::Input;
 type Type2 = cases::create_company::Input;
@@ -59,30 +59,6 @@ impl Into<Vec<resource_utils::ResourceInfo>> for &cases::create_company::Ok {
                 ),
             },
         ]
-    }
-}
-
-struct Cache<Ch, LongCache>
-where
-    Ch: cache::Cache,
-    LongCache: for<'a> cases::create_company::DatabaseRead<Db<'a> = Ch>,
-{
-    _ph: PhantomData<(Ch, LongCache)>,
-}
-
-impl<Ch, LongCache> cases::create_company::DatabaseRead for Cache<Ch, LongCache>
-where
-    Ch: cache::Cache,
-    LongCache: for<'a> cases::create_company::DatabaseRead<Db<'a> = Ch>,
-{
-    type Db<'a> = cache::State<Ch>;
-
-    async fn read(
-        db: &mut Self::Db<'_>,
-        read_input: &cases::create_company::ReadInput,
-    ) -> Result<cases::create_company::ReadOutput, traits::DynamicError> {
-        let mut read_output = LongCache::read(&mut db.cache, read_input).await.unwrap();
-        Ok(read_output)
     }
 }
 

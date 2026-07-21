@@ -73,6 +73,16 @@ where
         read_input: &cases::sign_up::ReadInput,
     ) -> Result<cases::sign_up::ReadOutput, traits::DynamicError> {
         let mut read_output = LongCache::read(&mut db.cache, read_input).await.unwrap();
+
+        for (uuid, user) in &db.state_of_pending_txn.user {
+            if user.id == read_input.user_id {
+                read_output.is_user_id_exist = true;
+            }
+            if *uuid == read_input.new_uuid {
+                read_output.is_new_uuid_exist = true;
+            }
+        }
+
         Ok(read_output)
     }
 }

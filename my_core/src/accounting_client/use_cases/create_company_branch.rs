@@ -102,6 +102,34 @@ where
         read_input: &cases::create_company_branch::ReadInput,
     ) -> Result<cases::create_company_branch::ReadOutput, traits::DynamicError> {
         let mut read_output = LongCache::read(&mut db.cache, read_input).await.unwrap();
+
+        // 2. Check pending transactions (uncommitted changes)
+        // Check pending company access control for roles
+        for (_, acf) in &db.state_of_pending_txn.access_control_for_company {
+            if acf.data_group == read_input.company_belong && acf.user_ == read_input.user_uuid {
+                read_output.user_roles.push(acf.role.clone());
+            }
+        }
+
+        // Check pending company existence
+        if db
+            .state_of_pending_txn
+            .company
+            .contains_key(&read_input.company_belong)
+        {
+            read_output.is_company_exist = true;
+        }
+
+        // Check pending branch name usage
+        for (_, branch) in &db.state_of_pending_txn.company_branch {
+            if branch.company_belong == read_input.company_belong
+                && branch.name == *read_input.branch_name
+            {
+                read_output.is_branch_name_used = true;
+                break;
+            }
+        }
+
         Ok(read_output)
     }
 }
