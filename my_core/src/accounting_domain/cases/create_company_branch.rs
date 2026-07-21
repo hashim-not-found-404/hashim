@@ -94,7 +94,21 @@ impl Input {
         errr
     }
 
-    pub(crate) fn state_full_check<Id: types::RowId>(&self, read_output: &ReadOutput) -> Error {
+    pub(crate) async fn state_full_check<Id: types::RowId, Db: DatabaseRead>(
+        &self,
+        db: &mut Db::Db<'_>,
+    ) -> Result<Error, traits::DynamicError> {
+        let read_output = Db::read(
+            db,
+            &ReadInput {
+                user_uuid: self.user_uuid.clone(),
+                new_uuid: self.new_uuid.clone(),
+                company_belong: self.company_belong.clone(),
+                branch_name: self.branch_name.clone(),
+            },
+        )
+        .await?;
+
         let mut errr = Error::default();
 
         if !types::Role::has_any(
@@ -120,7 +134,7 @@ impl Input {
             errr.location = Some(LocationError::Invalid);
         }
 
-        errr
+        Ok(errr)
     }
 
     pub(crate) fn state_less_operation(&self) -> Ok {

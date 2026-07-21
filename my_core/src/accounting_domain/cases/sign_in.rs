@@ -54,11 +54,23 @@ pub(crate) enum PasswordError {
 }
 
 impl Input {
-    pub(crate) fn state_full_check<Auth: types::HashedPassword, Jwt: types::JWT>(
+    pub(crate) async fn state_full_check<
+        Auth: types::HashedPassword,
+        Jwt: types::JWT,
+        Db: DatabaseRead,
+    >(
         &self,
         jwt: &Jwt,
-        read_output: &ReadOutput,
-    ) -> MyResult {
+        db: &mut Db::Db<'_>,
+    ) -> Result<MyResult, traits::DynamicError> {
+        let read_output = Db::read(
+            db,
+            &ReadInput {
+                user_id: self.user_id.clone(),
+            },
+        )
+        .await?;
+
         let mut errr = Error::default();
 
         let (user_rowid, password_hash, user_name) = match &read_output
@@ -67,22 +79,22 @@ impl Input {
             Some((user_rowid, password_hash, user_name)) => (user_rowid, password_hash, user_name),
             None => {
                 errr.user_id = Some(UserIdError::NotExist);
-                return Err(errr);
+                return Ok(Err(errr));
             }
         };
 
         match Auth::sign_in(&self.password, &password_hash) {
             true => {
-                return Ok(Ok {
+                return Ok(Ok(Ok {
                     user_uuid: user_rowid.clone(),
                     jwt: jwt.sign(&user_rowid),
                     user_id: self.user_id.clone(),
                     user_name: user_name.clone(),
-                });
+                }));
             }
             false => {
                 errr.password = Some(PasswordError::WrongPassword);
-                return Err(errr);
+                return Ok(Err(errr));
             }
         };
     }

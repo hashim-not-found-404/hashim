@@ -65,7 +65,19 @@ impl Input {
         errr
     }
 
-    pub(crate) fn state_full_check<Id: types::RowId>(&self, read_output: &ReadOutput) -> Error {
+    pub(crate) async fn state_full_check<Id: types::RowId, Db: DatabaseRead>(
+        &self,
+        db: &mut Db::Db<'_>,
+    ) -> Result<Error, traits::DynamicError> {
+        let read_output = Db::read(
+            db,
+            &ReadInput {
+                new_uuid: self.new_uuid.clone(),
+                user_id: self.user_id.clone(),
+            },
+        )
+        .await?;
+
         let mut errr = Error::default();
 
         if read_output.is_new_uuid_exist {
@@ -76,7 +88,7 @@ impl Input {
             errr.user_id = Some(UserIdError::Duplicated);
         }
 
-        errr
+        Ok(errr)
     }
 
     pub(crate) fn state_full_operation<Auth: types::HashedPassword, Jwt: types::JWT>(

@@ -58,12 +58,24 @@ impl Input {
         errr
     }
 
-    pub(crate) fn state_full_check(&self, read_output: &ReadOutput) -> Error {
+    pub(crate) async fn state_full_check<Db: DatabaseRead>(
+        &self,
+        db: &mut Db::Db<'_>,
+    ) -> Result<Error, traits::DynamicError> {
+        let read_output = Db::read(
+            db,
+            &ReadInput {
+                new_uuid: self.new_uuid.clone(),
+            },
+        )
+        .await?;
+
         let mut errr = Error::default();
         if read_output.is_new_uuid_used {
             errr.new_uuid = Some(types::RowIdError::Duplicated);
         }
-        errr
+
+        Ok(errr)
     }
 
     pub(crate) fn state_less_operation(&self) -> Ok {
