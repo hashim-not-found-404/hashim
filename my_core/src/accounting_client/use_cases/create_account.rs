@@ -1,6 +1,6 @@
 use crate::{
     accounting_client::use_cases::client_domain::{
-        self, cache, cache_actor,
+        cache, cache_actor,
         client_traits::{self, ViewAndCache},
         commander, process_manager,
         ui_model::{self, HashimSignal},

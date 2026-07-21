@@ -1,9 +1,7 @@
 use crate::{
     accounting_client::use_cases::client_domain::{
         cache, cache_actor,
-        client_traits::{
-            self, CacheAndServerType1, CacheAndServerType2, Mvu, ViewType1, ViewType2,
-        },
+        client_traits::{self, ViewAndCache},
         commander,
         ui_model::{self, HashimSignal},
     },
@@ -16,7 +14,7 @@ use crate::{
     },
     utility::{traits, utils::ReadAndSet},
 };
-use std::{str::FromStr, sync::Arc};
+use std::{marker::PhantomData, str::FromStr, sync::Arc};
 
 pub(crate) type Type1 = cases::create_company::Input;
 type Type2 = cases::create_company::Input;
@@ -64,51 +62,78 @@ impl Into<Vec<resource_utils::ResourceInfo>> for &cases::create_company::Ok {
     }
 }
 
-impl ViewType1 for Type1 {
-    fn wrap_input(self) -> request_response::push_data::OperationsInput {
-        request_response::push_data::OperationsInput::CreateCompany(self)
+struct Cache<Ch, LongCache>
+where
+    Ch: cache::Cache,
+    LongCache: for<'a> cases::create_company::DatabaseRead<Db<'a> = Ch>,
+{
+    _ph: PhantomData<(Ch, LongCache)>,
+}
+
+impl<Ch, LongCache> cases::create_company::DatabaseRead for Cache<Ch, LongCache>
+where
+    Ch: cache::Cache,
+    LongCache: for<'a> cases::create_company::DatabaseRead<Db<'a> = Ch>,
+{
+    type Db<'a> = cache::State<Ch>;
+
+    async fn read(
+        db: &mut Self::Db<'_>,
+        read_input: &cases::create_company::ReadInput,
+    ) -> Result<cases::create_company::ReadOutput, traits::DynamicError> {
+        let mut read_output = LongCache::read(&mut db.cache, read_input).await.unwrap();
+        Ok(read_output)
     }
 }
 
-impl CacheAndServerType1 for Type2 {
-    fn user_uuid(&self) -> Option<&types::UuidType> {
-        Some(&self.user_uuid)
+struct ViewAndCacheType;
+
+impl<Ch, LongCache> ViewAndCache<Ch, LongCache> for ViewAndCacheType
+where
+    Ch: cache::Cache,
+    LongCache: for<'a> cases::create_company::DatabaseRead<Db<'a> = Ch>,
+{
+    type Type1 = Type1;
+    type Type2 = Type2;
+    type Type3 = Type3;
+    type Type4 = Type4;
+
+    fn wrap_input(data: Self::Type1) -> request_response::push_data::OperationsInput {
+        request_response::push_data::OperationsInput::CreateCompany(data)
     }
 
-    type Output = Type3;
+    fn user_uuid(data: &Self::Type2) -> Option<&types::UuidType> {
+        Some(&data.user_uuid)
+    }
 
-    async fn state_full_operation<Id: types::RowId, Ch: cache::Cache>(
-        &self,
-        _: &mut cache::State<Ch>,
-    ) -> Self::Output {
-        let result = self.state_less_operation();
+    async fn state_full_operation<Id: types::RowId>(
+        data: &Self::Type2,
+        state: &mut cache::State<Ch>,
+    ) -> Self::Type3 {
+        let result = data.state_less_operation();
         return Ok(result);
     }
-}
 
-impl CacheAndServerType2 for Type3 {
-    fn extract_resource(&self) -> Vec<resource_utils::ResourceInfo> {
-        match self {
+    fn extract_resource(data: &Self::Type3) -> Vec<resource_utils::ResourceInfo> {
+        match data {
             Ok(ok) => ok.into(),
             Err(_) => Vec::new(),
         }
     }
 
-    fn wrap_output(self) -> request_response::push_data::OperationsResult {
-        request_response::push_data::OperationsResult::CreateCompany(self)
+    fn wrap_output(data: Self::Type3) -> request_response::push_data::OperationsResult {
+        request_response::push_data::OperationsResult::CreateCompany(data)
     }
-}
 
-impl ViewType2 for Type4 {
-    fn unwrap_output(result: request_response::push_data::OperationsResult) -> Self {
-        if let request_response::push_data::OperationsResult::CreateCompany(result) = result {
+    fn unwrap_output(output: request_response::push_data::OperationsResult) -> Self::Type4 {
+        if let request_response::push_data::OperationsResult::CreateCompany(result) = output {
             return result;
         }
-        unreachable!("{:?}", result)
+        unreachable!("{:?}", output)
     }
 }
 
-impl Mvu for ui_model::CreateCompany {
+impl ui_model::CreateCompany {
     async fn update<
         Rn: traits::RandomNumber,
         Rt: traits::Runtime,
@@ -116,6 +141,8 @@ impl Mvu for ui_model::CreateCompany {
         Mpsc: traits::MultiProducerSingleConsumer,
         Rg: traits::Regex,
         As: ui_model::AllSignalTypes,
+        Ch: cache::Cache,
+        LongCache: for<'a> cases::create_company::DatabaseRead<Db<'a> = Ch>,
     >(
         self,
         model: &'static ui_model::Model<As>,
@@ -130,7 +157,12 @@ impl Mvu for ui_model::CreateCompany {
 
         match self {
             Self::Submit => {
-                handle_submit::<Rn, Rt, Id, Mpsc, Rg, As>(model, cache, commander_local_state).await
+                handle_submit::<Rn, Rt, Id, Mpsc, Rg, As, Ch, LongCache>(
+                    model,
+                    cache,
+                    commander_local_state,
+                )
+                .await
             }
             Self::Close => handle_close::<Rn, Rt, Id, Mpsc, Rg, As>(model),
             Self::Name(i) => page_create_company.company_name.set(i),
@@ -174,6 +206,8 @@ async fn handle_submit<
     Mpsc: traits::MultiProducerSingleConsumer,
     Rg: traits::Regex,
     As: ui_model::AllSignalTypes,
+    Ch: cache::Cache,
+    LongCache: for<'a> cases::create_company::DatabaseRead<Db<'a> = Ch>,
 >(
     model: &'static ui_model::Model<As>,
     mut cache: client_traits::CacheActorStruct<Mpsc>,
@@ -197,7 +231,7 @@ async fn handle_submit<
     cache
         .send_to_cache_actor(
             cache_actor::CachingStrategy::WriteCacheAndServer,
-            input.clone().wrap_input(),
+            <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::wrap_input(input.clone()),
         )
         .await;
 

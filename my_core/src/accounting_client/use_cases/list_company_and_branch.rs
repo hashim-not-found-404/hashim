@@ -1,9 +1,7 @@
 use crate::{
     accounting_client::use_cases::client_domain::{
         cache, cache_actor,
-        client_traits::{
-            self, CacheAndServerType1, CacheAndServerType2, Mvu, ViewType1, ViewType2,
-        },
+        client_traits::{self, ViewAndCache},
         commander,
         ui_model::{self, HashimSignal},
     },
@@ -19,7 +17,7 @@ use crate::{
         utils::ReadAndSet,
     },
 };
-use std::{cmp::Ordering, sync::Arc};
+use std::{cmp::Ordering, marker::PhantomData, sync::Arc};
 
 pub(crate) type Type1 = cases::list_company_and_branch::Input;
 type Type2 = cases::list_company_and_branch::Input;
@@ -137,7 +135,42 @@ impl Into<Vec<resource_utils::ResourceInfo>> for &cases::list_company_and_branch
     }
 }
 
-impl ViewType1 for Type1 {
+struct Cache<Ch, LongCache>
+where
+    Ch: cache::Cache,
+    LongCache: for<'a> cases::list_company_and_branch::DatabaseRead<Db<'a> = Ch>,
+{
+    _ph: PhantomData<(Ch, LongCache)>,
+}
+
+impl<Ch, LongCache> cases::list_company_and_branch::DatabaseRead for Cache<Ch, LongCache>
+where
+    Ch: cache::Cache,
+    LongCache: for<'a> cases::list_company_and_branch::DatabaseRead<Db<'a> = Ch>,
+{
+    type Db<'a> = cache::State<Ch>;
+
+    async fn read(
+        db: &mut Self::Db<'_>,
+        read_input: &cases::list_company_and_branch::ReadInput,
+    ) -> Result<cases::list_company_and_branch::ReadOutput, traits::DynamicError> {
+        let mut read_output = LongCache::read(&mut db.cache, read_input).await.unwrap();
+        Ok(read_output)
+    }
+}
+
+struct ViewAndCacheType;
+
+impl<Ch, LongCache> ViewAndCache<Ch, LongCache> for ViewAndCacheType
+where
+    Ch: cache::Cache,
+    LongCache: for<'a> cases::list_company_and_branch::DatabaseRead<Db<'a> = Ch>,
+{
+    type Type1 = Type1;
+    type Type2 = Type2;
+    type Type3 = Type3;
+    type Type4 = Type4;
+
     fn subs() -> &'static [resource_utils::Subscribe] {
         &[
             resource_utils::Subscribe::TableCompanyBranchFieldName,
@@ -146,46 +179,40 @@ impl ViewType1 for Type1 {
         ]
     }
 
-    fn wrap_input(self) -> request_response::push_data::OperationsInput {
-        request_response::push_data::OperationsInput::ListCompanyAndBranch(self)
-    }
-}
-
-impl CacheAndServerType1 for Type2 {
-    fn user_uuid(&self) -> Option<&types::UuidType> {
-        Some(&self.user_uuid)
+    fn wrap_input(data: Self::Type1) -> request_response::push_data::OperationsInput {
+        request_response::push_data::OperationsInput::ListCompanyAndBranch(data)
     }
 
-    type Output = Type3;
+    fn user_uuid(data: &Self::Type2) -> Option<&types::UuidType> {
+        Some(&data.user_uuid)
+    }
 
-    async fn state_full_operation<Id: types::RowId, Ch: cache::Cache>(
-        &self,
+    async fn state_full_operation<Id: types::RowId>(
+        data: &Self::Type2,
         state: &mut cache::State<Ch>,
-    ) -> Self::Output {
-        let result = state.read_list_company_and_branch(&self.user_uuid).await;
-        return Ok(cases::list_company_and_branch::Ok {
-            user_uuid: self.user_uuid.clone(),
-            data: result,
-        });
-    }
-}
+    ) -> Self::Type3 {
+        let result = data
+            .state_full_operation::<Cache<Ch, LongCache>>(state)
+            .await
+            .unwrap()
+            .unwrap();
 
-impl CacheAndServerType2 for Type3 {
-    fn extract_resource(&self) -> Vec<resource_utils::ResourceInfo> {
-        match self {
+        Ok(result)
+    }
+
+    fn extract_resource(data: &Self::Type3) -> Vec<resource_utils::ResourceInfo> {
+        match data {
             Ok(ok) => ok.into(),
             Err(_) => Vec::new(),
         }
     }
 
-    fn wrap_output(self) -> request_response::push_data::OperationsResult {
-        request_response::push_data::OperationsResult::ListCompanyAndBranch(self)
+    fn wrap_output(data: Self::Type3) -> request_response::push_data::OperationsResult {
+        request_response::push_data::OperationsResult::ListCompanyAndBranch(data)
     }
-}
 
-impl ViewType2 for Type4 {
-    fn unwrap_output(result: request_response::push_data::OperationsResult) -> Self {
-        if let request_response::push_data::OperationsResult::ListCompanyAndBranch(res) = result {
+    fn unwrap_output(output: request_response::push_data::OperationsResult) -> Self::Type4 {
+        if let request_response::push_data::OperationsResult::ListCompanyAndBranch(res) = output {
             match res {
                 Ok(ok) => {
                     let mut companies = Vec::with_capacity(ok.data.len());
@@ -224,12 +251,12 @@ impl ViewType2 for Type4 {
                 Err(_) => Type4(Err(())),
             }
         } else {
-            unreachable!("Expected ListCompanyAndBranch, got {:?}", result)
+            unreachable!("Expected ListCompanyAndBranch, got {:?}", output)
         }
     }
 }
 
-impl Mvu for ui_model::CompanyAndBranchSelection {
+impl ui_model::CompanyAndBranchSelection {
     async fn update<
         Rn: traits::RandomNumber,
         Rt: traits::Runtime,
@@ -237,6 +264,8 @@ impl Mvu for ui_model::CompanyAndBranchSelection {
         Mpsc: traits::MultiProducerSingleConsumer,
         Rg: traits::Regex,
         As: ui_model::AllSignalTypes,
+        Ch: cache::Cache + 'static,
+        LongCache: for<'a> cases::list_company_and_branch::DatabaseRead<Db<'a> = Ch> + 'static,
     >(
         self,
         model: &'static ui_model::Model<As>,
@@ -251,7 +280,7 @@ impl Mvu for ui_model::CompanyAndBranchSelection {
                         ui_model::CompanyBranchSelection::None,
                     ));
 
-                handle_list_company_and_branch::<Rn, Rt, Id, Mpsc, Rg, As>(
+                handle_list_company_and_branch::<Rn, Rt, Id, Mpsc, Rg, As, Ch, LongCache>(
                     model,
                     cache.clone(),
                     commander_local_state.clone(),
@@ -259,11 +288,16 @@ impl Mvu for ui_model::CompanyAndBranchSelection {
                 .await;
 
                 let listener_aborter =
-                    handle_list_company_and_branch_listener::<Rn, Rt, Id, Mpsc, Rg, As>(
-                        model,
-                        cache,
-                        commander_local_state.clone(),
-                    );
+                    handle_list_company_and_branch_listener::<
+                        Rn,
+                        Rt,
+                        Id,
+                        Mpsc,
+                        Rg,
+                        As,
+                        Ch,
+                        LongCache,
+                    >(model, cache, commander_local_state.clone());
 
                 *commander_local_state
                     .aborter_to_company_and_branch_listener
@@ -329,6 +363,8 @@ fn handle_list_company_and_branch_listener<
     Mpsc: traits::MultiProducerSingleConsumer,
     Rg: traits::Regex,
     As: ui_model::AllSignalTypes,
+    Ch: cache::Cache,
+    LongCache: for<'a> cases::list_company_and_branch::DatabaseRead<Db<'a> = Ch>,
 >(
     model: &'static ui_model::Model<As>,
     mut cache: client_traits::CacheActorStruct<Mpsc>,
@@ -339,7 +375,10 @@ fn handle_list_company_and_branch_listener<
 
     let mut handle = Rt::abortable_spawn_local(async move {
         let mut receiver_to_poke = cache
-            .send_subs_to_cache_actor(component_id, Type1::subs())
+            .send_subs_to_cache_actor(
+                component_id,
+                <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::subs(),
+            )
             .await;
 
         let data: types::UuidType = commander_local_state.user_uuid.read().clone().unwrap();
@@ -350,10 +389,9 @@ fn handle_list_company_and_branch_listener<
             let value = cache
                 .send_to_cache_actor(
                     cache_actor::CachingStrategy::ReadCacheOnly,
-                    Type1 {
+                    <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::wrap_input(Type1 {
                         user_uuid: data.clone(),
-                    }
-                    .wrap_input(),
+                    }),
                 )
                 .await
                 .recv()
@@ -366,7 +404,7 @@ fn handle_list_company_and_branch_listener<
                 cache_actor::Response::Data {
                     is_response_from_server: _,
                     data,
-                } => Type4::unwrap_output(data),
+                } => <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::unwrap_output(data),
             };
 
             match value.0 {
@@ -403,6 +441,8 @@ async fn handle_list_company_and_branch<
     Mpsc: traits::MultiProducerSingleConsumer,
     Rg: traits::Regex,
     As: ui_model::AllSignalTypes,
+    Ch: cache::Cache,
+    LongCache: for<'a> cases::list_company_and_branch::DatabaseRead<Db<'a> = Ch>,
 >(
     model: &'static ui_model::Model<As>,
     mut cache: client_traits::CacheActorStruct<Mpsc>,
@@ -413,7 +453,7 @@ async fn handle_list_company_and_branch<
     let mut receiver_to_response = cache
         .send_to_cache_actor(
             cache_actor::CachingStrategy::ReadCacheAndServer,
-            Type1 { user_uuid }.wrap_input(),
+            <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::wrap_input(Type1 { user_uuid }),
         )
         .await;
 
@@ -424,7 +464,7 @@ async fn handle_list_company_and_branch<
             cache_actor::Response::Data {
                 is_response_from_server: _,
                 data,
-            } => Type4::unwrap_output(data),
+            } => <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::unwrap_output(data),
         };
 
         match value.0 {

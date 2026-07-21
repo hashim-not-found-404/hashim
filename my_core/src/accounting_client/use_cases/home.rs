@@ -1,7 +1,6 @@
 use crate::{
     accounting_client::use_cases::client_domain::{
-        client_traits::{self, Mvu},
-        commander,
+        client_traits, commander,
         ui_model::{self, HashimSignal},
     },
     accounting_domain::cases::utility::types,
@@ -9,7 +8,7 @@ use crate::{
 };
 use std::sync::Arc;
 
-impl Mvu for ui_model::Home {
+impl ui_model::Home {
     async fn update<
         Rn: traits::RandomNumber,
         Rt: traits::Runtime,

@@ -1,8 +1,8 @@
 pub mod client_domain;
 mod create_account;
-// mod create_company;
-// mod create_company_branch;
-// mod home;
-// mod list_company_and_branch;
-// mod sign_in;
-// mod sign_up;
+mod create_company;
+mod create_company_branch;
+mod home;
+mod list_company_and_branch;
+mod sign_in;
+mod sign_up;

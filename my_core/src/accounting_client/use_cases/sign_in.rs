@@ -1,9 +1,7 @@
 use crate::{
     accounting_client::use_cases::client_domain::{
         cache, cache_actor,
-        client_traits::{
-            self, CacheAndServerType1, CacheAndServerType2, Mvu, ViewType1, ViewType2,
-        },
+        client_traits::{self, ViewAndCache},
         commander, process_manager,
         ui_model::{self, HashimSignal},
     },
@@ -19,7 +17,7 @@ use crate::{
         utils::ReadAndSet,
     },
 };
-use std::sync::Arc;
+use std::{marker::PhantomData, sync::Arc};
 
 pub(crate) type Type1 = cases::sign_in::Input;
 type Type2 = cases::sign_in::Input;
@@ -62,31 +60,62 @@ impl Into<Vec<resource_utils::ResourceInfo>> for &cases::sign_in::Ok {
     }
 }
 
-impl ViewType1 for Type1 {
-    fn wrap_input(self) -> request_response::push_data::OperationsInput {
-        request_response::push_data::OperationsInput::SignIn(self)
+struct Cache<Ch, LongCache>
+where
+    Ch: cache::Cache,
+    LongCache: for<'a> cases::sign_in::DatabaseRead<Db<'a> = Ch>,
+{
+    _ph: PhantomData<(Ch, LongCache)>,
+}
+
+impl<Ch, LongCache> cases::sign_in::DatabaseRead for Cache<Ch, LongCache>
+where
+    Ch: cache::Cache,
+    LongCache: for<'a> cases::sign_in::DatabaseRead<Db<'a> = Ch>,
+{
+    type Db<'a> = cache::State<Ch>;
+
+    async fn read(
+        db: &mut Self::Db<'_>,
+        read_input: &cases::sign_in::ReadInput,
+    ) -> Result<cases::sign_in::ReadOutput, traits::DynamicError> {
+        let mut read_output = LongCache::read(&mut db.cache, read_input).await.unwrap();
+        Ok(read_output)
     }
 }
 
-impl CacheAndServerType1 for Type2 {
-    fn user_uuid(&self) -> Option<&types::UuidType> {
+struct ViewAndCacheType;
+
+impl<Ch, LongCache> ViewAndCache<Ch, LongCache> for ViewAndCacheType
+where
+    Ch: cache::Cache,
+    LongCache: for<'a> cases::sign_in::DatabaseRead<Db<'a> = Ch>,
+{
+    type Type1 = Type1;
+    type Type2 = Type2;
+    type Type3 = Type3;
+    type Type4 = Type4;
+
+    fn wrap_input(data: Self::Type1) -> request_response::push_data::OperationsInput {
+        request_response::push_data::OperationsInput::SignIn(data)
+    }
+
+    fn user_uuid(data: &Self::Type2) -> Option<&types::UuidType> {
         None
     }
 
-    type Output = Type3;
-
-    async fn state_full_operation<Id: types::RowId, Ch: cache::Cache>(
-        &self,
+    async fn state_full_operation<Id: types::RowId>(
+        data: &Self::Type2,
         state: &mut cache::State<Ch>,
-    ) -> Self::Output {
-        let user_uuid_and_is_jwt_exist = state.cache.read_sign_in(&self.user_id).await;
+    ) -> Self::Type3 {
+        let user_uuid_and_is_jwt_exist = state.cache.read_sign_in(&data.user_id).await;
 
         if let Some((user_uuid, user_name, is_jwt_exist)) = user_uuid_and_is_jwt_exist {
             if is_jwt_exist {
                 return Ok(cases::sign_in::Ok {
                     user_uuid,
                     jwt: types::JsonWebTokenType(String::new()),
-                    user_id: self.user_id.clone(),
+                    user_id: data.user_id.clone(),
                     user_name,
                 });
             }
@@ -97,7 +126,7 @@ impl CacheAndServerType1 for Type2 {
         let mut user_name = None;
 
         for (rowid, user) in &state.state_of_pending_txn.user {
-            if user.id == self.user_id {
+            if user.id == data.user_id {
                 password = Some(user.password.clone());
                 user_uuid = Some(rowid);
                 user_name = user.name.clone();
@@ -106,8 +135,8 @@ impl CacheAndServerType1 for Type2 {
 
         match password {
             Some(password) => {
-                if password == self.password {
-                    return Ok(self.state_full_operation(
+                if password == data.password {
+                    return Ok(data.state_full_operation(
                         &types::JsonWebTokenType(String::new()),
                         &user_uuid.unwrap(),
                         &user_name,
@@ -125,24 +154,20 @@ impl CacheAndServerType1 for Type2 {
             }),
         }
     }
-}
 
-impl CacheAndServerType2 for Type3 {
-    fn extract_resource(&self) -> Vec<resource_utils::ResourceInfo> {
-        match self {
+    fn extract_resource(data: &Self::Type3) -> Vec<resource_utils::ResourceInfo> {
+        match data {
             Ok(ok) => ok.into(),
             Err(_) => Vec::new(),
         }
     }
 
-    fn wrap_output(self) -> request_response::push_data::OperationsResult {
-        request_response::push_data::OperationsResult::SignIn(self)
+    fn wrap_output(data: Self::Type3) -> request_response::push_data::OperationsResult {
+        request_response::push_data::OperationsResult::SignIn(data)
     }
-}
 
-impl ViewType2 for Type4 {
-    fn unwrap_output(result: request_response::push_data::OperationsResult) -> Self {
-        if let request_response::push_data::OperationsResult::SignIn(result) = result {
+    fn unwrap_output(output: request_response::push_data::OperationsResult) -> Self::Type4 {
+        if let request_response::push_data::OperationsResult::SignIn(result) = output {
             match result {
                 Ok(ok) => Type4(Ok(SignInOk {
                     user_uuid: ok.user_uuid,
@@ -151,12 +176,12 @@ impl ViewType2 for Type4 {
                 Err(err) => Type4(Err(err)),
             }
         } else {
-            unreachable!("{:?}", result)
+            unreachable!("{:?}", output)
         }
     }
 }
 
-impl Mvu for ui_model::SignIn {
+impl ui_model::SignIn {
     async fn update<
         Rn: traits::RandomNumber,
         Rt: traits::Runtime,
@@ -164,6 +189,8 @@ impl Mvu for ui_model::SignIn {
         Mpsc: traits::MultiProducerSingleConsumer,
         Rg: traits::Regex,
         As: ui_model::AllSignalTypes,
+        Ch: cache::Cache,
+        LongCache: for<'a> cases::sign_in::DatabaseRead<Db<'a> = Ch>,
     >(
         self,
         model: &'static ui_model::Model<As>,
@@ -172,8 +199,12 @@ impl Mvu for ui_model::SignIn {
     ) {
         match self {
             Self::Submit => {
-                handle_submit::<Rn, Rt, Id, Mpsc, Rg, As>(model, cache, commander_local_state)
-                    .await;
+                handle_submit::<Rn, Rt, Id, Mpsc, Rg, As, Ch, LongCache>(
+                    model,
+                    cache,
+                    commander_local_state,
+                )
+                .await;
             }
             Self::Consent(i) => commander_local_state
                 .sender_to_process_manager
@@ -186,7 +217,12 @@ impl Mvu for ui_model::SignIn {
                 .unwrap(),
             Self::UserId(i) => {
                 model.page_root.page_auth.auth_feature_state.user_id.set(i);
-                handle_check::<Rn, Rt, Id, Mpsc, Rg, As>(model, cache, commander_local_state).await;
+                handle_check::<Rn, Rt, Id, Mpsc, Rg, As, Ch, LongCache>(
+                    model,
+                    cache,
+                    commander_local_state,
+                )
+                .await;
             }
             Self::Password(i) => {
                 model
@@ -195,7 +231,12 @@ impl Mvu for ui_model::SignIn {
                     .auth_feature_state
                     .user_password
                     .set(i);
-                handle_check::<Rn, Rt, Id, Mpsc, Rg, As>(model, cache, commander_local_state).await;
+                handle_check::<Rn, Rt, Id, Mpsc, Rg, As, Ch, LongCache>(
+                    model,
+                    cache,
+                    commander_local_state,
+                )
+                .await;
             }
         }
     }
@@ -208,6 +249,8 @@ async fn handle_submit<
     Mpsc: traits::MultiProducerSingleConsumer,
     Rg: traits::Regex,
     As: ui_model::AllSignalTypes,
+    Ch: cache::Cache,
+    LongCache: for<'a> cases::sign_in::DatabaseRead<Db<'a> = Ch>,
 >(
     model: &'static ui_model::Model<As>,
     mut cache: client_traits::CacheActorStruct<Mpsc>,
@@ -229,11 +272,10 @@ async fn handle_submit<
     let mut receiver_to_response = cache
         .send_to_cache_actor(
             cache_actor::CachingStrategy::WriteCacheAndServer,
-            cases::sign_in::Input {
+            <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::wrap_input(cases::sign_in::Input {
                 user_id: user_id.clone(),
                 password: feature_state.user_password.read(),
-            }
-            .wrap_input(),
+            }),
         )
         .await;
 
@@ -247,7 +289,8 @@ async fn handle_submit<
                     is_response_from_server,
                     data,
                 } => {
-                    let result = Type4::unwrap_output(data);
+                    let result: Type4 =
+                        <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::unwrap_output(data);
                     let is_ok = result.0.is_ok();
 
                     if is_response_from_server {
@@ -276,7 +319,7 @@ async fn handle_submit<
                             .unwrap();
                     }
 
-                    handle_apply_result::<Rn, Rt, Id, Mpsc, Rg, As>(
+                    handle_apply_result::<Rn, Rt, Id, Mpsc, Rg, As, Ch, LongCache>(
                         &model,
                         commander_local_state1.clone(),
                         result,
@@ -332,6 +375,8 @@ async fn handle_check<
     Mpsc: traits::MultiProducerSingleConsumer,
     Rg: traits::Regex,
     As: ui_model::AllSignalTypes,
+    Ch: cache::Cache,
+    LongCache: for<'a> cases::sign_in::DatabaseRead<Db<'a> = Ch>,
 >(
     model: &'static ui_model::Model<As>,
     mut cache: client_traits::CacheActorStruct<Mpsc>,
@@ -346,11 +391,10 @@ async fn handle_check<
     let mut receiver_to_response = cache
         .send_to_cache_actor(
             cache_actor::CachingStrategy::ReadCacheOnly,
-            cases::sign_in::Input {
+            <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::wrap_input(cases::sign_in::Input {
                 user_id: feature_state.user_id.read(),
                 password: feature_state.user_password.read(),
-            }
-            .wrap_input(),
+            }),
         )
         .await;
 
@@ -361,8 +405,9 @@ async fn handle_check<
             is_response_from_server: _,
             data,
         } => {
-            let result = Type4::unwrap_output(data);
-            handle_apply_result::<Rn, Rt, Id, Mpsc, Rg, As>(
+            let result: Type4 =
+                <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::unwrap_output(data);
+            handle_apply_result::<Rn, Rt, Id, Mpsc, Rg, As, Ch, LongCache>(
                 &model,
                 commander_local_state.clone(),
                 result,
@@ -378,6 +423,8 @@ fn handle_apply_result<
     Mpsc: traits::MultiProducerSingleConsumer,
     Rg: traits::Regex,
     As: ui_model::AllSignalTypes,
+    Ch: cache::Cache,
+    LongCache: for<'a> cases::sign_in::DatabaseRead<Db<'a> = Ch>,
 >(
     model: &ui_model::Model<As>,
     commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
