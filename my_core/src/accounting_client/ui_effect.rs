@@ -3,14 +3,14 @@ use crate::accounting_client::client_domain::cache;
 use crate::accounting_client::client_domain::client_traits;
 use crate::accounting_client::client_domain::commander;
 use crate::accounting_client::client_domain::process_manager;
+use crate::accounting_client::client_domain::ui_model;
 use crate::accounting_client::client_domain::ui_model::AllSignalTypes;
 use crate::accounting_client::client_domain::ui_model::HashimSignal;
-use crate::accounting_client::client_domain::ui_model;
 use crate::accounting_domain::utility::types;
 use crate::mbg;
+use crate::utility::traits;
 use crate::utility::traits::Receiver;
 use crate::utility::traits::Sender;
-use crate::utility::traits;
 use std::sync::Arc;
 
 pub struct Commander<Mpsc: traits::MultiProducerSingleConsumer> {

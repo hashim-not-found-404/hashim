@@ -1,9 +1,9 @@
 use crate::utility::my_signals;
 use crate::utility::tools;
 use dioxus::prelude::*;
+use my_core::accounting_client::client_domain::ui_model;
 use my_core::accounting_client::client_domain::ui_model::AllSignalTypes;
 use my_core::accounting_client::client_domain::ui_model::HashimSignal;
-use my_core::accounting_client::client_domain::ui_model;
 
 #[component]
 pub(crate) fn Dialog(

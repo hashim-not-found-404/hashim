@@ -1,6 +1,6 @@
+use crate::utility::traits;
 use crate::utility::traits::MultiProducerSingleConsumer;
 use crate::utility::traits::Sender;
-use crate::utility::traits;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::hash::Hash;
