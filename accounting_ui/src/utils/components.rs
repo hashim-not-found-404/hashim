@@ -77,7 +77,9 @@ pub(crate) fn ErrorStack() -> Element {
 
     rsx! {
         div {
-            button { onclick: move |_| { tools::send(ui_model::Message::CloseError) }, "X" }
+            button { onclick: move |_| { tools::send(ui_model::Message::CloseError) },
+                "X"
+            }
             label { {err} }
         }
     }

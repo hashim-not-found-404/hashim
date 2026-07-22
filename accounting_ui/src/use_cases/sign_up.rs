@@ -36,7 +36,9 @@ pub(crate) fn SignUp() -> Element {
             input {
                 placeholder: "Name (Optional)",
                 oninput: move |event| {
-                    tools::send(ui_model::Message::SignUp(ui_model::SignUp::UserName(event.value())));
+                    tools::send(
+                        ui_model::Message::SignUp(ui_model::SignUp::UserName(event.value())),
+                    );
                 },
                 value: local_state.user_name.read(),
             }

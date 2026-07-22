@@ -1,5 +1,5 @@
-use crate::use_cases::home::MyHome;
-use crate::use_cases::list_company_and_branch::CompanyAndBranchSelection;
+use crate::use_cases::home::Home;
+use crate::use_cases::list_company_and_branch::ListCompanyAndBranch;
 use crate::use_cases::sign_in::SignIn;
 use crate::use_cases::sign_up::SignUp;
 use crate::utils::components;
@@ -14,10 +14,10 @@ pub(crate) enum Route {
     SignIn {},
     #[route("/sign_up")]
     SignUp {},
-    #[route("/company_and_branch_selection")]
-    CompanyAndBranchSelection {},
+    #[route("/list_company_and_branch")]
+    ListCompanyAndBranch {},
     #[route("/home")]
-    MyHome {},
+    Home {},
 }
 
 #[component]
@@ -27,10 +27,10 @@ fn RootLayout() -> Element {
             navigator().push(Route::SignIn {});
         }
         ui_model::Navigator::CompanyBranchSelection(_) => {
-            navigator().push(Route::CompanyAndBranchSelection {});
+            navigator().push(Route::ListCompanyAndBranch {});
         }
         ui_model::Navigator::Home(_) => {
-            navigator().push(Route::MyHome {});
+            navigator().push(Route::Home {});
         }
     }
 

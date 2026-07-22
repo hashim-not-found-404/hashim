@@ -6,7 +6,7 @@ use dioxus::prelude::*;
 use my_core::accounting_client::use_cases::client_domain::ui_model::{self, HashimSignal};
 
 #[component]
-pub(crate) fn CompanyAndBranchSelection() -> Element {
+pub(crate) fn ListCompanyAndBranch() -> Element {
     let local_state = &tools::MODEL
         .page_root
         .page_after_auth
@@ -30,7 +30,7 @@ pub(crate) fn CompanyAndBranchSelection() -> Element {
                         },
                         ui_model::CompanyBranchSelection::CreateCompanyBranch => {
                             rsx! {
-                            create_company_branch::    CreateCompanyBranch {}
+                                create_company_branch::CreateCompanyBranch {}
                             }
                         }
                     }

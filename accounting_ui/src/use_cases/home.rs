@@ -1,12 +1,9 @@
-use crate::{
-    use_cases::create_account,
-    utils::tools,
-};
+use crate::{use_cases::create_account, utils::tools};
 use dioxus::prelude::*;
 use my_core::accounting_client::use_cases::client_domain::ui_model::{self, HashimSignal};
 
 #[component]
-pub(crate) fn MyHome() -> Element {
+pub(crate) fn Home() -> Element {
     rsx! {
         div {
             div {
@@ -35,9 +32,7 @@ pub(crate) fn MyHome() -> Element {
                     }
                     ui_model::Navigator::Home(page) => {
                         match page {
-                            ui_model::Menu::Dashboard => rsx! {
-
-                            },
+                            ui_model::Menu::Dashboard => rsx! {},
                             ui_model::Menu::CreateAccount => rsx! {
                                 create_account::CreateAccount {}
                             },
