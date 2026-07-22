@@ -168,6 +168,31 @@ where
         }
         unreachable!("{:?}", output)
     }
+
+    fn apply_on_the_model<As: ui_model::AllSignalTypes>(
+        output: &Self::Type4,
+        model: &ui_model::Model<As>,
+    ) {
+        let local_state = &model
+            .page_root
+            .page_after_auth
+            .page_home
+            .page_create_account;
+
+        match output {
+            Ok(_) => {
+                local_state.account_name_error.reset();
+            }
+            Err(business_error) => {
+                local_state
+                    .account_name_error
+                    .set(match business_error.account_name {
+                        Some(_) => Some(String::from("duplicated")),
+                        None => None,
+                    });
+            }
+        }
+    }
 }
 
 impl ui_model::CreateAccount {
@@ -345,18 +370,9 @@ async fn handle_submit<
                             .unwrap();
                     }
 
-                    match result {
-                        Ok(_) => {}
-                        Err(business_error) => {
-                            mbg!(&business_error);
-                            local_state
-                                .account_name_error
-                                .set(match business_error.account_name {
-                                    Some(_) => Some(String::from("duplicated")),
-                                    None => None,
-                                });
-                        }
-                    }
+                    <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::apply_on_the_model(
+                        &result, model,
+                    );
                 }
             }
         }
@@ -443,17 +459,7 @@ async fn handle_check<
         } => {
             let result = <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::unwrap_output(data);
 
-            match result {
-                Ok(_) => {}
-                Err(business_error) => {
-                    local_state
-                        .account_name_error
-                        .set(match business_error.account_name {
-                            Some(_) => todo!(),
-                            None => None,
-                        });
-                }
-            }
+            <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::apply_on_the_model(&result, model);
         }
     }
 }

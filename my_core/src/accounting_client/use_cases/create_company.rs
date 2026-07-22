@@ -101,6 +101,10 @@ where
         }
         unreachable!("{:?}", output)
     }
+
+    fn apply_on_the_model<As: ui_model::AllSignalTypes>(_: &Self::Type4, _: &ui_model::Model<As>) {
+        todo!()
+    }
 }
 
 impl ui_model::CreateCompany {
@@ -119,7 +123,7 @@ impl ui_model::CreateCompany {
         cache: client_traits::CacheActorStruct<Mpsc>,
         commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
     ) {
-        let page_create_company = &model
+        let local_state = &model
             .page_root
             .page_after_auth
             .page_company_branch_selection
@@ -135,8 +139,8 @@ impl ui_model::CreateCompany {
                 .await
             }
             Self::Close => handle_close::<Rn, Rt, Id, Mpsc, Rg, As>(model),
-            Self::Name(i) => page_create_company.company_name.set(i),
-            Self::Currency(i) => page_create_company
+            Self::Name(i) => local_state.company_name.set(i),
+            Self::Currency(i) => local_state
                 .currency
                 .set(types::Currency::from_str(i.as_str()).unwrap()),
         }

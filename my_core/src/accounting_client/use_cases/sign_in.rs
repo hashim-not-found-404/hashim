@@ -158,6 +158,38 @@ where
             unreachable!("{:?}", output)
         }
     }
+
+    fn apply_on_the_model<As: ui_model::AllSignalTypes>(
+        output: &Self::Type4,
+        model: &ui_model::Model<As>,
+    ) {
+        match output {
+            Ok(ok) => {
+                model
+                    .page_root
+                    .page_after_auth
+                    .user_name
+                    .set(ok.user_name.clone());
+            }
+            Err(business_error) => {
+                model.page_root.page_auth.page_sign_in.user_id_error.set(
+                    match business_error.user_id {
+                        Some(_) => Some(String::from("user not exist")),
+                        None => None,
+                    },
+                );
+                model
+                    .page_root
+                    .page_auth
+                    .page_sign_in
+                    .user_password_error
+                    .set(match business_error.password {
+                        Some(_) => Some(String::from("wrong password")),
+                        None => None,
+                    });
+            }
+        }
+    }
 }
 
 impl ui_model::SignIn {
@@ -409,27 +441,8 @@ fn handle_apply_result<
     commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
     result: Type4,
 ) {
-    match result {
-        Ok(ok) => {
-            commander_local_state.user_uuid.put(Some(ok.user_uuid));
-            model.page_root.page_after_auth.user_name.set(ok.user_name);
-        }
-        Err(business_error) => {
-            model.page_root.page_auth.page_sign_in.user_id_error.set(
-                match business_error.user_id {
-                    Some(_) => Some(String::from("user not exist")),
-                    None => None,
-                },
-            );
-            model
-                .page_root
-                .page_auth
-                .page_sign_in
-                .user_password_error
-                .set(match business_error.password {
-                    Some(_) => Some(String::from("wrong password")),
-                    None => None,
-                });
-        }
+    <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::apply_on_the_model(&result, model);
+    if let Ok(ok) = result {
+        commander_local_state.user_uuid.put(Some(ok.user_uuid));
     }
 }

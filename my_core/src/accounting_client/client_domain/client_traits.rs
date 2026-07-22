@@ -1,12 +1,13 @@
 use crate::accounting_client::client_domain::cache;
 use crate::accounting_client::client_domain::cache_actor;
+use crate::accounting_client::client_domain::ui_model;
 use crate::accounting_domain::request_response;
 use crate::accounting_domain::utility::resource_utils;
 use crate::accounting_domain::utility::types;
 
 pub(crate) trait ViewAndCache<Ch: cache::Cache, T> {
     type Type1;
-    type Type2: Clone;
+    type Type2;
     type Type3;
     type Type4;
 
@@ -26,35 +27,12 @@ pub(crate) trait ViewAndCache<Ch: cache::Cache, T> {
     fn extract_resource(data: &Self::Type3) -> Vec<resource_utils::ResourceInfo>;
 
     fn unwrap_output(output: request_response::push_data::OperationsResult) -> Self::Type4;
+
+    fn apply_on_the_model<As: ui_model::AllSignalTypes>(
+        output: &Self::Type4,
+        model: &ui_model::Model<As>,
+    );
 }
-
-///////////////////////////////////////////
-
-// pub(crate) trait ViewType1 {
-//     fn subs() -> &'static [resource_utils::Subscribe] {
-//         unreachable!("we dont need it here")
-//     }
-//     fn wrap_input(self) -> request_response::push_data::OperationsInput;
-// }
-
-// pub(crate) trait CacheAndServerType1: Clone {
-//     fn user_uuid(&self) -> Option<&types::UuidType>;
-
-//     type Output: CacheAndServerType2;
-//     async fn state_full_operation<Id: types::RowId, Ch: cache::Cache>(
-//         &self,
-//         state: &mut cache::State<Ch>,
-//     ) -> Self::Output;
-// }
-
-// pub(crate) trait CacheAndServerType2 {
-//     fn extract_resource(&self) -> Vec<resource_utils::ResourceInfo>;
-//     fn wrap_output(self) -> request_response::push_data::OperationsResult;
-// }
-
-// pub(crate) trait ViewType2 {
-//     fn unwrap_output(output: request_response::push_data::OperationsResult) -> Self;
-// }
 
 pub(crate) type CacheActorStruct<Mpsc> = cache_actor::CacheStruct<
     Mpsc,

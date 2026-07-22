@@ -140,6 +140,29 @@ where
         }
         unreachable!("{:?}", output)
     }
+
+    fn apply_on_the_model<As: ui_model::AllSignalTypes>(
+        output: &Self::Type4,
+        model: &ui_model::Model<As>,
+    ) {
+        let local_state = &model.page_root.page_auth.page_sign_up;
+        match output {
+            Ok(_) => {
+                local_state.user_id_error.reset();
+                local_state.user_name_error.reset();
+            }
+            Err(business_error) => {
+                local_state.user_id_error.set(match business_error.user_id {
+                    Some(_) => Some(String::from("duplicated user")),
+                    None => None,
+                });
+                local_state.user_name_error.set(match &business_error.name {
+                    Some(e) => Some(e.clone()),
+                    None => None,
+                });
+            }
+        }
+    }
 }
 
 impl ui_model::SignUp {
@@ -299,10 +322,8 @@ async fn handle_submit<
                             .unwrap();
                     }
 
-                    handle_apply_result::<Rn, Rt, Id, Mpsc, Rg, As>(
-                        &model,
-                        commander_local_state1.clone(),
-                        result,
+                    <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::apply_on_the_model(
+                        &result, model,
                     );
                 }
             }
@@ -367,7 +388,7 @@ async fn handle_check<
 >(
     model: &'static ui_model::Model<As>,
     mut cache: client_traits::CacheActorStruct<Mpsc>,
-    commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
+    _: Arc<commander::CommanderLocalState<Mpsc, As>>,
 ) {
     let feature_state = &model.page_root.page_auth.auth_feature_state;
     let local_state = &model.page_root.page_auth.page_sign_up;
@@ -403,39 +424,7 @@ async fn handle_check<
         } => {
             let result: Type4 =
                 <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::unwrap_output(data);
-            handle_apply_result::<Rn, Rt, Id, Mpsc, Rg, As>(
-                &model,
-                commander_local_state.clone(),
-                result,
-            );
-        }
-    }
-}
-
-fn handle_apply_result<
-    Rn: traits::RandomNumber,
-    Rt: traits::Runtime,
-    Id: types::RowId,
-    Mpsc: traits::MultiProducerSingleConsumer,
-    Rg: traits::Regex,
-    As: ui_model::AllSignalTypes,
->(
-    model: &ui_model::Model<As>,
-    _: Arc<commander::CommanderLocalState<Mpsc, As>>,
-    result: cases::sign_up::MyResult,
-) {
-    let local_state = &model.page_root.page_auth.page_sign_up;
-    match result {
-        Ok(_) => {}
-        Err(business_error) => {
-            local_state.user_id_error.set(match business_error.user_id {
-                Some(_) => Some(String::from("duplicated user")),
-                None => None,
-            });
-            local_state.user_name_error.set(match business_error.name {
-                Some(e) => Some(e),
-                None => None,
-            });
+            <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::apply_on_the_model(&result, model);
         }
     }
 }

@@ -20,7 +20,7 @@ use std::sync::Arc;
 type Type1 = cases::list_company_and_branch::Input;
 type Type2 = cases::list_company_and_branch::Input;
 type Type3 = cases::list_company_and_branch::MyResult;
-pub(crate) struct Type4(pub(crate) Result<types::ListOfCompanies, ()>);
+type Type4 = Result<types::ListOfCompanies, ()>;
 
 /// Sort a list of companies by name then by UUID, and sort branches inside each company similarly.
 pub fn sort_companies(companies: &mut types::ListOfCompanies) {
@@ -311,12 +311,31 @@ where
 
                     sort_companies(&mut companies);
 
-                    Type4(Ok(companies))
+                    Ok(companies)
                 }
-                Err(_) => Type4(Err(())),
+                Err(_) => Err(()),
             }
         } else {
             unreachable!("Expected ListCompanyAndBranch, got {:?}", output)
+        }
+    }
+
+    fn apply_on_the_model<As: ui_model::AllSignalTypes>(
+        output: &Self::Type4,
+        model: &ui_model::Model<As>,
+    ) {
+        match &output {
+            Ok(ok) => model
+                .page_root
+                .page_after_auth
+                .page_company_branch_selection
+                .list
+                .set(ok.clone()),
+            Err(_) => {
+                model
+                    .navigator
+                    .set(ui_model::Navigator::Auth(ui_model::Auth::SignIn));
+            }
         }
     }
 }
@@ -472,20 +491,11 @@ fn handle_list_company_and_branch_listener<
                 } => <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::unwrap_output(data),
             };
 
-            match value.0 {
-                Ok(ok) => model
-                    .page_root
-                    .page_after_auth
-                    .page_company_branch_selection
-                    .list
-                    .set(ok),
-                Err(_) => {
-                    model
-                        .navigator
-                        .set(ui_model::Navigator::Auth(ui_model::Auth::SignIn));
-                    break;
-                }
-            };
+            <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::apply_on_the_model(&value, model);
+
+            if value.is_err() {
+                break;
+            }
         }
 
         cache.send_unsubs_to_cache_actor(component_id).await
@@ -532,19 +542,10 @@ async fn handle_list_company_and_branch<
             } => <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::unwrap_output(data),
         };
 
-        match value.0 {
-            Ok(ok) => model
-                .page_root
-                .page_after_auth
-                .page_company_branch_selection
-                .list
-                .set(ok),
-            Err(_) => {
-                model
-                    .navigator
-                    .set(ui_model::Navigator::Auth(ui_model::Auth::SignIn));
-                break;
-            }
-        };
+        <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::apply_on_the_model(&value, model);
+
+        if value.is_err() {
+            break;
+        }
     }
 }
