@@ -3,7 +3,7 @@ use my_core::{
     accounting_domain::cases::utility::types,
 };
 
-use crate::my_signal;
+use crate::utils::my_signal;
 
 #[derive(Default, Clone)]
 pub(crate) struct S;

@@ -1,6 +1,6 @@
-mod my_signal;
-mod my_signals;
 mod ui;
+mod use_cases;
+mod utils;
 
 fn main() {
     dioxus_logger::init(dioxus_logger::tracing::Level::INFO).unwrap();
