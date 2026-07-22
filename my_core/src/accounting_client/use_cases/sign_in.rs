@@ -15,7 +15,6 @@ use crate::utility::traits::Receiver;
 use crate::utility::traits::Sender;
 use crate::utility::traits::{self};
 use crate::utility::utils::ReadAndSet;
-use std::marker::PhantomData;
 use std::sync::Arc;
 
 pub(crate) type Type1 = cases::sign_in::Input;
@@ -84,7 +83,7 @@ where
         data: &Self::Type2,
         state: &mut cache::State<Ch>,
     ) -> Self::Type3 {
-        let mut read_output = LongCache::read(
+        let read_output = LongCache::read(
             &mut state.cache,
             &cases::sign_in::ReadInput {
                 user_id: data.user_id.clone(),
