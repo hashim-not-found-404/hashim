@@ -1,9 +1,9 @@
-use crate::{
-    use_cases::{create_company, create_company_branch},
-    utils::tools,
-};
+use crate::use_cases::create_company;
+use crate::use_cases::create_company_branch;
+use crate::utility::tools;
 use dioxus::prelude::*;
-use my_core::accounting_client::use_cases::client_domain::ui_model::{self, HashimSignal};
+use my_core::accounting_client::client_domain::ui_model::HashimSignal;
+use my_core::accounting_client::client_domain::ui_model::{self};
 
 #[component]
 pub(crate) fn ListCompanyAndBranch() -> Element {

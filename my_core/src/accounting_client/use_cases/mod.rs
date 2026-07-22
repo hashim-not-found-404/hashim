@@ -1,4 +1,3 @@
-pub mod client_domain;
 pub(crate) mod create_account;
 pub(crate) mod create_company;
 pub(crate) mod create_company_branch;

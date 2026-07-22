@@ -1,9 +1,9 @@
-use dioxus::{core::ReactiveContext, prelude::*};
-use my_core::accounting_client::use_cases::client_domain::ui_model::HashimSignal;
-use std::{
-    collections::HashSet,
-    sync::{Arc, Mutex},
-};
+use dioxus::core::ReactiveContext;
+use dioxus::prelude::*;
+use my_core::accounting_client::client_domain::ui_model::HashimSignal;
+use std::collections::HashSet;
+use std::sync::Arc;
+use std::sync::Mutex;
 
 pub(crate) struct S<T> {
     value: Arc<Mutex<T>>,

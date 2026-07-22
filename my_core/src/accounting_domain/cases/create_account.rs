@@ -1,5 +1,7 @@
-use crate::{accounting_domain::cases::utility::types, utility::traits};
-use serde::{Deserialize, Serialize};
+use crate::accounting_domain::utility::types;
+use crate::utility::traits;
+use serde::Deserialize;
+use serde::Serialize;
 
 pub type MyResult = Result<Ok, Error>;
 

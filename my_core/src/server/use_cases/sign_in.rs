@@ -1,8 +1,8 @@
-use crate::{
-    accounting_domain::cases::{self, utility::types},
-    server::use_cases::utility::server_traits::{DBClient, SideEffects},
-    utility::traits,
-};
+use crate::accounting_domain::cases::{self};
+use crate::accounting_domain::utility::types;
+use crate::server::utility::server_traits::DBClient;
+use crate::server::utility::server_traits::SideEffects;
+use crate::utility::traits;
 
 impl cases::sign_in::Input {
     pub(crate) async fn handle_operation<

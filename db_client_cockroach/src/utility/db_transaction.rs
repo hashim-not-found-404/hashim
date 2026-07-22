@@ -1,12 +1,14 @@
-use my_core::{
-    accounting_domain::cases::{self, utility::types},
-    server::use_cases::utility::server_traits::{DBTransaction, domain_errors},
-    utility::{traits::DynamicError, utils::LogError},
-};
-use rust_decimal::{Decimal, prelude::FromPrimitive};
+use my_core::accounting_domain::cases::{self};
+use my_core::accounting_domain::utility::types;
+use my_core::server::utility::server_traits::DBTransaction;
+use my_core::server::utility::server_traits::domain_errors;
+use my_core::utility::traits::DynamicError;
+use my_core::utility::utils::LogError;
+use rust_decimal::Decimal;
+use rust_decimal::prelude::FromPrimitive;
 use tokio_postgres::error::SqlState;
 
-use crate::read_write_cases::utils::utils::MyUuidConverter;
+use crate::utility::utils::MyUuidConverter;
 
 pub struct S<'a> {
     pub(crate) txn: deadpool_postgres::Transaction<'a>,

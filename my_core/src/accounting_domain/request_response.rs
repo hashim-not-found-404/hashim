@@ -1,6 +1,8 @@
-use crate::accounting_domain::cases::utility::resource_utils;
-use crate::accounting_domain::cases::{self, utility::types};
-use serde::{Deserialize, Serialize};
+use crate::accounting_domain::cases;
+use crate::accounting_domain::utility::resource_utils;
+use crate::accounting_domain::utility::types;
+use serde::Deserialize;
+use serde::Serialize;
 
 pub(crate) mod messages {
     use super::*;

@@ -1,9 +1,9 @@
 use core::fmt::Debug;
-use std::{
-    collections::HashMap,
-    hash::Hash,
-    sync::{Arc, Mutex, RwLock},
-};
+use std::collections::HashMap;
+use std::hash::Hash;
+use std::sync::Arc;
+use std::sync::Mutex;
+use std::sync::RwLock;
 
 pub trait LogError {
     #[must_use = "this `Result` may be an `Err` variant, which should be handled"]

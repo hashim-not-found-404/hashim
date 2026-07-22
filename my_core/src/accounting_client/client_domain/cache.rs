@@ -1,7 +1,6 @@
-use crate::accounting_domain::{
-    cases::utility::{resource_utils, types},
-    request_response,
-};
+use crate::accounting_domain::request_response;
+use crate::accounting_domain::utility::resource_utils;
+use crate::accounting_domain::utility::types;
 
 pub trait Cache: Sized {
     fn new() -> impl Future<Output = Self>;

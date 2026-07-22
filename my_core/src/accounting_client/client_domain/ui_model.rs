@@ -1,4 +1,4 @@
-use crate::accounting_domain::cases::utility::types;
+use crate::accounting_domain::utility::types;
 
 pub trait HashimSignal<T: Default + Clone>: Default {
     fn reset(&self) {

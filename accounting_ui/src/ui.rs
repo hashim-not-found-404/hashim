@@ -2,10 +2,11 @@ use crate::use_cases::home::Home;
 use crate::use_cases::list_company_and_branch::ListCompanyAndBranch;
 use crate::use_cases::sign_in::SignIn;
 use crate::use_cases::sign_up::SignUp;
-use crate::utils::components;
-use crate::utils::tools;
+use crate::utility::components;
+use crate::utility::tools;
 use dioxus::prelude::*;
-use my_core::accounting_client::use_cases::client_domain::ui_model::{self, HashimSignal};
+use my_core::accounting_client::client_domain::ui_model::HashimSignal;
+use my_core::accounting_client::client_domain::ui_model::{self};
 
 #[derive(Clone, PartialEq, Routable)]
 pub(crate) enum Route {

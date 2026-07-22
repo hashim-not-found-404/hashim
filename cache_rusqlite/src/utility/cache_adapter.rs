@@ -1,18 +1,17 @@
-use crate::read_cases::utils::utils::{MyUuidConverter, MyUuidConverter1};
+use crate::utility::utils::MyUuidConverter;
+use crate::utility::utils::MyUuidConverter1;
 use adapters::encode_decode;
-use my_core::{
-    accounting_client::use_cases::client_domain::cache::Cache,
-    accounting_domain::{
-        cases::{
-            self,
-            utility::{resource_utils, types},
-        },
-        request_response,
-    },
-    utility::traits::Coding,
-};
-use rusqlite::{Connection, OptionalExtension, params};
-use std::{ops::Add, str::FromStr};
+use my_core::accounting_client::client_domain::cache::Cache;
+use my_core::accounting_domain::cases::{self};
+use my_core::accounting_domain::request_response;
+use my_core::accounting_domain::utility::resource_utils;
+use my_core::accounting_domain::utility::types;
+use my_core::utility::traits::Coding;
+use rusqlite::Connection;
+use rusqlite::OptionalExtension;
+use rusqlite::params;
+use std::ops::Add;
+use std::str::FromStr;
 
 pub struct S {
     pub(crate) db: Connection,
@@ -22,7 +21,7 @@ impl Cache for S {
     async fn new() -> Self {
         let conn = Connection::open("opfs-sahpool://my_persistent_database.db").unwrap();
 
-        const SCHEMA: &str = include_str!("../../../schema/tables.sql");
+        const SCHEMA: &str = include_str!("../../schema/tables.sql");
         conn.execute_batch(SCHEMA).unwrap();
 
         Self { db: conn }

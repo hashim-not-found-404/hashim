@@ -1,11 +1,9 @@
-use crate::{
-    accounting_domain::cases::{
-        self,
-        utility::types::{self, MyErrorTrait},
-    },
-    server::use_cases::utility::server_traits::{DBClient, SideEffects},
-    utility::traits,
-};
+use crate::accounting_domain::cases::{self};
+use crate::accounting_domain::utility::types::MyErrorTrait;
+use crate::accounting_domain::utility::types::{self};
+use crate::server::utility::server_traits::DBClient;
+use crate::server::utility::server_traits::SideEffects;
+use crate::utility::traits;
 
 impl cases::list_company_and_branch::Input {
     pub(crate) async fn handle_operation<

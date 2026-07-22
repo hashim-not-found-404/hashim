@@ -1,9 +1,8 @@
 #[cfg(not(target_arch = "wasm32"))]
 pub mod target {
-    use my_core::utility::{
-        traits::DynamicError,
-        traits::{Either, Runtime},
-    };
+    use my_core::utility::traits::DynamicError;
+    use my_core::utility::traits::Either;
+    use my_core::utility::traits::Runtime;
     use std::time::Duration;
     use tokio;
 
@@ -53,16 +52,15 @@ pub mod target {
 #[cfg(target_arch = "wasm32")]
 pub mod target {
     use super::*;
-    use futures::{
-        channel::oneshot,
-        future::{Either as Eth, select},
-    };
+    use futures::channel::oneshot;
+    use futures::future::Either as Eth;
+    use futures::future::select;
     use gloo_timers::future::TimeoutFuture;
-    use my_core::utility::{
-        traits::DynamicError,
-        traits::{Either, Runtime},
-    };
-    use std::{pin::pin, time::Duration};
+    use my_core::utility::traits::DynamicError;
+    use my_core::utility::traits::Either;
+    use my_core::utility::traits::Runtime;
+    use std::pin::pin;
+    use std::time::Duration;
     use wasm_bindgen_futures::spawn_local;
 
     pub struct S;
@@ -144,7 +142,8 @@ mod join_handle {
 
     #[cfg(target_arch = "wasm32")]
     pub mod target {
-        use futures::{channel::oneshot, lock::Mutex};
+        use futures::channel::oneshot;
+        use futures::lock::Mutex;
         use my_core::utility::traits::JoinHandle;
         use std::sync::Arc;
 

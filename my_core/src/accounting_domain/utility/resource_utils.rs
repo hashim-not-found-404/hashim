@@ -1,6 +1,7 @@
-use crate::accounting_domain::cases::utility::types;
+use crate::accounting_domain::utility::types;
 use crate::utility::utils::MyUpSert;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 use std::collections::HashMap;
 
 #[derive(Default)]

@@ -1,7 +1,10 @@
 pub mod target {
-    use my_core::utility::{traits::Coding, traits::DynamicError};
-    use postcard::{from_bytes, to_allocvec};
-    use serde::{Deserialize, Serialize};
+    use my_core::utility::traits::Coding;
+    use my_core::utility::traits::DynamicError;
+    use postcard::from_bytes;
+    use postcard::to_allocvec;
+    use serde::Deserialize;
+    use serde::Serialize;
 
     pub struct S;
 

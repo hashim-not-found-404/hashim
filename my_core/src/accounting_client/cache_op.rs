@@ -1,19 +1,11 @@
-use crate::{
-    accounting_client::use_cases::{
-        self,
-        client_domain::{cache, client_traits::ViewAndCache},
-    },
-    accounting_domain::{
-        cases::{
-            self,
-            utility::{
-                resource_utils::{self, apply_change},
-                types,
-            },
-        },
-        request_response,
-    },
-};
+use crate::accounting_client::client_domain::cache;
+use crate::accounting_client::client_domain::client_traits::ViewAndCache;
+use crate::accounting_client::use_cases::{self};
+use crate::accounting_domain::cases::{self};
+use crate::accounting_domain::request_response;
+use crate::accounting_domain::utility::resource_utils::apply_change;
+use crate::accounting_domain::utility::resource_utils::{self};
+use crate::accounting_domain::utility::types;
 
 pub trait DbBundle<Ch: cache::Cache>: 'static {
     type CreateAccount: for<'a> cases::create_account::DatabaseRead<Db<'a> = Ch>;

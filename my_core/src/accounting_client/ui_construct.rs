@@ -1,21 +1,21 @@
-use crate::{
-    accounting_client::{
-        cache_op, network_actor, ui_effect,
-        use_cases::client_domain::{cache, cache_actor, client_traits, process_manager, ui_model},
-    },
-    accounting_domain::{
-        cases::utility::{resource_utils, types},
-        request_response,
-    },
-    utility::{
-        traits::{self, Receiver, Sender},
-        utils::ReadAndSet,
-    },
-};
-use std::{
-    marker::PhantomData,
-    sync::{Arc, RwLock},
-};
+use crate::accounting_client::cache_op;
+use crate::accounting_client::client_domain::cache;
+use crate::accounting_client::client_domain::cache_actor;
+use crate::accounting_client::client_domain::client_traits;
+use crate::accounting_client::client_domain::process_manager;
+use crate::accounting_client::client_domain::ui_model;
+use crate::accounting_client::network_actor;
+use crate::accounting_client::ui_effect;
+use crate::accounting_domain::request_response;
+use crate::accounting_domain::utility::resource_utils;
+use crate::accounting_domain::utility::types;
+use crate::utility::traits::Receiver;
+use crate::utility::traits::Sender;
+use crate::utility::traits::{self};
+use crate::utility::utils::ReadAndSet;
+use std::marker::PhantomData;
+use std::sync::Arc;
+use std::sync::RwLock;
 
 pub fn new<
     Rn: traits::RandomNumber,

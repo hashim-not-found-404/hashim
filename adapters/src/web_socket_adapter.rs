@@ -1,16 +1,18 @@
 #[cfg(not(target_arch = "wasm32"))]
 pub mod target {
-    use futures::{
-        SinkExt, StreamExt,
-        stream::{SplitSink, SplitStream},
-    };
-    use my_core::{
-        accounting_client::network_actor::WSClient,
-        accounting_domain::cases::utility::types::HashimError,
-        utility::{traits::DynamicError, utils::LogError},
-    };
+    use futures::SinkExt;
+    use futures::StreamExt;
+    use futures::stream::SplitSink;
+    use futures::stream::SplitStream;
+    use my_core::accounting_client::network_actor::WSClient;
+    use my_core::accounting_domain::utility::types::HashimError;
+    use my_core::utility::traits::DynamicError;
+    use my_core::utility::utils::LogError;
     use std::sync::Mutex;
-    use tokio_tungstenite::{MaybeTlsStream, WebSocketStream, connect_async, tungstenite::Message};
+    use tokio_tungstenite::MaybeTlsStream;
+    use tokio_tungstenite::WebSocketStream;
+    use tokio_tungstenite::connect_async;
+    use tokio_tungstenite::tungstenite::Message;
 
     pub struct S {
         write: Mutex<SplitSink<WebSocketStream<MaybeTlsStream<tokio::net::TcpStream>>, Message>>,
@@ -58,16 +60,16 @@ pub mod target {
 
 #[cfg(target_arch = "wasm32")]
 pub mod target {
-    use futures_util::{
-        SinkExt, StreamExt,
-        stream::{SplitSink, SplitStream},
-    };
-    use gloo_net::websocket::{Message, futures::WebSocket};
-    use my_core::{
-        accounting_client::network_actor::WSClient,
-        accounting_domain::cases::utility::types::HashimError,
-        utility::{traits::DynamicError, utils::LogError},
-    };
+    use futures_util::SinkExt;
+    use futures_util::StreamExt;
+    use futures_util::stream::SplitSink;
+    use futures_util::stream::SplitStream;
+    use gloo_net::websocket::Message;
+    use gloo_net::websocket::futures::WebSocket;
+    use my_core::accounting_client::network_actor::WSClient;
+    use my_core::accounting_domain::utility::types::HashimError;
+    use my_core::utility::traits::DynamicError;
+    use my_core::utility::utils::LogError;
     use std::sync::Mutex;
 
     pub struct S {

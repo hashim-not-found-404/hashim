@@ -1,8 +1,9 @@
-use crate::utility::traits::{self, MultiProducerSingleConsumer, Sender};
-use std::{
-    collections::{HashMap, HashSet},
-    hash::Hash,
-};
+use crate::utility::traits::MultiProducerSingleConsumer;
+use crate::utility::traits::Sender;
+use crate::utility::traits::{self};
+use std::collections::HashMap;
+use std::collections::HashSet;
+use std::hash::Hash;
 
 pub(crate) enum FromServer<E, Resp, Reso> {
     Error(E),

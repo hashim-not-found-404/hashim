@@ -1,6 +1,6 @@
 mod ui;
 mod use_cases;
-mod utils;
+mod utility;
 
 fn main() {
     dioxus_logger::init(dioxus_logger::tracing::Level::INFO).unwrap();

@@ -1,23 +1,22 @@
-use crate::{
-    accounting_client::use_cases::client_domain::{
-        cache, cache_actor,
-        client_traits::{self, ViewAndCache},
-        commander, process_manager,
-        ui_model::{self, HashimSignal},
-    },
-    accounting_domain::{
-        cases::{
-            self,
-            utility::{resource_utils, types},
-        },
-        request_response,
-    },
-    utility::{
-        traits::{self, JoinHandle, Receiver, Sender},
-        utils::ReadAndSet,
-    },
-};
-use std::{marker::PhantomData, sync::Arc};
+use crate::accounting_client::client_domain::cache;
+use crate::accounting_client::client_domain::cache_actor;
+use crate::accounting_client::client_domain::client_traits::ViewAndCache;
+use crate::accounting_client::client_domain::client_traits::{self};
+use crate::accounting_client::client_domain::commander;
+use crate::accounting_client::client_domain::process_manager;
+use crate::accounting_client::client_domain::ui_model::HashimSignal;
+use crate::accounting_client::client_domain::ui_model::{self};
+use crate::accounting_domain::cases::{self};
+use crate::accounting_domain::request_response;
+use crate::accounting_domain::utility::resource_utils;
+use crate::accounting_domain::utility::types;
+use crate::utility::traits::JoinHandle;
+use crate::utility::traits::Receiver;
+use crate::utility::traits::Sender;
+use crate::utility::traits::{self};
+use crate::utility::utils::ReadAndSet;
+use std::marker::PhantomData;
+use std::sync::Arc;
 
 pub(crate) type Type1 = cases::sign_in::Input;
 type Type2 = cases::sign_in::Input;
@@ -31,7 +30,8 @@ pub(crate) struct SignInOk {
 
 impl Into<Vec<resource_utils::ResourceInfo>> for &cases::sign_in::Ok {
     fn into(self) -> Vec<resource_utils::ResourceInfo> {
-        use resource_utils::{Resource, ResourceInfo};
+        use resource_utils::Resource;
+        use resource_utils::ResourceInfo;
 
         let mut resources = Vec::with_capacity(3);
         let user_uuid = &self.user_uuid;

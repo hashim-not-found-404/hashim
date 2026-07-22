@@ -1,6 +1,9 @@
 use crate::utility::traits;
-use serde::{Deserialize, Serialize};
-use std::{error::Error, fmt::Display, str::FromStr};
+use serde::Deserialize;
+use serde::Serialize;
+use std::error::Error;
+use std::fmt::Display;
+use std::str::FromStr;
 
 pub trait RowId: 'static {
     fn generate() -> UuidType;

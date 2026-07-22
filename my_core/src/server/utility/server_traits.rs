@@ -1,11 +1,9 @@
-use crate::{
-    accounting_domain::cases::{
-        self,
-        utility::{resource_utils, types},
-    },
-    utility::traits,
-};
-use std::collections::{HashMap, HashSet};
+use crate::accounting_domain::cases::{self};
+use crate::accounting_domain::utility::resource_utils;
+use crate::accounting_domain::utility::types;
+use crate::utility::traits;
+use std::collections::HashMap;
+use std::collections::HashSet;
 
 pub(crate) type ListOfResources = HashMap<types::UuidType, Vec<resource_utils::ResourceInfo>>;
 

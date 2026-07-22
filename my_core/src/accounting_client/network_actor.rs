@@ -1,4 +1,5 @@
-use crate::utility::traits::{self, Either};
+use crate::utility::traits::Either;
+use crate::utility::traits::{self};
 use std::time::Duration;
 
 pub trait WSClient: Sized {

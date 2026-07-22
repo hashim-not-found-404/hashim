@@ -1,11 +1,9 @@
-use crate::{
-    accounting_client::use_cases::client_domain::{
-        client_traits, commander,
-        ui_model::{self, HashimSignal},
-    },
-    accounting_domain::cases::utility::types,
-    utility::traits,
-};
+use crate::accounting_client::client_domain::client_traits;
+use crate::accounting_client::client_domain::commander;
+use crate::accounting_client::client_domain::ui_model::HashimSignal;
+use crate::accounting_client::client_domain::ui_model::{self};
+use crate::accounting_domain::utility::types;
+use crate::utility::traits;
 use std::sync::Arc;
 
 impl ui_model::Home {

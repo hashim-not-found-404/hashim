@@ -1,8 +1,7 @@
-use crate::{
-    accounting_client::use_cases::client_domain::{process_manager, ui_model},
-    accounting_domain::cases::utility::types,
-    utility::traits,
-};
+use crate::accounting_client::client_domain::process_manager;
+use crate::accounting_client::client_domain::ui_model;
+use crate::accounting_domain::utility::types;
+use crate::utility::traits;
 use std::sync::Mutex;
 
 pub(crate) struct CommanderLocalState<

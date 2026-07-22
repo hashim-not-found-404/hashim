@@ -1,10 +1,8 @@
-use crate::{
-    accounting_client::use_cases::client_domain::{cache, cache_actor},
-    accounting_domain::{
-        cases::utility::{resource_utils, types},
-        request_response,
-    },
-};
+use crate::accounting_client::client_domain::cache;
+use crate::accounting_client::client_domain::cache_actor;
+use crate::accounting_domain::request_response;
+use crate::accounting_domain::utility::resource_utils;
+use crate::accounting_domain::utility::types;
 
 pub(crate) trait ViewAndCache<Ch: cache::Cache, T> {
     type Type1;

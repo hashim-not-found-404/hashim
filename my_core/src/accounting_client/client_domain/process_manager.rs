@@ -1,8 +1,12 @@
-use crate::{
-    accounting_client::use_cases::client_domain::ui_model::{self, HashimSignal},
-    utility::traits::{self, JoinHandle, Receiver, Sender},
-};
-use std::{collections::HashMap, hash::Hash, time::Duration};
+use crate::accounting_client::client_domain::ui_model::HashimSignal;
+use crate::accounting_client::client_domain::ui_model::{self};
+use crate::utility::traits::JoinHandle;
+use crate::utility::traits::Receiver;
+use crate::utility::traits::Sender;
+use crate::utility::traits::{self};
+use std::collections::HashMap;
+use std::hash::Hash;
+use std::time::Duration;
 
 #[derive(PartialEq, Eq, Hash, Clone, Copy)]
 pub(crate) enum ProcessName {

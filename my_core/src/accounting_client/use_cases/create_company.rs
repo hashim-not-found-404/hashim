@@ -1,20 +1,18 @@
-use crate::{
-    accounting_client::use_cases::client_domain::{
-        cache, cache_actor,
-        client_traits::{self, ViewAndCache},
-        commander,
-        ui_model::{self, HashimSignal},
-    },
-    accounting_domain::{
-        cases::{
-            self,
-            utility::{resource_utils, types},
-        },
-        request_response,
-    },
-    utility::{traits, utils::ReadAndSet},
-};
-use std::{str::FromStr, sync::Arc};
+use crate::accounting_client::client_domain::cache;
+use crate::accounting_client::client_domain::cache_actor;
+use crate::accounting_client::client_domain::client_traits::ViewAndCache;
+use crate::accounting_client::client_domain::client_traits::{self};
+use crate::accounting_client::client_domain::commander;
+use crate::accounting_client::client_domain::ui_model::HashimSignal;
+use crate::accounting_client::client_domain::ui_model::{self};
+use crate::accounting_domain::cases::{self};
+use crate::accounting_domain::request_response;
+use crate::accounting_domain::utility::resource_utils;
+use crate::accounting_domain::utility::types;
+use crate::utility::traits;
+use crate::utility::utils::ReadAndSet;
+use std::str::FromStr;
+use std::sync::Arc;
 
 pub(crate) type Type1 = cases::create_company::Input;
 type Type2 = cases::create_company::Input;

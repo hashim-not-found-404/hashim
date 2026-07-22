@@ -1,9 +1,10 @@
-use crate::read_write_cases::utils::db_client;
-use deadpool_postgres::{Config, Pool, Runtime};
-use my_core::{
-    server::server_methods::Database,
-    utility::{traits, utils::LogError},
-};
+use crate::utility::db_client;
+use deadpool_postgres::Config;
+use deadpool_postgres::Pool;
+use deadpool_postgres::Runtime;
+use my_core::server::server_methods::Database;
+use my_core::utility::traits;
+use my_core::utility::utils::LogError;
 use tokio_postgres::NoTls;
 
 pub struct S {
