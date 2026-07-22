@@ -19,10 +19,10 @@ use crate::utility::utils::ReadAndSet;
 use std::marker::PhantomData;
 use std::sync::Arc;
 
-pub(crate) type Type1 = cases::sign_up::Input;
+type Type1 = cases::sign_up::Input;
 type Type2 = cases::sign_up::Input;
 type Type3 = cases::sign_up::MyResult;
-pub(crate) type Type4 = cases::sign_up::MyResult;
+type Type4 = cases::sign_up::MyResult;
 
 impl Into<Vec<resource_utils::ResourceInfo>> for &cases::sign_up::Ok {
     fn into(self) -> Vec<resource_utils::ResourceInfo> {

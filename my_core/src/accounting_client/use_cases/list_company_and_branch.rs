@@ -17,7 +17,7 @@ use std::cmp::Ordering;
 use std::marker::PhantomData;
 use std::sync::Arc;
 
-pub(crate) type Type1 = cases::list_company_and_branch::Input;
+type Type1 = cases::list_company_and_branch::Input;
 type Type2 = cases::list_company_and_branch::Input;
 type Type3 = cases::list_company_and_branch::MyResult;
 pub(crate) struct Type4(pub(crate) Result<types::ListOfCompanies, ()>);

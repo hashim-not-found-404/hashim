@@ -21,10 +21,10 @@ use std::marker::PhantomData;
 use std::str::FromStr;
 use std::sync::Arc;
 
-pub(crate) type Type1 = cases::create_company_branch::Input;
+type Type1 = cases::create_company_branch::Input;
 type Type2 = cases::create_company_branch::Input;
 type Type3 = cases::create_company_branch::MyResult;
-pub(crate) type Type4 = cases::create_company_branch::MyResult;
+type Type4 = cases::create_company_branch::MyResult;
 
 impl Into<Vec<resource_utils::ResourceInfo>> for &cases::create_company_branch::Ok {
     fn into(self) -> Vec<resource_utils::ResourceInfo> {

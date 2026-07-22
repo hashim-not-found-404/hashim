@@ -14,10 +14,10 @@ use crate::utility::utils::ReadAndSet;
 use std::str::FromStr;
 use std::sync::Arc;
 
-pub(crate) type Type1 = cases::create_company::Input;
+type Type1 = cases::create_company::Input;
 type Type2 = cases::create_company::Input;
 type Type3 = cases::create_company::MyResult;
-pub(crate) type Type4 = cases::create_company::MyResult;
+type Type4 = cases::create_company::MyResult;
 
 impl Into<Vec<resource_utils::ResourceInfo>> for &cases::create_company::Ok {
     fn into(self) -> Vec<resource_utils::ResourceInfo> {

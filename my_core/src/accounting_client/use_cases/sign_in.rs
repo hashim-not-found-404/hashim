@@ -17,14 +17,14 @@ use crate::utility::traits::Sender;
 use crate::utility::utils::ReadAndSet;
 use std::sync::Arc;
 
-pub(crate) type Type1 = cases::sign_in::Input;
+type Type1 = cases::sign_in::Input;
 type Type2 = cases::sign_in::Input;
 type Type3 = cases::sign_in::MyResult;
-pub(crate) struct Type4(pub(crate) Result<SignInOk, cases::sign_in::Error>);
+type Type4 = Result<SignInOk, cases::sign_in::Error>;
 
 pub(crate) struct SignInOk {
-    pub(crate) user_uuid: types::UuidType,
-    pub(crate) user_name: String,
+    user_uuid: types::UuidType,
+    user_name: String,
 }
 
 impl Into<Vec<resource_utils::ResourceInfo>> for &cases::sign_in::Ok {
@@ -148,11 +148,11 @@ where
     fn unwrap_output(output: request_response::push_data::OperationsResult) -> Self::Type4 {
         if let request_response::push_data::OperationsResult::SignIn(result) = output {
             match result {
-                Ok(ok) => Type4(Ok(SignInOk {
+                Ok(ok) => Ok(SignInOk {
                     user_uuid: ok.user_uuid,
                     user_name: ok.user_name.unwrap_or_default(),
-                })),
-                Err(err) => Type4(Err(err)),
+                }),
+                Err(err) => Err(err),
             }
         } else {
             unreachable!("{:?}", output)
@@ -270,7 +270,7 @@ async fn handle_submit<
                 } => {
                     let result: Type4 =
                         <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::unwrap_output(data);
-                    let is_ok = result.0.is_ok();
+                    let is_ok = result.is_ok();
 
                     if is_response_from_server {
                         commander_local_state1
@@ -409,7 +409,7 @@ fn handle_apply_result<
     commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
     result: Type4,
 ) {
-    match result.0 {
+    match result {
         Ok(ok) => {
             commander_local_state.user_uuid.put(Some(ok.user_uuid));
             model.page_root.page_after_auth.user_name.set(ok.user_name);
