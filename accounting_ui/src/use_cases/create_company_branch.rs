@@ -1,14 +1,6 @@
-use crate::utils::{components, my_signals, tools};
-use adapters::{
-    actors, encode_decode, functions, random_number, row_id, runtime, web_socket_adapter,
-};
-use cache_rusqlite::{db_bundle, read_cases::utils};
+use crate::utils::{components, tools};
 use dioxus::prelude::*;
-use my_core::accounting_client::{
-    ui_construct, ui_effect,
-    use_cases::client_domain::ui_model::{self, HashimSignal},
-};
-use std::sync::LazyLock;
+use my_core::accounting_client::use_cases::client_domain::ui_model::{self, HashimSignal};
 
 #[component]
 pub(crate) fn CreateCompanyBranch() -> Element {

@@ -4,16 +4,8 @@ use crate::use_cases::sign_in::SignIn;
 use crate::use_cases::sign_up::SignUp;
 use crate::utils::components;
 use crate::utils::tools;
-use adapters::{
-    actors, encode_decode, functions, random_number, row_id, runtime, web_socket_adapter,
-};
-use cache_rusqlite::{db_bundle, read_cases::utils};
 use dioxus::prelude::*;
-use my_core::accounting_client::{
-    ui_construct, ui_effect,
-    use_cases::client_domain::ui_model::{self, AllSignalTypes, HashimSignal},
-};
-use std::sync::LazyLock;
+use my_core::accounting_client::use_cases::client_domain::ui_model::{self, HashimSignal};
 
 #[derive(Clone, PartialEq, Routable)]
 pub(crate) enum Route {
