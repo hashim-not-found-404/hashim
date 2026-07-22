@@ -432,6 +432,7 @@ async fn handle_check<
             match result {
                 Ok(_) => {}
                 Err(business_error) => {
+                    mbg!(business_error);
                     local_state.branch_name_error.set(todo!());
                     local_state.location_error.set(todo!());
                 }

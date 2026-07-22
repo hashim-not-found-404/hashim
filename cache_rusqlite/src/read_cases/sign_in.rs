@@ -2,7 +2,7 @@ use crate::utility::cache_adapter;
 use crate::utility::utils::MyUuidConverter1;
 use my_core::accounting_domain::cases;
 use my_core::utility::traits;
-use rusqlite::params;
+use rusqlite::{OptionalExtension, params};
 
 pub struct S;
 
@@ -22,18 +22,17 @@ impl cases::sign_in::DatabaseRead for S {
                 let user_name: Option<String> = row.get(1).unwrap();
                 let jwt: Option<String> = row.get(2).unwrap();
 
-                let a = Some((
+                Ok((
                     user_uuid_str.to_uuid(),
                     jwt.unwrap_or_default(), // true if JWT exists
                     user_name,
-                ));
-
-                Ok(cases::sign_in::ReadOutput {
-                    user_rowid_and_password_hash_and_name: a,
-                })
+                ))
             })
+            .optional()
             .unwrap();
 
-        Ok(a)
+        Ok(cases::sign_in::ReadOutput {
+            user_rowid_and_password_hash_and_name: a,
+        })
     }
 }

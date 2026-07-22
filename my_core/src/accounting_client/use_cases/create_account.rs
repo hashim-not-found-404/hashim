@@ -256,6 +256,7 @@ fn handle_clean<
     local_state.notes.reset();
     local_state.unit_of_measurement_of_quantity.reset();
     local_state.is_loading.reset();
+    local_state.account_name_error.reset();
 }
 
 async fn handle_submit<

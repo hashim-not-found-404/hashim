@@ -65,7 +65,7 @@ impl cases::create_company_branch::DatabaseRead for S {
 
         let a = cases::create_company_branch::ReadOutput {
             user_roles: roles,
-            is_new_uuid_used: true,
+            is_new_uuid_used: false,
             is_company_exist: company_exists,
             is_branch_name_used: branch_name_used,
         };
