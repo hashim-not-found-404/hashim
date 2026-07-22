@@ -1,7 +1,7 @@
 use crate::utility::tools;
 use dioxus::prelude::*;
 use my_core::accounting_client::client_domain::ui_model::HashimSignal;
-use my_core::accounting_client::client_domain::ui_model::{self};
+use my_core::accounting_client::client_domain::ui_model;
 
 #[component]
 pub(crate) fn CreateCompany() -> Element {

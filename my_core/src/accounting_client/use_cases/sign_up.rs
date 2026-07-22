@@ -1,24 +1,23 @@
-use std::marker::PhantomData;
-use std::sync::Arc;
-
 use crate::accounting_client::client_domain::cache;
 use crate::accounting_client::client_domain::cache_actor;
+use crate::accounting_client::client_domain::client_traits;
 use crate::accounting_client::client_domain::client_traits::ViewAndCache;
-use crate::accounting_client::client_domain::client_traits::{self};
 use crate::accounting_client::client_domain::commander;
 use crate::accounting_client::client_domain::process_manager;
+use crate::accounting_client::client_domain::ui_model;
 use crate::accounting_client::client_domain::ui_model::HashimSignal;
-use crate::accounting_client::client_domain::ui_model::{self};
-use crate::accounting_domain::cases::{self};
+use crate::accounting_domain::cases;
 use crate::accounting_domain::request_response;
 use crate::accounting_domain::utility::resource_utils;
+use crate::accounting_domain::utility::types;
 use crate::accounting_domain::utility::types::MyErrorTrait;
-use crate::accounting_domain::utility::types::{self};
+use crate::utility::traits;
 use crate::utility::traits::JoinHandle;
 use crate::utility::traits::Receiver;
 use crate::utility::traits::Sender;
-use crate::utility::traits::{self};
 use crate::utility::utils::ReadAndSet;
+use std::marker::PhantomData;
+use std::sync::Arc;
 
 pub(crate) type Type1 = cases::sign_up::Input;
 type Type2 = cases::sign_up::Input;

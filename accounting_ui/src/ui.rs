@@ -5,8 +5,8 @@ use crate::use_cases::sign_up::SignUp;
 use crate::utility::components;
 use crate::utility::tools;
 use dioxus::prelude::*;
+use my_core::accounting_client::client_domain::ui_model;
 use my_core::accounting_client::client_domain::ui_model::HashimSignal;
-use my_core::accounting_client::client_domain::ui_model::{self};
 
 #[derive(Clone, PartialEq, Routable)]
 pub(crate) enum Route {

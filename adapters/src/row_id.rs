@@ -1,6 +1,6 @@
 pub mod target {
+    use my_core::accounting_domain::utility::types;
     use my_core::accounting_domain::utility::types::RowId;
-    use my_core::accounting_domain::utility::types::{self};
     use uuid::Uuid;
 
     pub struct S;

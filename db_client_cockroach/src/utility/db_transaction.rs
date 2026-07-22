@@ -1,4 +1,5 @@
-use my_core::accounting_domain::cases::{self};
+use crate::utility::utils::MyUuidConverter;
+use my_core::accounting_domain::cases;
 use my_core::accounting_domain::utility::types;
 use my_core::server::utility::server_traits::DBTransaction;
 use my_core::server::utility::server_traits::domain_errors;
@@ -7,8 +8,6 @@ use my_core::utility::utils::LogError;
 use rust_decimal::Decimal;
 use rust_decimal::prelude::FromPrimitive;
 use tokio_postgres::error::SqlState;
-
-use crate::utility::utils::MyUuidConverter;
 
 pub struct S<'a> {
     pub(crate) txn: deadpool_postgres::Transaction<'a>,

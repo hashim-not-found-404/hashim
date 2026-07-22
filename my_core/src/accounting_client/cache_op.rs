@@ -1,10 +1,10 @@
 use crate::accounting_client::client_domain::cache;
 use crate::accounting_client::client_domain::client_traits::ViewAndCache;
-use crate::accounting_client::use_cases::{self};
-use crate::accounting_domain::cases::{self};
+use crate::accounting_client::use_cases;
+use crate::accounting_domain::cases;
 use crate::accounting_domain::request_response;
 use crate::accounting_domain::utility::resource_utils::apply_change;
-use crate::accounting_domain::utility::resource_utils::{self};
+use crate::accounting_domain::utility::resource_utils;
 use crate::accounting_domain::utility::types;
 
 pub trait DbBundle<Ch: cache::Cache>: 'static {

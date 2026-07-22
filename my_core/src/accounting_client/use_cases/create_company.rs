@@ -1,11 +1,11 @@
 use crate::accounting_client::client_domain::cache;
 use crate::accounting_client::client_domain::cache_actor;
+use crate::accounting_client::client_domain::client_traits;
 use crate::accounting_client::client_domain::client_traits::ViewAndCache;
-use crate::accounting_client::client_domain::client_traits::{self};
 use crate::accounting_client::client_domain::commander;
+use crate::accounting_client::client_domain::ui_model;
 use crate::accounting_client::client_domain::ui_model::HashimSignal;
-use crate::accounting_client::client_domain::ui_model::{self};
-use crate::accounting_domain::cases::{self};
+use crate::accounting_domain::cases;
 use crate::accounting_domain::request_response;
 use crate::accounting_domain::utility::resource_utils;
 use crate::accounting_domain::utility::types;

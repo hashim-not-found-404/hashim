@@ -1,4 +1,4 @@
-use crate::accounting_domain::cases::{self};
+use crate::accounting_domain::cases;
 use crate::accounting_domain::utility::resource_utils;
 use crate::accounting_domain::utility::types;
 use crate::utility::traits;

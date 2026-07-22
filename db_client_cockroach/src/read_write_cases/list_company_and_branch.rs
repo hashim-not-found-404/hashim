@@ -1,6 +1,6 @@
 use crate::utility::db_client;
 use crate::utility::utils::MyUuidConverter;
-use my_core::accounting_domain::cases::{self};
+use my_core::accounting_domain::cases;
 use my_core::accounting_domain::utility::types;
 use my_core::utility::traits;
 use my_core::utility::utils::LogError;

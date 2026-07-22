@@ -2,8 +2,8 @@ use crate::ui::Route;
 use crate::utility::components;
 use crate::utility::tools;
 use dioxus::prelude::*;
+use my_core::accounting_client::client_domain::ui_model;
 use my_core::accounting_client::client_domain::ui_model::HashimSignal;
-use my_core::accounting_client::client_domain::ui_model::{self};
 
 #[component]
 pub(crate) fn SignIn() -> Element {

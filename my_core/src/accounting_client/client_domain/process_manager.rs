@@ -1,9 +1,9 @@
+use crate::accounting_client::client_domain::ui_model;
 use crate::accounting_client::client_domain::ui_model::HashimSignal;
-use crate::accounting_client::client_domain::ui_model::{self};
+use crate::utility::traits;
 use crate::utility::traits::JoinHandle;
 use crate::utility::traits::Receiver;
 use crate::utility::traits::Sender;
-use crate::utility::traits::{self};
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::time::Duration;

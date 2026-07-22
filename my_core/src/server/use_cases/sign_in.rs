@@ -1,4 +1,4 @@
-use crate::accounting_domain::cases::{self};
+use crate::accounting_domain::cases;
 use crate::accounting_domain::utility::types;
 use crate::server::utility::server_traits::DBClient;
 use crate::server::utility::server_traits::SideEffects;

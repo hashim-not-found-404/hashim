@@ -1,13 +1,13 @@
-use crate::accounting_domain::cases::{self};
+use crate::accounting_domain::cases;
 use crate::accounting_domain::request_response;
 use crate::accounting_domain::utility::resource_utils;
 use crate::accounting_domain::utility::types::RowId;
-use crate::accounting_domain::utility::types::{self};
+use crate::accounting_domain::utility::types;
 use crate::server::utility::server_traits::DBClient;
-use crate::server::utility::server_traits::{self};
+use crate::server::utility::server_traits;
 use crate::utility::traits::Receiver;
 use crate::utility::traits::Sender;
-use crate::utility::traits::{self};
+use crate::utility::traits;
 use crate::utility::utils::HashMapWithHashMapValue;
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -543,14 +543,13 @@ async fn get_table_of_subscribed_data<Cli: DBClient>(
 }
 
 mod broker_functions {
-    use std::collections::HashMap;
-    use std::collections::HashSet;
-
     use crate::accounting_domain::utility::resource_utils;
     use crate::accounting_domain::utility::types;
     use crate::server::utility::server_traits;
     use crate::utility::utils::HashMapWithHashMapValue;
     use crate::utility::utils::HashMapWithVectorValue;
+    use std::collections::HashMap;
+    use std::collections::HashSet;
 
     pub(crate) type UserSubscribes = HashMap<
         types::UuidType, // company uuid or branch

@@ -1,6 +1,6 @@
-use crate::accounting_domain::cases::{self};
+use crate::accounting_domain::cases;
+use crate::accounting_domain::utility::types;
 use crate::accounting_domain::utility::types::MyErrorTrait;
-use crate::accounting_domain::utility::types::{self};
 use crate::server::utility::server_traits::DBClient;
 use crate::server::utility::server_traits::SideEffects;
 use crate::utility::traits;
