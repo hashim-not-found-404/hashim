@@ -275,9 +275,12 @@ async fn handle_submit<
         password: feature_state.user_password.read(),
     };
 
+    let txn_number = Rn::generate();
+
     let mut receiver_to_response = cache
         .send_to_cache_actor(
             cache_actor::CachingStrategy::WriteCacheAndServer,
+            txn_number,
             <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::wrap_input(input),
         )
         .await;
@@ -397,9 +400,12 @@ async fn handle_check<
     local_state.user_name_error.reset();
 
     let new_uuid = Id::generate();
+    let txn_number = Rn::generate();
+
     let mut receiver_to_response = cache
         .send_to_cache_actor(
             cache_actor::CachingStrategy::ReadCacheOnly,
+            txn_number,
             <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::wrap_input(cases::sign_up::Input {
                 new_uuid: new_uuid.clone(),
                 name: {

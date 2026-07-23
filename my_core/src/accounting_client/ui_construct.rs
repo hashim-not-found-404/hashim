@@ -47,7 +47,7 @@ pub fn new<
         format!("ws://{}/ws", types::ADDRESS),
     );
 
-    let cache = client_traits::CacheActorStruct::new::<Rt, Ed, Rn, MyCache<Mpsc, Ch, Id, Dbb>>(
+    let cache = client_traits::CacheActorStruct::new::<Rt, Ed, MyCache<Mpsc, Ch, Id, Dbb>>(
         receiver_to_cache,
         sender_to_cache,
         sender_to_network,

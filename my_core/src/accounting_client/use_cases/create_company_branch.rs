@@ -314,9 +314,12 @@ async fn handle_submit<
         location: local_state.location.read(),
     };
 
+    let txn_number = Rn::generate();
+
     let mut receiver_to_response = cache
         .send_to_cache_actor(
             cache_actor::CachingStrategy::WriteCacheAndServer,
+            txn_number,
             <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::wrap_input(input),
         )
         .await;
@@ -435,9 +438,12 @@ async fn handle_check<
         location: local_state.location.read(),
     };
 
+    let txn_number = Rn::generate();
+
     let mut receiver_to_response = cache
         .send_to_cache_actor(
             cache_actor::CachingStrategy::ReadCacheOnly,
+            txn_number,
             <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::wrap_input(input),
         )
         .await;

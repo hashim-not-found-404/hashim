@@ -280,9 +280,13 @@ async fn handle_submit<
     local_state.user_password_error.reset();
 
     let user_id = feature_state.user_id.read();
+
+    let txn_number = Rn::generate();
+
     let mut receiver_to_response = cache
         .send_to_cache_actor(
             cache_actor::CachingStrategy::WriteCacheAndServer,
+            txn_number,
             <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::wrap_input(cases::sign_in::Input {
                 user_id: user_id.clone(),
                 password: feature_state.user_password.read(),
@@ -399,9 +403,12 @@ async fn handle_check<
     local_state.user_id_error.reset();
     local_state.user_password_error.reset();
 
+    let txn_number = Rn::generate();
+
     let mut receiver_to_response = cache
         .send_to_cache_actor(
             cache_actor::CachingStrategy::ReadCacheOnly,
+            txn_number,
             <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::wrap_input(cases::sign_in::Input {
                 user_id: feature_state.user_id.read(),
                 password: feature_state.user_password.read(),

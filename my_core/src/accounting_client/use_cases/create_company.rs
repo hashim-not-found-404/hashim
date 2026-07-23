@@ -202,9 +202,12 @@ async fn handle_submit<
         currency: local_state.currency.read(),
     };
 
+    let txn_number = Rn::generate();
+
     cache
         .send_to_cache_actor(
             cache_actor::CachingStrategy::WriteCacheAndServer,
+            txn_number,
             <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::wrap_input(input.clone()),
         )
         .await;

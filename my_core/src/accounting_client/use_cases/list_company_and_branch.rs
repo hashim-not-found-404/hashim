@@ -470,9 +470,12 @@ fn handle_list_company_and_branch_listener<
         loop {
             receiver_to_poke.recv().await.unwrap();
 
+            let txn_number = Rn::generate();
+
             let value = cache
                 .send_to_cache_actor(
                     cache_actor::CachingStrategy::ReadCacheOnly,
+                    txn_number,
                     <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::wrap_input(Type1 {
                         user_uuid: data.clone(),
                     }),
@@ -525,9 +528,12 @@ async fn handle_list_company_and_branch<
 ) {
     let user_uuid = commander_local_state.user_uuid.read().clone().unwrap();
 
+    let txn_number = Rn::generate();
+
     let mut receiver_to_response = cache
         .send_to_cache_actor(
             cache_actor::CachingStrategy::ReadCacheAndServer,
+            txn_number,
             <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::wrap_input(Type1 { user_uuid }),
         )
         .await;

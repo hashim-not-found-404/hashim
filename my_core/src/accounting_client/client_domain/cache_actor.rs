@@ -40,6 +40,7 @@ pub(crate) enum MessageToCache<
     Query {
         strategy: CachingStrategy,
         sender: Mpsc::Sender<Response<OpResult>>,
+        txn_number: u64,
         data: OpInput,
     },
 }
@@ -152,7 +153,6 @@ where
     pub(crate) fn new<
         Rt: traits::Runtime,
         Ed: traits::Coding,
-        Rn: traits::RandomNumber,
         Cu: CacheActorUtils<OpResult = OpResult, Subscribe = Subscribe, Mpsc = Mpsc> + 'static,
     >(
         receiver_to_cache: <Cu::Mpsc as MultiProducerSingleConsumer>::Receiver<
@@ -163,7 +163,7 @@ where
         sender_to_error: Cu::ErrorSender,
         is_online: Cu::NetworkStatus,
     ) -> Self {
-        Self::cache_actor::<Rt, Ed, Rn, Cu>(
+        Self::cache_actor::<Rt, Ed, Cu>(
             receiver_to_cache,
             sender_to_network,
             sender_to_error,
@@ -178,6 +178,7 @@ where
     pub(crate) async fn send_to_cache_actor(
         &mut self,
         strategy: CachingStrategy,
+        txn_number: u64,
         data: OpInput,
     ) -> Mpsc::Receiver<Response<OpResult>> {
         let (sender, receiver) = Mpsc::channel();
@@ -186,6 +187,7 @@ where
             .send(MessageToCache::Query {
                 strategy,
                 sender,
+                txn_number,
                 data,
             })
             .await
@@ -223,7 +225,6 @@ where
     fn cache_actor<
         Rt: traits::Runtime,
         Ed: traits::Coding,
-        Rn: traits::RandomNumber,
         Cu: CacheActorUtils<OpResult = OpResult, Subscribe = Subscribe, Mpsc = Mpsc> + 'static,
     >(
         mut receiver_to_cache: <Cu::Mpsc as MultiProducerSingleConsumer>::Receiver<
@@ -345,6 +346,7 @@ where
                     MessageToCache::Query {
                         strategy,
                         mut sender,
+                        txn_number,
                         data,
                     } => match strategy {
                         CachingStrategy::ReadCacheOnly => {
@@ -359,8 +361,6 @@ where
                         }
                         CachingStrategy::ReadCacheFirst => todo!(),
                         CachingStrategy::ReadCacheAndServer => {
-                            let txn_number = Rn::generate();
-
                             let result = Cu::check_input(&mut cache, &data).await;
 
                             let _ = sender
@@ -387,11 +387,35 @@ where
                         }
                         CachingStrategy::ReadServerFirst => todo!(),
                         CachingStrategy::ReadServerOnly => todo!(),
-                        CachingStrategy::WriteCacheOnly => todo!(),
+                        CachingStrategy::WriteCacheOnly => {
+                            let result = Cu::check_input(&mut cache, &data).await;
+                            let resource = Cu::extract_resource1(&result);
+
+                            Cu::apply_input(&mut cache, &resource);
+                            Cu::write_input(&cache, txn_number, &data).await;
+
+                            let mut subs_to_poke = HashSet::new();
+
+                            Cu::collect_subs_to_poke(&mut subs_to_poke, &resource);
+
+                            poke_the_subs::<Mpsc, Subscribe>(
+                                &mut pool_of_pokers,
+                                &pool_of_subscribes,
+                                &subs_to_poke,
+                            )
+                            .await;
+
+                            let _ = sender
+                                .send(Response::Data {
+                                    is_response_from_server: false,
+                                    data: result,
+                                })
+                                .await;
+
+                            let _ = sender.send(Response::CloseTheChannel).await;
+                        }
                         CachingStrategy::WriteCacheFirst => todo!(),
                         CachingStrategy::WriteCacheAndServer => {
-                            let txn_number = Rn::generate();
-
                             let result = Cu::check_input(&mut cache, &data).await;
                             let resource = Cu::extract_resource1(&result);
 
@@ -432,7 +456,22 @@ where
                             };
                         }
                         CachingStrategy::WriteServerFirst => todo!(),
-                        CachingStrategy::WriteServerOnly => todo!(),
+                        CachingStrategy::WriteServerOnly => {
+                            let operations = Cu::create_pending_txn(txn_number, data);
+
+                            if Cu::is_online(&is_online).await {
+                                let txn_to_send =
+                                    Cu::prepare_txn_for_send(&mut cache, vec![operations]).await;
+
+                                let data = Ed::encode(&txn_to_send);
+                                Cu::send_to_network(&mut sender_to_network, data).await;
+
+                                pool_of_senders.insert(txn_number, sender);
+                            } else {
+                                let _ = sender.send(Response::ServerCannotBeReached).await;
+                                let _ = sender.send(Response::CloseTheChannel).await;
+                            };
+                        }
                     },
                 }
             }
