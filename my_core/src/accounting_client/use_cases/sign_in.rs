@@ -264,7 +264,7 @@ async fn handle_submit<
     LongCache: for<'a> cases::sign_in::DatabaseRead<Db<'a> = Ch>,
 >(
     model: &'static ui_model::Model<As>,
-    mut cache: client_traits::CacheActorStruct<Mpsc>,
+    cache: client_traits::CacheActorStruct<Mpsc>,
     commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
 ) {
     let feature_state = &model.page_root.page_auth.auth_feature_state;
@@ -280,106 +280,127 @@ async fn handle_submit<
     local_state.user_password_error.reset();
 
     let user_id = feature_state.user_id.read();
+    let input = cases::sign_in::Input {
+        user_id: user_id.clone(),
+        password: feature_state.user_password.read(),
+    };
 
+    let data = <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::wrap_input(input);
     let txn_number = Rn::generate();
 
-    let mut receiver_to_response = cache
-        .send_to_cache_actor(
-            cache_actor::CachingStrategy::WriteCacheAndServer,
-            txn_number,
-            <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::wrap_input(cases::sign_in::Input {
-                user_id: user_id.clone(),
-                password: feature_state.user_password.read(),
-            }),
-        )
-        .await;
+    {
+        let dialog: &'static As::Dialog = &local_state.show_dialog;
+        let mut cache = cache;
+        let data1 = data.clone();
+        let mut cache1 = cache.clone();
+        let commander_local_state1 = commander_local_state.clone();
+        let mut handle = <Rt>::abortable_spawn_local(async move {
+            let mut receiver_to_response = cache1
+                .send_to_cache_actor(
+                    cache_actor::CachingStrategy::WriteServerOnly,
+                    txn_number,
+                    data1,
+                )
+                .await;
 
-    let commander_local_state1 = commander_local_state.clone();
-    let mut handle = Rt::abortable_spawn_local(async move {
-        loop {
             match receiver_to_response.recv().await.unwrap() {
-                cache_actor::Response::CloseTheChannel => break,
-                cache_actor::Response::ServerCannotBeReached => break,
+                cache_actor::Response::CloseTheChannel => return,
+                cache_actor::Response::ServerCannotBeReached => return,
                 cache_actor::Response::Data {
                     is_response_from_server,
                     data,
                 } => {
-                    let result: Type4 =
+                    let result =
                         <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::unwrap_output(data);
                     let is_ok = result.is_ok();
+                    <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::apply_on_the_model(
+                        &result, model,
+                    );
 
-                    if is_response_from_server {
+                    if let Ok(ok) = result {
+                        commander_local_state1.user_uuid.put(Some(ok.user_uuid));
+
                         commander_local_state1
-                            .sender_to_process_manager
+                            .sender_to_commander
                             .read()
-                            .send(process_manager::MessageToProcessManager::FromProcess {
-                                process_name: process_manager::ProcessName::SignIn,
-                                event: process_manager::Event::Completed {
-                                    is_response_ok: is_ok,
-                                },
-                            })
-                            .await
-                            .unwrap();
-                    } else {
-                        commander_local_state1
-                            .sender_to_process_manager
-                            .read()
-                            .send(process_manager::MessageToProcessManager::FromProcess {
-                                process_name: process_manager::ProcessName::SignIn,
-                                event: process_manager::Event::GotResponseFromCache {
-                                    is_response_ok: is_ok,
-                                },
-                            })
+                            .send(ui_model::Message::CompanyAndBranchSelection(
+                                ui_model::CompanyAndBranchSelection::Subscribe,
+                            ))
                             .await
                             .unwrap();
                     }
 
-                    handle_apply_result::<Rn, Rt, Id, Mpsc, Rg, As, Ch, LongCache>(
-                        &model,
-                        commander_local_state1.clone(),
-                        result,
-                    );
-                }
-            }
-        }
-    });
-
-    let (sender_to_process, mut receiver_to_process) = Mpsc::channel();
-    commander_local_state
-        .sender_to_process_manager
-        .read()
-        .send(process_manager::MessageToProcessManager::FromProcess {
-            process_name: process_manager::ProcessName::SignIn,
-            event: process_manager::Event::Subscribe {
-                sender: sender_to_process,
-                dialog: &local_state.show_dialog,
-            },
-        })
-        .await
-        .unwrap();
-
-    match receiver_to_process.recv().await.unwrap() {
-        process_manager::ProceedResult::Yes => {
-            match commander_local_state.user_uuid.read().clone() {
-                Some(_) => {
-                    commander_local_state
-                        .sender_to_commander
+                    commander_local_state1
+                        .sender_to_process_manager
                         .read()
-                        .send(ui_model::Message::CompanyAndBranchSelection(
-                            ui_model::CompanyAndBranchSelection::Subscribe,
-                        ))
+                        .send(process_manager::MessageToProcessManager::FromProcess {
+                            process_name: process_manager::ProcessName::SignIn,
+                            message: process_manager::MessageFromProcess::Response {
+                                is_response_from_server,
+                                is_response_ok: is_ok,
+                            },
+                        })
                         .await
                         .unwrap();
-
-                    model.page_root.page_after_auth.user_id.set(user_id);
                 }
-                None => local_state.show_dialog.set(ui_model::Dialog::Error),
             }
-        }
-        process_manager::ProceedResult::No => {}
-    };
+        });
+        let (sender_to_process, mut receiver_to_process) = <Mpsc>::channel();
+        commander_local_state
+            .sender_to_process_manager
+            .read()
+            .send(process_manager::MessageToProcessManager::FromProcess {
+                process_name: process_manager::ProcessName::SignIn,
+                message: process_manager::MessageFromProcess::Subscribe {
+                    sender: sender_to_process,
+                    dialog: &dialog,
+                },
+            })
+            .await
+            .unwrap();
+        match receiver_to_process.recv().await.unwrap() {
+            process_manager::MessageToProcess::FallBackToCache => {
+                let mut receiver_to_response = cache
+                    .send_to_cache_actor(
+                        cache_actor::CachingStrategy::WriteCacheOnly,
+                        txn_number,
+                        data,
+                    )
+                    .await;
 
-    handle.abort().await;
+                match receiver_to_response.recv().await.unwrap() {
+                    cache_actor::Response::CloseTheChannel => return,
+                    cache_actor::Response::ServerCannotBeReached => return,
+                    cache_actor::Response::Data {
+                        is_response_from_server: _,
+                        data,
+                    } => {
+                        let result =
+                            <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::unwrap_output(data);
+                        <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::apply_on_the_model(
+                            &result, model,
+                        );
+
+                        if let Ok(ok) = result {
+                            commander_local_state.user_uuid.put(Some(ok.user_uuid));
+
+                            commander_local_state
+                                .sender_to_commander
+                                .read()
+                                .send(ui_model::Message::CompanyAndBranchSelection(
+                                    ui_model::CompanyAndBranchSelection::Subscribe,
+                                ))
+                                .await
+                                .unwrap();
+                        }
+                    }
+                }
+            }
+            process_manager::MessageToProcess::CancelOperation => {}
+        }
+        handle.abort().await;
+    }
+
     feature_state.is_loading.reset();
 }
 

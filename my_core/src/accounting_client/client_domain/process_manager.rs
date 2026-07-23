@@ -16,15 +16,16 @@ pub(crate) enum ProcessName {
     CreateAccount,
 }
 
-pub(crate) enum Event<Mpsc: traits::MultiProducerSingleConsumer, As: ui_model::AllSignalTypes> {
+pub(crate) enum MessageFromProcess<
+    Mpsc: traits::MultiProducerSingleConsumer,
+    As: ui_model::AllSignalTypes,
+> {
     Subscribe {
-        sender: Mpsc::Sender<ProceedResult>,
+        sender: Mpsc::Sender<MessageToProcess>,
         dialog: &'static As::Dialog,
     },
-    GotResponseFromCache {
-        is_response_ok: bool,
-    },
-    Completed {
+    Response {
+        is_response_from_server: bool,
         is_response_ok: bool,
     },
 }
@@ -39,38 +40,14 @@ pub(crate) enum MessageToProcessManager<
     },
     FromProcess {
         process_name: ProcessName,
-        event: Event<Mpsc, As>,
+        message: MessageFromProcess<Mpsc, As>,
     },
 }
 
 #[derive(Debug, Clone, Copy)]
-pub(crate) enum ProceedResult {
-    Yes,
-    No,
-}
-
-#[derive(Debug, Clone, Copy)]
-pub(crate) enum IsProceed {
-    Wait,
-    Yes,
-    No,
-}
-
-pub(crate) fn is_proceed(
-    is_ok: bool,
-    is_response_from_server: bool,
-    is_user_want_to_proceed: ui_model::UserConsent,
-) -> IsProceed {
-    match (is_response_from_server, is_ok, is_user_want_to_proceed) {
-        (true, true, ui_model::UserConsent::WaitForServerResponse) => IsProceed::Yes,
-        (true, true, ui_model::UserConsent::DontWaitForServerResponse) => IsProceed::Yes,
-        (true, false, ui_model::UserConsent::WaitForServerResponse) => IsProceed::No,
-        (true, false, ui_model::UserConsent::DontWaitForServerResponse) => IsProceed::No,
-        (false, true, ui_model::UserConsent::WaitForServerResponse) => IsProceed::Wait,
-        (false, true, ui_model::UserConsent::DontWaitForServerResponse) => IsProceed::Yes,
-        (false, false, ui_model::UserConsent::WaitForServerResponse) => IsProceed::Wait,
-        (false, false, ui_model::UserConsent::DontWaitForServerResponse) => IsProceed::Yes,
-    }
+pub(crate) enum MessageToProcess {
+    FallBackToCache,
+    CancelOperation,
 }
 
 pub(crate) fn process_manager_actor<
@@ -86,7 +63,7 @@ pub(crate) fn process_manager_actor<
             Mpsc: traits::MultiProducerSingleConsumer,
             As: ui_model::AllSignalTypes,
         > {
-            sender: Mpsc::Sender<ProceedResult>,
+            sender: Mpsc::Sender<MessageToProcess>,
             dialog: &'static As::Dialog,
             timer_handle: Rt::JoinHandle<()>,
             is_response_from_server: Option<bool>,
@@ -99,7 +76,7 @@ pub(crate) fn process_manager_actor<
         loop {
             let msg = receiver.recv().await.unwrap();
 
-            let process_name = match msg {
+            match msg {
                 MessageToProcessManager::FromUser {
                     process_name,
                     consent,
@@ -114,17 +91,28 @@ pub(crate) fn process_manager_actor<
                         ui_model::UserConsent::WaitForServerResponse => {
                             table.timer_handle = timer_handle::<Rt, As>(&table.dialog);
                         }
-                        ui_model::UserConsent::DontWaitForServerResponse => {}
+                        ui_model::UserConsent::DontWaitForServerResponse => {
+                            table
+                                .sender
+                                .send(MessageToProcess::FallBackToCache)
+                                .await
+                                .unwrap();
+                        }
+                        ui_model::UserConsent::CancelOperation => {
+                            table
+                                .sender
+                                .send(MessageToProcess::CancelOperation)
+                                .await
+                                .unwrap();
+                        }
                     };
-
-                    process_name
                 }
                 MessageToProcessManager::FromProcess {
                     process_name,
-                    event,
+                    message,
                 } => {
-                    match event {
-                        Event::Subscribe { sender, dialog } => {
+                    match message {
+                        MessageFromProcess::Subscribe { sender, dialog } => {
                             let timer_handle = timer_handle::<Rt, As>(&dialog);
 
                             process_states.insert(
@@ -140,50 +128,28 @@ pub(crate) fn process_manager_actor<
                                 },
                             );
                         }
-                        Event::GotResponseFromCache { is_response_ok } => {
-                            process_states.entry(process_name).and_modify(|table| {
-                                table.is_response_from_server = Some(false);
-                                table.is_ok = Some(is_response_ok);
-                            });
-                        }
-                        Event::Completed { is_response_ok } => {
-                            process_states.entry(process_name).and_modify(|table| {
-                                table.is_response_from_server = Some(true);
-                                table.is_ok = Some(is_response_ok);
-                            });
+                        MessageFromProcess::Response {
+                            is_response_from_server,
+                            is_response_ok,
+                        } => {
+                            let table = process_states.get_mut(&process_name).unwrap();
+
+                            table.is_ok = Some(is_response_ok);
+                            table.is_response_from_server = Some(is_response_from_server);
+
+                            if is_response_from_server {
+                                table
+                                    .sender
+                                    .send(MessageToProcess::CancelOperation)
+                                    .await
+                                    .unwrap();
+
+                                process_states.remove(&process_name);
+                            }
                         }
                     };
-                    process_name
                 }
             };
-
-            let process_info = process_states.get_mut(&process_name).unwrap();
-
-            if let (Some(is_ok), Some(is_response_from_server)) =
-                (process_info.is_ok, process_info.is_response_from_server)
-            {
-                let proceed = is_proceed(
-                    is_ok,
-                    is_response_from_server,
-                    process_info.is_user_want_to_proceed,
-                );
-
-                match proceed {
-                    IsProceed::Wait => {}
-                    IsProceed::Yes => {
-                        process_info.timer_handle.abort().await;
-                        process_info.dialog.set(ui_model::Dialog::Hide);
-                        process_info.sender.send(ProceedResult::Yes).await.unwrap();
-                        process_states.remove(&process_name);
-                    }
-                    IsProceed::No => {
-                        process_info.timer_handle.abort().await;
-                        process_info.dialog.set(ui_model::Dialog::Hide);
-                        process_info.sender.send(ProceedResult::No).await.unwrap();
-                        process_states.remove(&process_name);
-                    }
-                }
-            }
         }
     });
 

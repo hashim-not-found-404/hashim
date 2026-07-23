@@ -135,6 +135,7 @@ pub struct PageCreateAccount<As: AllSignalTypes> {
 pub enum UserConsent {
     WaitForServerResponse,
     DontWaitForServerResponse,
+    CancelOperation,
 }
 
 #[derive(Debug)]

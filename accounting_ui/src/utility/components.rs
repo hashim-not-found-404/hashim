@@ -25,6 +25,9 @@ pub(crate) fn Dialog(
                     button { onclick: move |_| { consent_callback1(ui_model::UserConsent::WaitForServerResponse) },
                         "No"
                     }
+                    button { onclick: move |_| { consent_callback1(ui_model::UserConsent::CancelOperation) },
+                        "Cancel"
+                    }
                 }
 
             }
