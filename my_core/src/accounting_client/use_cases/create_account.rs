@@ -134,12 +134,6 @@ where
         data: &Self::Type2,
         state: &mut cache::State<Ch>,
     ) -> Self::Type3 {
-        let errr = data.state_less_check::<Id>();
-
-        if errr.is_there_error() {
-            return Err(errr);
-        }
-
         let errr = data
             .state_full_check::<Cache<Ch, LongCache>>(state)
             .await
