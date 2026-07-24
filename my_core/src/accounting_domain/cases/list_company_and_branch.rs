@@ -70,15 +70,15 @@ impl Input {
     pub(crate) async fn state_full_operation<Db: DatabaseRead>(
         &self,
         db: &mut Db::Db<'_>,
-    ) -> Result<MyResult, traits::DynamicError> {
+    ) -> Result<Ok, traits::DynamicError> {
         let read_output = Db::read(db, &ReadInput {
             user_uuid: self.user_uuid.clone(),
         })
         .await?;
 
-        Ok(Ok(Ok {
+        Ok(Ok {
             user_uuid: self.user_uuid.clone(),
             data:      read_output.data,
-        }))
+        })
     }
 }

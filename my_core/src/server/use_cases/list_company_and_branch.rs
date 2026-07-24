@@ -28,6 +28,6 @@ impl cases::list_company_and_branch::Input {
 
         let result = self.state_full_operation::<Db>(client).await?;
 
-        return Ok(result);
+        return Ok(Ok(result));
     }
 }

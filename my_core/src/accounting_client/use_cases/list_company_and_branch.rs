@@ -254,8 +254,7 @@ where
         data: &Self::Type2,
         state: &mut cache::State<Ch>,
     ) -> Self::Type3 {
-        let result =
-            data.state_full_operation::<Cache<Ch, LongCache>>(state).await.unwrap().unwrap();
+        let result = data.state_full_operation::<Cache<Ch, LongCache>>(state).await.unwrap();
 
         Ok(result)
     }
