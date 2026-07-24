@@ -452,5 +452,5 @@ fn handle_close<As: ui_model::AllSignalTypes>(model: &'static ui_model::Model<As
 
     model
         .navigator
-        .set(ui_model::Navigator::CompanyBranchSelection(ui_model::CompanyBranchSelection::None));
+        .set(ui_model::Navigator::ListCompanyAndBranch(ui_model::ListCompanyAndBranch::None));
 }

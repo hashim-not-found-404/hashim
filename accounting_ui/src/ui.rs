@@ -24,10 +24,13 @@ pub(crate) enum Route {
 #[component]
 fn RootLayout() -> Element {
     match tools::MODEL.navigator.read() {
-        ui_model::Navigator::Auth(_) => {
+        ui_model::Navigator::SignIn => {
             navigator().push(Route::SignIn {});
         }
-        ui_model::Navigator::CompanyBranchSelection(_) => {
+        ui_model::Navigator::SignUp => {
+            navigator().push(Route::SignUp {});
+        }
+        ui_model::Navigator::ListCompanyAndBranch(_) => {
             navigator().push(Route::ListCompanyAndBranch {});
         }
         ui_model::Navigator::Home(_) => {

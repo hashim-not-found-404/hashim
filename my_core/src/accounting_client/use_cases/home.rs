@@ -23,7 +23,10 @@ impl ui_model::Home {
     ) {
         match self {
             ui_model::Home::ShowDashboard => {
-                model.navigator.set(ui_model::Navigator::Home(ui_model::Menu::Dashboard))
+                model.navigator.set(ui_model::Navigator::Home(ui_model::HomeNav {
+                    show_menu:       false,
+                    page_to_present: ui_model::Menu::Dashboard,
+                }))
             }
             ui_model::Home::ShowCreateAccount => {
                 use_cases::get_all_accounts::fetch::<Rn, Mpsc, As>(
@@ -32,7 +35,10 @@ impl ui_model::Home {
                     commander_local_state,
                 )
                 .await;
-                model.navigator.set(ui_model::Navigator::Home(ui_model::Menu::CreateAccount))
+                model.navigator.set(ui_model::Navigator::Home(ui_model::HomeNav {
+                    show_menu:       false,
+                    page_to_present: ui_model::Menu::CreateAccount,
+                }))
             }
         }
     }

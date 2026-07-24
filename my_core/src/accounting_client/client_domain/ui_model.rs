@@ -199,22 +199,23 @@ pub enum CreateAccount {
 
 #[derive(Debug, Clone)]
 pub enum Navigator {
-    Auth(Auth),
-    CompanyBranchSelection(CompanyBranchSelection),
-    Home(Menu),
-}
-
-#[derive(Debug, Clone)]
-pub enum Auth {
     SignIn,
     SignUp,
+    ListCompanyAndBranch(ListCompanyAndBranch),
+    Home(HomeNav),
 }
 
 #[derive(Debug, Clone)]
-pub enum CompanyBranchSelection {
+pub enum ListCompanyAndBranch {
     None,
     CreateCompany,
     CreateCompanyBranch,
+}
+
+#[derive(Debug, Clone)]
+pub struct HomeNav {
+    pub show_menu:       bool,
+    pub page_to_present: Menu,
 }
 
 #[derive(Debug, Clone)]
@@ -225,6 +226,6 @@ pub enum Menu {
 
 impl Default for Navigator {
     fn default() -> Self {
-        Self::Auth(Auth::SignIn)
+        Self::SignIn
     }
 }

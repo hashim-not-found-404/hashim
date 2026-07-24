@@ -315,7 +315,7 @@ where
         match &output {
             Ok(ok) => model.page_company_branch_selection.list.set(ok.clone()),
             Err(_) => {
-                model.navigator.set(ui_model::Navigator::Auth(ui_model::Auth::SignIn));
+                model.navigator.set(ui_model::Navigator::SignIn);
             }
         }
     }
@@ -339,8 +339,8 @@ impl ui_model::CompanyAndBranchSelection {
     ) {
         match self {
             Self::Subscribe => {
-                model.navigator.set(ui_model::Navigator::CompanyBranchSelection(
-                    ui_model::CompanyBranchSelection::None,
+                model.navigator.set(ui_model::Navigator::ListCompanyAndBranch(
+                    ui_model::ListCompanyAndBranch::None,
                 ));
 
                 handle_list_company_and_branch::<Rn, Rt, Id, Mpsc, Rg, As, Ch, LongCache>(
@@ -374,13 +374,13 @@ impl ui_model::CompanyAndBranchSelection {
                 }
             }
             Self::ShowCreateCompany => {
-                model.navigator.set(ui_model::Navigator::CompanyBranchSelection(
-                    ui_model::CompanyBranchSelection::CreateCompany,
+                model.navigator.set(ui_model::Navigator::ListCompanyAndBranch(
+                    ui_model::ListCompanyAndBranch::CreateCompany,
                 ));
             }
             Self::ShowCreateCompanyBranch => {
-                model.navigator.set(ui_model::Navigator::CompanyBranchSelection(
-                    ui_model::CompanyBranchSelection::CreateCompanyBranch,
+                model.navigator.set(ui_model::Navigator::ListCompanyAndBranch(
+                    ui_model::ListCompanyAndBranch::CreateCompanyBranch,
                 ));
             }
             Self::SelectedCompany(i) => {
@@ -399,7 +399,10 @@ impl ui_model::CompanyAndBranchSelection {
             }
             Self::SelectedCompanyBranch(i) => {
                 commander_local_state.selected_company_branch.put(Some(i));
-                model.navigator.set(ui_model::Navigator::Home(ui_model::Menu::Dashboard));
+                model.navigator.set(ui_model::Navigator::Home(ui_model::HomeNav {
+                    show_menu:       false,
+                    page_to_present: ui_model::Menu::Dashboard,
+                }))
             }
         }
     }

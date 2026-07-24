@@ -14,13 +14,13 @@ pub(crate) fn ListCompanyAndBranch() -> Element {
     rsx! {
         div {
             match tools::MODEL.navigator.read() {
-                ui_model::Navigator::CompanyBranchSelection(n) => {
+                ui_model::Navigator::ListCompanyAndBranch(n) => {
                     match n {
-                        ui_model::CompanyBranchSelection::None => rsx! {},
-                        ui_model::CompanyBranchSelection::CreateCompany => rsx! {
+                        ui_model::ListCompanyAndBranch::None => rsx! {},
+                        ui_model::ListCompanyAndBranch::CreateCompany => rsx! {
                             create_company::CreateCompany {}
                         },
-                        ui_model::CompanyBranchSelection::CreateCompanyBranch => {
+                        ui_model::ListCompanyAndBranch::CreateCompanyBranch => {
                             rsx! {
                                 create_company_branch::CreateCompanyBranch {}
                             }

@@ -160,7 +160,7 @@ fn handle_close<
 
     model
         .navigator
-        .set(ui_model::Navigator::CompanyBranchSelection(ui_model::CompanyBranchSelection::None));
+        .set(ui_model::Navigator::ListCompanyAndBranch(ui_model::ListCompanyAndBranch::None));
 }
 
 async fn handle_submit<
