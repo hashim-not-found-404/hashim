@@ -27,38 +27,6 @@ pub(crate) struct SignInOk {
     user_name: String,
 }
 
-impl Into<Vec<resource_utils::ResourceInfo>> for &cases::sign_in::Ok {
-    fn into(self) -> Vec<resource_utils::ResourceInfo> {
-        use resource_utils::Resource;
-        use resource_utils::ResourceInfo;
-
-        let mut resources = Vec::with_capacity(3);
-        let user_uuid = &self.user_uuid;
-
-        // JWT
-        resources.push(ResourceInfo {
-            row_uuid: user_uuid.clone(),
-            resource: Resource::Jwt(self.jwt.clone()),
-        });
-
-        // User ID
-        resources.push(ResourceInfo {
-            row_uuid: user_uuid.clone(),
-            resource: Resource::TableUserFieldId(self.user_id.clone()),
-        });
-
-        // User name (optional)
-        if let Some(name) = &self.user_name {
-            resources.push(ResourceInfo {
-                row_uuid: user_uuid.clone(),
-                resource: Resource::TableUserFieldName(name.clone()),
-            });
-        }
-
-        resources
-    }
-}
-
 pub(crate) struct ViewAndCacheType;
 
 impl<Ch, LongCache> ViewAndCache<Ch, LongCache> for ViewAndCacheType
@@ -139,7 +107,35 @@ where
 
     fn extract_resource(data: &Self::Type3) -> Vec<resource_utils::ResourceInfo> {
         match data {
-            Ok(ok) => ok.into(),
+            Ok(ok) => {
+                use resource_utils::Resource;
+                use resource_utils::ResourceInfo;
+
+                let mut resources = Vec::with_capacity(3);
+                let user_uuid = &ok.user_uuid;
+
+                // JWT
+                resources.push(ResourceInfo {
+                    row_uuid: user_uuid.clone(),
+                    resource: Resource::Jwt(ok.jwt.clone()),
+                });
+
+                // User ID
+                resources.push(ResourceInfo {
+                    row_uuid: user_uuid.clone(),
+                    resource: Resource::TableUserFieldId(ok.user_id.clone()),
+                });
+
+                // User name (optional)
+                if let Some(name) = &ok.user_name {
+                    resources.push(ResourceInfo {
+                        row_uuid: user_uuid.clone(),
+                        resource: Resource::TableUserFieldName(name.clone()),
+                    });
+                }
+
+                resources
+            }
             Err(_) => Vec::new(),
         }
     }

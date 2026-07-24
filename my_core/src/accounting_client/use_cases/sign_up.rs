@@ -24,31 +24,6 @@ type Type2 = cases::sign_up::Input;
 type Type3 = cases::sign_up::MyResult;
 type Type4 = cases::sign_up::MyResult;
 
-impl Into<Vec<resource_utils::ResourceInfo>> for &cases::sign_up::Ok {
-    fn into(self) -> Vec<resource_utils::ResourceInfo> {
-        let mut resource = Vec::with_capacity(3);
-
-        resource.push(resource_utils::ResourceInfo {
-            row_uuid: self.new_uuid.clone(),
-            resource: resource_utils::Resource::Jwt(self.jwt.clone()),
-        });
-
-        resource.push(resource_utils::ResourceInfo {
-            row_uuid: self.new_uuid.clone(),
-            resource: resource_utils::Resource::TableUserFieldId(self.user_id.clone()),
-        });
-
-        if let Some(user_name) = &self.user_name {
-            resource.push(resource_utils::ResourceInfo {
-                row_uuid: self.new_uuid.clone(),
-                resource: resource_utils::Resource::TableUserFieldName(user_name.clone()),
-            });
-        }
-
-        resource
-    }
-}
-
 struct Cache<Ch, LongCache>
 where
     Ch: cache::Cache,
@@ -126,7 +101,28 @@ where
 
     fn extract_resource(data: &Self::Type3) -> Vec<resource_utils::ResourceInfo> {
         match data {
-            Ok(ok) => ok.into(),
+            Ok(ok) => {
+                let mut resource = Vec::with_capacity(3);
+
+                resource.push(resource_utils::ResourceInfo {
+                    row_uuid: ok.new_uuid.clone(),
+                    resource: resource_utils::Resource::Jwt(ok.jwt.clone()),
+                });
+
+                resource.push(resource_utils::ResourceInfo {
+                    row_uuid: ok.new_uuid.clone(),
+                    resource: resource_utils::Resource::TableUserFieldId(ok.user_id.clone()),
+                });
+
+                if let Some(user_name) = &ok.user_name {
+                    resource.push(resource_utils::ResourceInfo {
+                        row_uuid: ok.new_uuid.clone(),
+                        resource: resource_utils::Resource::TableUserFieldName(user_name.clone()),
+                    });
+                }
+
+                resource
+            }
             Err(_) => Vec::new(),
         }
     }

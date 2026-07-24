@@ -24,50 +24,6 @@ type Type2 = cases::create_account::Input;
 type Type3 = cases::create_account::MyResult;
 type Type4 = cases::create_account::MyResult;
 
-impl Into<Vec<resource_utils::ResourceInfo>> for &cases::create_account::Ok {
-    fn into(self) -> Vec<resource_utils::ResourceInfo> {
-        let mut resources = Vec::new();
-
-        resources.push(resource_utils::ResourceInfo {
-            row_uuid: self.new_uuid.clone(),
-            resource: resource_utils::Resource::TableAccountFieldCompanyBelong(
-                self.belong_to_company.clone(),
-            ),
-        });
-
-        resources.push(resource_utils::ResourceInfo {
-            row_uuid: self.new_uuid.clone(),
-            resource: resource_utils::Resource::TableAccountFieldIsDebit(self.is_debit.clone()),
-        });
-
-        resources.push(resource_utils::ResourceInfo {
-            row_uuid: self.new_uuid.clone(),
-            resource: resource_utils::Resource::TableAccountFieldIsPermanentAccount(
-                self.is_permanent_account.clone(),
-            ),
-        });
-
-        resources.push(resource_utils::ResourceInfo {
-            row_uuid: self.new_uuid.clone(),
-            resource: resource_utils::Resource::TableAccountFieldName(self.account_name.clone()),
-        });
-
-        resources.push(resource_utils::ResourceInfo {
-            row_uuid: self.new_uuid.clone(),
-            resource: resource_utils::Resource::TableAccountFieldNotes(self.notes.clone()),
-        });
-
-        resources.push(resource_utils::ResourceInfo {
-            row_uuid: self.new_uuid.clone(),
-            resource: resource_utils::Resource::TableAccountFieldUnitOfMeasurementOfQuantity(
-                self.unit_of_measurement_of_quantity.clone(),
-            ),
-        });
-
-        resources
-    }
-}
-
 struct Cache<Ch, LongCache>
 where
     Ch: cache::Cache,
@@ -147,7 +103,52 @@ where
 
     fn extract_resource(data: &Self::Type3) -> Vec<resource_utils::ResourceInfo> {
         match data {
-            Ok(ok) => ok.into(),
+            Ok(ok) => {
+                let mut resources = Vec::new();
+
+                resources.push(resource_utils::ResourceInfo {
+                    row_uuid: ok.new_uuid.clone(),
+                    resource: resource_utils::Resource::TableAccountFieldCompanyBelong(
+                        ok.belong_to_company.clone(),
+                    ),
+                });
+
+                resources.push(resource_utils::ResourceInfo {
+                    row_uuid: ok.new_uuid.clone(),
+                    resource: resource_utils::Resource::TableAccountFieldIsDebit(
+                        ok.is_debit.clone(),
+                    ),
+                });
+
+                resources.push(resource_utils::ResourceInfo {
+                    row_uuid: ok.new_uuid.clone(),
+                    resource: resource_utils::Resource::TableAccountFieldIsPermanentAccount(
+                        ok.is_permanent_account.clone(),
+                    ),
+                });
+
+                resources.push(resource_utils::ResourceInfo {
+                    row_uuid: ok.new_uuid.clone(),
+                    resource: resource_utils::Resource::TableAccountFieldName(
+                        ok.account_name.clone(),
+                    ),
+                });
+
+                resources.push(resource_utils::ResourceInfo {
+                    row_uuid: ok.new_uuid.clone(),
+                    resource: resource_utils::Resource::TableAccountFieldNotes(ok.notes.clone()),
+                });
+
+                resources.push(resource_utils::ResourceInfo {
+                    row_uuid: ok.new_uuid.clone(),
+                    resource:
+                        resource_utils::Resource::TableAccountFieldUnitOfMeasurementOfQuantity(
+                            ok.unit_of_measurement_of_quantity.clone(),
+                        ),
+                });
+
+                resources
+            }
             Err(_) => Vec::new(),
         }
     }

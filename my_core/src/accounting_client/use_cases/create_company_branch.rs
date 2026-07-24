@@ -26,60 +26,6 @@ type Type2 = cases::create_company_branch::Input;
 type Type3 = cases::create_company_branch::MyResult;
 type Type4 = cases::create_company_branch::MyResult;
 
-impl Into<Vec<resource_utils::ResourceInfo>> for &cases::create_company_branch::Ok {
-    fn into(self) -> Vec<resource_utils::ResourceInfo> {
-        let branch_uuid = self.new_uuid.clone();
-
-        vec![
-            // Branch fields
-            resource_utils::ResourceInfo {
-                row_uuid: branch_uuid.clone(),
-                resource: resource_utils::Resource::TableCompanyBranchFieldName(
-                    self.branch_name.clone(),
-                ),
-            },
-            resource_utils::ResourceInfo {
-                row_uuid: branch_uuid.clone(),
-                resource: resource_utils::Resource::TableCompanyBranchFieldCompanyBelong(
-                    self.company_belong.clone(),
-                ),
-            },
-            resource_utils::ResourceInfo {
-                row_uuid: branch_uuid.clone(),
-                resource: resource_utils::Resource::TableCompanyBranchFieldLocation(
-                    self.location.clone(),
-                ),
-            },
-            resource_utils::ResourceInfo {
-                row_uuid: branch_uuid.clone(),
-                resource: resource_utils::Resource::TableCompanyBranchFieldCurrency(
-                    self.currency.clone(),
-                ),
-            },
-            // Access control for this branch (row_uuid is the branch UUID)
-            resource_utils::ResourceInfo {
-                row_uuid: branch_uuid.clone(),
-                resource: resource_utils::Resource::TableAccessControlForCompanyBranchFieldRole(
-                    self.role.clone(),
-                ),
-            },
-            resource_utils::ResourceInfo {
-                row_uuid: branch_uuid.clone(),
-                resource: resource_utils::Resource::TableAccessControlForCompanyBranchFieldUser(
-                    self.user_uuid.clone(),
-                ),
-            },
-            resource_utils::ResourceInfo {
-                row_uuid: branch_uuid,
-                resource:
-                    resource_utils::Resource::TableAccessControlForCompanyBranchFieldDataGroup(
-                        self.new_uuid.clone(),
-                    ),
-            },
-        ]
-    }
-}
-
 struct Cache<Ch, LongCache>
 where
     Ch: cache::Cache,
@@ -165,7 +111,57 @@ where
 
     fn extract_resource(data: &Self::Type3) -> Vec<resource_utils::ResourceInfo> {
         match data {
-            Ok(ok) => ok.into(),
+            Ok(ok) => {
+                let this = ok;
+                let branch_uuid = this.new_uuid.clone();
+                vec![
+                        // Branch fields
+                        resource_utils::ResourceInfo {
+                            row_uuid: branch_uuid.clone(),
+                            resource: resource_utils::Resource::TableCompanyBranchFieldName(
+                                this.branch_name.clone(),
+                            ),
+                        },
+                        resource_utils::ResourceInfo {
+                            row_uuid: branch_uuid.clone(),
+                            resource: resource_utils::Resource::TableCompanyBranchFieldCompanyBelong(
+                                this.company_belong.clone(),
+                            ),
+                        },
+                        resource_utils::ResourceInfo {
+                            row_uuid: branch_uuid.clone(),
+                            resource: resource_utils::Resource::TableCompanyBranchFieldLocation(
+                                this.location.clone(),
+                            ),
+                        },
+                        resource_utils::ResourceInfo {
+                            row_uuid: branch_uuid.clone(),
+                            resource: resource_utils::Resource::TableCompanyBranchFieldCurrency(
+                                this.currency.clone(),
+                            ),
+                        },
+                        // Access control for this branch (row_uuid is the branch UUID)
+                        resource_utils::ResourceInfo {
+                            row_uuid: branch_uuid.clone(),
+                            resource: resource_utils::Resource::TableAccessControlForCompanyBranchFieldRole(
+                                this.role.clone(),
+                            ),
+                        },
+                        resource_utils::ResourceInfo {
+                            row_uuid: branch_uuid.clone(),
+                            resource: resource_utils::Resource::TableAccessControlForCompanyBranchFieldUser(
+                                this.user_uuid.clone(),
+                            ),
+                        },
+                        resource_utils::ResourceInfo {
+                            row_uuid: branch_uuid,
+                            resource:
+                                resource_utils::Resource::TableAccessControlForCompanyBranchFieldDataGroup(
+                                    this.new_uuid.clone(),
+                                ),
+                        },
+                    ]
+            }
             Err(_) => Vec::new(),
         }
     }

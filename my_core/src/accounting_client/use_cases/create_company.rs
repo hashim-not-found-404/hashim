@@ -19,47 +19,6 @@ type Type2 = cases::create_company::Input;
 type Type3 = cases::create_company::MyResult;
 type Type4 = cases::create_company::MyResult;
 
-impl Into<Vec<resource_utils::ResourceInfo>> for &cases::create_company::Ok {
-    fn into(self) -> Vec<resource_utils::ResourceInfo> {
-        let company_uuid = self.new_uuid.clone();
-
-        vec![
-            // Company fields
-            resource_utils::ResourceInfo {
-                row_uuid: company_uuid.clone(),
-                resource: resource_utils::Resource::TableCompanyFieldName(
-                    self.company_name.clone(),
-                ),
-            },
-            resource_utils::ResourceInfo {
-                row_uuid: company_uuid.clone(),
-                resource: resource_utils::Resource::TableCompanyFieldCurrency(
-                    self.currency.clone(),
-                ),
-            },
-            // Access control fields (using the same UUID as the row identifier)
-            resource_utils::ResourceInfo {
-                row_uuid: company_uuid.clone(),
-                resource: resource_utils::Resource::TableAccessControlForCompanyFieldRole(
-                    self.role.clone(),
-                ),
-            },
-            resource_utils::ResourceInfo {
-                row_uuid: company_uuid.clone(),
-                resource: resource_utils::Resource::TableAccessControlForCompanyFieldUser(
-                    self.user_uuid.clone(),
-                ),
-            },
-            resource_utils::ResourceInfo {
-                row_uuid: company_uuid.clone(),
-                resource: resource_utils::Resource::TableAccessControlForCompanyFieldDataGroup(
-                    company_uuid,
-                ),
-            },
-        ]
-    }
-}
-
 pub(crate) struct ViewAndCacheType;
 
 impl<Ch, LongCache> ViewAndCache<Ch, LongCache> for ViewAndCacheType
@@ -90,7 +49,45 @@ where
 
     fn extract_resource(data: &Self::Type3) -> Vec<resource_utils::ResourceInfo> {
         match data {
-            Ok(ok) => ok.into(),
+            Ok(ok) => {
+                let this = ok;
+                let company_uuid = this.new_uuid.clone();
+                vec![
+                    // Company fields
+                    resource_utils::ResourceInfo {
+                        row_uuid: company_uuid.clone(),
+                        resource: resource_utils::Resource::TableCompanyFieldName(
+                            this.company_name.clone(),
+                        ),
+                    },
+                    resource_utils::ResourceInfo {
+                        row_uuid: company_uuid.clone(),
+                        resource: resource_utils::Resource::TableCompanyFieldCurrency(
+                            this.currency.clone(),
+                        ),
+                    },
+                    // Access control fields (using the same UUID as the row identifier)
+                    resource_utils::ResourceInfo {
+                        row_uuid: company_uuid.clone(),
+                        resource: resource_utils::Resource::TableAccessControlForCompanyFieldRole(
+                            this.role.clone(),
+                        ),
+                    },
+                    resource_utils::ResourceInfo {
+                        row_uuid: company_uuid.clone(),
+                        resource: resource_utils::Resource::TableAccessControlForCompanyFieldUser(
+                            this.user_uuid.clone(),
+                        ),
+                    },
+                    resource_utils::ResourceInfo {
+                        row_uuid: company_uuid.clone(),
+                        resource:
+                            resource_utils::Resource::TableAccessControlForCompanyFieldDataGroup(
+                                company_uuid,
+                            ),
+                    },
+                ]
+            }
             Err(_) => Vec::new(),
         }
     }
