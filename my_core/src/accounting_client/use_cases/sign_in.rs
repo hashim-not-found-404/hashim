@@ -166,21 +166,17 @@ where
     ) {
         match output {
             Ok(ok) => {
-                model.page_root.page_after_auth.user_name.set(ok.user_name.clone());
+                model.user_name.set(ok.user_name.clone());
             }
             Err(business_error) => {
-                model.page_root.page_auth.page_sign_in.user_id_error.set(
-                    match business_error.user_id {
-                        Some(_) => Some(String::from("user not exist")),
-                        None => None,
-                    },
-                );
-                model.page_root.page_auth.page_sign_in.user_password_error.set(
-                    match business_error.password {
-                        Some(_) => Some(String::from("wrong password")),
-                        None => None,
-                    },
-                );
+                model.page_sign_in.user_id_error.set(match business_error.user_id {
+                    Some(_) => Some(String::from("user not exist")),
+                    None => None,
+                });
+                model.page_sign_in.user_password_error.set(match business_error.password {
+                    Some(_) => Some(String::from("wrong password")),
+                    None => None,
+                });
             }
         }
     }
@@ -223,7 +219,7 @@ impl ui_model::SignIn {
                     .unwrap()
             }
             Self::UserId(i) => {
-                model.page_root.page_auth.auth_feature_state.user_id.set(i);
+                model.user_id.set(i);
                 handle_check::<Rn, Rt, Id, Mpsc, Rg, As, Ch, LongCache>(
                     model,
                     cache,
@@ -232,7 +228,7 @@ impl ui_model::SignIn {
                 .await;
             }
             Self::Password(i) => {
-                model.page_root.page_auth.auth_feature_state.user_password.set(i);
+                model.auth_feature_state.user_password.set(i);
                 handle_check::<Rn, Rt, Id, Mpsc, Rg, As, Ch, LongCache>(
                     model,
                     cache,
@@ -258,8 +254,8 @@ async fn handle_submit<
     cache: client_traits::CacheActorStruct<Mpsc>,
     commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
 ) {
-    let feature_state = &model.page_root.page_auth.auth_feature_state;
-    let local_state = &model.page_root.page_auth.page_sign_in;
+    let feature_state = &model.auth_feature_state;
+    let local_state = &model.page_sign_in;
 
     if feature_state.is_loading.read() {
         return;
@@ -270,7 +266,7 @@ async fn handle_submit<
     local_state.user_id_error.reset();
     local_state.user_password_error.reset();
 
-    let user_id = feature_state.user_id.read();
+    let user_id = model.user_id.read();
     let input = cases::sign_in::Input {
         user_id:  user_id.clone(),
         password: feature_state.user_password.read(),
@@ -409,8 +405,8 @@ async fn handle_check<
     mut cache: client_traits::CacheActorStruct<Mpsc>,
     commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
 ) {
-    let feature_state = &model.page_root.page_auth.auth_feature_state;
-    let local_state = &model.page_root.page_auth.page_sign_in;
+    let feature_state = &model.auth_feature_state;
+    let local_state = &model.page_sign_in;
 
     local_state.user_id_error.reset();
     local_state.user_password_error.reset();
@@ -422,7 +418,7 @@ async fn handle_check<
             cache_actor::CachingStrategy::ReadCacheOnly,
             txn_number,
             <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::wrap_input(cases::sign_in::Input {
-                user_id:  feature_state.user_id.read(),
+                user_id:  model.user_id.read(),
                 password: feature_state.user_password.read(),
             }),
         )

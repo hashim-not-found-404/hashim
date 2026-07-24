@@ -142,17 +142,9 @@ where
         output: &Self::Type4,
         model: &ui_model::Model<As>,
     ) {
-        let local_state = &model.page_root.page_auth.page_sign_up;
+        let local_state = &model.page_sign_up;
         match output {
             Ok(_) => {
-                model
-                    .page_root
-                    .page_after_auth
-                    .user_id
-                    .set(model.page_root.page_auth.auth_feature_state.user_id.read());
-
-                model.page_root.page_after_auth.user_name.set(local_state.user_name.read());
-
                 local_state.user_id_error.reset();
                 local_state.user_name_error.reset();
             }
@@ -207,7 +199,7 @@ impl ui_model::SignUp {
                     .unwrap()
             }
             Self::UserName(i) => {
-                model.page_root.page_auth.page_sign_up.user_name.set(i);
+                model.user_name.set(i);
                 handle_check::<Rn, Rt, Id, Mpsc, Rg, As, Ch, LongCache>(
                     model,
                     cache,
@@ -216,7 +208,7 @@ impl ui_model::SignUp {
                 .await;
             }
             Self::UserId(i) => {
-                model.page_root.page_auth.auth_feature_state.user_id.set(i);
+                model.user_id.set(i);
                 handle_check::<Rn, Rt, Id, Mpsc, Rg, As, Ch, LongCache>(
                     model,
                     cache,
@@ -225,7 +217,7 @@ impl ui_model::SignUp {
                 .await;
             }
             Self::Password(i) => {
-                model.page_root.page_auth.auth_feature_state.user_password.set(i);
+                model.auth_feature_state.user_password.set(i);
                 handle_check::<Rn, Rt, Id, Mpsc, Rg, As, Ch, LongCache>(
                     model,
                     cache,
@@ -251,8 +243,8 @@ async fn handle_submit<
     cache: client_traits::CacheActorStruct<Mpsc>,
     commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
 ) {
-    let feature_state = &model.page_root.page_auth.auth_feature_state;
-    let local_state = &model.page_root.page_auth.page_sign_up;
+    let feature_state = &model.auth_feature_state;
+    let local_state = &model.page_sign_up;
 
     if feature_state.is_loading.read() == true {
         return;
@@ -267,13 +259,13 @@ async fn handle_submit<
     let input = cases::sign_up::Input {
         new_uuid: new_uuid.clone(),
         name:     {
-            let name = local_state.user_name.read();
+            let name = model.user_name.read();
             match name.is_empty() {
                 true => None,
                 false => Some(name.to_string()),
             }
         },
-        user_id:  feature_state.user_id.read(),
+        user_id:  model.user_id.read(),
         password: feature_state.user_password.read(),
     };
 
@@ -412,8 +404,8 @@ async fn handle_check<
     mut cache: client_traits::CacheActorStruct<Mpsc>,
     _: Arc<commander::CommanderLocalState<Mpsc, As>>,
 ) {
-    let feature_state = &model.page_root.page_auth.auth_feature_state;
-    let local_state = &model.page_root.page_auth.page_sign_up;
+    let feature_state = &model.auth_feature_state;
+    let local_state = &model.page_sign_up;
 
     local_state.user_id_error.reset();
     local_state.user_name_error.reset();
@@ -428,13 +420,13 @@ async fn handle_check<
             <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::wrap_input(cases::sign_up::Input {
                 new_uuid: new_uuid.clone(),
                 name:     {
-                    let name = local_state.user_name.read();
+                    let name = model.user_name.read();
                     match name.is_empty() {
                         true => None,
                         false => Some(name.to_string()),
                     }
                 },
-                user_id:  feature_state.user_id.read(),
+                user_id:  model.user_id.read(),
                 password: feature_state.user_password.read(),
             }),
         )

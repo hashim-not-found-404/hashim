@@ -6,7 +6,7 @@ use my_core::accounting_client::client_domain::ui_model::HashimSignal;
 
 #[component]
 pub(crate) fn CreateAccount() -> Element {
-    let local_state = &tools::MODEL.page_root.page_after_auth.page_home.page_create_account;
+    let local_state = &tools::MODEL.page_create_account;
 
     let consent_callback = move |consent: ui_model::UserConsent| {
         tools::send(ui_model::Message::CreateAccount(ui_model::CreateAccount::Consent(consent)));

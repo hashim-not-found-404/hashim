@@ -123,8 +123,7 @@ impl ui_model::CreateCompany {
         cache: client_traits::CacheActorStruct<Mpsc>,
         commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
     ) {
-        let local_state =
-            &model.page_root.page_after_auth.page_company_branch_selection.page_create_company;
+        let local_state = &model.page_create_company;
 
         match self {
             Self::Submit => {
@@ -154,8 +153,7 @@ fn handle_close<
 >(
     model: &'static ui_model::Model<As>,
 ) {
-    let page_create_company =
-        &model.page_root.page_after_auth.page_company_branch_selection.page_create_company;
+    let page_create_company = &model.page_create_company;
 
     page_create_company.company_name.reset();
     page_create_company.currency.reset();
@@ -181,8 +179,7 @@ async fn handle_submit<
 ) {
     let data = commander_local_state.user_uuid.read().clone().unwrap();
 
-    let local_state =
-        &model.page_root.page_after_auth.page_company_branch_selection.page_create_company;
+    let local_state = &model.page_create_company;
 
     let input = cases::create_company::Input {
         user_uuid:    data,

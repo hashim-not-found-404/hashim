@@ -163,7 +163,7 @@ where
         output: &Self::Type4,
         model: &ui_model::Model<As>,
     ) {
-        let local_state = &model.page_root.page_after_auth.page_home.page_create_account;
+        let local_state = &model.page_create_account;
 
         match output {
             Ok(_) => {
@@ -195,7 +195,7 @@ impl ui_model::CreateAccount {
         cache: client_traits::CacheActorStruct<Mpsc>,
         commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
     ) {
-        let local_state = &model.page_root.page_after_auth.page_home.page_create_account;
+        let local_state = &model.page_create_account;
 
         match self {
             ui_model::CreateAccount::Submit => {
@@ -240,7 +240,7 @@ impl ui_model::CreateAccount {
 }
 
 fn handle_clean<As: ui_model::AllSignalTypes>(model: &ui_model::Model<As>) {
-    let local_state = &model.page_root.page_after_auth.page_home.page_create_account;
+    let local_state = &model.page_create_account;
 
     local_state.account_name.reset();
     local_state.is_debit.reset();
@@ -267,7 +267,7 @@ async fn handle_submit<
 ) {
     let user_uuid = commander_local_state.user_uuid.read().clone().unwrap();
 
-    let local_state = &model.page_root.page_after_auth.page_home.page_create_account;
+    let local_state = &model.page_create_account;
 
     let input = cases::create_account::Input {
         user_uuid,
@@ -277,13 +277,7 @@ async fn handle_submit<
         account_name: local_state.account_name.read(),
         notes: local_state.notes.read(),
         unit_of_measurement_of_quantity: local_state.unit_of_measurement_of_quantity.read(),
-        belong_to_company: model
-            .page_root
-            .page_after_auth
-            .page_company_branch_selection
-            .selected_company
-            .read()
-            .unwrap(),
+        belong_to_company: model.selected_company.read().unwrap(),
     };
     let data = <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::wrap_input(input);
     let txn_number = Rn::generate();
@@ -396,7 +390,7 @@ async fn handle_check<
     mut cache: client_traits::CacheActorStruct<Mpsc>,
     commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
 ) {
-    let local_state = &model.page_root.page_after_auth.page_home.page_create_account;
+    let local_state = &model.page_create_account;
 
     let user_uuid = commander_local_state.user_uuid.read().clone().unwrap();
 
@@ -408,13 +402,7 @@ async fn handle_check<
         account_name: local_state.account_name.read(),
         notes: local_state.notes.read(),
         unit_of_measurement_of_quantity: local_state.unit_of_measurement_of_quantity.read(),
-        belong_to_company: model
-            .page_root
-            .page_after_auth
-            .page_company_branch_selection
-            .selected_company
-            .read()
-            .unwrap(),
+        belong_to_company: model.selected_company.read().unwrap(),
     };
 
     let txn_number = Rn::generate();

@@ -6,11 +6,7 @@ use my_core::accounting_client::client_domain::ui_model::HashimSignal;
 
 #[component]
 pub(crate) fn CreateCompanyBranch() -> Element {
-    let local_state = &tools::MODEL
-        .page_root
-        .page_after_auth
-        .page_company_branch_selection
-        .page_create_company_branch;
+    let local_state = &tools::MODEL.page_create_company_branch;
 
     let consent_callback = move |consent: ui_model::UserConsent| {
         tools::send(ui_model::Message::CreateCompanyBranch(

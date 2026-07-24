@@ -5,8 +5,7 @@ use my_core::accounting_client::client_domain::ui_model::HashimSignal;
 
 #[component]
 pub(crate) fn CreateCompany() -> Element {
-    let local_state =
-        &tools::MODEL.page_root.page_after_auth.page_company_branch_selection.page_create_company;
+    let local_state = &tools::MODEL.page_create_company;
 
     rsx! {
         div {

@@ -7,8 +7,7 @@ use my_core::accounting_client::client_domain::ui_model::HashimSignal;
 
 #[component]
 pub(crate) fn SignUp() -> Element {
-    let auth_state = &tools::MODEL.page_root.page_auth.auth_feature_state;
-    let local_state = &tools::MODEL.page_root.page_auth.page_sign_up;
+    let local_state = &tools::MODEL.page_sign_up;
 
     let sign_in = move |_| {
         navigator().push(Route::SignIn {});
@@ -36,7 +35,7 @@ pub(crate) fn SignUp() -> Element {
                         ui_model::Message::SignUp(ui_model::SignUp::UserName(event.value())),
                     );
                 },
-                value: local_state.user_name.read(),
+                value: tools::MODEL.user_name.read(),
             }
             label { {local_state.user_name_error.read()} }
             input {
@@ -44,7 +43,7 @@ pub(crate) fn SignUp() -> Element {
                 oninput: move |event| {
                     tools::send(ui_model::Message::SignUp(ui_model::SignUp::UserId(event.value())));
                 },
-                value: auth_state.user_id.read(),
+                value: tools::MODEL.user_id.read(),
             }
             label { {local_state.user_id_error.read()} }
             components::PasswordInput { password_callback }

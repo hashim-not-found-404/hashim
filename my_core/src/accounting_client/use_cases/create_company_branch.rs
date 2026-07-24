@@ -181,11 +181,7 @@ where
         output: &Self::Type4,
         model: &ui_model::Model<As>,
     ) {
-        let local_state = &model
-            .page_root
-            .page_after_auth
-            .page_company_branch_selection
-            .page_create_company_branch;
+        let local_state = &model.page_create_company_branch;
 
         match output {
             Ok(_) => {
@@ -232,20 +228,14 @@ impl ui_model::CreateCompanyBranch {
                     .read()
                     .send(process_manager::MessageToProcessManager::FromUser {
                         process_name: process_manager::ProcessName::CreateCompanyBranch,
-                        consent:      i,
+                        consent: i,
                     })
                     .await
                     .unwrap();
             }
-            Self::Close => handle_close::<Rn, Rt, Id, Mpsc, Rg, As, Ch, LongCache>(model),
+            Self::Close => handle_close::<As>(model),
             Self::Name(i) => {
-                model
-                    .page_root
-                    .page_after_auth
-                    .page_company_branch_selection
-                    .page_create_company_branch
-                    .branch_name
-                    .set(i);
+                model.page_create_company_branch.branch_name.set(i);
 
                 handle_check::<Rn, Rt, Id, Mpsc, Rg, As, Ch, LongCache>(
                     model,
@@ -254,15 +244,10 @@ impl ui_model::CreateCompanyBranch {
                 )
                 .await;
             }
-            Self::Currency(i) => {
-                model
-                    .page_root
-                    .page_after_auth
-                    .page_company_branch_selection
-                    .page_create_company_branch
-                    .currency
-                    .set(types::Currency::from_str(i.as_str()).unwrap())
-            }
+            Self::Currency(i) => model
+                .page_create_company_branch
+                .currency
+                .set(types::Currency::from_str(i.as_str()).unwrap()),
         }
     }
 }
@@ -281,8 +266,7 @@ async fn handle_submit<
     cache: client_traits::CacheActorStruct<Mpsc>,
     commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
 ) {
-    let local_state =
-        &model.page_root.page_after_auth.page_company_branch_selection.page_create_company_branch;
+    let local_state = &model.page_create_company_branch;
 
     if local_state.is_loading.read() == true {
         return;
@@ -292,18 +276,12 @@ async fn handle_submit<
     let data = commander_local_state.user_uuid.read().clone().unwrap();
 
     let input = cases::create_company_branch::Input {
-        user_uuid:      data,
-        new_uuid:       Id::generate(),
-        company_belong: model
-            .page_root
-            .page_after_auth
-            .page_company_branch_selection
-            .selected_company
-            .read()
-            .unwrap(),
-        currency:       local_state.currency.read(),
-        branch_name:    local_state.branch_name.read(),
-        location:       local_state.location.read(),
+        user_uuid: data,
+        new_uuid: Id::generate(),
+        company_belong: model.selected_company.read().unwrap(),
+        currency: local_state.currency.read(),
+        branch_name: local_state.branch_name.read(),
+        location: local_state.location.read(),
     };
 
     let data = <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::wrap_input(input);
@@ -338,12 +316,16 @@ async fn handle_submit<
                         &result, model,
                     );
 
+                    if is_ok {
+                        handle_close::<As>(model);
+                    }
+
                     commander_local_state1
                         .sender_to_process_manager
                         .read()
                         .send(process_manager::MessageToProcessManager::FromProcess {
                             process_name: process_manager::ProcessName::CreateCompanyBranch,
-                            message:      process_manager::MessageFromProcess::Response {
+                            message: process_manager::MessageFromProcess::Response {
                                 is_response_from_server,
                                 is_response_ok: is_ok,
                             },
@@ -359,7 +341,7 @@ async fn handle_submit<
             .read()
             .send(process_manager::MessageToProcessManager::FromProcess {
                 process_name: process_manager::ProcessName::CreateCompanyBranch,
-                message:      process_manager::MessageFromProcess::Subscribe {
+                message: process_manager::MessageFromProcess::Subscribe {
                     sender: sender_to_process,
                     dialog: &dialog,
                 },
@@ -413,24 +395,17 @@ async fn handle_check<
     mut cache: client_traits::CacheActorStruct<Mpsc>,
     commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
 ) {
-    let local_state =
-        &model.page_root.page_after_auth.page_company_branch_selection.page_create_company_branch;
+    let local_state = &model.page_create_company_branch;
 
     let data = commander_local_state.user_uuid.read().clone().unwrap();
 
     let input = cases::create_company_branch::Input {
-        user_uuid:      data,
-        new_uuid:       Id::generate(),
-        company_belong: model
-            .page_root
-            .page_after_auth
-            .page_company_branch_selection
-            .selected_company
-            .read()
-            .unwrap(),
-        currency:       local_state.currency.read(),
-        branch_name:    local_state.branch_name.read(),
-        location:       local_state.location.read(),
+        user_uuid: data,
+        new_uuid: Id::generate(),
+        company_belong: model.selected_company.read().unwrap(),
+        currency: local_state.currency.read(),
+        branch_name: local_state.branch_name.read(),
+        location: local_state.location.read(),
     };
 
     let txn_number = Rn::generate();
@@ -458,20 +433,8 @@ async fn handle_check<
     }
 }
 
-fn handle_close<
-    Rn: traits::RandomNumber,
-    Rt: traits::Runtime,
-    Id: types::RowId,
-    Mpsc: traits::MultiProducerSingleConsumer,
-    Rg: traits::Regex,
-    As: ui_model::AllSignalTypes,
-    Ch: cache::Cache,
-    LongCache: for<'a> cases::create_company_branch::DatabaseRead<Db<'a> = Ch>,
->(
-    model: &'static ui_model::Model<As>,
-) {
-    let page_create_company_branch =
-        &model.page_root.page_after_auth.page_company_branch_selection.page_create_company_branch;
+fn handle_close<As: ui_model::AllSignalTypes>(model: &'static ui_model::Model<As>) {
+    let page_create_company_branch = &model.page_create_company_branch;
 
     if page_create_company_branch.show_dialog.read() == ui_model::Dialog::Show {
         return;

@@ -313,9 +313,7 @@ where
         model: &ui_model::Model<As>,
     ) {
         match &output {
-            Ok(ok) => {
-                model.page_root.page_after_auth.page_company_branch_selection.list.set(ok.clone())
-            }
+            Ok(ok) => model.page_company_branch_selection.list.set(ok.clone()),
             Err(_) => {
                 model.navigator.set(ui_model::Navigator::Auth(ui_model::Auth::SignIn));
             }
@@ -386,8 +384,7 @@ impl ui_model::CompanyAndBranchSelection {
                 ));
             }
             Self::SelectedCompany(i) => {
-                let selected_company =
-                    &model.page_root.page_after_auth.page_company_branch_selection.selected_company;
+                let selected_company = &model.selected_company;
 
                 match selected_company.read() {
                     Some(old_one) => {
