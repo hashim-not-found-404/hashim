@@ -17,6 +17,7 @@ use std::time::UNIX_EPOCH;
 
 pub trait DbBundle<Cli: DBClient>: 'static {
     type CreateAccount: for<'a> cases::create_account::DatabaseRead<Db<'a> = Cli::Txn<'a>>;
+    type GetAllAccounts: for<'a> cases::get_all_accounts::DatabaseRead<Db<'a> = Cli>;
     type CreateCompany: for<'a> cases::create_company::DatabaseRead<Db<'a> = Cli::Txn<'a>>;
     type CreateCompanyBranch: for<'a> cases::create_company_branch::DatabaseRead<Db<'a> = Cli::Txn<'a>>;
     type ListCompanyAndBranch: for<'a> cases::list_company_and_branch::DatabaseRead<Db<'a> = Cli>;
@@ -462,6 +463,13 @@ async fn push_data<
                 request_response::push_data::OperationsResult::CreateAccount(
                     input
                         .handle_operation::<Id, Cli, Dbb::CreateAccount>(side_effects, client)
+                        .await?,
+                )
+            }
+            request_response::push_data::OperationsInput::GetAllAccounts(input) => {
+                request_response::push_data::OperationsResult::GetAllAccounts(
+                    input
+                        .handle_operation::<Id, Cli, Dbb::GetAllAccounts>(side_effects, client)
                         .await?,
                 )
             }

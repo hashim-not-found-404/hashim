@@ -34,6 +34,16 @@ pub(crate) trait ViewAndCache<Ch: cache::Cache, T> {
     );
 }
 
+pub(crate) trait ReadServerOnly {
+    type Type1;
+    type Type2;
+    type Type3;
+
+    fn wrap_input(data: Self::Type1) -> request_response::push_data::OperationsInput;
+    fn user_uuid(data: &Self::Type2) -> Option<&types::UuidType>;
+    fn extract_resource(data: &Self::Type3) -> Vec<resource_utils::ResourceInfo>;
+}
+
 pub(crate) type CacheActorStruct<Mpsc> = cache_actor::CacheStruct<
     Mpsc,
     resource_utils::Subscribe,

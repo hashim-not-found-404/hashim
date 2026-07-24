@@ -52,6 +52,7 @@ pub mod push_data {
         CreateAccount(cases::create_account::Input),
         // read
         ListCompanyAndBranch(cases::list_company_and_branch::Input),
+        GetAllAccounts(cases::get_all_accounts::Input),
     }
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -65,5 +66,6 @@ pub mod push_data {
         CreateAccount(cases::create_account::MyResult),
         // read
         ListCompanyAndBranch(cases::list_company_and_branch::MyResult),
+        GetAllAccounts(cases::get_all_accounts::MyResult),
     }
 }

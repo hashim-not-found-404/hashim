@@ -217,7 +217,7 @@ impl ui_model::CreateAccount {
                     .await
                     .unwrap();
             }
-            ui_model::CreateAccount::Clean => handle_clean::<Rn, Rt, Id, Mpsc, Rg, As>(model),
+            ui_model::CreateAccount::Clean => handle_clean::<As>(model),
             ui_model::CreateAccount::IsDebit(v) => local_state.is_debit.set(v),
             ui_model::CreateAccount::IsPermanentAccount(v) => {
                 local_state.is_permanent_account.set(v)
@@ -239,16 +239,7 @@ impl ui_model::CreateAccount {
     }
 }
 
-fn handle_clean<
-    Rn: traits::RandomNumber,
-    Rt: traits::Runtime,
-    Id: types::RowId,
-    Mpsc: traits::MultiProducerSingleConsumer,
-    Rg: traits::Regex,
-    As: ui_model::AllSignalTypes,
->(
-    model: &'static ui_model::Model<As>,
-) {
+fn handle_clean<As: ui_model::AllSignalTypes>(model: &ui_model::Model<As>) {
     let local_state = &model.page_root.page_after_auth.page_home.page_create_account;
 
     local_state.account_name.reset();
@@ -325,6 +316,10 @@ async fn handle_submit<
                     <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::apply_on_the_model(
                         &result, model,
                     );
+
+                    if is_ok {
+                        handle_clean(model);
+                    }
 
                     commander_local_state1
                         .sender_to_process_manager

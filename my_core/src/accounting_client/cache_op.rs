@@ -1,4 +1,5 @@
 use crate::accounting_client::client_domain::cache;
+use crate::accounting_client::client_domain::client_traits::ReadServerOnly;
 use crate::accounting_client::client_domain::client_traits::ViewAndCache;
 use crate::accounting_client::use_cases;
 use crate::accounting_domain::cases;
@@ -100,6 +101,9 @@ impl request_response::push_data::OperationsInput {
             request_response::push_data::OperationsInput::CreateAccount(i) => {
                 run_operation_check!(create_account, CreateAccount, Dbb::CreateAccount, i, state)
             }
+            request_response::push_data::OperationsInput::GetAllAccounts(_) => {
+                unreachable!()
+            }
         }
     }
 
@@ -140,6 +144,9 @@ impl request_response::push_data::OperationsInput {
             request_response::push_data::OperationsInput::CreateAccount(i) => {
                 run_operation_check_apply!(create_account, Dbb::CreateAccount, i, state);
             }
+            request_response::push_data::OperationsInput::GetAllAccounts(_) => {
+                unreachable!()
+            }
         }
     }
 
@@ -164,6 +171,9 @@ impl request_response::push_data::OperationsInput {
             }
             request_response::push_data::OperationsInput::CreateAccount(i) => {
                 get_user_uuid!(create_account, Dbb::CreateAccount, i)
+            }
+            request_response::push_data::OperationsInput::GetAllAccounts(i) => {
+                use_cases::get_all_accounts::ViewAndCacheType::user_uuid(i)
             }
         }
     }
@@ -198,6 +208,9 @@ impl request_response::push_data::OperationsResult {
             request_response::push_data::OperationsResult::CreateAccount(i) => {
                 extract_resource!(create_account, Dbb::CreateAccount, i)
             }
+            request_response::push_data::OperationsResult::GetAllAccounts(i) => {
+                use_cases::get_all_accounts::ViewAndCacheType::extract_resource(i)
+            }
         }
     }
 
@@ -209,6 +222,7 @@ impl request_response::push_data::OperationsResult {
             request_response::push_data::OperationsResult::CreateCompanyBranch(i) => i.is_ok(),
             request_response::push_data::OperationsResult::ListCompanyAndBranch(i) => i.is_ok(),
             request_response::push_data::OperationsResult::CreateAccount(i) => i.is_ok(),
+            request_response::push_data::OperationsResult::GetAllAccounts(i) => i.is_ok(),
         }
     }
 }

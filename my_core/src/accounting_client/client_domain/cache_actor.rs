@@ -392,7 +392,23 @@ where
                                 };
                             }
                             CachingStrategy::ReadServerFirst => todo!(),
-                            CachingStrategy::ReadServerOnly => todo!(),
+                            CachingStrategy::ReadServerOnly => {
+                                let operations = Cu::create_pending_txn(txn_number, data);
+
+                                if Cu::is_online(&is_online).await {
+                                    let txn_to_send =
+                                        Cu::prepare_txn_for_send(&mut cache, vec![operations])
+                                            .await;
+
+                                    let data = Ed::encode(&txn_to_send);
+                                    Cu::send_to_network(&mut sender_to_network, data).await;
+
+                                    pool_of_senders.insert(txn_number, sender);
+                                } else {
+                                    let _ = sender.send(Response::ServerCannotBeReached).await;
+                                    let _ = sender.send(Response::CloseTheChannel).await;
+                                };
+                            }
                             CachingStrategy::WriteCacheOnly => {
                                 let result = Cu::check_input(&mut cache, &data).await;
                                 let resource = Cu::extract_resource1(&result);
