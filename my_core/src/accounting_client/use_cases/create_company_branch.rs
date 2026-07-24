@@ -228,7 +228,7 @@ impl ui_model::CreateCompanyBranch {
                     .read()
                     .send(process_manager::MessageToProcessManager::FromUser {
                         process_name: process_manager::ProcessName::CreateCompanyBranch,
-                        consent: i,
+                        consent:      i,
                     })
                     .await
                     .unwrap();
@@ -244,10 +244,12 @@ impl ui_model::CreateCompanyBranch {
                 )
                 .await;
             }
-            Self::Currency(i) => model
-                .page_create_company_branch
-                .currency
-                .set(types::Currency::from_str(i.as_str()).unwrap()),
+            Self::Currency(i) => {
+                model
+                    .page_create_company_branch
+                    .currency
+                    .set(types::Currency::from_str(i.as_str()).unwrap())
+            }
         }
     }
 }
@@ -276,12 +278,12 @@ async fn handle_submit<
     let data = commander_local_state.user_uuid.read().clone().unwrap();
 
     let input = cases::create_company_branch::Input {
-        user_uuid: data,
-        new_uuid: Id::generate(),
+        user_uuid:      data,
+        new_uuid:       Id::generate(),
         company_belong: model.selected_company.read().unwrap(),
-        currency: local_state.currency.read(),
-        branch_name: local_state.branch_name.read(),
-        location: local_state.location.read(),
+        currency:       local_state.currency.read(),
+        branch_name:    local_state.branch_name.read(),
+        location:       local_state.location.read(),
     };
 
     let data = <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::wrap_input(input);
@@ -325,7 +327,7 @@ async fn handle_submit<
                         .read()
                         .send(process_manager::MessageToProcessManager::FromProcess {
                             process_name: process_manager::ProcessName::CreateCompanyBranch,
-                            message: process_manager::MessageFromProcess::Response {
+                            message:      process_manager::MessageFromProcess::Response {
                                 is_response_from_server,
                                 is_response_ok: is_ok,
                             },
@@ -341,7 +343,7 @@ async fn handle_submit<
             .read()
             .send(process_manager::MessageToProcessManager::FromProcess {
                 process_name: process_manager::ProcessName::CreateCompanyBranch,
-                message: process_manager::MessageFromProcess::Subscribe {
+                message:      process_manager::MessageFromProcess::Subscribe {
                     sender: sender_to_process,
                     dialog: &dialog,
                 },
@@ -400,12 +402,12 @@ async fn handle_check<
     let data = commander_local_state.user_uuid.read().clone().unwrap();
 
     let input = cases::create_company_branch::Input {
-        user_uuid: data,
-        new_uuid: Id::generate(),
+        user_uuid:      data,
+        new_uuid:       Id::generate(),
         company_belong: model.selected_company.read().unwrap(),
-        currency: local_state.currency.read(),
-        branch_name: local_state.branch_name.read(),
-        location: local_state.location.read(),
+        currency:       local_state.currency.read(),
+        branch_name:    local_state.branch_name.read(),
+        location:       local_state.location.read(),
     };
 
     let txn_number = Rn::generate();

@@ -45,8 +45,10 @@ pub struct Model<As: AllSignalTypes> {
     pub user_name:        As::String,
     pub selected_company: As::OptionUuid,
 
+    // feature_state
+    pub auth_feature_state: AuthFeatureState<As>,
+
     // pages
-    pub auth_feature_state:            AuthFeatureState<As>,
     pub page_sign_up:                  PageSignUp<As>,
     pub page_sign_in:                  PageSignIn<As>,
     pub page_company_branch_selection: PageCompanyBranchSelection<As>,
