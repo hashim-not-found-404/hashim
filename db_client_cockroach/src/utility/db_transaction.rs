@@ -38,15 +38,12 @@ impl DBTransaction for S<'_> {
         let stmt = self.txn.prepare_cached(query).await.log()?;
 
         self.txn
-            .execute(
-                &stmt,
-                &[
-                    &data.new_uuid.to_externel_uuid(),
-                    &data.user_id,
-                    &data.hashed_password,
-                    &data.user_name,
-                ],
-            )
+            .execute(&stmt, &[
+                &data.new_uuid.to_externel_uuid(),
+                &data.user_id,
+                &data.hashed_password,
+                &data.user_name,
+            ])
             .await
             .log()?;
 
@@ -70,16 +67,13 @@ impl DBTransaction for S<'_> {
         let stmt = self.txn.prepare_cached(query).await.log()?;
         let _row = self
             .txn
-            .execute(
-                &stmt,
-                &[
-                    &data.new_uuid.to_externel_uuid(),
-                    &data.company_name,
-                    &data.currency.as_str(),
-                    &data.user_uuid.to_externel_uuid(),
-                    &data.role.as_str(),
-                ],
-            )
+            .execute(&stmt, &[
+                &data.new_uuid.to_externel_uuid(),
+                &data.company_name,
+                &data.currency.as_str(),
+                &data.user_uuid.to_externel_uuid(),
+                &data.role.as_str(),
+            ])
             .await
             .log()?;
         Ok(())
@@ -111,19 +105,16 @@ impl DBTransaction for S<'_> {
             .log()?;
 
         self.txn
-            .execute(
-                query,
-                &[
-                    &data.new_uuid.to_externel_uuid(),
-                    &data.company_belong.to_externel_uuid(),
-                    &data.branch_name,
-                    &lat,
-                    &lng,
-                    &data.currency.as_str(),
-                    &data.user_uuid.to_externel_uuid(),
-                    &data.role.as_str(),
-                ],
-            )
+            .execute(query, &[
+                &data.new_uuid.to_externel_uuid(),
+                &data.company_belong.to_externel_uuid(),
+                &data.branch_name,
+                &lat,
+                &lng,
+                &data.currency.as_str(),
+                &data.user_uuid.to_externel_uuid(),
+                &data.role.as_str(),
+            ])
             .await
             .log()?;
 
@@ -148,18 +139,15 @@ impl DBTransaction for S<'_> {
 
         let stmt = self.txn.prepare_cached(query).await.log()?;
         self.txn
-            .execute(
-                &stmt,
-                &[
-                    &input.new_uuid.to_externel_uuid(),
-                    &input.is_debit,
-                    &input.is_permanent_account,
-                    &input.account_name,
-                    &input.notes,
-                    &input.belong_to_company.to_externel_uuid(),
-                    &input.unit_of_measurement_of_quantity,
-                ],
-            )
+            .execute(&stmt, &[
+                &input.new_uuid.to_externel_uuid(),
+                &input.is_debit,
+                &input.is_permanent_account,
+                &input.account_name,
+                &input.notes,
+                &input.belong_to_company.to_externel_uuid(),
+                &input.unit_of_measurement_of_quantity,
+            ])
             .await
             .log()?;
 

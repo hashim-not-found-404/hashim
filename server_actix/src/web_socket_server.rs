@@ -9,12 +9,15 @@ use my_core::utility::utils::LogError;
 
 pub(crate) struct S {
     session: Session,
-    stream: AggregatedMessageStream,
+    stream:  AggregatedMessageStream,
 }
 
 impl S {
     pub(crate) fn new(session: Session, stream: AggregatedMessageStream) -> Self {
-        Self { session, stream }
+        Self {
+            session,
+            stream,
+        }
     }
 }
 
@@ -26,19 +29,21 @@ impl WSServer for S {
 
     async fn receive(&mut self) -> Result<server_methods::WSMessage, traits::DynamicError> {
         match self.stream.next().await {
-            Some(msg) => match msg.log()? {
-                AggregatedMessage::Binary(data) => {
-                    Ok(server_methods::WSMessage::Binary(data.to_vec()))
+            Some(msg) => {
+                match msg.log()? {
+                    AggregatedMessage::Binary(data) => {
+                        Ok(server_methods::WSMessage::Binary(data.to_vec()))
+                    }
+                    AggregatedMessage::Text(_) => Err("we dont use text".into()),
+                    AggregatedMessage::Ping(_data) => {
+                        todo!()
+                    }
+                    AggregatedMessage::Pong(_data) => {
+                        todo!()
+                    }
+                    AggregatedMessage::Close(_) => Ok(server_methods::WSMessage::Close),
                 }
-                AggregatedMessage::Text(_) => Err("we dont use text".into()),
-                AggregatedMessage::Ping(_data) => {
-                    todo!()
-                }
-                AggregatedMessage::Pong(_data) => {
-                    todo!()
-                }
-                AggregatedMessage::Close(_) => Ok(server_methods::WSMessage::Close),
-            },
+            }
             None => Err(dbg!("WebSocket connection closed").into()),
         }
     }

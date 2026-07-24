@@ -123,11 +123,8 @@ impl ui_model::CreateCompany {
         cache: client_traits::CacheActorStruct<Mpsc>,
         commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
     ) {
-        let local_state = &model
-            .page_root
-            .page_after_auth
-            .page_company_branch_selection
-            .page_create_company;
+        let local_state =
+            &model.page_root.page_after_auth.page_company_branch_selection.page_create_company;
 
         match self {
             Self::Submit => {
@@ -140,9 +137,9 @@ impl ui_model::CreateCompany {
             }
             Self::Close => handle_close::<Rn, Rt, Id, Mpsc, Rg, As>(model),
             Self::Name(i) => local_state.company_name.set(i),
-            Self::Currency(i) => local_state
-                .currency
-                .set(types::Currency::from_str(i.as_str()).unwrap()),
+            Self::Currency(i) => {
+                local_state.currency.set(types::Currency::from_str(i.as_str()).unwrap())
+            }
         }
     }
 }
@@ -157,20 +154,15 @@ fn handle_close<
 >(
     model: &'static ui_model::Model<As>,
 ) {
-    let page_create_company = &model
-        .page_root
-        .page_after_auth
-        .page_company_branch_selection
-        .page_create_company;
+    let page_create_company =
+        &model.page_root.page_after_auth.page_company_branch_selection.page_create_company;
 
     page_create_company.company_name.reset();
     page_create_company.currency.reset();
 
     model
         .navigator
-        .set(ui_model::Navigator::CompanyBranchSelection(
-            ui_model::CompanyBranchSelection::None,
-        ));
+        .set(ui_model::Navigator::CompanyBranchSelection(ui_model::CompanyBranchSelection::None));
 }
 
 async fn handle_submit<
@@ -189,17 +181,14 @@ async fn handle_submit<
 ) {
     let data = commander_local_state.user_uuid.read().clone().unwrap();
 
-    let local_state = &model
-        .page_root
-        .page_after_auth
-        .page_company_branch_selection
-        .page_create_company;
+    let local_state =
+        &model.page_root.page_after_auth.page_company_branch_selection.page_create_company;
 
     let input = cases::create_company::Input {
-        user_uuid: data,
-        new_uuid: Id::generate(),
+        user_uuid:    data,
+        new_uuid:     Id::generate(),
         company_name: local_state.company_name.read(),
-        currency: local_state.currency.read(),
+        currency:     local_state.currency.read(),
     };
 
     let txn_number = Rn::generate();

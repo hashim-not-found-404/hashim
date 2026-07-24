@@ -7,47 +7,47 @@ pub type MyResult = Result<Ok, Error>;
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Input {
-    pub(crate) user_uuid: types::UuidType,
-    pub(crate) new_uuid: types::UuidType,
+    pub(crate) user_uuid:      types::UuidType,
+    pub(crate) new_uuid:       types::UuidType,
     pub(crate) company_belong: types::UuidType,
-    pub(crate) branch_name: String,
-    pub(crate) location: types::Location,
-    pub(crate) currency: types::Currency,
+    pub(crate) branch_name:    String,
+    pub(crate) location:       types::Location,
+    pub(crate) currency:       types::Currency,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Ok {
-    pub new_uuid: types::UuidType,
-    pub branch_name: String,
+    pub new_uuid:       types::UuidType,
+    pub branch_name:    String,
     pub company_belong: types::UuidType,
-    pub user_uuid: types::UuidType,
-    pub currency: types::Currency,
-    pub location: types::Location,
-    pub role: types::Role,
+    pub user_uuid:      types::UuidType,
+    pub currency:       types::Currency,
+    pub location:       types::Location,
+    pub role:           types::Role,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
 pub struct Error {
-    pub(crate) user_uuid: Option<types::UserUuidError>,
-    pub(crate) new_uuid: Option<types::RowIdError>,
+    pub(crate) user_uuid:      Option<types::UserUuidError>,
+    pub(crate) new_uuid:       Option<types::RowIdError>,
     pub(crate) company_belong: Option<CompanyBelongError>,
-    pub(crate) branch_name: Option<BranchNameError>,
-    pub(crate) location: Option<LocationError>,
+    pub(crate) branch_name:    Option<BranchNameError>,
+    pub(crate) location:       Option<LocationError>,
 }
 
 impl types::MyErrorTrait for Error {}
 
 pub struct ReadInput {
-    pub user_uuid: types::UuidType,
-    pub new_uuid: types::UuidType,
+    pub user_uuid:      types::UuidType,
+    pub new_uuid:       types::UuidType,
     pub company_belong: types::UuidType,
-    pub branch_name: String,
+    pub branch_name:    String,
 }
 
 pub struct ReadOutput {
-    pub user_roles: Vec<types::Role>,
-    pub is_new_uuid_used: bool,
-    pub is_company_exist: bool,
+    pub user_roles:          Vec<types::Role>,
+    pub is_new_uuid_used:    bool,
+    pub is_company_exist:    bool,
     pub is_branch_name_used: bool,
 }
 
@@ -100,23 +100,20 @@ impl Input {
         &self,
         db: &mut Db::Db<'_>,
     ) -> Result<Error, traits::DynamicError> {
-        let read_output = Db::read(
-            db,
-            &ReadInput {
-                user_uuid: self.user_uuid.clone(),
-                new_uuid: self.new_uuid.clone(),
-                company_belong: self.company_belong.clone(),
-                branch_name: self.branch_name.clone(),
-            },
-        )
+        let read_output = Db::read(db, &ReadInput {
+            user_uuid:      self.user_uuid.clone(),
+            new_uuid:       self.new_uuid.clone(),
+            company_belong: self.company_belong.clone(),
+            branch_name:    self.branch_name.clone(),
+        })
         .await?;
 
         let mut errr = Error::default();
 
-        if !types::Role::has_any(
-            &read_output.user_roles,
-            &[types::Role::Manager, types::Role::CoManager],
-        ) {
+        if !types::Role::has_any(&read_output.user_roles, &[
+            types::Role::Manager,
+            types::Role::CoManager,
+        ]) {
             errr.user_uuid = Some(types::UserUuidError::YouDontHavePermissionToDoThat);
         }
 
@@ -143,13 +140,13 @@ impl Input {
         const ROLE: types::Role = types::Role::CoManager;
 
         Ok {
-            new_uuid: self.new_uuid.clone(),
-            branch_name: self.branch_name.clone(),
+            new_uuid:       self.new_uuid.clone(),
+            branch_name:    self.branch_name.clone(),
             company_belong: self.company_belong.clone(),
-            user_uuid: self.user_uuid.clone(),
-            currency: self.currency.clone(),
-            location: self.location.clone(),
-            role: ROLE,
+            user_uuid:      self.user_uuid.clone(),
+            currency:       self.currency.clone(),
+            location:       self.location.clone(),
+            role:           ROLE,
         }
     }
 }

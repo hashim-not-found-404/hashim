@@ -70,39 +70,32 @@ impl cases::list_company_and_branch::DatabaseRead for S {
                 let branch_currency: String = row.get(2).unwrap();
                 let company_belong: String = row.get(3).unwrap();
                 let role: Option<String> = row.get(4).unwrap(); // read as Option<String>
-                Ok((
-                    branch_uuid,
-                    branch_name,
-                    branch_currency,
-                    company_belong,
-                    role,
-                ))
+                Ok((branch_uuid, branch_name, branch_currency, company_belong, role))
             })
             .unwrap();
 
         // Group branch roles by branch UUID, and remember which company it belongs to
         struct BranchAccumulator {
-            branch_uuid: String,
-            branch_name: String,
+            branch_uuid:     String,
+            branch_name:     String,
             branch_currency: String,
-            company_belong: String,
-            roles: Vec<Role>,
+            company_belong:  String,
+            roles:           Vec<Role>,
         }
         let mut branch_map: HashMap<String, BranchAccumulator> = HashMap::new();
         for row in branch_rows {
             let (branch_uuid, branch_name, branch_currency, company_belong, role_opt) =
                 row.unwrap();
             // Create entry for the branch (even if role is None)
-            let entry =
-                branch_map
-                    .entry(branch_uuid.clone())
-                    .or_insert_with(|| BranchAccumulator {
-                        branch_uuid: branch_uuid.clone(),
-                        branch_name: branch_name.clone(),
-                        branch_currency: branch_currency.clone(),
-                        company_belong: company_belong.clone(),
-                        roles: Vec::new(),
-                    });
+            let entry = branch_map.entry(branch_uuid.clone()).or_insert_with(|| {
+                BranchAccumulator {
+                    branch_uuid:     branch_uuid.clone(),
+                    branch_name:     branch_name.clone(),
+                    branch_currency: branch_currency.clone(),
+                    company_belong:  company_belong.clone(),
+                    roles:           Vec::new(),
+                }
+            });
             if let Some(role_str) = role_opt {
                 let role = Role::from_str(&role_str).unwrap();
                 entry.roles.push(role);
@@ -134,17 +127,17 @@ impl cases::list_company_and_branch::DatabaseRead for S {
                     })
                     .collect::<Vec<_>>();
 
-            result.push(
-                cases::list_company_and_branch::AllCompaniesThatUserInWithRoles {
-                    company_uuid,
-                    company_name,
-                    company_currancy: company_currency,
-                    user_roles: company_roles,
-                    branches,
-                },
-            );
+            result.push(cases::list_company_and_branch::AllCompaniesThatUserInWithRoles {
+                company_uuid,
+                company_name,
+                company_currancy: company_currency,
+                user_roles: company_roles,
+                branches,
+            });
         }
 
-        Ok(cases::list_company_and_branch::ReadOutput { data: result })
+        Ok(cases::list_company_and_branch::ReadOutput {
+            data: result,
+        })
     }
 }

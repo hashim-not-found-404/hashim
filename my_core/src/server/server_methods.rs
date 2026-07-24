@@ -42,8 +42,8 @@ pub trait WSServer: 'static {
 }
 
 pub struct ServerMethods<Mpsc: traits::MultiProducerSingleConsumer, Jwt: types::JWT, Db: Database> {
-    database: Db,
-    jwt: Jwt,
+    database:                    Db,
+    jwt:                         Jwt,
     pub(crate) sender_to_broker: Mpsc::Sender<MessageToBroker<Mpsc>>,
 }
 
@@ -244,7 +244,9 @@ impl<
             session.close().await.unwrap();
 
             sender_to_broker
-                .send(MessageToBroker::Unsubscribe { connection_id })
+                .send(MessageToBroker::Unsubscribe {
+                    connection_id,
+                })
                 .await
                 .unwrap();
         });
@@ -288,7 +290,9 @@ impl<
                             list_of_subscribtion.branches,
                         );
                     }
-                    MessageToBroker::Unsubscribe { connection_id } => {
+                    MessageToBroker::Unsubscribe {
+                        connection_id,
+                    } => {
                         let mut user_to_remove = Vec::new();
 
                         for (user_uuid, inner) in pool_of_server_facad_channels.iter_mut() {
@@ -375,8 +379,8 @@ async fn push_data<
     jwt: &Jwt,
 ) -> Result<request_response::push_data::MyResult, traits::DynamicError> {
     let mut the_return_result = request_response::push_data::MyResult {
-        jwts: Vec::with_capacity(input.jwts.len()),
-        nonce: Ok(()),
+        jwts:       Vec::with_capacity(input.jwts.len()),
+        nonce:      Ok(()),
         operations: Vec::with_capacity(input.operations.len()),
     };
 
@@ -463,12 +467,10 @@ async fn push_data<
             }
         };
 
-        the_return_result
-            .operations
-            .push(request_response::push_data::Txn {
-                txn_number: transaction.txn_number,
-                operation: result,
-            });
+        the_return_result.operations.push(request_response::push_data::Txn {
+            txn_number: transaction.txn_number,
+            operation:  result,
+        });
     }
 
     return Ok(the_return_result);
@@ -484,10 +486,7 @@ fn check_nonce_if_valid<Id: RowId>(nonce: &types::UuidType, is_used: bool) -> bo
         None => return false,
     };
 
-    let now = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap()
-        .as_secs() as u64;
+    let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as u64;
 
     // 1. Reject future timestamps (more than 5 seconds ahead)
     let max_future = 5; // 5 seconds tolerance for clock drift
@@ -514,7 +513,7 @@ async fn get_table_of_subscribed_data<Cli: DBClient>(
 
     let mut subs = AllSubscribes {
         companies: HashMap::new(),
-        branches: HashMap::new(),
+        branches:  HashMap::new(),
     };
 
     for (company, users_roles) in roles.companies {
@@ -657,7 +656,7 @@ fn role_to_subscribe_mapping(roles: Vec<types::Role>) -> HashSet<resource_utils:
 
 pub(crate) struct AllSubscribes {
     pub(crate) companies: broker_functions::UserSubscribes,
-    pub(crate) branches: broker_functions::UserSubscribes,
+    pub(crate) branches:  broker_functions::UserSubscribes,
 }
 
 type UserSenders<Mpsc> = HashMap<
@@ -670,17 +669,17 @@ type UserSenders<Mpsc> = HashMap<
 
 pub(crate) enum MessageToBroker<Mpsc: traits::MultiProducerSingleConsumer> {
     Subscribe {
-        connection_id: u64,
+        connection_id:        u64,
         list_of_subscribtion: AllSubscribes,
-        users_uuids: HashSet<types::UuidType>,
-        sender_to_server: Mpsc::Sender<Vec<resource_utils::ResourceInfo>>,
+        users_uuids:          HashSet<types::UuidType>,
+        sender_to_server:     Mpsc::Sender<Vec<resource_utils::ResourceInfo>>,
     },
     Unsubscribe {
         connection_id: u64,
     },
     Publish {
-        connection_id: u64,
+        connection_id:                 u64,
         list_of_resources_for_company: server_traits::ListOfResources,
-        list_of_resources_for_branch: server_traits::ListOfResources,
+        list_of_resources_for_branch:  server_traits::ListOfResources,
     },
 }

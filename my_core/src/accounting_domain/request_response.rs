@@ -22,15 +22,15 @@ pub mod push_data {
 
     #[derive(Debug, Deserialize, Serialize)]
     pub(crate) struct Input {
-        pub(crate) jwts: Vec<types::JsonWebTokenType>,
-        pub(crate) nonce: types::UuidType,
+        pub(crate) jwts:       Vec<types::JsonWebTokenType>,
+        pub(crate) nonce:      types::UuidType,
         pub(crate) operations: Vec<Txn<OperationsInput>>,
     }
 
     #[derive(Debug, Deserialize, Serialize)]
     pub(crate) struct MyResult {
-        pub(crate) jwts: Vec<Result<(), types::JWTError>>,
-        pub(crate) nonce: Result<(), types::NonceError>,
+        pub(crate) jwts:       Vec<Result<(), types::JWTError>>,
+        pub(crate) nonce:      Result<(), types::NonceError>,
         pub(crate) operations: Vec<Txn<OperationsResult>>,
     }
 
@@ -38,7 +38,7 @@ pub mod push_data {
     #[derive(Debug, Deserialize, Serialize)]
     pub struct Txn<T> {
         pub txn_number: u64,
-        pub operation: T,
+        pub operation:  T,
     }
 
     #[derive(Debug, Deserialize, Serialize, Clone)]

@@ -17,7 +17,7 @@ pub(crate) enum Response<OpResult: 'static> {
     ServerCannotBeReached,
     Data {
         is_response_from_server: bool,
-        data: OpResult,
+        data:                    OpResult,
     },
 }
 
@@ -30,18 +30,18 @@ pub(crate) enum MessageToCache<
     WeAreBackOnline,
     DataFromServer(Vec<u8>),
     Subscribe {
-        component_id: u16,
+        component_id:         u16,
         list_of_subscribtion: &'static [Subscribe],
-        sender: Mpsc::Sender<()>,
+        sender:               Mpsc::Sender<()>,
     },
     UnSubscribe {
         component_id: u16,
     },
     Query {
-        strategy: CachingStrategy,
-        sender: Mpsc::Sender<Response<OpResult>>,
+        strategy:   CachingStrategy,
+        sender:     Mpsc::Sender<Response<OpResult>>,
         txn_number: u64,
-        data: OpInput,
+        data:       OpInput,
     },
 }
 
@@ -217,7 +217,9 @@ where
 
     pub(crate) async fn send_unsubs_to_cache_actor(&mut self, component_id: u16) {
         self.sender
-            .send(MessageToCache::UnSubscribe { component_id })
+            .send(MessageToCache::UnSubscribe {
+                component_id,
+            })
             .await
             .unwrap();
     }
@@ -334,7 +336,9 @@ where
                                 .insert(component_id);
                         }
                     }
-                    MessageToCache::UnSubscribe { component_id } => {
+                    MessageToCache::UnSubscribe {
+                        component_id,
+                    } => {
                         pool_of_pokers.remove(&component_id);
 
                         for (_, components) in pool_of_subscribes.iter_mut() {
@@ -348,131 +352,136 @@ where
                         mut sender,
                         txn_number,
                         data,
-                    } => match strategy {
-                        CachingStrategy::ReadCacheOnly => {
-                            let result = Cu::check_input(&mut cache, &data).await;
-                            let _ = sender
-                                .send(Response::Data {
-                                    is_response_from_server: false,
-                                    data: result,
-                                })
-                                .await;
-                            let _ = sender.send(Response::CloseTheChannel).await;
-                        }
-                        CachingStrategy::ReadCacheFirst => todo!(),
-                        CachingStrategy::ReadCacheAndServer => {
-                            let result = Cu::check_input(&mut cache, &data).await;
-
-                            let _ = sender
-                                .send(Response::Data {
-                                    is_response_from_server: false,
-                                    data: result,
-                                })
-                                .await;
-
-                            let operations = Cu::create_pending_txn(txn_number, data);
-
-                            if Cu::is_online(&is_online).await {
-                                let txn_to_send =
-                                    Cu::prepare_txn_for_send(&mut cache, vec![operations]).await;
-
-                                let data = Ed::encode(&txn_to_send);
-                                Cu::send_to_network(&mut sender_to_network, data).await;
-
-                                pool_of_senders.insert(txn_number, sender);
-                            } else {
-                                let _ = sender.send(Response::ServerCannotBeReached).await;
+                    } => {
+                        match strategy {
+                            CachingStrategy::ReadCacheOnly => {
+                                let result = Cu::check_input(&mut cache, &data).await;
+                                let _ = sender
+                                    .send(Response::Data {
+                                        is_response_from_server: false,
+                                        data:                    result,
+                                    })
+                                    .await;
                                 let _ = sender.send(Response::CloseTheChannel).await;
-                            };
-                        }
-                        CachingStrategy::ReadServerFirst => todo!(),
-                        CachingStrategy::ReadServerOnly => todo!(),
-                        CachingStrategy::WriteCacheOnly => {
-                            let result = Cu::check_input(&mut cache, &data).await;
-                            let resource = Cu::extract_resource1(&result);
+                            }
+                            CachingStrategy::ReadCacheFirst => todo!(),
+                            CachingStrategy::ReadCacheAndServer => {
+                                let result = Cu::check_input(&mut cache, &data).await;
 
-                            Cu::apply_input(&mut cache, &resource);
-                            Cu::write_input(&cache, txn_number, &data).await;
+                                let _ = sender
+                                    .send(Response::Data {
+                                        is_response_from_server: false,
+                                        data:                    result,
+                                    })
+                                    .await;
 
-                            let mut subs_to_poke = HashSet::new();
+                                let operations = Cu::create_pending_txn(txn_number, data);
 
-                            Cu::collect_subs_to_poke(&mut subs_to_poke, &resource);
+                                if Cu::is_online(&is_online).await {
+                                    let txn_to_send =
+                                        Cu::prepare_txn_for_send(&mut cache, vec![operations])
+                                            .await;
 
-                            poke_the_subs::<Mpsc, Subscribe>(
-                                &mut pool_of_pokers,
-                                &pool_of_subscribes,
-                                &subs_to_poke,
-                            )
-                            .await;
+                                    let data = Ed::encode(&txn_to_send);
+                                    Cu::send_to_network(&mut sender_to_network, data).await;
 
-                            let _ = sender
-                                .send(Response::Data {
-                                    is_response_from_server: false,
-                                    data: result,
-                                })
+                                    pool_of_senders.insert(txn_number, sender);
+                                } else {
+                                    let _ = sender.send(Response::ServerCannotBeReached).await;
+                                    let _ = sender.send(Response::CloseTheChannel).await;
+                                };
+                            }
+                            CachingStrategy::ReadServerFirst => todo!(),
+                            CachingStrategy::ReadServerOnly => todo!(),
+                            CachingStrategy::WriteCacheOnly => {
+                                let result = Cu::check_input(&mut cache, &data).await;
+                                let resource = Cu::extract_resource1(&result);
+
+                                Cu::apply_input(&mut cache, &resource);
+                                Cu::write_input(&cache, txn_number, &data).await;
+
+                                let mut subs_to_poke = HashSet::new();
+
+                                Cu::collect_subs_to_poke(&mut subs_to_poke, &resource);
+
+                                poke_the_subs::<Mpsc, Subscribe>(
+                                    &mut pool_of_pokers,
+                                    &pool_of_subscribes,
+                                    &subs_to_poke,
+                                )
                                 .await;
 
-                            let _ = sender.send(Response::CloseTheChannel).await;
-                        }
-                        CachingStrategy::WriteCacheFirst => todo!(),
-                        CachingStrategy::WriteCacheAndServer => {
-                            let result = Cu::check_input(&mut cache, &data).await;
-                            let resource = Cu::extract_resource1(&result);
+                                let _ = sender
+                                    .send(Response::Data {
+                                        is_response_from_server: false,
+                                        data:                    result,
+                                    })
+                                    .await;
 
-                            Cu::apply_input(&mut cache, &resource);
-                            Cu::write_input(&cache, txn_number, &data).await;
+                                let _ = sender.send(Response::CloseTheChannel).await;
+                            }
+                            CachingStrategy::WriteCacheFirst => todo!(),
+                            CachingStrategy::WriteCacheAndServer => {
+                                let result = Cu::check_input(&mut cache, &data).await;
+                                let resource = Cu::extract_resource1(&result);
 
-                            let mut subs_to_poke = HashSet::new();
+                                Cu::apply_input(&mut cache, &resource);
+                                Cu::write_input(&cache, txn_number, &data).await;
 
-                            Cu::collect_subs_to_poke(&mut subs_to_poke, &resource);
+                                let mut subs_to_poke = HashSet::new();
 
-                            poke_the_subs::<Mpsc, Subscribe>(
-                                &mut pool_of_pokers,
-                                &pool_of_subscribes,
-                                &subs_to_poke,
-                            )
-                            .await;
+                                Cu::collect_subs_to_poke(&mut subs_to_poke, &resource);
 
-                            let _ = sender
-                                .send(Response::Data {
-                                    is_response_from_server: false,
-                                    data: result,
-                                })
+                                poke_the_subs::<Mpsc, Subscribe>(
+                                    &mut pool_of_pokers,
+                                    &pool_of_subscribes,
+                                    &subs_to_poke,
+                                )
                                 .await;
 
-                            let operations = Cu::create_pending_txn(txn_number, data);
+                                let _ = sender
+                                    .send(Response::Data {
+                                        is_response_from_server: false,
+                                        data:                    result,
+                                    })
+                                    .await;
 
-                            if Cu::is_online(&is_online).await {
-                                let txn_to_send =
-                                    Cu::prepare_txn_for_send(&mut cache, vec![operations]).await;
+                                let operations = Cu::create_pending_txn(txn_number, data);
 
-                                let data = Ed::encode(&txn_to_send);
-                                Cu::send_to_network(&mut sender_to_network, data).await;
+                                if Cu::is_online(&is_online).await {
+                                    let txn_to_send =
+                                        Cu::prepare_txn_for_send(&mut cache, vec![operations])
+                                            .await;
 
-                                pool_of_senders.insert(txn_number, sender);
-                            } else {
-                                let _ = sender.send(Response::ServerCannotBeReached).await;
-                                let _ = sender.send(Response::CloseTheChannel).await;
-                            };
+                                    let data = Ed::encode(&txn_to_send);
+                                    Cu::send_to_network(&mut sender_to_network, data).await;
+
+                                    pool_of_senders.insert(txn_number, sender);
+                                } else {
+                                    let _ = sender.send(Response::ServerCannotBeReached).await;
+                                    let _ = sender.send(Response::CloseTheChannel).await;
+                                };
+                            }
+                            CachingStrategy::WriteServerFirst => todo!(),
+                            CachingStrategy::WriteServerOnly => {
+                                let operations = Cu::create_pending_txn(txn_number, data);
+
+                                if Cu::is_online(&is_online).await {
+                                    let txn_to_send =
+                                        Cu::prepare_txn_for_send(&mut cache, vec![operations])
+                                            .await;
+
+                                    let data = Ed::encode(&txn_to_send);
+                                    Cu::send_to_network(&mut sender_to_network, data).await;
+
+                                    pool_of_senders.insert(txn_number, sender);
+                                } else {
+                                    let _ = sender.send(Response::ServerCannotBeReached).await;
+                                    let _ = sender.send(Response::CloseTheChannel).await;
+                                };
+                            }
                         }
-                        CachingStrategy::WriteServerFirst => todo!(),
-                        CachingStrategy::WriteServerOnly => {
-                            let operations = Cu::create_pending_txn(txn_number, data);
-
-                            if Cu::is_online(&is_online).await {
-                                let txn_to_send =
-                                    Cu::prepare_txn_for_send(&mut cache, vec![operations]).await;
-
-                                let data = Ed::encode(&txn_to_send);
-                                Cu::send_to_network(&mut sender_to_network, data).await;
-
-                                pool_of_senders.insert(txn_number, sender);
-                            } else {
-                                let _ = sender.send(Response::ServerCannotBeReached).await;
-                                let _ = sender.send(Response::CloseTheChannel).await;
-                            };
-                        }
-                    },
+                    }
                 }
             }
         });

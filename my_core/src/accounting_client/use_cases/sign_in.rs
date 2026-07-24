@@ -83,12 +83,9 @@ where
         data: &Self::Type2,
         state: &mut cache::State<Ch>,
     ) -> Self::Type3 {
-        let read_output = LongCache::read(
-            &mut state.cache,
-            &cases::sign_in::ReadInput {
-                user_id: data.user_id.clone(),
-            },
-        )
+        let read_output = LongCache::read(&mut state.cache, &cases::sign_in::ReadInput {
+            user_id: data.user_id.clone(),
+        })
         .await
         .unwrap();
 
@@ -126,15 +123,17 @@ where
                     ));
                 } else {
                     return Err(cases::sign_in::Error {
-                        user_id: None,
+                        user_id:  None,
                         password: Some(cases::sign_in::PasswordError::WrongPassword),
                     });
                 }
             }
-            None => Err(cases::sign_in::Error {
-                user_id: Some(cases::sign_in::UserIdError::NotExist),
-                password: None,
-            }),
+            None => {
+                Err(cases::sign_in::Error {
+                    user_id:  Some(cases::sign_in::UserIdError::NotExist),
+                    password: None,
+                })
+            }
         }
     }
 
@@ -148,10 +147,12 @@ where
     fn unwrap_output(output: request_response::push_data::OperationsResult) -> Self::Type4 {
         if let request_response::push_data::OperationsResult::SignIn(result) = output {
             match result {
-                Ok(ok) => Ok(SignInOk {
-                    user_uuid: ok.user_uuid,
-                    user_name: ok.user_name.unwrap_or_default(),
-                }),
+                Ok(ok) => {
+                    Ok(SignInOk {
+                        user_uuid: ok.user_uuid,
+                        user_name: ok.user_name.unwrap_or_default(),
+                    })
+                }
                 Err(err) => Err(err),
             }
         } else {
@@ -165,11 +166,7 @@ where
     ) {
         match output {
             Ok(ok) => {
-                model
-                    .page_root
-                    .page_after_auth
-                    .user_name
-                    .set(ok.user_name.clone());
+                model.page_root.page_after_auth.user_name.set(ok.user_name.clone());
             }
             Err(business_error) => {
                 model.page_root.page_auth.page_sign_in.user_id_error.set(
@@ -178,15 +175,12 @@ where
                         None => None,
                     },
                 );
-                model
-                    .page_root
-                    .page_auth
-                    .page_sign_in
-                    .user_password_error
-                    .set(match business_error.password {
+                model.page_root.page_auth.page_sign_in.user_password_error.set(
+                    match business_error.password {
                         Some(_) => Some(String::from("wrong password")),
                         None => None,
-                    });
+                    },
+                );
             }
         }
     }
@@ -217,15 +211,17 @@ impl ui_model::SignIn {
                 )
                 .await;
             }
-            Self::Consent(i) => commander_local_state
-                .sender_to_process_manager
-                .read()
-                .send(process_manager::MessageToProcessManager::FromUser {
-                    process_name: process_manager::ProcessName::SignIn,
-                    consent: i,
-                })
-                .await
-                .unwrap(),
+            Self::Consent(i) => {
+                commander_local_state
+                    .sender_to_process_manager
+                    .read()
+                    .send(process_manager::MessageToProcessManager::FromUser {
+                        process_name: process_manager::ProcessName::SignIn,
+                        consent:      i,
+                    })
+                    .await
+                    .unwrap()
+            }
             Self::UserId(i) => {
                 model.page_root.page_auth.auth_feature_state.user_id.set(i);
                 handle_check::<Rn, Rt, Id, Mpsc, Rg, As, Ch, LongCache>(
@@ -236,12 +232,7 @@ impl ui_model::SignIn {
                 .await;
             }
             Self::Password(i) => {
-                model
-                    .page_root
-                    .page_auth
-                    .auth_feature_state
-                    .user_password
-                    .set(i);
+                model.page_root.page_auth.auth_feature_state.user_password.set(i);
                 handle_check::<Rn, Rt, Id, Mpsc, Rg, As, Ch, LongCache>(
                     model,
                     cache,
@@ -281,7 +272,7 @@ async fn handle_submit<
 
     let user_id = feature_state.user_id.read();
     let input = cases::sign_in::Input {
-        user_id: user_id.clone(),
+        user_id:  user_id.clone(),
         password: feature_state.user_password.read(),
     };
 
@@ -335,7 +326,7 @@ async fn handle_submit<
                         .read()
                         .send(process_manager::MessageToProcessManager::FromProcess {
                             process_name: process_manager::ProcessName::SignIn,
-                            message: process_manager::MessageFromProcess::Response {
+                            message:      process_manager::MessageFromProcess::Response {
                                 is_response_from_server,
                                 is_response_ok: is_ok,
                             },
@@ -351,7 +342,7 @@ async fn handle_submit<
             .read()
             .send(process_manager::MessageToProcessManager::FromProcess {
                 process_name: process_manager::ProcessName::SignIn,
-                message: process_manager::MessageFromProcess::Subscribe {
+                message:      process_manager::MessageFromProcess::Subscribe {
                     sender: sender_to_process,
                     dialog: &dialog,
                 },
@@ -431,7 +422,7 @@ async fn handle_check<
             cache_actor::CachingStrategy::ReadCacheOnly,
             txn_number,
             <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::wrap_input(cases::sign_in::Input {
-                user_id: feature_state.user_id.read(),
+                user_id:  feature_state.user_id.read(),
                 password: feature_state.user_password.read(),
             }),
         )

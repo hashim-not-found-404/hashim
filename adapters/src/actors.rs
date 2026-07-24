@@ -6,15 +6,12 @@ pub mod target {
     pub struct S;
 
     impl MultiProducerSingleConsumer for S {
-        type Sender<T> = mpsc_sender::target::S<T>;
         type Receiver<T> = mpsc_receiver::target::S<T>;
+        type Sender<T> = mpsc_sender::target::S<T>;
 
         fn channel<T>() -> (Self::Sender<T>, Self::Receiver<T>) {
             let (tx, rx) = futures::channel::mpsc::unbounded();
-            (
-                mpsc_sender::target::S::new(tx),
-                mpsc_receiver::target::S::new(rx),
-            )
+            (mpsc_sender::target::S::new(tx), mpsc_receiver::target::S::new(rx))
         }
     }
 }

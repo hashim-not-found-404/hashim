@@ -40,7 +40,7 @@ pub fn new<
     network_actor::network_actor::<Rt, Ws, _>(
         MyNetwork::<Mpsc> {
             sender_to_cache: sender_to_cache.clone(),
-            receiver_to_network: receiver_to_network,
+            receiver_to_network,
             sender_to_error: sender_to_error.clone(),
             is_online: is_online.clone(),
         },
@@ -77,8 +77,8 @@ struct MyNetwork<Mpsc: traits::MultiProducerSingleConsumer> {
         >,
     >,
     receiver_to_network: Mpsc::Receiver<Vec<u8>>,
-    sender_to_error: Mpsc::Sender<types::HashimError>,
-    is_online: Arc<RwLock<bool>>,
+    sender_to_error:     Mpsc::Sender<types::HashimError>,
+    is_online:           Arc<RwLock<bool>>,
 }
 
 impl<Mpsc: traits::MultiProducerSingleConsumer> network_actor::Network for MyNetwork<Mpsc> {
@@ -86,18 +86,12 @@ impl<Mpsc: traits::MultiProducerSingleConsumer> network_actor::Network for MyNet
         self.is_online.put(is_online);
 
         if is_online {
-            self.sender_to_cache
-                .send(cache_actor::MessageToCache::WeAreBackOnline)
-                .await
-                .unwrap();
+            self.sender_to_cache.send(cache_actor::MessageToCache::WeAreBackOnline).await.unwrap();
         }
     }
 
     async fn network_sender(&mut self, data: Vec<u8>) {
-        self.sender_to_cache
-            .send(cache_actor::MessageToCache::DataFromServer(data))
-            .await
-            .unwrap();
+        self.sender_to_cache.send(cache_actor::MessageToCache::DataFromServer(data)).await.unwrap();
     }
 
     async fn network_reciever(&mut self) -> Vec<u8> {
@@ -105,10 +99,7 @@ impl<Mpsc: traits::MultiProducerSingleConsumer> network_actor::Network for MyNet
     }
 
     async fn send_error(&mut self, _: traits::DynamicError) {
-        self.sender_to_error
-            .send(types::HashimError::ConnectionClosed)
-            .await
-            .unwrap();
+        self.sender_to_error.send(types::HashimError::ConnectionClosed).await.unwrap();
     }
 }
 
@@ -128,10 +119,20 @@ impl<
     Dbb: cache_op::DbBundle<Ch>,
 > cache_actor::CacheActorUtils for MyCache<Mpsc, Ch, Id, Dbb>
 {
+    type Cache = cache::State<Ch>;
+    type E = types::HashimError;
+    type ErrorSender = Mpsc::Sender<types::HashimError>;
+    type MessageFromServer<'de> = request_response::messages::FromServer;
     type Mpsc = Mpsc;
-    type Subscribe = resource_utils::Subscribe;
+    type NetworkSender = Mpsc::Sender<Vec<u8>>;
+    type NetworkStatus = Arc<RwLock<bool>>;
     type OpInput = request_response::push_data::OperationsInput;
     type OpResult = request_response::push_data::OperationsResult;
+    type Resource = resource_utils::ResourceInfo;
+    type Response = request_response::push_data::MyResult;
+    type SendingTxns = request_response::messages::FromClient;
+    type Subscribe = resource_utils::Subscribe;
+
     async fn cache_receiver(
         receiver: &mut <Self::Mpsc as traits::MultiProducerSingleConsumer>::Receiver<
             cache_actor::MessageToCache<Self::Mpsc, Self::Subscribe, Self::OpInput, Self::OpResult>,
@@ -141,32 +142,22 @@ impl<
         receiver.recv().await.unwrap()
     }
 
-    type NetworkSender = Mpsc::Sender<Vec<u8>>;
     async fn send_to_network(sender: &mut Self::NetworkSender, data: Vec<u8>) {
         sender.send(data).await.unwrap();
     }
 
-    type ErrorSender = Mpsc::Sender<types::HashimError>;
     async fn internal_server_error(sender: &mut Self::ErrorSender) {
-        sender
-            .send(types::HashimError::InternalServerError)
-            .await
-            .unwrap();
+        sender.send(types::HashimError::InternalServerError).await.unwrap();
     }
 
     async fn invalid_format_error(sender: &mut Self::ErrorSender) {
-        sender
-            .send(types::HashimError::InvalidDataFormat)
-            .await
-            .unwrap();
+        sender.send(types::HashimError::InvalidDataFormat).await.unwrap();
     }
 
-    type NetworkStatus = Arc<RwLock<bool>>;
     async fn is_online(network_status: &Self::NetworkStatus) -> bool {
         network_status.read()
     }
 
-    type Cache = cache::State<Ch>;
     async fn new_cache() -> Self::Cache {
         cache::State::<Ch>::new::<Id, Dbb>().await
     }
@@ -185,7 +176,6 @@ impl<
         cache.state_of_pending_txn = Default::default();
     }
 
-    type SendingTxns = request_response::messages::FromClient;
     async fn prepare_txn_for_send(
         cache: &Self::Cache,
         txns: Vec<(u64, Self::OpInput)>,
@@ -204,7 +194,7 @@ impl<
         for i in txns {
             operations1.push(request_response::push_data::Txn {
                 txn_number: i.0,
-                operation: i.1,
+                operation:  i.1,
             });
         }
 
@@ -217,10 +207,6 @@ impl<
         t
     }
 
-    type E = types::HashimError;
-    type Response = request_response::push_data::MyResult;
-    type Resource = resource_utils::ResourceInfo;
-    type MessageFromServer<'de> = request_response::messages::FromServer;
     fn to<'de>(
         msg: Self::MessageFromServer<'de>,
     ) -> cache_actor::FromServer<Self::E, Self::Response, Self::Resource> {
@@ -236,10 +222,7 @@ impl<
     }
 
     fn extract_resource(resp: &Self::Response) -> Vec<Self::Resource> {
-        resp.operations
-            .iter()
-            .flat_map(|a| a.operation.extract_resource::<Ch, Dbb>())
-            .collect()
+        resp.operations.iter().flat_map(|a| a.operation.extract_resource::<Ch, Dbb>()).collect()
     }
 
     async fn write_resource(cache: &Self::Cache, resource: &Vec<Self::Resource>) {
@@ -271,10 +254,7 @@ impl<
     }
 
     async fn get_all_response_txn_numbers(resp: &Self::Response) -> Vec<(u64, Self::OpResult)> {
-        resp.operations
-            .iter()
-            .map(|a| (a.txn_number, a.operation.clone()))
-            .collect()
+        resp.operations.iter().map(|a| (a.txn_number, a.operation.clone())).collect()
     }
 
     fn collect_subs_to_poke(

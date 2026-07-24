@@ -19,12 +19,8 @@ impl cases::sign_in::Input {
         let result = self.state_full_check::<Auth, Jwt, Db>(jwt, client).await?;
 
         if let Ok(ok) = &result {
-            side_effects
-                .authenticated_users
-                .insert(ok.user_uuid.clone());
-            side_effects
-                .users_to_resubscribe
-                .insert(ok.user_uuid.clone());
+            side_effects.authenticated_users.insert(ok.user_uuid.clone());
+            side_effects.users_to_resubscribe.insert(ok.user_uuid.clone());
         }
 
         return Ok(result);

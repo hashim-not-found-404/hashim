@@ -26,7 +26,7 @@ pub mod target {
 
     #[derive(Serialize, Deserialize)]
     struct Claims {
-        id: types::UuidType,
+        id:  types::UuidType,
         exp: u64,
     }
 
@@ -39,17 +39,12 @@ pub mod target {
 
         fn sign(&self, id: &types::UuidType) -> types::JsonWebTokenType {
             let claims = Claims {
-                id: id.clone(),
+                id:  id.clone(),
                 exp: exp_time(),
             };
 
             types::JsonWebTokenType(
-                encode(
-                    &Header::default(),
-                    &claims,
-                    &EncodingKey::from_secret(&self.key),
-                )
-                .unwrap(),
+                encode(&Header::default(), &claims, &EncodingKey::from_secret(&self.key)).unwrap(),
             )
         }
 

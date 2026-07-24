@@ -160,11 +160,7 @@ where
         let mut company_map: HashMap<
             types::UuidType,
             cases::list_company_and_branch::AllCompaniesThatUserInWithRoles,
-        > = read_output
-            .data
-            .into_iter()
-            .map(|c| (c.company_uuid.clone(), c))
-            .collect();
+        > = read_output.data.into_iter().map(|c| (c.company_uuid.clone(), c)).collect();
 
         // Process pending access controls for this user
         for (_, acf) in &db.state_of_pending_txn.access_control_for_company {
@@ -179,11 +175,11 @@ where
                 // Get or create the company entry in the map
                 let company_entry = company_map.entry(company_uuid.clone()).or_insert_with(|| {
                     cases::list_company_and_branch::AllCompaniesThatUserInWithRoles {
-                        company_uuid: company_uuid.clone(),
-                        company_name: company.name.clone(),
+                        company_uuid:     company_uuid.clone(),
+                        company_name:     company.name.clone(),
                         company_currancy: company.currency.clone(),
-                        user_roles: Vec::new(),
-                        branches: Vec::new(),
+                        user_roles:       Vec::new(),
+                        branches:         Vec::new(),
                     }
                 });
 
@@ -200,17 +196,15 @@ where
                 for (branch_uuid, branch) in &db.state_of_pending_txn.company_branch {
                     if branch.company_belong == company_uuid {
                         // Check if branch already exists (by UUID)
-                        let exists = company_entry
-                            .branches
-                            .iter()
-                            .any(|b| b.branch_uuid == *branch_uuid);
+                        let exists =
+                            company_entry.branches.iter().any(|b| b.branch_uuid == *branch_uuid);
                         if !exists {
                             company_entry.branches.push(
                                 cases::list_company_and_branch::AllBranchesThatUserInWithRoles {
-                                    branch_uuid: branch_uuid.clone(),
-                                    branch_name: branch.name.clone(),
+                                    branch_uuid:     branch_uuid.clone(),
+                                    branch_name:     branch.name.clone(),
                                     branch_currancy: branch.currency.clone(),
-                                    user_roles: Vec::new(), // No branch roles in pending transaction
+                                    user_roles:      Vec::new(), // No branch roles in pending transaction
                                 },
                             );
                         }
@@ -260,11 +254,8 @@ where
         data: &Self::Type2,
         state: &mut cache::State<Ch>,
     ) -> Self::Type3 {
-        let result = data
-            .state_full_operation::<Cache<Ch, LongCache>>(state)
-            .await
-            .unwrap()
-            .unwrap();
+        let result =
+            data.state_full_operation::<Cache<Ch, LongCache>>(state).await.unwrap().unwrap();
 
         Ok(result)
     }
@@ -287,19 +278,17 @@ where
                         let branches = company_entry
                             .branches
                             .into_iter()
-                            .map(|branch_entry| types::Branch {
-                                uuid: branch_entry.branch_uuid,
-                                name: branch_entry.branch_name,
+                            .map(|branch_entry| {
+                                types::Branch {
+                                    uuid: branch_entry.branch_uuid,
+                                    name: branch_entry.branch_name,
+                                }
                             })
                             .collect();
 
                         // Pick a single role (e.g., the first one, or highest privilege)
                         // If no role, provide a sensible default (adjust as needed)
-                        let role = company_entry
-                            .user_roles
-                            .first()
-                            .cloned()
-                            .unwrap_or_default();
+                        let role = company_entry.user_roles.first().cloned().unwrap_or_default();
 
                         companies.push(types::Company {
                             uuid: company_entry.company_uuid,
@@ -325,16 +314,11 @@ where
         model: &ui_model::Model<As>,
     ) {
         match &output {
-            Ok(ok) => model
-                .page_root
-                .page_after_auth
-                .page_company_branch_selection
-                .list
-                .set(ok.clone()),
+            Ok(ok) => {
+                model.page_root.page_after_auth.page_company_branch_selection.list.set(ok.clone())
+            }
             Err(_) => {
-                model
-                    .navigator
-                    .set(ui_model::Navigator::Auth(ui_model::Auth::SignIn));
+                model.navigator.set(ui_model::Navigator::Auth(ui_model::Auth::SignIn));
             }
         }
     }
@@ -358,11 +342,9 @@ impl ui_model::CompanyAndBranchSelection {
     ) {
         match self {
             Self::Subscribe => {
-                model
-                    .navigator
-                    .set(ui_model::Navigator::CompanyBranchSelection(
-                        ui_model::CompanyBranchSelection::None,
-                    ));
+                model.navigator.set(ui_model::Navigator::CompanyBranchSelection(
+                    ui_model::CompanyBranchSelection::None,
+                ));
 
                 handle_list_company_and_branch::<Rn, Rt, Id, Mpsc, Rg, As, Ch, LongCache>(
                     model,
@@ -383,41 +365,30 @@ impl ui_model::CompanyAndBranchSelection {
                         LongCache,
                     >(model, cache, commander_local_state.clone());
 
-                *commander_local_state
-                    .aborter_to_company_and_branch_listener
-                    .lock()
-                    .unwrap() = Some(Box::new(listener_aborter));
+                *commander_local_state.aborter_to_company_and_branch_listener.lock().unwrap() =
+                    Some(Box::new(listener_aborter));
             }
             Self::UnSubscribe => {
-                let mut guard = commander_local_state
-                    .aborter_to_company_and_branch_listener
-                    .lock()
-                    .unwrap();
+                let mut guard =
+                    commander_local_state.aborter_to_company_and_branch_listener.lock().unwrap();
 
                 if let Some(f) = guard.take() {
                     f();
                 }
             }
             Self::ShowCreateCompany => {
-                model
-                    .navigator
-                    .set(ui_model::Navigator::CompanyBranchSelection(
-                        ui_model::CompanyBranchSelection::CreateCompany,
-                    ));
+                model.navigator.set(ui_model::Navigator::CompanyBranchSelection(
+                    ui_model::CompanyBranchSelection::CreateCompany,
+                ));
             }
             Self::ShowCreateCompanyBranch => {
-                model
-                    .navigator
-                    .set(ui_model::Navigator::CompanyBranchSelection(
-                        ui_model::CompanyBranchSelection::CreateCompanyBranch,
-                    ));
+                model.navigator.set(ui_model::Navigator::CompanyBranchSelection(
+                    ui_model::CompanyBranchSelection::CreateCompanyBranch,
+                ));
             }
             Self::SelectedCompany(i) => {
-                let selected_company = &model
-                    .page_root
-                    .page_after_auth
-                    .page_company_branch_selection
-                    .selected_company;
+                let selected_company =
+                    &model.page_root.page_after_auth.page_company_branch_selection.selected_company;
 
                 match selected_company.read() {
                     Some(old_one) => {
@@ -432,9 +403,7 @@ impl ui_model::CompanyAndBranchSelection {
             }
             Self::SelectedCompanyBranch(i) => {
                 commander_local_state.selected_company_branch.put(Some(i));
-                model
-                    .navigator
-                    .set(ui_model::Navigator::Home(ui_model::Menu::Dashboard));
+                model.navigator.set(ui_model::Navigator::Home(ui_model::Menu::Dashboard));
             }
         }
     }
@@ -534,7 +503,9 @@ async fn handle_list_company_and_branch<
         .send_to_cache_actor(
             cache_actor::CachingStrategy::ReadCacheAndServer,
             txn_number,
-            <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::wrap_input(Type1 { user_uuid }),
+            <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::wrap_input(Type1 {
+                user_uuid,
+            }),
         )
         .await;
 

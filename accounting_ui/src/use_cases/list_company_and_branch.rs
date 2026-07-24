@@ -7,17 +7,10 @@ use my_core::accounting_client::client_domain::ui_model::HashimSignal;
 
 #[component]
 pub(crate) fn ListCompanyAndBranch() -> Element {
-    let local_state = &tools::MODEL
-        .page_root
-        .page_after_auth
-        .page_company_branch_selection
-        .list;
+    let local_state = &tools::MODEL.page_root.page_after_auth.page_company_branch_selection.list;
 
-    let selected_company = &tools::MODEL
-        .page_root
-        .page_after_auth
-        .page_company_branch_selection
-        .selected_company;
+    let selected_company =
+        &tools::MODEL.page_root.page_after_auth.page_company_branch_selection.selected_company;
 
     rsx! {
         div {

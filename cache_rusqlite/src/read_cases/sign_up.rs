@@ -21,16 +21,12 @@ impl cases::sign_up::DatabaseRead for S {
 
         let a = db
             .db
-            .query_one(
-                query,
-                params![read_input.new_uuid.to_string(), read_input.user_id],
-                |row| {
-                    Ok(cases::sign_up::ReadOutput {
-                        is_new_uuid_exist: row.get(0).unwrap(),
-                        is_user_id_exist: row.get(1).unwrap(),
-                    })
-                },
-            )
+            .query_one(query, params![read_input.new_uuid.to_string(), read_input.user_id], |row| {
+                Ok(cases::sign_up::ReadOutput {
+                    is_new_uuid_exist: row.get(0).unwrap(),
+                    is_user_id_exist:  row.get(1).unwrap(),
+                })
+            })
             .unwrap();
 
         Ok(a)

@@ -134,10 +134,7 @@ where
         data: &Self::Type2,
         state: &mut cache::State<Ch>,
     ) -> Self::Type3 {
-        let errr = data
-            .state_full_check::<Cache<Ch, LongCache>>(state)
-            .await
-            .unwrap();
+        let errr = data.state_full_check::<Cache<Ch, LongCache>>(state).await.unwrap();
 
         if errr.is_there_error() {
             return Err(errr);
@@ -166,23 +163,17 @@ where
         output: &Self::Type4,
         model: &ui_model::Model<As>,
     ) {
-        let local_state = &model
-            .page_root
-            .page_after_auth
-            .page_home
-            .page_create_account;
+        let local_state = &model.page_root.page_after_auth.page_home.page_create_account;
 
         match output {
             Ok(_) => {
                 local_state.account_name_error.reset();
             }
             Err(business_error) => {
-                local_state
-                    .account_name_error
-                    .set(match business_error.account_name {
-                        Some(_) => Some(String::from("duplicated")),
-                        None => None,
-                    });
+                local_state.account_name_error.set(match business_error.account_name {
+                    Some(_) => Some(String::from("duplicated")),
+                    None => None,
+                });
             }
         }
     }
@@ -204,11 +195,7 @@ impl ui_model::CreateAccount {
         cache: client_traits::CacheActorStruct<Mpsc>,
         commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
     ) {
-        let local_state = &model
-            .page_root
-            .page_after_auth
-            .page_home
-            .page_create_account;
+        let local_state = &model.page_root.page_after_auth.page_home.page_create_account;
 
         match self {
             ui_model::CreateAccount::Submit => {
@@ -225,7 +212,7 @@ impl ui_model::CreateAccount {
                     .read()
                     .send(process_manager::MessageToProcessManager::FromUser {
                         process_name: process_manager::ProcessName::CreateAccount,
-                        consent: i,
+                        consent:      i,
                     })
                     .await
                     .unwrap();
@@ -262,11 +249,7 @@ fn handle_clean<
 >(
     model: &'static ui_model::Model<As>,
 ) {
-    let local_state = &model
-        .page_root
-        .page_after_auth
-        .page_home
-        .page_create_account;
+    let local_state = &model.page_root.page_after_auth.page_home.page_create_account;
 
     local_state.account_name.reset();
     local_state.is_debit.reset();
@@ -293,11 +276,7 @@ async fn handle_submit<
 ) {
     let user_uuid = commander_local_state.user_uuid.read().clone().unwrap();
 
-    let local_state = &model
-        .page_root
-        .page_after_auth
-        .page_home
-        .page_create_account;
+    let local_state = &model.page_root.page_after_auth.page_home.page_create_account;
 
     let input = cases::create_account::Input {
         user_uuid,
@@ -352,7 +331,7 @@ async fn handle_submit<
                         .read()
                         .send(process_manager::MessageToProcessManager::FromProcess {
                             process_name: process_manager::ProcessName::CreateAccount,
-                            message: process_manager::MessageFromProcess::Response {
+                            message:      process_manager::MessageFromProcess::Response {
                                 is_response_from_server,
                                 is_response_ok: is_ok,
                             },
@@ -368,7 +347,7 @@ async fn handle_submit<
             .read()
             .send(process_manager::MessageToProcessManager::FromProcess {
                 process_name: process_manager::ProcessName::CreateAccount,
-                message: process_manager::MessageFromProcess::Subscribe {
+                message:      process_manager::MessageFromProcess::Subscribe {
                     sender: sender_to_process,
                     dialog: &dialog,
                 },
@@ -422,11 +401,7 @@ async fn handle_check<
     mut cache: client_traits::CacheActorStruct<Mpsc>,
     commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
 ) {
-    let local_state = &model
-        .page_root
-        .page_after_auth
-        .page_home
-        .page_create_account;
+    let local_state = &model.page_root.page_after_auth.page_home.page_create_account;
 
     let user_uuid = commander_local_state.user_uuid.read().clone().unwrap();
 

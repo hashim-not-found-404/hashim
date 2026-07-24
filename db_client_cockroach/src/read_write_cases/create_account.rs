@@ -38,15 +38,12 @@ impl cases::create_account::DatabaseRead for S {
         let stmt = db.txn.prepare_cached(query).await.log()?;
         let row = db
             .txn
-            .query_one(
-                &stmt,
-                &[
-                    &read_input.belong_to_company.to_externel_uuid(),
-                    &read_input.user_uuid.to_externel_uuid(),
-                    &read_input.new_uuid.to_externel_uuid(),
-                    &read_input.account_name,
-                ],
-            )
+            .query_one(&stmt, &[
+                &read_input.belong_to_company.to_externel_uuid(),
+                &read_input.user_uuid.to_externel_uuid(),
+                &read_input.new_uuid.to_externel_uuid(),
+                &read_input.account_name,
+            ])
             .await
             .log()?;
 

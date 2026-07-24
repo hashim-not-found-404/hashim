@@ -16,7 +16,7 @@ pub mod target {
 
     pub struct S {
         write: Mutex<SplitSink<WebSocketStream<MaybeTlsStream<tokio::net::TcpStream>>, Message>>,
-        read: Mutex<SplitStream<WebSocketStream<MaybeTlsStream<tokio::net::TcpStream>>>>,
+        read:  Mutex<SplitStream<WebSocketStream<MaybeTlsStream<tokio::net::TcpStream>>>>,
     }
 
     impl WSClient for S {
@@ -26,17 +26,12 @@ pub mod target {
 
             Ok(Self {
                 write: Mutex::new(write),
-                read: Mutex::new(read),
+                read:  Mutex::new(read),
             })
         }
 
         async fn send_bin(&self, data: &Vec<u8>) -> Result<(), DynamicError> {
-            self.write
-                .lock()
-                .unwrap()
-                .send(Message::Binary(data.clone().into()))
-                .await
-                .log()?;
+            self.write.lock().unwrap().send(Message::Binary(data.clone().into())).await.log()?;
 
             Ok(())
         }
@@ -45,12 +40,14 @@ pub mod target {
             let mut guard = self.read.lock().unwrap();
 
             match guard.next().await {
-                Some(Ok(message)) => match message {
-                    Message::Text(_) => Err("it's text".into()),
-                    Message::Binary(bytes) => Ok(bytes.to_vec()),
-                    Message::Close(_) => Err(HashimError::ConnectionClosed.into()),
-                    _ => Err("other message type".into()),
-                },
+                Some(Ok(message)) => {
+                    match message {
+                        Message::Text(_) => Err("it's text".into()),
+                        Message::Binary(bytes) => Ok(bytes.to_vec()),
+                        Message::Close(_) => Err(HashimError::ConnectionClosed.into()),
+                        _ => Err("other message type".into()),
+                    }
+                }
                 Some(Err(e)) => Err(e.to_string().into()),
                 None => Err(HashimError::ConnectionClosed.into()),
             }
@@ -74,7 +71,7 @@ pub mod target {
 
     pub struct S {
         write: Mutex<SplitSink<WebSocket, Message>>,
-        read: Mutex<SplitStream<WebSocket>>,
+        read:  Mutex<SplitStream<WebSocket>>,
     }
 
     impl WSClient for S {
@@ -85,17 +82,12 @@ pub mod target {
 
             Ok(Self {
                 write: Mutex::new(write),
-                read: Mutex::new(read),
+                read:  Mutex::new(read),
             })
         }
 
         async fn send_bin(&self, data: &Vec<u8>) -> Result<(), DynamicError> {
-            self.write
-                .lock()
-                .unwrap()
-                .send(Message::Bytes(data.clone().into()))
-                .await
-                .log()?;
+            self.write.lock().unwrap().send(Message::Bytes(data.clone().into())).await.log()?;
 
             Ok(())
         }
@@ -104,10 +96,12 @@ pub mod target {
             let mut guard = self.read.lock().unwrap();
 
             match guard.next().await {
-                Some(Ok(message)) => match message {
-                    Message::Text(_) => Err("it's text".into()),
-                    Message::Bytes(bytes) => Ok(bytes.to_vec()),
-                },
+                Some(Ok(message)) => {
+                    match message {
+                        Message::Text(_) => Err("it's text".into()),
+                        Message::Bytes(bytes) => Ok(bytes.to_vec()),
+                    }
+                }
                 Some(Err(e)) => Err(e.into()),
                 None => Err(HashimError::ConnectionClosed.into()),
             }

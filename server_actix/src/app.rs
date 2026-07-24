@@ -32,10 +32,7 @@ pub(crate) async fn main() {
             .allow_any_header()
             .max_age(3600);
 
-        App::new()
-            .wrap(cors)
-            .app_data(actions.clone())
-            .route("/ws", web::get().to(ws_handler))
+        App::new().wrap(cors).app_data(actions.clone()).route("/ws", web::get().to(ws_handler))
     })
     // .bind_rustls_0_23((HOST, PORT), get_tls_config())
     .bind((types::HOST, types::PORT))
@@ -54,9 +51,7 @@ async fn ws_handler(req: HttpRequest, stream: Payload) -> HttpResponse {
         }
     };
 
-    let stream = stream
-        .aggregate_continuations()
-        .max_continuation_size(2_usize.pow(16));
+    let stream = stream.aggregate_continuations().max_continuation_size(2_usize.pow(16));
 
     let session = web_socket_server::S::new(session, stream);
     let state = req.app_data::<Data<ServerMethodsType>>().unwrap();
@@ -72,9 +67,7 @@ async fn ws_handler(req: HttpRequest, stream: Payload) -> HttpResponse {
 
 #[allow(dead_code)]
 fn get_tls_config() -> rustls::ServerConfig {
-    rustls::crypto::aws_lc_rs::default_provider()
-        .install_default()
-        .unwrap();
+    rustls::crypto::aws_lc_rs::default_provider().install_default().unwrap();
 
     const CERT_PEM: &[u8] = include_bytes!("../../privet/cert.pem");
     const KEY_PEM: &[u8] = include_bytes!("../../privet/key.pem");
@@ -87,13 +80,8 @@ fn get_tls_config() -> rustls::ServerConfig {
     // load TLS certs and key
     // to create a self-signed temporary cert for testing:
     // `openssl req -x509 -newkey rsa:4096 -nodes -keyout key.pem -out cert.pem -days 365 -subj '/CN=localhost'`
-    let tls_certs = rustls_pemfile::certs(&mut certs_file)
-        .collect::<Result<_, _>>()
-        .unwrap();
-    let tls_key = rustls_pemfile::pkcs8_private_keys(&mut key_file)
-        .next()
-        .unwrap()
-        .unwrap();
+    let tls_certs = rustls_pemfile::certs(&mut certs_file).collect::<Result<_, _>>().unwrap();
+    let tls_key = rustls_pemfile::pkcs8_private_keys(&mut key_file).next().unwrap().unwrap();
 
     // set up TLS config options
     rustls::ServerConfig::builder()

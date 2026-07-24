@@ -35,5 +35,5 @@ pub trait Cache: Sized {
 
 pub(crate) struct State<Ch: Cache> {
     pub(crate) state_of_pending_txn: resource_utils::StateOfPendingTxn,
-    pub(crate) cache: Ch,
+    pub(crate) cache:                Ch,
 }

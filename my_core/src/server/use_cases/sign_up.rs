@@ -34,9 +34,7 @@ impl cases::sign_up::Input {
         txn.write_sign_up(&result).await?;
         let _ = txn.commit_transaction().await?;
 
-        side_effects
-            .authenticated_users
-            .insert(self.new_uuid.clone());
+        side_effects.authenticated_users.insert(self.new_uuid.clone());
 
         return Ok(Ok(result));
     }

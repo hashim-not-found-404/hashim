@@ -47,31 +47,30 @@ pub(crate) fn network_actor<Rt: traits::Runtime, Ws: WSClient, Nw: Network + 'st
         let mut ws: Option<Ws> = None;
 
         loop {
-            match Rt::select(
-                network_utils.network_reciever(),
-                network_radar::<Rt, Ws>(&ws),
-            )
-            .await
-            {
-                Either::One(data) => match &ws {
-                    Some(ws1) => {
-                        let result = ws1.send_bin(&data).await;
-                        if result.is_err() {
+            match Rt::select(network_utils.network_reciever(), network_radar::<Rt, Ws>(&ws)).await {
+                Either::One(data) => {
+                    match &ws {
+                        Some(ws1) => {
+                            let result = ws1.send_bin(&data).await;
+                            if result.is_err() {
+                                connect::<Rt, Ws, Nw>(&mut network_utils, &url, &mut ws).await;
+                            }
+                        }
+                        None => Rt::sleep(Duration::from_secs(5)).await,
+                    }
+                }
+
+                Either::Two(from_network) => {
+                    match from_network {
+                        Ok(data) => {
+                            network_utils.network_sender(data).await;
+                        }
+                        Err(error) => {
+                            network_utils.send_error(error).await;
                             connect::<Rt, Ws, Nw>(&mut network_utils, &url, &mut ws).await;
                         }
                     }
-                    None => Rt::sleep(Duration::from_secs(5)).await,
-                },
-
-                Either::Two(from_network) => match from_network {
-                    Ok(data) => {
-                        network_utils.network_sender(data).await;
-                    }
-                    Err(error) => {
-                        network_utils.send_error(error).await;
-                        connect::<Rt, Ws, Nw>(&mut network_utils, &url, &mut ws).await;
-                    }
-                },
+                }
             }
         }
     });

@@ -19,7 +19,9 @@ impl Cache for S {
         const SCHEMA: &str = include_str!("../../schema/tables.sql");
         conn.execute_batch(SCHEMA).unwrap();
 
-        Self { db: conn }
+        Self {
+            db: conn,
+        }
     }
 
     async fn get_all_txn_input(
@@ -36,7 +38,7 @@ impl Cache for S {
             .query_map([], |row| {
                 Ok(request_response::push_data::Txn {
                     txn_number: row.get::<usize, i64>(0).unwrap() as u64,
-                    operation: encode_decode::target::S::decode(
+                    operation:  encode_decode::target::S::decode(
                         &row.get::<usize, Vec<u8>>(1).unwrap(),
                     )
                     .unwrap(),
@@ -200,12 +202,14 @@ impl Cache for S {
                 }
                 resource_utils::Resource::TableAccessControlForCompanyBranchFieldDataGroup(
                     value,
-                ) => make_sql_statment_for_string(
-                    "access_control_for_company_branch",
-                    "data_group",
-                    uuid,
-                    &value.to_string(),
-                ),
+                ) => {
+                    make_sql_statment_for_string(
+                        "access_control_for_company_branch",
+                        "data_group",
+                        uuid,
+                        &value.to_string(),
+                    )
+                }
                 resource_utils::Resource::TableAccountFieldCompanyBelong(value) => {
                     make_sql_statment_for_string(
                         "account",
@@ -249,10 +253,7 @@ impl Cache for S {
     }
 
     async fn get_jwt(&self, user_uuid: &types::UuidType) -> Option<types::JsonWebTokenType> {
-        let mut stmt = self
-            .db
-            .prepare("SELECT jwt FROM user WHERE rowid = ?1")
-            .unwrap();
+        let mut stmt = self.db.prepare("SELECT jwt FROM user WHERE rowid = ?1").unwrap();
 
         let json_web_token_type = stmt.query_one([&user_uuid.to_string()], |row| row.get(0));
 

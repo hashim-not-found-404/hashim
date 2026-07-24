@@ -9,10 +9,10 @@ pub(crate) type ListOfResources = HashMap<types::UuidType, Vec<resource_utils::R
 
 #[derive(Default)]
 pub(crate) struct SideEffects {
-    pub(crate) authenticated_users: HashSet<types::UuidType>,
-    pub(crate) users_to_resubscribe: HashSet<types::UuidType>,
+    pub(crate) authenticated_users:               HashSet<types::UuidType>,
+    pub(crate) users_to_resubscribe:              HashSet<types::UuidType>,
     pub(crate) resource_to_broadcast_for_company: ListOfResources,
-    pub(crate) resource_to_broadcast_for_branch: ListOfResources,
+    pub(crate) resource_to_broadcast_for_branch:  ListOfResources,
 }
 
 pub struct AllRoles {

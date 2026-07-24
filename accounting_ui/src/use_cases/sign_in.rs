@@ -15,15 +15,11 @@ pub(crate) fn SignIn() -> Element {
     };
 
     let consent_callback = move |consent: ui_model::UserConsent| {
-        tools::send(ui_model::Message::SignIn(ui_model::SignIn::Consent(
-            consent,
-        )));
+        tools::send(ui_model::Message::SignIn(ui_model::SignIn::Consent(consent)));
     };
 
     let password_callback = move |password: String| {
-        tools::send(ui_model::Message::SignIn(ui_model::SignIn::Password(
-            password,
-        )));
+        tools::send(ui_model::Message::SignIn(ui_model::SignIn::Password(password)));
     };
 
     rsx! {

@@ -6,58 +6,58 @@ use std::collections::HashMap;
 
 #[derive(Default)]
 pub(crate) struct User {
-    pub(crate) id: String,
-    pub(crate) name: Option<String>,
+    pub(crate) id:       String,
+    pub(crate) name:     Option<String>,
     pub(crate) password: String,
 }
 
 #[derive(Default)]
 pub(crate) struct Company {
     pub(crate) currency: types::Currency,
-    pub(crate) name: String,
+    pub(crate) name:     String,
 }
 
 #[derive(Default)]
 pub(crate) struct AccessControlForCompany {
     pub(crate) data_group: types::UuidType,
-    pub(crate) role: types::Role,
-    pub(crate) user_: types::UuidType,
+    pub(crate) role:       types::Role,
+    pub(crate) user_:      types::UuidType,
 }
 
 #[derive(Default)]
 pub(crate) struct CompanyBranch {
     pub(crate) company_belong: types::UuidType,
-    pub(crate) currency: types::Currency,
-    pub(crate) location: types::Location,
-    pub(crate) name: String,
+    pub(crate) currency:       types::Currency,
+    pub(crate) location:       types::Location,
+    pub(crate) name:           String,
 }
 
 #[derive(Default)]
 pub(crate) struct AccessControlForCompanyBranch {
     pub(crate) data_group: types::UuidType,
-    pub(crate) role: types::Role,
-    pub(crate) user_: types::UuidType,
+    pub(crate) role:       types::Role,
+    pub(crate) user_:      types::UuidType,
 }
 
 #[derive(Default)]
 pub(crate) struct Account {
-    pub(crate) company_belong: types::UuidType,
-    pub(crate) is_debit: bool,
-    pub(crate) is_permanent_account: bool,
-    pub(crate) name: String,
-    pub(crate) notes: String,
+    pub(crate) company_belong:                  types::UuidType,
+    pub(crate) is_debit:                        bool,
+    pub(crate) is_permanent_account:            bool,
+    pub(crate) name:                            String,
+    pub(crate) notes:                           String,
     pub(crate) unit_of_measurement_of_quantity: String,
 }
 
 #[derive(Default)]
 pub(crate) struct StateOfPendingTxn {
-    pub(crate) access_control_for_company: HashMap<types::UuidType, AccessControlForCompany>,
+    pub(crate) access_control_for_company:        HashMap<types::UuidType, AccessControlForCompany>,
     pub(crate) access_control_for_company_branch:
         HashMap<types::UuidType, AccessControlForCompanyBranch>,
-    pub(crate) account: HashMap<types::UuidType, Account>,
-    pub(crate) company: HashMap<types::UuidType, Company>,
-    pub(crate) company_branch: HashMap<types::UuidType, CompanyBranch>,
-    pub(crate) user: HashMap<types::UuidType, User>,
+    pub(crate) account:                           HashMap<types::UuidType, Account>,
+    pub(crate) company:                           HashMap<types::UuidType, Company>,
+    pub(crate) company_branch:                    HashMap<types::UuidType, CompanyBranch>,
+    pub(crate) user:                              HashMap<types::UuidType, User>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -182,57 +182,59 @@ pub(crate) fn apply_change(resources: Vec<ResourceInfo>, state: &mut StateOfPend
             Resource::TableCompanyFieldName(r) => {
                 state.company.upsert(row_uuid, |table| table.name = r)
             }
-            Resource::TableCompanyBranchFieldName(r) => state
-                .company_branch
-                .upsert(row_uuid, |table| table.name = r),
-            Resource::TableCompanyBranchFieldCompanyBelong(r) => state
-                .company_branch
-                .upsert(row_uuid, |table| table.company_belong = r),
-            Resource::TableCompanyBranchFieldCurrency(r) => state
-                .company_branch
-                .upsert(row_uuid, |table| table.currency = r),
-            Resource::TableCompanyBranchFieldLocation(r) => state
-                .company_branch
-                .upsert(row_uuid, |table| table.location = r),
+            Resource::TableCompanyBranchFieldName(r) => {
+                state.company_branch.upsert(row_uuid, |table| table.name = r)
+            }
+            Resource::TableCompanyBranchFieldCompanyBelong(r) => {
+                state.company_branch.upsert(row_uuid, |table| table.company_belong = r)
+            }
+            Resource::TableCompanyBranchFieldCurrency(r) => {
+                state.company_branch.upsert(row_uuid, |table| table.currency = r)
+            }
+            Resource::TableCompanyBranchFieldLocation(r) => {
+                state.company_branch.upsert(row_uuid, |table| table.location = r)
+            }
             Resource::TableCompanyFieldCurrency(r) => {
                 state.company.upsert(row_uuid, |table| table.currency = r)
             }
-            Resource::TableAccessControlForCompanyFieldRole(r) => state
-                .access_control_for_company
-                .upsert(row_uuid, |table| table.role = r),
-            Resource::TableAccessControlForCompanyFieldUser(r) => state
-                .access_control_for_company
-                .upsert(row_uuid, |table| table.user_ = r),
-            Resource::TableAccessControlForCompanyFieldDataGroup(r) => state
-                .access_control_for_company
-                .upsert(row_uuid, |table| table.data_group = r),
-            Resource::TableAccessControlForCompanyBranchFieldRole(r) => state
-                .access_control_for_company_branch
-                .upsert(row_uuid, |table| table.role = r),
-            Resource::TableAccessControlForCompanyBranchFieldUser(r) => state
-                .access_control_for_company_branch
-                .upsert(row_uuid, |table| table.user_ = r),
-            Resource::TableAccessControlForCompanyBranchFieldDataGroup(r) => state
-                .access_control_for_company_branch
-                .upsert(row_uuid, |table| table.data_group = r),
-            Resource::TableAccountFieldCompanyBelong(r) => state
-                .account
-                .upsert(row_uuid, |table| table.company_belong = r),
+            Resource::TableAccessControlForCompanyFieldRole(r) => {
+                state.access_control_for_company.upsert(row_uuid, |table| table.role = r)
+            }
+            Resource::TableAccessControlForCompanyFieldUser(r) => {
+                state.access_control_for_company.upsert(row_uuid, |table| table.user_ = r)
+            }
+            Resource::TableAccessControlForCompanyFieldDataGroup(r) => {
+                state.access_control_for_company.upsert(row_uuid, |table| table.data_group = r)
+            }
+            Resource::TableAccessControlForCompanyBranchFieldRole(r) => {
+                state.access_control_for_company_branch.upsert(row_uuid, |table| table.role = r)
+            }
+            Resource::TableAccessControlForCompanyBranchFieldUser(r) => {
+                state.access_control_for_company_branch.upsert(row_uuid, |table| table.user_ = r)
+            }
+            Resource::TableAccessControlForCompanyBranchFieldDataGroup(r) => {
+                state
+                    .access_control_for_company_branch
+                    .upsert(row_uuid, |table| table.data_group = r)
+            }
+            Resource::TableAccountFieldCompanyBelong(r) => {
+                state.account.upsert(row_uuid, |table| table.company_belong = r)
+            }
             Resource::TableAccountFieldIsDebit(r) => {
                 state.account.upsert(row_uuid, |table| table.is_debit = r)
             }
-            Resource::TableAccountFieldIsPermanentAccount(r) => state
-                .account
-                .upsert(row_uuid, |table| table.is_permanent_account = r),
+            Resource::TableAccountFieldIsPermanentAccount(r) => {
+                state.account.upsert(row_uuid, |table| table.is_permanent_account = r)
+            }
             Resource::TableAccountFieldName(r) => {
                 state.account.upsert(row_uuid, |table| table.name = r)
             }
             Resource::TableAccountFieldNotes(r) => {
                 state.account.upsert(row_uuid, |table| table.notes = r)
             }
-            Resource::TableAccountFieldUnitOfMeasurementOfQuantity(r) => state
-                .account
-                .upsert(row_uuid, |table| table.unit_of_measurement_of_quantity = r),
+            Resource::TableAccountFieldUnitOfMeasurementOfQuantity(r) => {
+                state.account.upsert(row_uuid, |table| table.unit_of_measurement_of_quantity = r)
+            }
         }
     }
 }

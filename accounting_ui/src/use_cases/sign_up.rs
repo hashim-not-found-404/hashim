@@ -15,15 +15,11 @@ pub(crate) fn SignUp() -> Element {
     };
 
     let consent_callback = move |consent: ui_model::UserConsent| {
-        tools::send(ui_model::Message::SignUp(ui_model::SignUp::Consent(
-            consent,
-        )));
+        tools::send(ui_model::Message::SignUp(ui_model::SignUp::Consent(consent)));
     };
 
     let password_callback = move |password: String| {
-        tools::send(ui_model::Message::SignUp(ui_model::SignUp::Password(
-            password,
-        )));
+        tools::send(ui_model::Message::SignUp(ui_model::SignUp::Password(password)));
     };
 
     rsx! {

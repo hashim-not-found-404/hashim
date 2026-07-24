@@ -107,21 +107,18 @@ where
         data: &Self::Type2,
         state: &mut cache::State<Ch>,
     ) -> Self::Type3 {
-        let errr = data
-            .state_full_check::<Id, Cache<Ch, LongCache>>(state)
-            .await
-            .unwrap();
+        let errr = data.state_full_check::<Id, Cache<Ch, LongCache>>(state).await.unwrap();
 
         if errr.is_there_error() {
             return Err(errr);
         }
 
         let result = cases::sign_up::Ok {
-            new_uuid: data.new_uuid.clone(),
-            user_id: data.user_id.clone(),
-            user_name: data.name.clone(),
+            new_uuid:        data.new_uuid.clone(),
+            user_id:         data.user_id.clone(),
+            user_name:       data.name.clone(),
             hashed_password: String::new(),
-            jwt: types::JsonWebTokenType(String::new()),
+            jwt:             types::JsonWebTokenType(String::new()),
         };
 
         return Ok(result);
@@ -154,11 +151,7 @@ where
                     .user_id
                     .set(model.page_root.page_auth.auth_feature_state.user_id.read());
 
-                model
-                    .page_root
-                    .page_after_auth
-                    .user_name
-                    .set(local_state.user_name.read());
+                model.page_root.page_after_auth.user_name.set(local_state.user_name.read());
 
                 local_state.user_id_error.reset();
                 local_state.user_name_error.reset();
@@ -202,15 +195,17 @@ impl ui_model::SignUp {
                 )
                 .await
             }
-            Self::Consent(i) => commander_local_state
-                .sender_to_process_manager
-                .read()
-                .send(process_manager::MessageToProcessManager::FromUser {
-                    process_name: process_manager::ProcessName::SignUp,
-                    consent: i,
-                })
-                .await
-                .unwrap(),
+            Self::Consent(i) => {
+                commander_local_state
+                    .sender_to_process_manager
+                    .read()
+                    .send(process_manager::MessageToProcessManager::FromUser {
+                        process_name: process_manager::ProcessName::SignUp,
+                        consent:      i,
+                    })
+                    .await
+                    .unwrap()
+            }
             Self::UserName(i) => {
                 model.page_root.page_auth.page_sign_up.user_name.set(i);
                 handle_check::<Rn, Rt, Id, Mpsc, Rg, As, Ch, LongCache>(
@@ -230,12 +225,7 @@ impl ui_model::SignUp {
                 .await;
             }
             Self::Password(i) => {
-                model
-                    .page_root
-                    .page_auth
-                    .auth_feature_state
-                    .user_password
-                    .set(i);
+                model.page_root.page_auth.auth_feature_state.user_password.set(i);
                 handle_check::<Rn, Rt, Id, Mpsc, Rg, As, Ch, LongCache>(
                     model,
                     cache,
@@ -276,14 +266,14 @@ async fn handle_submit<
     let new_uuid = Id::generate();
     let input = cases::sign_up::Input {
         new_uuid: new_uuid.clone(),
-        name: {
+        name:     {
             let name = local_state.user_name.read();
             match name.is_empty() {
                 true => None,
                 false => Some(name.to_string()),
             }
         },
-        user_id: feature_state.user_id.read(),
+        user_id:  feature_state.user_id.read(),
         password: feature_state.user_password.read(),
     };
 
@@ -338,7 +328,7 @@ async fn handle_submit<
                         .read()
                         .send(process_manager::MessageToProcessManager::FromProcess {
                             process_name: process_manager::ProcessName::SignUp,
-                            message: process_manager::MessageFromProcess::Response {
+                            message:      process_manager::MessageFromProcess::Response {
                                 is_response_from_server,
                                 is_response_ok: is_ok,
                             },
@@ -354,7 +344,7 @@ async fn handle_submit<
             .read()
             .send(process_manager::MessageToProcessManager::FromProcess {
                 process_name: process_manager::ProcessName::SignUp,
-                message: process_manager::MessageFromProcess::Subscribe {
+                message:      process_manager::MessageFromProcess::Subscribe {
                     sender: sender_to_process,
                     dialog: &dialog,
                 },
@@ -437,14 +427,14 @@ async fn handle_check<
             txn_number,
             <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::wrap_input(cases::sign_up::Input {
                 new_uuid: new_uuid.clone(),
-                name: {
+                name:     {
                     let name = local_state.user_name.read();
                     match name.is_empty() {
                         true => None,
                         false => Some(name.to_string()),
                     }
                 },
-                user_id: feature_state.user_id.read(),
+                user_id:  feature_state.user_id.read(),
                 password: feature_state.user_password.read(),
             }),
         )

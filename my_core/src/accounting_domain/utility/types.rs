@@ -38,10 +38,10 @@ pub type ListOfCompanies = Vec<Company>;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Company {
-    pub uuid: UuidType,
-    pub name: String,
+    pub uuid:        UuidType,
+    pub name:        String,
     pub(crate) role: Role,
-    pub branches: Vec<Branch>,
+    pub branches:    Vec<Branch>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -52,7 +52,7 @@ pub struct Branch {
 
 #[derive(Debug, Deserialize, Serialize, Clone, Default)]
 pub struct Location {
-    pub latitude: f64,
+    pub latitude:  f64,
     pub longitude: f64,
 }
 

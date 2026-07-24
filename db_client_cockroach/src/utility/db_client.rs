@@ -51,7 +51,7 @@ impl DBClient for S {
 
         let mut result = server_traits::AllRoles {
             companies: HashMap::new(),
-            branches: HashMap::new(),
+            branches:  HashMap::new(),
         };
 
         for user_uuid in users_uuid {

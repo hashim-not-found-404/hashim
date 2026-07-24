@@ -7,25 +7,25 @@ pub type MyResult = Result<Ok, Error>;
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Input {
-    pub(crate) user_uuid: types::UuidType,
-    pub(crate) new_uuid: types::UuidType,
+    pub(crate) user_uuid:    types::UuidType,
+    pub(crate) new_uuid:     types::UuidType,
     pub(crate) company_name: String,
-    pub(crate) currency: types::Currency,
+    pub(crate) currency:     types::Currency,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Ok {
-    pub new_uuid: types::UuidType,
+    pub new_uuid:     types::UuidType,
     pub company_name: String,
-    pub currency: types::Currency,
-    pub user_uuid: types::UuidType,
-    pub role: types::Role,
+    pub currency:     types::Currency,
+    pub user_uuid:    types::UuidType,
+    pub role:         types::Role,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
 pub struct Error {
     pub(crate) user_uuid: Option<types::UserUuidError>,
-    pub(crate) new_uuid: Option<types::RowIdError>,
+    pub(crate) new_uuid:  Option<types::RowIdError>,
 }
 
 impl types::MyErrorTrait for Error {}
@@ -64,12 +64,9 @@ impl Input {
         &self,
         db: &mut Db::Db<'_>,
     ) -> Result<Error, traits::DynamicError> {
-        let read_output = Db::read(
-            db,
-            &ReadInput {
-                new_uuid: self.new_uuid.clone(),
-            },
-        )
+        let read_output = Db::read(db, &ReadInput {
+            new_uuid: self.new_uuid.clone(),
+        })
         .await?;
 
         let mut errr = Error::default();
@@ -84,11 +81,11 @@ impl Input {
         const ROLE: types::Role = types::Role::Manager;
 
         Ok {
-            new_uuid: self.new_uuid.clone(),
+            new_uuid:     self.new_uuid.clone(),
             company_name: self.company_name.clone(),
-            currency: self.currency.clone(),
-            user_uuid: self.user_uuid.clone(),
-            role: ROLE,
+            currency:     self.currency.clone(),
+            user_uuid:    self.user_uuid.clone(),
+            role:         ROLE,
         }
     }
 }

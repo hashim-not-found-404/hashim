@@ -49,11 +49,7 @@ pub(crate) fn PasswordInput(password_callback: EventHandler<String>) -> Element 
         false => ("password", tools::ICONS_HIDE),
     };
 
-    let password = &tools::MODEL
-        .page_root
-        .page_auth
-        .auth_feature_state
-        .user_password;
+    let password = &tools::MODEL.page_root.page_auth.auth_feature_state.user_password;
     rsx! {
         div {
             input {

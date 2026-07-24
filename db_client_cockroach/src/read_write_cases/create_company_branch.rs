@@ -37,15 +37,12 @@ impl cases::create_company_branch::DatabaseRead for S {
 
         let row = db
             .txn
-            .query_one(
-                query,
-                &[
-                    &read_input.company_belong.to_externel_uuid(),
-                    &read_input.user_uuid.to_externel_uuid(),
-                    &read_input.new_uuid.to_externel_uuid(),
-                    &read_input.branch_name,
-                ],
-            )
+            .query_one(query, &[
+                &read_input.company_belong.to_externel_uuid(),
+                &read_input.user_uuid.to_externel_uuid(),
+                &read_input.new_uuid.to_externel_uuid(),
+                &read_input.branch_name,
+            ])
             .await
             .log()?;
 
@@ -57,9 +54,9 @@ impl cases::create_company_branch::DatabaseRead for S {
             .log()?;
 
         let a = cases::create_company_branch::ReadOutput {
-            user_roles: roles,
-            is_new_uuid_used: row.try_get(1).log()?,
-            is_company_exist: row.try_get(2).log()?,
+            user_roles:          roles,
+            is_new_uuid_used:    row.try_get(1).log()?,
+            is_company_exist:    row.try_get(2).log()?,
             is_branch_name_used: row.try_get(3).log()?,
         };
         Ok(a)

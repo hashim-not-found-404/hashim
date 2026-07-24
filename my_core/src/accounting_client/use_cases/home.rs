@@ -21,12 +21,12 @@ impl ui_model::Home {
         _: Arc<commander::CommanderLocalState<Mpsc, As>>,
     ) {
         match self {
-            ui_model::Home::ShowDashboard => model
-                .navigator
-                .set(ui_model::Navigator::Home(ui_model::Menu::Dashboard)),
-            ui_model::Home::ShowCreateAccount => model
-                .navigator
-                .set(ui_model::Navigator::Home(ui_model::Menu::CreateAccount)),
+            ui_model::Home::ShowDashboard => {
+                model.navigator.set(ui_model::Navigator::Home(ui_model::Menu::Dashboard))
+            }
+            ui_model::Home::ShowCreateAccount => {
+                model.navigator.set(ui_model::Navigator::Home(ui_model::Menu::CreateAccount))
+            }
         }
     }
 }

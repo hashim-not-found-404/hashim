@@ -21,10 +21,8 @@ pub mod target {
             let argon2 = Argon2::default();
 
             // 3. Hash the password into a PHC string (e.g., "$argon2id$v=19$...")
-            let password_hash = argon2
-                .hash_password(password.as_bytes(), &salt)
-                .unwrap()
-                .to_string();
+            let password_hash =
+                argon2.hash_password(password.as_bytes(), &salt).unwrap().to_string();
 
             // 4. You need to return or store this string.
             // You'll have to convert `password_hash` (String) into your `TableUserFieldPass` type.
@@ -37,9 +35,7 @@ pub mod target {
 
             // 2. Verify the provided password against the parsed hash
             // The verification uses the parameters (salt, cost, etc.) embedded in the parsed hash.
-            Argon2::default()
-                .verify_password(password.as_bytes(), &parsed_hash)
-                .is_ok()
+            Argon2::default().verify_password(password.as_bytes(), &parsed_hash).is_ok()
         }
     }
 }

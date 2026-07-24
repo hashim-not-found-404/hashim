@@ -8,37 +8,37 @@ pub type MyResult = Result<Ok, Error>;
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Input {
     pub(crate) new_uuid: types::UuidType,
-    pub(crate) name: Option<String>,
-    pub(crate) user_id: String,
+    pub(crate) name:     Option<String>,
+    pub(crate) user_id:  String,
     pub(crate) password: String,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Ok {
-    pub new_uuid: types::UuidType,
-    pub user_id: String,
-    pub user_name: Option<String>,
+    pub new_uuid:        types::UuidType,
+    pub user_id:         String,
+    pub user_name:       Option<String>,
     pub hashed_password: String,
-    pub(crate) jwt: types::JsonWebTokenType,
+    pub(crate) jwt:      types::JsonWebTokenType,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
 pub struct Error {
     pub(crate) new_uuid: Option<types::RowIdError>,
-    pub(crate) user_id: Option<UserIdError>,
-    pub(crate) name: Option<String>,
+    pub(crate) user_id:  Option<UserIdError>,
+    pub(crate) name:     Option<String>,
 }
 
 impl types::MyErrorTrait for Error {}
 
 pub struct ReadInput {
     pub new_uuid: types::UuidType,
-    pub user_id: String,
+    pub user_id:  String,
 }
 
 pub struct ReadOutput {
     pub is_new_uuid_exist: bool,
-    pub is_user_id_exist: bool,
+    pub is_user_id_exist:  bool,
 }
 
 pub trait DatabaseRead {
@@ -71,13 +71,10 @@ impl Input {
         &self,
         db: &mut Db::Db<'_>,
     ) -> Result<Error, traits::DynamicError> {
-        let read_output = Db::read(
-            db,
-            &ReadInput {
-                new_uuid: self.new_uuid.clone(),
-                user_id: self.user_id.clone(),
-            },
-        )
+        let read_output = Db::read(db, &ReadInput {
+            new_uuid: self.new_uuid.clone(),
+            user_id:  self.user_id.clone(),
+        })
         .await?;
 
         let mut errr = Error::default();

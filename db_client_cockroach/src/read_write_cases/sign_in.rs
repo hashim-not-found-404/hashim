@@ -16,11 +16,7 @@ impl cases::sign_in::DatabaseRead for S {
     ) -> Result<cases::sign_in::ReadOutput, traits::DynamicError> {
         let query = "SELECT rowid,pass,name FROM accounting_app.user WHERE id = $1 LIMIT 1;";
         let stmt = db.client.prepare_cached(query).await.log()?;
-        let row = db
-            .client
-            .query_opt(&stmt, &[&read_input.user_id])
-            .await
-            .log()?;
+        let row = db.client.query_opt(&stmt, &[&read_input.user_id]).await.log()?;
 
         match row {
             Some(row) => {
@@ -37,9 +33,11 @@ impl cases::sign_in::DatabaseRead for S {
                 };
                 Ok(a)
             }
-            None => Ok(cases::sign_in::ReadOutput {
-                user_rowid_and_password_hash_and_name: None,
-            }),
+            None => {
+                Ok(cases::sign_in::ReadOutput {
+                    user_rowid_and_password_hash_and_name: None,
+                })
+            }
         }
     }
 }

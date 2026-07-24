@@ -6,15 +6,17 @@ use std::sync::Arc;
 use std::sync::Mutex;
 
 pub(crate) struct S<T> {
-    value: Arc<Mutex<T>>,
+    value:       Arc<Mutex<T>>,
     subscribers: Arc<Mutex<HashSet<ReactiveContext>>>,
 }
 
 impl<T: 'static + Default> Default for S<T> {
     fn default() -> Self {
-        use_hook(|| S {
-            value: Arc::new(Mutex::new(T::default())),
-            subscribers: Default::default(),
+        use_hook(|| {
+            S {
+                value:       Arc::new(Mutex::new(T::default())),
+                subscribers: Default::default(),
+            }
         })
     }
 }
@@ -22,7 +24,7 @@ impl<T: 'static + Default> Default for S<T> {
 impl<T> Clone for S<T> {
     fn clone(&self) -> Self {
         Self {
-            value: self.value.clone(),
+            value:       self.value.clone(),
             subscribers: self.subscribers.clone(),
         }
     }

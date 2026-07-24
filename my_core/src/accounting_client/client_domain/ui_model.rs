@@ -37,39 +37,39 @@ pub enum Dialog {
 
 #[derive(Default)]
 pub struct Model<As: AllSignalTypes> {
-    pub navigator: As::Navigator,
-    pub page_root: PageRoot<As>,
+    pub navigator:       As::Navigator,
+    pub page_root:       PageRoot<As>,
     pub external_errors: As::StringVec,
 }
 
 #[derive(Default)]
 pub struct PageRoot<As: AllSignalTypes> {
-    pub page_auth: PageAuth<As>,
+    pub page_auth:       PageAuth<As>,
     pub page_after_auth: PageAfterAuth<As>,
 }
 
 #[derive(Default)]
 pub struct PageAuth<As: AllSignalTypes> {
     pub auth_feature_state: AuthFeatureState<As>,
-    pub page_sign_up: PageSignUp<As>,
-    pub page_sign_in: PageSignIn<As>,
+    pub page_sign_up:       PageSignUp<As>,
+    pub page_sign_in:       PageSignIn<As>,
 }
 
 #[derive(Default)]
 pub struct PageAfterAuth<As: AllSignalTypes> {
-    pub user_id: As::String,
+    pub user_id:   As::String,
     pub user_name: As::String,
 
     pub page_company_branch_selection: PageCompanyBranchSelection<As>,
-    pub page_home: PageHome<As>,
+    pub page_home:                     PageHome<As>,
 }
 
 #[derive(Default)]
 pub struct PageCompanyBranchSelection<As: AllSignalTypes> {
-    pub list: As::CompanyAndBranchList,
+    pub list:             As::CompanyAndBranchList,
     pub selected_company: As::OptionUuid,
 
-    pub page_create_company: PageCreateCompany<As>,
+    pub page_create_company:        PageCreateCompany<As>,
     pub page_create_company_branch: PageCreateCompanyBranch<As>,
 }
 
@@ -80,53 +80,53 @@ pub struct PageHome<As: AllSignalTypes> {
 
 #[derive(Default)]
 pub struct AuthFeatureState<As: AllSignalTypes> {
-    pub user_id: As::String,
+    pub user_id:       As::String,
     pub user_password: As::String,
-    pub is_loading: As::Bool,
+    pub is_loading:    As::Bool,
 }
 
 #[derive(Default)]
 pub struct PageSignIn<As: AllSignalTypes> {
-    pub show_dialog: As::Dialog,
-    pub user_id_error: As::OptionString,
+    pub show_dialog:         As::Dialog,
+    pub user_id_error:       As::OptionString,
     pub user_password_error: As::OptionString,
 }
 
 #[derive(Default)]
 pub struct PageSignUp<As: AllSignalTypes> {
-    pub show_dialog: As::Dialog,
-    pub user_name: As::String,
-    pub user_id_error: As::OptionString,
+    pub show_dialog:     As::Dialog,
+    pub user_name:       As::String,
+    pub user_id_error:   As::OptionString,
     pub user_name_error: As::OptionString,
 }
 
 #[derive(Default)]
 pub struct PageCreateCompany<As: AllSignalTypes> {
     pub company_name: As::String,
-    pub currency: As::Currency,
+    pub currency:     As::Currency,
 }
 
 #[derive(Default)]
 pub struct PageCreateCompanyBranch<As: AllSignalTypes> {
-    pub is_loading: As::Bool,
-    pub show_dialog: As::Dialog,
-    pub currency: As::Currency,
-    pub branch_name: As::String,
-    pub location: As::Location,
+    pub is_loading:        As::Bool,
+    pub show_dialog:       As::Dialog,
+    pub currency:          As::Currency,
+    pub branch_name:       As::String,
+    pub location:          As::Location,
     pub branch_name_error: As::OptionString,
-    pub location_error: As::OptionString,
+    pub location_error:    As::OptionString,
 }
 
 #[derive(Default)]
 pub struct PageCreateAccount<As: AllSignalTypes> {
-    pub is_loading: As::Bool,
-    pub show_dialog: As::Dialog,
-    pub is_debit: As::Bool,
-    pub is_permanent_account: As::Bool,
-    pub account_name: As::String,
-    pub notes: As::String,
+    pub is_loading:                      As::Bool,
+    pub show_dialog:                     As::Dialog,
+    pub is_debit:                        As::Bool,
+    pub is_permanent_account:            As::Bool,
+    pub account_name:                    As::String,
+    pub notes:                           As::String,
     pub unit_of_measurement_of_quantity: As::String,
-    pub account_name_error: As::OptionString,
+    pub account_name_error:              As::OptionString,
 }
 
 // message

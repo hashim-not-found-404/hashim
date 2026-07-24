@@ -53,23 +53,20 @@ impl cases::list_company_and_branch::DatabaseRead for S {
             LEFT JOIN company_branches cb ON uc.company_uuid = cb.company_belong
         ";
 
-        let rows = db
-            .client
-            .query(query, &[&read_input.user_uuid.to_externel_uuid()])
-            .await
-            .log()?;
+        let rows =
+            db.client.query(query, &[&read_input.user_uuid.to_externel_uuid()]).await.log()?;
 
         #[derive(Deserialize)]
         struct BranchJson {
-            uuid: String,
-            name: String,
+            uuid:     String,
+            name:     String,
             currency: String,
         }
 
         struct CompanyAgg {
-            name: String,
+            name:     String,
             currency: types::Currency,
-            roles: Vec<types::Role>,
+            roles:    Vec<types::Role>,
             branches: Vec<cases::list_company_and_branch::AllBranchesThatUserInWithRoles>,
         }
 
@@ -99,26 +96,24 @@ impl cases::list_company_and_branch::DatabaseRead for S {
                     let uuid = Uuid::parse_str(&bj.uuid).log()?;
                     let branch_uuid = types::UuidType(uuid.into_bytes());
                     let branch_currency = types::Currency::from_str(&bj.currency).log()?;
-                    Ok(
-                        cases::list_company_and_branch::AllBranchesThatUserInWithRoles {
-                            branch_uuid,
-                            branch_name: bj.name,
-                            branch_currancy: branch_currency,
-                            user_roles: Vec::new(),
-                        },
-                    )
+                    Ok(cases::list_company_and_branch::AllBranchesThatUserInWithRoles {
+                        branch_uuid,
+                        branch_name: bj.name,
+                        branch_currancy: branch_currency,
+                        user_roles: Vec::new(),
+                    })
                 })
                 .collect::<Result<Vec<_>, traits::DynamicError>>()
                 .log()?;
 
-            let entry = company_map
-                .entry(company_uuid)
-                .or_insert_with(|| CompanyAgg {
-                    name: company_name.clone(),
+            let entry = company_map.entry(company_uuid).or_insert_with(|| {
+                CompanyAgg {
+                    name:     company_name.clone(),
                     currency: company_currency.clone(),
-                    roles: Vec::new(),
+                    roles:    Vec::new(),
                     branches: Vec::new(),
-                });
+                }
+            });
 
             entry.name = company_name;
             entry.currency = company_currency;
@@ -142,6 +137,8 @@ impl cases::list_company_and_branch::DatabaseRead for S {
             })
             .collect();
 
-        Ok(cases::list_company_and_branch::ReadOutput { data })
+        Ok(cases::list_company_and_branch::ReadOutput {
+            data,
+        })
     }
 }

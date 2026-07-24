@@ -26,7 +26,7 @@ pub(crate) enum MessageFromProcess<
     },
     Response {
         is_response_from_server: bool,
-        is_response_ok: bool,
+        is_response_ok:          bool,
     },
 }
 
@@ -36,11 +36,11 @@ pub(crate) enum MessageToProcessManager<
 > {
     FromUser {
         process_name: ProcessName,
-        consent: ui_model::UserConsent,
+        consent:      ui_model::UserConsent,
     },
     FromProcess {
         process_name: ProcessName,
-        message: MessageFromProcess<Mpsc, As>,
+        message:      MessageFromProcess<Mpsc, As>,
     },
 }
 
@@ -63,11 +63,11 @@ pub(crate) fn process_manager_actor<
             Mpsc: traits::MultiProducerSingleConsumer,
             As: ui_model::AllSignalTypes,
         > {
-            sender: Mpsc::Sender<MessageToProcess>,
-            dialog: &'static As::Dialog,
-            timer_handle: Rt::JoinHandle<()>,
+            sender:                  Mpsc::Sender<MessageToProcess>,
+            dialog:                  &'static As::Dialog,
+            timer_handle:            Rt::JoinHandle<()>,
             is_response_from_server: Option<bool>,
-            is_ok: Option<bool>,
+            is_ok:                   Option<bool>,
             is_user_want_to_proceed: ui_model::UserConsent,
         }
 
@@ -92,18 +92,10 @@ pub(crate) fn process_manager_actor<
                             table.timer_handle = timer_handle::<Rt, As>(&table.dialog);
                         }
                         ui_model::UserConsent::DontWaitForServerResponse => {
-                            table
-                                .sender
-                                .send(MessageToProcess::FallBackToCache)
-                                .await
-                                .unwrap();
+                            table.sender.send(MessageToProcess::FallBackToCache).await.unwrap();
                         }
                         ui_model::UserConsent::CancelOperation => {
-                            table
-                                .sender
-                                .send(MessageToProcess::CancelOperation)
-                                .await
-                                .unwrap();
+                            table.sender.send(MessageToProcess::CancelOperation).await.unwrap();
                         }
                     };
                 }
@@ -112,21 +104,21 @@ pub(crate) fn process_manager_actor<
                     message,
                 } => {
                     match message {
-                        MessageFromProcess::Subscribe { sender, dialog } => {
+                        MessageFromProcess::Subscribe {
+                            sender,
+                            dialog,
+                        } => {
                             let timer_handle = timer_handle::<Rt, As>(&dialog);
 
-                            process_states.insert(
-                                process_name,
-                                ProcessInfo {
-                                    sender,
-                                    dialog,
-                                    timer_handle,
-                                    is_response_from_server: None,
-                                    is_ok: None,
-                                    is_user_want_to_proceed:
-                                        ui_model::UserConsent::WaitForServerResponse,
-                                },
-                            );
+                            process_states.insert(process_name, ProcessInfo {
+                                sender,
+                                dialog,
+                                timer_handle,
+                                is_response_from_server: None,
+                                is_ok: None,
+                                is_user_want_to_proceed:
+                                    ui_model::UserConsent::WaitForServerResponse,
+                            });
                         }
                         MessageFromProcess::Response {
                             is_response_from_server,
@@ -138,11 +130,7 @@ pub(crate) fn process_manager_actor<
                             table.is_response_from_server = Some(is_response_from_server);
 
                             if is_response_from_server {
-                                table
-                                    .sender
-                                    .send(MessageToProcess::CancelOperation)
-                                    .await
-                                    .unwrap();
+                                table.sender.send(MessageToProcess::CancelOperation).await.unwrap();
 
                                 process_states.remove(&process_name);
                             }

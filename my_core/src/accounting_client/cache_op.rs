@@ -28,9 +28,7 @@ impl<Ch: cache::Cache> cache::State<Ch> {
         };
 
         for op in txns {
-            op.operation
-                .run_operation_check_apply::<Id, Ch, Dbb>(&mut state)
-                .await;
+            op.operation.run_operation_check_apply::<Id, Ch, Dbb>(&mut state).await;
         }
 
         state

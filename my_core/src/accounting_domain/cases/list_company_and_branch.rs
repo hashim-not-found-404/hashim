@@ -13,24 +13,24 @@ pub struct Input {
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Ok {
     pub(crate) user_uuid: types::UuidType,
-    pub(crate) data: Vec<AllCompaniesThatUserInWithRoles>,
+    pub(crate) data:      Vec<AllCompaniesThatUserInWithRoles>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct AllCompaniesThatUserInWithRoles {
-    pub company_uuid: types::UuidType,
-    pub company_name: String,
+    pub company_uuid:     types::UuidType,
+    pub company_name:     String,
     pub company_currancy: types::Currency,
-    pub user_roles: Vec<types::Role>,
-    pub branches: Vec<AllBranchesThatUserInWithRoles>,
+    pub user_roles:       Vec<types::Role>,
+    pub branches:         Vec<AllBranchesThatUserInWithRoles>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct AllBranchesThatUserInWithRoles {
-    pub branch_uuid: types::UuidType,
-    pub branch_name: String,
+    pub branch_uuid:     types::UuidType,
+    pub branch_name:     String,
     pub branch_currancy: types::Currency,
-    pub user_roles: Vec<types::Role>,
+    pub user_roles:      Vec<types::Role>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
@@ -71,17 +71,14 @@ impl Input {
         &self,
         db: &mut Db::Db<'_>,
     ) -> Result<MyResult, traits::DynamicError> {
-        let read_output = Db::read(
-            db,
-            &ReadInput {
-                user_uuid: self.user_uuid.clone(),
-            },
-        )
+        let read_output = Db::read(db, &ReadInput {
+            user_uuid: self.user_uuid.clone(),
+        })
         .await?;
 
         Ok(Ok(Ok {
             user_uuid: self.user_uuid.clone(),
-            data: read_output.data,
+            data:      read_output.data,
         }))
     }
 }

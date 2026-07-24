@@ -22,16 +22,13 @@ impl cases::sign_up::DatabaseRead for S {
         let stmt = db.txn.prepare_cached(query).await.log()?;
         let row = db
             .txn
-            .query_one(
-                &stmt,
-                &[&read_input.new_uuid.to_externel_uuid(), &read_input.user_id],
-            )
+            .query_one(&stmt, &[&read_input.new_uuid.to_externel_uuid(), &read_input.user_id])
             .await
             .log()?;
 
         let a = cases::sign_up::ReadOutput {
             is_new_uuid_exist: row.try_get("uuid_exists").log()?,
-            is_user_id_exist: row.try_get("user_id_exists").log()?,
+            is_user_id_exist:  row.try_get("user_id_exists").log()?,
         };
         Ok(a)
     }

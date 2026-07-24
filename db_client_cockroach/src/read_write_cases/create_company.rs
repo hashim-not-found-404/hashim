@@ -15,11 +15,8 @@ impl cases::create_company::DatabaseRead for S {
     ) -> Result<cases::create_company::ReadOutput, traits::DynamicError> {
         let query = "SELECT EXISTS(SELECT 1 FROM accounting_app.company WHERE rowid = $1)";
         let stmt = db.txn.prepare_cached(query).await.log()?;
-        let row = db
-            .txn
-            .query_one(&stmt, &[&read_input.new_uuid.to_externel_uuid()])
-            .await
-            .log()?;
+        let row =
+            db.txn.query_one(&stmt, &[&read_input.new_uuid.to_externel_uuid()]).await.log()?;
 
         let exists: bool = row.try_get(0).log()?;
         Ok(cases::create_company::ReadOutput {
