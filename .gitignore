@@ -5,5 +5,4 @@ Cargo.lock
 graph.dot
 graph.png
 .code-ranker
-raff_analyses.html
 commands.txt
