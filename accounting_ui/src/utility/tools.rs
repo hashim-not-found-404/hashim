@@ -18,22 +18,23 @@ type TheModel = ui_model::Model<my_signals::S>;
 type TheCommander = ui_effect::Commander<actors::target::S>;
 
 pub(crate) static MODEL: LazyLock<TheModel> = LazyLock::new(TheModel::default);
-pub(crate) static COMMANDER: LazyLock<TheCommander> = LazyLock::new(|| {
-    ui_construct::new::<
-        random_number::target::S,
-        runtime::target::S,
-        row_id::target::S,
-        actors::target::S,
-        encode_decode::target::S,
-        functions::target::S,
-        utility::cache_adapter::S,
-        web_socket_adapter::target::S,
-        my_signals::S,
-        db_bundle::S,
-    >(&MODEL)
-});
 
 pub(crate) fn send(msg: ui_model::Message) {
+    static COMMANDER: LazyLock<TheCommander> = LazyLock::new(|| {
+        ui_construct::new::<
+            random_number::target::S,
+            runtime::target::S,
+            row_id::target::S,
+            actors::target::S,
+            encode_decode::target::S,
+            functions::target::S,
+            utility::cache_adapter::S,
+            web_socket_adapter::target::S,
+            my_signals::S,
+            db_bundle::S,
+        >(&MODEL)
+    });
+
     COMMANDER.send::<runtime::target::S>(msg);
 }
 
