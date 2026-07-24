@@ -53,17 +53,16 @@ pub(crate) fn network_actor<Rt: traits::Runtime, Ws: WSClient, Nw: Network + 'st
             )
             .await
             {
-                Either::One(r) => match r {
-                    data => match &ws {
-                        Some(ws1) => {
-                            let result = ws1.send_bin(&data).await;
-                            if result.is_err() {
-                                connect::<Rt, Ws, Nw>(&mut network_utils, &url, &mut ws).await;
-                            }
+                Either::One(data) => match &ws {
+                    Some(ws1) => {
+                        let result = ws1.send_bin(&data).await;
+                        if result.is_err() {
+                            connect::<Rt, Ws, Nw>(&mut network_utils, &url, &mut ws).await;
                         }
-                        None => Rt::sleep(Duration::from_secs(5)).await,
-                    },
+                    }
+                    None => Rt::sleep(Duration::from_secs(5)).await,
                 },
+
                 Either::Two(from_network) => match from_network {
                     Ok(data) => {
                         network_utils.network_sender(data).await;
