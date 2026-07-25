@@ -396,7 +396,6 @@ async fn push_data<
             }
             None => {
                 the_return_result.jwts.push(Err(types::JWTError::Invalid));
-
                 is_there_error = true;
             }
         }

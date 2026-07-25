@@ -9,11 +9,11 @@ use crate::accounting_domain::cases;
 use crate::accounting_domain::request_response;
 use crate::accounting_domain::utility::resource_utils;
 use crate::accounting_domain::utility::types;
+use crate::utility::tools;
 use crate::utility::traits;
 use crate::utility::traits::JoinHandle;
 use crate::utility::traits::Receiver;
 use crate::utility::utils::ReadAndSet;
-use std::cmp::Ordering;
 use std::marker::PhantomData;
 use std::sync::Arc;
 
@@ -22,26 +22,27 @@ type Type2 = cases::list_company_and_branch::Input;
 type Type3 = cases::list_company_and_branch::MyResult;
 type Type4 = Result<types::ListOfCompanies, ()>;
 
-/// Sort a list of companies by name then by UUID, and sort branches inside each company similarly.
-pub fn sort_companies(companies: &mut types::ListOfCompanies) {
-    companies.sort_by(|a, b| compare_by_name_then_uuid(&a.name, &a.uuid, &b.name, &b.uuid));
-    for company in companies {
-        company
-            .branches
-            .sort_by(|a, b| compare_by_name_then_uuid(&a.name, &a.uuid, &b.name, &b.uuid));
+impl tools::Sortable for types::Company {
+    type Key = (String, types::UuidType);
+
+    fn key(&self) -> Self::Key {
+        (self.name.clone(), self.uuid.clone())
     }
 }
 
-/// Helper that compares two items by name (lexicographically) and, if equal, by UUID.
-fn compare_by_name_then_uuid(
-    name_a: &str,
-    uuid_a: &types::UuidType,
-    name_b: &str,
-    uuid_b: &types::UuidType,
-) -> Ordering {
-    match name_a.cmp(name_b) {
-        Ordering::Equal => uuid_a.cmp(uuid_b),
-        other => other,
+impl tools::Sortable for types::Branch {
+    type Key = (String, types::UuidType);
+
+    fn key(&self) -> Self::Key {
+        (self.name.clone(), self.uuid.clone())
+    }
+}
+
+/// Sort a list of companies by name then by UUID, and sort branches inside each company similarly.
+pub fn sort_companies(companies: &mut types::ListOfCompanies) {
+    tools::sort(companies);
+    for company in companies {
+        tools::sort(&mut company.branches);
     }
 }
 

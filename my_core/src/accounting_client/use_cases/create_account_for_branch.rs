@@ -183,7 +183,7 @@ impl ui_model::CreateAccountForBranch {
         match self {
             ui_model::CreateAccountForBranch::Show => {
                 model.navigator.set(ui_model::Navigator::Home(ui_model::HomeNav {
-                    show_menu: false,
+                    show_menu:       false,
                     page_to_present: ui_model::Menu::CreateAccountForBranch,
                 }));
                 fetches::get_all_accounts_for_branch::fetch::<Rn, Mpsc, As>(
@@ -191,6 +191,7 @@ impl ui_model::CreateAccountForBranch {
                     commander_local_state,
                 )
                 .await;
+                todo!()
             }
             ui_model::CreateAccountForBranch::Submit => todo!(),
             ui_model::CreateAccountForBranch::Consent(i) => {
@@ -199,7 +200,7 @@ impl ui_model::CreateAccountForBranch {
                     .read()
                     .send(process_manager::MessageToProcessManager::FromUser {
                         process_name: process_manager::ProcessName::CreateAccountForBranch,
-                        consent: i,
+                        consent:      i,
                     })
                     .await
                     .unwrap();
