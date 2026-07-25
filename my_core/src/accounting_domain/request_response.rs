@@ -50,9 +50,11 @@ pub mod push_data {
         CreateCompany(cases::create_company::Input),
         CreateCompanyBranch(cases::create_company_branch::Input),
         CreateAccount(cases::create_account::Input),
+        CreateAccountForBranch(cases::create_account_for_branch::Input),
         // read
         ListCompanyAndBranch(cases::list_company_and_branch::Input),
         GetAllAccounts(cases::get_all_accounts::Input),
+        GetAllAccountsForBranch(cases::get_all_accounts_for_branch::Input),
     }
 
     #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -64,8 +66,10 @@ pub mod push_data {
         CreateCompany(cases::create_company::MyResult),
         CreateCompanyBranch(cases::create_company_branch::MyResult),
         CreateAccount(cases::create_account::MyResult),
+        CreateAccountForBranch(cases::create_account_for_branch::MyResult),
         // read
         ListCompanyAndBranch(cases::list_company_and_branch::MyResult),
         GetAllAccounts(cases::get_all_accounts::MyResult),
+        GetAllAccountsForBranch(cases::get_all_accounts_for_branch::MyResult),
     }
 }

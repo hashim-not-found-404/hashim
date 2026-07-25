@@ -133,9 +133,7 @@ impl ui_model::CreateCompany {
             }
             Self::Close => handle_close::<Rn, Rt, Id, Mpsc, Rg, As>(model),
             Self::Name(i) => local_state.company_name.set(i),
-            Self::Currency(i) => {
-                local_state.currency.set(types::Currency::from_str(i.as_str()).unwrap())
-            }
+            Self::Currency(i) => local_state.currency.set(i),
         }
     }
 }

@@ -240,12 +240,7 @@ impl ui_model::CreateCompanyBranch {
                 )
                 .await;
             }
-            Self::Currency(i) => {
-                model
-                    .page_create_company_branch
-                    .currency
-                    .set(types::Currency::from_str(i.as_str()).unwrap())
-            }
+            Self::Currency(i) => model.page_create_company_branch.currency.set(i),
         }
     }
 }

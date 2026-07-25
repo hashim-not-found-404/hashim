@@ -224,7 +224,7 @@ impl ui_model::SignIn {
                 .await;
             }
             Self::Password(i) => {
-                model.auth_feature_state.user_password.set(i);
+                model.feature_state_auth.user_password.set(i);
                 handle_check::<Rn, Rt, Id, Mpsc, Rg, As, Ch, LongCache>(
                     model,
                     cache,
@@ -250,7 +250,7 @@ async fn handle_submit<
     cache: client_traits::CacheActorStruct<Mpsc>,
     commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
 ) {
-    let feature_state = &model.auth_feature_state;
+    let feature_state = &model.feature_state_auth;
     let local_state = &model.page_sign_in;
 
     if feature_state.is_loading.read() {
@@ -401,7 +401,7 @@ async fn handle_check<
     mut cache: client_traits::CacheActorStruct<Mpsc>,
     commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
 ) {
-    let feature_state = &model.auth_feature_state;
+    let feature_state = &model.feature_state_auth;
     let local_state = &model.page_sign_in;
 
     local_state.user_id_error.reset();

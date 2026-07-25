@@ -14,6 +14,7 @@ pub(crate) enum ProcessName {
     SignUp,
     CreateCompanyBranch,
     CreateAccount,
+    CreateAccountForBranch,
 }
 
 pub(crate) enum MessageFromProcess<

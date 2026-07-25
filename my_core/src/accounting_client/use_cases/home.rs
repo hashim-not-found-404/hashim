@@ -2,6 +2,7 @@ use crate::accounting_client::client_domain::client_traits;
 use crate::accounting_client::client_domain::commander;
 use crate::accounting_client::client_domain::ui_model;
 use crate::accounting_client::client_domain::ui_model::HashimSignal;
+use crate::accounting_client::fetches;
 use crate::accounting_client::use_cases;
 use crate::accounting_domain::utility::types;
 use crate::utility::traits;
@@ -29,7 +30,7 @@ impl ui_model::Home {
                 }))
             }
             ui_model::Home::ShowCreateAccount => {
-                use_cases::get_all_accounts::fetch::<Rn, Mpsc, As>(
+                fetches::get_all_accounts::fetch::<Rn, Mpsc, As>(
                     model,
                     cache,
                     commander_local_state,

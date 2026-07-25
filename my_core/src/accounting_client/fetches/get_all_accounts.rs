@@ -34,40 +34,46 @@ impl ReadServerOnly for ViewAndCacheType {
     fn extract_resource(data: &Self::Type3) -> Vec<resource_utils::ResourceInfo> {
         match data {
             Ok(ok) => {
-                use resource_utils::Resource;
-                use resource_utils::ResourceInfo;
-
                 let mut resources = Vec::new();
                 for account in &ok.data {
                     let row_uuid = &account.row_uuid;
 
-                    resources.push(ResourceInfo {
+                    resources.push(resource_utils::ResourceInfo {
                         row_uuid: row_uuid.clone(),
-                        resource: Resource::TableAccountFieldName(account.account_name.clone()),
+                        resource: resource_utils::Resource::TableAccountFieldName(
+                            account.account_name.clone(),
+                        ),
                     });
-                    resources.push(ResourceInfo {
+                    resources.push(resource_utils::ResourceInfo {
                         row_uuid: row_uuid.clone(),
-                        resource: Resource::TableAccountFieldCompanyBelong(ok.company_uuid.clone()),
+                        resource: resource_utils::Resource::TableAccountFieldCompanyBelong(
+                            ok.company_uuid.clone(),
+                        ),
                     });
-                    resources.push(ResourceInfo {
+                    resources.push(resource_utils::ResourceInfo {
                         row_uuid: row_uuid.clone(),
-                        resource: Resource::TableAccountFieldIsDebit(account.is_debit.clone()),
+                        resource: resource_utils::Resource::TableAccountFieldIsDebit(
+                            account.is_debit.clone(),
+                        ),
                     });
-                    resources.push(ResourceInfo {
+                    resources.push(resource_utils::ResourceInfo {
                         row_uuid: row_uuid.clone(),
-                        resource: Resource::TableAccountFieldIsPermanentAccount(
+                        resource: resource_utils::Resource::TableAccountFieldIsPermanentAccount(
                             account.is_permanent_account.clone(),
                         ),
                     });
-                    resources.push(ResourceInfo {
+                    resources.push(resource_utils::ResourceInfo {
                         row_uuid: row_uuid.clone(),
-                        resource: Resource::TableAccountFieldNotes(account.notes.clone()),
-                    });
-                    resources.push(ResourceInfo {
-                        row_uuid: row_uuid.clone(),
-                        resource: Resource::TableAccountFieldUnitOfMeasurementOfQuantity(
-                            account.unit_of_measurement_of_quantity.clone(),
+                        resource: resource_utils::Resource::TableAccountFieldNotes(
+                            account.notes.clone(),
                         ),
+                    });
+                    resources.push(resource_utils::ResourceInfo {
+                        row_uuid: row_uuid.clone(),
+                        resource:
+                            resource_utils::Resource::TableAccountFieldUnitOfMeasurementOfQuantity(
+                                account.unit_of_measurement_of_quantity.clone(),
+                            ),
                     });
                 }
 

@@ -1,3 +1,4 @@
+use crate::accounting_domain::utility::accounting_stuff;
 use crate::accounting_domain::utility::types;
 use crate::utility::utils::MyUpSert;
 use serde::Deserialize;
@@ -50,11 +51,20 @@ pub(crate) struct Account {
 }
 
 #[derive(Default)]
+pub(crate) struct AccountFlowType {
+    pub(crate) account:        types::UuidType,
+    pub(crate) company_branch: types::UuidType,
+    pub(crate) outflow_type:   accounting_stuff::OutFlowType,
+    pub(crate) inflow_type:    accounting_stuff::InFlowType,
+}
+
+#[derive(Default)]
 pub(crate) struct StateOfPendingTxn {
     pub(crate) access_control_for_company:        HashMap<types::UuidType, AccessControlForCompany>,
     pub(crate) access_control_for_company_branch:
         HashMap<types::UuidType, AccessControlForCompanyBranch>,
     pub(crate) account:                           HashMap<types::UuidType, Account>,
+    pub(crate) account_flow_type:                 HashMap<types::UuidType, AccountFlowType>,
     pub(crate) company:                           HashMap<types::UuidType, Company>,
     pub(crate) company_branch:                    HashMap<types::UuidType, CompanyBranch>,
     pub(crate) user:                              HashMap<types::UuidType, User>,
@@ -74,6 +84,10 @@ pub(crate) enum Subscribe {
     TableAccountFieldName,
     TableAccountFieldNotes,
     TableAccountFieldUnitOfMeasurementOfQuantity,
+    TableAccountFlowTypeFieldAccount,
+    TableAccountFlowTypeFieldCompanyBranch,
+    TableAccountFlowTypeFieldInflowType,
+    TableAccountFlowTypeFieldOutflowType,
     TableCompanyBranchFieldCompanyBelong,
     TableCompanyBranchFieldCurrency,
     TableCompanyBranchFieldLocation,
@@ -100,6 +114,10 @@ pub enum Resource {
     TableAccountFieldName(String),
     TableAccountFieldNotes(String),
     TableAccountFieldUnitOfMeasurementOfQuantity(String),
+    TableAccountFlowTypeFieldAccount(types::UuidType),
+    TableAccountFlowTypeFieldCompanyBranch(types::UuidType),
+    TableAccountFlowTypeFieldInflowType(accounting_stuff::InFlowType),
+    TableAccountFlowTypeFieldOutflowType(accounting_stuff::OutFlowType),
     TableCompanyBranchFieldCompanyBelong(types::UuidType),
     TableCompanyBranchFieldCurrency(types::Currency),
     TableCompanyBranchFieldLocation(types::Location),
@@ -160,9 +178,22 @@ impl Resource {
             Resource::TableAccountFieldUnitOfMeasurementOfQuantity(_) => {
                 Some(Subscribe::TableAccountFieldUnitOfMeasurementOfQuantity)
             }
+            Resource::TableAccountFlowTypeFieldAccount(_) => {
+                Some(Subscribe::TableAccountFlowTypeFieldAccount)
+            }
+            Resource::TableAccountFlowTypeFieldCompanyBranch(_) => {
+                Some(Subscribe::TableAccountFlowTypeFieldCompanyBranch)
+            }
+            Resource::TableAccountFlowTypeFieldInflowType(_) => {
+                Some(Subscribe::TableAccountFlowTypeFieldInflowType)
+            }
+            Resource::TableAccountFlowTypeFieldOutflowType(_) => {
+                Some(Subscribe::TableAccountFlowTypeFieldOutflowType)
+            }
         }
     }
 }
+
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ResourceInfo {
     pub row_uuid: types::UuidType,
@@ -234,6 +265,18 @@ pub(crate) fn apply_change(resources: Vec<ResourceInfo>, state: &mut StateOfPend
             }
             Resource::TableAccountFieldUnitOfMeasurementOfQuantity(r) => {
                 state.account.upsert(row_uuid, |table| table.unit_of_measurement_of_quantity = r)
+            }
+            Resource::TableAccountFlowTypeFieldAccount(r) => {
+                state.account_flow_type.upsert(row_uuid, |table| table.account = r)
+            }
+            Resource::TableAccountFlowTypeFieldCompanyBranch(r) => {
+                state.account_flow_type.upsert(row_uuid, |table| table.company_branch = r)
+            }
+            Resource::TableAccountFlowTypeFieldInflowType(r) => {
+                state.account_flow_type.upsert(row_uuid, |table| table.inflow_type = r)
+            }
+            Resource::TableAccountFlowTypeFieldOutflowType(r) => {
+                state.account_flow_type.upsert(row_uuid, |table| table.outflow_type = r)
             }
         }
     }

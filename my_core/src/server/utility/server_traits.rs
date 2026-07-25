@@ -64,6 +64,11 @@ pub trait DBTransaction {
         &mut self,
         input: &cases::create_account::Ok,
     ) -> impl Future<Output = Result<(), traits::DynamicError>>;
+
+    fn write_create_account_for_branch(
+        &mut self,
+        input: &cases::create_account_for_branch::Ok,
+    ) -> impl Future<Output = Result<(), traits::DynamicError>>;
 }
 
 pub trait DBClient {

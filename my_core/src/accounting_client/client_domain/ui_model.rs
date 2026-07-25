@@ -1,4 +1,6 @@
+use crate::accounting_domain::utility::accounting_stuff;
 use crate::accounting_domain::utility::types;
+use crate::utility::tools;
 
 pub trait HashimSignal<T: Default + Clone>: Default {
     fn reset(&self) {
@@ -19,11 +21,30 @@ pub trait AllSignalTypes: 'static + Default + Clone {
     type Currency: HashimSignal<types::Currency>;
     type Location: HashimSignal<types::Location>;
     type CompanyAndBranchList: HashimSignal<Vec<types::Company>>;
+    type OutFlowType: HashimSignal<accounting_stuff::OutFlowType>;
+    type InFlowType: HashimSignal<accounting_stuff::InFlowType>;
+    type AccountsSuggestionList: HashimSignal<Vec<Accounts>>;
 
     type Navigator: HashimSignal<Navigator>;
 }
 
-// helper types
+// helper types ///////////////////////////////////////////////////////////////////////////////////
+
+#[derive(Default, Clone, PartialEq)]
+pub struct Accounts {
+    pub row_uuid:                        types::UuidType,
+    pub is_debit:                        bool,
+    pub is_permanent_account:            bool,
+    pub account_name:                    String,
+    pub notes:                           String,
+    pub unit_of_measurement_of_quantity: String,
+}
+
+impl tools::Searchable for Accounts {
+    fn search_key(&self) -> String {
+        self.account_name.clone()
+    }
+}
 
 #[derive(Default, Clone, PartialEq)]
 pub enum Dialog {
@@ -33,7 +54,7 @@ pub enum Dialog {
     Error,
 }
 
-// model
+// model //////////////////////////////////////////////////////////////////////////////////////////
 
 #[derive(Default)]
 pub struct Model<As: AllSignalTypes> {
@@ -45,20 +66,21 @@ pub struct Model<As: AllSignalTypes> {
     pub user_name:        As::String,
     pub selected_company: As::OptionUuid,
 
-    // feature_state
-    pub auth_feature_state: AuthFeatureState<As>,
+    // feature state
+    pub feature_state_auth: FeatureStateAuth<As>,
 
     // pages
-    pub page_sign_up:                  PageSignUp<As>,
-    pub page_sign_in:                  PageSignIn<As>,
-    pub page_company_branch_selection: PageCompanyBranchSelection<As>,
-    pub page_create_company:           PageCreateCompany<As>,
-    pub page_create_company_branch:    PageCreateCompanyBranch<As>,
-    pub page_create_account:           PageCreateAccount<As>,
+    pub page_sign_up:                   PageSignUp<As>,
+    pub page_sign_in:                   PageSignIn<As>,
+    pub page_company_branch_selection:  PageCompanyBranchSelection<As>,
+    pub page_create_company:            PageCreateCompany<As>,
+    pub page_create_company_branch:     PageCreateCompanyBranch<As>,
+    pub page_create_account:            PageCreateAccount<As>,
+    pub page_create_account_for_branch: PageCreateAccountForBranch<As>,
 }
 
 #[derive(Default)]
-pub struct AuthFeatureState<As: AllSignalTypes> {
+pub struct FeatureStateAuth<As: AllSignalTypes> {
     pub user_password: As::String,
     pub is_loading:    As::Bool,
 }
@@ -111,7 +133,19 @@ pub struct PageCreateAccount<As: AllSignalTypes> {
     pub account_name_error:              As::OptionString,
 }
 
-// message
+#[derive(Default)]
+pub struct PageCreateAccountForBranch<As: AllSignalTypes> {
+    pub list_of_available_account: Vec<Accounts>,
+
+    pub is_loading:    As::Bool,
+    pub show_dialog:   As::Dialog,
+    pub filtered_list: As::AccountsSuggestionList,
+    pub account_name:  As::String,
+    pub outflow_type:  As::OutFlowType,
+    pub inflow_type:   As::InFlowType,
+}
+
+// message ////////////////////////////////////////////////////////////////////////////////////////
 
 #[derive(Debug, Clone, Copy)]
 pub enum UserConsent {
@@ -165,7 +199,7 @@ pub enum CreateCompany {
     Submit,
     Close,
     Name(String),
-    Currency(String),
+    Currency(types::Currency),
 }
 
 #[derive(Debug)]
@@ -174,7 +208,7 @@ pub enum CreateCompanyBranch {
     Consent(UserConsent),
     Close,
     Name(String),
-    Currency(String),
+    Currency(types::Currency),
 }
 
 #[derive(Debug)]
@@ -195,7 +229,18 @@ pub enum CreateAccount {
     UnitOfMeasurementOfQuantity(String),
 }
 
-// navigator types
+#[derive(Debug)]
+pub enum CreateAccountForBranch {
+    Show,
+    Submit,
+    Consent(UserConsent),
+    Clean,
+    AccountName(String),
+    OutflowType(accounting_stuff::OutFlowType),
+    InflowType(accounting_stuff::InFlowType),
+}
+
+// navigator types ////////////////////////////////////////////////////////////////////////////////
 
 #[derive(Debug, Clone)]
 pub enum Navigator {
@@ -222,6 +267,7 @@ pub struct HomeNav {
 pub enum Menu {
     Dashboard,
     CreateAccount,
+    CreateAccountForBranch,
 }
 
 impl Default for Navigator {
