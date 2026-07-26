@@ -243,6 +243,38 @@ impl Cache for S {
                         value,
                     )
                 }
+                resource_utils::Resource::TableAccountFlowTypeFieldAccount(value) => {
+                    make_sql_statment_for_string(
+                        "account_flow_type",
+                        "account",
+                        uuid,
+                        &value.to_string(),
+                    )
+                }
+                resource_utils::Resource::TableAccountFlowTypeFieldCompanyBranch(value) => {
+                    make_sql_statment_for_string(
+                        "account_flow_type",
+                        "company_branch",
+                        uuid,
+                        &value.to_string(),
+                    )
+                }
+                resource_utils::Resource::TableAccountFlowTypeFieldInflowType(value) => {
+                    make_sql_statment_for_string(
+                        "account_flow_type",
+                        "inflow_type",
+                        uuid,
+                        &value.as_str().to_string(),
+                    )
+                }
+                resource_utils::Resource::TableAccountFlowTypeFieldOutflowType(value) => {
+                    make_sql_statment_for_string(
+                        "account_flow_type",
+                        "outflow_type",
+                        uuid,
+                        &value.as_str().to_string(),
+                    )
+                }
             };
 
             stmts.push(stmt);

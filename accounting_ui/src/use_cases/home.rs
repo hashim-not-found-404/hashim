@@ -1,4 +1,5 @@
 use crate::use_cases::create_account;
+use crate::use_cases::create_account_for_branch;
 use crate::utility::tools;
 use dioxus::prelude::*;
 use my_core::accounting_client::client_domain::ui_model;
@@ -32,6 +33,12 @@ pub(crate) fn Home() -> Element {
                     },
                     "Add New Account"
                 }
+                button {
+                    onclick: move |_| {
+                        tools::send(ui_model::Message::CreateAccountForBranch(ui_model::CreateAccountForBranch::Subscribe));
+                    },
+                    "Add New Account For Branch"
+                }
             }
 
             div {
@@ -41,6 +48,9 @@ pub(crate) fn Home() -> Element {
                             ui_model::Menu::Dashboard => rsx! {},
                             ui_model::Menu::CreateAccount => rsx! {
                                 create_account::CreateAccount {}
+                            },
+                            ui_model::Menu::CreateAccountForBranch => rsx! {
+                                create_account_for_branch::CreateAccountForBranch {}
                             },
                         }
                     }

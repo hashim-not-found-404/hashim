@@ -3,6 +3,8 @@ use crate::utility::tools;
 use dioxus::prelude::*;
 use my_core::accounting_client::client_domain::ui_model;
 use my_core::accounting_client::client_domain::ui_model::HashimSignal;
+use my_core::accounting_domain::utility::types;
+use std::str::FromStr;
 
 #[component]
 pub(crate) fn CreateCompanyBranch() -> Element {
@@ -35,9 +37,10 @@ pub(crate) fn CreateCompanyBranch() -> Element {
             select {
                 value: local_state.currency.read().as_str(),
                 onchange: move |event| {
+                    let currency = types::Currency::from_str(&event.value()).unwrap_or_default();
                     tools::send(
                         ui_model::Message::CreateCompanyBranch(
-                            ui_model::CreateCompanyBranch::Currency(event.value()),
+                            ui_model::CreateCompanyBranch::Currency(currency),
                         ),
                     );
                 },

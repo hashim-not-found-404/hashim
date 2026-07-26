@@ -153,6 +153,35 @@ impl DBTransaction for S<'_> {
 
         Ok(())
     }
+
+    async fn write_create_account_for_branch(
+        &mut self,
+        input: &cases::create_account_for_branch::Ok,
+    ) -> Result<(), DynamicError> {
+        let query = "
+            INSERT INTO accounting_app.account_flow_type (
+                rowid,
+                account,
+                company_branch,
+                outflow_type,
+                inflow_type
+            ) VALUES ($1, $2, $3, $4, $5)
+        ";
+
+        let stmt = self.txn.prepare_cached(query).await.log()?;
+        self.txn
+            .execute(&stmt, &[
+                &input.new_uuid.to_externel_uuid(),
+                &input.belong_to_account.to_externel_uuid(),
+                &input.belong_to_company_branch.to_externel_uuid(),
+                &input.outflow_type.as_str(),
+                &input.inflow_type.as_str(),
+            ])
+            .await
+            .log()?;
+
+        Ok(())
+    }
 }
 
 fn get_sql_state(error: &tokio_postgres::Error) -> SqlState {

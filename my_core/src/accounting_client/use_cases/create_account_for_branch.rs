@@ -282,16 +282,11 @@ impl ui_model::CreateAccountForBranch {
             ui_model::CreateAccountForBranch::AccountName(i) => {
                 let new_list = tools::select_strings(
                     model.page_create_account_for_branch.list_of_available_account.read(),
-                    i,
+                    i.clone(),
                 );
-                let mut first_element = String::new();
-
-                if !new_list.is_empty() {
-                    first_element = new_list[0].account_name.clone();
-                }
 
                 model.page_create_account_for_branch.filtered_list.set(new_list);
-                model.page_create_account_for_branch.account_name.set(first_element);
+                model.page_create_account_for_branch.account_name.set(i);
             }
             ui_model::CreateAccountForBranch::OutflowType(i) => {
                 model.page_create_account_for_branch.outflow_type.set(i)

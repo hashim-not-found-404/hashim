@@ -107,8 +107,14 @@ impl request_response::push_data::OperationsInput {
             request_response::push_data::OperationsInput::GetAllAccounts(_) => {
                 unreachable!()
             }
-            request_response::push_data::OperationsInput::GetAllAccountsForBranch(_) => {
-                unreachable!()
+            request_response::push_data::OperationsInput::GetAllAccountsForBranch(i) => {
+                request_response::push_data::OperationsResult::GetAllAccountsForBranch(
+                    <fetches::get_all_accounts_for_branch::ViewAndCacheType as ViewAndCache<
+                        Ch,
+                        Dbb::GetAllAccountsForBranch,
+                    >>::state_full_operation::<Id>(i, state)
+                    .await,
+                )
             }
             request_response::push_data::OperationsInput::CreateAccountForBranch(i) => {
                 run_operation_check!(

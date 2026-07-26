@@ -52,10 +52,10 @@ pub struct ReadInput {
 }
 
 pub struct ReadOutput {
-    pub(crate) company_uuid:        types::UuidType,
-    pub(crate) company_branch_uuid: types::UuidType,
-    pub(crate) accounts:            Vec<Account>,
-    pub(crate) accounts_for_branch: Vec<AccountForBranch>,
+    pub company_uuid:        types::UuidType,
+    pub company_branch_uuid: types::UuidType,
+    pub accounts:            Vec<Account>,
+    pub accounts_for_branch: Vec<AccountForBranch>,
 }
 
 pub trait DatabaseRead {
