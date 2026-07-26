@@ -172,27 +172,78 @@ impl ui_model::CreateAccountForBranch {
         Mpsc: traits::MultiProducerSingleConsumer,
         Rg: traits::Regex,
         As: ui_model::AllSignalTypes,
-        Ch: cache::Cache,
-        LongCache: for<'a> cases::create_account_for_branch::DatabaseRead<Db<'a> = Ch>,
+        Ch: cache::Cache + 'static,
+        LongCache: for<'a> cases::create_account_for_branch::DatabaseRead<Db<'a> = Ch> + 'static,
+        LongCacheForGetAllAccountsForBranch: for<'a> cases::get_all_accounts_for_branch::DatabaseRead<Db<'a> = Ch> + 'static,
     >(
         self,
-        model: &'static ui_model::Model<As>,
-        cache: client_traits::CacheActorStruct<Mpsc>,
+        model: &'static mut ui_model::Model<As>,
+        mut cache: client_traits::CacheActorStruct<Mpsc>,
         commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
     ) {
         match self {
-            ui_model::CreateAccountForBranch::Show => {
+            // Inside the `update` method, under `Self::Show`:
+            ui_model::CreateAccountForBranch::Subscribe => {
                 model.navigator.set(ui_model::Navigator::Home(ui_model::HomeNav {
-                    show_menu:       false,
+                    show_menu: false,
                     page_to_present: ui_model::Menu::CreateAccountForBranch,
                 }));
-                fetches::get_all_accounts_for_branch::fetch::<Rn, Mpsc, As>(
-                    cache,
-                    commander_local_state,
-                )
-                .await;
-                todo!()
+
+                // 1. Fetch the list of available accounts (cache + server)
+                let user_uuid = commander_local_state.user_uuid.read().clone().unwrap();
+                let company_branch_uuid =
+                    commander_local_state.selected_company_branch.read().unwrap();
+
+                let input = cases::get_all_accounts_for_branch::Input {
+                    user_uuid: user_uuid.clone(),
+                    company_branch_uuid: company_branch_uuid.clone(),
+                };
+
+                let txn_number = Rn::generate();
+                let mut receiver = cache
+                    .send_to_cache_actor(
+                        cache_actor::CachingStrategy::ReadCacheAndServer,
+                        txn_number,
+                        <fetches::get_all_accounts_for_branch::ViewAndCacheType as ViewAndCache<
+                            Ch,
+                            LongCacheForGetAllAccountsForBranch,
+                        >>::wrap_input(input),
+                    )
+                    .await;
+
+                // Wait for the first response
+                if let cache_actor::Response::Data {
+                    data,
+                    ..
+                } = receiver.recv().await.unwrap()
+                {
+                    let result =
+                        <fetches::get_all_accounts_for_branch::ViewAndCacheType as ViewAndCache<
+                            Ch,
+                            LongCacheForGetAllAccountsForBranch,
+                        >>::unwrap_output(data);
+                    apply_fetch_result::<As>(&result, model);
+                }
+
+                // 2. Set up a subscription listener for live updates
+                let listener_aborter =
+                    handle_listener::<
+                        Rn,
+                        Rt,
+                        Id,
+                        Mpsc,
+                        Rg,
+                        As,
+                        Ch,
+                        LongCache,
+                        LongCacheForGetAllAccountsForBranch,
+                    >(model, cache.clone(), commander_local_state.clone());
+
+                // Store the aborter to cancel on unmount (requires adding field to CommanderLocalState)
+                *commander_local_state.aborter_to_accounts_listener.lock().unwrap() =
+                    Some(Box::new(listener_aborter));
             }
+            ui_model::CreateAccountForBranch::UnSubscribe => todo!(),
             ui_model::CreateAccountForBranch::Submit => todo!(),
             ui_model::CreateAccountForBranch::Consent(i) => {
                 commander_local_state
@@ -200,7 +251,7 @@ impl ui_model::CreateAccountForBranch {
                     .read()
                     .send(process_manager::MessageToProcessManager::FromUser {
                         process_name: process_manager::ProcessName::CreateAccountForBranch,
-                        consent:      i,
+                        consent: i,
                     })
                     .await
                     .unwrap();
@@ -227,5 +278,112 @@ impl ui_model::CreateAccountForBranch {
                 model.page_create_account_for_branch.inflow_type.set(i)
             }
         }
+    }
+}
+
+/// Apply the fetch result to the model, converting domain accounts to UI accounts.
+fn apply_fetch_result<As: ui_model::AllSignalTypes>(
+    result: &cases::get_all_accounts_for_branch::MyResult,
+    model: &mut ui_model::Model<As>,
+) {
+    if let Ok(ok) = result {
+        let accounts: Vec<ui_model::Accounts> = ok
+            .accounts
+            .iter()
+            .map(|a| ui_model::Accounts {
+                row_uuid: a.row_uuid.clone(),
+                is_debit: a.is_debit,
+                is_permanent_account: a.is_permanent_account,
+                account_name: a.account_name.clone(),
+                notes: a.notes.clone(),
+                unit_of_measurement_of_quantity: a.unit_of_measurement_of_quantity.clone(),
+            })
+            .collect();
+        model.page_create_account_for_branch.list_of_available_account = accounts;
+        // Optionally reset the filtered list and account name?
+    }
+}
+
+/// Spawn a listener that re‑fetches whenever subscribed resources change.
+fn handle_listener<
+    Rn: traits::RandomNumber,
+    Rt: traits::Runtime,
+    Id: types::RowId,
+    Mpsc: traits::MultiProducerSingleConsumer,
+    Rg: traits::Regex,
+    As: ui_model::AllSignalTypes,
+    Ch: cache::Cache,
+    LongCache: for<'a> cases::create_account_for_branch::DatabaseRead<Db<'a> = Ch>,
+    LongCacheForGetAllAccountsForBranch: for<'a> cases::get_all_accounts_for_branch::DatabaseRead<Db<'a> = Ch>,
+>(
+    model: &'static mut ui_model::Model<As>,
+    mut cache: client_traits::CacheActorStruct<Mpsc>,
+    commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
+) -> impl FnOnce() {
+    let component_id = Rn::generate() as u16;
+    let mut cache1 = cache.clone();
+
+    let mut handle = Rt::abortable_spawn_local(async move {
+        // Subscribe to the relevant resources
+        let mut receiver_to_poke = cache
+            .send_subs_to_cache_actor(
+                component_id,
+                <fetches::get_all_accounts_for_branch::ViewAndCacheType as ViewAndCache<
+                    Ch,
+                    LongCacheForGetAllAccountsForBranch,
+                >>::subs(),
+            )
+            .await;
+
+        let user_uuid = commander_local_state.user_uuid.read().clone().unwrap();
+        let company_branch_uuid = commander_local_state.selected_company_branch.read().unwrap();
+
+        loop {
+            // Wait for a poke (data changed)
+            receiver_to_poke.recv().await.unwrap();
+
+            // Re‑fetch from cache only (no server round trip)
+            let input = cases::get_all_accounts_for_branch::Input {
+                user_uuid: user_uuid.clone(),
+                company_branch_uuid: company_branch_uuid.clone(),
+            };
+            let txn_number = Rn::generate();
+            let mut receiver = cache
+                .send_to_cache_actor(
+                    cache_actor::CachingStrategy::ReadCacheOnly,
+                    txn_number,
+                    <fetches::get_all_accounts_for_branch::ViewAndCacheType as ViewAndCache<
+                        Ch,
+                        LongCacheForGetAllAccountsForBranch,
+                    >>::wrap_input(input),
+                )
+                .await;
+
+            if let cache_actor::Response::Data {
+                data,
+                ..
+            } = receiver.recv().await.unwrap()
+            {
+                let result =
+                    <fetches::get_all_accounts_for_branch::ViewAndCacheType as ViewAndCache<
+                        Ch,
+                        LongCacheForGetAllAccountsForBranch,
+                    >>::unwrap_output(data);
+                apply_fetch_result::<As>(&result, model);
+            } else {
+                break;
+            }
+        }
+
+        // Clean up subscription when loop exits
+        cache.send_unsubs_to_cache_actor(component_id).await;
+    });
+
+    // Return a closure that aborts the listener and unsubscribes
+    move || {
+        Rt::spawn_local(async move {
+            handle.abort().await;
+            cache1.send_unsubs_to_cache_actor(component_id).await;
+        });
     }
 }

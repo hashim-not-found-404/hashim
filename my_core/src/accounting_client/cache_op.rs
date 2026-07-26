@@ -12,6 +12,7 @@ use crate::accounting_domain::utility::types;
 pub trait DbBundle<Ch: cache::Cache>: 'static {
     type CreateAccount: for<'a> cases::create_account::DatabaseRead<Db<'a> = Ch>;
     type CreateAccountForBranch: for<'a> cases::create_account_for_branch::DatabaseRead<Db<'a> = Ch>;
+    type GetAllAccountsForBranch: for<'a> cases::get_all_accounts_for_branch::DatabaseRead<Db<'a> = Ch>;
     type CreateCompany: for<'a> cases::create_company::DatabaseRead<Db<'a> = Ch>;
     type CreateCompanyBranch: for<'a> cases::create_company_branch::DatabaseRead<Db<'a> = Ch>;
     type ListCompanyAndBranch: for<'a> cases::list_company_and_branch::DatabaseRead<Db<'a> = Ch>
@@ -201,7 +202,10 @@ impl request_response::push_data::OperationsInput {
                 fetches::get_all_accounts::ViewAndCacheType::user_uuid(i)
             }
             request_response::push_data::OperationsInput::GetAllAccountsForBranch(i) => {
-                fetches::get_all_accounts_for_branch::ViewAndCacheType::user_uuid(i)
+                <fetches::get_all_accounts_for_branch::ViewAndCacheType as ViewAndCache<
+                    Ch,
+                    Dbb::GetAllAccountsForBranch,
+                >>::user_uuid(&i)
             }
             request_response::push_data::OperationsInput::CreateAccountForBranch(i) => {
                 get_user_uuid!(create_account_for_branch, Dbb::CreateAccountForBranch, i)
@@ -243,7 +247,10 @@ impl request_response::push_data::OperationsResult {
                 fetches::get_all_accounts::ViewAndCacheType::extract_resource(i)
             }
             request_response::push_data::OperationsResult::GetAllAccountsForBranch(i) => {
-                fetches::get_all_accounts_for_branch::ViewAndCacheType::extract_resource(i)
+                <fetches::get_all_accounts_for_branch::ViewAndCacheType as ViewAndCache<
+                    Ch,
+                    Dbb::GetAllAccountsForBranch,
+                >>::extract_resource(i)
             }
             request_response::push_data::OperationsResult::CreateAccountForBranch(i) => {
                 extract_resource!(create_account_for_branch, Dbb::CreateAccountForBranch, i)

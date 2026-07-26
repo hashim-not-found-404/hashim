@@ -14,6 +14,7 @@ pub(crate) struct CommanderLocalState<
     pub(crate) user_uuid:                              Mutex<Option<types::UuidType>>,
     pub(crate) selected_company_branch:                Mutex<Option<types::UuidType>>,
     pub(crate) aborter_to_company_and_branch_listener: Mutex<Option<Box<dyn FnOnce()>>>,
+    pub(crate) aborter_to_accounts_listener:           Mutex<Option<Box<dyn FnOnce()>>>,
 }
 
 impl<Mpsc: traits::MultiProducerSingleConsumer, As: ui_model::AllSignalTypes>
@@ -29,6 +30,7 @@ impl<Mpsc: traits::MultiProducerSingleConsumer, As: ui_model::AllSignalTypes>
             user_uuid:                              Mutex::default(),
             selected_company_branch:                Mutex::default(),
             aborter_to_company_and_branch_listener: Mutex::default(),
+            aborter_to_accounts_listener:           Mutex::default(),
         }
     }
 }
