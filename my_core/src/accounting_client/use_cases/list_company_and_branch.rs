@@ -14,6 +14,7 @@ use crate::utility::traits;
 use crate::utility::traits::JoinHandle;
 use crate::utility::traits::Receiver;
 use crate::utility::utils::ReadAndSet;
+use std::collections::HashMap;
 use std::marker::PhantomData;
 use std::sync::Arc;
 
@@ -68,7 +69,6 @@ where
         let mut read_output = LongCache::read(&mut db.cache, read_input).await.unwrap();
 
         // Build a map for O(1) lookup and updates
-        use std::collections::HashMap;
         let mut company_map: HashMap<
             types::UuidType,
             cases::list_company_and_branch::AllCompaniesThatUserInWithRoles,
@@ -174,9 +174,6 @@ where
     fn extract_resource(data: &Self::Type3) -> Vec<resource_utils::ResourceInfo> {
         match data {
             Ok(ok) => {
-                use resource_utils::Resource;
-                use resource_utils::ResourceInfo;
-
                 let mut resources = Vec::new();
                 let user_uuid = &ok.user_uuid;
 
@@ -184,13 +181,15 @@ where
                     let company_uuid = &company.company_uuid;
 
                     // ---- Company fields ----
-                    resources.push(ResourceInfo {
+                    resources.push(resource_utils::ResourceInfo {
                         row_uuid: company_uuid.clone(),
-                        resource: Resource::TableCompanyFieldName(company.company_name.clone()),
+                        resource: resource_utils::Resource::TableCompanyFieldName(
+                            company.company_name.clone(),
+                        ),
                     });
-                    resources.push(ResourceInfo {
+                    resources.push(resource_utils::ResourceInfo {
                         row_uuid: company_uuid.clone(),
-                        resource: Resource::TableCompanyFieldCurrency(
+                        resource: resource_utils::Resource::TableCompanyFieldCurrency(
                             company.company_currancy.clone(),
                         ),
                     });
@@ -198,67 +197,72 @@ where
                     // ---- Company access control ----
                     // One resource per role (multiple roles possible)
                     for role in &company.user_roles {
-                        resources.push(ResourceInfo {
+                        resources.push(resource_utils::ResourceInfo {
                             row_uuid: company_uuid.clone(),
-                            resource: Resource::TableAccessControlForCompanyFieldRole(role.clone()),
+                            resource:
+                                resource_utils::Resource::TableAccessControlForCompanyFieldRole(
+                                    role.clone(),
+                                ),
                         });
                     }
                     // Always add the user and data_group (self) once per company
-                    resources.push(ResourceInfo {
+                    resources.push(resource_utils::ResourceInfo {
                         row_uuid: company_uuid.clone(),
-                        resource: Resource::TableAccessControlForCompanyFieldUser(
+                        resource: resource_utils::Resource::TableAccessControlForCompanyFieldUser(
                             user_uuid.clone(),
                         ),
                     });
-                    resources.push(ResourceInfo {
+                    resources.push(resource_utils::ResourceInfo {
                         row_uuid: company_uuid.clone(),
-                        resource: Resource::TableAccessControlForCompanyFieldDataGroup(
-                            company_uuid.clone(),
-                        ),
+                        resource:
+                            resource_utils::Resource::TableAccessControlForCompanyFieldDataGroup(
+                                company_uuid.clone(),
+                            ),
                     });
 
                     // ---- Branches ----
                     for branch in &company.branches {
                         let branch_uuid = &branch.branch_uuid;
 
-                        resources.push(ResourceInfo {
+                        resources.push(resource_utils::ResourceInfo {
                             row_uuid: branch_uuid.clone(),
-                            resource: Resource::TableCompanyBranchFieldName(
+                            resource: resource_utils::Resource::TableCompanyBranchFieldName(
                                 branch.branch_name.clone(),
                             ),
                         });
-                        resources.push(ResourceInfo {
+                        resources.push(resource_utils::ResourceInfo {
                             row_uuid: branch_uuid.clone(),
-                            resource: Resource::TableCompanyBranchFieldCurrency(
+                            resource: resource_utils::Resource::TableCompanyBranchFieldCurrency(
                                 branch.branch_currancy.clone(),
                             ),
                         });
-                        resources.push(ResourceInfo {
+                        resources.push(resource_utils::ResourceInfo {
                             row_uuid: branch_uuid.clone(),
-                            resource: Resource::TableCompanyBranchFieldCompanyBelong(
-                                company_uuid.clone(),
-                            ),
+                            resource:
+                                resource_utils::Resource::TableCompanyBranchFieldCompanyBelong(
+                                    company_uuid.clone(),
+                                ),
                         });
 
                         // Branch access control (roles)
                         for role in &branch.user_roles {
-                            resources.push(ResourceInfo {
+                            resources.push(resource_utils::ResourceInfo {
                                 row_uuid: branch_uuid.clone(),
-                                resource: Resource::TableAccessControlForCompanyBranchFieldRole(
+                                resource: resource_utils::Resource::TableAccessControlForCompanyBranchFieldRole(
                                     role.clone(),
                                 ),
                             });
                         }
                         // Add user and data_group for each branch
-                        resources.push(ResourceInfo {
+                        resources.push(resource_utils::ResourceInfo {
                             row_uuid: branch_uuid.clone(),
-                            resource: Resource::TableAccessControlForCompanyBranchFieldUser(
+                            resource: resource_utils::Resource::TableAccessControlForCompanyBranchFieldUser(
                                 user_uuid.clone(),
                             ),
                         });
-                        resources.push(ResourceInfo {
+                        resources.push(resource_utils::ResourceInfo {
                             row_uuid: branch_uuid.clone(),
-                            resource: Resource::TableAccessControlForCompanyBranchFieldDataGroup(
+                            resource: resource_utils::Resource::TableAccessControlForCompanyBranchFieldDataGroup(
                                 branch_uuid.clone(),
                             ),
                         });

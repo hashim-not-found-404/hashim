@@ -108,29 +108,26 @@ where
     fn extract_resource(data: &Self::Type3) -> Vec<resource_utils::ResourceInfo> {
         match data {
             Ok(ok) => {
-                use resource_utils::Resource;
-                use resource_utils::ResourceInfo;
-
                 let mut resources = Vec::with_capacity(3);
                 let user_uuid = &ok.user_uuid;
 
                 // JWT
-                resources.push(ResourceInfo {
+                resources.push(resource_utils::ResourceInfo {
                     row_uuid: user_uuid.clone(),
-                    resource: Resource::Jwt(ok.jwt.clone()),
+                    resource: resource_utils::Resource::Jwt(ok.jwt.clone()),
                 });
 
                 // User ID
-                resources.push(ResourceInfo {
+                resources.push(resource_utils::ResourceInfo {
                     row_uuid: user_uuid.clone(),
-                    resource: Resource::TableUserFieldId(ok.user_id.clone()),
+                    resource: resource_utils::Resource::TableUserFieldId(ok.user_id.clone()),
                 });
 
                 // User name (optional)
                 if let Some(name) = &ok.user_name {
-                    resources.push(ResourceInfo {
+                    resources.push(resource_utils::ResourceInfo {
                         row_uuid: user_uuid.clone(),
-                        resource: Resource::TableUserFieldName(name.clone()),
+                        resource: resource_utils::Resource::TableUserFieldName(name.clone()),
                     });
                 }
 

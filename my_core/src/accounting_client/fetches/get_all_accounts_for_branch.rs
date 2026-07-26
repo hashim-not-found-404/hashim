@@ -7,6 +7,7 @@ use crate::accounting_domain::request_response;
 use crate::accounting_domain::utility::resource_utils;
 use crate::accounting_domain::utility::types;
 use crate::utility::traits;
+use std::collections::HashSet;
 use std::marker::PhantomData;
 
 // ---- 1. A DatabaseRead that merges pending transactions ----
@@ -212,7 +213,6 @@ where
             match result {
                 Ok(mut ok) => {
                     // Build a set of account UUIDs that are already linked.
-                    use std::collections::HashSet;
                     let linked: HashSet<types::UuidType> =
                         ok.accounts_for_branch.iter().map(|afb| afb.account_uuid.clone()).collect();
 
