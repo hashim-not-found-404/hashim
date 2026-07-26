@@ -1,6 +1,7 @@
 use crate::accounting_domain::utility::accounting_stuff;
 use crate::accounting_domain::utility::types;
 use crate::utility::tools;
+use std::sync::Mutex;
 
 pub trait HashimSignal<T: Default + Clone>: Default {
     fn reset(&self) {
@@ -32,11 +33,11 @@ pub trait AllSignalTypes: 'static + Default + Clone {
 
 #[derive(Default, Clone, PartialEq)]
 pub struct Accounts {
-    pub row_uuid: types::UuidType,
-    pub is_debit: bool,
-    pub is_permanent_account: bool,
-    pub account_name: String,
-    pub notes: String,
+    pub row_uuid:                        types::UuidType,
+    pub is_debit:                        bool,
+    pub is_permanent_account:            bool,
+    pub account_name:                    String,
+    pub notes:                           String,
     pub unit_of_measurement_of_quantity: String,
 }
 
@@ -61,41 +62,41 @@ pub struct Model<As: AllSignalTypes> {
     pub navigator: As::Navigator,
 
     // global states
-    pub external_errors: As::StringVec,
-    pub user_id: As::String,
-    pub user_name: As::String,
+    pub external_errors:  As::StringVec,
+    pub user_id:          As::String,
+    pub user_name:        As::String,
     pub selected_company: As::OptionUuid,
 
     // feature state
     pub feature_state_auth: FeatureStateAuth<As>,
 
     // pages
-    pub page_sign_up: PageSignUp<As>,
-    pub page_sign_in: PageSignIn<As>,
-    pub page_company_branch_selection: PageCompanyBranchSelection<As>,
-    pub page_create_company: PageCreateCompany<As>,
-    pub page_create_company_branch: PageCreateCompanyBranch<As>,
-    pub page_create_account: PageCreateAccount<As>,
+    pub page_sign_up:                   PageSignUp<As>,
+    pub page_sign_in:                   PageSignIn<As>,
+    pub page_company_branch_selection:  PageCompanyBranchSelection<As>,
+    pub page_create_company:            PageCreateCompany<As>,
+    pub page_create_company_branch:     PageCreateCompanyBranch<As>,
+    pub page_create_account:            PageCreateAccount<As>,
     pub page_create_account_for_branch: PageCreateAccountForBranch<As>,
 }
 
 #[derive(Default)]
 pub struct FeatureStateAuth<As: AllSignalTypes> {
     pub user_password: As::String,
-    pub is_loading: As::Bool,
+    pub is_loading:    As::Bool,
 }
 
 #[derive(Default)]
 pub struct PageSignIn<As: AllSignalTypes> {
-    pub show_dialog: As::Dialog,
-    pub user_id_error: As::OptionString,
+    pub show_dialog:         As::Dialog,
+    pub user_id_error:       As::OptionString,
     pub user_password_error: As::OptionString,
 }
 
 #[derive(Default)]
 pub struct PageSignUp<As: AllSignalTypes> {
-    pub show_dialog: As::Dialog,
-    pub user_id_error: As::OptionString,
+    pub show_dialog:     As::Dialog,
+    pub user_id_error:   As::OptionString,
     pub user_name_error: As::OptionString,
 }
 
@@ -107,42 +108,42 @@ pub struct PageCompanyBranchSelection<As: AllSignalTypes> {
 #[derive(Default)]
 pub struct PageCreateCompany<As: AllSignalTypes> {
     pub company_name: As::String,
-    pub currency: As::Currency,
+    pub currency:     As::Currency,
 }
 
 #[derive(Default)]
 pub struct PageCreateCompanyBranch<As: AllSignalTypes> {
-    pub is_loading: As::Bool,
-    pub show_dialog: As::Dialog,
-    pub currency: As::Currency,
-    pub branch_name: As::String,
-    pub location: As::Location,
+    pub is_loading:        As::Bool,
+    pub show_dialog:       As::Dialog,
+    pub currency:          As::Currency,
+    pub branch_name:       As::String,
+    pub location:          As::Location,
     pub branch_name_error: As::OptionString,
-    pub location_error: As::OptionString,
+    pub location_error:    As::OptionString,
 }
 
 #[derive(Default)]
 pub struct PageCreateAccount<As: AllSignalTypes> {
-    pub is_loading: As::Bool,
-    pub show_dialog: As::Dialog,
-    pub is_debit: As::Bool,
-    pub is_permanent_account: As::Bool,
-    pub account_name: As::String,
-    pub notes: As::String,
+    pub is_loading:                      As::Bool,
+    pub show_dialog:                     As::Dialog,
+    pub is_debit:                        As::Bool,
+    pub is_permanent_account:            As::Bool,
+    pub account_name:                    As::String,
+    pub notes:                           As::String,
     pub unit_of_measurement_of_quantity: As::String,
-    pub account_name_error: As::OptionString,
+    pub account_name_error:              As::OptionString,
 }
 
 #[derive(Default)]
 pub struct PageCreateAccountForBranch<As: AllSignalTypes> {
-    pub list_of_available_account: Vec<Accounts>,
+    pub list_of_available_account: Mutex<Vec<Accounts>>,
 
-    pub is_loading: As::Bool,
-    pub show_dialog: As::Dialog,
+    pub is_loading:    As::Bool,
+    pub show_dialog:   As::Dialog,
     pub filtered_list: As::AccountsSuggestionList,
-    pub account_name: As::String,
-    pub outflow_type: As::OutFlowType,
-    pub inflow_type: As::InFlowType,
+    pub account_name:  As::String,
+    pub outflow_type:  As::OutFlowType,
+    pub inflow_type:   As::InFlowType,
 }
 
 // message ////////////////////////////////////////////////////////////////////////////////////////
@@ -165,6 +166,7 @@ pub enum Message {
     CreateCompanyBranch(CreateCompanyBranch),
     Home(Home),
     CreateAccount(CreateAccount),
+    CreateAccountForBranch(CreateAccountForBranch),
 }
 
 #[derive(Debug)]
@@ -260,7 +262,7 @@ pub enum ListCompanyAndBranch {
 
 #[derive(Debug, Clone)]
 pub struct HomeNav {
-    pub show_menu: bool,
+    pub show_menu:       bool,
     pub page_to_present: Menu,
 }
 

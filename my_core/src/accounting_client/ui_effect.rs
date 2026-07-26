@@ -153,6 +153,14 @@ impl<Mpsc: traits::MultiProducerSingleConsumer> Commander<Mpsc> {
                             )
                             .await
                         }
+                        ui_model::Message::CreateAccountForBranch(msg) => {
+                            msg.update::<Rn, Rt, Id, Mpsc, Rg, As, Ch, Dbb::CreateAccountForBranch,Dbb::GetAllAccountsForBranch>(
+                                model,
+                                cache,
+                                commander_local_state,
+                            )
+                            .await
+                        }
                     }
                 });
             }

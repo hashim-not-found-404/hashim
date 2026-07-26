@@ -153,12 +153,21 @@ where
         output: &Self::Type4,
         model: &ui_model::Model<As>,
     ) {
+        let local_state = &model.page_create_account_for_branch;
+
         match output {
             Ok(_) => {
-                todo!()
+                local_state.is_loading.reset();
+                local_state.show_dialog.reset();
+                // Optionally clear other fields
+                local_state.account_name.reset();
+                local_state.outflow_type.reset();
+                local_state.inflow_type.reset();
+                // Keep the list of available accounts, but reset filtered list?
+                local_state.filtered_list.reset();
             }
             Err(business_error) => {
-                todo!()
+                local_state.is_loading.reset();
             }
         }
     }
@@ -177,7 +186,7 @@ impl ui_model::CreateAccountForBranch {
         LongCacheForGetAllAccountsForBranch: for<'a> cases::get_all_accounts_for_branch::DatabaseRead<Db<'a> = Ch> + 'static,
     >(
         self,
-        model: &'static mut ui_model::Model<As>,
+        model: &'static ui_model::Model<As>,
         mut cache: client_traits::CacheActorStruct<Mpsc>,
         commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
     ) {
@@ -185,7 +194,7 @@ impl ui_model::CreateAccountForBranch {
             // Inside the `update` method, under `Self::Show`:
             ui_model::CreateAccountForBranch::Subscribe => {
                 model.navigator.set(ui_model::Navigator::Home(ui_model::HomeNav {
-                    show_menu: false,
+                    show_menu:       false,
                     page_to_present: ui_model::Menu::CreateAccountForBranch,
                 }));
 
@@ -195,7 +204,7 @@ impl ui_model::CreateAccountForBranch {
                     commander_local_state.selected_company_branch.read().unwrap();
 
                 let input = cases::get_all_accounts_for_branch::Input {
-                    user_uuid: user_uuid.clone(),
+                    user_uuid:           user_uuid.clone(),
                     company_branch_uuid: company_branch_uuid.clone(),
                 };
 
@@ -243,23 +252,36 @@ impl ui_model::CreateAccountForBranch {
                 *commander_local_state.aborter_to_accounts_listener.lock().unwrap() =
                     Some(Box::new(listener_aborter));
             }
-            ui_model::CreateAccountForBranch::UnSubscribe => todo!(),
-            ui_model::CreateAccountForBranch::Submit => todo!(),
+            ui_model::CreateAccountForBranch::UnSubscribe => {
+                handle_unsubscribe(model, commander_local_state);
+            }
+
+            ui_model::CreateAccountForBranch::Submit => {
+                handle_submit::<Rn, Rt, Id, Mpsc, Rg, As, Ch, LongCache>(
+                    model,
+                    cache,
+                    commander_local_state,
+                )
+                .await;
+            }
+
+            ui_model::CreateAccountForBranch::Clean => {
+                handle_clean::<As>(model);
+            }
             ui_model::CreateAccountForBranch::Consent(i) => {
                 commander_local_state
                     .sender_to_process_manager
                     .read()
                     .send(process_manager::MessageToProcessManager::FromUser {
                         process_name: process_manager::ProcessName::CreateAccountForBranch,
-                        consent: i,
+                        consent:      i,
                     })
                     .await
                     .unwrap();
             }
-            ui_model::CreateAccountForBranch::Clean => todo!(),
             ui_model::CreateAccountForBranch::AccountName(i) => {
                 let new_list = tools::select_strings(
-                    model.page_create_account_for_branch.list_of_available_account.clone(),
+                    model.page_create_account_for_branch.list_of_available_account.read(),
                     i,
                 );
                 let mut first_element = String::new();
@@ -284,22 +306,24 @@ impl ui_model::CreateAccountForBranch {
 /// Apply the fetch result to the model, converting domain accounts to UI accounts.
 fn apply_fetch_result<As: ui_model::AllSignalTypes>(
     result: &cases::get_all_accounts_for_branch::MyResult,
-    model: &mut ui_model::Model<As>,
+    model: &ui_model::Model<As>,
 ) {
     if let Ok(ok) = result {
         let accounts: Vec<ui_model::Accounts> = ok
             .accounts
             .iter()
-            .map(|a| ui_model::Accounts {
-                row_uuid: a.row_uuid.clone(),
-                is_debit: a.is_debit,
-                is_permanent_account: a.is_permanent_account,
-                account_name: a.account_name.clone(),
-                notes: a.notes.clone(),
-                unit_of_measurement_of_quantity: a.unit_of_measurement_of_quantity.clone(),
+            .map(|a| {
+                ui_model::Accounts {
+                    row_uuid:                        a.row_uuid.clone(),
+                    is_debit:                        a.is_debit,
+                    is_permanent_account:            a.is_permanent_account,
+                    account_name:                    a.account_name.clone(),
+                    notes:                           a.notes.clone(),
+                    unit_of_measurement_of_quantity: a.unit_of_measurement_of_quantity.clone(),
+                }
             })
             .collect();
-        model.page_create_account_for_branch.list_of_available_account = accounts;
+        model.page_create_account_for_branch.list_of_available_account.put(accounts);
         // Optionally reset the filtered list and account name?
     }
 }
@@ -316,7 +340,7 @@ fn handle_listener<
     LongCache: for<'a> cases::create_account_for_branch::DatabaseRead<Db<'a> = Ch>,
     LongCacheForGetAllAccountsForBranch: for<'a> cases::get_all_accounts_for_branch::DatabaseRead<Db<'a> = Ch>,
 >(
-    model: &'static mut ui_model::Model<As>,
+    model: &'static ui_model::Model<As>,
     mut cache: client_traits::CacheActorStruct<Mpsc>,
     commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
 ) -> impl FnOnce() {
@@ -344,7 +368,7 @@ fn handle_listener<
 
             // Re‑fetch from cache only (no server round trip)
             let input = cases::get_all_accounts_for_branch::Input {
-                user_uuid: user_uuid.clone(),
+                user_uuid:           user_uuid.clone(),
                 company_branch_uuid: company_branch_uuid.clone(),
             };
             let txn_number = Rn::generate();
@@ -386,4 +410,190 @@ fn handle_listener<
             cache1.send_unsubs_to_cache_actor(component_id).await;
         });
     }
+}
+
+// ---- Clean ----
+fn handle_clean<As: ui_model::AllSignalTypes>(model: &ui_model::Model<As>) {
+    let local_state = &model.page_create_account_for_branch;
+
+    local_state.is_loading.reset();
+    local_state.show_dialog.reset();
+    local_state.account_name.reset();
+    local_state.outflow_type.reset();
+    local_state.inflow_type.reset();
+    // Optionally clear filtered list as well
+    local_state.filtered_list.reset();
+    // Do NOT reset list_of_available_account – it's the master list from cache.
+}
+
+// ---- UnSubscribe ----
+fn handle_unsubscribe<Mpsc: traits::MultiProducerSingleConsumer, As: ui_model::AllSignalTypes>(
+    model: &ui_model::Model<As>,
+    commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
+) {
+    let mut guard = commander_local_state.aborter_to_accounts_listener.lock().unwrap();
+    if let Some(f) = guard.take() {
+        f();
+    }
+}
+
+// ---- Submit ----
+async fn handle_submit<
+    Rn: traits::RandomNumber,
+    Rt: traits::Runtime,
+    Id: types::RowId,
+    Mpsc: traits::MultiProducerSingleConsumer,
+    Rg: traits::Regex,
+    As: ui_model::AllSignalTypes,
+    Ch: cache::Cache,
+    LongCache: for<'a> cases::create_account_for_branch::DatabaseRead<Db<'a> = Ch>,
+>(
+    model: &'static ui_model::Model<As>,
+    mut cache: client_traits::CacheActorStruct<Mpsc>,
+    commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
+) {
+    if model.page_create_account_for_branch.is_loading.read() {
+        return;
+    }
+    model.page_create_account_for_branch.is_loading.set(true);
+
+    // 1. Gather inputs
+    let user_uuid = commander_local_state.user_uuid.read().clone().unwrap();
+    let branch_uuid = commander_local_state.selected_company_branch.read().unwrap();
+
+    // Find the account UUID by matching the account name
+    let account_name = model.page_create_account_for_branch.account_name.read();
+    let account_uuid = model
+        .page_create_account_for_branch
+        .list_of_available_account
+        .read()
+        .iter()
+        .find(|acc| acc.account_name == account_name)
+        .map(|acc| acc.row_uuid.clone());
+
+    let account_uuid = match account_uuid {
+        Some(uuid) => uuid,
+        None => {
+            // No matching account – set error and bail
+            model.page_create_account_for_branch.is_loading.set(false);
+            return;
+        }
+    };
+
+    let new_uuid = Id::generate();
+
+    let input = cases::create_account_for_branch::Input {
+        user_uuid:                user_uuid.clone(),
+        new_uuid:                 new_uuid.clone(),
+        belong_to_account:        account_uuid.clone(),
+        belong_to_company_branch: branch_uuid.clone(),
+        outflow_type:             model.page_create_account_for_branch.outflow_type.read(),
+        inflow_type:              model.page_create_account_for_branch.inflow_type.read(),
+    };
+
+    let data = <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::wrap_input(input);
+    let txn_number = Rn::generate();
+
+    // Spawn a task that sends to the server, then handles the response
+    let mut cache_clone = cache.clone();
+    let commander_clone = commander_local_state.clone();
+    let mut handle = <Rt>::abortable_spawn_local(async move {
+        let mut receiver_to_response = cache_clone
+            .send_to_cache_actor(cache_actor::CachingStrategy::WriteServerOnly, txn_number, data)
+            .await;
+
+        match receiver_to_response.recv().await.unwrap() {
+            cache_actor::Response::CloseTheChannel => return,
+            cache_actor::Response::ServerCannotBeReached => return,
+            cache_actor::Response::Data {
+                is_response_from_server,
+                data,
+            } => {
+                let result = <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::unwrap_output(data);
+                let is_ok = result.is_ok();
+                <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::apply_on_the_model(
+                    &result, model,
+                );
+
+                commander_clone
+                    .sender_to_process_manager
+                    .read()
+                    .send(process_manager::MessageToProcessManager::FromProcess {
+                        process_name: process_manager::ProcessName::CreateAccountForBranch,
+                        message:      process_manager::MessageFromProcess::Response {
+                            is_response_from_server,
+                            is_response_ok: is_ok,
+                        },
+                    })
+                    .await
+                    .unwrap();
+            }
+        }
+    });
+
+    // Set up the process manager subscription for the dialog
+    let (sender_to_process, mut receiver_to_process) = <Mpsc>::channel();
+    commander_local_state
+        .sender_to_process_manager
+        .read()
+        .send(process_manager::MessageToProcessManager::FromProcess {
+            process_name: process_manager::ProcessName::CreateAccountForBranch,
+            message:      process_manager::MessageFromProcess::Subscribe {
+                sender: sender_to_process,
+                dialog: &model.page_create_account_for_branch.show_dialog,
+            },
+        })
+        .await
+        .unwrap();
+
+    // Wait for a decision from the process manager
+    match receiver_to_process.recv().await.unwrap() {
+        process_manager::MessageToProcess::FallBackToCache => {
+            // If the user chooses to proceed offline, write to cache only
+            let mut receiver_to_response = cache
+                .send_to_cache_actor(
+                    cache_actor::CachingStrategy::WriteCacheOnly,
+                    txn_number,
+                    <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::wrap_input(
+                        cases::create_account_for_branch::Input {
+                            user_uuid:                user_uuid.clone(),
+                            new_uuid:                 new_uuid.clone(),
+                            belong_to_account:        account_uuid.clone(),
+                            belong_to_company_branch: branch_uuid.clone(),
+                            outflow_type:             model
+                                .page_create_account_for_branch
+                                .outflow_type
+                                .read(),
+                            inflow_type:              model
+                                .page_create_account_for_branch
+                                .inflow_type
+                                .read(),
+                        },
+                    ),
+                )
+                .await;
+
+            match receiver_to_response.recv().await.unwrap() {
+                cache_actor::Response::CloseTheChannel => {}
+                cache_actor::Response::ServerCannotBeReached => {}
+                cache_actor::Response::Data {
+                    is_response_from_server: _,
+                    data,
+                } => {
+                    let result =
+                        <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::unwrap_output(data);
+                    <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::apply_on_the_model(
+                        &result, model,
+                    );
+                }
+            }
+        }
+        process_manager::MessageToProcess::CancelOperation => {}
+    }
+
+    // Cancel the server task
+    handle.abort().await;
+
+    // Reset the loading flag (already done in apply_on_the_model, but just in case)
+    model.page_create_account_for_branch.is_loading.reset();
 }
