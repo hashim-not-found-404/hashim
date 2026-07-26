@@ -527,6 +527,6 @@ async fn poke_the_subs<
 
     for i in components_to_poke {
         let sender = pool_of_pokers.get_mut(&i).unwrap();
-        sender.send(()).await.unwrap();
+        let _ = sender.send(()).await;
     }
 }

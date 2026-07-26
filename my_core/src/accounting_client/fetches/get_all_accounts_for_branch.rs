@@ -208,9 +208,24 @@ where
         if let request_response::push_data::OperationsResult::GetAllAccountsForBranch(result) =
             output
         {
-            return result;
+            // Filter the accounts before returning.
+            match result {
+                Ok(mut ok) => {
+                    // Build a set of account UUIDs that are already linked.
+                    use std::collections::HashSet;
+                    let linked: HashSet<types::UuidType> =
+                        ok.accounts_for_branch.iter().map(|afb| afb.account_uuid.clone()).collect();
+
+                    // Keep only accounts that are NOT linked.
+                    ok.accounts.retain(|acc| !linked.contains(&acc.row_uuid));
+
+                    Ok(ok)
+                }
+                Err(e) => Err(e),
+            }
+        } else {
+            unreachable!("{:?}", output)
         }
-        unreachable!("{:?}", output)
     }
 
     fn apply_on_the_model<As: ui_model::AllSignalTypes>(

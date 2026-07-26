@@ -100,8 +100,7 @@ impl cases::get_all_accounts_for_branch::DatabaseRead for S {
             let row_uuid_parsed = Uuid::parse_str(&row_uuid_str).log()?;
             let row_uuid = types::UuidType(row_uuid_parsed.into_bytes());
 
-            let account_uuid_str: String = row.try_get(1).log()?;
-            let account_uuid_parsed = Uuid::parse_str(&account_uuid_str).log()?;
+            let account_uuid_parsed: Uuid = row.try_get(1).log()?;
             let account_uuid = types::UuidType(account_uuid_parsed.into_bytes());
 
             let outflow_type_str: String = row.try_get(2).log()?;

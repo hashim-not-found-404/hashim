@@ -35,7 +35,6 @@ pub(crate) fn CreateAccountForBranch() -> Element {
 
             // Account name input with autocomplete
             div {
-                style: "position: relative;",
                 input {
                     placeholder: "Account Name (type to search)",
                     oninput: move |event| {
@@ -49,10 +48,8 @@ pub(crate) fn CreateAccountForBranch() -> Element {
                 }
                 // Dropdown suggestions
                 div {
-                    style: "position: absolute; background: white; border: 1px solid #ccc; width: 100%; max-height: 200px; overflow-y: auto; z-index: 10;",
                     for account in local_state.filtered_list.read() {
                         div {
-                            style: "padding: 4px 8px; cursor: pointer;",
                             onclick: move |_| {
                                 tools::send(
                                     ui_model::Message::CreateAccountForBranch(
