@@ -18,7 +18,6 @@ use crate::utility::traits::Receiver;
 use crate::utility::traits::Sender;
 use crate::utility::utils::ReadAndSet;
 use std::marker::PhantomData;
-use std::str::FromStr;
 use std::sync::Arc;
 
 type Type1 = cases::create_company_branch::Input;

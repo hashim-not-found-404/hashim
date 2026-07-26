@@ -11,7 +11,6 @@ use crate::accounting_domain::utility::resource_utils;
 use crate::accounting_domain::utility::types;
 use crate::utility::traits;
 use crate::utility::utils::ReadAndSet;
-use std::str::FromStr;
 use std::sync::Arc;
 
 type Type1 = cases::create_company::Input;

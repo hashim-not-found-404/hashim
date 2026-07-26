@@ -1,11 +1,11 @@
 use serde::Deserialize;
 use serde::Serialize;
 
-#[derive(PartialEq, Debug)]
-enum CostFlowType {
-    InFlow(InFlowType),
-    OutFlow(OutFlowType),
-}
+// #[derive(PartialEq, Debug)]
+// enum CostFlowType {
+//     InFlow(InFlowType),
+//     OutFlow(OutFlowType),
+// }
 
 #[derive(PartialEq, Debug, Deserialize, Serialize, Clone, Default)]
 pub enum OutFlowType {

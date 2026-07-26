@@ -166,7 +166,7 @@ where
                 // Keep the list of available accounts, but reset filtered list?
                 local_state.filtered_list.reset();
             }
-            Err(business_error) => {
+            Err(_) => {
                 local_state.is_loading.reset();
             }
         }
@@ -253,7 +253,7 @@ impl ui_model::CreateAccountForBranch {
                     Some(Box::new(listener_aborter));
             }
             ui_model::CreateAccountForBranch::UnSubscribe => {
-                handle_unsubscribe(model, commander_local_state);
+                handle_unsubscribe(commander_local_state);
             }
 
             ui_model::CreateAccountForBranch::Submit => {
@@ -423,7 +423,6 @@ fn handle_clean<As: ui_model::AllSignalTypes>(model: &ui_model::Model<As>) {
 
 // ---- UnSubscribe ----
 fn handle_unsubscribe<Mpsc: traits::MultiProducerSingleConsumer, As: ui_model::AllSignalTypes>(
-    model: &ui_model::Model<As>,
     commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
 ) {
     let mut guard = commander_local_state.aborter_to_accounts_listener.lock().unwrap();

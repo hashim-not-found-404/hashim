@@ -40,7 +40,7 @@ where
                 if !exists {
                     // Need the account details – get them from pending account table.
                     // For simplicity, we try to find the account in pending.
-                    if let Some(account) = db.state_of_pending_txn.account.get(&acft.account) {
+                    if let Some(_) = db.state_of_pending_txn.account.get(&acft.account) {
                         // Also need the account's row_uuid – it's the key of the account.
                         // We'll clone the account and add it to output.accounts if not already present.
                         // (We also need to keep output.accounts and output.accounts_for_branch in sync.)
