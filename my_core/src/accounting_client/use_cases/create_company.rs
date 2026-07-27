@@ -169,9 +169,9 @@ async fn handle_submit<
 >(
     model: &'static ui_model::Model<As>,
     mut cache: client_traits::CacheActorStruct<Mpsc>,
-    commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
+    _: Arc<commander::CommanderLocalState<Mpsc, As>>,
 ) {
-    let data = commander_local_state.user_uuid.read().clone().unwrap();
+    let data = model.user_uuid.read().clone().unwrap();
 
     let local_state = &model.page_create_company;
 

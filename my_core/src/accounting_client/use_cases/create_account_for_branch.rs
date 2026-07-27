@@ -198,9 +198,8 @@ impl ui_model::CreateAccountForBranch {
                 }));
 
                 // 1. Fetch the list of available accounts (cache + server)
-                let user_uuid = commander_local_state.user_uuid.read().clone().unwrap();
-                let company_branch_uuid =
-                    commander_local_state.selected_company_branch.read().unwrap();
+                let user_uuid = model.user_uuid.read().clone().unwrap();
+                let company_branch_uuid = model.selected_company_branch.read().unwrap();
 
                 let input = cases::get_all_accounts_for_branch::Input {
                     user_uuid:           user_uuid.clone(),
@@ -336,7 +335,7 @@ fn handle_listener<
 >(
     model: &'static ui_model::Model<As>,
     mut cache: client_traits::CacheActorStruct<Mpsc>,
-    commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
+    _: Arc<commander::CommanderLocalState<Mpsc, As>>,
 ) -> impl FnOnce() {
     let component_id = Rn::generate() as u16;
     let mut cache1 = cache.clone();
@@ -353,8 +352,8 @@ fn handle_listener<
             )
             .await;
 
-        let user_uuid = commander_local_state.user_uuid.read().clone().unwrap();
-        let company_branch_uuid = commander_local_state.selected_company_branch.read().unwrap();
+        let user_uuid = model.user_uuid.read().clone().unwrap();
+        let company_branch_uuid = model.selected_company_branch.read().unwrap();
 
         loop {
             // Wait for a poke (data changed)
@@ -451,8 +450,8 @@ async fn handle_submit<
     model.page_create_account_for_branch.is_loading.set(true);
 
     // 1. Gather inputs
-    let user_uuid = commander_local_state.user_uuid.read().clone().unwrap();
-    let branch_uuid = commander_local_state.selected_company_branch.read().unwrap();
+    let user_uuid = model.user_uuid.read().clone().unwrap();
+    let branch_uuid = model.selected_company_branch.read().unwrap();
 
     // Find the account UUID by matching the account name
     let account_uuid = model

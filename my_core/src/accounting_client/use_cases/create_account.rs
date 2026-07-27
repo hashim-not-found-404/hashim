@@ -265,7 +265,7 @@ async fn handle_submit<
     cache: client_traits::CacheActorStruct<Mpsc>,
     commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
 ) {
-    let user_uuid = commander_local_state.user_uuid.read().clone().unwrap();
+    let user_uuid = model.user_uuid.read().clone().unwrap();
 
     let local_state = &model.page_create_account;
 
@@ -394,11 +394,11 @@ async fn handle_check<
 >(
     model: &'static ui_model::Model<As>,
     mut cache: client_traits::CacheActorStruct<Mpsc>,
-    commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
+    _: Arc<commander::CommanderLocalState<Mpsc, As>>,
 ) {
     let local_state = &model.page_create_account;
 
-    let user_uuid = commander_local_state.user_uuid.read().clone().unwrap();
+    let user_uuid = model.user_uuid.read().clone().unwrap();
 
     let input = cases::create_account::Input {
         user_uuid,

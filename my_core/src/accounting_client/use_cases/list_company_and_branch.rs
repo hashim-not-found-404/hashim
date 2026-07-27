@@ -407,7 +407,7 @@ impl ui_model::CompanyAndBranchSelection {
                 }
             }
             Self::SelectedCompanyBranch(i) => {
-                commander_local_state.selected_company_branch.put(Some(i));
+                model.selected_company_branch.put(Some(i));
                 model.navigator.set(ui_model::Navigator::Home(ui_model::HomeNav {
                     show_menu:       false,
                     page_to_present: ui_model::Menu::Dashboard,
@@ -429,7 +429,7 @@ fn handle_list_company_and_branch_listener<
 >(
     model: &'static ui_model::Model<As>,
     mut cache: client_traits::CacheActorStruct<Mpsc>,
-    commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
+    _: Arc<commander::CommanderLocalState<Mpsc, As>>,
 ) -> impl FnOnce() {
     let component_id = Rn::generate() as u16;
     let mut cache1 = cache.clone();
@@ -442,7 +442,7 @@ fn handle_list_company_and_branch_listener<
             )
             .await;
 
-        let data: types::UuidType = commander_local_state.user_uuid.read().clone().unwrap();
+        let data: types::UuidType = model.user_uuid.read().clone().unwrap();
 
         loop {
             receiver_to_poke.recv().await.unwrap();
@@ -501,9 +501,9 @@ async fn handle_list_company_and_branch<
 >(
     model: &'static ui_model::Model<As>,
     mut cache: client_traits::CacheActorStruct<Mpsc>,
-    commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
+    _: Arc<commander::CommanderLocalState<Mpsc, As>>,
 ) {
-    let user_uuid = commander_local_state.user_uuid.read().clone().unwrap();
+    let user_uuid = model.user_uuid.read().clone().unwrap();
 
     let txn_number = Rn::generate();
 

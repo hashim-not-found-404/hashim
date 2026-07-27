@@ -298,7 +298,7 @@ async fn handle_submit<
                     );
 
                     if let Ok(ok) = result {
-                        commander_local_state1.user_uuid.put(Some(ok.user_uuid));
+                        model.user_uuid.put(Some(ok.user_uuid));
 
                         commander_local_state1
                             .sender_to_commander
@@ -362,7 +362,7 @@ async fn handle_submit<
                         );
 
                         if let Ok(ok) = result {
-                            commander_local_state.user_uuid.put(Some(ok.user_uuid));
+                            model.user_uuid.put(Some(ok.user_uuid));
 
                             commander_local_state
                                 .sender_to_commander
@@ -446,11 +446,11 @@ fn handle_apply_result<
     LongCache: for<'a> cases::sign_in::DatabaseRead<Db<'a> = Ch>,
 >(
     model: &ui_model::Model<As>,
-    commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
+    _: Arc<commander::CommanderLocalState<Mpsc, As>>,
     result: Type4,
 ) {
     <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::apply_on_the_model(&result, model);
     if let Ok(ok) = result {
-        commander_local_state.user_uuid.put(Some(ok.user_uuid));
+        model.user_uuid.put(Some(ok.user_uuid));
     }
 }

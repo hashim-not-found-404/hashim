@@ -59,6 +59,9 @@ pub enum Dialog {
 
 #[derive(Default)]
 pub struct Model<As: AllSignalTypes> {
+    pub(crate) user_uuid:               Mutex<Option<types::UuidType>>,
+    pub(crate) selected_company_branch: Mutex<Option<types::UuidType>>,
+
     pub navigator: As::Navigator,
 
     // global states
@@ -136,7 +139,7 @@ pub struct PageCreateAccount<As: AllSignalTypes> {
 
 #[derive(Default)]
 pub struct PageCreateAccountForBranch<As: AllSignalTypes> {
-    pub list_of_available_account: Mutex<Vec<Accounts>>,
+    pub(crate) list_of_available_account: Mutex<Vec<Accounts>>,
 
     pub is_loading:    As::Bool,
     pub show_dialog:   As::Dialog,

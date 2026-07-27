@@ -91,12 +91,12 @@ pub(crate) async fn fetch<
 >(
     model: &ui_model::Model<As>,
     mut cache: client_traits::CacheActorStruct<Mpsc>,
-    commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
+    _: Arc<commander::CommanderLocalState<Mpsc, As>>,
 ) {
     let company_uuid = model.selected_company.read().unwrap();
 
     let input = cases::get_all_accounts::Input {
-        user_uuid: commander_local_state.user_uuid.read().clone().unwrap(),
+        user_uuid: model.user_uuid.read().clone().unwrap(),
         company_uuid,
     };
 

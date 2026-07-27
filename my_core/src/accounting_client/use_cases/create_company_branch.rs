@@ -265,7 +265,7 @@ async fn handle_submit<
     }
     local_state.is_loading.set(true);
 
-    let data = commander_local_state.user_uuid.read().clone().unwrap();
+    let data = model.user_uuid.read().clone().unwrap();
 
     let input = cases::create_company_branch::Input {
         user_uuid:      data,
@@ -389,11 +389,11 @@ async fn handle_check<
 >(
     model: &'static ui_model::Model<As>,
     mut cache: client_traits::CacheActorStruct<Mpsc>,
-    commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
+    _: Arc<commander::CommanderLocalState<Mpsc, As>>,
 ) {
     let local_state = &model.page_create_company_branch;
 
-    let data = commander_local_state.user_uuid.read().clone().unwrap();
+    let data = model.user_uuid.read().clone().unwrap();
 
     let input = cases::create_company_branch::Input {
         user_uuid:      data,

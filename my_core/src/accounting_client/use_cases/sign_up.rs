@@ -299,7 +299,7 @@ async fn handle_submit<
                     );
 
                     if is_ok {
-                        commander_local_state1.user_uuid.put(Some(new_uuid1));
+                        model.user_uuid.put(Some(new_uuid1));
 
                         commander_local_state1
                             .sender_to_commander
@@ -364,7 +364,7 @@ async fn handle_submit<
                         let is_ok = result.is_ok();
 
                         if is_ok {
-                            commander_local_state.user_uuid.put(Some(new_uuid));
+                            model.user_uuid.put(Some(new_uuid));
 
                             commander_local_state
                                 .sender_to_commander
