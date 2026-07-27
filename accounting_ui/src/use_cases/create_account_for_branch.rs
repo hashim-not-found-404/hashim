@@ -8,7 +8,7 @@ use std::str::FromStr;
 
 #[component]
 pub(crate) fn CreateAccountForBranch() -> Element {
-    use_drop(move || {
+    use_effect(move || {
         tools::send(ui_model::Message::CreateAccountForBranch(
             ui_model::CreateAccountForBranch::Subscribe,
         ));

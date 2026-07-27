@@ -351,7 +351,7 @@ fn handle_listener<
 
         loop {
             // Wait for a poke (data changed)
-            let _ = receiver_to_poke.recv().await;
+            receiver_to_poke.recv().await.unwrap();
 
             // Re‑fetch from cache only (no server round trip)
             let input = cases::get_all_accounts_for_branch::Input {
