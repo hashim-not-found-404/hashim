@@ -7,6 +7,18 @@ use my_core::accounting_client::client_domain::ui_model::HashimSignal;
 
 #[component]
 pub(crate) fn ListCompanyAndBranch() -> Element {
+    use_effect(move || {
+        tools::send(ui_model::Message::CompanyAndBranchSelection(
+            ui_model::CompanyAndBranchSelection::Subscribe,
+        ));
+    });
+
+    use_drop(move || {
+        tools::send(ui_model::Message::CompanyAndBranchSelection(
+            ui_model::CompanyAndBranchSelection::UnSubscribe,
+        ));
+    });
+
     let local_state = &tools::MODEL.page_company_branch_selection.list;
 
     let selected_company = &tools::MODEL.selected_company;

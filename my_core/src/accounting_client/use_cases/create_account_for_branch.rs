@@ -190,13 +190,7 @@ impl ui_model::CreateAccountForBranch {
         commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
     ) {
         match self {
-            // Inside the `update` method, under `Self::Show`:
             ui_model::CreateAccountForBranch::Subscribe => {
-                model.navigator.set(ui_model::Navigator::Home(ui_model::HomeNav {
-                    show_menu:       false,
-                    page_to_present: ui_model::Menu::CreateAccountForBranch,
-                }));
-
                 // 1. Fetch the list of available accounts (cache + server)
                 let user_uuid = model.user_uuid.read().clone().unwrap();
                 let company_branch_uuid = model.selected_company_branch.read().unwrap();
@@ -357,7 +351,7 @@ fn handle_listener<
 
         loop {
             // Wait for a poke (data changed)
-            receiver_to_poke.recv().await.unwrap();
+            let _ = receiver_to_poke.recv().await;
 
             // Re‑fetch from cache only (no server round trip)
             let input = cases::get_all_accounts_for_branch::Input {
@@ -365,7 +359,7 @@ fn handle_listener<
                 company_branch_uuid: company_branch_uuid.clone(),
             };
             let txn_number = Rn::generate();
-            let mut receiver = cache
+            let value = cache
                 .send_to_cache_actor(
                     cache_actor::CachingStrategy::ReadCacheOnly,
                     txn_number,
@@ -374,20 +368,23 @@ fn handle_listener<
                         LongCacheForGetAllAccountsForBranch,
                     >>::wrap_input(input),
                 )
-                .await;
+                .await
+                .recv()
+                .await
+                .unwrap();
 
-            if let cache_actor::Response::Data {
-                data,
-                ..
-            } = receiver.recv().await.unwrap()
-            {
-                let result =
-                    <fetches::get_all_accounts_for_branch::ViewAndCacheType as ViewAndCache<
-                        Ch,
-                        LongCacheForGetAllAccountsForBranch,
-                    >>::unwrap_output(data);
-                apply_fetch_result::<As>(&result, model);
-            } else {
+            let value = match value {
+                cache_actor::Response::CloseTheChannel => break,
+                cache_actor::Response::ServerCannotBeReached => break,
+                cache_actor::Response::Data {
+                    is_response_from_server: _,
+                    data,
+                } => <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::unwrap_output(data),
+            };
+
+            <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::apply_on_the_model(&value, model);
+
+            if value.is_err() {
                 break;
             }
         }

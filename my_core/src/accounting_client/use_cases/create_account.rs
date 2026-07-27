@@ -6,6 +6,7 @@ use crate::accounting_client::client_domain::commander;
 use crate::accounting_client::client_domain::process_manager;
 use crate::accounting_client::client_domain::ui_model;
 use crate::accounting_client::client_domain::ui_model::HashimSignal;
+use crate::accounting_client::fetches;
 use crate::accounting_domain::cases;
 use crate::accounting_domain::request_response;
 use crate::accounting_domain::utility::resource_utils;
@@ -206,7 +207,7 @@ impl ui_model::CreateAccount {
                 )
                 .await
             }
-            Self::Consent(i) => {
+            ui_model::CreateAccount::Consent(i) => {
                 commander_local_state
                     .sender_to_process_manager
                     .read()
@@ -234,6 +235,14 @@ impl ui_model::CreateAccount {
             ui_model::CreateAccount::Notes(v) => local_state.notes.set(v),
             ui_model::CreateAccount::UnitOfMeasurementOfQuantity(v) => {
                 local_state.unit_of_measurement_of_quantity.set(v)
+            }
+            ui_model::CreateAccount::Subscribe => {
+                fetches::get_all_accounts::fetch::<Rn, Mpsc, As>(
+                    model,
+                    cache,
+                    commander_local_state,
+                )
+                .await
             }
         }
     }

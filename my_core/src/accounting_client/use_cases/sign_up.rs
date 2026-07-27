@@ -175,6 +175,11 @@ impl ui_model::SignUp {
         commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
     ) {
         match self {
+            Self::GoToSignIn => {
+                if !model.feature_state_auth.is_loading.read() {
+                    model.navigator.set(ui_model::Navigator::SignIn);
+                }
+            }
             Self::Submit => {
                 handle_submit::<Rn, Rt, Id, Mpsc, Rg, As, Ch, LongCache>(
                     model,
@@ -301,14 +306,9 @@ async fn handle_submit<
                     if is_ok {
                         model.user_uuid.put(Some(new_uuid1));
 
-                        commander_local_state1
-                            .sender_to_commander
-                            .read()
-                            .send(ui_model::Message::CompanyAndBranchSelection(
-                                ui_model::CompanyAndBranchSelection::Subscribe,
-                            ))
-                            .await
-                            .unwrap();
+                        model.navigator.set(ui_model::Navigator::ListCompanyAndBranch(
+                            ui_model::ListCompanyAndBranch::None,
+                        ));
                     }
 
                     commander_local_state1
@@ -366,14 +366,9 @@ async fn handle_submit<
                         if is_ok {
                             model.user_uuid.put(Some(new_uuid));
 
-                            commander_local_state
-                                .sender_to_commander
-                                .read()
-                                .send(ui_model::Message::CompanyAndBranchSelection(
-                                    ui_model::CompanyAndBranchSelection::Subscribe,
-                                ))
-                                .await
-                                .unwrap();
+                            model.navigator.set(ui_model::Navigator::ListCompanyAndBranch(
+                                ui_model::ListCompanyAndBranch::None,
+                            ));
                         }
                     }
                 }

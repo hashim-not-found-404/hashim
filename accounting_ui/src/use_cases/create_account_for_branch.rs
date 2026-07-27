@@ -8,14 +8,20 @@ use std::str::FromStr;
 
 #[component]
 pub(crate) fn CreateAccountForBranch() -> Element {
-    let model = &tools::MODEL;
-    let local_state = &model.page_create_account_for_branch;
+    use_drop(move || {
+        tools::send(ui_model::Message::CreateAccountForBranch(
+            ui_model::CreateAccountForBranch::Subscribe,
+        ));
+    });
 
     use_drop(move || {
         tools::send(ui_model::Message::CreateAccountForBranch(
             ui_model::CreateAccountForBranch::UnSubscribe,
         ));
     });
+
+    let model = &tools::MODEL;
+    let local_state = &model.page_create_account_for_branch;
 
     // Consent callback for the dialog
     let consent_callback = move |consent: ui_model::UserConsent| {

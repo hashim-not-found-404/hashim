@@ -1,4 +1,3 @@
-use crate::ui::Route;
 use crate::utility::components;
 use crate::utility::tools;
 use dioxus::prelude::*;
@@ -9,8 +8,8 @@ use my_core::accounting_client::client_domain::ui_model::HashimSignal;
 pub(crate) fn SignUp() -> Element {
     let local_state = &tools::MODEL.page_sign_up;
 
-    let sign_in = move |_| {
-        navigator().push(Route::SignIn {});
+    let go_to_sign_in = move |_| {
+        tools::send(ui_model::Message::SignUp(ui_model::SignUp::GoToSignIn));
     };
 
     let consent_callback = move |consent: ui_model::UserConsent| {
@@ -53,7 +52,7 @@ pub(crate) fn SignUp() -> Element {
                 },
                 "Sign Up"
             }
-            button { onclick: sign_in, "Back" }
+            button { onclick: go_to_sign_in, "Back" }
         }
     }
 }

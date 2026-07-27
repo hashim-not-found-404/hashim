@@ -192,6 +192,11 @@ impl ui_model::SignIn {
         commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
     ) {
         match self {
+            Self::GoToSignUp => {
+                if !model.feature_state_auth.is_loading.read() {
+                    model.navigator.set(ui_model::Navigator::SignUp);
+                }
+            }
             Self::Submit => {
                 handle_submit::<Rn, Rt, Id, Mpsc, Rg, As, Ch, LongCache>(
                     model,
@@ -300,14 +305,9 @@ async fn handle_submit<
                     if let Ok(ok) = result {
                         model.user_uuid.put(Some(ok.user_uuid));
 
-                        commander_local_state1
-                            .sender_to_commander
-                            .read()
-                            .send(ui_model::Message::CompanyAndBranchSelection(
-                                ui_model::CompanyAndBranchSelection::Subscribe,
-                            ))
-                            .await
-                            .unwrap();
+                        model.navigator.set(ui_model::Navigator::ListCompanyAndBranch(
+                            ui_model::ListCompanyAndBranch::None,
+                        ));
                     }
 
                     commander_local_state1
@@ -364,14 +364,9 @@ async fn handle_submit<
                         if let Ok(ok) = result {
                             model.user_uuid.put(Some(ok.user_uuid));
 
-                            commander_local_state
-                                .sender_to_commander
-                                .read()
-                                .send(ui_model::Message::CompanyAndBranchSelection(
-                                    ui_model::CompanyAndBranchSelection::Subscribe,
-                                ))
-                                .await
-                                .unwrap();
+                            model.navigator.set(ui_model::Navigator::ListCompanyAndBranch(
+                                ui_model::ListCompanyAndBranch::None,
+                            ));
                         }
                     }
                 }

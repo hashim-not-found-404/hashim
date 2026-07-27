@@ -2,7 +2,6 @@ use crate::accounting_client::client_domain::client_traits;
 use crate::accounting_client::client_domain::commander;
 use crate::accounting_client::client_domain::ui_model;
 use crate::accounting_client::client_domain::ui_model::HashimSignal;
-use crate::accounting_client::fetches;
 use crate::accounting_domain::utility::types;
 use crate::utility::traits;
 use std::sync::Arc;
@@ -18,8 +17,8 @@ impl ui_model::Home {
     >(
         self,
         model: &'static ui_model::Model<As>,
-        cache: client_traits::CacheActorStruct<Mpsc>,
-        commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
+        _: client_traits::CacheActorStruct<Mpsc>,
+        _: Arc<commander::CommanderLocalState<Mpsc, As>>,
     ) {
         match self {
             ui_model::Home::ShowDashboard => {
@@ -29,16 +28,16 @@ impl ui_model::Home {
                 }))
             }
             ui_model::Home::ShowCreateAccount => {
-                fetches::get_all_accounts::fetch::<Rn, Mpsc, As>(
-                    model,
-                    cache,
-                    commander_local_state,
-                )
-                .await;
                 model.navigator.set(ui_model::Navigator::Home(ui_model::HomeNav {
                     show_menu:       false,
                     page_to_present: ui_model::Menu::CreateAccount,
                 }))
+            }
+            ui_model::Home::ShowCreateAccountForBranch => {
+                model.navigator.set(ui_model::Navigator::Home(ui_model::HomeNav {
+                    show_menu:       false,
+                    page_to_present: ui_model::Menu::CreateAccountForBranch,
+                }));
             }
         }
     }

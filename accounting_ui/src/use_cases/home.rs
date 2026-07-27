@@ -35,7 +35,7 @@ pub(crate) fn Home() -> Element {
                 }
                 button {
                     onclick: move |_| {
-                        tools::send(ui_model::Message::CreateAccountForBranch(ui_model::CreateAccountForBranch::Subscribe));
+                        tools::send(ui_model::Message::Home(ui_model::Home::ShowCreateAccountForBranch));
                     },
                     "Add New Account For Branch"
                 }

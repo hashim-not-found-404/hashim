@@ -179,6 +179,7 @@ pub enum SignUp {
     UserName(String),
     UserId(String),
     Password(String),
+    GoToSignIn,
 }
 
 #[derive(Debug)]
@@ -187,6 +188,7 @@ pub enum SignIn {
     Consent(UserConsent),
     UserId(String),
     Password(String),
+    GoToSignUp,
 }
 
 #[derive(Debug)]
@@ -220,10 +222,12 @@ pub enum CreateCompanyBranch {
 pub enum Home {
     ShowDashboard,
     ShowCreateAccount,
+    ShowCreateAccountForBranch,
 }
 
 #[derive(Debug)]
 pub enum CreateAccount {
+    Subscribe,
     Submit,
     Consent(UserConsent),
     Clean,

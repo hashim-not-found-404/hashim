@@ -46,7 +46,6 @@ impl<Mpsc: traits::MultiProducerSingleConsumer> Commander<Mpsc> {
 
         Self::commander_actor::<As, Rt, Rn, Id, Rg, Ch, Dbb>(
             receiver_to_commander,
-            sender_to_commander.clone(),
             sender_to_process_manager,
             model,
             cache,
@@ -74,16 +73,13 @@ impl<Mpsc: traits::MultiProducerSingleConsumer> Commander<Mpsc> {
         Dbb: cache_op::DbBundle<Ch>,
     >(
         mut receiver: Mpsc::Receiver<ui_model::Message>,
-        sender_to_commander: Mpsc::Sender<ui_model::Message>,
         sender_to_process_manager: Mpsc::Sender<process_manager::MessageToProcessManager<Mpsc, As>>,
         model: &'static ui_model::Model<As>,
         cache: client_traits::CacheActorStruct<Mpsc>,
     ) {
         Rt::spawn_local(async move {
-            let commander_local_state = Arc::new(commander::CommanderLocalState::new(
-                sender_to_commander,
-                sender_to_process_manager,
-            ));
+            let commander_local_state =
+                Arc::new(commander::CommanderLocalState::new(sender_to_process_manager));
 
             loop {
                 let message = receiver.recv().await.unwrap();
