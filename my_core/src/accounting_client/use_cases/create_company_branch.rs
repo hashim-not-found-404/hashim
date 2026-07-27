@@ -362,6 +362,10 @@ async fn handle_submit<
                         <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::apply_on_the_model(
                             &result, model,
                         );
+
+                        if result.is_ok() {
+                            handle_close::<As>(model);
+                        }
                     }
                 }
             }
