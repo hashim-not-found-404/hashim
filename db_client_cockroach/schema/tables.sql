@@ -100,16 +100,11 @@ CREATE TABLE IF NOT EXISTS accounting_app.entry(
     shared_entry_id                             UUID REFERENCES accounting_app.shared_entry(rowid) ON DELETE CASCADE NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS accounting_app.double_entry(
-    rowid                                       UUID PRIMARY KEY,
-
-    entry                                       UUID REFERENCES accounting_app.entry(rowid) ON DELETE CASCADE NOT NULL
-);
-
 CREATE TABLE IF NOT EXISTS accounting_app.single_entry(
     rowid                                       UUID PRIMARY KEY,
 
-    double_entry                                UUID REFERENCES accounting_app.double_entry(rowid) ON DELETE CASCADE NOT NULL,
+    double_entry                                SMALLINT NOT NULL,
+    entry                                       UUID REFERENCES accounting_app.entry(rowid) ON DELETE CASCADE NOT NULL,
     account                                     UUID REFERENCES accounting_app.account_flow_type(rowid) ON DELETE CASCADE NOT NULL,
     is_debit                                    BOOL NOT NULL,
     cost_flow_type                              STRING NOT NULL,

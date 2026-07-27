@@ -96,16 +96,11 @@ CREATE TABLE IF NOT EXISTS entry(
     shared_entry_id                             TEXT REFERENCES shared_entry(rowid) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS double_entry(
-    rowid                                       TEXT PRIMARY KEY,
-
-    entry                                       TEXT REFERENCES entry(rowid) ON DELETE CASCADE
-);
-
 CREATE TABLE IF NOT EXISTS single_entry(
     rowid                                       TEXT PRIMARY KEY,
 
-    double_entry                                TEXT REFERENCES double_entry(rowid) ON DELETE CASCADE,
+    double_entry                                INTEGER NOT NULL,
+    entry                                       TEXT REFERENCES entry(rowid) ON DELETE CASCADE,
     account                                     TEXT REFERENCES account_flow_type(rowid) ON DELETE CASCADE,
     is_debit                                    BOOLEAN,
     cost_flow_type                              TEXT,
