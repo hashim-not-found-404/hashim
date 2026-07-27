@@ -119,7 +119,6 @@ impl cases::get_all_accounts_for_branch::DatabaseRead for S {
 
         Ok(cases::get_all_accounts_for_branch::ReadOutput {
             company_uuid,
-            company_branch_uuid: read_input.company_branch_uuid.clone(),
             accounts,
             accounts_for_branch,
         })

@@ -20,43 +20,50 @@ impl cases::get_all_accounts_for_branch::DatabaseRead for S {
 
         // 1. Get the company UUID for this branch
         let mut stmt =
-            db.db.prepare("SELECT company_belong FROM company_branch WHERE rowid = ?1")?;
+            db.db.prepare("SELECT company_belong FROM company_branch WHERE rowid = ?1").unwrap();
         let company_uuid_str: Option<String> =
             stmt.query_row(params![branch_uuid_str], |row| row.get::<_, String>(0)).ok();
         let company_uuid = match company_uuid_str {
             Some(s) => s.to_uuid(),
-            None => return Err("Branch not found".into()),
+            None => {
+                return Ok(cases::get_all_accounts_for_branch::ReadOutput::default());
+            }
         };
 
         // 2. Get all accounts for that company
         let mut stmt = db.db.prepare(
             "SELECT rowid, is_debit, is_permanent_account, name, notes, unit_of_measurement_of_quantity
              FROM account WHERE belong_to_company = ?1"
-        )?;
-        let account_rows = stmt.query_map(params![company_uuid.to_string()], |row| {
-            let row_uuid_str: String = row.get(0)?;
-            let is_debit: bool = row.get(1)?;
-            let is_permanent_account: bool = row.get(2)?;
-            let account_name: String = row.get(3)?;
-            let notes: String = row.get(4)?;
-            let unit_of_measurement: String = row.get(5)?;
-            Ok(cases::get_all_accounts_for_branch::Account {
-                row_uuid: row_uuid_str.to_uuid(),
-                is_debit,
-                is_permanent_account,
-                account_name,
-                notes,
-                unit_of_measurement_of_quantity: unit_of_measurement,
+        ).unwrap();
+        let account_rows = stmt
+            .query_map(params![company_uuid.to_string()], |row| {
+                let row_uuid_str: String = row.get(0).unwrap();
+                let is_debit: bool = row.get(1).unwrap();
+                let is_permanent_account: bool = row.get(2).unwrap();
+                let account_name: String = row.get(3).unwrap();
+                let notes: String = row.get(4).unwrap();
+                let unit_of_measurement: String = row.get(5).unwrap();
+                Ok(cases::get_all_accounts_for_branch::Account {
+                    row_uuid: row_uuid_str.to_uuid(),
+                    is_debit,
+                    is_permanent_account,
+                    account_name,
+                    notes,
+                    unit_of_measurement_of_quantity: unit_of_measurement,
+                })
             })
-        })?;
+            .unwrap();
 
-        let accounts = account_rows.collect::<Result<Vec<_>, _>>()?;
+        let accounts = account_rows.collect::<Result<Vec<_>, _>>().unwrap();
 
         // 3. Get account_flow_type entries for this branch
-        let mut stmt = db.db.prepare(
-            "SELECT rowid, account, outflow_type, inflow_type
+        let mut stmt = db
+            .db
+            .prepare(
+                "SELECT rowid, account, outflow_type, inflow_type
              FROM account_flow_type WHERE company_branch = ?1",
-        )?;
+            )
+            .unwrap();
         let flow_rows = stmt
             .query_map(params![branch_uuid_str], |row| {
                 let row_uuid_str: String = row.get(0).unwrap();
@@ -79,7 +86,6 @@ impl cases::get_all_accounts_for_branch::DatabaseRead for S {
 
         Ok(cases::get_all_accounts_for_branch::ReadOutput {
             company_uuid,
-            company_branch_uuid: read_input.company_branch_uuid.clone(),
             accounts,
             accounts_for_branch,
         })

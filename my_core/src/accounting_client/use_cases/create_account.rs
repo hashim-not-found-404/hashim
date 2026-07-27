@@ -363,9 +363,15 @@ async fn handle_submit<
                     } => {
                         let result =
                             <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::unwrap_output(data);
+                        let is_ok = result.is_ok();
+
                         <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::apply_on_the_model(
                             &result, model,
                         );
+
+                        if is_ok {
+                            handle_clean(model);
+                        }
                     }
                 }
             }

@@ -51,9 +51,9 @@ pub struct ReadInput {
     pub company_branch_uuid: types::UuidType,
 }
 
+#[derive(Default)]
 pub struct ReadOutput {
     pub company_uuid:        types::UuidType,
-    pub company_branch_uuid: types::UuidType,
     pub accounts:            Vec<Account>,
     pub accounts_for_branch: Vec<AccountForBranch>,
 }
@@ -93,7 +93,7 @@ impl Input {
 
         Ok(Ok {
             company_uuid:        read_output.company_uuid.clone(),
-            company_branch_uuid: read_output.company_branch_uuid.clone(),
+            company_branch_uuid: self.company_branch_uuid.clone(),
             accounts:            read_output.accounts.clone(),
             accounts_for_branch: read_output.accounts_for_branch.clone(),
         })

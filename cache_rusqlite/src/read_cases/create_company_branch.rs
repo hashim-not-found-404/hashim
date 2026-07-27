@@ -27,7 +27,7 @@ impl cases::create_company_branch::DatabaseRead for S {
             .query_map(
                 params![read_input.company_belong.to_string(), read_input.user_uuid.to_string()],
                 |row| {
-                    let role_str: String = row.get(0)?;
+                    let role_str: String = row.get(0).unwrap();
                     let role = types::Role::from_str(role_str.as_str()).unwrap();
                     Ok(role)
                 },

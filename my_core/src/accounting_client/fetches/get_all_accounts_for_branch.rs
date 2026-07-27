@@ -31,23 +31,38 @@ where
         read_input: &cases::get_all_accounts_for_branch::ReadInput,
     ) -> Result<cases::get_all_accounts_for_branch::ReadOutput, traits::DynamicError> {
         // 1. Read from the underlying cache
-        let mut output = LongCache::read(&mut db.cache, read_input).await?;
+        let mut output = LongCache::read(&mut db.cache, read_input).await.unwrap();
+
+        for (row_uuid, company_branch) in &db.state_of_pending_txn.company_branch {
+            if *row_uuid == read_input.company_branch_uuid {
+                output.company_uuid = company_branch.company_belong.clone();
+            }
+        }
+
+        for (row_uuid, account) in &db.state_of_pending_txn.account {
+            if account.company_belong == output.company_uuid {
+                // Check if already present (by UUID)
+                if !output.accounts.iter().any(|a| a.row_uuid == *row_uuid) {
+                    output.accounts.push(cases::get_all_accounts_for_branch::Account {
+                        row_uuid:                        row_uuid.clone(),
+                        is_debit:                        account.is_debit,
+                        is_permanent_account:            account.is_permanent_account,
+                        account_name:                    account.name.clone(),
+                        notes:                           account.notes.clone(),
+                        unit_of_measurement_of_quantity: account
+                            .unit_of_measurement_of_quantity
+                            .clone(),
+                    });
+                }
+            }
+        }
 
         // 2. Merge pending account_flow_type entries (uncommitted changes)
         for (row_uuid, acft) in &db.state_of_pending_txn.account_flow_type {
             if acft.company_branch == read_input.company_branch_uuid {
-                // Check if this account is already in output.accounts_for_branch
                 let exists = output.accounts_for_branch.iter().any(|a| a.row_uuid == *row_uuid);
                 if !exists {
-                    // Need the account details – get them from pending account table.
-                    // For simplicity, we try to find the account in pending.
                     if let Some(_) = db.state_of_pending_txn.account.get(&acft.account) {
-                        // Also need the account's row_uuid – it's the key of the account.
-                        // We'll clone the account and add it to output.accounts if not already present.
-                        // (We also need to keep output.accounts and output.accounts_for_branch in sync.)
-                        // For brevity, we just add a new AccountForBranch entry.
-                        // In a real implementation, you'd also need to merge the Account details.
-                        // This is a simplified version.
                         output.accounts_for_branch.push(
                             cases::get_all_accounts_for_branch::AccountForBranch {
                                 row_uuid:     row_uuid.clone(),
@@ -60,9 +75,6 @@ where
                 }
             }
         }
-
-        // Also need to merge pending accounts that belong to the same company?
-        // For now we trust the underlying cache already has them.
 
         Ok(output)
     }
@@ -122,7 +134,7 @@ where
 
         let ok = cases::get_all_accounts_for_branch::Ok {
             company_uuid:        read_output.company_uuid,
-            company_branch_uuid: read_output.company_branch_uuid,
+            company_branch_uuid: data.company_branch_uuid.clone(),
             accounts:            read_output.accounts,
             accounts_for_branch: read_output.accounts_for_branch,
         };
