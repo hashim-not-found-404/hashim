@@ -11,6 +11,7 @@ use crate::accounting_domain::request_response;
 use crate::accounting_domain::utility::resource_utils;
 use crate::accounting_domain::utility::types;
 use crate::accounting_domain::utility::types::MyErrorTrait;
+use crate::mbg;
 use crate::utility::traits;
 use crate::utility::traits::JoinHandle;
 use crate::utility::traits::Receiver;
@@ -55,10 +56,9 @@ where
             }
         }
 
-        let mut roles = Vec::new();
         for (_, table) in &db.state_of_pending_txn.access_control_for_company {
             if read_input.user_uuid == table.user_ {
-                roles.push(table.role.clone());
+                read_output.user_roles.push(table.role.clone());
             }
         }
 

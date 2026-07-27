@@ -58,10 +58,9 @@ where
             }
         }
 
-        let mut roles = Vec::new();
-        for (_, table) in &db.state_of_pending_txn.access_control_for_company {
+        for (_, table) in &db.state_of_pending_txn.access_control_for_company_branch {
             if read_input.user_uuid == table.user_ {
-                roles.push(table.role.clone());
+                read_output.user_roles.push(table.role.clone());
             }
         }
 
@@ -443,7 +442,7 @@ async fn handle_submit<
     LongCache: for<'a> cases::create_account_for_branch::DatabaseRead<Db<'a> = Ch>,
 >(
     model: &'static ui_model::Model<As>,
-    mut cache: client_traits::CacheActorStruct<Mpsc>,
+    cache: client_traits::CacheActorStruct<Mpsc>,
     commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
 ) {
     if model.page_create_account_for_branch.is_loading.read() {
@@ -456,13 +455,11 @@ async fn handle_submit<
     let branch_uuid = commander_local_state.selected_company_branch.read().unwrap();
 
     // Find the account UUID by matching the account name
-    let account_name = model.page_create_account_for_branch.account_name.read();
     let account_uuid = model
         .page_create_account_for_branch
         .list_of_available_account
         .read()
-        .iter()
-        .find(|acc| acc.account_name == account_name)
+        .first()
         .map(|acc| acc.row_uuid.clone());
 
     let account_uuid = match account_uuid {
@@ -488,105 +485,102 @@ async fn handle_submit<
     let data = <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::wrap_input(input);
     let txn_number = Rn::generate();
 
-    // Spawn a task that sends to the server, then handles the response
-    let mut cache_clone = cache.clone();
-    let commander_clone = commander_local_state.clone();
-    let mut handle = <Rt>::abortable_spawn_local(async move {
-        let mut receiver_to_response = cache_clone
-            .send_to_cache_actor(cache_actor::CachingStrategy::WriteServerOnly, txn_number, data)
-            .await;
-
-        match receiver_to_response.recv().await.unwrap() {
-            cache_actor::Response::CloseTheChannel => return,
-            cache_actor::Response::ServerCannotBeReached => return,
-            cache_actor::Response::Data {
-                is_response_from_server,
-                data,
-            } => {
-                let result = <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::unwrap_output(data);
-                let is_ok = result.is_ok();
-                <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::apply_on_the_model(
-                    &result, model,
-                );
-
-                commander_clone
-                    .sender_to_process_manager
-                    .read()
-                    .send(process_manager::MessageToProcessManager::FromProcess {
-                        process_name: process_manager::ProcessName::CreateAccountForBranch,
-                        message:      process_manager::MessageFromProcess::Response {
-                            is_response_from_server,
-                            is_response_ok: is_ok,
-                        },
-                    })
-                    .await
-                    .unwrap();
-            }
-        }
-    });
-
-    // Set up the process manager subscription for the dialog
-    let (sender_to_process, mut receiver_to_process) = <Mpsc>::channel();
-    commander_local_state
-        .sender_to_process_manager
-        .read()
-        .send(process_manager::MessageToProcessManager::FromProcess {
-            process_name: process_manager::ProcessName::CreateAccountForBranch,
-            message:      process_manager::MessageFromProcess::Subscribe {
-                sender: sender_to_process,
-                dialog: &model.page_create_account_for_branch.show_dialog,
-            },
-        })
-        .await
-        .unwrap();
-
-    // Wait for a decision from the process manager
-    match receiver_to_process.recv().await.unwrap() {
-        process_manager::MessageToProcess::FallBackToCache => {
-            // If the user chooses to proceed offline, write to cache only
-            let mut receiver_to_response = cache
+    {
+        let dialog: &'static As::Dialog = &model.page_create_account_for_branch.show_dialog;
+        let mut cache = cache;
+        let data1 = data.clone();
+        let mut cache1 = cache.clone();
+        let commander_local_state1 = commander_local_state.clone();
+        let mut handle = <Rt>::abortable_spawn_local(async move {
+            let mut receiver_to_response = cache1
                 .send_to_cache_actor(
-                    cache_actor::CachingStrategy::WriteCacheOnly,
+                    cache_actor::CachingStrategy::WriteServerOnly,
                     txn_number,
-                    <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::wrap_input(
-                        cases::create_account_for_branch::Input {
-                            user_uuid:                user_uuid.clone(),
-                            new_uuid:                 new_uuid.clone(),
-                            belong_to_account:        account_uuid.clone(),
-                            belong_to_company_branch: branch_uuid.clone(),
-                            outflow_type:             model
-                                .page_create_account_for_branch
-                                .outflow_type
-                                .read(),
-                            inflow_type:              model
-                                .page_create_account_for_branch
-                                .inflow_type
-                                .read(),
-                        },
-                    ),
+                    data1,
                 )
                 .await;
 
             match receiver_to_response.recv().await.unwrap() {
-                cache_actor::Response::CloseTheChannel => {}
-                cache_actor::Response::ServerCannotBeReached => {}
+                cache_actor::Response::CloseTheChannel => return,
+                cache_actor::Response::ServerCannotBeReached => return,
                 cache_actor::Response::Data {
-                    is_response_from_server: _,
+                    is_response_from_server,
                     data,
                 } => {
                     let result =
                         <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::unwrap_output(data);
+                    let is_ok = result.is_ok();
                     <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::apply_on_the_model(
                         &result, model,
                     );
+
+                    if is_ok {
+                        handle_clean(model);
+                    }
+
+                    commander_local_state1
+                        .sender_to_process_manager
+                        .read()
+                        .send(process_manager::MessageToProcessManager::FromProcess {
+                            process_name: process_manager::ProcessName::CreateAccountForBranch,
+                            message:      process_manager::MessageFromProcess::Response {
+                                is_response_from_server,
+                                is_response_ok: is_ok,
+                            },
+                        })
+                        .await
+                        .unwrap();
                 }
             }
-        }
-        process_manager::MessageToProcess::CancelOperation => {}
-    }
+        });
+        let (sender_to_process, mut receiver_to_process) = <Mpsc>::channel();
+        commander_local_state
+            .sender_to_process_manager
+            .read()
+            .send(process_manager::MessageToProcessManager::FromProcess {
+                process_name: process_manager::ProcessName::CreateAccountForBranch,
+                message:      process_manager::MessageFromProcess::Subscribe {
+                    sender: sender_to_process,
+                    dialog: &dialog,
+                },
+            })
+            .await
+            .unwrap();
+        match receiver_to_process.recv().await.unwrap() {
+            process_manager::MessageToProcess::FallBackToCache => {
+                let mut receiver_to_response = cache
+                    .send_to_cache_actor(
+                        cache_actor::CachingStrategy::WriteCacheOnly,
+                        txn_number,
+                        data,
+                    )
+                    .await;
 
-    // Cancel the server task
-    handle.abort().await;
+                match receiver_to_response.recv().await.unwrap() {
+                    cache_actor::Response::CloseTheChannel => return,
+                    cache_actor::Response::ServerCannotBeReached => return,
+                    cache_actor::Response::Data {
+                        is_response_from_server: _,
+                        data,
+                    } => {
+                        let result =
+                            <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::unwrap_output(data);
+                        let is_ok = result.is_ok();
+
+                        <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::apply_on_the_model(
+                            &result, model,
+                        );
+
+                        if is_ok {
+                            handle_clean(model);
+                        }
+                    }
+                }
+            }
+            process_manager::MessageToProcess::CancelOperation => {}
+        }
+        handle.abort().await;
+    }
 
     // Reset the loading flag (already done in apply_on_the_model, but just in case)
     model.page_create_account_for_branch.is_loading.reset();
