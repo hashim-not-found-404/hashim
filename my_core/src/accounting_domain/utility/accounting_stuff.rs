@@ -158,16 +158,17 @@ pub(crate) struct InsufficientAmountInInventory {
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
 struct SingleEntryError {
-    quantity_and_amount_are_zero:                    bool,
-    duplicate_account_in_entry:                      bool,
-    account_info_not_found:                          bool,
-    inventory_is_empty:                              bool,
-    the_quantity_and_amount_should_be_both_positive: bool,
-    quantity_not_equal_amount:                       bool,
-    quantity_not_equal_zero:                         bool,
-    insufficient_quantity_in_inventory:              Option<InsufficientQuantityInInventory>,
-    amount_mismatch:                                 Option<AmountMismatch>,
-    insufficient_amount_in_inventory:                Option<InsufficientAmountInInventory>,
+    quantity_and_amount_are_zero:       bool,
+    duplicate_account_in_entry:         bool,
+    account_info_not_found:             bool,
+    inventory_is_empty:                 bool,
+    the_amount_should_be_positive:      bool,
+    the_quantity_should_be_positive:    bool,
+    quantity_not_equal_amount:          bool,
+    quantity_not_equal_zero:            bool,
+    insufficient_quantity_in_inventory: Option<InsufficientQuantityInInventory>,
+    amount_mismatch:                    Option<AmountMismatch>,
+    insufficient_amount_in_inventory:   Option<InsufficientAmountInInventory>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
@@ -209,8 +210,12 @@ pub(crate) fn state_less_check_for_entry<De: DoubleEntryUtile>(entry: De) -> Err
             errr.single_entry_errors[i].quantity_and_amount_are_zero = true;
         }
 
-        if single.get_amount() < 0.0 || single.get_quantity() < 0.0 {
-            errr.single_entry_errors[i].the_quantity_and_amount_should_be_both_positive = true;
+        if single.get_amount() < 0.0 {
+            errr.single_entry_errors[i].the_amount_should_be_positive = true;
+        }
+
+        if single.get_quantity() < 0.0 {
+            errr.single_entry_errors[i].the_quantity_should_be_positive = true;
         }
 
         if !accounts.insert(single.get_account()) {
