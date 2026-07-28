@@ -16,8 +16,8 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use std::hash::Hash;
 
-#[derive(PartialEq, Debug)]
-enum CostFlowType {
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+pub enum CostFlowType {
     InFlow(InFlowType),
     OutFlow(OutFlowType),
 }
@@ -122,7 +122,7 @@ struct SingleEntry<AccountID> {
 }
 
 #[derive(Debug, PartialEq)]
-struct InventoryRecord {
+pub struct InventoryRecord {
     time_unix: u64,
     quantity:  f64,
     amount:    f64,
@@ -136,23 +136,23 @@ struct AccountInfo {
 type AccountInfoM<AccountID> = HashMap<AccountID, AccountInfo>;
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
-struct DebitNotEqualCreditError {
+pub(crate) struct DebitNotEqualCreditError {
     total_debit:  f64,
     total_credit: f64,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
-struct InsufficientQuantityInInventory {
+pub(crate) struct InsufficientQuantityInInventory {
     total_quantity: f64,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
-struct AmountMismatch {
+pub(crate) struct AmountMismatch {
     expected_amount: f64,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
-struct InsufficientAmountInInventory {
+pub(crate) struct InsufficientAmountInInventory {
     total_amount: f64,
 }
 
@@ -171,33 +171,49 @@ struct SingleEntryError {
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
-struct Error {
-    your_entry_is_empty:    bool,
+pub(crate) struct Error {
+    entry_is_empty:         bool,
     debit_not_equal_credit: Option<DebitNotEqualCreditError>,
     single_entry_errors:    Vec<SingleEntryError>,
 }
 
-fn state_less_check_for_entry<AccountID: Eq + Hash>(entry: &AccountingEntry<AccountID>) -> Error {
+pub(crate) trait DoubleEntryUtile: IntoIterator<Item = Self::SingleEntry> {
+    type SingleEntry: SingleEntryUtile;
+
+    fn is_empty(&self) -> bool;
+    fn len(&self) -> usize;
+}
+
+pub(crate) trait SingleEntryUtile {
+    type AccountId: Eq + Hash;
+
+    fn get_account(&self) -> Self::AccountId;
+    fn get_quantity(&self) -> f64;
+    fn get_amount(&self) -> f64;
+}
+
+pub(crate) fn state_less_check_for_entry<De: DoubleEntryUtile>(entry: De) -> Error {
     let mut errr = Error::default();
-    if entry.double_entry.is_empty() {
-        errr.your_entry_is_empty = true;
+    if entry.is_empty() {
+        errr.entry_is_empty = true;
         return errr;
     }
 
-    errr.single_entry_errors = Vec::with_capacity(entry.double_entry.len());
+    errr.single_entry_errors = Vec::with_capacity(entry.len());
 
-    let mut accounts: HashSet<&AccountID> = HashSet::with_capacity(entry.double_entry.len());
+    let mut accounts: HashSet<<De::SingleEntry as SingleEntryUtile>::AccountId> =
+        HashSet::with_capacity(entry.len());
 
-    for (i, single) in entry.double_entry.iter().enumerate() {
-        if single.amount == 0.0 && single.quantity == 0.0 {
+    for (i, single) in entry.into_iter().enumerate() {
+        if single.get_amount() == 0.0 && single.get_quantity() == 0.0 {
             errr.single_entry_errors[i].quantity_and_amount_are_zero = true;
         }
 
-        if single.amount < 0.0 || single.quantity < 0.0 {
+        if single.get_amount() < 0.0 || single.get_quantity() < 0.0 {
             errr.single_entry_errors[i].the_quantity_and_amount_should_be_both_positive = true;
         }
 
-        if !accounts.insert(&single.account_id) {
+        if !accounts.insert(single.get_account()) {
             errr.single_entry_errors[i].duplicate_account_in_entry = true;
         }
     }

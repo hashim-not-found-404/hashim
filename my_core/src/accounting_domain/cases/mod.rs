@@ -2,6 +2,7 @@ pub mod create_account;
 pub mod create_account_for_branch;
 pub mod create_company;
 pub mod create_company_branch;
+pub mod create_journal_entry;
 pub mod get_all_accounts;
 pub mod get_all_accounts_for_branch;
 pub mod list_company_and_branch;
