@@ -347,8 +347,11 @@ impl Input {
 
         let mut seen_new_uuids = HashSet::new();
 
+        // Pre‑allocate double_entries to match input length
+        errr.double_entries = vec![DoubleEntryError::default(); self.double_entries.len()];
+
         // Validate each double entry
-        for double_entry in self.double_entries.iter() {
+        for (i, double_entry) in self.double_entries.iter().enumerate() {
             let accounting_err = accounting_stuff::state_less_check_for_entry(&double_entry.0);
             let mut single_entry_errors = vec![SingleEntryError::default(); double_entry.0.len()];
 
@@ -370,10 +373,10 @@ impl Input {
                 single_entry_errors[j] = single_err;
             }
 
-            errr.double_entries.push(DoubleEntryError {
+            errr.double_entries[i] = DoubleEntryError {
                 accounting_error: accounting_err,
                 single_entry_errors,
-            });
+            };
         }
 
         errr
@@ -394,7 +397,6 @@ impl Input {
             }
         }
 
-        // Read from database
         let read_output = Db::read(db, &ReadInput {
             new_uuid: self.new_uuid.clone(),
             belong_to_company_branch: self.belong_to_company_branch.clone(),
@@ -407,12 +409,10 @@ impl Input {
 
         let mut errr = Error::default();
 
-        // Check main entry UUID uniqueness
         if read_output.is_new_uuid_used {
             errr.new_uuid = Some(types::RowIdError::Duplicated);
         }
 
-        // Check user permissions
         if !types::Role::has_any(&read_output.user_roles, &[
             types::Role::Manager,
             types::Role::CoManager,
@@ -420,33 +420,31 @@ impl Input {
             errr.user_uuid = Some(types::UserUuidError::YouDontHavePermissionToDoThat);
         }
 
-        // Check shared entry existence if provided
         if self.shared_entry_id.is_some() {
             if !read_output.is_shared_entry_exist {
                 errr.shared_entry_id = Some(types::RowIdError::NotExist);
             }
         }
 
-        // Build accounting state from read output
         let mut accounting_state = AccountingState {
             account_infos: read_output.account_info,
             inventories:   read_output.inventory,
         };
 
-        // Validate each double entry
-        for double_entry in &self.double_entries {
-            // Run full accounting check
+        // Pre‑allocate double_entries to match input length
+        errr.double_entries = vec![DoubleEntryError::default(); self.double_entries.len()];
+
+        for (i, double_entry) in self.double_entries.iter().enumerate() {
             let accounting_err = accounting_stuff::state_full_check_for_entry(
                 &double_entry.0,
                 &mut accounting_state,
             );
 
-            // Collect UUID errors for each single entry (duplicate check)
             let mut single_entry_errors = vec![SingleEntryError::default(); double_entry.0.len()];
             for (j, single) in double_entry.0.iter().enumerate() {
                 let mut single_err = SingleEntryError::default();
 
-                // Check if this new_uuid is already used
+                // Check if this new_uuid is already used in the database
                 if let Some(&used) = read_output.is_new_entries_uuid_used.get(&single.new_uuid) {
                     if used {
                         single_err.new_uuid = Some(types::RowIdError::Duplicated);
@@ -456,10 +454,10 @@ impl Input {
                 single_entry_errors[j] = single_err;
             }
 
-            errr.double_entries.push(DoubleEntryError {
+            errr.double_entries[i] = DoubleEntryError {
                 accounting_error: accounting_err,
                 single_entry_errors,
-            });
+            };
         }
 
         Ok(errr)
@@ -471,11 +469,11 @@ impl Input {
         Ok {
             new_uuid:        self.new_uuid.clone(),
             user_uuid:       self.user_uuid.clone(),
-            time:            0, // placeholder
+            time:            todo!(), // placeholder
             notes:           self.notes.clone(),
             shared_entry_id: self.shared_entry_id.clone(),
-            double_entry:    Vec::new(), // placeholder
-            inventory:       Vec::new(), // placeholder
+            double_entry:    todo!(), // placeholder
+            inventory:       todo!(), // placeholder
         }
     }
 }
