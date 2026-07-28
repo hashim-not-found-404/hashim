@@ -261,11 +261,12 @@ where
         return errr;
     }
 
-    errr.single_entry_errors = Vec::with_capacity(entry.len());
+    // Pre‑allocate to the exact length
+    errr.single_entry_errors = vec![SingleEntryError::default(); entry.len()];
 
     let mut seen_accounts = HashSet::with_capacity(entry.len());
 
-    for single in entry.iter() {
+    for (i, single) in entry.iter().enumerate() {
         let mut single_err = SingleEntryError::default();
 
         if single.amount() == 0.0 && single.quantity() == 0.0 {
@@ -282,7 +283,7 @@ where
             single_err.duplicate_account_in_entry = true;
         }
 
-        errr.single_entry_errors.push(single_err);
+        errr.single_entry_errors[i] = single_err;
     }
 
     errr
@@ -297,12 +298,14 @@ where
     A::Inventory: Inventory,
 {
     let mut errr = Error::default();
-    errr.single_entry_errors = Vec::with_capacity(entry.len());
+
+    // Pre‑allocate to the exact length
+    errr.single_entry_errors = vec![SingleEntryError::default(); entry.len()];
 
     let mut total_debit = 0.0;
     let mut total_credit = 0.0;
 
-    for single in entry.iter() {
+    for (i, single) in entry.iter().enumerate() {
         let mut single_err = SingleEntryError::default();
 
         let account_id = single.account_id();
@@ -411,7 +414,7 @@ where
             }
         }
 
-        errr.single_entry_errors.push(single_err);
+        errr.single_entry_errors[i] = single_err;
     }
 
     if total_debit != total_credit {
