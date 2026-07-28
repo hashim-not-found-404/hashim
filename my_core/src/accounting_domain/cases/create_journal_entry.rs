@@ -348,11 +348,11 @@ impl Input {
         let mut seen_new_uuids = HashSet::new();
 
         // Validate each double entry
-        for (i, double_entry) in self.double_entries.iter().enumerate() {
+        for double_entry in self.double_entries.iter() {
             let accounting_err = accounting_stuff::state_less_check_for_entry(&double_entry.0);
-            let mut single_entry_errors = Vec::with_capacity(double_entry.0.len());
+            let mut single_entry_errors = vec![SingleEntryError::default(); double_entry.0.len()];
 
-            for single in &double_entry.0 {
+            for (j, single) in double_entry.0.iter().enumerate() {
                 let mut single_err = SingleEntryError::default();
 
                 if !Id::validate(&single.new_uuid) {
@@ -367,7 +367,7 @@ impl Input {
                     single_err.new_uuid = Some(types::RowIdError::Duplicated);
                 }
 
-                single_entry_errors[i] = single_err;
+                single_entry_errors[j] = single_err;
             }
 
             errr.double_entries.push(DoubleEntryError {
@@ -442,8 +442,8 @@ impl Input {
             );
 
             // Collect UUID errors for each single entry (duplicate check)
-            let mut single_entry_errors = Vec::with_capacity(double_entry.0.len());
-            for single in &double_entry.0 {
+            let mut single_entry_errors = vec![SingleEntryError::default(); double_entry.0.len()];
+            for (j, single) in double_entry.0.iter().enumerate() {
                 let mut single_err = SingleEntryError::default();
 
                 // Check if this new_uuid is already used
@@ -452,10 +452,8 @@ impl Input {
                         single_err.new_uuid = Some(types::RowIdError::Duplicated);
                     }
                 }
-                // Account existence is already validated in accounting_err (account_info_not_found)
-                // So we don't need to duplicate it here.
 
-                single_entry_errors.push(single_err);
+                single_entry_errors[j] = single_err;
             }
 
             errr.double_entries.push(DoubleEntryError {
