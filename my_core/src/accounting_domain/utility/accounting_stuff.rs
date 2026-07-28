@@ -176,7 +176,14 @@ pub trait SingleEntry {
     fn account_id(&self) -> &Self::AccountId;
     fn quantity(&self) -> f64;
     fn amount(&self) -> f64;
-    fn cost_flow_type(&self) -> CostFlowType;
+
+    /// Resolve the cost flow type. For statuses that only provide a direction
+    /// (like M1 or M2), this method should ask the provider for the default
+    /// flow types of the account.
+    fn resolve_flow_type<A: AccountInfoProvider<AccountId = Self::AccountId>>(
+        &self,
+        provider: &A,
+    ) -> CostFlowType;
 }
 
 /// A container of single entries (e.g., a double‑entry group or a whole journal entry).
@@ -199,6 +206,10 @@ pub trait AccountInfoProvider {
     fn get_nature(&self, id: &Self::AccountId) -> Option<Nature>;
     fn get_inventory_mut(&mut self, id: &Self::AccountId) -> Option<&mut Self::Inventory>;
     fn get_or_create_inventory(&mut self, id: &Self::AccountId) -> &mut Self::Inventory;
+
+    /// Get the default InFlowType and OutFlowType for a given account.
+    /// This is used when the entry status only provides a direction flag (M1, M2).
+    fn get_default_flow_types(&self, id: &Self::AccountId) -> Option<(InFlowType, OutFlowType)>;
 }
 
 /// A collection of inventory records, with operations needed for accounting.
@@ -239,7 +250,7 @@ fn price(amount: f64, quantity: f64) -> f64 {
 // -----------------------------------------------------------------------------
 
 /// State‑less check: only checks the entries themselves, no inventory/account info needed.
-pub fn state_less_check_for_entry<C>(entry: &C) -> Error
+pub(crate) fn state_less_check_for_entry<C>(entry: &C) -> Error
 where
     C: EntryContainer,
     C::Single: SingleEntry,
@@ -278,7 +289,7 @@ where
 }
 
 /// Full validation including account info and inventory.
-pub fn state_full_check_for_entry<C, A>(entry: &C, account_info: &mut A) -> Error
+pub(crate) fn state_full_check_for_entry<C, A>(entry: &C, account_info: &mut A) -> Error
 where
     C: EntryContainer,
     C::Single: SingleEntry,
@@ -296,6 +307,7 @@ where
 
         let account_id = single.account_id();
         let nature = account_info.get_nature(account_id);
+        let flow_type = single.resolve_flow_type(account_info);
         let inventory_opt = account_info.get_inventory_mut(account_id);
 
         match (nature, inventory_opt) {
@@ -305,7 +317,8 @@ where
                     single_err.inventory_is_empty = true;
                 }
 
-                let is_inflow = matches!(single.cost_flow_type(), CostFlowType::InFlow(_));
+                let is_inflow = matches!(flow_type, CostFlowType::InFlow(_));
+
                 if is_debit(nature, is_inflow) {
                     total_debit += single.amount();
                 } else {
@@ -313,7 +326,7 @@ where
                 }
 
                 // Process according to flow type
-                match single.cost_flow_type() {
+                match flow_type {
                     CostFlowType::InFlow(in_flow_type) => {
                         match in_flow_type {
                             InFlowType::None => {}
@@ -421,9 +434,10 @@ where
 {
     for single in entry.iter() {
         let account_id = single.account_id();
+        let flow_type = single.resolve_flow_type(account_info);
         let inventory = account_info.get_or_create_inventory(account_id);
 
-        let (amt, qty) = match single.cost_flow_type() {
+        let (amt, qty) = match flow_type {
             CostFlowType::InFlow(_) => (single.amount(), single.quantity()),
             CostFlowType::OutFlow(_) => (-single.amount(), -single.quantity()),
         };

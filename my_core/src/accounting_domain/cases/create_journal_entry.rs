@@ -170,24 +170,37 @@ impl accounting_stuff::SingleEntry for SingleEntry {
         self.amount
     }
 
-    fn cost_flow_type(&self) -> accounting_stuff::CostFlowType {
+    fn resolve_flow_type<A: accounting_stuff::AccountInfoProvider<AccountId = types::UuidType>>(
+        &self,
+        provider: &A,
+    ) -> accounting_stuff::CostFlowType {
         match &self.status {
             Status::M1 {
                 is_debit,
             } => {
+                let (default_in, default_out) =
+                    provider.get_default_flow_types(&self.account).unwrap_or((
+                        accounting_stuff::InFlowType::None,
+                        accounting_stuff::OutFlowType::None,
+                    ));
                 if *is_debit {
-                    accounting_stuff::CostFlowType::InFlow(accounting_stuff::InFlowType::None)
+                    accounting_stuff::CostFlowType::InFlow(default_in)
                 } else {
-                    accounting_stuff::CostFlowType::OutFlow(accounting_stuff::OutFlowType::None)
+                    accounting_stuff::CostFlowType::OutFlow(default_out)
                 }
             }
             Status::M2 {
                 is_inflow,
             } => {
+                let (default_in, default_out) =
+                    provider.get_default_flow_types(&self.account).unwrap_or((
+                        accounting_stuff::InFlowType::None,
+                        accounting_stuff::OutFlowType::None,
+                    ));
                 if *is_inflow {
-                    accounting_stuff::CostFlowType::InFlow(accounting_stuff::InFlowType::None)
+                    accounting_stuff::CostFlowType::InFlow(default_in)
                 } else {
-                    accounting_stuff::CostFlowType::OutFlow(accounting_stuff::OutFlowType::None)
+                    accounting_stuff::CostFlowType::OutFlow(default_out)
                 }
             }
             Status::M3 {
@@ -214,9 +227,7 @@ impl accounting_stuff::EntryContainer for Vec<SingleEntry> {
     type Single = SingleEntry;
 
     fn iter(&self) -> Self::Iter<'_> {
-        // Call Vec's iter method explicitly
-        <Vec<SingleEntry> as std::ops::Deref>::deref(self).iter()
-        // or: self.as_slice().iter()
+        self.as_slice().iter()
     }
 
     fn is_empty(&self) -> bool {
@@ -257,14 +268,14 @@ impl accounting_stuff::Inventory for Vec<accounting_stuff::InventoryRecord> {
             &accounting_stuff::InventoryRecord,
         ) -> std::cmp::Ordering,
     {
-        Vec::sort_by(self, compare);
+        self.as_mut_slice().sort_by(compare);
     }
 
     fn retain<F>(&mut self, f: F)
     where
         F: FnMut(&accounting_stuff::InventoryRecord) -> bool,
     {
-        Vec::retain(self, f);
+        <Vec<accounting_stuff::InventoryRecord>>::retain(self, f);
     }
 
     fn pop(&mut self) -> Option<accounting_stuff::InventoryRecord> {
@@ -299,6 +310,16 @@ impl accounting_stuff::AccountInfoProvider for AccountingState {
     fn get_or_create_inventory(&mut self, id: &Self::AccountId) -> &mut Self::Inventory {
         self.inventories.entry(id.clone()).or_default()
     }
+
+    // HERE: Provide the default flow types from the database info
+    fn get_default_flow_types(
+        &self,
+        id: &Self::AccountId,
+    ) -> Option<(accounting_stuff::InFlowType, accounting_stuff::OutFlowType)> {
+        self.account_infos
+            .get(id)
+            .map(|info| (info.in_flow_type.clone(), info.out_flow_type.clone()))
+    }
 }
 
 // -----------------------------------------------------------------------------
@@ -328,7 +349,6 @@ impl Input {
         // Validate each double entry using the generic state-less check
         for double_entry in self.double_entries.iter() {
             let accounting_err = accounting_stuff::state_less_check_for_entry(&double_entry.0);
-            // Create a DoubleEntryError and store it
             let de_err = DoubleEntryError {
                 accounting_error:    accounting_err,
                 single_entry_errors: todo!(), // no single entry errors here – they are inside accounting_err
@@ -343,7 +363,6 @@ impl Input {
         &self,
         db: &mut Db::Db<'_>,
     ) -> Result<Error, traits::DynamicError> {
-        // Collect all account UUIDs and new entry UUIDs from all single entries
         let mut accounts_uuid = HashSet::new();
         let mut new_entries_uuid = HashSet::new();
 
@@ -354,7 +373,6 @@ impl Input {
             }
         }
 
-        // Read from database
         let read_output = Db::read(db, &ReadInput {
             new_uuid: self.new_uuid.clone(),
             belong_to_company_branch: self.belong_to_company_branch.clone(),
@@ -367,12 +385,10 @@ impl Input {
 
         let mut errr = Error::default();
 
-        // Check basic validations from DB read
         if read_output.is_new_uuid_used {
             errr.new_uuid = Some(types::RowIdError::Duplicated);
         }
 
-        // Check user permissions
         if !types::Role::has_any(&read_output.user_roles, &[
             types::Role::Manager,
             types::Role::CoManager,
@@ -380,8 +396,6 @@ impl Input {
             errr.user_uuid = Some(types::UserUuidError::YouDontHavePermissionToDoThat);
         }
 
-        // Now run the full accounting validation on each double entry
-        // Build an AccountingState from the read output
         let mut accounting_state = AccountingState {
             account_infos: read_output.account_info,
             inventories:   read_output.inventory,
@@ -392,7 +406,6 @@ impl Input {
                 &double_entry.0,
                 &mut accounting_state,
             );
-            // Wrap into our DoubleEntryError
             let de_err = DoubleEntryError {
                 accounting_error:    accounting_err,
                 single_entry_errors: todo!(), // the detailed single entry errors are inside accounting_err
