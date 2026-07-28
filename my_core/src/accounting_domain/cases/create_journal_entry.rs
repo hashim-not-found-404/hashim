@@ -345,11 +345,11 @@ impl Input {
             }
         }
 
+        let mut seen_new_uuids = HashSet::new();
+
         // Validate each double entry
-        for double_entry in self.double_entries.iter() {
-            // Accounting state-less check (quantity & amount)
+        for (i, double_entry) in self.double_entries.iter().enumerate() {
             let accounting_err = accounting_stuff::state_less_check_for_entry(&double_entry.0);
-            // Collect UUID errors for each single entry
             let mut single_entry_errors = Vec::with_capacity(double_entry.0.len());
 
             for single in &double_entry.0 {
@@ -362,7 +362,12 @@ impl Input {
                     single_err.account = Some(types::RowIdError::Invalid);
                 }
 
-                single_entry_errors.push(single_err);
+                // Check duplicate new_uuid across all single entries
+                if !seen_new_uuids.insert(single.new_uuid.clone()) {
+                    single_err.new_uuid = Some(types::RowIdError::Duplicated);
+                }
+
+                single_entry_errors[i] = single_err;
             }
 
             errr.double_entries.push(DoubleEntryError {
