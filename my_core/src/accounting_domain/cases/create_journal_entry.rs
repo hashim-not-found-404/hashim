@@ -311,7 +311,6 @@ impl accounting_stuff::AccountInfoProvider for AccountingState {
         self.inventories.entry(id.clone()).or_default()
     }
 
-    // HERE: Provide the default flow types from the database info
     fn get_default_flow_types(
         &self,
         id: &Self::AccountId,
@@ -330,7 +329,7 @@ impl Input {
     pub(crate) fn state_less_check<Id: types::RowId>(&self) -> Error {
         let mut errr = Error::default();
 
-        // Validate UUIDs
+        // Validate top-level UUIDs
         if !Id::validate(&self.new_uuid) {
             errr.new_uuid = Some(types::RowIdError::Invalid);
         }
@@ -346,14 +345,30 @@ impl Input {
             }
         }
 
-        // Validate each double entry using the generic state-less check
+        // Validate each double entry
         for double_entry in self.double_entries.iter() {
+            // Accounting state-less check (quantity & amount)
             let accounting_err = accounting_stuff::state_less_check_for_entry(&double_entry.0);
-            let de_err = DoubleEntryError {
-                accounting_error:    accounting_err,
-                single_entry_errors: todo!(), // no single entry errors here – they are inside accounting_err
-            };
-            errr.double_entries.push(de_err);
+            // Collect UUID errors for each single entry
+            let mut single_entry_errors = Vec::with_capacity(double_entry.0.len());
+
+            for single in &double_entry.0 {
+                let mut single_err = SingleEntryError::default();
+
+                if !Id::validate(&single.new_uuid) {
+                    single_err.new_uuid = Some(types::RowIdError::Invalid);
+                }
+                if !Id::validate(&single.account) {
+                    single_err.account = Some(types::RowIdError::Invalid);
+                }
+
+                single_entry_errors.push(single_err);
+            }
+
+            errr.double_entries.push(DoubleEntryError {
+                accounting_error: accounting_err,
+                single_entry_errors,
+            });
         }
 
         errr
@@ -363,6 +378,7 @@ impl Input {
         &self,
         db: &mut Db::Db<'_>,
     ) -> Result<Error, traits::DynamicError> {
+        // Collect all account UUIDs and new entry UUIDs from all single entries
         let mut accounts_uuid = HashSet::new();
         let mut new_entries_uuid = HashSet::new();
 
@@ -373,6 +389,7 @@ impl Input {
             }
         }
 
+        // Read from database
         let read_output = Db::read(db, &ReadInput {
             new_uuid: self.new_uuid.clone(),
             belong_to_company_branch: self.belong_to_company_branch.clone(),
@@ -385,10 +402,12 @@ impl Input {
 
         let mut errr = Error::default();
 
+        // Check main entry UUID uniqueness
         if read_output.is_new_uuid_used {
             errr.new_uuid = Some(types::RowIdError::Duplicated);
         }
 
+        // Check user permissions
         if !types::Role::has_any(&read_output.user_roles, &[
             types::Role::Manager,
             types::Role::CoManager,
@@ -396,36 +415,64 @@ impl Input {
             errr.user_uuid = Some(types::UserUuidError::YouDontHavePermissionToDoThat);
         }
 
+        // Check shared entry existence if provided
+        if self.shared_entry_id.is_some() {
+            if !read_output.is_shared_entry_exist {
+                errr.shared_entry_id = Some(types::RowIdError::NotExist);
+            }
+        }
+
+        // Build accounting state from read output
         let mut accounting_state = AccountingState {
             account_infos: read_output.account_info,
             inventories:   read_output.inventory,
         };
 
+        // Validate each double entry
         for double_entry in &self.double_entries {
+            // Run full accounting check
             let accounting_err = accounting_stuff::state_full_check_for_entry(
                 &double_entry.0,
                 &mut accounting_state,
             );
-            let de_err = DoubleEntryError {
-                accounting_error:    accounting_err,
-                single_entry_errors: todo!(), // the detailed single entry errors are inside accounting_err
-            };
-            errr.double_entries.push(de_err);
+
+            // Collect UUID errors for each single entry (duplicate check)
+            let mut single_entry_errors = Vec::with_capacity(double_entry.0.len());
+            for single in &double_entry.0 {
+                let mut single_err = SingleEntryError::default();
+
+                // Check if this new_uuid is already used
+                if let Some(&used) = read_output.is_new_entries_uuid_used.get(&single.new_uuid) {
+                    if used {
+                        single_err.new_uuid = Some(types::RowIdError::Duplicated);
+                    }
+                }
+                // Account existence is already validated in accounting_err (account_info_not_found)
+                // So we don't need to duplicate it here.
+
+                single_entry_errors.push(single_err);
+            }
+
+            errr.double_entries.push(DoubleEntryError {
+                accounting_error: accounting_err,
+                single_entry_errors,
+            });
         }
 
         Ok(errr)
     }
 
     pub(crate) fn state_less_operation(&self) -> Ok {
-        // TODO: implement actual transformation
+        // TODO: implement actual transformation (requires inventory application)
+        // For now, placeholder
         Ok {
-            new_uuid:        todo!(),
-            user_uuid:       todo!(),
-            time:            todo!(),
-            notes:           todo!(),
-            shared_entry_id: todo!(),
-            double_entry:    todo!(),
-            inventory:       todo!(),
+            new_uuid:        self.new_uuid.clone(),
+            user_uuid:       self.user_uuid.clone(),
+            time:            0, // placeholder
+            notes:           self.notes.clone(),
+            shared_entry_id: self.shared_entry_id.clone(),
+            double_entry:    Vec::new(), // placeholder
+            inventory:       Vec::new(), // placeholder
         }
     }
 }
