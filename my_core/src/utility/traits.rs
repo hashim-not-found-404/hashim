@@ -14,6 +14,10 @@ pub trait Regex: 'static {
     fn is_regex(s: &String) -> Result<(), String>;
 }
 
+pub trait Time: 'static {
+    fn now_as_unix_milliseconds() -> u64;
+}
+
 pub trait RandomNumber: 'static {
     fn generate() -> u64;
 }

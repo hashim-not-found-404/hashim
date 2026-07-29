@@ -1,5 +1,6 @@
 use crate::accounting_domain::utility::accounting_stuff;
 use crate::accounting_domain::utility::types;
+use crate::accounting_domain::utility::types::MyErrorTrait;
 use crate::utility::traits;
 use serde::Deserialize;
 use serde::Serialize;
@@ -112,7 +113,31 @@ pub struct SingleEntryError {
     pub(crate) account:  Option<types::RowIdError>,
 }
 
-impl types::MyErrorTrait for Error {}
+impl types::MyErrorTrait for Error {
+    fn is_there_error(&self) -> bool {
+        if self.user_uuid.is_some()
+            || self.new_uuid.is_some()
+            || self.belong_to_company_branch.is_some()
+            || self.shared_entry_id.is_some()
+        {
+            return true;
+        }
+
+        for double in self.double_entries.iter() {
+            if double.accounting_error.is_there_error() {
+                return true;
+            }
+
+            for line in double.single_entry_errors.iter() {
+                if *line != Default::default() {
+                    return true;
+                }
+            }
+        }
+
+        false
+    }
+}
 
 // -----------------------------------------------------------------------------
 // Database read types
@@ -382,10 +407,10 @@ impl Input {
         errr
     }
 
-    pub(crate) async fn state_full_check<Db: DatabaseRead>(
+    pub(crate) async fn state_full_check<Db: DatabaseRead, Ti: traits::Time>(
         &self,
         db: &mut Db::Db<'_>,
-    ) -> Result<Error, traits::DynamicError> {
+    ) -> Result<Result<Ok, Error>, traits::DynamicError> {
         // Collect all account UUIDs and new entry UUIDs from all single entries
         let mut accounts_uuid = HashSet::new();
         let mut new_entries_uuid = HashSet::new();
@@ -460,20 +485,18 @@ impl Input {
             };
         }
 
-        Ok(errr)
-    }
+        if errr.is_there_error() {
+            return Ok(Err(errr));
+        }
 
-    pub(crate) fn state_less_operation(&self) -> Ok {
-        // TODO: implement actual transformation (requires inventory application)
-        // For now, placeholder
-        Ok {
+        Ok(Ok(Ok {
             new_uuid:        self.new_uuid.clone(),
             user_uuid:       self.user_uuid.clone(),
-            time:            todo!(), // placeholder
+            time:            Ti::now_as_unix_milliseconds(),
             notes:           self.notes.clone(),
             shared_entry_id: self.shared_entry_id.clone(),
             double_entry:    todo!(), // placeholder
             inventory:       todo!(), // placeholder
-        }
+        }))
     }
 }

@@ -10,6 +10,7 @@ amount <  0 && quantity == 0 : rare       : but it cuse to adjust the inventory:
 amount <  0 && quantity <  0 : normal     : this is normal like the outflow to the account
 */
 
+use crate::accounting_domain::utility::types;
 use serde::Deserialize;
 use serde::Serialize;
 use std::collections::HashSet;
@@ -113,9 +114,9 @@ pub enum Nature {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct InventoryRecord {
-    time_unix: u64,
-    quantity:  f64,
-    amount:    f64,
+    pub(crate) time_unix: u64,
+    pub(crate) quantity:  f64,
+    pub(crate) amount:    f64,
 }
 
 // -----------------------------------------------------------------------------
@@ -165,6 +166,21 @@ pub(crate) struct Error {
     single_entry_errors:    Vec<SingleEntryError>,
 }
 
+impl types::MyErrorTrait for Error {
+    fn is_there_error(&self) -> bool {
+        if self.entry_is_empty || self.debit_not_equal_credit.is_some() {
+            return true;
+        }
+
+        for line in self.single_entry_errors.iter() {
+            if *line != Default::default() {
+                return true;
+            }
+        }
+
+        false
+    }
+}
 // -----------------------------------------------------------------------------
 // Trait definitions – the core abstraction for accounting logic
 // -----------------------------------------------------------------------------
