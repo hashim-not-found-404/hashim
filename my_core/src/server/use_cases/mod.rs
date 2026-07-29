@@ -2,6 +2,7 @@ mod create_account;
 mod create_account_for_branch;
 mod create_company;
 mod create_company_branch;
+mod create_journal_entry;
 mod get_all_accounts;
 mod get_all_accounts_for_branch;
 mod list_company_and_branch;

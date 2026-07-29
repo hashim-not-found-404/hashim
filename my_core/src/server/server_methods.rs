@@ -18,6 +18,7 @@ use std::time::UNIX_EPOCH;
 pub trait DbBundle<Cli: DBClient>: 'static {
     type CreateAccount: for<'a> cases::create_account::DatabaseRead<Db<'a> = Cli::Txn<'a>>;
     type CreateAccountForBranch: for<'a> cases::create_account_for_branch::DatabaseRead<Db<'a> = Cli::Txn<'a>>;
+    type CreateJournalEntry: for<'a> cases::create_journal_entry::DatabaseRead<Db<'a> = Cli::Txn<'a>>;
     type GetAllAccounts: for<'a> cases::get_all_accounts::DatabaseRead<Db<'a> = Cli>;
     type GetAllAccountsForBranch: for<'a> cases::get_all_accounts_for_branch::DatabaseRead<Db<'a> = Cli>;
     type CreateCompany: for<'a> cases::create_company::DatabaseRead<Db<'a> = Cli::Txn<'a>>;
@@ -74,6 +75,7 @@ impl<
         Rn: traits::RandomNumber,
         Ed: traits::Coding,
         Id: types::RowId,
+        Ti: traits::Time,
         Rg: traits::Regex,
         Auth: types::HashedPassword,
         Dbb: DbBundle<Cli>,
@@ -139,7 +141,7 @@ impl<
 
                                 dbg!(&input);
                                 let mut side_effects = server_traits::SideEffects::default();
-                                let output = push_data::<Rn, Id, Rg, Auth, Jwt, Cli, Dbb>(
+                                let output = push_data::<Rn, Id, Ti, Rg, Auth, Jwt, Cli, Dbb>(
                                     &input,
                                     &mut side_effects,
                                     &mut client,
@@ -370,6 +372,7 @@ impl<
 async fn push_data<
     Rn: traits::RandomNumber,
     Id: types::RowId,
+    Ti: traits::Time,
     Rg: traits::Regex,
     Auth: types::HashedPassword,
     Jwt: types::JWT,
@@ -488,6 +491,16 @@ async fn push_data<
                 request_response::push_data::OperationsResult::GetAllAccountsForBranch(
                     input
                         .handle_operation::<Id, Cli, Dbb::GetAllAccountsForBranch>(
+                            side_effects,
+                            client,
+                        )
+                        .await?,
+                )
+            }
+            request_response::push_data::OperationsInput::CreateJournalEntry(input) => {
+                request_response::push_data::OperationsResult::CreateJournalEntry(
+                    input
+                        .handle_operation::<Id, Ti, Cli, Dbb::CreateJournalEntry>(
                             side_effects,
                             client,
                         )
