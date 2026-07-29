@@ -107,7 +107,7 @@ CREATE TABLE IF NOT EXISTS accounting_app.single_entry(
     entry                                       UUID REFERENCES accounting_app.entry(rowid) ON DELETE CASCADE NOT NULL,
     account                                     UUID REFERENCES accounting_app.account_flow_type(rowid) ON DELETE CASCADE NOT NULL,
     is_debit                                    BOOL NOT NULL,
-    cost_flow_type                              STRING NOT NULL,
+    cost_out_flow_type                          STRING NOT NULL,
     quantity                                    DECIMAL NOT NULL,
     amount                                      DECIMAL NOT NULL
 );

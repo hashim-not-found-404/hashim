@@ -103,7 +103,7 @@ CREATE TABLE IF NOT EXISTS single_entry(
     entry                                       TEXT REFERENCES entry(rowid) ON DELETE CASCADE,
     account                                     TEXT REFERENCES account_flow_type(rowid) ON DELETE CASCADE,
     is_debit                                    BOOLEAN,
-    cost_flow_type                              TEXT,
+    cost_out_flow_type                          TEXT,
     quantity                                    DECIMAL,
     amount                                      DECIMAL
 );

@@ -28,7 +28,7 @@ pub enum CostFlowType {
 
 #[derive(PartialEq, Debug, Deserialize, Serialize, Clone, Default)]
 pub enum OutFlowType {
-    None, // reorderable
+    Manual, // reorderable
     QuantityEqualAmount,
     QuantityEqualZero,
     #[default]
@@ -42,7 +42,7 @@ pub enum OutFlowType {
 impl OutFlowType {
     pub fn as_str(&self) -> &'static str {
         match self {
-            OutFlowType::None => "None",
+            OutFlowType::Manual => "Manual",
             OutFlowType::QuantityEqualAmount => "QuantityEqualAmount",
             OutFlowType::QuantityEqualZero => "QuantityEqualZero",
             OutFlowType::Wac => "Wac",
@@ -59,7 +59,7 @@ impl std::str::FromStr for OutFlowType {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "None" => Ok(OutFlowType::None),
+            "Manual" => Ok(OutFlowType::Manual),
             "QuantityEqualAmount" => Ok(OutFlowType::QuantityEqualAmount),
             "QuantityEqualZero" => Ok(OutFlowType::QuantityEqualZero),
             "Wac" => Ok(OutFlowType::Wac),
@@ -75,19 +75,17 @@ impl std::str::FromStr for OutFlowType {
 #[derive(PartialEq, Debug, Deserialize, Serialize, Clone, Default)]
 pub enum InFlowType {
     #[default]
-    None,
+    Manual,
     QuantityEqualAmount,
     QuantityEqualZero,
-    Wac,
 }
 
 impl InFlowType {
     pub fn as_str(&self) -> &'static str {
         match self {
-            InFlowType::None => "None",
+            InFlowType::Manual => "Manual",
             InFlowType::QuantityEqualAmount => "QuantityEqualAmount",
             InFlowType::QuantityEqualZero => "QuantityEqualZero",
-            InFlowType::Wac => "Wac",
         }
     }
 }
@@ -97,10 +95,9 @@ impl std::str::FromStr for InFlowType {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "None" => Ok(InFlowType::None),
+            "Manual" => Ok(InFlowType::Manual),
             "QuantityEqualAmount" => Ok(InFlowType::QuantityEqualAmount),
             "QuantityEqualZero" => Ok(InFlowType::QuantityEqualZero),
-            "Wac" => Ok(InFlowType::Wac),
             _ => Err("unknown InFlowType".into()),
         }
     }
@@ -248,8 +245,17 @@ pub trait Inventory {
 // Helper functions (non‑generic)
 // -----------------------------------------------------------------------------
 
-fn is_debit(nature: Nature, is_inflow: bool) -> bool {
+pub(crate) fn is_debit(nature: Nature, is_inflow: bool) -> bool {
     match (nature, is_inflow) {
+        (Nature::Debit, true) => true,
+        (Nature::Debit, false) => false,
+        (Nature::Credit, true) => false,
+        (Nature::Credit, false) => true,
+    }
+}
+
+pub(crate) fn is_inflow(nature: Nature, is_debit: bool) -> bool {
+    match (nature, is_debit) {
         (Nature::Debit, true) => true,
         (Nature::Debit, false) => false,
         (Nature::Credit, true) => false,
@@ -348,19 +354,7 @@ where
                 match flow_type {
                     CostFlowType::InFlow(in_flow_type) => {
                         match in_flow_type {
-                            InFlowType::None => {}
-                            InFlowType::Wac => {
-                                let (total_qty, total_amt) = sum_inventory(inventory);
-                                if total_qty != 0.0 {
-                                    let expected_amt =
-                                        single.quantity() * price(total_amt, total_qty);
-                                    if single.amount() != expected_amt {
-                                        single_err.amount_mismatch = Some(AmountMismatch {
-                                            expected_amount: expected_amt,
-                                        });
-                                    }
-                                }
-                            }
+                            InFlowType::Manual => {}
                             InFlowType::QuantityEqualAmount => {
                                 if single.quantity() != single.amount() {
                                     single_err.quantity_not_equal_amount = true;
@@ -399,7 +393,7 @@ where
                             | OutFlowType::Lifo
                             | OutFlowType::Hifo
                             | OutFlowType::Lofo
-                            | OutFlowType::None => {
+                            | OutFlowType::Manual => {
                                 let expected_amt = get_amount(single.quantity(), inventory);
                                 if expected_amt != single.amount() {
                                     single_err.amount_mismatch = Some(AmountMismatch {
@@ -524,7 +518,7 @@ pub fn sort_inventory<I: Inventory>(out_flow_type: &OutFlowType, inventory: &mut
     match out_flow_type {
         OutFlowType::QuantityEqualAmount
         | OutFlowType::QuantityEqualZero
-        | OutFlowType::None
+        | OutFlowType::Manual
         | OutFlowType::Wac => {
             combine_all_inventory_record_in_one_record(inventory);
         }

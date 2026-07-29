@@ -196,8 +196,8 @@ impl accounting_stuff::SingleEntry for SingleEntry {
             } => {
                 let (default_in, default_out) =
                     provider.get_default_flow_types(&self.account).unwrap_or((
-                        accounting_stuff::InFlowType::None,
-                        accounting_stuff::OutFlowType::None,
+                        accounting_stuff::InFlowType::Manual,
+                        accounting_stuff::OutFlowType::Manual,
                     ));
                 if *is_debit {
                     accounting_stuff::CostFlowType::InFlow(default_in)
@@ -210,8 +210,8 @@ impl accounting_stuff::SingleEntry for SingleEntry {
             } => {
                 let (default_in, default_out) =
                     provider.get_default_flow_types(&self.account).unwrap_or((
-                        accounting_stuff::InFlowType::None,
-                        accounting_stuff::OutFlowType::None,
+                        accounting_stuff::InFlowType::Manual,
+                        accounting_stuff::OutFlowType::Manual,
                     ));
                 if *is_inflow {
                     accounting_stuff::CostFlowType::InFlow(default_in)
@@ -329,8 +329,8 @@ impl accounting_stuff::AccountInfoProvider for AccountingState {
             .or_insert_with(|| {
                 AccountInfo {
                     is_debit:      false,
-                    in_flow_type:  accounting_stuff::InFlowType::None,
-                    out_flow_type: accounting_stuff::OutFlowType::None,
+                    in_flow_type:  accounting_stuff::InFlowType::Manual,
+                    out_flow_type: accounting_stuff::OutFlowType::Manual,
                     inventory:     Vec::new(),
                 }
             })
@@ -489,13 +489,99 @@ impl Input {
             return Ok(Err(errr));
         }
 
+        // Build the double_entry output
+        let mut double_entry_output = Vec::new();
+        for (double_idx, double_entry) in self.double_entries.iter().enumerate() {
+            for single in &double_entry.0 {
+                // Determine nature for this account
+                let nature = accounting_state
+                    .account_infos
+                    .get(&single.account)
+                    .map(|info| {
+                        if info.is_debit {
+                            accounting_stuff::Nature::Debit
+                        } else {
+                            accounting_stuff::Nature::Credit
+                        }
+                    })
+                    .unwrap_or(accounting_stuff::Nature::Debit);
+
+                let default_out_flow_type = accounting_state
+                    .account_infos
+                    .get(&single.account)
+                    .map(|info| info.out_flow_type.clone())
+                    .unwrap_or_default();
+
+                // Compute is_debit
+                let is_debit = match &single.status {
+                    Status::M1 {
+                        is_debit,
+                    } => *is_debit,
+                    Status::M2 {
+                        is_inflow,
+                    } => accounting_stuff::is_debit(nature, *is_inflow),
+                    Status::M3 {
+                        flow,
+                    } => {
+                        let is_inflow = matches!(flow, accounting_stuff::CostFlowType::InFlow(_));
+                        accounting_stuff::is_debit(nature, is_inflow)
+                    }
+                    Status::M4 {
+                        is_debit,
+                        ..
+                    } => *is_debit,
+                };
+
+                // Compute out_flow_type
+                let out_flow_type = match &single.status {
+                    Status::M1 {
+                        ..
+                    } => default_out_flow_type,
+                    Status::M2 {
+                        ..
+                    } => default_out_flow_type,
+                    Status::M3 {
+                        flow,
+                    } => {
+                        match flow {
+                            accounting_stuff::CostFlowType::OutFlow(out) => out.clone(),
+                            accounting_stuff::CostFlowType::InFlow(_) => {
+                                accounting_stuff::OutFlowType::Manual
+                            }
+                        }
+                    }
+                    Status::M4 {
+                        out_flow,
+                        is_debit,
+                        ..
+                    } => {
+                        if accounting_stuff::is_inflow(nature, *is_debit) {
+                            default_out_flow_type
+                        } else {
+                            out_flow.clone()
+                        }
+                    }
+                };
+
+                double_entry_output.push(SingleEntryOk {
+                    new_uuid: single.new_uuid.clone(),
+                    double_entry_number: double_idx as u32,
+                    account: single.account.clone(),
+                    is_debit,
+                    out_flow_type,
+                    quantity: single.quantity,
+                    amount: single.amount,
+                });
+            }
+        }
+
         Ok(Ok(Ok {
             new_uuid:        self.new_uuid.clone(),
             user_uuid:       self.user_uuid.clone(),
             time:            Ti::now_as_unix_milliseconds(),
             notes:           self.notes.clone(),
             shared_entry_id: self.shared_entry_id.clone(),
-            double_entry:    todo!(),
+            double_entry:    double_entry_output,
             inventory:       accounting_state
                 .account_infos
                 .into_iter()
