@@ -65,16 +65,7 @@ pub struct Ok {
     pub notes:           Option<String>,
     pub shared_entry_id: Option<types::UuidType>,
     pub double_entry:    Vec<SingleEntryOk>,
-    pub inventory:       Vec<Inventory>,
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct Inventory {
-    pub row_uuid:  types::UuidType,
-    pub account:   types::UuidType,
-    pub time_unix: u64,
-    pub quantity:  f64,
-    pub amount:    f64,
+    pub inventory:       HashMap<types::UuidType, Vec<accounting_stuff::InventoryRecord>>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -158,13 +149,13 @@ pub struct ReadOutput {
     pub is_shared_entry_exist:    bool,
     pub is_new_entries_uuid_used: HashMap<types::UuidType, bool>,
     pub account_info:             HashMap<types::UuidType, AccountInfo>,
-    pub inventory:                HashMap<types::UuidType, Vec<accounting_stuff::InventoryRecord>>,
 }
 
 pub struct AccountInfo {
     pub is_debit:      bool,
     pub in_flow_type:  accounting_stuff::InFlowType,
     pub out_flow_type: accounting_stuff::OutFlowType,
+    pub inventory:     Vec<accounting_stuff::InventoryRecord>,
 }
 
 pub trait DatabaseRead {
@@ -311,7 +302,6 @@ impl accounting_stuff::Inventory for Vec<accounting_stuff::InventoryRecord> {
 // 4. AccountInfoProvider – a local struct to hold both account info and inventory
 pub struct AccountingState {
     pub account_infos: HashMap<types::UuidType, AccountInfo>,
-    pub inventories:   HashMap<types::UuidType, Vec<accounting_stuff::InventoryRecord>>,
 }
 
 impl accounting_stuff::AccountInfoProvider for AccountingState {
@@ -329,11 +319,22 @@ impl accounting_stuff::AccountInfoProvider for AccountingState {
     }
 
     fn get_inventory_mut(&mut self, id: &Self::AccountId) -> Option<&mut Self::Inventory> {
-        self.inventories.get_mut(id)
+        self.account_infos.get_mut(id).map(|info| &mut info.inventory)
     }
 
     fn get_or_create_inventory(&mut self, id: &Self::AccountId) -> &mut Self::Inventory {
-        self.inventories.entry(id.clone()).or_default()
+        &mut self
+            .account_infos
+            .entry(id.clone())
+            .or_insert_with(|| {
+                AccountInfo {
+                    is_debit:      false,
+                    in_flow_type:  accounting_stuff::InFlowType::None,
+                    out_flow_type: accounting_stuff::OutFlowType::None,
+                    inventory:     Vec::new(),
+                }
+            })
+            .inventory
     }
 
     fn get_default_flow_types(
@@ -453,7 +454,6 @@ impl Input {
 
         let mut accounting_state = AccountingState {
             account_infos: read_output.account_info,
-            inventories:   read_output.inventory,
         };
 
         // Pre‑allocate double_entries to match input length
@@ -495,8 +495,12 @@ impl Input {
             time:            Ti::now_as_unix_milliseconds(),
             notes:           self.notes.clone(),
             shared_entry_id: self.shared_entry_id.clone(),
-            double_entry:    todo!(), // placeholder
-            inventory:       todo!(), // placeholder
+            double_entry:    todo!(),
+            inventory:       accounting_state
+                .account_infos
+                .into_iter()
+                .map(|(account_uuid, info)| (account_uuid, info.inventory))
+                .collect(),
         }))
     }
 }

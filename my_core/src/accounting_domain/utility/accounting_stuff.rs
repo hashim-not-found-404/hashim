@@ -112,7 +112,7 @@ pub enum Nature {
     Credit,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
 pub struct InventoryRecord {
     pub(crate) time_unix: u64,
     pub(crate) quantity:  f64,
