@@ -12,6 +12,7 @@ amount <  0 && quantity <  0 : normal     : this is normal like the outflow to t
 
 use crate::accounting_domain::utility::common_subset_sum;
 use crate::accounting_domain::utility::types;
+use crate::accounting_domain::utility::types::MyErrorTrait;
 use serde::Deserialize;
 use serde::Serialize;
 use std::collections::HashSet;
@@ -172,7 +173,10 @@ pub(crate) struct EntryError {
 
 impl types::MyErrorTrait for DoubleEntryError {
     fn is_there_error(&self) -> bool {
-        if self.entry_is_empty || self.debit_not_equal_credit.is_some() {
+        if self.entry_is_empty
+            || self.you_need_to_split_the_entry
+            || self.debit_not_equal_credit.is_some()
+        {
             return true;
         }
 
@@ -185,6 +189,9 @@ impl types::MyErrorTrait for DoubleEntryError {
         false
     }
 }
+
+impl types::MyErrorTrait for SingleEntryError {}
+
 // -----------------------------------------------------------------------------
 // Trait definitions – the core abstraction for accounting logic
 // -----------------------------------------------------------------------------
@@ -460,13 +467,15 @@ where
                 }
             }
 
-            apply_entry_on_inventory::<<C::Double as DoubleEntry>::Single, A::Inventory>(
-                time_unix,
-                single.amount(),
-                single.quantity(),
-                is_inflow,
-                inventory,
-            );
+            if !single_err.is_there_error() {
+                apply_entry_on_inventory::<<C::Double as DoubleEntry>::Single, A::Inventory>(
+                    time_unix,
+                    single.amount(),
+                    single.quantity(),
+                    is_inflow,
+                    inventory,
+                );
+            }
 
             double_err.single_entry_errors.push(single_err);
         }
@@ -602,20 +611,30 @@ pub fn decrease_inventory<I: Inventory>(quantity: f64, inventory: &mut I) {
     let mut remaining = quantity;
     let mut to_remove = 0;
 
-    // FIFO order
     for record in inventory.iter_mut() {
         if record.quantity <= remaining {
             remaining -= record.quantity;
             to_remove += 1;
         } else {
+            let price = price(record.amount, record.quantity);
             record.quantity -= remaining;
-            record.amount = record.quantity * price(record.amount, record.quantity);
+            record.amount = record.quantity * price;
             break;
         }
     }
 
-    for _ in 0..to_remove {
-        inventory.pop();
+    let mut new_vec = Vec::new();
+    let mut skip = to_remove;
+    for record in inventory.iter() {
+        if skip > 0 {
+            skip -= 1;
+        } else {
+            new_vec.push(record.clone());
+        }
+    }
+    inventory.clear();
+    for record in new_vec {
+        inventory.push(record);
     }
 }
 
@@ -672,6 +691,8 @@ mod tests {
     use super::SingleEntry;
     use super::state_full_check_for_entry;
     use super::state_less_check_for_entry;
+    use crate::accounting_domain::utility::accounting_stuff::decrease_inventory;
+    use crate::accounting_domain::utility::accounting_stuff::sum_inventory;
     use std::alloc::System;
     use std::collections::HashMap;
     use std::time::SystemTime;
@@ -1350,5 +1371,62 @@ mod tests {
         let err = state_full_check_for_entry(100000000000, &entry, &mut provider);
         let se = &err.double_entry_errors[0].single_entry_errors[0];
         assert!(se.inventory_is_empty);
+    }
+
+    #[test]
+    fn test_decrease_inventory_fifo_correctness() {
+        let mut inv = TestInventory::default();
+        inv.push(InventoryRecord {
+            time_unix: 1,
+            quantity:  2.0,
+            amount:    10.0,
+        });
+        inv.push(InventoryRecord {
+            time_unix: 2,
+            quantity:  3.0,
+            amount:    15.0,
+        });
+        inv.push(InventoryRecord {
+            time_unix: 3,
+            quantity:  5.0,
+            amount:    25.0,
+        });
+
+        decrease_inventory(4.0, &mut inv);
+
+        let (qty, amt) = sum_inventory(&inv);
+        assert_eq!(qty, 6.0); // 2+3+5 - 4 = 6
+        // Check the remaining records: should be [B(qty=1), C(qty=5)]
+        let records: Vec<_> = inv.iter().collect();
+        assert_eq!(records.len(), 2);
+        assert_eq!(records[0].quantity, 1.0);
+        assert_eq!(records[0].amount, 5.0); // price 5
+        assert_eq!(records[1].quantity, 5.0);
+        assert_eq!(records[1].amount, 25.0);
+    }
+
+    #[test]
+    fn test_state_full_does_not_mutate_on_error() {
+        let mut provider = setup_provider();
+        let inv = provider.get_or_create_inventory(&AccountId("A".to_string()));
+        inv.push(InventoryRecord {
+            time_unix: 1,
+            quantity:  5.0,
+            amount:    10.0,
+        });
+
+        let single = entry("A", false, 5.0, 20.0, InFlowType::Manual, OutFlowType::Manual);
+        let entry = TestEntryContainer {
+            groups: vec![TestDoubleEntry {
+                lines: vec![single],
+            }],
+        };
+
+        state_full_check_for_entry(100, &entry, &mut provider);
+
+        // Inventory should STILL be exactly as before (10.0 amount, 5 qty)
+        let (qty, amt) = sum_inventory(&provider.inventories[&AccountId("A".to_string())]);
+        assert_eq!(qty, 5.0);
+        assert_eq!(amt, 10.0);
     }
 }
