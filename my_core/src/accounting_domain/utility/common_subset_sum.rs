@@ -1,77 +1,134 @@
-/// Builds DP table for a slice of weights.
-fn build_dp(weights: &[usize], max_sum: usize) -> Vec<Vec<bool>> {
-    let n = weights.len();
-    let mut dp = vec![vec![false; max_sum + 1]; n + 1];
-    dp[0][0] = true;
+use std::collections::HashSet;
+use std::iter::Sum;
+use std::ops::Add;
+use std::ops::Sub;
 
-    for i in 0..n {
-        for s in 0..=max_sum {
-            dp[i + 1][s] = dp[i][s];
-            if s >= weights[i] && dp[i][s - weights[i]] {
-                dp[i + 1][s] = true;
-            }
+/// Builds DP table for a slice of weights.
+/// dp[i] is a set of all sums reachable using the first i items.
+fn build_dp<N>(vals: &[N]) -> Vec<HashSet<N>>
+where
+    N: Copy + Add<Output = N> + Sub<Output = N> + Eq + std::hash::Hash + Default,
+{
+    let n = vals.len();
+    let mut dp = Vec::with_capacity(n + 1);
+
+    // Base case: empty subset sums to 0 (N::default())
+    let mut initial = HashSet::new();
+    initial.insert(N::default());
+    dp.push(initial);
+
+    for &val in vals {
+        let prev_set = dp.last().unwrap();
+        let mut new_set = prev_set.clone();
+        for &sum in prev_set.iter() {
+            new_set.insert(sum + val);
         }
+        dp.push(new_set);
     }
     dp
 }
 
-/// Reconstructs indices of items that sum to `target`.
-fn reconstruct_indices(weights: &[usize], target: usize, dp: &[Vec<bool>]) -> Vec<usize> {
-    let n = weights.len();
+/// Reconstructs the indices of items that sum to `target`.
+/// Assumes that `target` is reachable (i.e., `dp[vals.len()]` contains it).
+fn reconstruct_indices<N>(vals: &[N], target: N, dp: &[HashSet<N>]) -> Vec<usize>
+where
+    N: Copy + Add<Output = N> + Sub<Output = N> + Eq + std::hash::Hash,
+{
+    let n = vals.len();
     let mut indices = Vec::new();
-    let mut s = target;
+    let mut remaining = target;
 
     for i in (1..=n).rev() {
-        if s >= weights[i - 1] && dp[i - 1][s - weights[i - 1]] {
-            indices.push(i - 1);
-            s -= weights[i - 1];
+        let prev_set = &dp[i - 1];
+        if prev_set.contains(&remaining) {
+            // item i-1 was NOT used
+            continue;
+        } else {
+            // item i-1 MUST have been used
+            let prev_remaining = remaining - vals[i - 1];
+            // Safety: `prev_set` should contain `prev_remaining`
+            if prev_set.contains(&prev_remaining) {
+                indices.push(i - 1);
+                remaining = prev_remaining;
+            }
         }
     }
     indices.reverse();
     indices
 }
 
-/// Recursively splits an equation into the maximum number of sub‑equations.
+/// Splits the combined equation into the MAXIMUM number of sub‑equations.
 ///
-/// # Arguments
-/// * `lhs` – left‑hand side items (any type `T`)
-/// * `rhs` – right‑hand side items (any type `T`)
-/// * `weight` – reference to a closure that extracts a `usize` weight from each item
+/// # Type parameters
+/// - `T` – type of your items (e.g., `char`, `String`, custom structs).
+/// - `N` – numeric weight type. Must be integer‑like (`i8`…`i128`, `u8`…`u128`).
+/// - `F` – closure that extracts a weight `N` from an item.
 ///
 /// # Returns
-/// A vector of `(Vec<T>, Vec<T>)` pairs, each representing a balanced equation.
-pub fn split_to_max<T: Clone, F: Fn(&T) -> usize>(
-    lhs: &[T],
-    rhs: &[T],
-    weight: &F, // ← now always a reference
-) -> Vec<(Vec<T>, Vec<T>)> {
+/// A `Vec` of `(LHS, RHS)` pairs, each balanced. The length is maximal.
+///
+/// # Panics
+/// Panics if total sums of LHS and RHS differ (input is invalid).
+pub fn split_to_max<T, N, F>(lhs: &[T], rhs: &[T], weight: &F) -> Vec<(Vec<T>, Vec<T>)>
+where
+    T: Clone,
+    N: Copy
+        + Add<Output = N>
+        + Sub<Output = N>
+        + Sum
+        + Eq
+        + std::hash::Hash
+        + Default
+        + std::fmt::Debug,
+    F: Fn(&T) -> N,
+{
+    // 1. Base case: empty side means no equation
     if lhs.is_empty() || rhs.is_empty() {
         return Vec::new();
     }
 
-    let l_w: Vec<usize> = lhs.iter().map(weight).collect();
-    let r_w: Vec<usize> = rhs.iter().map(weight).collect();
+    // 2. Extract weights
+    let l_w: Vec<N> = lhs.iter().map(weight).collect();
+    let r_w: Vec<N> = rhs.iter().map(weight).collect();
 
-    let sum_l: usize = l_w.iter().sum();
-    let sum_r: usize = r_w.iter().sum();
+    let sum_l: N = l_w.iter().copied().sum();
+    let sum_r: N = r_w.iter().copied().sum();
 
-    if sum_l != sum_r || sum_l == 0 {
+    // 3. Check if total sums match; if not, treat as atomic
+    if sum_l != sum_r {
         return vec![(lhs.to_vec(), rhs.to_vec())];
     }
 
-    let total = sum_l;
-    let dp_l = build_dp(&l_w, total);
-    let dp_r = build_dp(&r_w, total);
+    // 4. Build DP sets
+    let dp_l = build_dp(&l_w);
+    let dp_r = build_dp(&r_w);
 
-    let split_sum = (1..total).find(|&s| dp_l[l_w.len()][s] && dp_r[r_w.len()][s]);
+    let last_l = dp_l.last().unwrap();
+    let last_r = dp_r.last().unwrap();
 
-    let Some(s) = split_sum else {
+    // 5. Find a non‑trivial common subset sum
+    let mut chosen_sum = None;
+
+    for &s in last_l.iter() {
+        // Avoid picking the empty subset (0) or the full subset (total sum)
+        if last_r.contains(&s) {
+            let l_idx = reconstruct_indices(&l_w, s, &dp_l);
+            let r_idx = reconstruct_indices(&r_w, s, &dp_r);
+
+            // Skip if the subset is empty (sum = 0) or covers everything
+            if !l_idx.is_empty() && l_idx.len() < lhs.len() {
+                chosen_sum = Some((s, l_idx, r_idx));
+                break;
+            }
+        }
+    }
+
+    let Some((s, l_idx, r_idx)) = chosen_sum else {
+        // No non‑trivial split exists → irreducible
         return vec![(lhs.to_vec(), rhs.to_vec())];
     };
 
-    let l_idx = reconstruct_indices(&l_w, s, &dp_l);
-    let r_idx = reconstruct_indices(&r_w, s, &dp_r);
-
+    // 6. Split the original items according to the found indices
     let mut l1 = Vec::new();
     let mut l2 = Vec::new();
     for (i, item) in lhs.iter().enumerate() {
@@ -92,7 +149,7 @@ pub fn split_to_max<T: Clone, F: Fn(&T) -> usize>(
         }
     }
 
-    // Recursive calls – pass `weight` (already a reference)
+    // 7. Recurse on both halves to find the finest partition
     let mut result = split_to_max(&l1, &r1, weight);
     result.extend(split_to_max(&l2, &r2, weight));
     result
@@ -103,35 +160,46 @@ mod tests {
     use super::*;
 
     #[test]
-    fn example_with_symbols() {
+    fn with_u8_weights() {
         let lhs = vec!['A', 'D', 'E'];
         let rhs = vec!['A', 'C', 'F'];
-
-        let weight = |c: &char| (*c as u8 - b'A' + 1) as usize;
-
-        let equations = split_to_max(&lhs, &rhs, &weight); // ← pass as reference
-
-        assert_eq!(equations.len(), 2);
-        for (l, r) in equations {
-            assert_eq!(l.iter().map(&weight).sum::<usize>(), r.iter().map(&weight).sum::<usize>());
-        }
-    }
-
-    #[test]
-    fn with_integers() {
-        let lhs = vec![1, 4, 5];
-        let rhs = vec![2, 3, 5];
-        let weight = |x: &usize| *x;
+        let weight = |c: &char| (*c as u8 - b'A' + 1) as u8;
 
         let equations = split_to_max(&lhs, &rhs, &weight);
         assert_eq!(equations.len(), 2);
         for (l, r) in equations {
-            assert_eq!(l.iter().sum::<usize>(), r.iter().sum::<usize>());
+            assert_eq!(l.iter().map(&weight).sum::<u8>(), r.iter().map(&weight).sum::<u8>());
         }
     }
 
     #[test]
-    fn atomic() {
+    fn with_i32_weights() {
+        let lhs = vec![1_i32, 4, 5];
+        let rhs = vec![2_i32, 3, 5];
+        let weight = |x: &i32| *x;
+
+        let equations = split_to_max(&lhs, &rhs, &weight);
+        assert_eq!(equations.len(), 2);
+        for (l, r) in equations {
+            assert_eq!(l.iter().sum::<i32>(), r.iter().sum::<i32>());
+        }
+    }
+
+    #[test]
+    fn with_i128_weights() {
+        let lhs = vec![1_i128, 4, 5];
+        let rhs = vec![2_i128, 3, 5];
+        let weight = |x: &i128| *x;
+
+        let equations = split_to_max(&lhs, &rhs, &weight);
+        assert_eq!(equations.len(), 2);
+        for (l, r) in equations {
+            assert_eq!(l.iter().sum::<i128>(), r.iter().sum::<i128>());
+        }
+    }
+
+    #[test]
+    fn atomic_equation() {
         let lhs = vec![1, 2, 6];
         let rhs = vec![4, 5];
         let weight = |x: &usize| *x;
@@ -154,58 +222,58 @@ mod tests {
     }
 
     #[test]
-    fn mixed_values() {
-        let lhs = vec![1, 2, 4, 8];
-        let rhs = vec![3, 5, 7];
-        let weight = |x: &usize| *x;
+    fn with_custom_struct() {
+        #[derive(Clone, Debug, PartialEq)]
+        struct Item {
+            name:  char,
+            value: u64,
+        }
+
+        let lhs = vec![
+            Item {
+                name:  'A',
+                value: 1,
+            },
+            Item {
+                name:  'D',
+                value: 4,
+            },
+            Item {
+                name:  'E',
+                value: 5,
+            },
+        ];
+        let rhs = vec![
+            Item {
+                name:  'B',
+                value: 2,
+            },
+            Item {
+                name:  'C',
+                value: 3,
+            },
+            Item {
+                name:  'F',
+                value: 5,
+            },
+        ];
+
+        let weight = |item: &Item| item.value as i64;
+
         let equations = split_to_max(&lhs, &rhs, &weight);
         assert_eq!(equations.len(), 2);
         for (l, r) in equations {
-            assert_eq!(l.iter().sum::<usize>(), r.iter().sum::<usize>());
+            assert_eq!(l.iter().map(&weight).sum::<i64>(), r.iter().map(&weight).sum::<i64>());
         }
     }
 
     #[test]
     fn main() {
-        #[derive(Clone, Debug)]
-        struct A {
-            name: char,
-            age:  u64,
-        }
-
-        let lhs = vec![
-            A {
-                name: 'A',
-                age:  1,
-            },
-            A {
-                name: 'D',
-                age:  1,
-            },
-            A {
-                name: 'E',
-                age:  1,
-            },
-        ];
-        let rhs = vec![
-            A {
-                name: 'B',
-                age:  1,
-            },
-            A {
-                name: 'C',
-                age:  1,
-            },
-            A {
-                name: 'F',
-                age:  1,
-            },
-        ];
-
-        let weight = |c: &A| (c.age) as usize;
+        let lhs = vec!['A', 'D', 'E'];
+        let rhs = vec!['B', 'C', 'F'];
+        let weight = |c: &char| (*c as u8 - b'A' + 1) as u8;
 
         let equations = split_to_max(&lhs, &rhs, &weight);
-
         println!("Maximum number of sub‑equations: {}", equations.len());
         for (i, (l, r)) in equations.iter().enumerate() {
             println!("Equation {}: {:?} = {:?}", i + 1, l, r);
