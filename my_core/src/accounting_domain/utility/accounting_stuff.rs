@@ -441,12 +441,12 @@ where
 
                 // Check expected amount based on cost method
                 match out_flow_type {
+                    OutFlowType::Manual => {}
                     OutFlowType::Wac
                     | OutFlowType::Fifo
                     | OutFlowType::Lifo
                     | OutFlowType::Hifo
-                    | OutFlowType::Lofo
-                    | OutFlowType::Manual => {
+                    | OutFlowType::Lofo => {
                         let expected_amount = get_amount(single.quantity(), inventory);
                         if expected_amount != single.amount() {
                             single_err.amount_mismatch = Some(AmountMismatch {
@@ -467,12 +467,24 @@ where
                 }
             }
 
+            let is_decrease_by_price = match out_flow_type {
+                OutFlowType::Manual => false,
+                OutFlowType::QuantityEqualAmount => false,
+                OutFlowType::QuantityEqualZero => false,
+                OutFlowType::Wac => true,
+                OutFlowType::Fifo => true,
+                OutFlowType::Lifo => true,
+                OutFlowType::Hifo => true,
+                OutFlowType::Lofo => true,
+            };
+
             if !single_err.is_there_error() {
                 apply_entry_on_inventory::<<C::Double as DoubleEntry>::Single, A::Inventory>(
                     time_unix,
                     single.amount(),
                     single.quantity(),
                     is_inflow,
+                    is_decrease_by_price,
                     inventory,
                 );
             }
@@ -491,6 +503,7 @@ pub fn apply_entry_on_inventory<S, I>(
     amount: f64,
     quantity: f64,
     is_inflow: bool,
+    is_decrease_by_price: bool,
     inventory: &mut I,
 ) where
     S: SingleEntry,
@@ -520,7 +533,21 @@ pub fn apply_entry_on_inventory<S, I>(
             });
         }
     } else if amt < 0.0 && qty < 0.0 {
-        decrease_inventory(quantity, inventory);
+        if is_decrease_by_price {
+            decrease_inventory(quantity, inventory);
+        } else {
+            let (total_qty, total_amt) = sum_inventory(inventory);
+            if total_qty + qty == 0.0 && total_amt + amt == 0.0 {
+                inventory.clear();
+            } else {
+                inventory.clear();
+                inventory.push(InventoryRecord {
+                    time_unix,
+                    quantity: total_qty + qty,
+                    amount: total_amt + amt,
+                });
+            }
+        }
     } else {
         unreachable!();
     }
@@ -682,7 +709,9 @@ mod wrapper {
 #[cfg(test)]
 mod tests {
     use super::AccountInfoProvider;
+    use super::DebitNotEqualCreditError;
     use super::DoubleEntry;
+    use super::DoubleEntryError;
     use super::EntryContainer;
     use super::InFlowType;
     use super::Inventory;
@@ -697,6 +726,7 @@ mod tests {
     use super::state_full_check_for_entry;
     use super::state_less_check_for_entry;
     use super::sum_inventory;
+    use crate::accounting_domain::utility::accounting_stuff::combine_all_inventory_record_in_one_record;
     use crate::accounting_domain::utility::types::MyErrorTrait;
     use std::collections::HashMap;
 
@@ -1726,7 +1756,7 @@ mod tests {
     #[test]
     fn test_apply_entry_normal_inflow() {
         let mut inv = TestInventory::default();
-        apply_entry_on_inventory::<TestSingleEntry, _>(100, 20.0, 5.0, true, &mut inv);
+        apply_entry_on_inventory::<TestSingleEntry, _>(100, 20.0, 5.0, true, true, &mut inv);
         assert_eq!(inv.iter().count(), 1);
         let rec = inv.iter().next().unwrap();
         assert_eq!(rec.time_unix, 100);
@@ -1742,7 +1772,7 @@ mod tests {
             quantity:  10.0,
             amount:    30.0,
         });
-        apply_entry_on_inventory::<TestSingleEntry, _>(200, 30.0, 10.0, false, &mut inv);
+        apply_entry_on_inventory::<TestSingleEntry, _>(200, 30.0, 10.0, false, true, &mut inv);
         // After outflow, inventory should be empty
         assert!(inv.is_empty());
     }
@@ -1755,7 +1785,7 @@ mod tests {
             quantity:  5.0,
             amount:    10.0,
         });
-        apply_entry_on_inventory::<TestSingleEntry, _>(300, 3.0, 0.0, true, &mut inv);
+        apply_entry_on_inventory::<TestSingleEntry, _>(300, 3.0, 0.0, true, true, &mut inv);
         // Should adjust amount: total_amt = 13, qty = 5
         let (qty, amt) = sum_inventory(&inv);
         assert_eq!(qty, 5.0);
@@ -1775,7 +1805,7 @@ mod tests {
             quantity:  5.0,
             amount:    10.0,
         });
-        apply_entry_on_inventory::<TestSingleEntry, _>(400, 0.0, 2.0, true, &mut inv);
+        apply_entry_on_inventory::<TestSingleEntry, _>(400, 0.0, 2.0, true, true, &mut inv);
         let (qty, amt) = sum_inventory(&inv);
         assert_eq!(qty, 7.0);
         assert_eq!(amt, 10.0);
@@ -1793,7 +1823,7 @@ mod tests {
             quantity:  5.0,
             amount:    10.0,
         });
-        apply_entry_on_inventory::<TestSingleEntry, _>(500, 0.0, 2.0, false, &mut inv);
+        apply_entry_on_inventory::<TestSingleEntry, _>(500, 0.0, 2.0, false, true, &mut inv);
         let (qty, amt) = sum_inventory(&inv);
         assert_eq!(qty, 3.0);
         assert_eq!(amt, 10.0);
@@ -1811,7 +1841,7 @@ mod tests {
             quantity:  5.0,
             amount:    10.0,
         });
-        apply_entry_on_inventory::<TestSingleEntry, _>(600, 5.0, 0.0, false, &mut inv);
+        apply_entry_on_inventory::<TestSingleEntry, _>(600, 5.0, 0.0, false, true, &mut inv);
         let (qty, amt) = sum_inventory(&inv);
         assert_eq!(qty, 5.0);
         assert_eq!(amt, 5.0);
@@ -1826,7 +1856,7 @@ mod tests {
     fn test_apply_entry_impossible_panics() {
         let mut inv = TestInventory::default();
         // amount > 0, quantity < 0 is impossible
-        apply_entry_on_inventory::<TestSingleEntry, _>(700, 10.0, -5.0, true, &mut inv);
+        apply_entry_on_inventory::<TestSingleEntry, _>(700, 10.0, -5.0, true, true, &mut inv);
     }
 
     // -------------------------------------------------------------------------
@@ -1847,5 +1877,601 @@ mod tests {
             total_quantity: 5.0,
         });
         assert!(err3.is_there_error());
+    }
+
+    // -------------------------------------------------------------------------
+    // More tests for state_full_check_for_entry
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn test_state_full_outflow_amount_mismatch_lifo() {
+        let mut provider = setup_provider();
+        let inv = provider.get_or_create_inventory(&AccountId("A".to_string()));
+        // Two layers: first (older) qty=5, amt=10 (price=2); second (newer) qty=3, amt=9 (price=3)
+        inv.push(InventoryRecord {
+            time_unix: 1,
+            quantity:  5.0,
+            amount:    10.0,
+        });
+        inv.push(InventoryRecord {
+            time_unix: 2,
+            quantity:  3.0,
+            amount:    9.0,
+        });
+
+        // LIFO outflow: 4 units → take 3 from newest (3*3=9) + 1 from oldest (1*2=2) = 11
+        // But we set amount=15 → mismatch
+        let single = entry("A", false, 4.0, 15.0, InFlowType::Manual, OutFlowType::Lifo);
+        let double = TestDoubleEntry {
+            lines: vec![single],
+        };
+        let entry = TestEntryContainer {
+            groups: vec![double],
+        };
+        let err = state_full_check_for_entry(100, &entry, &mut provider);
+        let se = &err.double_entry_errors[0].single_entry_errors[0];
+        assert!(se.amount_mismatch.is_some());
+        let am = se.amount_mismatch.as_ref().unwrap();
+        assert_eq!(am.expected_amount, 11.0);
+    }
+
+    #[test]
+    fn test_state_full_outflow_amount_mismatch_hifo() {
+        let mut provider = setup_provider();
+        let inv = provider.get_or_create_inventory(&AccountId("A".to_string()));
+        // Layers: price 2 (qty=5), price 4 (qty=2), price 3 (qty=3)
+        inv.push(InventoryRecord {
+            time_unix: 1,
+            quantity:  5.0,
+            amount:    10.0,
+        });
+        inv.push(InventoryRecord {
+            time_unix: 2,
+            quantity:  2.0,
+            amount:    8.0,
+        });
+        inv.push(InventoryRecord {
+            time_unix: 3,
+            quantity:  3.0,
+            amount:    9.0,
+        });
+
+        // Hifo: highest price first (4, then 3, then 2). For 3 units: 2*4 + 1*3 = 11
+        let single = entry("A", false, 3.0, 12.0, InFlowType::Manual, OutFlowType::Hifo);
+        let double = TestDoubleEntry {
+            lines: vec![single],
+        };
+        let entry = TestEntryContainer {
+            groups: vec![double],
+        };
+        let err = state_full_check_for_entry(100, &entry, &mut provider);
+        let se = &err.double_entry_errors[0].single_entry_errors[0];
+        assert!(se.amount_mismatch.is_some());
+        let am = se.amount_mismatch.as_ref().unwrap();
+        assert_eq!(am.expected_amount, 11.0);
+    }
+
+    #[test]
+    fn test_state_full_outflow_amount_mismatch_lofo() {
+        let mut provider = setup_provider();
+        let inv = provider.get_or_create_inventory(&AccountId("A".to_string()));
+        // Layers: price 2 (qty=5), price 4 (qty=2), price 3 (qty=3)
+        inv.push(InventoryRecord {
+            time_unix: 1,
+            quantity:  5.0,
+            amount:    10.0,
+        });
+        inv.push(InventoryRecord {
+            time_unix: 2,
+            quantity:  2.0,
+            amount:    8.0,
+        });
+        inv.push(InventoryRecord {
+            time_unix: 3,
+            quantity:  3.0,
+            amount:    9.0,
+        });
+
+        // Lofo: lowest price first (2, then 3, then 4). For 6 units: 5*2 + 1*3 = 13
+        let single = entry("A", false, 6.0, 14.0, InFlowType::Manual, OutFlowType::Lofo);
+        let double = TestDoubleEntry {
+            lines: vec![single],
+        };
+        let entry = TestEntryContainer {
+            groups: vec![double],
+        };
+        let err = state_full_check_for_entry(100, &entry, &mut provider);
+        let se = &err.double_entry_errors[0].single_entry_errors[0];
+        assert!(se.amount_mismatch.is_some());
+        let am = se.amount_mismatch.as_ref().unwrap();
+        assert_eq!(am.expected_amount, 13.0);
+    }
+
+    #[test]
+    fn test_state_full_credit_nature_account_inflow() {
+        // Account G has Credit nature (false in setup_provider).
+        // For Credit nature, an inflow means Credit (is_debit_state = false).
+        // The test entry: amount=10, quantity=2, debit=false, which should be inflow.
+        let mut provider = setup_provider();
+        let inv = provider.get_or_create_inventory(&AccountId("G".to_string()));
+        inv.push(InventoryRecord {
+            time_unix: 1,
+            quantity:  5.0,
+            amount:    10.0,
+        });
+
+        let single = entry("G", false, 2.0, 10.0, InFlowType::Manual, OutFlowType::Manual);
+        let double = TestDoubleEntry {
+            lines: vec![single],
+        };
+        let entry = TestEntryContainer {
+            groups: vec![double],
+        };
+        let err = state_full_check_for_entry(100, &entry, &mut provider);
+        // No errors expected
+        assert!(err.double_entry_errors[0].single_entry_errors[0].is_there_error() == false);
+        // Inventory should have been increased by 2 qty and 10 amt
+        let (qty, amt) = sum_inventory(&provider.inventories[&AccountId("G".to_string())]);
+        assert_eq!(qty, 7.0);
+        assert_eq!(amt, 20.0);
+    }
+
+    #[test]
+    fn test_state_full_credit_nature_account_outflow() {
+        // For Credit nature, outflow means Debit (is_debit_state = true).
+        let mut provider = setup_provider();
+        let inv = provider.get_or_create_inventory(&AccountId("G".to_string()));
+        inv.push(InventoryRecord {
+            time_unix: 1,
+            quantity:  5.0,
+            amount:    10.0,
+        });
+
+        let single = entry("G", true, 2.0, 4.0, InFlowType::Manual, OutFlowType::Manual);
+        let double = TestDoubleEntry {
+            lines: vec![single],
+        };
+        let entry = TestEntryContainer {
+            groups: vec![double],
+        };
+        let err = state_full_check_for_entry(100, &entry, &mut provider);
+        // No errors expected
+        assert!(err.double_entry_errors[0].single_entry_errors[0].is_there_error() == false);
+        // Inventory should have decreased (outflow)
+        let (qty, amt) = sum_inventory(&provider.inventories[&AccountId("G".to_string())]);
+        assert_eq!(qty, 3.0);
+        assert_eq!(amt, 6.0);
+    }
+
+    #[test]
+    fn test_state_full_partial_application_when_one_line_errors() {
+        // Two lines in a double entry: first is error (insufficient amount), second is valid.
+        // Since apply is per-line if no error, the second line will still apply.
+        let mut provider = setup_provider();
+        // Account A: inventory 5 qty, 10 amt
+        let inv = provider.get_or_create_inventory(&AccountId("A".to_string()));
+        inv.push(InventoryRecord {
+            time_unix: 1,
+            quantity:  5.0,
+            amount:    10.0,
+        });
+
+        // Line 1: outflow of 20 amt (error)
+        let e1 = entry("A", false, 5.0, 20.0, InFlowType::Manual, OutFlowType::Manual);
+        // Line 2: inflow of 3 qty, 15 amt (valid)
+        let e2 = entry("A", true, 3.0, 15.0, InFlowType::Manual, OutFlowType::Manual);
+        let double = TestDoubleEntry {
+            lines: vec![e1, e2],
+        };
+        let entry = TestEntryContainer {
+            groups: vec![double],
+        };
+        let err = state_full_check_for_entry(100, &entry, &mut provider);
+
+        // Error should be present on line 1
+        assert!(
+            err.double_entry_errors[0].single_entry_errors[0]
+                .insufficient_amount_in_inventory
+                .is_some()
+        );
+        // Line 2 should have no error
+        assert!(!err.double_entry_errors[0].single_entry_errors[1].is_there_error());
+
+        // However, line 2 will have been applied (since no error), so inventory increased by 3 qty and 15 amt
+        // But line 1 error should not have applied. But line 2 applied, so total inventory: 5+3=8 qty, 10+15=25 amt.
+        // Additionally, sort_inventory for Manual combined layers, so we have one record.
+        let (qty, amt) = sum_inventory(&provider.inventories[&AccountId("A".to_string())]);
+        assert_eq!(qty, 8.0);
+        assert_eq!(amt, 25.0);
+        // This is partial application – you may want this or not. It's documented by this test.
+    }
+
+    // -------------------------------------------------------------------------
+    // Tests for DoubleEntryError::is_there_error
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn test_double_entry_error_is_there_error() {
+        let mut de = DoubleEntryError::default();
+        assert!(!de.is_there_error());
+
+        de.entry_is_empty = true;
+        assert!(de.is_there_error());
+
+        de.entry_is_empty = false;
+        de.you_need_to_split_the_entry = true;
+        assert!(de.is_there_error());
+
+        de.you_need_to_split_the_entry = false;
+        de.debit_not_equal_credit = Some(DebitNotEqualCreditError {
+            total_debit:  1.0,
+            total_credit: 2.0,
+        });
+        assert!(de.is_there_error());
+
+        de.debit_not_equal_credit = None;
+        let se = SingleEntryError {
+            quantity_and_amount_are_zero: true,
+            ..Default::default()
+        };
+        de.single_entry_errors.push(se);
+        assert!(de.is_there_error());
+    }
+
+    // -------------------------------------------------------------------------
+    // Direct tests for inventory helper functions
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn test_sum_inventory_direct() {
+        let mut inv = TestInventory::default();
+        inv.push(InventoryRecord {
+            time_unix: 1,
+            quantity:  2.0,
+            amount:    5.0,
+        });
+        inv.push(InventoryRecord {
+            time_unix: 2,
+            quantity:  3.0,
+            amount:    7.0,
+        });
+        let (q, a) = sum_inventory(&inv);
+        assert_eq!(q, 5.0);
+        assert_eq!(a, 12.0);
+    }
+
+    #[test]
+    fn test_combine_all_inventory_record_in_one_record_direct() {
+        let mut inv = TestInventory::default();
+        inv.push(InventoryRecord {
+            time_unix: 10,
+            quantity:  2.0,
+            amount:    5.0,
+        });
+        inv.push(InventoryRecord {
+            time_unix: 20,
+            quantity:  3.0,
+            amount:    7.0,
+        });
+        combine_all_inventory_record_in_one_record(&mut inv);
+        assert_eq!(inv.iter().count(), 1);
+        let rec = inv.iter().next().unwrap();
+        assert_eq!(rec.time_unix, 20);
+        assert_eq!(rec.quantity, 5.0);
+        assert_eq!(rec.amount, 12.0);
+    }
+
+    // -------------------------------------------------------------------------
+    // More tests for decrease_inventory
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn test_decrease_inventory_exact_consumption() {
+        let mut inv = TestInventory::default();
+        inv.push(InventoryRecord {
+            time_unix: 1,
+            quantity:  2.0,
+            amount:    4.0,
+        });
+        inv.push(InventoryRecord {
+            time_unix: 2,
+            quantity:  3.0,
+            amount:    9.0,
+        });
+        decrease_inventory(2.0, &mut inv); // consume exactly first record
+        let records: Vec<_> = inv.iter().collect();
+        assert_eq!(records.len(), 1);
+        assert_eq!(records[0].quantity, 3.0);
+        assert_eq!(records[0].amount, 9.0);
+    }
+
+    #[test]
+    fn test_decrease_inventory_consume_all() {
+        let mut inv = TestInventory::default();
+        inv.push(InventoryRecord {
+            time_unix: 1,
+            quantity:  2.0,
+            amount:    4.0,
+        });
+        inv.push(InventoryRecord {
+            time_unix: 2,
+            quantity:  3.0,
+            amount:    9.0,
+        });
+        decrease_inventory(5.0, &mut inv);
+        assert!(inv.is_empty());
+    }
+
+    #[test]
+    fn test_decrease_inventory_multiple_records() {
+        let mut inv = TestInventory::default();
+        inv.push(InventoryRecord {
+            time_unix: 1,
+            quantity:  5.0,
+            amount:    10.0,
+        });
+        inv.push(InventoryRecord {
+            time_unix: 2,
+            quantity:  3.0,
+            amount:    9.0,
+        });
+        decrease_inventory(7.0, &mut inv);
+        // Should consume all first (5) and 2 from second → remaining second qty=1, amt=3
+        let records: Vec<_> = inv.iter().collect();
+        assert_eq!(records.len(), 1);
+        assert_eq!(records[0].quantity, 1.0);
+        assert_eq!(records[0].amount, 3.0);
+    }
+
+    // -------------------------------------------------------------------------
+    // More tests for apply_entry_on_inventory (rare cases)
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn test_apply_entry_rare_clear_inventory() {
+        let mut inv = TestInventory::default();
+        inv.push(InventoryRecord {
+            time_unix: 1,
+            quantity:  5.0,
+            amount:    10.0,
+        });
+        // Rare case: amount == 0, quantity negative that exactly cancels total
+        apply_entry_on_inventory::<TestSingleEntry, _>(200, 0.0, 5.0, false, true, &mut inv);
+        // Should clear inventory
+        assert_eq!(inv.0[0].quantity, 0.0);
+        assert_eq!(inv.0[0].amount, 10.0);
+    }
+
+    #[test]
+    fn test_apply_entry_rare_adjustment_where_total_becomes_zero() {
+        let mut inv = TestInventory::default();
+        inv.push(InventoryRecord {
+            time_unix: 1,
+            quantity:  5.0,
+            amount:    10.0,
+        });
+        apply_entry_on_inventory::<TestSingleEntry, _>(300, 10.0, 0.0, false, true, &mut inv);
+        assert_eq!(inv.0[0].quantity, 5.0);
+        assert_eq!(inv.0[0].amount, 0.0);
+    }
+
+    // -------------------------------------------------------------------------
+    // State-full tests for rare inflows (amount>0, qty=0 and amount=0, qty>0)
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn test_state_full_rare_inflow_amount_positive_qty_zero() {
+        let mut provider = setup_provider();
+        let inv = provider.get_or_create_inventory(&AccountId("A".to_string()));
+        inv.push(InventoryRecord {
+            time_unix: 1,
+            quantity:  5.0,
+            amount:    10.0,
+        });
+
+        let single = entry("A", true, 0.0, 3.0, InFlowType::Manual, OutFlowType::Manual);
+        let double = TestDoubleEntry {
+            lines: vec![single],
+        };
+        let entry = TestEntryContainer {
+            groups: vec![double],
+        };
+        let err = state_full_check_for_entry(100, &entry, &mut provider);
+        // Should have no error (it's rare but allowed)
+        assert!(!err.double_entry_errors[0].single_entry_errors[0].is_there_error());
+        // Inventory should have amount increased, quantity unchanged
+        let (qty, amt) = sum_inventory(&provider.inventories[&AccountId("A".to_string())]);
+        assert_eq!(qty, 5.0);
+        assert_eq!(amt, 13.0);
+    }
+
+    #[test]
+    fn test_state_full_rare_inflow_amount_zero_qty_positive() {
+        let mut provider = setup_provider();
+        let inv = provider.get_or_create_inventory(&AccountId("A".to_string()));
+        inv.push(InventoryRecord {
+            time_unix: 1,
+            quantity:  5.0,
+            amount:    10.0,
+        });
+
+        let single = entry("A", true, 2.0, 0.0, InFlowType::Manual, OutFlowType::Manual);
+        let double = TestDoubleEntry {
+            lines: vec![single],
+        };
+        let entry = TestEntryContainer {
+            groups: vec![double],
+        };
+        let err = state_full_check_for_entry(100, &entry, &mut provider);
+        assert!(!err.double_entry_errors[0].single_entry_errors[0].is_there_error());
+        let (qty, amt) = sum_inventory(&provider.inventories[&AccountId("A".to_string())]);
+        assert_eq!(qty, 7.0);
+        assert_eq!(amt, 10.0);
+    }
+
+    // -------------------------------------------------------------------------
+    // State-full tests for rare outflows (amount<0, qty=0 and amount=0, qty<0)
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn test_state_full_rare_outflow_amount_negative_qty_zero() {
+        let mut provider = setup_provider();
+        let inv = provider.get_or_create_inventory(&AccountId("A".to_string()));
+        inv.push(InventoryRecord {
+            time_unix: 1,
+            quantity:  5.0,
+            amount:    10.0,
+        });
+
+        // Outflow with amount=5 (so amt = -5), qty=0
+        let single = entry("A", false, 0.0, 5.0, InFlowType::Manual, OutFlowType::Manual);
+        let double = TestDoubleEntry {
+            lines: vec![single],
+        };
+        let entry = TestEntryContainer {
+            groups: vec![double],
+        };
+        let err = state_full_check_for_entry(100, &entry, &mut provider);
+        assert!(!err.double_entry_errors[0].single_entry_errors[0].is_there_error());
+        let (qty, amt) = sum_inventory(&provider.inventories[&AccountId("A".to_string())]);
+        assert_eq!(qty, 5.0);
+        assert_eq!(amt, 5.0); // 10 - 5
+    }
+
+    #[test]
+    fn test_state_full_rare_outflow_amount_zero_qty_negative() {
+        let mut provider = setup_provider();
+        let inv = provider.get_or_create_inventory(&AccountId("A".to_string()));
+        inv.push(InventoryRecord {
+            time_unix: 1,
+            quantity:  5.0,
+            amount:    10.0,
+        });
+
+        let single = entry("A", false, 2.0, 0.0, InFlowType::Manual, OutFlowType::Manual);
+        let double = TestDoubleEntry {
+            lines: vec![single],
+        };
+        let entry = TestEntryContainer {
+            groups: vec![double],
+        };
+        let err = state_full_check_for_entry(100, &entry, &mut provider);
+        assert!(!err.double_entry_errors[0].single_entry_errors[0].is_there_error());
+        let (qty, amt) = sum_inventory(&provider.inventories[&AccountId("A".to_string())]);
+        assert_eq!(qty, 3.0);
+        assert_eq!(amt, 10.0);
+    }
+
+    // -------------------------------------------------------------------------
+    // Test sorting of Hifo and Lofo directly (not just get_amount)
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn test_sort_inventory_hifo_direct() {
+        let mut inv = TestInventory::default();
+        inv.push(InventoryRecord {
+            time_unix: 1,
+            quantity:  5.0,
+            amount:    10.0,
+        }); // price 2
+        inv.push(InventoryRecord {
+            time_unix: 2,
+            quantity:  3.0,
+            amount:    9.0,
+        }); // price 3
+        inv.push(InventoryRecord {
+            time_unix: 3,
+            quantity:  2.0,
+            amount:    8.0,
+        }); // price 4
+        sort_inventory(&OutFlowType::Hifo, &mut inv);
+        let prices: Vec<f64> = inv.iter().map(|r| r.amount / r.quantity).collect();
+        assert_eq!(prices, vec![4.0, 3.0, 2.0]);
+    }
+
+    #[test]
+    fn test_sort_inventory_lofo_direct() {
+        let mut inv = TestInventory::default();
+        inv.push(InventoryRecord {
+            time_unix: 1,
+            quantity:  5.0,
+            amount:    10.0,
+        }); // price 2
+        inv.push(InventoryRecord {
+            time_unix: 2,
+            quantity:  3.0,
+            amount:    9.0,
+        }); // price 3
+        inv.push(InventoryRecord {
+            time_unix: 3,
+            quantity:  2.0,
+            amount:    8.0,
+        }); // price 4
+        sort_inventory(&OutFlowType::Lofo, &mut inv);
+        let prices: Vec<f64> = inv.iter().map(|r| r.amount / r.quantity).collect();
+        assert_eq!(prices, vec![2.0, 3.0, 4.0]);
+    }
+
+    #[test]
+    fn test_state_full_manual_outflow_ignores_amount_mismatch() {
+        let mut provider = setup_provider();
+        let inv = provider.get_or_create_inventory(&AccountId("A".to_string()));
+        inv.push(InventoryRecord {
+            time_unix: 1,
+            quantity:  5.0,
+            amount:    10.0,
+        });
+
+        let single = entry("A", false, 2.0, 10.0, InFlowType::Manual, OutFlowType::Manual);
+        let double = TestDoubleEntry {
+            lines: vec![single],
+        };
+        let entry = TestEntryContainer {
+            groups: vec![double],
+        };
+        let err = state_full_check_for_entry(100, &entry, &mut provider);
+
+        dbg!(&err);
+        let se = &err.double_entry_errors[0].single_entry_errors[0];
+        assert!(se.amount_mismatch.is_none());
+        let (qty, amt) = sum_inventory(&provider.inventories[&AccountId("A".to_string())]);
+        assert_eq!(qty, 3.0);
+        assert_eq!(amt, 0.0);
+    }
+
+    #[test]
+    fn test_apply_entry_manual_outflow_uses_given_amount() {
+        let mut inv = TestInventory::default();
+        inv.push(InventoryRecord {
+            time_unix: 1,
+            quantity:  5.0,
+            amount:    10.0,
+        });
+        // Manual outflow: is_decrease_by_price = false
+        apply_entry_on_inventory::<TestSingleEntry, _>(100, 3.0, 2.0, false, false, &mut inv);
+        let (qty, amt) = sum_inventory(&inv);
+        assert_eq!(qty, 3.0); // 5 - 2
+        assert_eq!(amt, 7.0); // 10 - 3 (given amount)
+    }
+
+    #[test]
+    fn test_decrease_inventory_zero_quantity() {
+        let mut inv = TestInventory::default();
+        inv.push(InventoryRecord {
+            time_unix: 1,
+            quantity:  5.0,
+            amount:    10.0,
+        });
+        decrease_inventory(0.0, &mut inv);
+        let (qty, amt) = sum_inventory(&inv);
+        assert_eq!(qty, 5.0);
+        assert_eq!(amt, 10.0);
+    }
+
+    #[test]
+    fn test_get_amount_empty_inventory() {
+        let inv = TestInventory::default();
+        let amt = get_amount(5.0, &inv);
+        assert_eq!(amt, 0.0);
     }
 }
