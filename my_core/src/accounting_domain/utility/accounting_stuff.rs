@@ -145,7 +145,6 @@ pub(crate) struct InsufficientAmountInInventory {
 struct SingleEntryError {
     quantity_and_amount_are_zero:       bool,
     duplicate_account_in_entry:         bool,
-    account_info_not_found:             bool,
     inventory_is_empty:                 bool,
     the_amount_should_be_positive:      bool,
     the_quantity_should_be_positive:    bool,
@@ -189,14 +188,7 @@ pub trait SingleEntry {
     fn account_id(&self) -> &Self::AccountId;
     fn quantity(&self) -> f64;
     fn amount(&self) -> f64;
-
-    /// Resolve the cost flow type. For statuses that only provide a direction
-    /// (like M1 or M2), this method should ask the provider for the default
-    /// flow types of the account.
-    fn resolve_flow_type<A: AccountInfoProvider<AccountId = Self::AccountId>>(
-        &self,
-        provider: &A,
-    ) -> CostFlowType;
+    fn flow_type(&self) -> CostFlowType;
 }
 
 /// A container of single entries (e.g., a double‑entry group or a whole journal entry).
@@ -216,13 +208,8 @@ pub trait AccountInfoProvider {
     type AccountId: Eq + Hash + Clone;
     type Inventory: Inventory;
 
-    fn get_nature(&self, id: &Self::AccountId) -> Option<Nature>;
-    fn get_inventory_mut(&mut self, id: &Self::AccountId) -> Option<&mut Self::Inventory>;
+    fn is_debit_nature(&self, id: &Self::AccountId) -> bool;
     fn get_or_create_inventory(&mut self, id: &Self::AccountId) -> &mut Self::Inventory;
-
-    /// Get the default InFlowType and OutFlowType for a given account.
-    /// This is used when the entry status only provides a direction flag (M1, M2).
-    fn get_default_flow_types(&self, id: &Self::AccountId) -> Option<(InFlowType, OutFlowType)>;
 }
 
 /// A collection of inventory records, with operations needed for accounting.
@@ -245,21 +232,12 @@ pub trait Inventory {
 // Helper functions (non‑generic)
 // -----------------------------------------------------------------------------
 
-pub(crate) fn is_debit(nature: Nature, is_inflow: bool) -> bool {
-    match (nature, is_inflow) {
-        (Nature::Debit, true) => true,
-        (Nature::Debit, false) => false,
-        (Nature::Credit, true) => false,
-        (Nature::Credit, false) => true,
-    }
-}
-
-pub(crate) fn is_inflow(nature: Nature, is_debit: bool) -> bool {
-    match (nature, is_debit) {
-        (Nature::Debit, true) => true,
-        (Nature::Debit, false) => false,
-        (Nature::Credit, true) => false,
-        (Nature::Credit, false) => true,
+pub(crate) fn is_debit(is_debit_nature: bool, is_inflow: bool) -> bool {
+    match (is_debit_nature, is_inflow) {
+        (true, true) => true,
+        (true, false) => false,
+        (false, true) => false,
+        (false, false) => true,
     }
 }
 
@@ -270,6 +248,8 @@ fn price(amount: f64, quantity: f64) -> f64 {
 // -----------------------------------------------------------------------------
 // Generic accounting functions
 // -----------------------------------------------------------------------------
+
+// TODO make it check multiple double entry and also use comon subset sum
 
 /// State‑less check: only checks the entries themselves, no inventory/account info needed.
 pub(crate) fn state_less_check_for_entry<C>(entry: &C) -> Error
@@ -331,96 +311,85 @@ where
         let mut single_err = SingleEntryError::default();
 
         let account_id = single.account_id();
-        let nature = account_info.get_nature(account_id);
-        let flow_type = single.resolve_flow_type(account_info);
-        let inventory_opt = account_info.get_inventory_mut(account_id);
+        let nature = account_info.is_debit_nature(account_id);
+        let flow_type = single.flow_type();
+        let inventory = account_info.get_or_create_inventory(account_id);
 
-        match (nature, inventory_opt) {
-            (Some(nature), Some(inventory)) => {
-                // Check if inventory is empty
-                if inventory.is_empty() {
-                    single_err.inventory_is_empty = true;
-                }
+        // Check if inventory is empty
+        if inventory.is_empty() {
+            single_err.inventory_is_empty = true;
+        }
 
-                let is_inflow = matches!(flow_type, CostFlowType::InFlow(_));
+        let is_inflow = matches!(flow_type, CostFlowType::InFlow(_));
 
-                if is_debit(nature, is_inflow) {
-                    total_debit += single.amount();
-                } else {
-                    total_credit += single.amount();
-                }
+        if is_debit(nature, is_inflow) {
+            total_debit += single.amount();
+        } else {
+            total_credit += single.amount();
+        }
 
-                // Process according to flow type
-                match flow_type {
-                    CostFlowType::InFlow(in_flow_type) => {
-                        match in_flow_type {
-                            InFlowType::Manual => {}
-                            InFlowType::QuantityEqualAmount => {
-                                if single.quantity() != single.amount() {
-                                    single_err.quantity_not_equal_amount = true;
-                                }
-                            }
-                            InFlowType::QuantityEqualZero => {
-                                if single.quantity() != 0.0 {
-                                    single_err.quantity_not_equal_zero = true;
-                                }
-                            }
+        // Process according to flow type
+        match flow_type {
+            CostFlowType::InFlow(in_flow_type) => {
+                match in_flow_type {
+                    InFlowType::Manual => {}
+                    InFlowType::QuantityEqualAmount => {
+                        if single.quantity() != single.amount() {
+                            single_err.quantity_not_equal_amount = true;
                         }
                     }
-                    CostFlowType::OutFlow(out_flow_type) => {
-                        let (total_qty, total_amt) = sum_inventory(inventory);
-                        // Check sufficient amount
-                        if total_amt + single.amount() < 0.0 {
-                            single_err.insufficient_amount_in_inventory =
-                                Some(InsufficientAmountInInventory {
-                                    total_amount: total_amt,
-                                });
-                        }
-                        if total_qty + single.quantity() < 0.0 {
-                            single_err.insufficient_quantity_in_inventory =
-                                Some(InsufficientQuantityInInventory {
-                                    total_quantity: total_qty,
-                                });
-                        }
-
-                        // Sort inventory for the flow type
-                        sort_inventory(&out_flow_type, inventory);
-
-                        // Check expected amount based on cost method
-                        match out_flow_type {
-                            OutFlowType::Wac
-                            | OutFlowType::Fifo
-                            | OutFlowType::Lifo
-                            | OutFlowType::Hifo
-                            | OutFlowType::Lofo
-                            | OutFlowType::Manual => {
-                                let expected_amt = get_amount(single.quantity(), inventory);
-                                if expected_amt != single.amount() {
-                                    single_err.amount_mismatch = Some(AmountMismatch {
-                                        expected_amount: expected_amt,
-                                    });
-                                }
-                            }
-                            OutFlowType::QuantityEqualAmount => {
-                                if single.quantity() != single.amount() {
-                                    single_err.quantity_not_equal_amount = true;
-                                }
-                            }
-                            OutFlowType::QuantityEqualZero => {
-                                if single.quantity() != 0.0 {
-                                    single_err.quantity_not_equal_zero = true;
-                                }
-                            }
+                    InFlowType::QuantityEqualZero => {
+                        if single.quantity() != 0.0 {
+                            single_err.quantity_not_equal_zero = true;
                         }
                     }
                 }
             }
-            (None, _) => {
-                single_err.account_info_not_found = true;
-            }
-            (_, None) => {
-                // This should not happen if nature exists, but we handle it gracefully
-                single_err.account_info_not_found = true;
+            CostFlowType::OutFlow(out_flow_type) => {
+                let (total_qty, total_amt) = sum_inventory(inventory);
+                // Check sufficient amount
+                if total_amt + single.amount() < 0.0 {
+                    single_err.insufficient_amount_in_inventory =
+                        Some(InsufficientAmountInInventory {
+                            total_amount: total_amt,
+                        });
+                }
+                if total_qty + single.quantity() < 0.0 {
+                    single_err.insufficient_quantity_in_inventory =
+                        Some(InsufficientQuantityInInventory {
+                            total_quantity: total_qty,
+                        });
+                }
+
+                // Sort inventory for the flow type
+                sort_inventory(&out_flow_type, inventory);
+
+                // Check expected amount based on cost method
+                match out_flow_type {
+                    OutFlowType::Wac
+                    | OutFlowType::Fifo
+                    | OutFlowType::Lifo
+                    | OutFlowType::Hifo
+                    | OutFlowType::Lofo
+                    | OutFlowType::Manual => {
+                        let expected_amt = get_amount(single.quantity(), inventory);
+                        if expected_amt != single.amount() {
+                            single_err.amount_mismatch = Some(AmountMismatch {
+                                expected_amount: expected_amt,
+                            });
+                        }
+                    }
+                    OutFlowType::QuantityEqualAmount => {
+                        if single.quantity() != single.amount() {
+                            single_err.quantity_not_equal_amount = true;
+                        }
+                    }
+                    OutFlowType::QuantityEqualZero => {
+                        if single.quantity() != 0.0 {
+                            single_err.quantity_not_equal_zero = true;
+                        }
+                    }
+                }
             }
         }
 
@@ -447,7 +416,7 @@ where
 {
     for single in entry.iter() {
         let account_id = single.account_id();
-        let flow_type = single.resolve_flow_type(account_info);
+        let flow_type = single.flow_type();
         let inventory = account_info.get_or_create_inventory(account_id);
 
         let (amt, qty) = match flow_type {
