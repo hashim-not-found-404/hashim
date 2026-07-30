@@ -72,14 +72,7 @@ where
 pub fn split_to_max<T, N, F>(lhs: &[T], rhs: &[T], weight: &F) -> Vec<(Vec<T>, Vec<T>)>
 where
     T: Clone,
-    N: Copy
-        + Add<Output = N>
-        + Sub<Output = N>
-        + Sum
-        + Eq
-        + std::hash::Hash
-        + Default
-        + std::fmt::Debug,
+    N: Copy + Add<Output = N> + Sub<Output = N> + Sum + Eq + std::hash::Hash + Default,
     F: Fn(&T) -> N,
 {
     // 1. Base case: empty side means no equation

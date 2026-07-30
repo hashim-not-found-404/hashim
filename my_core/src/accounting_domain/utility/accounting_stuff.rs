@@ -10,6 +10,7 @@ amount <  0 && quantity == 0 : rare       : but it cuse to adjust the inventory:
 amount <  0 && quantity <  0 : normal     : this is normal like the outflow to the account
 */
 
+use crate::accounting_domain::utility::common_subset_sum;
 use crate::accounting_domain::utility::types;
 use serde::Deserialize;
 use serde::Serialize;
@@ -142,7 +143,7 @@ pub(crate) struct InsufficientAmountInInventory {
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
-struct SingleEntryError {
+pub(crate) struct SingleEntryError {
     quantity_and_amount_are_zero:       bool,
     duplicate_account_in_entry:         bool,
     inventory_is_empty:                 bool,
@@ -193,9 +194,10 @@ pub trait SingleEntry {
     type AccountId: Eq + Hash + Clone;
 
     fn account_id(&self) -> &Self::AccountId;
+    fn is_debit(&self) -> bool;
     fn quantity(&self) -> f64;
     fn amount(&self) -> f64;
-    fn flow_type(&self) -> CostFlowType;
+    fn flow_type(&self) -> (InFlowType, OutFlowType);
 }
 
 pub trait DoubleEntry {
@@ -259,6 +261,15 @@ pub(crate) fn is_debit(is_debit_nature: bool, is_inflow: bool) -> bool {
     }
 }
 
+pub(crate) fn is_inflow(is_debit_nature: bool, is_debit_state: bool) -> bool {
+    match (is_debit_nature, is_debit_state) {
+        (true, true) => true,
+        (true, false) => false,
+        (false, true) => false,
+        (false, false) => true,
+    }
+}
+
 fn price(amount: f64, quantity: f64) -> f64 {
     amount / quantity
 }
@@ -266,8 +277,6 @@ fn price(amount: f64, quantity: f64) -> f64 {
 // -----------------------------------------------------------------------------
 // Generic accounting functions
 // -----------------------------------------------------------------------------
-
-// TODO make it check multiple double entry and also use comon subset sum
 
 /// State‑less check: only checks the entries themselves, no inventory/account info needed.
 pub(crate) fn state_less_check_for_entry<C>(entry: &C) -> EntryError
@@ -292,8 +301,18 @@ where
         double_err.single_entry_errors = Vec::with_capacity(entry.len());
         let mut seen_accounts = HashSet::with_capacity(entry.len());
 
+        let mut total_debit = 0.0;
+        let mut total_credit = 0.0;
+
+        let mut debit_side = Vec::new();
+        let mut credit_side = Vec::new();
+
         for single in double.iter() {
             let mut single_err = SingleEntryError::default();
+
+            if !seen_accounts.insert(single.account_id().clone()) {
+                single_err.duplicate_account_in_entry = true;
+            }
 
             if single.amount() == 0.0 && single.quantity() == 0.0 {
                 single_err.quantity_and_amount_are_zero = true;
@@ -305,11 +324,30 @@ where
                 single_err.the_quantity_should_be_positive = true;
             }
 
-            if !seen_accounts.insert(single.account_id().clone()) {
-                single_err.duplicate_account_in_entry = true;
+            if single.is_debit() {
+                total_debit += single.amount();
+                debit_side.push(single);
+            } else {
+                total_credit += single.amount();
+                credit_side.push(single);
             }
 
             double_err.single_entry_errors.push(single_err);
+        }
+
+        if total_debit != total_credit {
+            double_err.debit_not_equal_credit = Some(DebitNotEqualCreditError {
+                total_debit,
+                total_credit,
+            });
+        } else {
+            let a = common_subset_sum::split_to_max(&debit_side, &credit_side, &|a| {
+                wrapper::T(a.amount())
+            });
+
+            if a.len() > 1 {
+                double_err.you_need_to_split_the_entry = true
+            }
         }
     }
 
@@ -317,45 +355,39 @@ where
 }
 
 /// Full validation including account info and inventory.
-pub(crate) fn state_full_check_for_entry<C, A>(entry: &C, account_info: &mut A) -> DoubleEntryError
+pub(crate) fn state_full_check_for_entry<C, A>(entry: &C, account_info: &mut A) -> EntryError
 where
     C: EntryContainer,
-    C::Double: SingleEntry,
-    A: AccountInfoProvider<AccountId = <C::Double as SingleEntry>::AccountId>,
+    C::Double: DoubleEntry,
+    <C::Double as DoubleEntry>::Single: SingleEntry,
+    A: AccountInfoProvider<
+        AccountId = <<C::Double as DoubleEntry>::Single as SingleEntry>::AccountId,
+    >,
     A::Inventory: Inventory,
 {
-    let mut errr = DoubleEntryError::default();
+    let mut entry_err = EntryError::default();
+    entry_err.double_entry_errors = Vec::with_capacity(entry.len());
 
-    // Pre‑allocate to the exact length
-    errr.single_entry_errors = vec![SingleEntryError::default(); entry.len()];
+    for double in entry.iter() {
+        let mut double_err = DoubleEntryError::default();
+        double_err.single_entry_errors = Vec::with_capacity(double.len());
 
-    let mut total_debit = 0.0;
-    let mut total_credit = 0.0;
+        for single in double.iter() {
+            let mut single_err = SingleEntryError::default();
 
-    for (i, single) in entry.iter().enumerate() {
-        let mut single_err = SingleEntryError::default();
+            let account_id = single.account_id();
+            let nature = account_info.is_debit_nature(account_id);
+            let (in_flow_type, out_flow_type) = single.flow_type();
+            let inventory = account_info.get_or_create_inventory(account_id);
 
-        let account_id = single.account_id();
-        let nature = account_info.is_debit_nature(account_id);
-        let flow_type = single.flow_type();
-        let inventory = account_info.get_or_create_inventory(account_id);
+            // Check if inventory is empty
+            if inventory.is_empty() {
+                single_err.inventory_is_empty = true;
+            }
 
-        // Check if inventory is empty
-        if inventory.is_empty() {
-            single_err.inventory_is_empty = true;
-        }
+            let is_inflow = is_inflow(nature, single.is_debit());
 
-        let is_inflow = matches!(flow_type, CostFlowType::InFlow(_));
-
-        if is_debit(nature, is_inflow) {
-            total_debit += single.amount();
-        } else {
-            total_credit += single.amount();
-        }
-
-        // Process according to flow type
-        match flow_type {
-            CostFlowType::InFlow(in_flow_type) => {
+            if is_inflow {
                 match in_flow_type {
                     InFlowType::Manual => {}
                     InFlowType::QuantityEqualAmount => {
@@ -369,8 +401,7 @@ where
                         }
                     }
                 }
-            }
-            CostFlowType::OutFlow(out_flow_type) => {
+            } else {
                 let (total_qty, total_amt) = sum_inventory(inventory);
                 // Check sufficient amount
                 if total_amt + single.amount() < 0.0 {
@@ -416,62 +447,53 @@ where
                     }
                 }
             }
+
+            double_err.single_entry_errors.push(single_err);
         }
-
-        errr.single_entry_errors[i] = single_err;
     }
 
-    if total_debit != total_credit {
-        errr.debit_not_equal_credit = Some(DebitNotEqualCreditError {
-            total_debit,
-            total_credit,
-        });
-    }
-
-    errr
+    entry_err
 }
 
 /// Apply the entry to the inventory, updating records.
-pub fn apply_entry_on_inventory<C, A>(time_unix: u64, entry: &C, account_info: &mut A)
-where
-    C: EntryContainer,
-    C::Double: SingleEntry,
-    A: AccountInfoProvider<AccountId = <C::Double as SingleEntry>::AccountId>,
-    A::Inventory: Inventory,
+pub fn apply_entry_on_inventory<S, I>(
+    time_unix: u64,
+    amount: f64,
+    quantity: f64,
+    is_inflow: bool,
+
+    inventory: &mut I,
+) where
+    S: SingleEntry,
+    I: Inventory,
 {
-    for single in entry.iter() {
-        let account_id = single.account_id();
-        let flow_type = single.flow_type();
-        let inventory = account_info.get_or_create_inventory(account_id);
+    let (amt, qty) = match is_inflow {
+        true => (amount, quantity),
+        false => (-amount, -quantity),
+    };
 
-        let (amt, qty) = match flow_type {
-            CostFlowType::InFlow(_) => (single.amount(), single.quantity()),
-            CostFlowType::OutFlow(_) => (-single.amount(), -single.quantity()),
-        };
-
-        if amt > 0.0 && qty > 0.0 {
+    if amt > 0.0 && qty > 0.0 {
+        inventory.push(InventoryRecord {
+            time_unix,
+            quantity,
+            amount,
+        });
+    } else if (amt == 0.0) != (qty == 0.0) {
+        let (total_qty, total_amt) = sum_inventory(inventory);
+        if total_qty + qty == 0.0 && total_amt + amt == 0.0 {
+            inventory.clear();
+        } else {
+            inventory.clear();
             inventory.push(InventoryRecord {
                 time_unix,
-                quantity: single.quantity(),
-                amount: single.amount(),
+                quantity: total_qty + qty,
+                amount: total_amt + amt,
             });
-        } else if (amt == 0.0) != (qty == 0.0) {
-            let (total_qty, total_amt) = sum_inventory(inventory);
-            if total_qty + qty == 0.0 && total_amt + amt == 0.0 {
-                inventory.clear();
-            } else {
-                inventory.clear();
-                inventory.push(InventoryRecord {
-                    time_unix,
-                    quantity: total_qty + qty,
-                    amount: total_amt + amt,
-                });
-            }
-        } else if amt < 0.0 && qty < 0.0 {
-            decrease_inventory(single.quantity(), inventory);
-        } else {
-            unreachable!();
         }
+    } else if amt < 0.0 && qty < 0.0 {
+        decrease_inventory(quantity, inventory);
+    } else {
+        unreachable!();
     }
 }
 
@@ -574,5 +596,46 @@ pub fn decrease_inventory<I: Inventory>(quantity: f64, inventory: &mut I) {
 
     for _ in 0..to_remove {
         inventory.pop();
+    }
+}
+
+mod wrapper {
+    use std::iter::Sum;
+    use std::ops::Add;
+    use std::ops::Sub;
+
+    #[derive(Clone, Copy, Debug, PartialEq)]
+    pub(crate) struct T(pub f64);
+
+    impl Eq for T {}
+    impl std::hash::Hash for T {
+        fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+            self.0.to_bits().hash(state);
+        }
+    }
+
+    impl Add for T {
+        type Output = Self;
+
+        fn add(self, other: Self) -> Self {
+            T(self.0 + other.0)
+        }
+    }
+    impl Sub for T {
+        type Output = Self;
+
+        fn sub(self, other: Self) -> Self {
+            T(self.0 - other.0)
+        }
+    }
+    impl Default for T {
+        fn default() -> Self {
+            T(0.0)
+        }
+    }
+    impl Sum for T {
+        fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
+            iter.fold(T::default(), |acc, x| acc + x)
+        }
     }
 }
