@@ -293,8 +293,9 @@ where
 
     for double in entry.iter() {
         let mut double_err = DoubleEntryError::default();
-        if entry.is_empty() {
+        if double.is_empty() {
             double_err.entry_is_empty = true;
+            entry_err.double_entry_errors.push(double_err);
             continue;
         }
 
@@ -349,13 +350,19 @@ where
                 double_err.you_need_to_split_the_entry = true
             }
         }
+
+        entry_err.double_entry_errors.push(double_err);
     }
 
     entry_err
 }
 
 /// Full validation including account info and inventory.
-pub(crate) fn state_full_check_for_entry<C, A>(entry: &C, account_info: &mut A) -> EntryError
+pub(crate) fn state_full_check_for_entry<C, A>(
+    time_unix: u64,
+    entry: &C,
+    account_info: &mut A,
+) -> EntryError
 where
     C: EntryContainer,
     C::Double: DoubleEntry,
@@ -387,16 +394,21 @@ where
 
             let is_inflow = is_inflow(nature, single.is_debit());
 
+            let (amt, qty) = match is_inflow {
+                true => (single.amount(), single.quantity()),
+                false => (-single.amount(), -single.quantity()),
+            };
+
             if is_inflow {
                 match in_flow_type {
                     InFlowType::Manual => {}
                     InFlowType::QuantityEqualAmount => {
-                        if single.quantity() != single.amount() {
+                        if qty != amt {
                             single_err.quantity_not_equal_amount = true;
                         }
                     }
                     InFlowType::QuantityEqualZero => {
-                        if single.quantity() != 0.0 {
+                        if qty != 0.0 {
                             single_err.quantity_not_equal_zero = true;
                         }
                     }
@@ -404,13 +416,13 @@ where
             } else {
                 let (total_qty, total_amt) = sum_inventory(inventory);
                 // Check sufficient amount
-                if total_amt + single.amount() < 0.0 {
+                if total_amt + amt < 0.0 {
                     single_err.insufficient_amount_in_inventory =
                         Some(InsufficientAmountInInventory {
                             total_amount: total_amt,
                         });
                 }
-                if total_qty + single.quantity() < 0.0 {
+                if total_qty + qty < 0.0 {
                     single_err.insufficient_quantity_in_inventory =
                         Some(InsufficientQuantityInInventory {
                             total_quantity: total_qty,
@@ -428,28 +440,37 @@ where
                     | OutFlowType::Hifo
                     | OutFlowType::Lofo
                     | OutFlowType::Manual => {
-                        let expected_amt = get_amount(single.quantity(), inventory);
-                        if expected_amt != single.amount() {
+                        let expected_amount = get_amount(single.quantity(), inventory);
+                        if expected_amount != single.amount() {
                             single_err.amount_mismatch = Some(AmountMismatch {
-                                expected_amount: expected_amt,
+                                expected_amount,
                             });
                         }
                     }
                     OutFlowType::QuantityEqualAmount => {
-                        if single.quantity() != single.amount() {
+                        if qty != amt {
                             single_err.quantity_not_equal_amount = true;
                         }
                     }
                     OutFlowType::QuantityEqualZero => {
-                        if single.quantity() != 0.0 {
+                        if qty != 0.0 {
                             single_err.quantity_not_equal_zero = true;
                         }
                     }
                 }
             }
 
+            apply_entry_on_inventory::<<C::Double as DoubleEntry>::Single, A::Inventory>(
+                time_unix,
+                single.amount(),
+                single.quantity(),
+                is_inflow,
+                inventory,
+            );
+
             double_err.single_entry_errors.push(single_err);
         }
+        entry_err.double_entry_errors.push(double_err);
     }
 
     entry_err
@@ -461,15 +482,14 @@ pub fn apply_entry_on_inventory<S, I>(
     amount: f64,
     quantity: f64,
     is_inflow: bool,
-
     inventory: &mut I,
 ) where
     S: SingleEntry,
     I: Inventory,
 {
     let (amt, qty) = match is_inflow {
-        true => (amount, quantity),
-        false => (-amount, -quantity),
+        true => (amount.abs(), quantity.abs()),
+        false => (-amount.abs(), -quantity.abs()),
     };
 
     if amt > 0.0 && qty > 0.0 {
@@ -539,10 +559,10 @@ pub fn sort_inventory<I: Inventory>(out_flow_type: &OutFlowType, inventory: &mut
             combine_all_inventory_record_in_one_record(inventory);
         }
         OutFlowType::Fifo => {
-            inventory.sort_by(|a, b| b.time_unix.cmp(&a.time_unix));
+            inventory.sort_by(|a, b| a.time_unix.cmp(&b.time_unix));
         }
         OutFlowType::Lifo => {
-            inventory.sort_by(|a, b| a.time_unix.cmp(&b.time_unix));
+            inventory.sort_by(|a, b| b.time_unix.cmp(&a.time_unix));
         }
         OutFlowType::Hifo => {
             inventory.sort_by(|a, b| {
@@ -637,5 +657,698 @@ mod wrapper {
         fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
             iter.fold(T::default(), |acc, x| acc + x)
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::AccountInfoProvider;
+    use super::DoubleEntry;
+    use super::EntryContainer;
+    use super::InFlowType;
+    use super::Inventory;
+    use super::InventoryRecord;
+    use super::OutFlowType;
+    use super::SingleEntry;
+    use super::state_full_check_for_entry;
+    use super::state_less_check_for_entry;
+    use std::alloc::System;
+    use std::collections::HashMap;
+    use std::time::SystemTime;
+
+    // -------------------------------------------------------------------------
+    // Dummy implementations of traits for testing
+    // -------------------------------------------------------------------------
+
+    #[derive(Clone, PartialEq, Eq, Hash, Debug)]
+    struct AccountId(String);
+
+    #[derive(Clone, Debug)]
+    struct TestSingleEntry {
+        account:  AccountId,
+        debit:    bool,
+        qty:      f64,
+        amt:      f64,
+        in_flow:  InFlowType,
+        out_flow: OutFlowType,
+    }
+
+    impl SingleEntry for TestSingleEntry {
+        type AccountId = AccountId;
+
+        fn account_id(&self) -> &Self::AccountId {
+            &self.account
+        }
+
+        fn is_debit(&self) -> bool {
+            self.debit
+        }
+
+        fn quantity(&self) -> f64 {
+            self.qty
+        }
+
+        fn amount(&self) -> f64 {
+            self.amt
+        }
+
+        fn flow_type(&self) -> (InFlowType, OutFlowType) {
+            (self.in_flow.clone(), self.out_flow.clone())
+        }
+    }
+
+    #[derive(Clone, Debug)]
+    struct TestDoubleEntry {
+        lines: Vec<TestSingleEntry>,
+    }
+
+    impl DoubleEntry for TestDoubleEntry {
+        type Iter<'a> = std::slice::Iter<'a, TestSingleEntry>;
+        type Single = TestSingleEntry;
+
+        fn iter(&self) -> Self::Iter<'_> {
+            self.lines.iter()
+        }
+
+        fn is_empty(&self) -> bool {
+            self.lines.is_empty()
+        }
+
+        fn len(&self) -> usize {
+            self.lines.len()
+        }
+    }
+
+    #[derive(Clone, Debug)]
+    struct TestEntryContainer {
+        groups: Vec<TestDoubleEntry>,
+    }
+
+    impl EntryContainer for TestEntryContainer {
+        type Double = TestDoubleEntry;
+        type Iter<'a> = std::slice::Iter<'a, TestDoubleEntry>;
+
+        fn iter(&self) -> Self::Iter<'_> {
+            self.groups.iter()
+        }
+
+        fn is_empty(&self) -> bool {
+            self.groups.is_empty()
+        }
+
+        fn len(&self) -> usize {
+            self.groups.len()
+        }
+    }
+
+    // Dummy Inventory – a simple vector wrapper
+    #[derive(Clone, Debug, Default)]
+    struct TestInventory(Vec<InventoryRecord>);
+
+    impl Inventory for TestInventory {
+        fn push(&mut self, record: InventoryRecord) {
+            self.0.push(record);
+        }
+
+        fn clear(&mut self) {
+            self.0.clear();
+        }
+
+        fn is_empty(&self) -> bool {
+            self.0.is_empty()
+        }
+
+        fn iter(&self) -> impl Iterator<Item = &InventoryRecord> {
+            self.0.iter()
+        }
+
+        fn iter_mut(&mut self) -> impl Iterator<Item = &mut InventoryRecord> {
+            self.0.iter_mut()
+        }
+
+        fn sort_by<F>(&mut self, compare: F)
+        where
+            F: FnMut(&InventoryRecord, &InventoryRecord) -> std::cmp::Ordering,
+        {
+            self.0.sort_by(compare)
+        }
+
+        fn retain<F>(&mut self, f: F)
+        where
+            F: FnMut(&InventoryRecord) -> bool,
+        {
+            self.0.retain(f)
+        }
+
+        fn pop(&mut self) -> Option<InventoryRecord> {
+            self.0.pop()
+        }
+    }
+
+    // AccountInfoProvider that stores nature and inventory per account
+    struct TestAccountInfoProvider {
+        natures:     HashMap<AccountId, bool>, // true = Debit nature
+        inventories: HashMap<AccountId, TestInventory>,
+    }
+
+    impl TestAccountInfoProvider {
+        fn new() -> Self {
+            Self {
+                natures:     HashMap::new(),
+                inventories: HashMap::new(),
+            }
+        }
+
+        fn add_account(&mut self, id: AccountId, is_debit_nature: bool) {
+            self.natures.insert(id.clone(), is_debit_nature);
+            self.inventories.entry(id).or_insert_with(TestInventory::default);
+        }
+    }
+
+    impl AccountInfoProvider for TestAccountInfoProvider {
+        type AccountId = AccountId;
+        type Inventory = TestInventory;
+
+        fn is_debit_nature(&self, id: &Self::AccountId) -> bool {
+            *self.natures.get(id).unwrap_or(&true) // default to Debit
+        }
+
+        fn get_or_create_inventory(&mut self, id: &Self::AccountId) -> &mut Self::Inventory {
+            self.inventories.entry(id.clone()).or_insert_with(TestInventory::default)
+        }
+    }
+
+    // Helper to create a TestSingleEntry quickly
+    fn entry(
+        account: &str,
+        debit: bool,
+        qty: f64,
+        amt: f64,
+        in_flow: InFlowType,
+        out_flow: OutFlowType,
+    ) -> TestSingleEntry {
+        TestSingleEntry {
+            account: AccountId(account.to_string()),
+            debit,
+            qty,
+            amt,
+            in_flow,
+            out_flow,
+        }
+    }
+
+    fn simple_entry(account: &str, debit: bool, qty: f64, amt: f64) -> TestSingleEntry {
+        entry(account, debit, qty, amt, InFlowType::Manual, OutFlowType::Manual)
+    }
+
+    // -------------------------------------------------------------------------
+    // Tests for state_less_check_for_entry
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn test_state_less_empty_entry() {
+        let entry = TestEntryContainer {
+            groups: vec![],
+        };
+        let err = state_less_check_for_entry(&entry);
+        assert!(err.entry_is_empty);
+        assert_eq!(err.double_entry_errors.len(), 0);
+    }
+
+    #[test]
+    fn test_state_less_duplicate_account() {
+        let single1 = simple_entry("A", true, 1.0, 10.0);
+        let single2 = simple_entry("A", false, 1.0, 10.0); // same account
+        let double = TestDoubleEntry {
+            lines: vec![single1, single2],
+        };
+        let entry = TestEntryContainer {
+            groups: vec![double],
+        };
+        let err = state_less_check_for_entry(&entry);
+        assert!(!err.entry_is_empty);
+        assert_eq!(err.double_entry_errors.len(), 1);
+        let de = &err.double_entry_errors[0];
+        assert!(!de.entry_is_empty);
+        assert_eq!(de.single_entry_errors.len(), 2);
+        assert!(de.single_entry_errors[1].duplicate_account_in_entry);
+    }
+
+    #[test]
+    fn test_state_less_zero_qty_and_amount() {
+        let single = entry("A", true, 0.0, 0.0, InFlowType::Manual, OutFlowType::Manual);
+        let double = TestDoubleEntry {
+            lines: vec![single],
+        };
+        let entry = TestEntryContainer {
+            groups: vec![double],
+        };
+        let err = state_less_check_for_entry(&entry);
+        let se = &err.double_entry_errors[0].single_entry_errors[0];
+        assert!(se.quantity_and_amount_are_zero);
+    }
+
+    #[test]
+    fn test_state_less_negative_values() {
+        let single = simple_entry("A", true, -1.0, -5.0);
+        let double = TestDoubleEntry {
+            lines: vec![single],
+        };
+        let entry = TestEntryContainer {
+            groups: vec![double],
+        };
+        let err = state_less_check_for_entry(&entry);
+        let se = &err.double_entry_errors[0].single_entry_errors[0];
+        assert!(se.the_amount_should_be_positive);
+        assert!(se.the_quantity_should_be_positive);
+    }
+
+    #[test]
+    fn test_state_less_debit_credit_mismatch() {
+        // Debit total = 10, Credit total = 8
+        let d1 = simple_entry("A", true, 1.0, 10.0);
+        let c1 = simple_entry("B", false, 1.0, 8.0);
+        let double = TestDoubleEntry {
+            lines: vec![d1, c1],
+        };
+        let entry = TestEntryContainer {
+            groups: vec![double],
+        };
+        let err = state_less_check_for_entry(&entry);
+        let de = &err.double_entry_errors[0];
+        assert!(de.debit_not_equal_credit.is_some());
+        let dnc = de.debit_not_equal_credit.as_ref().unwrap();
+        assert_eq!(dnc.total_debit, 10.0);
+        assert_eq!(dnc.total_credit, 8.0);
+    }
+
+    #[test]
+    fn test_state_less_splittable_entry() {
+        // Debit: [A=1, D=4, E=5] total=10, Credit: [B=2, C=3, F=5] total=10
+        // This can be split into 5=2+3 and 1+4=5, so you_need_to_split_the_entry = true
+        let d1 = entry("A", true, 1.0, 1.0, InFlowType::Manual, OutFlowType::Manual);
+        let d2 = entry("D", true, 1.0, 4.0, InFlowType::Manual, OutFlowType::Manual);
+        let d3 = entry("E", true, 1.0, 5.0, InFlowType::Manual, OutFlowType::Manual);
+        let c1 = entry("B", false, 1.0, 2.0, InFlowType::Manual, OutFlowType::Manual);
+        let c2 = entry("C", false, 1.0, 3.0, InFlowType::Manual, OutFlowType::Manual);
+        let c3 = entry("F", false, 1.0, 5.0, InFlowType::Manual, OutFlowType::Manual);
+        let double = TestDoubleEntry {
+            lines: vec![d1, d2, d3, c1, c2, c3],
+        };
+        let entry = TestEntryContainer {
+            groups: vec![double],
+        };
+        let err = state_less_check_for_entry(&entry);
+        let de = &err.double_entry_errors[0];
+        assert!(de.you_need_to_split_the_entry);
+    }
+
+    #[test]
+    fn test_state_less_non_splittable_entry() {
+        // Debit: [1,2,6] total=9, Credit: [4,5] total=9 – atomic, no split
+        let d1 = simple_entry("A", true, 1.0, 1.0);
+        let d2 = simple_entry("B", true, 1.0, 2.0);
+        let d3 = simple_entry("F", true, 1.0, 6.0);
+        let c1 = simple_entry("D", false, 1.0, 4.0);
+        let c2 = simple_entry("E", false, 1.0, 5.0);
+        let double = TestDoubleEntry {
+            lines: vec![d1, d2, d3, c1, c2],
+        };
+        let entry = TestEntryContainer {
+            groups: vec![double],
+        };
+        let err = state_less_check_for_entry(&entry);
+        let de = &err.double_entry_errors[0];
+        assert!(!de.you_need_to_split_the_entry);
+    }
+
+    // -------------------------------------------------------------------------
+    // Tests for state_full_check_for_entry
+    // -------------------------------------------------------------------------
+
+    fn setup_provider() -> TestAccountInfoProvider {
+        let mut provider = TestAccountInfoProvider::new();
+        // Add accounts with their nature (true = Debit)
+        provider.add_account(AccountId("A".to_string()), true);
+        provider.add_account(AccountId("B".to_string()), true);
+        provider.add_account(AccountId("C".to_string()), true);
+        provider.add_account(AccountId("D".to_string()), true);
+        provider.add_account(AccountId("E".to_string()), true);
+        provider.add_account(AccountId("F".to_string()), true);
+        provider.add_account(AccountId("G".to_string()), false); // Credit nature
+        provider
+    }
+
+    #[test]
+    fn test_state_full_inventory_empty_error() {
+        let mut provider = setup_provider();
+        let single = simple_entry("A", true, 1.0, 10.0); // inflow, but inventory empty
+        let double = TestDoubleEntry {
+            lines: vec![single],
+        };
+        let entry = TestEntryContainer {
+            groups: vec![double],
+        };
+        let err = state_full_check_for_entry(100000000000, &entry, &mut provider);
+        let se = &err.double_entry_errors[0].single_entry_errors[0];
+        assert!(se.inventory_is_empty);
+    }
+
+    #[test]
+    fn test_state_full_quantity_equal_amount_inflow() {
+        let mut provider = setup_provider();
+        // First, add some inventory to avoid empty error
+        let inv = provider.get_or_create_inventory(&AccountId("A".to_string()));
+        inv.push(InventoryRecord {
+            time_unix: 1,
+            quantity:  10.0,
+            amount:    100.0,
+        });
+
+        // Now test inflow with QuantityEqualAmount
+        let single =
+            entry("A", true, 5.0, 5.0, InFlowType::QuantityEqualAmount, OutFlowType::Manual);
+        let double = TestDoubleEntry {
+            lines: vec![single],
+        };
+        let entry = TestEntryContainer {
+            groups: vec![double],
+        };
+        let err = state_full_check_for_entry(100000000000, &entry, &mut provider);
+        let se = &err.double_entry_errors[0].single_entry_errors[0];
+        assert!(!se.quantity_not_equal_amount); // should be ok
+    }
+
+    #[test]
+    fn test_state_full_quantity_equal_amount_mismatch() {
+        let mut provider = setup_provider();
+        let inv = provider.get_or_create_inventory(&AccountId("A".to_string()));
+        inv.push(InventoryRecord {
+            time_unix: 1,
+            quantity:  10.0,
+            amount:    100.0,
+        });
+
+        let single = entry(
+            "A",
+            true,
+            5.0,
+            4.0, // qty != amount
+            InFlowType::QuantityEqualAmount,
+            OutFlowType::Manual,
+        );
+        let double = TestDoubleEntry {
+            lines: vec![single],
+        };
+        let entry = TestEntryContainer {
+            groups: vec![double],
+        };
+        let err = state_full_check_for_entry(100000000000, &entry, &mut provider);
+        let se = &err.double_entry_errors[0].single_entry_errors[0];
+        assert!(se.quantity_not_equal_amount);
+    }
+
+    #[test]
+    fn test_state_full_quantity_equal_zero_inflow() {
+        let mut provider = setup_provider();
+        let inv = provider.get_or_create_inventory(&AccountId("A".to_string()));
+        inv.push(InventoryRecord {
+            time_unix: 1,
+            quantity:  10.0,
+            amount:    100.0,
+        });
+
+        let single =
+            entry("A", true, 0.0, 10.0, InFlowType::QuantityEqualZero, OutFlowType::Manual);
+        let double = TestDoubleEntry {
+            lines: vec![single],
+        };
+        let entry = TestEntryContainer {
+            groups: vec![double],
+        };
+        let err = state_full_check_for_entry(100000000000, &entry, &mut provider);
+        let se = &err.double_entry_errors[0].single_entry_errors[0];
+        assert!(!se.quantity_not_equal_zero); // ok
+    }
+
+    #[test]
+    fn test_state_full_quantity_equal_zero_mismatch() {
+        let mut provider = setup_provider();
+        let inv = provider.get_or_create_inventory(&AccountId("A".to_string()));
+        inv.push(InventoryRecord {
+            time_unix: 1,
+            quantity:  10.0,
+            amount:    100.0,
+        });
+
+        let single = entry(
+            "A",
+            true,
+            1.0, // qty != 0
+            10.0,
+            InFlowType::QuantityEqualZero,
+            OutFlowType::Manual,
+        );
+        let double = TestDoubleEntry {
+            lines: vec![single],
+        };
+        let entry = TestEntryContainer {
+            groups: vec![double],
+        };
+        let err = state_full_check_for_entry(100000000000, &entry, &mut provider);
+        let se = &err.double_entry_errors[0].single_entry_errors[0];
+        assert!(se.quantity_not_equal_zero);
+    }
+
+    #[test]
+    fn test_state_full_outflow_insufficient_amount() {
+        let mut provider = setup_provider();
+        let inv = provider.get_or_create_inventory(&AccountId("A".to_string()));
+        inv.push(InventoryRecord {
+            time_unix: 1,
+            quantity:  5.0,
+            amount:    10.0,
+        }); // total amt = 10
+
+        // Outflow of 20.0 amount (debit nature, but outflow = Credit)
+        let single = entry("A", false, 5.0, 20.0, InFlowType::Manual, OutFlowType::Manual);
+        let double = TestDoubleEntry {
+            lines: vec![single],
+        };
+        let entry = TestEntryContainer {
+            groups: vec![double],
+        };
+        let err = state_full_check_for_entry(100000000000, &entry, &mut provider);
+        let se = &err.double_entry_errors[0].single_entry_errors[0];
+        assert!(se.insufficient_amount_in_inventory.is_some());
+        let ia = se.insufficient_amount_in_inventory.as_ref().unwrap();
+        assert_eq!(ia.total_amount, 10.0);
+    }
+
+    #[test]
+    fn test_state_full_outflow_insufficient_quantity() {
+        let mut provider = setup_provider();
+        let inv = provider.get_or_create_inventory(&AccountId("A".to_string()));
+        inv.push(InventoryRecord {
+            time_unix: 1,
+            quantity:  2.0,
+            amount:    10.0,
+        });
+
+        let single = entry(
+            "A",
+            false,
+            5.0, // qty > 2
+            20.0,
+            InFlowType::Manual,
+            OutFlowType::Manual,
+        );
+        let double = TestDoubleEntry {
+            lines: vec![single],
+        };
+        let entry = TestEntryContainer {
+            groups: vec![double],
+        };
+        let err = state_full_check_for_entry(100000000000, &entry, &mut provider);
+        let se = &err.double_entry_errors[0].single_entry_errors[0];
+        assert!(se.insufficient_quantity_in_inventory.is_some());
+        let iq = se.insufficient_quantity_in_inventory.as_ref().unwrap();
+        assert_eq!(iq.total_quantity, 2.0);
+    }
+
+    #[test]
+    fn test_state_full_outflow_amount_mismatch_wac() {
+        let mut provider = setup_provider();
+        let inv = provider.get_or_create_inventory(&AccountId("A".to_string()));
+        // One record: qty=10, amt=100 => price=10
+        inv.push(InventoryRecord {
+            time_unix: 1,
+            quantity:  10.0,
+            amount:    100.0,
+        });
+
+        // Wac outflow: expected amount = quantity * (total_amt/total_qty) = 2*10 = 20
+        // But we set amount=25 => mismatch
+        let single = entry("A", false, 2.0, 25.0, InFlowType::Manual, OutFlowType::Wac);
+        let double = TestDoubleEntry {
+            lines: vec![single],
+        };
+        let entry = TestEntryContainer {
+            groups: vec![double],
+        };
+        let err = state_full_check_for_entry(100000000000, &entry, &mut provider);
+        let se = &err.double_entry_errors[0].single_entry_errors[0];
+        assert!(se.amount_mismatch.is_some());
+        let am = se.amount_mismatch.as_ref().unwrap();
+        assert_eq!(am.expected_amount, 20.0);
+    }
+
+    #[test]
+    fn test_state_full_outflow_amount_mismatch_fifo() {
+        let mut provider = setup_provider();
+        let inv = provider.get_or_create_inventory(&AccountId("A".to_string()));
+        // Two records: first qty=5, amt=20 (price=4); second qty=3, amt=15 (price=5)
+        inv.push(InventoryRecord {
+            time_unix: 1,
+            quantity:  5.0,
+            amount:    20.0,
+        });
+        inv.push(InventoryRecord {
+            time_unix: 2,
+            quantity:  3.0,
+            amount:    15.0,
+        });
+
+        // Outflow 4 units: FIFO takes 4 from first record: amount = 4*4 = 16
+        let single = entry(
+            "A",
+            false,
+            4.0,
+            20.0, // mismatch
+            InFlowType::Manual,
+            OutFlowType::Fifo,
+        );
+        let double = TestDoubleEntry {
+            lines: vec![single],
+        };
+        let entry = TestEntryContainer {
+            groups: vec![double],
+        };
+        let err = state_full_check_for_entry(100000000000, &entry, &mut provider);
+        let se = &err.double_entry_errors[0].single_entry_errors[0];
+        assert!(se.amount_mismatch.is_some());
+        let am = se.amount_mismatch.as_ref().unwrap();
+        assert_eq!(am.expected_amount, 16.0);
+    }
+
+    // Test state_full_check_for_entry with out_flow type QuantityEqualAmount and QuantityEqualZero for outflow.
+    #[test]
+    fn test_state_full_outflow_quantity_equal_amount() {
+        let mut provider = setup_provider();
+        let inv = provider.get_or_create_inventory(&AccountId("A".to_string()));
+        inv.push(InventoryRecord {
+            time_unix: 1,
+            quantity:  10.0,
+            amount:    20.0,
+        });
+
+        // Outflow with QuantityEqualAmount: qty should equal amount
+        let single =
+            entry("A", false, 2.0, 2.0, InFlowType::Manual, OutFlowType::QuantityEqualAmount);
+        let double = TestDoubleEntry {
+            lines: vec![single],
+        };
+        let entry = TestEntryContainer {
+            groups: vec![double],
+        };
+        let err = state_full_check_for_entry(100000000000, &entry, &mut provider);
+        let se = &err.double_entry_errors[0].single_entry_errors[0];
+        assert!(!se.quantity_not_equal_amount);
+    }
+
+    #[test]
+    fn test_state_full_outflow_quantity_equal_amount_mismatch() {
+        let mut provider = setup_provider();
+        let inv = provider.get_or_create_inventory(&AccountId("A".to_string()));
+        inv.push(InventoryRecord {
+            time_unix: 1,
+            quantity:  10.0,
+            amount:    20.0,
+        });
+
+        let single =
+            entry("A", false, 2.0, 3.0, InFlowType::Manual, OutFlowType::QuantityEqualAmount);
+        let double = TestDoubleEntry {
+            lines: vec![single],
+        };
+        let entry = TestEntryContainer {
+            groups: vec![double],
+        };
+        let err = state_full_check_for_entry(100000000000, &entry, &mut provider);
+        let se = &err.double_entry_errors[0].single_entry_errors[0];
+        assert!(se.quantity_not_equal_amount);
+    }
+
+    #[test]
+    fn test_state_full_outflow_quantity_equal_zero() {
+        let mut provider = setup_provider();
+        let inv = provider.get_or_create_inventory(&AccountId("A".to_string()));
+        inv.push(InventoryRecord {
+            time_unix: 1,
+            quantity:  10.0,
+            amount:    20.0,
+        });
+
+        let single =
+            entry("A", false, 0.0, 5.0, InFlowType::Manual, OutFlowType::QuantityEqualZero);
+        let double = TestDoubleEntry {
+            lines: vec![single],
+        };
+        let entry = TestEntryContainer {
+            groups: vec![double],
+        };
+        let err = state_full_check_for_entry(100000000000, &entry, &mut provider);
+        let se = &err.double_entry_errors[0].single_entry_errors[0];
+        assert!(!se.quantity_not_equal_zero);
+    }
+
+    #[test]
+    fn test_state_full_outflow_quantity_equal_zero_mismatch() {
+        let mut provider = setup_provider();
+        let inv = provider.get_or_create_inventory(&AccountId("A".to_string()));
+        inv.push(InventoryRecord {
+            time_unix: 1,
+            quantity:  10.0,
+            amount:    20.0,
+        });
+
+        let single =
+            entry("A", false, 1.0, 5.0, InFlowType::Manual, OutFlowType::QuantityEqualZero);
+        let double = TestDoubleEntry {
+            lines: vec![single],
+        };
+        let entry = TestEntryContainer {
+            groups: vec![double],
+        };
+        let err = state_full_check_for_entry(100000000000, &entry, &mut provider);
+        let se = &err.double_entry_errors[0].single_entry_errors[0];
+        assert!(se.quantity_not_equal_zero);
+    }
+
+    // Test that state_full_check_for_entry correctly handles the "inventory empty" check for outflow.
+    #[test]
+    fn test_state_full_outflow_empty_inventory() {
+        let mut provider = setup_provider();
+        // No inventory for account A
+        let single = simple_entry("A", false, 1.0, 10.0);
+        let double = TestDoubleEntry {
+            lines: vec![single],
+        };
+        let entry = TestEntryContainer {
+            groups: vec![double],
+        };
+        let err = state_full_check_for_entry(100000000000, &entry, &mut provider);
+        let se = &err.double_entry_errors[0].single_entry_errors[0];
+        assert!(se.inventory_is_empty);
     }
 }
