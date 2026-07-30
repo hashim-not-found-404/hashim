@@ -156,13 +156,20 @@ struct SingleEntryError {
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
-pub(crate) struct Error {
-    entry_is_empty:         bool,
-    debit_not_equal_credit: Option<DebitNotEqualCreditError>,
-    single_entry_errors:    Vec<SingleEntryError>,
+pub(crate) struct DoubleEntryError {
+    entry_is_empty:              bool,
+    you_need_to_split_the_entry: bool,
+    debit_not_equal_credit:      Option<DebitNotEqualCreditError>,
+    single_entry_errors:         Vec<SingleEntryError>,
 }
 
-impl types::MyErrorTrait for Error {
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
+pub(crate) struct EntryError {
+    entry_is_empty:      bool,
+    double_entry_errors: Vec<DoubleEntryError>,
+}
+
+impl types::MyErrorTrait for DoubleEntryError {
     fn is_there_error(&self) -> bool {
         if self.entry_is_empty || self.debit_not_equal_credit.is_some() {
             return true;
@@ -191,10 +198,21 @@ pub trait SingleEntry {
     fn flow_type(&self) -> CostFlowType;
 }
 
-/// A container of single entries (e.g., a double‑entry group or a whole journal entry).
-pub trait EntryContainer {
+pub trait DoubleEntry {
     type Single: SingleEntry;
     type Iter<'a>: Iterator<Item = &'a Self::Single> + ExactSizeIterator
+    where
+        Self: 'a;
+
+    fn iter(&self) -> Self::Iter<'_>;
+    fn is_empty(&self) -> bool;
+    fn len(&self) -> usize;
+}
+
+/// A container of single entries (e.g., a double‑entry group or a whole journal entry).
+pub trait EntryContainer {
+    type Double: DoubleEntry;
+    type Iter<'a>: Iterator<Item = &'a Self::Double> + ExactSizeIterator
     where
         Self: 'a;
 
@@ -252,54 +270,61 @@ fn price(amount: f64, quantity: f64) -> f64 {
 // TODO make it check multiple double entry and also use comon subset sum
 
 /// State‑less check: only checks the entries themselves, no inventory/account info needed.
-pub(crate) fn state_less_check_for_entry<C>(entry: &C) -> Error
+pub(crate) fn state_less_check_for_entry<C>(entry: &C) -> EntryError
 where
     C: EntryContainer,
-    C::Single: SingleEntry,
+    C::Double: DoubleEntry,
+    <C::Double as DoubleEntry>::Single: SingleEntry,
 {
-    let mut errr = Error::default();
+    let mut entry_err = EntryError::default();
     if entry.is_empty() {
-        errr.entry_is_empty = true;
-        return errr;
+        entry_err.entry_is_empty = true;
+        return entry_err;
     }
 
-    // Pre‑allocate to the exact length
-    errr.single_entry_errors = vec![SingleEntryError::default(); entry.len()];
-
-    let mut seen_accounts = HashSet::with_capacity(entry.len());
-
-    for (i, single) in entry.iter().enumerate() {
-        let mut single_err = SingleEntryError::default();
-
-        if single.amount() == 0.0 && single.quantity() == 0.0 {
-            single_err.quantity_and_amount_are_zero = true;
-        }
-        if single.amount() < 0.0 {
-            single_err.the_amount_should_be_positive = true;
-        }
-        if single.quantity() < 0.0 {
-            single_err.the_quantity_should_be_positive = true;
+    for double in entry.iter() {
+        let mut double_err = DoubleEntryError::default();
+        if entry.is_empty() {
+            double_err.entry_is_empty = true;
+            continue;
         }
 
-        if !seen_accounts.insert(single.account_id().clone()) {
-            single_err.duplicate_account_in_entry = true;
-        }
+        double_err.single_entry_errors = Vec::with_capacity(entry.len());
+        let mut seen_accounts = HashSet::with_capacity(entry.len());
 
-        errr.single_entry_errors[i] = single_err;
+        for single in double.iter() {
+            let mut single_err = SingleEntryError::default();
+
+            if single.amount() == 0.0 && single.quantity() == 0.0 {
+                single_err.quantity_and_amount_are_zero = true;
+            }
+            if single.amount() < 0.0 {
+                single_err.the_amount_should_be_positive = true;
+            }
+            if single.quantity() < 0.0 {
+                single_err.the_quantity_should_be_positive = true;
+            }
+
+            if !seen_accounts.insert(single.account_id().clone()) {
+                single_err.duplicate_account_in_entry = true;
+            }
+
+            double_err.single_entry_errors.push(single_err);
+        }
     }
 
-    errr
+    entry_err
 }
 
 /// Full validation including account info and inventory.
-pub(crate) fn state_full_check_for_entry<C, A>(entry: &C, account_info: &mut A) -> Error
+pub(crate) fn state_full_check_for_entry<C, A>(entry: &C, account_info: &mut A) -> DoubleEntryError
 where
     C: EntryContainer,
-    C::Single: SingleEntry,
-    A: AccountInfoProvider<AccountId = <C::Single as SingleEntry>::AccountId>,
+    C::Double: SingleEntry,
+    A: AccountInfoProvider<AccountId = <C::Double as SingleEntry>::AccountId>,
     A::Inventory: Inventory,
 {
-    let mut errr = Error::default();
+    let mut errr = DoubleEntryError::default();
 
     // Pre‑allocate to the exact length
     errr.single_entry_errors = vec![SingleEntryError::default(); entry.len()];
@@ -410,8 +435,8 @@ where
 pub fn apply_entry_on_inventory<C, A>(time_unix: u64, entry: &C, account_info: &mut A)
 where
     C: EntryContainer,
-    C::Single: SingleEntry,
-    A: AccountInfoProvider<AccountId = <C::Single as SingleEntry>::AccountId>,
+    C::Double: SingleEntry,
+    A: AccountInfoProvider<AccountId = <C::Double as SingleEntry>::AccountId>,
     A::Inventory: Inventory,
 {
     for single in entry.iter() {

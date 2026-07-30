@@ -78,7 +78,7 @@ pub struct Error {
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
 pub struct DoubleEntryError {
-    pub(crate) accounting_error:    accounting_stuff::Error,
+    pub(crate) accounting_error:    accounting_stuff::DoubleEntryError,
     pub(crate) single_entry_errors: Vec<SingleEntryError>,
 }
 
@@ -189,8 +189,8 @@ impl accounting_stuff::SingleEntry for MiddelSingleEntry {
 }
 
 impl accounting_stuff::EntryContainer for Vec<MiddelSingleEntry> {
+    type Double = MiddelSingleEntry;
     type Iter<'a> = std::slice::Iter<'a, MiddelSingleEntry>;
-    type Single = MiddelSingleEntry;
 
     fn iter(&self) -> Self::Iter<'_> {
         self.as_slice().iter()
