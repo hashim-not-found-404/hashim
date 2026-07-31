@@ -119,82 +119,39 @@ pub struct InventoryRecord {
 }
 
 // -----------------------------------------------------------------------------
-// Error types (serializable for API responses)
-// -----------------------------------------------------------------------------
-
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
-pub(crate) struct DebitNotEqualCreditError {
-    total_debit:  f64,
-    total_credit: f64,
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
-pub(crate) struct InsufficientQuantityInInventory {
-    total_quantity: f64,
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
-pub(crate) struct AmountMismatch {
-    expected_amount: f64,
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
-pub(crate) struct InsufficientAmountInInventory {
-    total_amount: f64,
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
-pub(crate) struct SingleEntryError {
-    quantity_and_amount_are_zero:       bool,
-    duplicate_account_in_entry:         bool,
-    inventory_is_empty:                 bool,
-    the_amount_should_be_positive:      bool,
-    the_quantity_should_be_positive:    bool,
-    quantity_not_equal_amount:          bool,
-    quantity_not_equal_zero:            bool,
-    insufficient_quantity_in_inventory: Option<InsufficientQuantityInInventory>,
-    amount_mismatch:                    Option<AmountMismatch>,
-    insufficient_amount_in_inventory:   Option<InsufficientAmountInInventory>,
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
-pub(crate) struct DoubleEntryError {
-    entry_is_empty:              bool,
-    you_need_to_split_the_entry: bool,
-    debit_not_equal_credit:      Option<DebitNotEqualCreditError>,
-    single_entry_errors:         Vec<SingleEntryError>,
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
-pub(crate) struct EntryError {
-    entry_is_empty:      bool,
-    double_entry_errors: Vec<DoubleEntryError>,
-}
-
-impl types::MyErrorTrait for DoubleEntryError {
-    fn is_there_error(&self) -> bool {
-        if self.entry_is_empty
-            || self.you_need_to_split_the_entry
-            || self.debit_not_equal_credit.is_some()
-        {
-            return true;
-        }
-
-        for line in self.single_entry_errors.iter() {
-            if *line != Default::default() {
-                return true;
-            }
-        }
-
-        false
-    }
-}
-
-impl types::MyErrorTrait for SingleEntryError {}
-
-// -----------------------------------------------------------------------------
 // Trait definitions – the core abstraction for accounting logic
 // -----------------------------------------------------------------------------
+
+pub trait ErrorSink {
+    fn is_there_error_single_entry(&self, double_idx: usize, single_idx: usize) -> bool;
+
+    fn quantity_and_amount_are_zero(&mut self, double_idx: usize, single_idx: usize);
+    fn duplicate_account_in_entry(&mut self, double_idx: usize, single_idx: usize);
+    fn inventory_is_empty(&mut self, double_idx: usize, single_idx: usize);
+    fn the_amount_should_be_positive(&mut self, double_idx: usize, single_idx: usize);
+    fn the_quantity_should_be_positive(&mut self, double_idx: usize, single_idx: usize);
+    fn quantity_not_equal_amount(&mut self, double_idx: usize, single_idx: usize);
+    fn quantity_not_equal_zero(&mut self, double_idx: usize, single_idx: usize);
+    fn insufficient_quantity_in_inventory(
+        &mut self,
+        double_idx: usize,
+        single_idx: usize,
+        total_quantity: f64,
+    );
+    fn amount_mismatch(&mut self, double_idx: usize, single_idx: usize, expected_amount: f64);
+    fn insufficient_amount_in_inventory(
+        &mut self,
+        double_idx: usize,
+        single_idx: usize,
+        total_amount: f64,
+    );
+
+    fn entry_is_empty(&mut self, double_idx: usize);
+    fn you_need_to_split_the_entry(&mut self, double_idx: usize);
+    fn debit_not_equal_credit(&mut self, double_idx: usize, total_debit: f64, total_credit: f64);
+
+    fn container_is_empty(&mut self);
+}
 
 /// Represents a single entry line (e.g., a line in a journal entry).
 pub trait SingleEntry {
@@ -286,15 +243,16 @@ fn price(amount: f64, quantity: f64) -> f64 {
 // -----------------------------------------------------------------------------
 
 /// State‑less check: only checks the entries themselves, no inventory/account info needed.
-pub(crate) fn state_less_check_for_entry<C>(entry: &C) -> EntryError
+pub(crate) fn state_less_check_for_entry<E, C>(errr: &mut E, entry: &C)
 where
+    E: ErrorSink,
     C: EntryContainer,
     C::Double: DoubleEntry,
     <C::Double as DoubleEntry>::Single: SingleEntry,
 {
     let mut entry_err = EntryError::default();
     if entry.is_empty() {
-        entry_err.entry_is_empty = true;
+        entry_err.container_is_empty = true;
         return entry_err;
     }
 
@@ -365,12 +323,13 @@ where
 }
 
 /// Full validation including account info and inventory.
-pub(crate) fn state_full_check_for_entry<C, A>(
+pub(crate) fn state_full_check_for_entry<E, C, A>(
     time_unix: u64,
+    errr: &mut E,
     entry: &C,
     account_info: &mut A,
-) -> EntryError
-where
+) where
+    E: ErrorSink,
     C: EntryContainer,
     C::Double: DoubleEntry,
     <C::Double as DoubleEntry>::Single: SingleEntry,
@@ -925,7 +884,7 @@ mod tests {
             groups: vec![],
         };
         let err = state_less_check_for_entry(&entry);
-        assert!(err.entry_is_empty);
+        assert!(err.container_is_empty);
         assert_eq!(err.double_entry_errors.len(), 0);
     }
 
@@ -940,7 +899,7 @@ mod tests {
             groups: vec![double],
         };
         let err = state_less_check_for_entry(&entry);
-        assert!(!err.entry_is_empty);
+        assert!(!err.container_is_empty);
         assert_eq!(err.double_entry_errors.len(), 1);
         let de = &err.double_entry_errors[0];
         assert!(!de.entry_is_empty);
@@ -1495,7 +1454,7 @@ mod tests {
             groups: vec![double],
         };
         let err = state_less_check_for_entry(&entry);
-        assert!(!err.entry_is_empty);
+        assert!(!err.container_is_empty);
         assert_eq!(err.double_entry_errors.len(), 1);
         let de = &err.double_entry_errors[0];
         assert!(de.entry_is_empty);
