@@ -92,6 +92,9 @@ pub struct SingleEntryError {
     pub(crate) new_uuid: Option<types::RowIdError>,
     pub(crate) account:  Option<types::RowIdError>,
 
+    is_debit_or_inflow_missing:         bool,
+    amount_missing:                     bool,
+    quantity_missing:                   bool,
     quantity_and_amount_are_zero:       bool,
     duplicate_account_in_entry:         bool,
     inventory_is_empty:                 bool,
@@ -452,8 +455,8 @@ pub(crate) fn init_error_sink(entry: &Input) -> Error {
 }
 
 /// Resolve user‑supplied entries into fully‑inferred `MiddelSingleEntry` values.
-/// Returns `Ok(resolved)` or `Err(errors)` where `errors` is a list of resolution failures.
-pub(crate) fn map_input_type_to_middel_type(
+/// This function never panics; it sets errors in the sink for any missing or invalid data.
+fn map_input_type_to_middel_type(
     err: &mut Error,
     entry: Vec<Vec<SingleEntry>>,
     accounts_info: &HashMap<types::UuidType, AccountInfo>,
@@ -469,35 +472,56 @@ pub(crate) fn map_input_type_to_middel_type(
                 None => {
                     err.double_entries[double_idx].single_entry_errors[single_idx].account =
                         Some(types::RowIdError::NotExist);
+                    // Skip this single – without account info we cannot proceed.
                     continue;
                 }
             };
 
-            // 2. Infer is_debit if missing
-            let is_debit = if let Some(d) = single.is_debit {
-                d
-            } else {
-                let is_inflow = single.is_inflow.expect("TODO this should be infered virtically");
-                accounting_stuff::is_debit(account_info.is_debit, is_inflow)
+            // 2. Infer is_debit and is_inflow
+            let (is_debit, _is_inflow) = match (single.is_debit, single.is_inflow) {
+                (Some(d), Some(i)) => (d, i),
+                (Some(d), None) => {
+                    let i = accounting_stuff::is_inflow(account_info.is_debit, d);
+                    (d, i)
+                }
+                (None, Some(i)) => {
+                    let d = accounting_stuff::is_debit(account_info.is_debit, i);
+                    (d, i)
+                }
+                (None, None) => {
+                    err.double_entries[double_idx].single_entry_errors[single_idx]
+                        .is_debit_or_inflow_missing = true;
+                    // Fallback: set is_debit = true (debit) and is_inflow = true (inflow)
+                    // This allows validation to continue.
+                    (true, true)
+                }
             };
 
-            // 4. Flow types – fallback to account defaults
+            // 3. Flow types – fallback to account defaults if not provided
             let inflow_type =
                 single.inflow_type.clone().unwrap_or_else(|| account_info.in_flow_type.clone());
             let outflow_type =
                 single.outflow_type.clone().unwrap_or_else(|| account_info.out_flow_type.clone());
 
-            // 5. Amount and quantity must be present
-            let amount = match single.amount {
-                Some(a) => a,
-                None => {
-                    todo!("this should calculated from inventory or from the entry");
+            // 4. Amount and quantity – must be provided; if missing, set 0.0 and mark error
+            let (amount, quantity) = match (single.amount, single.quantity) {
+                (Some(a), Some(q)) => (a, q),
+                (Some(a), None) => {
+                    err.double_entries[double_idx].single_entry_errors[single_idx]
+                        .quantity_missing = true;
+                    (a, 0.0)
                 }
-            };
-            let quantity = match single.quantity {
-                Some(q) => q,
-                None => {
-                    todo!("this should calculated from inventory or from the entry");
+                (None, Some(q)) => {
+                    err.double_entries[double_idx].single_entry_errors[single_idx].amount_missing =
+                        true;
+                    (0.0, q)
+                }
+                (None, None) => {
+                    err.double_entries[double_idx].single_entry_errors[single_idx].amount_missing =
+                        true;
+                    err.double_entries[double_idx].single_entry_errors[single_idx]
+                        .quantity_missing = true;
+                    (0.0, 0.0)
                 }
             };
 
@@ -541,6 +565,20 @@ impl Input {
             }
         }
 
+        // Validate each single entry's UUIDs
+        for (i, double) in self.double_entries.iter().enumerate() {
+            for (j, single) in double.0.iter().enumerate() {
+                if !Id::validate(&single.new_uuid) {
+                    err.double_entries[i].single_entry_errors[j].new_uuid =
+                        Some(types::RowIdError::Invalid);
+                }
+                if !Id::validate(&single.account) {
+                    err.double_entries[i].single_entry_errors[j].account =
+                        Some(types::RowIdError::Invalid);
+                }
+            }
+        }
+
         err
     }
 
@@ -559,7 +597,7 @@ impl Input {
             return Ok(Err(err));
         }
 
-        // 3. Prepare read input
+        // 2. Prepare read input
         let accounts_uuid: HashSet<_> = self
             .double_entries
             .iter()
@@ -580,10 +618,10 @@ impl Input {
             new_entries_uuid,
         };
 
-        // 4. Read from database
+        // 3. Read from database
         let read_output = Db::read(db, &read_input).await?;
 
-        // 5. Check permissions
+        // 4. Check permissions
         if !types::Role::has_any(&read_output.user_roles, &[
             types::Role::Manager,
             types::Role::CoManager,
@@ -591,7 +629,7 @@ impl Input {
             err.user_uuid = Some(types::UserUuidError::YouDontHavePermissionToDoThat);
         }
 
-        // 6. Check UUID conflicts
+        // 5. Check UUID conflicts
         if read_output.is_new_uuid_used {
             err.new_uuid = Some(types::RowIdError::Duplicated);
         }
@@ -611,14 +649,14 @@ impl Input {
             }
         }
 
-        // 7. Resolve entries using account_info
+        // 6. Resolve entries using account_info
         let resolved = map_input_type_to_middel_type(
             &mut err,
             self.double_entries.iter().map(|d| d.0.clone()).collect(),
-            &read_output.account_info, // clone because we need it for inventory later
+            &read_output.account_info,
         );
 
-        // 8. Build inferred container and run accounting validation
+        // 7. Build inferred container and run accounting validation
         let mut account_info_mut = read_output.account_info;
         let mut inferred_double_entries = Vec::with_capacity(resolved.len());
         for double in resolved {
@@ -631,7 +669,7 @@ impl Input {
         };
         let time = Ti::now_as_unix_milliseconds();
 
-        // 9. Run accounting validation (delegated to accounting_stuff)
+        // 8. Run accounting validation (delegated to accounting_stuff)
         accounting_stuff::state_less_check_for_entry(&mut err, &inferred_container);
         accounting_stuff::state_full_check_for_entry(
             time,
@@ -644,7 +682,7 @@ impl Input {
             return Ok(Err(err));
         }
 
-        // 10. Build the output
+        // 9. Build the output
         let mut double_entry_ok = Vec::new();
         for (double_idx, double) in inferred_container.0.iter().enumerate() {
             for single in &double.0 {
