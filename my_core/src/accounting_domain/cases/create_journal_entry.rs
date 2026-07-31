@@ -443,8 +443,6 @@ impl accounting_stuff::Inventory for Vec<accounting_stuff::InventoryRecord> {
 // -----------------------------------------------------------------------------
 
 impl Input {
-    /// Basic checks: validate UUIDs, ensure double_entries is not empty,
-    /// and that each double entry is not empty.
     pub(crate) fn state_less_check<Id: types::RowId>(&self) -> Error {
         let mut err = Error::default();
 
@@ -463,19 +461,9 @@ impl Input {
             }
         }
 
-        if self.double_entries.is_empty() {
-            err.container_is_empty = true;
-            return err;
-        }
-
         err.double_entries = vec![DoubleEntryError::default(); self.double_entries.len()];
 
         for (i, double) in self.double_entries.iter().enumerate() {
-            if double.0.is_empty() {
-                err.double_entries[i].entry_is_empty = true;
-                continue;
-            }
-
             err.double_entries[i].single_entry_errors =
                 vec![SingleEntryError::default(); double.0.len()];
 
@@ -488,8 +476,6 @@ impl Input {
                 if !Id::validate(&single.account) {
                     single_err.account = Some(types::RowIdError::Invalid);
                 }
-
-                // Amount and quantity are required; we'll catch missing in full check
             }
         }
 
@@ -542,34 +528,26 @@ impl Input {
             types::Role::CoManager,
         ]) {
             err.user_uuid = Some(types::UserUuidError::YouDontHavePermissionToDoThat);
-            return Ok(Err(err));
         }
 
         // 5. Check UUID conflicts
         if read_output.is_new_uuid_used {
             err.new_uuid = Some(types::RowIdError::Duplicated);
         }
-        if let Some(ref shared) = self.shared_entry_id {
+        if self.shared_entry_id.is_some() {
             if !read_output.is_shared_entry_exist {
                 err.shared_entry_id = Some(types::RowIdError::NotExist);
             }
         }
 
         // Pre‑allocate error vectors for single entries
-        err.double_entries = vec![DoubleEntryError::default(); self.double_entries.len()];
         for (i, double) in self.double_entries.iter().enumerate() {
-            err.double_entries[i].single_entry_errors =
-                vec![SingleEntryError::default(); double.0.len()];
             for (j, single) in double.0.iter().enumerate() {
                 if *read_output.is_new_entries_uuid_used.get(&single.new_uuid).unwrap_or(&false) {
                     err.double_entries[i].single_entry_errors[j].new_uuid =
                         Some(types::RowIdError::Duplicated);
                 }
             }
-        }
-
-        if err.is_there_error() {
-            return Ok(Err(err));
         }
 
         // 6. Build inferred entries
