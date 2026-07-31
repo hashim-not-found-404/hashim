@@ -81,10 +81,9 @@ pub struct Error {
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
 pub struct DoubleEntryError {
-    entry_is_empty:              bool,
-    you_need_to_split_the_entry: bool,
-    debit_not_equal_credit:      Option<DebitNotEqualCreditError>,
-
+    entry_is_empty:                 bool,
+    you_need_to_split_the_entry:    bool,
+    debit_not_equal_credit:         Option<DebitNotEqualCreditError>,
     pub(crate) single_entry_errors: Vec<SingleEntryError>,
 }
 
@@ -308,7 +307,6 @@ struct MiddelSingleEntry {
     new_uuid:     types::UuidType,
     account:      types::UuidType,
     is_debit:     bool,
-    is_inflow:    bool,
     inflow_type:  accounting_stuff::InFlowType,
     outflow_type: accounting_stuff::OutFlowType,
     amount:       f64,
@@ -409,11 +407,11 @@ impl accounting_stuff::Inventory for Vec<accounting_stuff::InventoryRecord> {
     }
 
     fn iter(&self) -> impl Iterator<Item = &accounting_stuff::InventoryRecord> {
-        <[accounting_stuff::InventoryRecord]>::iter(self) // ✅ no recursion
+        <[accounting_stuff::InventoryRecord]>::iter(self)
     }
 
     fn iter_mut(&mut self) -> impl Iterator<Item = &mut accounting_stuff::InventoryRecord> {
-        <[accounting_stuff::InventoryRecord]>::iter_mut(self) // ✅ no recursion
+        <[accounting_stuff::InventoryRecord]>::iter_mut(self)
     }
 
     fn sort_by<F>(&mut self, compare: F)
@@ -439,12 +437,94 @@ impl accounting_stuff::Inventory for Vec<accounting_stuff::InventoryRecord> {
 }
 
 // -----------------------------------------------------------------------------
+// Helpers for error initialization and resolution
+// -----------------------------------------------------------------------------
+
+/// Pre‑allocate an `Error` sink matching the structure of `entry`.
+pub(crate) fn init_error_sink(entry: &Input) -> Error {
+    let mut err = Error::default();
+    err.double_entries = vec![DoubleEntryError::default(); entry.double_entries.len()];
+    for (i, double) in entry.double_entries.iter().enumerate() {
+        err.double_entries[i].single_entry_errors =
+            vec![SingleEntryError::default(); double.0.len()];
+    }
+    err
+}
+
+/// Resolve user‑supplied entries into fully‑inferred `MiddelSingleEntry` values.
+/// Returns `Ok(resolved)` or `Err(errors)` where `errors` is a list of resolution failures.
+pub(crate) fn map_input_type_to_middel_type(
+    err: &mut Error,
+    entry: Vec<Vec<SingleEntry>>,
+    accounts_info: &HashMap<types::UuidType, AccountInfo>,
+) -> Vec<Vec<MiddelSingleEntry>> {
+    let mut resolved = Vec::with_capacity(entry.len());
+
+    for (double_idx, double) in entry.iter().enumerate() {
+        let mut resolved_singles = Vec::with_capacity(double.len());
+        for (single_idx, single) in double.iter().enumerate() {
+            // 1. Check account exists
+            let account_info = match accounts_info.get(&single.account) {
+                Some(info) => info,
+                None => {
+                    err.double_entries[double_idx].single_entry_errors[single_idx].account =
+                        Some(types::RowIdError::NotExist);
+                    continue;
+                }
+            };
+
+            // 2. Infer is_debit if missing
+            let is_debit = if let Some(d) = single.is_debit {
+                d
+            } else {
+                let is_inflow = single.is_inflow.expect("TODO this should be infered virtically");
+                accounting_stuff::is_debit(account_info.is_debit, is_inflow)
+            };
+
+            // 4. Flow types – fallback to account defaults
+            let inflow_type =
+                single.inflow_type.clone().unwrap_or_else(|| account_info.in_flow_type.clone());
+            let outflow_type =
+                single.outflow_type.clone().unwrap_or_else(|| account_info.out_flow_type.clone());
+
+            // 5. Amount and quantity must be present
+            let amount = match single.amount {
+                Some(a) => a,
+                None => {
+                    todo!("this should calculated from inventory or from the entry");
+                }
+            };
+            let quantity = match single.quantity {
+                Some(q) => q,
+                None => {
+                    todo!("this should calculated from inventory or from the entry");
+                }
+            };
+
+            resolved_singles.push(MiddelSingleEntry {
+                new_uuid: single.new_uuid.clone(),
+                account: single.account.clone(),
+                is_debit,
+                inflow_type,
+                outflow_type,
+                amount,
+                quantity,
+            });
+        }
+        resolved.push(resolved_singles);
+    }
+
+    resolved
+}
+
+// -----------------------------------------------------------------------------
 // Validation methods on Input
 // -----------------------------------------------------------------------------
 
 impl Input {
+    /// Shallow state‑less check: only validates UUIDs and basic structure.
     pub(crate) fn state_less_check<Id: types::RowId>(&self) -> Error {
-        let mut err = Error::default();
+        let mut err = init_error_sink(self);
 
         if !Id::validate(&self.new_uuid) {
             err.new_uuid = Some(types::RowIdError::Invalid);
@@ -461,29 +541,10 @@ impl Input {
             }
         }
 
-        err.double_entries = vec![DoubleEntryError::default(); self.double_entries.len()];
-
-        for (i, double) in self.double_entries.iter().enumerate() {
-            err.double_entries[i].single_entry_errors =
-                vec![SingleEntryError::default(); double.0.len()];
-
-            for (j, single) in double.0.iter().enumerate() {
-                let single_err = &mut err.double_entries[i].single_entry_errors[j];
-
-                if !Id::validate(&single.new_uuid) {
-                    single_err.new_uuid = Some(types::RowIdError::Invalid);
-                }
-                if !Id::validate(&single.account) {
-                    single_err.account = Some(types::RowIdError::Invalid);
-                }
-            }
-        }
-
         err
     }
 
-    /// Full validation: fetch account info, inventory, and run accounting checks.
-    /// This method returns the final `Ok` if successful, otherwise an `Error`.
+    /// Full validation: fetch account info, resolve entries, and run accounting checks.
     pub(crate) async fn state_full_operation<
         Id: types::RowId,
         Db: DatabaseRead,
@@ -492,13 +553,13 @@ impl Input {
         &self,
         db: &mut Db::Db<'_>,
     ) -> Result<MyResult, traits::DynamicError> {
-        // 1. State‑less check
+        // 1. State‑less check (shallow)
         let mut err = self.state_less_check::<Id>();
         if err.is_there_error() {
             return Ok(Err(err));
         }
 
-        // 2. Prepare read input
+        // 3. Prepare read input
         let accounts_uuid: HashSet<_> = self
             .double_entries
             .iter()
@@ -519,10 +580,10 @@ impl Input {
             new_entries_uuid,
         };
 
-        // 3. Read from database
+        // 4. Read from database
         let read_output = Db::read(db, &read_input).await?;
 
-        // 4. Check permissions
+        // 5. Check permissions
         if !types::Role::has_any(&read_output.user_roles, &[
             types::Role::Manager,
             types::Role::CoManager,
@@ -530,7 +591,7 @@ impl Input {
             err.user_uuid = Some(types::UserUuidError::YouDontHavePermissionToDoThat);
         }
 
-        // 5. Check UUID conflicts
+        // 6. Check UUID conflicts
         if read_output.is_new_uuid_used {
             err.new_uuid = Some(types::RowIdError::Duplicated);
         }
@@ -540,7 +601,7 @@ impl Input {
             }
         }
 
-        // Pre‑allocate error vectors for single entries
+        // Check individual new_entries_uuid
         for (i, double) in self.double_entries.iter().enumerate() {
             for (j, single) in double.0.iter().enumerate() {
                 if *read_output.is_new_entries_uuid_used.get(&single.new_uuid).unwrap_or(&false) {
@@ -550,53 +611,18 @@ impl Input {
             }
         }
 
-        // 6. Build inferred entries
+        // 7. Resolve entries using account_info
+        let resolved = map_input_type_to_middel_type(
+            &mut err,
+            self.double_entries.iter().map(|d| d.0.clone()).collect(),
+            &read_output.account_info, // clone because we need it for inventory later
+        );
+
+        // 8. Build inferred container and run accounting validation
         let mut account_info_mut = read_output.account_info;
-        let mut inferred_double_entries = Vec::with_capacity(self.double_entries.len());
-
-        for double in &self.double_entries {
-            let mut inferred_singles = Vec::with_capacity(double.0.len());
-            for single in &double.0 {
-                let account_info = account_info_mut
-                    .get(&single.account)
-                    .ok_or_else(|| traits::DynamicError::from("Account not found"))?;
-
-                // Infer is_debit / is_inflow
-                let is_debit = single.is_debit.unwrap_or_else(|| {
-                    let is_inflow = single
-                        .is_inflow
-                        .expect("is_inflow must be provided if is_debit is missing");
-                    accounting_stuff::is_debit(account_info.is_debit, is_inflow)
-                });
-                let is_inflow = single.is_inflow.unwrap_or_else(|| {
-                    accounting_stuff::is_inflow(account_info.is_debit, is_debit)
-                });
-
-                // Use account's default flow types if not provided
-                let inflow_type =
-                    single.inflow_type.clone().unwrap_or(account_info.in_flow_type.clone());
-                let outflow_type =
-                    single.outflow_type.clone().unwrap_or(account_info.out_flow_type.clone());
-
-                // Amount and quantity are required
-                let amount =
-                    single.amount.ok_or_else(|| traits::DynamicError::from("Amount missing"))?;
-                let quantity = single
-                    .quantity
-                    .ok_or_else(|| traits::DynamicError::from("Quantity missing"))?;
-
-                inferred_singles.push(MiddelSingleEntry {
-                    new_uuid: single.new_uuid.clone(),
-                    account: single.account.clone(),
-                    is_debit,
-                    is_inflow,
-                    inflow_type,
-                    outflow_type,
-                    amount,
-                    quantity,
-                });
-            }
-            inferred_double_entries.push(InferredDoubleEntry(inferred_singles));
+        let mut inferred_double_entries = Vec::with_capacity(resolved.len());
+        for double in resolved {
+            inferred_double_entries.push(InferredDoubleEntry(double));
         }
 
         let inferred_container = InferredEntryContainer(inferred_double_entries);
@@ -605,9 +631,8 @@ impl Input {
         };
         let time = Ti::now_as_unix_milliseconds();
 
-        // 7. Run accounting validation
+        // 9. Run accounting validation (delegated to accounting_stuff)
         accounting_stuff::state_less_check_for_entry(&mut err, &inferred_container);
-        // Even if state_less found errors, we can still run full check to collect more
         accounting_stuff::state_full_check_for_entry(
             time,
             &mut err,
@@ -619,7 +644,7 @@ impl Input {
             return Ok(Err(err));
         }
 
-        // 8. Build the output
+        // 10. Build the output
         let mut double_entry_ok = Vec::new();
         for (double_idx, double) in inferred_container.0.iter().enumerate() {
             for single in &double.0 {
