@@ -165,7 +165,7 @@ pub trait SingleEntry {
 }
 
 pub trait DoubleEntry {
-    type Single: SingleEntry;
+    type Single;
     type Iter<'a>: Iterator<Item = &'a Self::Single> + ExactSizeIterator
     where
         Self: 'a;
