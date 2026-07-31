@@ -780,3 +780,783 @@ impl Input {
         Ok(Ok(ok))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::accounting_domain::utility::accounting_stuff;
+    use std::collections::HashMap;
+
+    // -------------------------------------------------------------------------
+    // Helper to create a dummy Input for init_error_sink (only for allocation)
+    // This is not a test helper; it's used to create the initial error sink.
+    // -------------------------------------------------------------------------
+    fn dummy_input_with_double_entries(singles_per_double: &Vec<Vec<SingleEntry>>) -> Error {
+        let mut double_entries = Vec::with_capacity(singles_per_double.len());
+        for singles in singles_per_double {
+            double_entries.push(DoubleEntry(singles.clone()));
+        }
+        let entry = Input {
+            new_uuid: types::UuidType([0; 16]),
+            belong_to_company_branch: types::UuidType([0; 16]),
+            user_uuid: types::UuidType([0; 16]),
+            notes: None,
+            shared_entry_id: None,
+            double_entries,
+        };
+        init_error_sink(&entry)
+    }
+
+    // -------------------------------------------------------------------------
+    // 1. Basic success – all fields present
+    // -------------------------------------------------------------------------
+    #[test]
+    fn test_map_basic_success() {
+        // Create the error sink with correct allocation (1 double, 1 single)
+
+        let account_uuid = types::UuidType([1; 16]);
+        let mut accounts_info = HashMap::new();
+        accounts_info.insert(account_uuid.clone(), AccountInfo {
+            is_debit:      true,
+            in_flow_type:  accounting_stuff::InFlowType::Manual,
+            out_flow_type: accounting_stuff::OutFlowType::Manual,
+            inventory:     Vec::new(),
+        });
+
+        let single = SingleEntry {
+            new_uuid:     types::UuidType([0; 16]),
+            account:      account_uuid.clone(),
+            is_debit:     Some(true),
+            is_inflow:    Some(false),
+            inflow_type:  Some(accounting_stuff::InFlowType::Manual),
+            outflow_type: Some(accounting_stuff::OutFlowType::Wac),
+            amount:       Some(100.0),
+            quantity:     Some(10.0),
+        };
+        let entry = vec![vec![single]];
+        let mut err = dummy_input_with_double_entries(&entry);
+
+        let resolved = map_input_type_to_middel_type(&mut err, entry, &accounts_info);
+
+        assert_eq!(resolved.len(), 1);
+        assert_eq!(resolved[0].len(), 1);
+        let m = &resolved[0][0];
+        assert_eq!(m.account, account_uuid);
+        assert_eq!(m.is_debit, true);
+        assert_eq!(m.inflow_type, accounting_stuff::InFlowType::Manual);
+        assert_eq!(m.outflow_type, accounting_stuff::OutFlowType::Wac);
+        assert_eq!(m.amount, 100.0);
+        assert_eq!(m.quantity, 10.0);
+        assert!(!err.is_there_error(), "Expected no errors");
+    }
+
+    // -------------------------------------------------------------------------
+    // 2. Infer is_debit from is_inflow (nature = debit)
+    // -------------------------------------------------------------------------
+    #[test]
+    fn test_infer_is_debit_from_is_inflow() {
+        let account_uuid = types::UuidType([1; 16]);
+        let mut accounts_info = HashMap::new();
+        accounts_info.insert(account_uuid.clone(), AccountInfo {
+            is_debit:      true, // debit nature
+            in_flow_type:  accounting_stuff::InFlowType::Manual,
+            out_flow_type: accounting_stuff::OutFlowType::Manual,
+            inventory:     Vec::new(),
+        });
+
+        let single = SingleEntry {
+            new_uuid:     types::UuidType([0; 16]),
+            account:      account_uuid.clone(),
+            is_debit:     None,        // missing, will infer
+            is_inflow:    Some(false), // outflow → for debit nature, is_debit should be false
+            inflow_type:  None,
+            outflow_type: None,
+            amount:       Some(100.0),
+            quantity:     Some(10.0),
+        };
+        let entry = vec![vec![single]];
+        let mut err = dummy_input_with_double_entries(&entry);
+
+        let resolved = map_input_type_to_middel_type(&mut err, entry, &accounts_info);
+        let m = &resolved[0][0];
+        // is_inflow = false, nature = debit → is_debit = false
+        assert_eq!(m.is_debit, false);
+        assert!(!err.is_there_error());
+    }
+
+    // -------------------------------------------------------------------------
+    // 3. Infer is_inflow from is_debit (nature = debit)
+    // -------------------------------------------------------------------------
+    #[test]
+    fn test_infer_is_inflow_from_is_debit() {
+        let account_uuid = types::UuidType([1; 16]);
+        let mut accounts_info = HashMap::new();
+        accounts_info.insert(account_uuid.clone(), AccountInfo {
+            is_debit:      true, // debit nature
+            in_flow_type:  accounting_stuff::InFlowType::Manual,
+            out_flow_type: accounting_stuff::OutFlowType::Manual,
+            inventory:     Vec::new(),
+        });
+
+        let single = SingleEntry {
+            new_uuid:     types::UuidType([0; 16]),
+            account:      account_uuid.clone(),
+            is_debit:     Some(true), // debit state
+            is_inflow:    None,       // will infer
+            inflow_type:  None,
+            outflow_type: None,
+            amount:       Some(100.0),
+            quantity:     Some(10.0),
+        };
+        let entry = vec![vec![single]];
+        let mut err = dummy_input_with_double_entries(&entry);
+
+        let resolved = map_input_type_to_middel_type(&mut err, entry, &accounts_info);
+        let m = &resolved[0][0];
+        // is_debit = true, nature = debit → is_inflow = true
+        assert_eq!(m.is_debit, true);
+        assert!(!err.is_there_error());
+    }
+
+    // -------------------------------------------------------------------------
+    // 4. Both is_debit and is_inflow missing – set error and fallback
+    // -------------------------------------------------------------------------
+    #[test]
+    fn test_both_is_debit_and_is_inflow_missing() {
+        let account_uuid = types::UuidType([1; 16]);
+        let mut accounts_info = HashMap::new();
+        accounts_info.insert(account_uuid.clone(), AccountInfo {
+            is_debit:      true,
+            in_flow_type:  accounting_stuff::InFlowType::Manual,
+            out_flow_type: accounting_stuff::OutFlowType::Manual,
+            inventory:     Vec::new(),
+        });
+
+        let single = SingleEntry {
+            new_uuid:     types::UuidType([0; 16]),
+            account:      account_uuid.clone(),
+            is_debit:     None,
+            is_inflow:    None,
+            inflow_type:  None,
+            outflow_type: None,
+            amount:       Some(100.0),
+            quantity:     Some(10.0),
+        };
+        let entry = vec![vec![single]];
+        let mut err = dummy_input_with_double_entries(&entry);
+
+        let resolved = map_input_type_to_middel_type(&mut err, entry, &accounts_info);
+        let m = &resolved[0][0];
+        // Fallback is_debit = true
+        assert_eq!(m.is_debit, true);
+        assert!(err.double_entries[0].single_entry_errors[0].is_debit_or_inflow_missing);
+    }
+
+    // -------------------------------------------------------------------------
+    // 5. Account not found – set error and skip
+    // -------------------------------------------------------------------------
+    #[test]
+    fn test_account_not_found() {
+        let account_uuid = types::UuidType([1; 16]);
+        let accounts_info = HashMap::new(); // empty
+
+        let single = SingleEntry {
+            new_uuid:     types::UuidType([0; 16]),
+            account:      account_uuid.clone(),
+            is_debit:     Some(true),
+            is_inflow:    Some(false),
+            inflow_type:  None,
+            outflow_type: None,
+            amount:       Some(100.0),
+            quantity:     Some(10.0),
+        };
+        let entry = vec![vec![single]];
+        let mut err = dummy_input_with_double_entries(&entry);
+
+        let resolved = map_input_type_to_middel_type(&mut err, entry, &accounts_info);
+        assert_eq!(resolved.len(), 1);
+        assert_eq!(resolved[0].len(), 0); // skipped
+        assert!(err.double_entries[0].single_entry_errors[0].account.is_some());
+    }
+
+    // -------------------------------------------------------------------------
+    // 6. Amount missing – set error and amount = 0.0
+    // -------------------------------------------------------------------------
+    #[test]
+    fn test_amount_missing() {
+        let account_uuid = types::UuidType([1; 16]);
+        let mut accounts_info = HashMap::new();
+        accounts_info.insert(account_uuid.clone(), AccountInfo {
+            is_debit:      true,
+            in_flow_type:  accounting_stuff::InFlowType::Manual,
+            out_flow_type: accounting_stuff::OutFlowType::Manual,
+            inventory:     Vec::new(),
+        });
+
+        let single = SingleEntry {
+            new_uuid:     types::UuidType([0; 16]),
+            account:      account_uuid.clone(),
+            is_debit:     Some(true),
+            is_inflow:    Some(false),
+            inflow_type:  None,
+            outflow_type: None,
+            amount:       None,
+            quantity:     Some(10.0),
+        };
+        let entry = vec![vec![single]];
+        let mut err = dummy_input_with_double_entries(&entry);
+
+        let resolved = map_input_type_to_middel_type(&mut err, entry, &accounts_info);
+        let m = &resolved[0][0];
+        assert_eq!(m.amount, 0.0);
+        assert_eq!(m.quantity, 10.0);
+        assert!(err.double_entries[0].single_entry_errors[0].amount_missing);
+    }
+
+    // -------------------------------------------------------------------------
+    // 7. Quantity missing – set error and quantity = 0.0
+    // -------------------------------------------------------------------------
+    #[test]
+    fn test_quantity_missing() {
+        let account_uuid = types::UuidType([1; 16]);
+        let mut accounts_info = HashMap::new();
+        accounts_info.insert(account_uuid.clone(), AccountInfo {
+            is_debit:      true,
+            in_flow_type:  accounting_stuff::InFlowType::Manual,
+            out_flow_type: accounting_stuff::OutFlowType::Manual,
+            inventory:     Vec::new(),
+        });
+
+        let single = SingleEntry {
+            new_uuid:     types::UuidType([0; 16]),
+            account:      account_uuid.clone(),
+            is_debit:     Some(true),
+            is_inflow:    Some(false),
+            inflow_type:  None,
+            outflow_type: None,
+            amount:       Some(100.0),
+            quantity:     None,
+        };
+        let entry = vec![vec![single]];
+        let mut err = dummy_input_with_double_entries(&entry);
+
+        let resolved = map_input_type_to_middel_type(&mut err, entry, &accounts_info);
+        let m = &resolved[0][0];
+        assert_eq!(m.amount, 100.0);
+        assert_eq!(m.quantity, 0.0);
+        assert!(err.double_entries[0].single_entry_errors[0].quantity_missing);
+    }
+
+    // -------------------------------------------------------------------------
+    // 8. Both amount and quantity missing – both errors
+    // -------------------------------------------------------------------------
+    #[test]
+    fn test_both_amount_and_quantity_missing() {
+        let account_uuid = types::UuidType([1; 16]);
+        let mut accounts_info = HashMap::new();
+        accounts_info.insert(account_uuid.clone(), AccountInfo {
+            is_debit:      true,
+            in_flow_type:  accounting_stuff::InFlowType::Manual,
+            out_flow_type: accounting_stuff::OutFlowType::Manual,
+            inventory:     Vec::new(),
+        });
+
+        let single = SingleEntry {
+            new_uuid:     types::UuidType([0; 16]),
+            account:      account_uuid.clone(),
+            is_debit:     Some(true),
+            is_inflow:    Some(false),
+            inflow_type:  None,
+            outflow_type: None,
+            amount:       None,
+            quantity:     None,
+        };
+        let entry = vec![vec![single]];
+        let mut err = dummy_input_with_double_entries(&entry);
+
+        let resolved = map_input_type_to_middel_type(&mut err, entry, &accounts_info);
+        let m = &resolved[0][0];
+        assert_eq!(m.amount, 0.0);
+        assert_eq!(m.quantity, 0.0);
+        assert!(err.double_entries[0].single_entry_errors[0].amount_missing);
+        assert!(err.double_entries[0].single_entry_errors[0].quantity_missing);
+    }
+
+    // -------------------------------------------------------------------------
+    // 9. Cross‑inference: amount missing, quantity present, price available
+    // -------------------------------------------------------------------------
+    #[test]
+    fn test_cross_infer_amount_from_quantity_and_price() {
+        let account_uuid = types::UuidType([1; 16]);
+        let mut accounts_info = HashMap::new();
+        accounts_info.insert(account_uuid.clone(), AccountInfo {
+            is_debit:      true,
+            in_flow_type:  accounting_stuff::InFlowType::Manual,
+            out_flow_type: accounting_stuff::OutFlowType::Manual,
+            inventory:     Vec::new(),
+        });
+
+        let s0 = SingleEntry {
+            new_uuid:     types::UuidType([0; 16]),
+            account:      account_uuid.clone(),
+            is_debit:     Some(true),
+            is_inflow:    Some(false),
+            inflow_type:  None,
+            outflow_type: None,
+            amount:       Some(100.0),
+            quantity:     Some(10.0), // price = 10
+        };
+        let s1 = SingleEntry {
+            new_uuid:     types::UuidType([1; 16]),
+            account:      account_uuid.clone(),
+            is_debit:     Some(true),
+            is_inflow:    Some(false),
+            inflow_type:  None,
+            outflow_type: None,
+            amount:       None,
+            quantity:     Some(5.0),
+        };
+        let entry = vec![vec![s0, s1]];
+        let mut err = dummy_input_with_double_entries(&entry);
+
+        let resolved = map_input_type_to_middel_type(&mut err, entry, &accounts_info);
+        assert_eq!(resolved[0].len(), 2);
+        let m1 = &resolved[0][1];
+        // Should infer amount = 5.0 * 10 = 50.0
+        assert_eq!(m1.amount, 50.0);
+        assert_eq!(m1.quantity, 5.0);
+        assert!(!err.double_entries[0].single_entry_errors[1].amount_missing);
+    }
+
+    // -------------------------------------------------------------------------
+    // 10. Cross‑inference: quantity missing, amount present, price available
+    // -------------------------------------------------------------------------
+    #[test]
+    fn test_cross_infer_quantity_from_amount_and_price() {
+        let account_uuid = types::UuidType([1; 16]);
+        let mut accounts_info = HashMap::new();
+        accounts_info.insert(account_uuid.clone(), AccountInfo {
+            is_debit:      true,
+            in_flow_type:  accounting_stuff::InFlowType::Manual,
+            out_flow_type: accounting_stuff::OutFlowType::Manual,
+            inventory:     Vec::new(),
+        });
+
+        let s0 = SingleEntry {
+            new_uuid:     types::UuidType([0; 16]),
+            account:      account_uuid.clone(),
+            is_debit:     Some(true),
+            is_inflow:    Some(false),
+            inflow_type:  None,
+            outflow_type: None,
+            amount:       Some(100.0),
+            quantity:     Some(10.0), // price = 10
+        };
+        let s1 = SingleEntry {
+            new_uuid:     types::UuidType([1; 16]),
+            account:      account_uuid.clone(),
+            is_debit:     Some(true),
+            is_inflow:    Some(false),
+            inflow_type:  None,
+            outflow_type: None,
+            amount:       Some(50.0),
+            quantity:     None,
+        };
+        let entry = vec![vec![s0, s1]];
+        let mut err = dummy_input_with_double_entries(&entry);
+
+        let resolved = map_input_type_to_middel_type(&mut err, entry, &accounts_info);
+        let m1 = &resolved[0][1];
+        assert_eq!(m1.amount, 50.0);
+        assert_eq!(m1.quantity, 5.0);
+        assert!(!err.double_entries[0].single_entry_errors[1].quantity_missing);
+    }
+
+    // -------------------------------------------------------------------------
+    // 11. Cross‑inference with multiple price samples (uses first)
+    // -------------------------------------------------------------------------
+    #[test]
+    fn test_cross_infer_with_multiple_price_samples() {
+        let account_uuid = types::UuidType([1; 16]);
+        let mut accounts_info = HashMap::new();
+        accounts_info.insert(account_uuid.clone(), AccountInfo {
+            is_debit:      true,
+            in_flow_type:  accounting_stuff::InFlowType::Manual,
+            out_flow_type: accounting_stuff::OutFlowType::Manual,
+            inventory:     Vec::new(),
+        });
+
+        let s0 = SingleEntry {
+            new_uuid:     types::UuidType([0; 16]),
+            account:      account_uuid.clone(),
+            is_debit:     Some(true),
+            is_inflow:    Some(false),
+            inflow_type:  None,
+            outflow_type: None,
+            amount:       Some(100.0),
+            quantity:     Some(10.0), // price=10
+        };
+        let s1 = SingleEntry {
+            new_uuid:     types::UuidType([1; 16]),
+            account:      account_uuid.clone(),
+            is_debit:     Some(true),
+            is_inflow:    Some(false),
+            inflow_type:  None,
+            outflow_type: None,
+            amount:       Some(200.0),
+            quantity:     Some(20.0), // price=10
+        };
+        let s2 = SingleEntry {
+            new_uuid:     types::UuidType([2; 16]),
+            account:      account_uuid.clone(),
+            is_debit:     Some(true),
+            is_inflow:    Some(false),
+            inflow_type:  None,
+            outflow_type: None,
+            amount:       None,
+            quantity:     Some(5.0),
+        };
+        let entry = vec![vec![s0, s1, s2]];
+        let mut err = dummy_input_with_double_entries(&entry);
+
+        let resolved = map_input_type_to_middel_type(&mut err, entry, &accounts_info);
+        let m2 = &resolved[0][2];
+        assert_eq!(m2.amount, 50.0); // 5 * 10
+        assert_eq!(m2.quantity, 5.0);
+        assert!(!err.double_entries[0].single_entry_errors[2].amount_missing);
+    }
+
+    // -------------------------------------------------------------------------
+    // 12. No price sample – no inference, flags remain
+    // -------------------------------------------------------------------------
+    #[test]
+    fn test_cross_infer_no_price_sample() {
+        let account_uuid = types::UuidType([1; 16]);
+        let mut accounts_info = HashMap::new();
+        accounts_info.insert(account_uuid.clone(), AccountInfo {
+            is_debit:      true,
+            in_flow_type:  accounting_stuff::InFlowType::Manual,
+            out_flow_type: accounting_stuff::OutFlowType::Manual,
+            inventory:     Vec::new(),
+        });
+
+        let s0 = SingleEntry {
+            new_uuid:     types::UuidType([0; 16]),
+            account:      account_uuid.clone(),
+            is_debit:     Some(true),
+            is_inflow:    Some(false),
+            inflow_type:  None,
+            outflow_type: None,
+            amount:       Some(100.0),
+            quantity:     None, // no price
+        };
+        let s1 = SingleEntry {
+            new_uuid:     types::UuidType([1; 16]),
+            account:      account_uuid.clone(),
+            is_debit:     Some(true),
+            is_inflow:    Some(false),
+            inflow_type:  None,
+            outflow_type: None,
+            amount:       None,
+            quantity:     Some(5.0),
+        };
+        let entry = vec![vec![s0, s1]];
+        let mut err = dummy_input_with_double_entries(&entry);
+
+        let resolved = map_input_type_to_middel_type(&mut err, entry, &accounts_info);
+        let m1 = &resolved[0][1];
+        assert_eq!(m1.amount, 0.0);
+        assert_eq!(m1.quantity, 5.0);
+        assert!(err.double_entries[0].single_entry_errors[1].amount_missing);
+    }
+
+    // -------------------------------------------------------------------------
+    // 13. Zero quantity – not used as price sample
+    // -------------------------------------------------------------------------
+    #[test]
+    fn test_cross_infer_zero_quantity_not_used_as_price() {
+        let account_uuid = types::UuidType([1; 16]);
+        let mut accounts_info = HashMap::new();
+        accounts_info.insert(account_uuid.clone(), AccountInfo {
+            is_debit:      true,
+            in_flow_type:  accounting_stuff::InFlowType::Manual,
+            out_flow_type: accounting_stuff::OutFlowType::Manual,
+            inventory:     Vec::new(),
+        });
+
+        let s0 = SingleEntry {
+            new_uuid:     types::UuidType([0; 16]),
+            account:      account_uuid.clone(),
+            is_debit:     Some(true),
+            is_inflow:    Some(false),
+            inflow_type:  None,
+            outflow_type: None,
+            amount:       Some(100.0),
+            quantity:     Some(0.0), // zero → not a valid price
+        };
+        let s1 = SingleEntry {
+            new_uuid:     types::UuidType([1; 16]),
+            account:      account_uuid.clone(),
+            is_debit:     Some(true),
+            is_inflow:    Some(false),
+            inflow_type:  None,
+            outflow_type: None,
+            amount:       None,
+            quantity:     Some(5.0),
+        };
+        let entry = vec![vec![s0, s1]];
+        let mut err = dummy_input_with_double_entries(&entry);
+
+        let resolved = map_input_type_to_middel_type(&mut err, entry, &accounts_info);
+        let m1 = &resolved[0][1];
+        assert_eq!(m1.amount, 0.0);
+        assert!(err.double_entries[0].single_entry_errors[1].amount_missing);
+    }
+
+    // -------------------------------------------------------------------------
+    // 14. Empty double entry – skipped
+    // -------------------------------------------------------------------------
+    #[test]
+    fn test_empty_double_entry() {
+        let accounts_info = HashMap::new();
+        let entry = vec![vec![]];
+        let mut err = dummy_input_with_double_entries(&entry);
+
+        let resolved = map_input_type_to_middel_type(&mut err, entry, &accounts_info);
+        assert_eq!(resolved.len(), 1);
+        assert_eq!(resolved[0].len(), 0);
+        // No errors because we don't allocate single_entry_errors for empty double?
+        // Actually init_error_sink allocates for each double, but with 0 singles.
+        // So there is no error slot.
+    }
+
+    // -------------------------------------------------------------------------
+    // 15. Multiple double entries
+    // -------------------------------------------------------------------------
+    #[test]
+    fn test_multiple_double_entries() {
+        let account_uuid = types::UuidType([1; 16]);
+        let mut accounts_info = HashMap::new();
+        accounts_info.insert(account_uuid.clone(), AccountInfo {
+            is_debit:      true,
+            in_flow_type:  accounting_stuff::InFlowType::Manual,
+            out_flow_type: accounting_stuff::OutFlowType::Manual,
+            inventory:     Vec::new(),
+        });
+
+        let s0 = SingleEntry {
+            new_uuid:     types::UuidType([0; 16]),
+            account:      account_uuid.clone(),
+            is_debit:     Some(true),
+            is_inflow:    Some(false),
+            inflow_type:  None,
+            outflow_type: None,
+            amount:       Some(10.0),
+            quantity:     Some(1.0),
+        };
+        let s1 = SingleEntry {
+            new_uuid:     types::UuidType([1; 16]),
+            account:      account_uuid.clone(),
+            is_debit:     Some(true),
+            is_inflow:    Some(false),
+            inflow_type:  None,
+            outflow_type: None,
+            amount:       Some(20.0),
+            quantity:     Some(2.0),
+        };
+        let entry = vec![vec![s0], vec![s1]];
+        let mut err = dummy_input_with_double_entries(&entry);
+
+        let resolved = map_input_type_to_middel_type(&mut err, entry, &accounts_info);
+        assert_eq!(resolved.len(), 2);
+        assert_eq!(resolved[0].len(), 1);
+        assert_eq!(resolved[1].len(), 1);
+        assert_eq!(resolved[0][0].amount, 10.0);
+        assert_eq!(resolved[1][0].amount, 20.0);
+    }
+
+    // -------------------------------------------------------------------------
+    // 16. Credit nature account
+    // -------------------------------------------------------------------------
+    #[test]
+    fn test_credit_nature_account() {
+        let account_uuid = types::UuidType([1; 16]);
+        let mut accounts_info = HashMap::new();
+        accounts_info.insert(account_uuid.clone(), AccountInfo {
+            is_debit:      false, // credit nature
+            in_flow_type:  accounting_stuff::InFlowType::Manual,
+            out_flow_type: accounting_stuff::OutFlowType::Manual,
+            inventory:     Vec::new(),
+        });
+
+        let single = SingleEntry {
+            new_uuid:     types::UuidType([0; 16]),
+            account:      account_uuid.clone(),
+            is_debit:     None,
+            is_inflow:    Some(true),
+            inflow_type:  None,
+            outflow_type: None,
+            amount:       Some(100.0),
+            quantity:     Some(10.0),
+        };
+        let entry = vec![vec![single]];
+        let mut err = dummy_input_with_double_entries(&entry);
+
+        let resolved = map_input_type_to_middel_type(&mut err, entry, &accounts_info);
+        let m = &resolved[0][0];
+        // nature=credit, is_inflow=true → is_debit = false
+        assert_eq!(m.is_debit, false);
+    }
+
+    // -------------------------------------------------------------------------
+    // 17. Flow types fallback to account defaults
+    // -------------------------------------------------------------------------
+    #[test]
+    fn test_flow_types_fallback_to_defaults() {
+        let account_uuid = types::UuidType([1; 16]);
+        let mut accounts_info = HashMap::new();
+        accounts_info.insert(account_uuid.clone(), AccountInfo {
+            is_debit:      true,
+            in_flow_type:  accounting_stuff::InFlowType::QuantityEqualAmount,
+            out_flow_type: accounting_stuff::OutFlowType::Fifo,
+            inventory:     Vec::new(),
+        });
+
+        let single = SingleEntry {
+            new_uuid:     types::UuidType([0; 16]),
+            account:      account_uuid.clone(),
+            is_debit:     Some(true),
+            is_inflow:    Some(false),
+            inflow_type:  None,
+            outflow_type: None,
+            amount:       Some(100.0),
+            quantity:     Some(10.0),
+        };
+        let entry = vec![vec![single]];
+        let mut err = dummy_input_with_double_entries(&entry);
+
+        let resolved = map_input_type_to_middel_type(&mut err, entry, &accounts_info);
+        let m = &resolved[0][0];
+        assert_eq!(m.inflow_type, accounting_stuff::InFlowType::QuantityEqualAmount);
+        assert_eq!(m.outflow_type, accounting_stuff::OutFlowType::Fifo);
+    }
+
+    // -------------------------------------------------------------------------
+    // 18. User‑provided flow types override defaults
+    // -------------------------------------------------------------------------
+    #[test]
+    fn test_user_flow_types_override_defaults() {
+        let account_uuid = types::UuidType([1; 16]);
+        let mut accounts_info = HashMap::new();
+        accounts_info.insert(account_uuid.clone(), AccountInfo {
+            is_debit:      true,
+            in_flow_type:  accounting_stuff::InFlowType::QuantityEqualAmount,
+            out_flow_type: accounting_stuff::OutFlowType::Fifo,
+            inventory:     Vec::new(),
+        });
+
+        let single = SingleEntry {
+            new_uuid:     types::UuidType([0; 16]),
+            account:      account_uuid.clone(),
+            is_debit:     Some(true),
+            is_inflow:    Some(false),
+            inflow_type:  Some(accounting_stuff::InFlowType::Manual),
+            outflow_type: Some(accounting_stuff::OutFlowType::Wac),
+            amount:       Some(100.0),
+            quantity:     Some(10.0),
+        };
+        let entry = vec![vec![single]];
+        let mut err = dummy_input_with_double_entries(&entry);
+
+        let resolved = map_input_type_to_middel_type(&mut err, entry, &accounts_info);
+        let m = &resolved[0][0];
+        assert_eq!(m.inflow_type, accounting_stuff::InFlowType::Manual);
+        assert_eq!(m.outflow_type, accounting_stuff::OutFlowType::Wac);
+    }
+
+    // -------------------------------------------------------------------------
+    // 19. Cross‑inference with quantity=0 target – should infer amount=0 and clear error
+    // -------------------------------------------------------------------------
+    #[test]
+    fn test_cross_infer_with_zero_quantity_target() {
+        let account_uuid = types::UuidType([1; 16]);
+        let mut accounts_info = HashMap::new();
+        accounts_info.insert(account_uuid.clone(), AccountInfo {
+            is_debit:      true,
+            in_flow_type:  accounting_stuff::InFlowType::Manual,
+            out_flow_type: accounting_stuff::OutFlowType::Manual,
+            inventory:     Vec::new(),
+        });
+
+        let s0 = SingleEntry {
+            new_uuid:     types::UuidType([0; 16]),
+            account:      account_uuid.clone(),
+            is_debit:     Some(true),
+            is_inflow:    Some(false),
+            inflow_type:  None,
+            outflow_type: None,
+            amount:       Some(100.0),
+            quantity:     Some(10.0), // price = 10
+        };
+        let s1 = SingleEntry {
+            new_uuid:     types::UuidType([1; 16]),
+            account:      account_uuid.clone(),
+            is_debit:     Some(true),
+            is_inflow:    Some(false),
+            inflow_type:  None,
+            outflow_type: None,
+            amount:       None,
+            quantity:     Some(0.0), // zero quantity
+        };
+        let entry = vec![vec![s0, s1]];
+        let mut err = dummy_input_with_double_entries(&entry);
+
+        let resolved = map_input_type_to_middel_type(&mut err, entry, &accounts_info);
+        let m1 = &resolved[0][1];
+        // amount = 0.0 * 10 = 0.0, and we clear the missing flag.
+        assert_eq!(m1.amount, 0.0);
+        assert_eq!(m1.quantity, 0.0);
+        assert!(!err.double_entries[0].single_entry_errors[1].amount_missing);
+    }
+
+    // -------------------------------------------------------------------------
+    // 20. Both is_debit and is_inflow missing, and amount/quantity missing – multiple errors
+    // -------------------------------------------------------------------------
+    #[test]
+    fn test_multiple_errors_combined() {
+        let account_uuid = types::UuidType([1; 16]);
+        let mut accounts_info = HashMap::new();
+        accounts_info.insert(account_uuid.clone(), AccountInfo {
+            is_debit:      true,
+            in_flow_type:  accounting_stuff::InFlowType::Manual,
+            out_flow_type: accounting_stuff::OutFlowType::Manual,
+            inventory:     Vec::new(),
+        });
+
+        let single = SingleEntry {
+            new_uuid:     types::UuidType([0; 16]),
+            account:      account_uuid.clone(),
+            is_debit:     None,
+            is_inflow:    None,
+            inflow_type:  None,
+            outflow_type: None,
+            amount:       None,
+            quantity:     None,
+        };
+        let entry = vec![vec![single]];
+        let mut err = dummy_input_with_double_entries(&entry);
+
+        let resolved = map_input_type_to_middel_type(&mut err, entry, &accounts_info);
+        assert_eq!(resolved[0].len(), 1);
+        let m = &resolved[0][0];
+        // Fallbacks: is_debit = true, amount=0, quantity=0
+        assert_eq!(m.is_debit, true);
+        assert_eq!(m.amount, 0.0);
+        assert_eq!(m.quantity, 0.0);
+        // All errors should be set
+        let se = &err.double_entries[0].single_entry_errors[0];
+        assert!(se.is_debit_or_inflow_missing);
+        assert!(se.amount_missing);
+        assert!(se.quantity_missing);
+    }
+}
