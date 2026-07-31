@@ -250,21 +250,17 @@ where
     C::Double: DoubleEntry,
     <C::Double as DoubleEntry>::Single: SingleEntry,
 {
-    let mut entry_err = EntryError::default();
     if entry.is_empty() {
-        entry_err.container_is_empty = true;
-        return entry_err;
+        errr.container_is_empty();
+        return;
     }
 
-    for double in entry.iter() {
-        let mut double_err = DoubleEntryError::default();
+    for (double_idx, double) in entry.iter().enumerate() {
         if double.is_empty() {
-            double_err.entry_is_empty = true;
-            entry_err.double_entry_errors.push(double_err);
+            errr.entry_is_empty(double_idx);
             continue;
         }
 
-        double_err.single_entry_errors = Vec::with_capacity(entry.len());
         let mut seen_accounts = HashSet::with_capacity(entry.len());
 
         let mut total_debit = 0.0;
@@ -273,21 +269,19 @@ where
         let mut debit_side = Vec::new();
         let mut credit_side = Vec::new();
 
-        for single in double.iter() {
-            let mut single_err = SingleEntryError::default();
-
+        for (single_idx, single) in double.iter().enumerate() {
             if !seen_accounts.insert(single.account_id().clone()) {
-                single_err.duplicate_account_in_entry = true;
+                errr.duplicate_account_in_entry(double_idx, single_idx);
             }
 
             if single.amount() == 0.0 && single.quantity() == 0.0 {
-                single_err.quantity_and_amount_are_zero = true;
+                errr.quantity_and_amount_are_zero(double_idx, single_idx);
             }
             if single.amount() < 0.0 {
-                single_err.the_amount_should_be_positive = true;
+                errr.the_amount_should_be_positive(double_idx, single_idx);
             }
             if single.quantity() < 0.0 {
-                single_err.the_quantity_should_be_positive = true;
+                errr.the_quantity_should_be_positive(double_idx, single_idx);
             }
 
             if single.is_debit() {
@@ -297,29 +291,20 @@ where
                 total_credit += single.amount();
                 credit_side.push(single);
             }
-
-            double_err.single_entry_errors.push(single_err);
         }
 
         if total_debit != total_credit {
-            double_err.debit_not_equal_credit = Some(DebitNotEqualCreditError {
-                total_debit,
-                total_credit,
-            });
+            errr.debit_not_equal_credit(double_idx, total_debit, total_credit);
         } else {
             let a = common_subset_sum::split_to_max(&debit_side, &credit_side, &|a| {
                 wrapper::T(a.amount())
             });
 
             if a.len() > 1 {
-                double_err.you_need_to_split_the_entry = true
+                errr.you_need_to_split_the_entry(double_idx);
             }
         }
-
-        entry_err.double_entry_errors.push(double_err);
     }
-
-    entry_err
 }
 
 /// Full validation including account info and inventory.
@@ -338,16 +323,8 @@ pub(crate) fn state_full_check_for_entry<E, C, A>(
     >,
     A::Inventory: Inventory,
 {
-    let mut entry_err = EntryError::default();
-    entry_err.double_entry_errors = Vec::with_capacity(entry.len());
-
-    for double in entry.iter() {
-        let mut double_err = DoubleEntryError::default();
-        double_err.single_entry_errors = Vec::with_capacity(double.len());
-
-        for single in double.iter() {
-            let mut single_err = SingleEntryError::default();
-
+    for (double_idx, double) in entry.iter().enumerate() {
+        for (single_idx, single) in double.iter().enumerate() {
             let account_id = single.account_id();
             let nature = account_info.is_debit_nature(account_id);
             let (in_flow_type, out_flow_type) = single.flow_type();
@@ -355,7 +332,7 @@ pub(crate) fn state_full_check_for_entry<E, C, A>(
 
             // Check if inventory is empty
             if inventory.is_empty() {
-                single_err.inventory_is_empty = true;
+                errr.inventory_is_empty(double_idx, single_idx);
             }
 
             let is_inflow = is_inflow(nature, single.is_debit());
@@ -370,12 +347,12 @@ pub(crate) fn state_full_check_for_entry<E, C, A>(
                     InFlowType::Manual => {}
                     InFlowType::QuantityEqualAmount => {
                         if qty != amt {
-                            single_err.quantity_not_equal_amount = true;
+                            errr.quantity_not_equal_amount(double_idx, single_idx);
                         }
                     }
                     InFlowType::QuantityEqualZero => {
                         if qty != 0.0 {
-                            single_err.quantity_not_equal_zero = true;
+                            errr.quantity_not_equal_zero(double_idx, single_idx);
                         }
                     }
                 }
@@ -383,16 +360,10 @@ pub(crate) fn state_full_check_for_entry<E, C, A>(
                 let (total_qty, total_amt) = sum_inventory(inventory);
                 // Check sufficient amount
                 if total_amt + amt < 0.0 {
-                    single_err.insufficient_amount_in_inventory =
-                        Some(InsufficientAmountInInventory {
-                            total_amount: total_amt,
-                        });
+                    errr.insufficient_amount_in_inventory(double_idx, single_idx, total_amt);
                 }
                 if total_qty + qty < 0.0 {
-                    single_err.insufficient_quantity_in_inventory =
-                        Some(InsufficientQuantityInInventory {
-                            total_quantity: total_qty,
-                        });
+                    errr.insufficient_quantity_in_inventory(double_idx, single_idx, total_qty);
                 }
 
                 // Sort inventory for the flow type
@@ -408,19 +379,17 @@ pub(crate) fn state_full_check_for_entry<E, C, A>(
                     | OutFlowType::Lofo => {
                         let expected_amount = get_amount(single.quantity(), inventory);
                         if expected_amount != single.amount() {
-                            single_err.amount_mismatch = Some(AmountMismatch {
-                                expected_amount,
-                            });
+                            errr.amount_mismatch(double_idx, single_idx, expected_amount);
                         }
                     }
                     OutFlowType::QuantityEqualAmount => {
                         if qty != amt {
-                            single_err.quantity_not_equal_amount = true;
+                            errr.quantity_not_equal_amount(double_idx, single_idx);
                         }
                     }
                     OutFlowType::QuantityEqualZero => {
                         if qty != 0.0 {
-                            single_err.quantity_not_equal_zero = true;
+                            errr.quantity_not_equal_zero(double_idx, single_idx);
                         }
                     }
                 }
@@ -437,7 +406,7 @@ pub(crate) fn state_full_check_for_entry<E, C, A>(
                 OutFlowType::Lofo => true,
             };
 
-            if !single_err.is_there_error() {
+            if !errr.is_there_error_single_entry(double_idx, single_idx) {
                 apply_entry_on_inventory::<<C::Double as DoubleEntry>::Single, A::Inventory>(
                     time_unix,
                     single.amount(),
@@ -447,13 +416,8 @@ pub(crate) fn state_full_check_for_entry<E, C, A>(
                     inventory,
                 );
             }
-
-            double_err.single_entry_errors.push(single_err);
         }
-        entry_err.double_entry_errors.push(double_err);
     }
-
-    entry_err
 }
 
 /// Apply the entry to the inventory, updating records.
@@ -668,16 +632,13 @@ mod wrapper {
 #[cfg(test)]
 mod tests {
     use super::AccountInfoProvider;
-    use super::DebitNotEqualCreditError;
     use super::DoubleEntry;
-    use super::DoubleEntryError;
     use super::EntryContainer;
     use super::InFlowType;
     use super::Inventory;
     use super::InventoryRecord;
     use super::OutFlowType;
     use super::SingleEntry;
-    use super::SingleEntryError;
     use super::apply_entry_on_inventory;
     use super::decrease_inventory;
     use super::get_amount;
