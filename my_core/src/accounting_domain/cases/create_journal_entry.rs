@@ -808,12 +808,185 @@ mod tests {
     }
 
     // -------------------------------------------------------------------------
+    // Helper: create 10 distinct accounts with different natures, flow types,
+    // and inventory records.
+    // -------------------------------------------------------------------------
+    fn create_ten_accounts_info() -> HashMap<types::UuidType, AccountInfo> {
+        let mut map = HashMap::new();
+
+        // Account 0: Debit nature, Manual flows, inventory: one record
+        let uuid0 = types::UuidType([0; 16]);
+        map.insert(uuid0.clone(), AccountInfo {
+            is_debit:      true,
+            in_flow_type:  accounting_stuff::InFlowType::Manual,
+            out_flow_type: accounting_stuff::OutFlowType::Manual,
+            inventory:     vec![accounting_stuff::InventoryRecord {
+                time_unix: 1,
+                quantity:  10.0,
+                amount:    100.0,
+            }],
+        });
+
+        // Account 1: Debit nature, QuantityEqualAmount inflow, Wac outflow
+        let uuid1 = types::UuidType([1; 16]);
+        map.insert(uuid1.clone(), AccountInfo {
+            is_debit:      true,
+            in_flow_type:  accounting_stuff::InFlowType::QuantityEqualAmount,
+            out_flow_type: accounting_stuff::OutFlowType::Wac,
+            inventory:     vec![
+                accounting_stuff::InventoryRecord {
+                    time_unix: 2,
+                    quantity:  5.0,
+                    amount:    50.0,
+                },
+                accounting_stuff::InventoryRecord {
+                    time_unix: 3,
+                    quantity:  3.0,
+                    amount:    45.0,
+                },
+            ],
+        });
+
+        // Account 2: Debit nature, QuantityEqualZero inflow, Fifo outflow
+        let uuid2 = types::UuidType([2; 16]);
+        map.insert(uuid2.clone(), AccountInfo {
+            is_debit:      true,
+            in_flow_type:  accounting_stuff::InFlowType::QuantityEqualZero,
+            out_flow_type: accounting_stuff::OutFlowType::Fifo,
+            inventory:     vec![accounting_stuff::InventoryRecord {
+                time_unix: 4,
+                quantity:  8.0,
+                amount:    120.0,
+            }],
+        });
+
+        // Account 3: Debit nature, Manual inflow, Lifo outflow
+        let uuid3 = types::UuidType([3; 16]);
+        map.insert(uuid3.clone(), AccountInfo {
+            is_debit:      true,
+            in_flow_type:  accounting_stuff::InFlowType::Manual,
+            out_flow_type: accounting_stuff::OutFlowType::Lifo,
+            inventory:     vec![
+                accounting_stuff::InventoryRecord {
+                    time_unix: 5,
+                    quantity:  2.0,
+                    amount:    30.0,
+                },
+                accounting_stuff::InventoryRecord {
+                    time_unix: 6,
+                    quantity:  4.0,
+                    amount:    80.0,
+                },
+            ],
+        });
+
+        // Account 4: Debit nature, QuantityEqualAmount inflow, Hifo outflow
+        let uuid4 = types::UuidType([4; 16]);
+        map.insert(uuid4.clone(), AccountInfo {
+            is_debit:      true,
+            in_flow_type:  accounting_stuff::InFlowType::QuantityEqualAmount,
+            out_flow_type: accounting_stuff::OutFlowType::Hifo,
+            inventory:     vec![
+                accounting_stuff::InventoryRecord {
+                    time_unix: 7,
+                    quantity:  6.0,
+                    amount:    90.0,
+                },
+                accounting_stuff::InventoryRecord {
+                    time_unix: 8,
+                    quantity:  2.0,
+                    amount:    40.0,
+                },
+            ],
+        });
+
+        // Account 5: Credit nature, Manual flows
+        let uuid5 = types::UuidType([5; 16]);
+        map.insert(uuid5.clone(), AccountInfo {
+            is_debit:      false,
+            in_flow_type:  accounting_stuff::InFlowType::Manual,
+            out_flow_type: accounting_stuff::OutFlowType::Manual,
+            inventory:     vec![accounting_stuff::InventoryRecord {
+                time_unix: 9,
+                quantity:  7.0,
+                amount:    70.0,
+            }],
+        });
+
+        // Account 6: Credit nature, QuantityEqualAmount inflow, Wac outflow
+        let uuid6 = types::UuidType([6; 16]);
+        map.insert(uuid6.clone(), AccountInfo {
+            is_debit:      false,
+            in_flow_type:  accounting_stuff::InFlowType::QuantityEqualAmount,
+            out_flow_type: accounting_stuff::OutFlowType::Wac,
+            inventory:     vec![accounting_stuff::InventoryRecord {
+                time_unix: 10,
+                quantity:  9.0,
+                amount:    180.0,
+            }],
+        });
+
+        // Account 7: Credit nature, QuantityEqualZero inflow, Fifo outflow
+        let uuid7 = types::UuidType([7; 16]);
+        map.insert(uuid7.clone(), AccountInfo {
+            is_debit:      false,
+            in_flow_type:  accounting_stuff::InFlowType::QuantityEqualZero,
+            out_flow_type: accounting_stuff::OutFlowType::Fifo,
+            inventory:     vec![
+                accounting_stuff::InventoryRecord {
+                    time_unix: 11,
+                    quantity:  4.0,
+                    amount:    60.0,
+                },
+                accounting_stuff::InventoryRecord {
+                    time_unix: 12,
+                    quantity:  3.0,
+                    amount:    75.0,
+                },
+            ],
+        });
+
+        // Account 8: Credit nature, Manual inflow, Lifo outflow
+        let uuid8 = types::UuidType([8; 16]);
+        map.insert(uuid8.clone(), AccountInfo {
+            is_debit:      false,
+            in_flow_type:  accounting_stuff::InFlowType::Manual,
+            out_flow_type: accounting_stuff::OutFlowType::Lifo,
+            inventory:     vec![accounting_stuff::InventoryRecord {
+                time_unix: 13,
+                quantity:  5.0,
+                amount:    55.0,
+            }],
+        });
+
+        // Account 9: Credit nature, QuantityEqualAmount inflow, Hifo outflow
+        let uuid9 = types::UuidType([9; 16]);
+        map.insert(uuid9.clone(), AccountInfo {
+            is_debit:      false,
+            in_flow_type:  accounting_stuff::InFlowType::QuantityEqualAmount,
+            out_flow_type: accounting_stuff::OutFlowType::Hifo,
+            inventory:     vec![
+                accounting_stuff::InventoryRecord {
+                    time_unix: 14,
+                    quantity:  6.0,
+                    amount:    120.0,
+                },
+                accounting_stuff::InventoryRecord {
+                    time_unix: 15,
+                    quantity:  2.0,
+                    amount:    50.0,
+                },
+            ],
+        });
+
+        map
+    }
+
+    // -------------------------------------------------------------------------
     // 1. Basic success – all fields present
     // -------------------------------------------------------------------------
     #[test]
     fn test_map_basic_success() {
-        // Create the error sink with correct allocation (1 double, 1 single)
-
         let account_uuid = types::UuidType([1; 16]);
         let mut accounts_info = HashMap::new();
         accounts_info.insert(account_uuid.clone(), AccountInfo {
@@ -1380,14 +1553,9 @@ mod tests {
     // -------------------------------------------------------------------------
     #[test]
     fn test_credit_nature_account() {
-        let account_uuid = types::UuidType([1; 16]);
-        let mut accounts_info = HashMap::new();
-        accounts_info.insert(account_uuid.clone(), AccountInfo {
-            is_debit:      false, // credit nature
-            in_flow_type:  accounting_stuff::InFlowType::Manual,
-            out_flow_type: accounting_stuff::OutFlowType::Manual,
-            inventory:     Vec::new(),
-        });
+        let account_uuid = types::UuidType([5; 16]); // use account 5 from the ten accounts (credit nature)
+        let accounts_info = create_ten_accounts_info();
+        assert!(accounts_info.contains_key(&account_uuid));
 
         let single = SingleEntry {
             new_uuid:     types::UuidType([0; 16]),
@@ -1409,26 +1577,21 @@ mod tests {
     }
 
     // -------------------------------------------------------------------------
-    // 17. Flow types fallback to account defaults
+    // 17. Flow types fallback to account defaults (using account 1)
     // -------------------------------------------------------------------------
     #[test]
     fn test_flow_types_fallback_to_defaults() {
-        let account_uuid = types::UuidType([1; 16]);
-        let mut accounts_info = HashMap::new();
-        accounts_info.insert(account_uuid.clone(), AccountInfo {
-            is_debit:      true,
-            in_flow_type:  accounting_stuff::InFlowType::QuantityEqualAmount,
-            out_flow_type: accounting_stuff::OutFlowType::Fifo,
-            inventory:     Vec::new(),
-        });
+        let account_uuid = types::UuidType([1; 16]); // account with QuantityEqualAmount & Wac
+        let accounts_info = create_ten_accounts_info();
+        assert!(accounts_info.contains_key(&account_uuid));
 
         let single = SingleEntry {
             new_uuid:     types::UuidType([0; 16]),
             account:      account_uuid.clone(),
             is_debit:     Some(true),
             is_inflow:    Some(false),
-            inflow_type:  None,
-            outflow_type: None,
+            inflow_type:  None, // should fallback to QuantityEqualAmount
+            outflow_type: None, // should fallback to Wac
             amount:       Some(100.0),
             quantity:     Some(10.0),
         };
@@ -1438,22 +1601,17 @@ mod tests {
         let resolved = map_input_type_to_middel_type(&mut err, entry, &accounts_info);
         let m = &resolved[0][0];
         assert_eq!(m.inflow_type, accounting_stuff::InFlowType::QuantityEqualAmount);
-        assert_eq!(m.outflow_type, accounting_stuff::OutFlowType::Fifo);
+        assert_eq!(m.outflow_type, accounting_stuff::OutFlowType::Wac);
     }
 
     // -------------------------------------------------------------------------
-    // 18. User‑provided flow types override defaults
+    // 18. User‑provided flow types override defaults (using account 1)
     // -------------------------------------------------------------------------
     #[test]
     fn test_user_flow_types_override_defaults() {
-        let account_uuid = types::UuidType([1; 16]);
-        let mut accounts_info = HashMap::new();
-        accounts_info.insert(account_uuid.clone(), AccountInfo {
-            is_debit:      true,
-            in_flow_type:  accounting_stuff::InFlowType::QuantityEqualAmount,
-            out_flow_type: accounting_stuff::OutFlowType::Fifo,
-            inventory:     Vec::new(),
-        });
+        let account_uuid = types::UuidType([1; 16]); // account with QuantityEqualAmount & Wac
+        let accounts_info = create_ten_accounts_info();
+        assert!(accounts_info.contains_key(&account_uuid));
 
         let single = SingleEntry {
             new_uuid:     types::UuidType([0; 16]),
@@ -1461,7 +1619,7 @@ mod tests {
             is_debit:     Some(true),
             is_inflow:    Some(false),
             inflow_type:  Some(accounting_stuff::InFlowType::Manual),
-            outflow_type: Some(accounting_stuff::OutFlowType::Wac),
+            outflow_type: Some(accounting_stuff::OutFlowType::Fifo),
             amount:       Some(100.0),
             quantity:     Some(10.0),
         };
@@ -1471,7 +1629,7 @@ mod tests {
         let resolved = map_input_type_to_middel_type(&mut err, entry, &accounts_info);
         let m = &resolved[0][0];
         assert_eq!(m.inflow_type, accounting_stuff::InFlowType::Manual);
-        assert_eq!(m.outflow_type, accounting_stuff::OutFlowType::Wac);
+        assert_eq!(m.outflow_type, accounting_stuff::OutFlowType::Fifo);
     }
 
     // -------------------------------------------------------------------------
@@ -1558,5 +1716,44 @@ mod tests {
         assert!(se.is_debit_or_inflow_missing);
         assert!(se.amount_missing);
         assert!(se.quantity_missing);
+    }
+
+    // -------------------------------------------------------------------------
+    // 21. Test with multiple accounts from the ten-account set,
+    //     each with missing flow types – ensure each gets its correct default.
+    // -------------------------------------------------------------------------
+    #[test]
+    fn test_ten_accounts_each_with_missing_flow_types() {
+        let accounts_info = create_ten_accounts_info();
+        let mut singles = Vec::new();
+
+        // For each account, create a SingleEntry with no flow types, but with amount/quantity.
+        for (i, (uuid, info)) in accounts_info.iter().enumerate() {
+            let single = SingleEntry {
+                new_uuid:     types::UuidType([i as u8; 16]),
+                account:      uuid.clone(),
+                is_debit:     Some(true), // we'll set is_debit to avoid inference, focus on flow types
+                is_inflow:    Some(false),
+                inflow_type:  None,
+                outflow_type: None,
+                amount:       Some(100.0 + i as f64),
+                quantity:     Some(10.0 + i as f64),
+            };
+            singles.push(single);
+        }
+
+        let entry = vec![singles];
+        let mut err = dummy_input_with_double_entries(&entry);
+
+        let resolved = map_input_type_to_middel_type(&mut err, entry, &accounts_info);
+
+        // Check each resolved single has the correct flow types from account info.
+        for (i, single) in resolved[0].iter().enumerate() {
+            let expected_info = accounts_info.get(&single.account).unwrap();
+            assert_eq!(single.inflow_type, expected_info.in_flow_type);
+            assert_eq!(single.outflow_type, expected_info.out_flow_type);
+        }
+
+        assert!(!err.is_there_error(), "No errors expected");
     }
 }
