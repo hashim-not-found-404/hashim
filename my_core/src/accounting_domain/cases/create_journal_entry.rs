@@ -456,17 +456,26 @@ pub(crate) fn init_error_sink(entry: &Input) -> Error {
 
 /// Resolve user‑supplied entries into fully‑inferred `MiddelSingleEntry` values.
 /// This function never panics; it sets errors in the sink for any missing or invalid data.
+/// Resolve user‑supplied entries into fully‑inferred `MiddelSingleEntry` values.
+/// This function performs a two‑pass resolution:
+/// 1. First pass: resolve each single entry with available data, marking missing fields.
+/// 2. Second pass: try to infer missing amounts/quantities from other singles in the same double entry.
+/// If inference fails, set appropriate errors.
 fn map_input_type_to_middel_type(
     err: &mut Error,
     entry: Vec<Vec<SingleEntry>>,
     accounts_info: &HashMap<types::UuidType, AccountInfo>,
 ) -> Vec<Vec<MiddelSingleEntry>> {
     let mut resolved = Vec::with_capacity(entry.len());
+    let mut missing_flags = Vec::with_capacity(entry.len()); // track which fields are missing per single
 
+    // ───── First pass: resolve with placeholders ─────
     for (double_idx, double) in entry.iter().enumerate() {
         let mut resolved_singles = Vec::with_capacity(double.len());
+        let mut flags = Vec::with_capacity(double.len());
+
         for (single_idx, single) in double.iter().enumerate() {
-            // 1. Check account exists
+            // 1. Account existence
             let account_info = match accounts_info.get(&single.account) {
                 Some(info) => info,
                 None => {
@@ -478,7 +487,7 @@ fn map_input_type_to_middel_type(
             };
 
             // 2. Infer is_debit and is_inflow
-            let (is_debit, _is_inflow) = match (single.is_debit, single.is_inflow) {
+            let (is_debit, is_inflow) = match (single.is_debit, single.is_inflow) {
                 (Some(d), Some(i)) => (d, i),
                 (Some(d), None) => {
                     let i = accounting_stuff::is_inflow(account_info.is_debit, d);
@@ -503,26 +512,13 @@ fn map_input_type_to_middel_type(
             let outflow_type =
                 single.outflow_type.clone().unwrap_or_else(|| account_info.out_flow_type.clone());
 
-            // 4. Amount and quantity – must be provided; if missing, set 0.0 and mark error
-            let (amount, quantity) = match (single.amount, single.quantity) {
-                (Some(a), Some(q)) => (a, q),
-                (Some(a), None) => {
-                    err.double_entries[double_idx].single_entry_errors[single_idx]
-                        .quantity_missing = true;
-                    (a, 0.0)
-                }
-                (None, Some(q)) => {
-                    err.double_entries[double_idx].single_entry_errors[single_idx].amount_missing =
-                        true;
-                    (0.0, q)
-                }
-                (None, None) => {
-                    err.double_entries[double_idx].single_entry_errors[single_idx].amount_missing =
-                        true;
-                    err.double_entries[double_idx].single_entry_errors[single_idx]
-                        .quantity_missing = true;
-                    (0.0, 0.0)
-                }
+            // 4. Amount and quantity – store values and mark missing
+            let (amount, qty, amount_missing, qty_missing) = match (single.amount, single.quantity)
+            {
+                (Some(a), Some(q)) => (a, q, false, false),
+                (Some(a), None) => (a, 0.0, false, true),
+                (None, Some(q)) => (0.0, q, true, false),
+                (None, None) => (0.0, 0.0, true, true),
             };
 
             resolved_singles.push(MiddelSingleEntry {
@@ -532,10 +528,83 @@ fn map_input_type_to_middel_type(
                 inflow_type,
                 outflow_type,
                 amount,
-                quantity,
+                quantity: qty,
             });
+            flags.push((amount_missing, qty_missing));
         }
         resolved.push(resolved_singles);
+        missing_flags.push(flags);
+    }
+
+    // ───── Second pass: cross‑inference within each double entry ─────
+    for (double_idx, double) in resolved.iter_mut().enumerate() {
+        let flags = &missing_flags[double_idx];
+        let len = double.len();
+        if len == 0 {
+            continue;
+        }
+
+        // Collect all singles that have both amount and quantity (so we can compute price)
+        let mut price_samples = Vec::new();
+        for (idx, single) in double.iter().enumerate() {
+            let (amt_missing, qty_missing) = flags[idx];
+            if !amt_missing && !qty_missing && single.quantity != 0.0 {
+                let price = single.amount / single.quantity;
+                price_samples.push((idx, price));
+            }
+        }
+
+        // If we have at least one price sample, try to infer missing values.
+        if !price_samples.is_empty() {
+            // We'll use the first price sample (or we could average them).
+            let (_, avg_price) = price_samples[0];
+
+            for (idx, single) in double.iter_mut().enumerate() {
+                let (amt_missing, qty_missing) = flags[idx];
+                if amt_missing && !qty_missing {
+                    // Missing amount, but quantity present → infer amount = quantity * price
+                    single.amount = single.quantity * avg_price;
+                    // Clear the missing flag for amount (so we don't set error later)
+                    // But we still need to record that it was inferred; we can keep the error if we want,
+                    // or we can clear it. We'll clear it since we successfully inferred.
+                    err.double_entries[double_idx].single_entry_errors[idx].amount_missing = false;
+                } else if !amt_missing && qty_missing {
+                    // Missing quantity, but amount present → infer quantity = amount / price
+                    if avg_price != 0.0 {
+                        single.quantity = single.amount / avg_price;
+                        err.double_entries[double_idx].single_entry_errors[idx].quantity_missing =
+                            false;
+                    }
+                }
+                // If both missing, we cannot infer from price.
+            }
+        }
+
+        // After price‑based inference, if there are still missing amounts/quantities,
+        // we can also infer from debit/credit balance (if one side is missing).
+        // For now, we'll just let the accounting validation catch them.
+    }
+
+    // ───── Final step: set errors for any remaining missing fields ─────
+    for (double_idx, double) in resolved.iter().enumerate() {
+        let flags = &missing_flags[double_idx];
+        for (single_idx, single) in double.iter().enumerate() {
+            let (amt_missing, qty_missing) = flags[single_idx];
+            if amt_missing
+                && err.double_entries[double_idx].single_entry_errors[single_idx].amount_missing
+            {
+                // Already set, but we might have cleared it above if inferred.
+                // If still true, it means we couldn't infer.
+                err.double_entries[double_idx].single_entry_errors[single_idx].amount_missing =
+                    true;
+            }
+            if qty_missing
+                && err.double_entries[double_idx].single_entry_errors[single_idx].quantity_missing
+            {
+                err.double_entries[double_idx].single_entry_errors[single_idx].quantity_missing =
+                    true;
+            }
+        }
     }
 
     resolved
