@@ -1,5 +1,6 @@
 use crate::accounting_domain::utility::accounting_stuff;
 use crate::accounting_domain::utility::types;
+use crate::accounting_domain::utility::types::MyErrorTrait;
 use crate::utility::traits;
 use serde::Deserialize;
 use serde::Serialize;
@@ -73,12 +74,17 @@ pub struct Error {
     pub(crate) new_uuid:                 Option<types::RowIdError>,
     pub(crate) belong_to_company_branch: Option<types::RowIdError>,
     pub(crate) shared_entry_id:          Option<types::RowIdError>,
-    pub(crate) double_entries:           Vec<DoubleEntryError>,
+
+    container_is_empty:        bool,
+    pub(crate) double_entries: Vec<DoubleEntryError>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
 pub struct DoubleEntryError {
-    pub(crate) accounting_error:    accounting_stuff::DoubleEntryError,
+    entry_is_empty:              bool,
+    you_need_to_split_the_entry: bool,
+    debit_not_equal_credit:      Option<DebitNotEqualCreditError>,
+
     pub(crate) single_entry_errors: Vec<SingleEntryError>,
 }
 
@@ -86,32 +92,38 @@ pub struct DoubleEntryError {
 pub struct SingleEntryError {
     pub(crate) new_uuid: Option<types::RowIdError>,
     pub(crate) account:  Option<types::RowIdError>,
+
+    quantity_and_amount_are_zero:       bool,
+    duplicate_account_in_entry:         bool,
+    inventory_is_empty:                 bool,
+    the_amount_should_be_positive:      bool,
+    the_quantity_should_be_positive:    bool,
+    quantity_not_equal_amount:          bool,
+    quantity_not_equal_zero:            bool,
+    insufficient_quantity_in_inventory: Option<InsufficientQuantityInInventory>,
+    amount_mismatch:                    Option<AmountMismatch>,
+    insufficient_amount_in_inventory:   Option<InsufficientAmountInInventory>,
 }
 
-impl types::MyErrorTrait for Error {
-    fn is_there_error(&self) -> bool {
-        if self.user_uuid.is_some()
-            || self.new_uuid.is_some()
-            || self.belong_to_company_branch.is_some()
-            || self.shared_entry_id.is_some()
-        {
-            return true;
-        }
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
+pub(crate) struct DebitNotEqualCreditError {
+    total_debit:  f64,
+    total_credit: f64,
+}
 
-        for double in self.double_entries.iter() {
-            if double.accounting_error.is_there_error() {
-                return true;
-            }
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
+pub(crate) struct InsufficientQuantityInInventory {
+    total_quantity: f64,
+}
 
-            for line in double.single_entry_errors.iter() {
-                if *line != Default::default() {
-                    return true;
-                }
-            }
-        }
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
+pub(crate) struct AmountMismatch {
+    expected_amount: f64,
+}
 
-        false
-    }
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
+pub(crate) struct InsufficientAmountInInventory {
+    total_amount: f64,
 }
 
 // -----------------------------------------------------------------------------
@@ -151,7 +163,143 @@ pub trait DatabaseRead {
 }
 
 // -----------------------------------------------------------------------------
-// Accounting trait implementations
+// error impls
+// -----------------------------------------------------------------------------
+
+impl types::MyErrorTrait for SingleEntryError {}
+
+impl types::MyErrorTrait for DoubleEntryError {
+    fn is_there_error(&self) -> bool {
+        if self.entry_is_empty
+            || self.you_need_to_split_the_entry
+            || self.debit_not_equal_credit.is_some()
+        {
+            return true;
+        }
+
+        for line in self.single_entry_errors.iter() {
+            if line.is_there_error() {
+                return true;
+            }
+        }
+
+        false
+    }
+}
+
+impl types::MyErrorTrait for Error {
+    fn is_there_error(&self) -> bool {
+        if self.container_is_empty
+            || self.user_uuid.is_some()
+            || self.new_uuid.is_some()
+            || self.belong_to_company_branch.is_some()
+            || self.shared_entry_id.is_some()
+        {
+            return true;
+        }
+
+        for double in self.double_entries.iter() {
+            if double.is_there_error() {
+                return true;
+            }
+        }
+
+        false
+    }
+}
+
+impl accounting_stuff::ErrorSink for Error {
+    fn is_there_error_single_entry(&self, double_idx: usize, single_idx: usize) -> bool {
+        self.double_entries[double_idx].single_entry_errors[single_idx].is_there_error()
+    }
+
+    fn quantity_and_amount_are_zero(&mut self, double_idx: usize, single_idx: usize) {
+        self.double_entries[double_idx].single_entry_errors[single_idx]
+            .quantity_and_amount_are_zero = true;
+    }
+
+    fn duplicate_account_in_entry(&mut self, double_idx: usize, single_idx: usize) {
+        self.double_entries[double_idx].single_entry_errors[single_idx]
+            .duplicate_account_in_entry = true;
+    }
+
+    fn inventory_is_empty(&mut self, double_idx: usize, single_idx: usize) {
+        self.double_entries[double_idx].single_entry_errors[single_idx].inventory_is_empty = true;
+    }
+
+    fn the_amount_should_be_positive(&mut self, double_idx: usize, single_idx: usize) {
+        self.double_entries[double_idx].single_entry_errors[single_idx]
+            .the_amount_should_be_positive = true;
+    }
+
+    fn the_quantity_should_be_positive(&mut self, double_idx: usize, single_idx: usize) {
+        self.double_entries[double_idx].single_entry_errors[single_idx]
+            .the_quantity_should_be_positive = true;
+    }
+
+    fn quantity_not_equal_amount(&mut self, double_idx: usize, single_idx: usize) {
+        self.double_entries[double_idx].single_entry_errors[single_idx].quantity_not_equal_amount =
+            true;
+    }
+
+    fn quantity_not_equal_zero(&mut self, double_idx: usize, single_idx: usize) {
+        self.double_entries[double_idx].single_entry_errors[single_idx].quantity_not_equal_zero =
+            true;
+    }
+
+    fn insufficient_quantity_in_inventory(
+        &mut self,
+        double_idx: usize,
+        single_idx: usize,
+        total_quantity: f64,
+    ) {
+        self.double_entries[double_idx].single_entry_errors[single_idx]
+            .insufficient_quantity_in_inventory = Some(InsufficientQuantityInInventory {
+            total_quantity,
+        });
+    }
+
+    fn amount_mismatch(&mut self, double_idx: usize, single_idx: usize, expected_amount: f64) {
+        self.double_entries[double_idx].single_entry_errors[single_idx].amount_mismatch =
+            Some(AmountMismatch {
+                expected_amount,
+            });
+    }
+
+    fn insufficient_amount_in_inventory(
+        &mut self,
+        double_idx: usize,
+        single_idx: usize,
+        total_amount: f64,
+    ) {
+        self.double_entries[double_idx].single_entry_errors[single_idx]
+            .insufficient_amount_in_inventory = Some(InsufficientAmountInInventory {
+            total_amount,
+        });
+    }
+
+    fn entry_is_empty(&mut self, double_idx: usize) {
+        self.double_entries[double_idx].entry_is_empty = true;
+    }
+
+    fn you_need_to_split_the_entry(&mut self, double_idx: usize) {
+        self.double_entries[double_idx].you_need_to_split_the_entry = true;
+    }
+
+    fn debit_not_equal_credit(&mut self, double_idx: usize, total_debit: f64, total_credit: f64) {
+        self.double_entries[double_idx].debit_not_equal_credit = Some(DebitNotEqualCreditError {
+            total_debit,
+            total_credit,
+        });
+    }
+
+    fn container_is_empty(&mut self) {
+        self.container_is_empty = true;
+    }
+}
+
+// -----------------------------------------------------------------------------
+// logic
 // -----------------------------------------------------------------------------
 
 struct MiddelSingleEntry {
@@ -164,116 +312,6 @@ struct MiddelSingleEntry {
     amount:       f64,
     quantity:     f64,
 }
-
-impl accounting_stuff::SingleEntry for MiddelSingleEntry {
-    type AccountId = types::UuidType;
-
-    fn account_id(&self) -> &Self::AccountId {
-        &self.account
-    }
-
-    fn quantity(&self) -> f64 {
-        self.quantity
-    }
-
-    fn amount(&self) -> f64 {
-        self.amount
-    }
-
-    fn flow_type(&self) -> accounting_stuff::CostFlowType {
-        if self.is_inflow {
-            return accounting_stuff::CostFlowType::InFlow(self.inflow_type.clone());
-        }
-        return accounting_stuff::CostFlowType::OutFlow(self.outflow_type.clone());
-    }
-}
-
-impl accounting_stuff::EntryContainer for Vec<MiddelSingleEntry> {
-    type Double = MiddelSingleEntry;
-    type Iter<'a> = std::slice::Iter<'a, MiddelSingleEntry>;
-
-    fn iter(&self) -> Self::Iter<'_> {
-        self.as_slice().iter()
-    }
-
-    fn is_empty(&self) -> bool {
-        Vec::is_empty(self)
-    }
-
-    fn len(&self) -> usize {
-        Vec::len(self)
-    }
-}
-
-impl accounting_stuff::Inventory for Vec<accounting_stuff::InventoryRecord> {
-    fn push(&mut self, record: accounting_stuff::InventoryRecord) {
-        Vec::push(self, record);
-    }
-
-    fn clear(&mut self) {
-        Vec::clear(self);
-    }
-
-    fn is_empty(&self) -> bool {
-        Vec::is_empty(self)
-    }
-
-    fn iter(&self) -> impl Iterator<Item = &accounting_stuff::InventoryRecord> {
-        self.as_slice().iter()
-    }
-
-    fn iter_mut(&mut self) -> impl Iterator<Item = &mut accounting_stuff::InventoryRecord> {
-        self.as_mut_slice().iter_mut()
-    }
-
-    fn sort_by<F>(&mut self, compare: F)
-    where
-        F: FnMut(
-            &accounting_stuff::InventoryRecord,
-            &accounting_stuff::InventoryRecord,
-        ) -> std::cmp::Ordering,
-    {
-        self.as_mut_slice().sort_by(compare);
-    }
-
-    fn retain<F>(&mut self, f: F)
-    where
-        F: FnMut(&accounting_stuff::InventoryRecord) -> bool,
-    {
-        <Vec<accounting_stuff::InventoryRecord>>::retain(self, f);
-    }
-
-    fn pop(&mut self) -> Option<accounting_stuff::InventoryRecord> {
-        Vec::pop(self)
-    }
-}
-
-impl accounting_stuff::AccountInfoProvider for HashMap<types::UuidType, AccountInfo> {
-    type AccountId = types::UuidType;
-    type Inventory = Vec<accounting_stuff::InventoryRecord>;
-
-    fn is_debit_nature(&self, id: &Self::AccountId) -> bool {
-        self.get(id).map(|info| info.is_debit).unwrap()
-    }
-
-    fn get_or_create_inventory(&mut self, id: &Self::AccountId) -> &mut Self::Inventory {
-        &mut self
-            .entry(id.clone())
-            .or_insert_with(|| {
-                AccountInfo {
-                    is_debit:      false,
-                    in_flow_type:  accounting_stuff::InFlowType::Manual,
-                    out_flow_type: accounting_stuff::OutFlowType::Manual,
-                    inventory:     Vec::new(),
-                }
-            })
-            .inventory
-    }
-}
-
-// -----------------------------------------------------------------------------
-// Input methods (business logic)
-// -----------------------------------------------------------------------------
 
 fn map_input_type_to_middel_type(
     entry: Vec<Vec<SingleEntry>>,
