@@ -166,25 +166,52 @@ pub trait SingleEntry {
 
 pub trait DoubleEntry {
     type Single;
+
     type Iter<'a>: Iterator<Item = &'a Self::Single> + ExactSizeIterator
     where
         Self: 'a;
 
-    fn iter(&self) -> Self::Iter<'_>;
-    fn is_empty(&self) -> bool;
-    fn len(&self) -> usize;
-}
-
-/// A container of single entries (e.g., a double‑entry group or a whole journal entry).
-pub trait EntryContainer {
-    type Double: DoubleEntry;
-    type Iter<'a>: Iterator<Item = &'a Self::Double> + ExactSizeIterator
+    type IterMut<'a>: Iterator<Item = &'a mut Self::Single> + ExactSizeIterator
     where
         Self: 'a;
 
     fn iter(&self) -> Self::Iter<'_>;
-    fn is_empty(&self) -> bool;
-    fn len(&self) -> usize;
+    fn iter_mut(&mut self) -> Self::IterMut<'_>;
+
+    fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    fn len(&self) -> usize {
+        self.iter().len()
+    }
+
+    fn retain<F>(&mut self, f: F)
+    where
+        F: FnMut(&Self::Single) -> bool;
+}
+
+pub trait EntryContainer {
+    type Double: DoubleEntry;
+
+    type Iter<'a>: Iterator<Item = &'a Self::Double> + ExactSizeIterator
+    where
+        Self: 'a;
+
+    type IterMut<'a>: Iterator<Item = &'a mut Self::Double> + ExactSizeIterator
+    where
+        Self: 'a;
+
+    fn iter(&self) -> Self::Iter<'_>;
+    fn iter_mut(&mut self) -> Self::IterMut<'_>;
+
+    fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    fn len(&self) -> usize {
+        self.iter().len()
+    }
 }
 
 /// Provides account information (nature) and inventory for a given account.
@@ -900,10 +927,15 @@ mod tests {
 
     impl DoubleEntry for TestDoubleEntry {
         type Iter<'a> = std::slice::Iter<'a, TestSingleEntry>;
+        type IterMut<'a> = std::slice::IterMut<'a, TestSingleEntry>;
         type Single = TestSingleEntry;
 
         fn iter(&self) -> Self::Iter<'_> {
             self.lines.iter()
+        }
+
+        fn iter_mut(&mut self) -> Self::IterMut<'_> {
+            self.lines.iter_mut()
         }
 
         fn is_empty(&self) -> bool {
@@ -912,6 +944,13 @@ mod tests {
 
         fn len(&self) -> usize {
             self.lines.len()
+        }
+
+        fn retain<F>(&mut self, f: F)
+        where
+            F: FnMut(&Self::Single) -> bool,
+        {
+            self.lines.retain(f);
         }
     }
 
@@ -923,9 +962,14 @@ mod tests {
     impl EntryContainer for TestEntryContainer {
         type Double = TestDoubleEntry;
         type Iter<'a> = std::slice::Iter<'a, TestDoubleEntry>;
+        type IterMut<'a> = std::slice::IterMut<'a, TestDoubleEntry>;
 
         fn iter(&self) -> Self::Iter<'_> {
             self.groups.iter()
+        }
+
+        fn iter_mut(&mut self) -> Self::IterMut<'_> {
+            self.groups.iter_mut()
         }
 
         fn is_empty(&self) -> bool {
