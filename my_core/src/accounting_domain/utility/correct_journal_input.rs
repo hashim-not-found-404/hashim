@@ -77,12 +77,12 @@ where
 {
     for double in entry.iter_mut() {
         for single in double.iter_mut() {
-            single.set_inferred_is_debit(None);
-            single.set_inferred_is_inflow(None);
-            single.set_inferred_quantity(None);
-            single.set_inferred_amount(None);
-            single.set_inferred_inflow_type(None);
-            single.set_inferred_outflow_type(None);
+            single.set_inferred_is_debit(single.get_from_user_input_is_debit());
+            single.set_inferred_is_inflow(single.get_from_user_input_is_inflow());
+            single.set_inferred_quantity(single.get_from_user_input_quantity());
+            single.set_inferred_amount(single.get_from_user_input_amount());
+            single.set_inferred_inflow_type(single.get_from_user_input_inflow_type());
+            single.set_inferred_outflow_type(single.get_from_user_input_outflow_type());
         }
     }
 }
@@ -224,7 +224,7 @@ fn horizontal_infere_for_quantity_and_amount<C, A>(
 {
     for double in entry.iter_mut() {
         for single in double.iter_mut() {
-            let mut quantity_from_user = match single.get_from_user_input_quantity() {
+            let mut quantity_from_user = match single.get_inferred_quantity() {
                 Some(a) => a,
                 None => continue,
             };
@@ -250,12 +250,10 @@ fn horizontal_infere_for_quantity_and_amount<C, A>(
                 match inferred_inflow_type {
                     accounting_stuff::InFlowType::Manual => {}
                     accounting_stuff::InFlowType::QuantityEqualAmount => {
-                        if let Some(_) = single.get_from_user_input_amount() {
-                            single.set_user_input_amount(Some(quantity_from_user));
-                        }
+                        single.set_inferred_amount(Some(quantity_from_user));
                     }
                     accounting_stuff::InFlowType::QuantityEqualZero => {
-                        single.set_user_input_quantity(Some(0.0))
+                        single.set_inferred_quantity(Some(0.0))
                     }
                 }
             } else {
@@ -275,9 +273,9 @@ fn horizontal_infere_for_quantity_and_amount<C, A>(
 
                 match inferred_outflow_type {
                     accounting_stuff::OutFlowType::Manual => {
-                        single.set_user_input_quantity(Some(quantity_from_user));
+                        single.set_inferred_quantity(Some(quantity_from_user));
 
-                        if let Some(mut amount_from_user) = single.get_from_user_input_amount() {
+                        if let Some(mut amount_from_user) = single.get_inferred_amount() {
                             let total_amount_in_inventory = info
                                 .inventory
                                 .iter1()
@@ -287,13 +285,13 @@ fn horizontal_infere_for_quantity_and_amount<C, A>(
                                 amount_from_user = total_amount_in_inventory;
                             }
 
-                            single.set_user_input_amount(Some(amount_from_user));
+                            single.set_inferred_amount(Some(amount_from_user));
                         };
                     }
                     accounting_stuff::OutFlowType::QuantityEqualAmount => {
-                        single.set_user_input_quantity(Some(quantity_from_user));
+                        single.set_inferred_quantity(Some(quantity_from_user));
 
-                        if let Some(_) = single.get_from_user_input_amount() {
+                        if let Some(_) = single.get_inferred_amount() {
                             let total_amount_in_inventory = info
                                 .inventory
                                 .iter1()
@@ -304,7 +302,7 @@ fn horizontal_infere_for_quantity_and_amount<C, A>(
                             if amount_from_user > total_amount_in_inventory {
                                 amount_from_user = total_amount_in_inventory;
 
-                                single.set_user_input_outflow_type(Some(
+                                single.set_inferred_outflow_type(Some(
                                     accounting_stuff::OutFlowType::Manual,
                                 ));
 
@@ -313,13 +311,13 @@ fn horizontal_infere_for_quantity_and_amount<C, A>(
                                 ));
                             }
 
-                            single.set_user_input_amount(Some(amount_from_user));
+                            single.set_inferred_amount(Some(amount_from_user));
                         };
                     }
                     accounting_stuff::OutFlowType::QuantityEqualZero => {
-                        single.set_user_input_quantity(Some(0.0));
+                        single.set_inferred_quantity(Some(0.0));
 
-                        if let Some(mut amount_from_user) = single.get_from_user_input_amount() {
+                        if let Some(mut amount_from_user) = single.get_inferred_amount() {
                             let total_amount_in_inventory = info
                                 .inventory
                                 .iter1()
@@ -329,7 +327,7 @@ fn horizontal_infere_for_quantity_and_amount<C, A>(
                                 amount_from_user = total_amount_in_inventory;
                             }
 
-                            single.set_user_input_amount(Some(amount_from_user));
+                            single.set_inferred_amount(Some(amount_from_user));
                         };
                     }
                     accounting_stuff::OutFlowType::Wac
@@ -340,7 +338,7 @@ fn horizontal_infere_for_quantity_and_amount<C, A>(
                         let expected_amount =
                             accounting_stuff::get_amount(quantity_from_user, info.inventory);
 
-                        single.set_user_input_amount(Some(expected_amount));
+                        single.set_inferred_amount(Some(expected_amount));
                     }
                 };
             }
@@ -1142,8 +1140,8 @@ mod tests {
             user_input_account_id: "1".to_string(),
             user_input_quantity: Some(5.0),
             user_input_amount: Some(10.0), // will be overwritten
-            inferred_is_inflow: Some(true),
-            inferred_inflow_type: Some(accounting_stuff::InFlowType::QuantityEqualAmount),
+            user_input_is_inflow: Some(true),
+            user_input_inflow_type: Some(accounting_stuff::InFlowType::QuantityEqualAmount),
             ..Default::default()
         };
         let double = MockDouble {
@@ -1161,11 +1159,12 @@ mod tests {
             inventory:    Vec::new(),
         });
 
+        reset_all_inferred_values(&mut container);
         horizontal_infere_for_quantity_and_amount(100, &mut container, &mut provider);
 
         let updated = &container.doubles[0].singles[0];
-        assert_eq!(updated.get_from_user_input_quantity(), Some(5.0));
-        assert_eq!(updated.get_from_user_input_amount(), Some(5.0)); // amount becomes quantity
+        assert_eq!(updated.get_inferred_quantity(), Some(5.0));
+        assert_eq!(updated.get_inferred_amount(), Some(5.0)); // amount becomes quantity
     }
 
     #[test]
@@ -1175,8 +1174,8 @@ mod tests {
             user_input_account_id: "1".to_string(),
             user_input_quantity: Some(5.0),
             user_input_amount: Some(10.0),
-            inferred_is_inflow: Some(true),
-            inferred_inflow_type: Some(accounting_stuff::InFlowType::QuantityEqualZero),
+            user_input_is_inflow: Some(true),
+            user_input_inflow_type: Some(accounting_stuff::InFlowType::QuantityEqualZero),
             ..Default::default()
         };
         let double = MockDouble {
@@ -1194,11 +1193,12 @@ mod tests {
             inventory:    Vec::new(),
         });
 
+        reset_all_inferred_values(&mut container);
         horizontal_infere_for_quantity_and_amount(100, &mut container, &mut provider);
 
         let updated = &container.doubles[0].singles[0];
-        assert_eq!(updated.get_from_user_input_quantity(), Some(0.0));
-        assert_eq!(updated.get_from_user_input_amount(), Some(10.0)); // amount unchanged
+        assert_eq!(updated.get_inferred_quantity(), Some(0.0));
+        assert_eq!(updated.get_inferred_amount(), Some(10.0)); // amount unchanged
     }
 
     #[test]
@@ -1208,8 +1208,8 @@ mod tests {
             user_input_account_id: "1".to_string(),
             user_input_quantity: Some(10.0),
             user_input_amount: Some(100.0),
-            inferred_is_inflow: Some(false),
-            inferred_outflow_type: Some(accounting_stuff::OutFlowType::Manual),
+            user_input_is_inflow: Some(false),
+            user_input_outflow_type: Some(accounting_stuff::OutFlowType::Manual),
             ..Default::default()
         };
         let double = MockDouble {
@@ -1239,13 +1239,14 @@ mod tests {
             ],
         });
 
+        reset_all_inferred_values(&mut container);
         horizontal_infere_for_quantity_and_amount(100, &mut container, &mut provider);
 
         let updated = &container.doubles[0].singles[0];
         // Quantity should be capped at 5.0 (total inventory quantity)
-        assert_eq!(updated.get_from_user_input_quantity(), Some(5.0));
+        assert_eq!(updated.get_inferred_quantity(), Some(5.0));
         // Amount should be capped at 50.0 (total inventory amount)
-        assert_eq!(updated.get_from_user_input_amount(), Some(50.0));
+        assert_eq!(updated.get_inferred_amount(), Some(50.0));
         // No error flags set
         assert!(!updated.is_there_error_in_single_entry());
     }
