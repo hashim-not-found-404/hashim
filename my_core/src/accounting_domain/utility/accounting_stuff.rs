@@ -434,7 +434,7 @@ pub(crate) fn state_full_check_for_entry<E, C, A>(
             };
 
             if !errr.is_there_error_single_entry(double_idx, single_idx) {
-                apply_entry_on_inventory::<<C::Double as DoubleEntry>::Single, A::Inventory>(
+                apply_entry_on_inventory::<A::Inventory>(
                     time_unix,
                     single.amount(),
                     single.quantity(),
@@ -448,7 +448,7 @@ pub(crate) fn state_full_check_for_entry<E, C, A>(
 }
 
 /// Apply the entry to the inventory, updating records.
-pub fn apply_entry_on_inventory<S, I>(
+pub fn apply_entry_on_inventory<I>(
     time_unix: u64,
     amount: f64,
     quantity: f64,
@@ -456,7 +456,6 @@ pub fn apply_entry_on_inventory<S, I>(
     is_decrease_by_price: bool,
     inventory: &mut I,
 ) where
-    S: SingleEntry,
     I: Inventory,
 {
     let (amt, qty) = match is_inflow {
@@ -1951,7 +1950,7 @@ mod tests {
     #[test]
     fn test_apply_entry_normal_inflow() {
         let mut inv = TestInventory::default();
-        apply_entry_on_inventory::<TestSingleEntry, _>(100, 20.0, 5.0, true, true, &mut inv);
+        apply_entry_on_inventory(100, 20.0, 5.0, true, true, &mut inv);
         assert_eq!(inv.iter().count(), 1);
         let rec = inv.iter().next().unwrap();
         assert_eq!(rec.time_unix, 100);
@@ -1967,7 +1966,7 @@ mod tests {
             quantity:  10.0,
             amount:    30.0,
         });
-        apply_entry_on_inventory::<TestSingleEntry, _>(200, 30.0, 10.0, false, true, &mut inv);
+        apply_entry_on_inventory(200, 30.0, 10.0, false, true, &mut inv);
         // After outflow, inventory should be empty
         assert!(inv.is_empty());
     }
@@ -1980,7 +1979,7 @@ mod tests {
             quantity:  5.0,
             amount:    10.0,
         });
-        apply_entry_on_inventory::<TestSingleEntry, _>(300, 3.0, 0.0, true, true, &mut inv);
+        apply_entry_on_inventory(300, 3.0, 0.0, true, true, &mut inv);
         // Should adjust amount: total_amt = 13, qty = 5
         let (qty, amt) = sum_inventory(&inv);
         assert_eq!(qty, 5.0);
@@ -2000,7 +1999,7 @@ mod tests {
             quantity:  5.0,
             amount:    10.0,
         });
-        apply_entry_on_inventory::<TestSingleEntry, _>(400, 0.0, 2.0, true, true, &mut inv);
+        apply_entry_on_inventory(400, 0.0, 2.0, true, true, &mut inv);
         let (qty, amt) = sum_inventory(&inv);
         assert_eq!(qty, 7.0);
         assert_eq!(amt, 10.0);
@@ -2018,7 +2017,7 @@ mod tests {
             quantity:  5.0,
             amount:    10.0,
         });
-        apply_entry_on_inventory::<TestSingleEntry, _>(500, 0.0, 2.0, false, true, &mut inv);
+        apply_entry_on_inventory(500, 0.0, 2.0, false, true, &mut inv);
         let (qty, amt) = sum_inventory(&inv);
         assert_eq!(qty, 3.0);
         assert_eq!(amt, 10.0);
@@ -2036,7 +2035,7 @@ mod tests {
             quantity:  5.0,
             amount:    10.0,
         });
-        apply_entry_on_inventory::<TestSingleEntry, _>(600, 5.0, 0.0, false, true, &mut inv);
+        apply_entry_on_inventory(600, 5.0, 0.0, false, true, &mut inv);
         let (qty, amt) = sum_inventory(&inv);
         assert_eq!(qty, 5.0);
         assert_eq!(amt, 5.0);
@@ -2051,7 +2050,7 @@ mod tests {
     fn test_apply_entry_impossible_panics() {
         let mut inv = TestInventory::default();
         // amount > 0, quantity < 0 is impossible
-        apply_entry_on_inventory::<TestSingleEntry, _>(700, 10.0, -5.0, true, true, &mut inv);
+        apply_entry_on_inventory(700, 10.0, -5.0, true, true, &mut inv);
     }
 
     // -------------------------------------------------------------------------
@@ -2437,7 +2436,7 @@ mod tests {
             amount:    10.0,
         });
         // Rare case: amount == 0, quantity negative that exactly cancels total
-        apply_entry_on_inventory::<TestSingleEntry, _>(200, 0.0, 5.0, false, true, &mut inv);
+        apply_entry_on_inventory(200, 0.0, 5.0, false, true, &mut inv);
         // Should clear inventory
         assert_eq!(inv.0[0].quantity, 0.0);
         assert_eq!(inv.0[0].amount, 10.0);
@@ -2451,7 +2450,7 @@ mod tests {
             quantity:  5.0,
             amount:    10.0,
         });
-        apply_entry_on_inventory::<TestSingleEntry, _>(300, 10.0, 0.0, false, true, &mut inv);
+        apply_entry_on_inventory(300, 10.0, 0.0, false, true, &mut inv);
         assert_eq!(inv.0[0].quantity, 5.0);
         assert_eq!(inv.0[0].amount, 0.0);
     }
@@ -2646,6 +2645,33 @@ mod tests {
     }
 
     #[test]
+    fn test_state_full_manual_outflow_amount_more_than_inv() {
+        let mut provider = setup_provider();
+        let inv = provider.get_or_create_inventory(&AccountId("A".to_string()));
+        inv.push(InventoryRecord {
+            time_unix: 1,
+            quantity:  5.0,
+            amount:    10.0,
+        });
+
+        let single = entry("A", false, 2.0, 11.0, InFlowType::Manual, OutFlowType::Manual);
+        let double = TestDoubleEntry {
+            lines: vec![single],
+        };
+        let entry = TestEntryContainer {
+            groups: vec![double],
+        };
+        let mut err = EntryError::new_for_entry(&entry);
+        state_full_check_for_entry(100, &mut err, &entry, &mut provider);
+
+        let se = &err.double_entry_errors[0].single_entry_errors[0];
+        assert!(se.amount_mismatch.is_none());
+        let (qty, amt) = sum_inventory(&provider.inventories[&AccountId("A".to_string())]);
+        assert_eq!(qty, 5.0);
+        assert_eq!(amt, 10.0);
+    }
+
+    #[test]
     fn test_apply_entry_manual_outflow_uses_given_amount() {
         let mut inv = TestInventory::default();
         inv.push(InventoryRecord {
@@ -2654,7 +2680,7 @@ mod tests {
             amount:    10.0,
         });
         // Manual outflow: is_decrease_by_price = false
-        apply_entry_on_inventory::<TestSingleEntry, _>(100, 3.0, 2.0, false, false, &mut inv);
+        apply_entry_on_inventory(100, 3.0, 2.0, false, false, &mut inv);
         let (qty, amt) = sum_inventory(&inv);
         assert_eq!(qty, 3.0); // 5 - 2
         assert_eq!(amt, 7.0); // 10 - 3 (given amount)

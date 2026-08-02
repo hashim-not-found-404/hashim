@@ -21,6 +21,8 @@ pub trait SingleEntry {
     fn set_user_input_is_inflow(&mut self, i: Option<bool>);
     fn set_user_input_quantity(&mut self, i: Option<f64>);
     fn set_user_input_amount(&mut self, i: Option<f64>);
+    fn set_user_input_inflow_type(&mut self, i: Option<accounting_stuff::InFlowType>);
+    fn set_user_input_outflow_type(&mut self, i: Option<accounting_stuff::OutFlowType>);
 
     fn set_inferred_is_debit(&mut self, i: Option<bool>);
     fn set_inferred_is_inflow(&mut self, i: Option<bool>);
@@ -38,7 +40,7 @@ pub trait SingleEntry {
 
     // Errors
 
-    fn is_there_error_single_entry(&self) -> bool;
+    fn is_there_error_in_single_entry(&self) -> bool;
 
     fn quantity_and_amount_are_zero(&mut self);
     fn duplicate_account_in_entry(&mut self);
@@ -66,7 +68,25 @@ pub struct AccountInfo<'a, I> {
     inventory:    &'a mut I,
 }
 
-fn horizontal_correct_for_flow<C, A>(entry: &mut C, account_info: &A)
+fn reset_all_inferred_values<C>(entry: &mut C)
+where
+    C: EntryContainer,
+    C::Double: DoubleEntry,
+    <C::Double as DoubleEntry>::Single: SingleEntry,
+{
+    for double in entry.iter_mut() {
+        for single in double.iter_mut() {
+            single.set_inferred_is_debit(None);
+            single.set_inferred_is_inflow(None);
+            single.set_inferred_quantity(None);
+            single.set_inferred_amount(None);
+            single.set_inferred_inflow_type(None);
+            single.set_inferred_outflow_type(None);
+        }
+    }
+}
+
+fn horizontal_correct_for_is_inflow<C, A>(entry: &mut C, account_info: &A)
 where
     C: EntryContainer,
     C::Double: DoubleEntry,
@@ -88,6 +108,60 @@ where
                             is_debit,
                         )));
                     }
+                }
+            }
+        }
+    }
+}
+
+fn horizontal_infer_for_is_debit<C, A>(entry: &mut C, account_info: &A)
+where
+    C: EntryContainer,
+    C::Double: DoubleEntry,
+    <C::Double as DoubleEntry>::Single: SingleEntry,
+    A: AccountInfoProvider<
+        AccountId = <<C::Double as DoubleEntry>::Single as SingleEntry>::AccountId,
+    >,
+    A::Inventory: Inventory,
+{
+    for double in entry.iter_mut() {
+        for single in double.iter_mut() {
+            if let Some(is_debit) = single.get_from_user_input_is_debit() {
+                single.set_inferred_is_debit(Some(is_debit));
+            } else {
+                if let Some(is_inflow) = single.get_from_user_input_is_inflow() {
+                    let account_id = single.get_from_user_input_account_id();
+                    if let Some(info) = account_info.get_info(&account_id) {
+                        single.set_inferred_is_debit(Some(accounting_stuff::is_debit(
+                            info.is_debit,
+                            is_inflow,
+                        )));
+                    }
+                }
+            }
+        }
+    }
+}
+
+fn horizontal_infer_for_is_inflow<C, A>(entry: &mut C, account_info: &A)
+where
+    C: EntryContainer,
+    C::Double: DoubleEntry,
+    <C::Double as DoubleEntry>::Single: SingleEntry,
+    A: AccountInfoProvider<
+        AccountId = <<C::Double as DoubleEntry>::Single as SingleEntry>::AccountId,
+    >,
+    A::Inventory: Inventory,
+{
+    for double in entry.iter_mut() {
+        for single in double.iter_mut() {
+            if let Some(is_debit) = single.get_inferred_is_debit() {
+                let account_id = single.get_from_user_input_account_id();
+                if let Some(info) = account_info.get_info(&account_id) {
+                    single.set_inferred_is_inflow(Some(accounting_stuff::is_inflow(
+                        info.is_debit,
+                        is_debit,
+                    )));
                 }
             }
         }
@@ -162,57 +236,171 @@ where
     }
 }
 
-// fn horizontal_correct_for_quantity<C, A>(entry: &mut C, account_info: &mut A)
-// where
-//     C: EntryContainer,
-//     C::Double: DoubleEntry,
-//     <C::Double as DoubleEntry>::Single: SingleEntry,
-//     A: AccountInfoProvider<
-//         AccountId = <<C::Double as DoubleEntry>::Single as SingleEntry>::AccountId,
-//     >,
-//     A::Inventory: Inventory,
-// {
-//     for double in entry.iter_mut() {
-//         for single in double.iter_mut() {
-//             if let Some(quantity_from_user) = single.get_from_user_input_quantity() {
-//                 if let Some(is_inflow) = single.get_inferred_is_inflow() {
-//                     if is_inflow {
-//                         if let Some(inferred_inflow_type) = single.get_inferred_inflow_type() {
-//                             match inferred_inflow_type {
-//                                 accounting_stuff::InFlowType::Manual => {}
-//                                 accounting_stuff::InFlowType::QuantityEqualAmount => {}
-//                                 accounting_stuff::InFlowType::QuantityEqualZero => {
-//                                     single.set_user_input_quantity(Some(0.0))
-//                                 }
-//                             }
-//                         }
-//                     }
-//                 } else {
-//                     if let Some(inferred_outflow_type) = single.get_inferred_outflow_type() {
-//                         let account_id = single.get_from_user_input_account_id();
+fn horizontal_correct_for_quantity_and_amount<C, A>(
+    time_unix: u64,
+    entry: &mut C,
+    account_info: &mut A,
+) where
+    C: EntryContainer,
+    C::Double: DoubleEntry,
+    <C::Double as DoubleEntry>::Single: SingleEntry,
+    A: AccountInfoProvider<
+        AccountId = <<C::Double as DoubleEntry>::Single as SingleEntry>::AccountId,
+    >,
+    A::Inventory: Inventory,
+{
+    for double in entry.iter_mut() {
+        for single in double.iter_mut() {
+            let mut quantity_from_user = match single.get_from_user_input_quantity() {
+                Some(a) => a,
+                None => continue,
+            };
 
-//                         if let Some(info) = account_info.get_info(&account_id) {
-//                             match inferred_outflow_type {
-//                                 accounting_stuff::OutFlowType::Manual => {}
-//                                 accounting_stuff::OutFlowType::QuantityEqualAmount => {}
-//                                 accounting_stuff::OutFlowType::QuantityEqualZero => {
-//                                     single.set_user_input_quantity(Some(0.0))
-//                                 }
-//                                 accounting_stuff::OutFlowType::Wac => todo!(),
-//                                 accounting_stuff::OutFlowType::Fifo => todo!(),
-//                                 accounting_stuff::OutFlowType::Lifo => todo!(),
-//                                 accounting_stuff::OutFlowType::Hifo => todo!(),
-//                                 accounting_stuff::OutFlowType::Lofo => todo!(),
-//                             }
-//                         }
-//                     }
-//                 }
-//             }
-//         }
-//     }
-// }
+            let is_inflow = match single.get_inferred_is_inflow() {
+                Some(a) => a,
+                None => continue,
+            };
 
-fn correct_the_input<C, A>(entry: &C, mut account_info: A)
+            if is_inflow {
+                let inferred_inflow_type = match single.get_inferred_inflow_type() {
+                    Some(a) => a,
+                    None => continue,
+                };
+
+                match inferred_inflow_type {
+                    accounting_stuff::InFlowType::Manual => {}
+                    accounting_stuff::InFlowType::QuantityEqualAmount => {
+                        if let Some(_) = single.get_from_user_input_amount() {
+                            single.set_user_input_amount(Some(quantity_from_user));
+                        }
+                    }
+                    accounting_stuff::InFlowType::QuantityEqualZero => {
+                        single.set_user_input_quantity(Some(0.0))
+                    }
+                }
+            } else {
+                let inferred_outflow_type = match single.get_inferred_outflow_type() {
+                    Some(a) => a,
+                    None => continue,
+                };
+
+                let account_id = single.get_from_user_input_account_id();
+
+                let info = match account_info.get_info(&account_id) {
+                    Some(a) => a,
+                    None => continue,
+                };
+
+                let total_quantity_in_inventory =
+                    info.inventory.iter().fold(0.0, |total, record| total + record.quantity);
+
+                if quantity_from_user > total_quantity_in_inventory {
+                    quantity_from_user = total_quantity_in_inventory;
+                }
+
+                accounting_stuff::sort_inventory(&inferred_outflow_type, info.inventory);
+
+                match inferred_outflow_type {
+                    accounting_stuff::OutFlowType::Manual => {
+                        single.set_user_input_quantity(Some(quantity_from_user));
+
+                        if let Some(mut amount_from_user) = single.get_from_user_input_amount() {
+                            let total_amount_in_inventory = info
+                                .inventory
+                                .iter()
+                                .fold(0.0, |total, record| total + record.amount);
+
+                            if amount_from_user > total_amount_in_inventory {
+                                amount_from_user = total_amount_in_inventory;
+                            }
+
+                            single.set_user_input_amount(Some(amount_from_user));
+                        };
+                    }
+                    accounting_stuff::OutFlowType::QuantityEqualAmount => {
+                        single.set_user_input_quantity(Some(quantity_from_user));
+
+                        if let Some(_) = single.get_from_user_input_amount() {
+                            let total_amount_in_inventory = info
+                                .inventory
+                                .iter()
+                                .fold(0.0, |total, record| total + record.amount);
+
+                            let mut amount_from_user = quantity_from_user;
+
+                            if amount_from_user > total_amount_in_inventory {
+                                amount_from_user = total_amount_in_inventory;
+
+                                single.set_user_input_outflow_type(Some(
+                                    accounting_stuff::OutFlowType::Manual,
+                                ));
+
+                                single.set_inferred_outflow_type(Some(
+                                    accounting_stuff::OutFlowType::Manual,
+                                ));
+                            }
+
+                            single.set_user_input_amount(Some(amount_from_user));
+                        };
+                    }
+                    accounting_stuff::OutFlowType::QuantityEqualZero => {
+                        single.set_user_input_quantity(Some(0.0));
+
+                        if let Some(mut amount_from_user) = single.get_from_user_input_amount() {
+                            let total_amount_in_inventory = info
+                                .inventory
+                                .iter()
+                                .fold(0.0, |total, record| total + record.amount);
+
+                            if amount_from_user > total_amount_in_inventory {
+                                amount_from_user = total_amount_in_inventory;
+                            }
+
+                            single.set_user_input_amount(Some(amount_from_user));
+                        };
+                    }
+                    accounting_stuff::OutFlowType::Wac
+                    | accounting_stuff::OutFlowType::Fifo
+                    | accounting_stuff::OutFlowType::Lifo
+                    | accounting_stuff::OutFlowType::Hifo
+                    | accounting_stuff::OutFlowType::Lofo => {
+                        let expected_amount =
+                            accounting_stuff::get_amount(quantity_from_user, info.inventory);
+
+                        single.set_user_input_amount(Some(expected_amount));
+                    }
+                };
+
+                let is_decrease_by_price = match inferred_outflow_type {
+                    accounting_stuff::OutFlowType::Manual => false,
+                    accounting_stuff::OutFlowType::QuantityEqualAmount => false,
+                    accounting_stuff::OutFlowType::QuantityEqualZero => false,
+                    accounting_stuff::OutFlowType::Wac => true,
+                    accounting_stuff::OutFlowType::Fifo => true,
+                    accounting_stuff::OutFlowType::Lifo => true,
+                    accounting_stuff::OutFlowType::Hifo => true,
+                    accounting_stuff::OutFlowType::Lofo => true,
+                };
+
+                if !single.is_there_error_in_single_entry()
+                    && let Some(amount) = single.get_inferred_amount()
+                    && let Some(quantity) = single.get_inferred_quantity()
+                {
+                    accounting_stuff::apply_entry_on_inventory::<A::Inventory>(
+                        time_unix,
+                        amount,
+                        quantity,
+                        is_inflow,
+                        is_decrease_by_price,
+                        info.inventory,
+                    );
+                }
+            }
+        }
+    }
+}
+
+fn correct_the_input<C, A>(time_unix: u64, entry: &mut C, mut account_info: A)
 where
     C: EntryContainer,
     C::Double: DoubleEntry,
@@ -222,7 +410,14 @@ where
     >,
     A::Inventory: Inventory,
 {
-    todo!()
+    reset_all_inferred_values(entry);
+    vertical_correct_to_remove_duplicate_account(entry);
+    horizontal_infer_for_is_debit(entry, &account_info);
+    horizontal_infer_for_is_inflow(entry, &account_info);
+    horizontal_infer_for_inflow_type(entry, &account_info);
+    horizontal_infer_for_outflow_type(entry, &account_info);
+    horizontal_correct_for_is_inflow(entry, &account_info);
+    horizontal_correct_for_quantity_and_amount(time_unix, entry, &mut account_info);
 }
 
 #[cfg(test)]
@@ -353,6 +548,14 @@ mod tests {
             self.user_input_amount = i;
         }
 
+        fn set_user_input_inflow_type(&mut self, i: Option<accounting_stuff::InFlowType>) {
+            self.user_input_inflow_type = i;
+        }
+
+        fn set_user_input_outflow_type(&mut self, i: Option<accounting_stuff::OutFlowType>) {
+            self.user_input_outflow_type = i;
+        }
+
         // ---------- Setters for inferred ----------
         fn set_inferred_is_debit(&mut self, i: Option<bool>) {
             self.inferred_is_debit = i;
@@ -404,7 +607,7 @@ mod tests {
         }
 
         // ---------- Error methods ----------
-        fn is_there_error_single_entry(&self) -> bool {
+        fn is_there_error_in_single_entry(&self) -> bool {
             self.quantity_and_amount_are_zero
                 || self.duplicate_account_in_entry
                 || self.inventory_is_empty
@@ -629,7 +832,7 @@ mod tests {
         let provider = MockAccountInfoProvider::new(infos);
 
         // Call the function
-        horizontal_correct_for_flow(&mut container, &provider);
+        horizontal_correct_for_is_inflow(&mut container, &provider);
 
         // Verify
         let updated_double = &container.doubles[0];
