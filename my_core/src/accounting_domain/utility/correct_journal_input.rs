@@ -87,34 +87,6 @@ where
     }
 }
 
-fn horizontal_correct_for_is_inflow<C, A>(entry: &mut C, account_info: &mut A)
-where
-    C: EntryContainer,
-    C::Double: DoubleEntry,
-    <C::Double as DoubleEntry>::Single: SingleEntry,
-    A: AccountInfoProvider<
-        AccountId = <<C::Double as DoubleEntry>::Single as SingleEntry>::AccountId,
-    >,
-    A::Inventory: Inventory,
-{
-    for double in entry.iter_mut() {
-        for single in double.iter_mut() {
-            if let Some(_) = single.get_from_user_input_is_inflow() {
-                let account_id = single.get_from_user_input_account_id();
-
-                if let Some(info) = account_info.get_info(&account_id) {
-                    if let Some(is_debit) = single.get_from_user_input_is_debit() {
-                        single.set_user_input_is_inflow(Some(accounting_stuff::is_inflow(
-                            info.is_debit,
-                            is_debit,
-                        )));
-                    }
-                }
-            }
-        }
-    }
-}
-
 fn horizontal_infer_for_is_debit<C, A>(entry: &mut C, account_info: &mut A)
 where
     C: EntryContainer,
@@ -237,7 +209,7 @@ where
     }
 }
 
-fn horizontal_correct_for_quantity_and_amount<C, A>(
+fn horizontal_infere_for_quantity_and_amount<C, A>(
     time_unix: u64,
     entry: &mut C,
     account_info: &mut A,
@@ -402,6 +374,36 @@ fn horizontal_correct_for_quantity_and_amount<C, A>(
     }
 }
 
+fn horizontal_correct<C>(entry: &mut C)
+where
+    C: EntryContainer,
+    C::Double: DoubleEntry,
+    <C::Double as DoubleEntry>::Single: SingleEntry,
+{
+    for double in entry.iter_mut() {
+        for single in double.iter_mut() {
+            if single.get_from_user_input_is_debit().is_some() {
+                single.set_user_input_is_debit(single.get_inferred_is_debit());
+            }
+            if single.get_from_user_input_is_inflow().is_some() {
+                single.set_user_input_is_inflow(single.get_inferred_is_inflow());
+            }
+            if single.get_from_user_input_quantity().is_some() {
+                single.set_user_input_quantity(single.get_inferred_quantity());
+            }
+            if single.get_from_user_input_amount().is_some() {
+                single.set_user_input_amount(single.get_inferred_amount());
+            }
+            if single.get_from_user_input_inflow_type().is_some() {
+                single.set_user_input_inflow_type(single.get_inferred_inflow_type());
+            }
+            if single.get_from_user_input_outflow_type().is_some() {
+                single.set_user_input_outflow_type(single.get_inferred_outflow_type());
+            }
+        }
+    }
+}
+
 fn correct_the_input<C, A>(time_unix: u64, entry: &mut C, mut account_info: A)
 where
     C: EntryContainer,
@@ -418,8 +420,8 @@ where
     horizontal_infer_for_is_inflow(entry, &mut account_info);
     horizontal_infer_for_inflow_type(entry, &mut account_info);
     horizontal_infer_for_outflow_type(entry, &mut account_info);
-    horizontal_correct_for_is_inflow(entry, &mut account_info);
-    horizontal_correct_for_quantity_and_amount(time_unix, entry, &mut account_info);
+    horizontal_infere_for_quantity_and_amount(time_unix, entry, &mut account_info);
+    horizontal_correct(entry);
 }
 
 #[cfg(test)]
@@ -825,7 +827,9 @@ mod tests {
         });
 
         // Call the function
-        horizontal_correct_for_is_inflow(&mut container, &mut provider);
+        horizontal_infer_for_is_debit(&mut container, &mut provider);
+        horizontal_infer_for_is_inflow(&mut container, &mut provider);
+        horizontal_correct(&mut container);
 
         // Verify
         let updated_double = &container.doubles[0];
@@ -1123,7 +1127,7 @@ mod tests {
             inventory:    Vec::new(),
         });
 
-        horizontal_correct_for_quantity_and_amount(100, &mut container, &mut provider);
+        horizontal_infere_for_quantity_and_amount(100, &mut container, &mut provider);
 
         let updated = &container.doubles[0].singles[0];
         assert_eq!(updated.get_from_user_input_quantity(), Some(5.0));
@@ -1157,7 +1161,7 @@ mod tests {
             inventory:    Vec::new(),
         });
 
-        horizontal_correct_for_quantity_and_amount(100, &mut container, &mut provider);
+        horizontal_infere_for_quantity_and_amount(100, &mut container, &mut provider);
 
         let updated = &container.doubles[0].singles[0];
         assert_eq!(updated.get_from_user_input_quantity(), Some(5.0));
@@ -1190,7 +1194,7 @@ mod tests {
             inventory:    Vec::new(),
         });
 
-        horizontal_correct_for_quantity_and_amount(100, &mut container, &mut provider);
+        horizontal_infere_for_quantity_and_amount(100, &mut container, &mut provider);
 
         let updated = &container.doubles[0].singles[0];
         assert_eq!(updated.get_from_user_input_quantity(), Some(0.0));
@@ -1235,7 +1239,7 @@ mod tests {
             ],
         });
 
-        horizontal_correct_for_quantity_and_amount(100, &mut container, &mut provider);
+        horizontal_infere_for_quantity_and_amount(100, &mut container, &mut provider);
 
         let updated = &container.doubles[0].singles[0];
         // Quantity should be capped at 5.0 (total inventory quantity)
