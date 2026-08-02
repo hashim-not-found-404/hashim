@@ -1,7 +1,7 @@
+use crate::accounting_domain::utility::accounting_stuff;
 use crate::accounting_domain::utility::accounting_stuff::DoubleEntry;
 use crate::accounting_domain::utility::accounting_stuff::EntryContainer;
 use crate::accounting_domain::utility::accounting_stuff::Inventory;
-use crate::accounting_domain::utility::accounting_stuff::{self};
 use std::collections::HashSet;
 use std::hash::Hash;
 
@@ -209,7 +209,7 @@ where
     }
 }
 
-fn horizontal_infere_for_quantity_and_amount<C, A>(
+fn horizontal_infer_for_quantity_and_amount<C, A>(
     time_unix: u64,
     entry: &mut C,
     account_info: &mut A,
@@ -301,10 +301,6 @@ fn horizontal_infere_for_quantity_and_amount<C, A>(
 
                             if amount_from_user > total_amount_in_inventory {
                                 amount_from_user = total_amount_in_inventory;
-
-                                single.set_inferred_outflow_type(Some(
-                                    accounting_stuff::OutFlowType::Manual,
-                                ));
 
                                 single.set_inferred_outflow_type(Some(
                                     accounting_stuff::OutFlowType::Manual,
@@ -418,7 +414,7 @@ where
     horizontal_infer_for_is_inflow(entry, &mut account_info);
     horizontal_infer_for_inflow_type(entry, &mut account_info);
     horizontal_infer_for_outflow_type(entry, &mut account_info);
-    horizontal_infere_for_quantity_and_amount(time_unix, entry, &mut account_info);
+    horizontal_infer_for_quantity_and_amount(time_unix, entry, &mut account_info);
     horizontal_correct(entry);
 }
 
@@ -748,7 +744,7 @@ mod tests {
 
     // ---------- The test ----------
     #[test]
-    fn horizontal_correct_for_flow_sets_inflow_when_info_exists() {
+    fn full_pipeline_infers_and_corrects_inflow() {
         // Create two singles
         let single1 = MockSingle {
             user_input_account_id: "1".to_string(),
@@ -1125,7 +1121,7 @@ mod tests {
             inventory:    Vec::new(),
         });
 
-        horizontal_infere_for_quantity_and_amount(100, &mut container, &mut provider);
+        horizontal_infer_for_quantity_and_amount(100, &mut container, &mut provider);
 
         let updated = &container.doubles[0].singles[0];
         assert_eq!(updated.get_from_user_input_quantity(), Some(5.0));
@@ -1160,7 +1156,7 @@ mod tests {
         });
 
         reset_all_inferred_values(&mut container);
-        horizontal_infere_for_quantity_and_amount(100, &mut container, &mut provider);
+        horizontal_infer_for_quantity_and_amount(100, &mut container, &mut provider);
 
         let updated = &container.doubles[0].singles[0];
         assert_eq!(updated.get_inferred_quantity(), Some(5.0));
@@ -1194,7 +1190,7 @@ mod tests {
         });
 
         reset_all_inferred_values(&mut container);
-        horizontal_infere_for_quantity_and_amount(100, &mut container, &mut provider);
+        horizontal_infer_for_quantity_and_amount(100, &mut container, &mut provider);
 
         let updated = &container.doubles[0].singles[0];
         assert_eq!(updated.get_inferred_quantity(), Some(0.0));
@@ -1240,7 +1236,7 @@ mod tests {
         });
 
         reset_all_inferred_values(&mut container);
-        horizontal_infere_for_quantity_and_amount(100, &mut container, &mut provider);
+        horizontal_infer_for_quantity_and_amount(100, &mut container, &mut provider);
 
         let updated = &container.doubles[0].singles[0];
         // Quantity should be capped at 5.0 (total inventory quantity)
