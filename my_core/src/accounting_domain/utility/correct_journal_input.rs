@@ -58,7 +58,8 @@ pub trait AccountInfoProvider {
     type AccountId: Eq + Hash + Clone;
     type Inventory: Inventory;
 
-    fn get_info<'a>(&'a self, id: &Self::AccountId) -> Option<AccountInfo<'a, Self::Inventory>>;
+    fn get_info<'a>(&'a mut self, id: &Self::AccountId)
+    -> Option<AccountInfo<'a, Self::Inventory>>;
 }
 
 pub struct AccountInfo<'a, I> {
@@ -86,7 +87,7 @@ where
     }
 }
 
-fn horizontal_correct_for_is_inflow<C, A>(entry: &mut C, account_info: &A)
+fn horizontal_correct_for_is_inflow<C, A>(entry: &mut C, account_info: &mut A)
 where
     C: EntryContainer,
     C::Double: DoubleEntry,
@@ -114,7 +115,7 @@ where
     }
 }
 
-fn horizontal_infer_for_is_debit<C, A>(entry: &mut C, account_info: &A)
+fn horizontal_infer_for_is_debit<C, A>(entry: &mut C, account_info: &mut A)
 where
     C: EntryContainer,
     C::Double: DoubleEntry,
@@ -143,7 +144,7 @@ where
     }
 }
 
-fn horizontal_infer_for_is_inflow<C, A>(entry: &mut C, account_info: &A)
+fn horizontal_infer_for_is_inflow<C, A>(entry: &mut C, account_info: &mut A)
 where
     C: EntryContainer,
     C::Double: DoubleEntry,
@@ -168,7 +169,7 @@ where
     }
 }
 
-fn horizontal_infer_for_inflow_type<C, A>(entry: &mut C, account_info: &A)
+fn horizontal_infer_for_inflow_type<C, A>(entry: &mut C, account_info: &mut A)
 where
     C: EntryContainer,
     C::Double: DoubleEntry,
@@ -196,7 +197,7 @@ where
     }
 }
 
-fn horizontal_infer_for_outflow_type<C, A>(entry: &mut C, account_info: &A)
+fn horizontal_infer_for_outflow_type<C, A>(entry: &mut C, account_info: &mut A)
 where
     C: EntryContainer,
     C::Double: DoubleEntry,
@@ -261,6 +262,13 @@ fn horizontal_correct_for_quantity_and_amount<C, A>(
                 None => continue,
             };
 
+            let account_id = single.get_from_user_input_account_id();
+
+            let info = match account_info.get_info(&account_id) {
+                Some(a) => a,
+                None => continue,
+            };
+
             if is_inflow {
                 let inferred_inflow_type = match single.get_inferred_inflow_type() {
                     Some(a) => a,
@@ -284,15 +292,8 @@ fn horizontal_correct_for_quantity_and_amount<C, A>(
                     None => continue,
                 };
 
-                let account_id = single.get_from_user_input_account_id();
-
-                let info = match account_info.get_info(&account_id) {
-                    Some(a) => a,
-                    None => continue,
-                };
-
                 let total_quantity_in_inventory =
-                    info.inventory.iter().fold(0.0, |total, record| total + record.quantity);
+                    info.inventory.iter1().fold(0.0, |total, record| total + record.quantity);
 
                 if quantity_from_user > total_quantity_in_inventory {
                     quantity_from_user = total_quantity_in_inventory;
@@ -307,7 +308,7 @@ fn horizontal_correct_for_quantity_and_amount<C, A>(
                         if let Some(mut amount_from_user) = single.get_from_user_input_amount() {
                             let total_amount_in_inventory = info
                                 .inventory
-                                .iter()
+                                .iter1()
                                 .fold(0.0, |total, record| total + record.amount);
 
                             if amount_from_user > total_amount_in_inventory {
@@ -323,7 +324,7 @@ fn horizontal_correct_for_quantity_and_amount<C, A>(
                         if let Some(_) = single.get_from_user_input_amount() {
                             let total_amount_in_inventory = info
                                 .inventory
-                                .iter()
+                                .iter1()
                                 .fold(0.0, |total, record| total + record.amount);
 
                             let mut amount_from_user = quantity_from_user;
@@ -349,7 +350,7 @@ fn horizontal_correct_for_quantity_and_amount<C, A>(
                         if let Some(mut amount_from_user) = single.get_from_user_input_amount() {
                             let total_amount_in_inventory = info
                                 .inventory
-                                .iter()
+                                .iter1()
                                 .fold(0.0, |total, record| total + record.amount);
 
                             if amount_from_user > total_amount_in_inventory {
@@ -370,31 +371,32 @@ fn horizontal_correct_for_quantity_and_amount<C, A>(
                         single.set_user_input_amount(Some(expected_amount));
                     }
                 };
+            }
 
-                let is_decrease_by_price = match inferred_outflow_type {
-                    accounting_stuff::OutFlowType::Manual => false,
-                    accounting_stuff::OutFlowType::QuantityEqualAmount => false,
-                    accounting_stuff::OutFlowType::QuantityEqualZero => false,
-                    accounting_stuff::OutFlowType::Wac => true,
-                    accounting_stuff::OutFlowType::Fifo => true,
-                    accounting_stuff::OutFlowType::Lifo => true,
-                    accounting_stuff::OutFlowType::Hifo => true,
-                    accounting_stuff::OutFlowType::Lofo => true,
+            if !single.is_there_error_in_single_entry()
+                && let Some(amount) = single.get_inferred_amount()
+                && let Some(quantity) = single.get_inferred_quantity()
+            {
+                let is_decrease_by_price = match single.get_inferred_outflow_type() {
+                    Some(accounting_stuff::OutFlowType::Manual) => false,
+                    Some(accounting_stuff::OutFlowType::QuantityEqualAmount) => false,
+                    Some(accounting_stuff::OutFlowType::QuantityEqualZero) => false,
+                    Some(accounting_stuff::OutFlowType::Wac) => true,
+                    Some(accounting_stuff::OutFlowType::Fifo) => true,
+                    Some(accounting_stuff::OutFlowType::Lifo) => true,
+                    Some(accounting_stuff::OutFlowType::Hifo) => true,
+                    Some(accounting_stuff::OutFlowType::Lofo) => true,
+                    None => false,
                 };
 
-                if !single.is_there_error_in_single_entry()
-                    && let Some(amount) = single.get_inferred_amount()
-                    && let Some(quantity) = single.get_inferred_quantity()
-                {
-                    accounting_stuff::apply_entry_on_inventory::<A::Inventory>(
-                        time_unix,
-                        amount,
-                        quantity,
-                        is_inflow,
-                        is_decrease_by_price,
-                        info.inventory,
-                    );
-                }
+                accounting_stuff::apply_entry_on_inventory::<A::Inventory>(
+                    time_unix,
+                    amount,
+                    quantity,
+                    is_inflow,
+                    is_decrease_by_price,
+                    info.inventory,
+                );
             }
         }
     }
@@ -412,39 +414,42 @@ where
 {
     reset_all_inferred_values(entry);
     vertical_correct_to_remove_duplicate_account(entry);
-    horizontal_infer_for_is_debit(entry, &account_info);
-    horizontal_infer_for_is_inflow(entry, &account_info);
-    horizontal_infer_for_inflow_type(entry, &account_info);
-    horizontal_infer_for_outflow_type(entry, &account_info);
-    horizontal_correct_for_is_inflow(entry, &account_info);
+    horizontal_infer_for_is_debit(entry, &mut account_info);
+    horizontal_infer_for_is_inflow(entry, &mut account_info);
+    horizontal_infer_for_inflow_type(entry, &mut account_info);
+    horizontal_infer_for_outflow_type(entry, &mut account_info);
+    horizontal_correct_for_is_inflow(entry, &mut account_info);
     horizontal_correct_for_quantity_and_amount(time_unix, entry, &mut account_info);
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::accounting_domain::utility::accounting_stuff;
+    use crate::accounting_domain::utility::accounting_stuff::InventoryRecord;
+    use crate::accounting_domain::utility::accounting_stuff::{self};
     use std::collections::HashMap;
 
     // ---------- Dummy inventory ----------
-    #[derive(Default)]
-    struct DummyInventory;
 
-    impl accounting_stuff::Inventory for DummyInventory {
-        fn push(&mut self, _record: accounting_stuff::InventoryRecord) {}
+    impl accounting_stuff::Inventory for Vec<InventoryRecord> {
+        fn push(&mut self, record: accounting_stuff::InventoryRecord) {
+            self.push(record);
+        }
 
-        fn clear(&mut self) {}
+        fn clear(&mut self) {
+            self.clear();
+        }
 
         fn is_empty(&self) -> bool {
-            true
+            self.is_empty()
         }
 
-        fn iter(&self) -> impl Iterator<Item = &accounting_stuff::InventoryRecord> {
-            std::iter::empty()
+        fn iter1(&self) -> impl Iterator<Item = &accounting_stuff::InventoryRecord> {
+            self.iter()
         }
 
-        fn iter_mut(&mut self) -> impl Iterator<Item = &mut accounting_stuff::InventoryRecord> {
-            std::iter::empty()
+        fn iter_mut1(&mut self) -> impl Iterator<Item = &mut accounting_stuff::InventoryRecord> {
+            self.iter_mut()
         }
 
         fn sort_by<F>(&mut self, _compare: F)
@@ -710,47 +715,32 @@ mod tests {
 
     // ---------- Mock AccountInfoProvider ----------
     struct MockAccountInfoProvider {
-        pub infos:
-            HashMap<String, (bool, accounting_stuff::InFlowType, accounting_stuff::OutFlowType)>,
-        // Raw pointer to a leaked DummyInventory. We never mutate it.
-        inventory: *mut DummyInventory,
+        is_debit:     bool,
+        inflow_type:  accounting_stuff::InFlowType,
+        outflow_type: accounting_stuff::OutFlowType,
+        inventory:    Vec<InventoryRecord>,
     }
 
-    // Ensure the provider is Send/Sync (not needed but safe)
-    unsafe impl Send for MockAccountInfoProvider {}
-
-    impl MockAccountInfoProvider {
-        pub fn new(
-            infos: HashMap<
-                String,
-                (bool, accounting_stuff::InFlowType, accounting_stuff::OutFlowType),
-            >,
-        ) -> Self {
-            let inventory = Box::leak(Box::new(DummyInventory));
-            Self {
-                infos,
-                inventory: inventory as *mut DummyInventory,
-            }
-        }
+    fn new_account_info_provider() -> HashMap<String, MockAccountInfoProvider> {
+        HashMap::new()
     }
 
-    impl AccountInfoProvider for MockAccountInfoProvider {
+    impl AccountInfoProvider for HashMap<String, MockAccountInfoProvider> {
         type AccountId = String;
-        type Inventory = DummyInventory;
+        type Inventory = Vec<InventoryRecord>;
 
         fn get_info<'a>(
-            &'a self,
+            &'a mut self,
             id: &Self::AccountId,
         ) -> Option<AccountInfo<'a, Self::Inventory>> {
-            self.infos.get(id).map(|(is_debit, inflow_type, outflow_type)| {
+            self.get_mut(id).map(|a| {
                 // Safety: The raw pointer is valid for the entire lifetime of the provider,
                 // and we never mutate the inventory (only read is_debit from infos).
-                let inventory_ref = unsafe { &mut *self.inventory };
                 AccountInfo {
-                    is_debit:     *is_debit,
-                    inflow_type:  inflow_type.clone(),
-                    outflow_type: outflow_type.clone(),
-                    inventory:    inventory_ref,
+                    is_debit:     a.is_debit,
+                    inflow_type:  a.inflow_type.clone(),
+                    outflow_type: a.outflow_type.clone(),
+                    inventory:    &mut a.inventory,
                 }
             })
         }
@@ -820,19 +810,22 @@ mod tests {
         };
 
         // Provider only for account "1"
-        let mut infos = HashMap::new();
-        infos.insert(
-            "1".to_string(),
-            (true, accounting_stuff::InFlowType::Manual, accounting_stuff::OutFlowType::Manual),
-        );
-        infos.insert(
-            "2".to_string(),
-            (false, accounting_stuff::InFlowType::Manual, accounting_stuff::OutFlowType::Manual),
-        );
-        let provider = MockAccountInfoProvider::new(infos);
+        let mut provider = new_account_info_provider();
+        provider.insert("1".to_string(), MockAccountInfoProvider {
+            is_debit:     true,
+            inflow_type:  accounting_stuff::InFlowType::Manual,
+            outflow_type: accounting_stuff::OutFlowType::Manual,
+            inventory:    Vec::new(),
+        });
+        provider.insert("2".to_string(), MockAccountInfoProvider {
+            is_debit:     true,
+            inflow_type:  accounting_stuff::InFlowType::Manual,
+            outflow_type: accounting_stuff::OutFlowType::Manual,
+            inventory:    Vec::new(),
+        });
 
         // Call the function
-        horizontal_correct_for_is_inflow(&mut container, &provider);
+        horizontal_correct_for_is_inflow(&mut container, &mut provider);
 
         // Verify
         let updated_double = &container.doubles[0];
@@ -842,7 +835,7 @@ mod tests {
         assert_eq!(updated_double.singles[2].get_from_user_input_is_inflow(), Some(true));
         assert_eq!(updated_double.singles[3].get_from_user_input_is_inflow(), Some(false));
         assert_eq!(updated_double.singles[4].get_from_user_input_is_inflow(), Some(false));
-        assert_eq!(updated_double.singles[5].get_from_user_input_is_inflow(), Some(true));
+        assert_eq!(updated_double.singles[5].get_from_user_input_is_inflow(), Some(false));
         assert_eq!(updated_double.singles[6].get_from_user_input_is_inflow(), Some(false));
         assert_eq!(updated_double.singles[7].get_from_user_input_is_inflow(), None);
     }
@@ -892,36 +885,28 @@ mod tests {
         };
 
         // Provider info for accounts 1, 2, 3 (but not 4)
-        let mut infos = HashMap::new();
-        infos.insert(
-            "1".to_string(),
-            (
-                true,
-                accounting_stuff::InFlowType::QuantityEqualZero,
-                accounting_stuff::OutFlowType::Manual,
-            ),
-        );
-        infos.insert(
-            "2".to_string(),
-            (
-                true,
-                accounting_stuff::InFlowType::QuantityEqualAmount,
-                accounting_stuff::OutFlowType::Manual,
-            ),
-        );
-        infos.insert(
-            "3".to_string(),
-            (
-                true,
-                accounting_stuff::InFlowType::QuantityEqualZero,
-                accounting_stuff::OutFlowType::Manual,
-            ),
-        );
-
-        let provider = MockAccountInfoProvider::new(infos);
+        let mut provider = new_account_info_provider();
+        provider.insert("1".to_string(), MockAccountInfoProvider {
+            is_debit:     true,
+            inflow_type:  accounting_stuff::InFlowType::QuantityEqualZero,
+            outflow_type: accounting_stuff::OutFlowType::Manual,
+            inventory:    Vec::new(),
+        });
+        provider.insert("2".to_string(), MockAccountInfoProvider {
+            is_debit:     true,
+            inflow_type:  accounting_stuff::InFlowType::QuantityEqualAmount,
+            outflow_type: accounting_stuff::OutFlowType::Manual,
+            inventory:    Vec::new(),
+        });
+        provider.insert("3".to_string(), MockAccountInfoProvider {
+            is_debit:     true,
+            inflow_type:  accounting_stuff::InFlowType::QuantityEqualZero,
+            outflow_type: accounting_stuff::OutFlowType::Manual,
+            inventory:    Vec::new(),
+        });
 
         // Call the function
-        horizontal_infer_for_inflow_type(&mut container, &provider);
+        horizontal_infer_for_inflow_type(&mut container, &mut provider);
 
         let updated_double = &container.doubles[0];
 
@@ -994,36 +979,28 @@ mod tests {
         };
 
         // Provider info for accounts 1, 2, 3 (but not 4)
-        let mut infos = HashMap::new();
-        infos.insert(
-            "1".to_string(),
-            (
-                true,
-                accounting_stuff::InFlowType::QuantityEqualZero,
-                accounting_stuff::OutFlowType::Manual,
-            ),
-        );
-        infos.insert(
-            "2".to_string(),
-            (
-                true,
-                accounting_stuff::InFlowType::QuantityEqualAmount,
-                accounting_stuff::OutFlowType::Manual,
-            ),
-        );
-        infos.insert(
-            "3".to_string(),
-            (
-                true,
-                accounting_stuff::InFlowType::QuantityEqualZero,
-                accounting_stuff::OutFlowType::QuantityEqualZero,
-            ),
-        );
-
-        let provider = MockAccountInfoProvider::new(infos);
+        let mut provider = new_account_info_provider();
+        provider.insert("1".to_string(), MockAccountInfoProvider {
+            is_debit:     true,
+            inflow_type:  accounting_stuff::InFlowType::QuantityEqualZero,
+            outflow_type: accounting_stuff::OutFlowType::Manual,
+            inventory:    Vec::new(),
+        });
+        provider.insert("2".to_string(), MockAccountInfoProvider {
+            is_debit:     true,
+            inflow_type:  accounting_stuff::InFlowType::QuantityEqualAmount,
+            outflow_type: accounting_stuff::OutFlowType::Manual,
+            inventory:    Vec::new(),
+        });
+        provider.insert("3".to_string(), MockAccountInfoProvider {
+            is_debit:     true,
+            inflow_type:  accounting_stuff::InFlowType::QuantityEqualZero,
+            outflow_type: accounting_stuff::OutFlowType::QuantityEqualZero,
+            inventory:    Vec::new(),
+        });
 
         // Call the function
-        horizontal_infer_for_outflow_type(&mut container, &provider);
+        horizontal_infer_for_outflow_type(&mut container, &mut provider);
 
         let updated_double = &container.doubles[0];
 
@@ -1118,5 +1095,154 @@ mod tests {
 
         assert_eq!(remaining[2].user_input_account_id, "C");
         assert_eq!(remaining[2].user_input_is_debit, Some(true));
+    }
+
+    #[test]
+    fn horizontal_correct_for_quantity_and_amount_inflow_manual() {
+        // Inflow with Manual: no changes to quantity or amount.
+        let single = MockSingle {
+            user_input_account_id: "1".to_string(),
+            user_input_quantity: Some(5.0),
+            user_input_amount: Some(10.0),
+            inferred_is_inflow: Some(true),
+            inferred_inflow_type: Some(accounting_stuff::InFlowType::Manual),
+            ..Default::default()
+        };
+        let double = MockDouble {
+            singles: vec![single],
+        };
+        let mut container = MockEntryContainer {
+            doubles: vec![double],
+        };
+
+        let mut provider = new_account_info_provider();
+        provider.insert("1".to_string(), MockAccountInfoProvider {
+            is_debit:     true,
+            inflow_type:  accounting_stuff::InFlowType::Manual,
+            outflow_type: accounting_stuff::OutFlowType::Manual,
+            inventory:    Vec::new(),
+        });
+
+        horizontal_correct_for_quantity_and_amount(100, &mut container, &mut provider);
+
+        let updated = &container.doubles[0].singles[0];
+        assert_eq!(updated.get_from_user_input_quantity(), Some(5.0));
+        assert_eq!(updated.get_from_user_input_amount(), Some(10.0));
+        // No inventory changes because no error, but we can't easily check inventory here.
+    }
+
+    #[test]
+    fn horizontal_correct_for_quantity_and_amount_inflow_quantity_equal_amount() {
+        // Inflow with QuantityEqualAmount: amount should be set to quantity.
+        let single = MockSingle {
+            user_input_account_id: "1".to_string(),
+            user_input_quantity: Some(5.0),
+            user_input_amount: Some(10.0), // will be overwritten
+            inferred_is_inflow: Some(true),
+            inferred_inflow_type: Some(accounting_stuff::InFlowType::QuantityEqualAmount),
+            ..Default::default()
+        };
+        let double = MockDouble {
+            singles: vec![single],
+        };
+        let mut container = MockEntryContainer {
+            doubles: vec![double],
+        };
+
+        let mut provider = new_account_info_provider();
+        provider.insert("1".to_string(), MockAccountInfoProvider {
+            is_debit:     true,
+            inflow_type:  accounting_stuff::InFlowType::Manual,
+            outflow_type: accounting_stuff::OutFlowType::Manual,
+            inventory:    Vec::new(),
+        });
+
+        horizontal_correct_for_quantity_and_amount(100, &mut container, &mut provider);
+
+        let updated = &container.doubles[0].singles[0];
+        assert_eq!(updated.get_from_user_input_quantity(), Some(5.0));
+        assert_eq!(updated.get_from_user_input_amount(), Some(5.0)); // amount becomes quantity
+    }
+
+    #[test]
+    fn horizontal_correct_for_quantity_and_amount_inflow_quantity_equal_zero() {
+        // Inflow with QuantityEqualZero: quantity should be set to 0.
+        let single = MockSingle {
+            user_input_account_id: "1".to_string(),
+            user_input_quantity: Some(5.0),
+            user_input_amount: Some(10.0),
+            inferred_is_inflow: Some(true),
+            inferred_inflow_type: Some(accounting_stuff::InFlowType::QuantityEqualZero),
+            ..Default::default()
+        };
+        let double = MockDouble {
+            singles: vec![single],
+        };
+        let mut container = MockEntryContainer {
+            doubles: vec![double],
+        };
+
+        let mut provider = new_account_info_provider();
+        provider.insert("1".to_string(), MockAccountInfoProvider {
+            is_debit:     true,
+            inflow_type:  accounting_stuff::InFlowType::Manual,
+            outflow_type: accounting_stuff::OutFlowType::Manual,
+            inventory:    Vec::new(),
+        });
+
+        horizontal_correct_for_quantity_and_amount(100, &mut container, &mut provider);
+
+        let updated = &container.doubles[0].singles[0];
+        assert_eq!(updated.get_from_user_input_quantity(), Some(0.0));
+        assert_eq!(updated.get_from_user_input_amount(), Some(10.0)); // amount unchanged
+    }
+
+    #[test]
+    fn horizontal_correct_for_quantity_and_amount_outflow_manual() {
+        // Outflow with Manual: adjust quantity to inventory quantity, amount to inventory amount if exceeds.
+        let single = MockSingle {
+            user_input_account_id: "1".to_string(),
+            user_input_quantity: Some(10.0),
+            user_input_amount: Some(100.0),
+            inferred_is_inflow: Some(false),
+            inferred_outflow_type: Some(accounting_stuff::OutFlowType::Manual),
+            ..Default::default()
+        };
+        let double = MockDouble {
+            singles: vec![single],
+        };
+        let mut container = MockEntryContainer {
+            doubles: vec![double],
+        };
+
+        // Provider with inventory: total qty=5, total amt=50.
+        let mut provider = new_account_info_provider();
+        provider.insert("1".to_string(), MockAccountInfoProvider {
+            is_debit:     true,
+            inflow_type:  accounting_stuff::InFlowType::Manual,
+            outflow_type: accounting_stuff::OutFlowType::Manual,
+            inventory:    vec![
+                accounting_stuff::InventoryRecord {
+                    time_unix: 1,
+                    quantity:  2.0,
+                    amount:    20.0,
+                },
+                accounting_stuff::InventoryRecord {
+                    time_unix: 2,
+                    quantity:  3.0,
+                    amount:    30.0,
+                },
+            ],
+        });
+
+        horizontal_correct_for_quantity_and_amount(100, &mut container, &mut provider);
+
+        let updated = &container.doubles[0].singles[0];
+        // Quantity should be capped at 5.0 (total inventory quantity)
+        assert_eq!(updated.get_from_user_input_quantity(), Some(5.0));
+        // Amount should be capped at 50.0 (total inventory amount)
+        assert_eq!(updated.get_from_user_input_amount(), Some(50.0));
+        // No error flags set
+        assert!(!updated.is_there_error_in_single_entry());
     }
 }

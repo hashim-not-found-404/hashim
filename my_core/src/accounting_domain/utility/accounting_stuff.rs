@@ -228,8 +228,8 @@ pub trait Inventory {
     fn push(&mut self, record: InventoryRecord);
     fn clear(&mut self);
     fn is_empty(&self) -> bool;
-    fn iter(&self) -> impl Iterator<Item = &InventoryRecord>;
-    fn iter_mut(&mut self) -> impl Iterator<Item = &mut InventoryRecord>;
+    fn iter1(&self) -> impl Iterator<Item = &InventoryRecord>;
+    fn iter_mut1(&mut self) -> impl Iterator<Item = &mut InventoryRecord>;
     fn sort_by<F>(&mut self, compare: F)
     where
         F: FnMut(&InventoryRecord, &InventoryRecord) -> std::cmp::Ordering;
@@ -509,7 +509,7 @@ pub fn apply_entry_on_inventory<I>(
 pub fn sum_inventory<I: Inventory>(inventory: &I) -> (f64, f64) {
     let mut total_qty = 0.0;
     let mut total_amt = 0.0;
-    for record in inventory.iter() {
+    for record in inventory.iter1() {
         total_qty += record.quantity;
         total_amt += record.amount;
     }
@@ -524,7 +524,7 @@ pub fn combine_all_inventory_record_in_one_record<I: Inventory>(inventory: &mut 
     };
     // We need to iterate and accumulate. We cannot remove while iterating,
     // so we first collect and then clear and push.
-    for record in inventory.iter() {
+    for record in inventory.iter1() {
         total.quantity += record.quantity;
         total.amount += record.amount;
         if record.time_unix > total.time_unix {
@@ -571,7 +571,7 @@ pub fn get_amount<I: Inventory>(quantity: f64, inventory: &I) -> f64 {
     let mut accumulator = 0.0;
 
     // FIFO order (assuming inventory is sorted appropriately)
-    for record in inventory.iter() {
+    for record in inventory.iter1() {
         if record.quantity <= remaining {
             remaining -= record.quantity;
             accumulator += record.amount;
@@ -587,7 +587,7 @@ pub fn decrease_inventory<I: Inventory>(quantity: f64, inventory: &mut I) {
     let mut remaining = quantity;
     let mut to_remove = 0;
 
-    for record in inventory.iter_mut() {
+    for record in inventory.iter_mut1() {
         if record.quantity <= remaining {
             remaining -= record.quantity;
             to_remove += 1;
@@ -601,7 +601,7 @@ pub fn decrease_inventory<I: Inventory>(quantity: f64, inventory: &mut I) {
 
     let mut new_vec = Vec::new();
     let mut skip = to_remove;
-    for record in inventory.iter() {
+    for record in inventory.iter1() {
         if skip > 0 {
             skip -= 1;
         } else {
@@ -997,12 +997,12 @@ mod tests {
             self.0.is_empty()
         }
 
-        fn iter(&self) -> impl Iterator<Item = &InventoryRecord> {
-            self.0.iter()
+        fn iter1(&self) -> impl Iterator<Item = &InventoryRecord> {
+            self.0.iter1()
         }
 
-        fn iter_mut(&mut self) -> impl Iterator<Item = &mut InventoryRecord> {
-            self.0.iter_mut()
+        fn iter_mut1(&mut self) -> impl Iterator<Item = &mut InventoryRecord> {
+            self.0.iter_mut1()
         }
 
         fn sort_by<F>(&mut self, compare: F)
@@ -1617,7 +1617,7 @@ mod tests {
         let (qty, _amt) = sum_inventory(&inv);
         assert_eq!(qty, 6.0); // 2+3+5 - 4 = 6
         // Check the remaining records: should be [B(qty=1), C(qty=5)]
-        let records: Vec<_> = inv.iter().collect();
+        let records: Vec<_> = inv.iter1().collect();
         assert_eq!(records.len(), 2);
         assert_eq!(records[0].quantity, 1.0);
         assert_eq!(records[0].amount, 5.0); // price 5
@@ -1763,8 +1763,8 @@ mod tests {
 
         // BUT inventory should now be combined into a single record (BUG)
         let inv_after = provider.get_or_create_inventory(&AccountId("A".to_string()));
-        assert_eq!(inv_after.iter().count(), 1);
-        let rec = inv_after.iter().next().unwrap();
+        assert_eq!(inv_after.iter1().count(), 1);
+        let rec = inv_after.iter1().next().unwrap();
         assert_eq!(rec.quantity, 8.0);
         assert_eq!(rec.amount, 16.0);
         // This shows that the layers were lost even though the entry is invalid.
@@ -1800,9 +1800,9 @@ mod tests {
 
         // Inventory should still have two records (Manual doesn't combine)
         let inv_after = provider.get_or_create_inventory(&AccountId("A".to_string()));
-        assert_eq!(inv_after.iter().count(), 1);
+        assert_eq!(inv_after.iter1().count(), 1);
         // Also amounts should be updated (4 units taken from first record)
-        let records: Vec<_> = inv_after.iter().collect();
+        let records: Vec<_> = inv_after.iter1().collect();
         assert_eq!(records[0].quantity, 4.0);
         assert_eq!(records[0].amount, 8.0);
     }
@@ -1951,8 +1951,8 @@ mod tests {
     fn test_apply_entry_normal_inflow() {
         let mut inv = TestInventory::default();
         apply_entry_on_inventory(100, 20.0, 5.0, true, true, &mut inv);
-        assert_eq!(inv.iter().count(), 1);
-        let rec = inv.iter().next().unwrap();
+        assert_eq!(inv.iter1().count(), 1);
+        let rec = inv.iter1().next().unwrap();
         assert_eq!(rec.time_unix, 100);
         assert_eq!(rec.quantity, 5.0);
         assert_eq!(rec.amount, 20.0);
@@ -1984,8 +1984,8 @@ mod tests {
         let (qty, amt) = sum_inventory(&inv);
         assert_eq!(qty, 5.0);
         assert_eq!(amt, 13.0);
-        assert_eq!(inv.iter().count(), 1);
-        let rec = inv.iter().next().unwrap();
+        assert_eq!(inv.iter1().count(), 1);
+        let rec = inv.iter1().next().unwrap();
         assert_eq!(rec.time_unix, 300);
         assert_eq!(rec.quantity, 5.0);
         assert_eq!(rec.amount, 13.0);
@@ -2003,7 +2003,7 @@ mod tests {
         let (qty, amt) = sum_inventory(&inv);
         assert_eq!(qty, 7.0);
         assert_eq!(amt, 10.0);
-        let rec = inv.iter().next().unwrap();
+        let rec = inv.iter1().next().unwrap();
         assert_eq!(rec.time_unix, 400);
         assert_eq!(rec.quantity, 7.0);
         assert_eq!(rec.amount, 10.0);
@@ -2021,7 +2021,7 @@ mod tests {
         let (qty, amt) = sum_inventory(&inv);
         assert_eq!(qty, 3.0);
         assert_eq!(amt, 10.0);
-        let rec = inv.iter().next().unwrap();
+        let rec = inv.iter1().next().unwrap();
         assert_eq!(rec.time_unix, 500);
         assert_eq!(rec.quantity, 3.0);
         assert_eq!(rec.amount, 10.0);
@@ -2039,7 +2039,7 @@ mod tests {
         let (qty, amt) = sum_inventory(&inv);
         assert_eq!(qty, 5.0);
         assert_eq!(amt, 5.0);
-        let rec = inv.iter().next().unwrap();
+        let rec = inv.iter1().next().unwrap();
         assert_eq!(rec.time_unix, 600);
         assert_eq!(rec.quantity, 5.0);
         assert_eq!(rec.amount, 5.0);
@@ -2354,8 +2354,8 @@ mod tests {
             amount:    7.0,
         });
         combine_all_inventory_record_in_one_record(&mut inv);
-        assert_eq!(inv.iter().count(), 1);
-        let rec = inv.iter().next().unwrap();
+        assert_eq!(inv.iter1().count(), 1);
+        let rec = inv.iter1().next().unwrap();
         assert_eq!(rec.time_unix, 20);
         assert_eq!(rec.quantity, 5.0);
         assert_eq!(rec.amount, 12.0);
@@ -2379,7 +2379,7 @@ mod tests {
             amount:    9.0,
         });
         decrease_inventory(2.0, &mut inv); // consume exactly first record
-        let records: Vec<_> = inv.iter().collect();
+        let records: Vec<_> = inv.iter1().collect();
         assert_eq!(records.len(), 1);
         assert_eq!(records[0].quantity, 3.0);
         assert_eq!(records[0].amount, 9.0);
@@ -2417,7 +2417,7 @@ mod tests {
         });
         decrease_inventory(7.0, &mut inv);
         // Should consume all first (5) and 2 from second → remaining second qty=1, amt=3
-        let records: Vec<_> = inv.iter().collect();
+        let records: Vec<_> = inv.iter1().collect();
         assert_eq!(records.len(), 1);
         assert_eq!(records[0].quantity, 1.0);
         assert_eq!(records[0].amount, 3.0);
@@ -2589,7 +2589,7 @@ mod tests {
             amount:    8.0,
         }); // price 4
         sort_inventory(&OutFlowType::Hifo, &mut inv);
-        let prices: Vec<f64> = inv.iter().map(|r| r.amount / r.quantity).collect();
+        let prices: Vec<f64> = inv.iter1().map(|r| r.amount / r.quantity).collect();
         assert_eq!(prices, vec![4.0, 3.0, 2.0]);
     }
 
@@ -2612,7 +2612,7 @@ mod tests {
             amount:    8.0,
         }); // price 4
         sort_inventory(&OutFlowType::Lofo, &mut inv);
-        let prices: Vec<f64> = inv.iter().map(|r| r.amount / r.quantity).collect();
+        let prices: Vec<f64> = inv.iter1().map(|r| r.amount / r.quantity).collect();
         assert_eq!(prices, vec![2.0, 3.0, 4.0]);
     }
 
