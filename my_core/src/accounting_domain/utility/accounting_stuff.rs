@@ -178,6 +178,8 @@ pub trait DoubleEntry {
     fn iter(&self) -> Self::Iter<'_>;
     fn iter_mut(&mut self) -> Self::IterMut<'_>;
 
+    fn set_singles(&mut self, singles: Vec<Self::Single>);
+
     fn is_empty(&self) -> bool {
         self.len() == 0
     }
@@ -204,6 +206,8 @@ pub trait EntryContainer {
 
     fn iter(&self) -> Self::Iter<'_>;
     fn iter_mut(&mut self) -> Self::IterMut<'_>;
+
+    fn set_doubles(&mut self, doubles: Vec<Self::Double>);
 
     fn is_empty(&self) -> bool {
         self.len() == 0
@@ -320,16 +324,15 @@ where
             }
         }
 
+        if common_subset_sum::split_to_max(&debit_side, &credit_side, &|a| wrapper::T(a.amount()))
+            .len()
+            > 1
+        {
+            errr.you_need_to_split_the_entry(double_idx);
+        }
+
         if total_debit != total_credit {
             errr.debit_not_equal_credit(double_idx, total_debit, total_credit);
-        } else {
-            let a = common_subset_sum::split_to_max(&debit_side, &credit_side, &|a| {
-                wrapper::T(a.amount())
-            });
-
-            if a.len() > 1 {
-                errr.you_need_to_split_the_entry(double_idx);
-            }
         }
     }
 }
@@ -614,8 +617,7 @@ pub fn decrease_inventory<I: Inventory>(quantity: f64, inventory: &mut I) {
     }
 }
 
-mod wrapper {
-    use std::iter::Sum;
+pub mod wrapper {
     use std::ops::Add;
     use std::ops::Sub;
 
@@ -646,11 +648,6 @@ mod wrapper {
     impl Default for T {
         fn default() -> Self {
             T(0.0)
-        }
-    }
-    impl Sum for T {
-        fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
-            iter.fold(T::default(), |acc, x| acc + x)
         }
     }
 }
@@ -951,6 +948,10 @@ mod tests {
         {
             self.lines.retain(f);
         }
+
+        fn set_singles(&mut self, singles: Vec<Self::Single>) {
+            self.lines = singles;
+        }
     }
 
     #[derive(Clone, Debug)]
@@ -977,6 +978,10 @@ mod tests {
 
         fn len(&self) -> usize {
             self.groups.len()
+        }
+
+        fn set_doubles(&mut self, doubles: Vec<Self::Double>) {
+            self.groups = doubles;
         }
     }
 

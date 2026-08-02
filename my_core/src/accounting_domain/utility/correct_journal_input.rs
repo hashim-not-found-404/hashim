@@ -2,6 +2,7 @@ use crate::accounting_domain::utility::accounting_stuff;
 use crate::accounting_domain::utility::accounting_stuff::DoubleEntry;
 use crate::accounting_domain::utility::accounting_stuff::EntryContainer;
 use crate::accounting_domain::utility::accounting_stuff::Inventory;
+use crate::accounting_domain::utility::common_subset_sum;
 use std::collections::HashSet;
 use std::hash::Hash;
 
@@ -381,14 +382,43 @@ where
 fn vertical_correct_to_common_subset_sum<C>(entry: &mut C)
 where
     C: EntryContainer,
-    C::Double: DoubleEntry,
-    <C::Double as DoubleEntry>::Single: SingleEntry,
+    C::Double: DoubleEntry + Clone,
+    <C::Double as DoubleEntry>::Single: SingleEntry + Clone,
 {
-    for double in entry.iter_mut() {
-        for single in double.iter_mut() {
-            todo!()
+    let mut new_doubles: Vec<C::Double> = Vec::new();
+
+    for double in entry.iter() {
+        let mut debit_side = Vec::new();
+        let mut credit_side = Vec::new();
+
+        for single in double.iter() {
+            if let Some(is_debit) = single.get_inferred_is_debit() {
+                if is_debit {
+                    debit_side.push(single.clone());
+                } else {
+                    credit_side.push(single.clone());
+                }
+            } else {
+                credit_side.push(single.clone());
+            }
+        }
+
+        let groups = common_subset_sum::split_to_max(&debit_side, &credit_side, &|s| {
+            accounting_stuff::wrapper::T(s.get_inferred_amount().unwrap_or(0.0))
+        });
+
+        for (debit_group, credit_group) in groups {
+            let mut combined = Vec::new();
+            combined.extend(debit_group);
+            combined.extend(credit_group);
+
+            let mut new_double = double.clone();
+            new_double.set_singles(combined);
+            new_doubles.push(new_double);
         }
     }
+
+    entry.set_doubles(new_doubles);
 }
 
 fn horizontal_correct<C>(entry: &mut C)
@@ -424,8 +454,8 @@ where
 fn correct_the_input<C, A>(time_unix: u64, entry: &mut C, mut account_info: A)
 where
     C: EntryContainer,
-    C::Double: DoubleEntry,
-    <C::Double as DoubleEntry>::Single: SingleEntry,
+    C::Double: DoubleEntry + Clone,
+    <C::Double as DoubleEntry>::Single: SingleEntry + Clone,
     A: AccountInfoProvider<
         AccountId = <<C::Double as DoubleEntry>::Single as SingleEntry>::AccountId,
     >,
@@ -688,7 +718,7 @@ mod tests {
     }
 
     // ---------- Mock DoubleEntry ----------
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     pub struct MockDouble {
         pub singles: Vec<MockSingle>,
     }
@@ -712,6 +742,10 @@ mod tests {
         {
             self.singles.retain(f);
         }
+
+        fn set_singles(&mut self, singles: Vec<Self::Single>) {
+            self.singles = singles;
+        }
     }
 
     // ---------- Mock EntryContainer ----------
@@ -731,6 +765,10 @@ mod tests {
 
         fn iter_mut(&mut self) -> Self::IterMut<'_> {
             self.doubles.iter_mut()
+        }
+
+        fn set_doubles(&mut self, doubles: Vec<Self::Double>) {
+            self.doubles = doubles;
         }
     }
 
@@ -1270,5 +1308,122 @@ mod tests {
         assert_eq!(updated.get_inferred_amount(), Some(50.0));
         // No error flags set
         assert!(!updated.is_there_error_in_single_entry());
+    }
+
+    #[test]
+    fn vertical_correct_to_common_subset_sum_splits_balanced_groups() {
+        // Create a single double entry with debit amounts [1,4,5] and credit [2,3,5].
+        // This should split into two balanced entries:
+        //   ([1,4] vs [5]) and ([5] vs [2,3]).
+        let single1 = MockSingle {
+            user_input_account_id: "A".to_string(),
+            inferred_is_debit: Some(true),
+            inferred_amount: Some(1.0),
+            ..Default::default()
+        };
+        let single2 = MockSingle {
+            user_input_account_id: "D".to_string(),
+            inferred_is_debit: Some(true),
+            inferred_amount: Some(4.0),
+            ..Default::default()
+        };
+        let single3 = MockSingle {
+            user_input_account_id: "E".to_string(),
+            inferred_is_debit: Some(true),
+            inferred_amount: Some(5.0),
+            ..Default::default()
+        };
+        let single4 = MockSingle {
+            user_input_account_id: "B".to_string(),
+            inferred_is_debit: Some(false),
+            inferred_amount: Some(2.0),
+            ..Default::default()
+        };
+        let single5 = MockSingle {
+            user_input_account_id: "C".to_string(),
+            inferred_is_debit: Some(false),
+            inferred_amount: Some(3.0),
+            ..Default::default()
+        };
+        let single6 = MockSingle {
+            user_input_account_id: "F".to_string(),
+            inferred_is_debit: Some(false),
+            inferred_amount: Some(5.0),
+            ..Default::default()
+        };
+
+        let double = MockDouble {
+            singles: vec![single1, single2, single3, single4, single5, single6],
+        };
+        let mut container = MockEntryContainer {
+            doubles: vec![double],
+        };
+
+        // Call the function
+        vertical_correct_to_common_subset_sum(&mut container);
+
+        // After splitting, we expect 2 doubles.
+        let updated_doubles = &container.doubles;
+        assert_eq!(updated_doubles.len(), 2);
+    }
+
+    #[test]
+    fn vertical_correct_to_common_subset_sum_splits_balanced_groups_with_uninferred_debit() {
+        // Create a single double entry with debit amounts [1,4,5] and credit [2,3,5].
+        // This should split into two balanced entries:
+        //   ([1,4] vs [5]) and ([5] vs [2,3]).
+        let single1 = MockSingle {
+            user_input_account_id: "A".to_string(),
+            inferred_is_debit: None,
+            inferred_amount: Some(1.0),
+            ..Default::default()
+        };
+        let single2 = MockSingle {
+            user_input_account_id: "D".to_string(),
+            inferred_is_debit: Some(true),
+            inferred_amount: Some(4.0),
+            ..Default::default()
+        };
+        let single3 = MockSingle {
+            user_input_account_id: "E".to_string(),
+            inferred_is_debit: Some(true),
+            inferred_amount: Some(5.0),
+            ..Default::default()
+        };
+        let single4 = MockSingle {
+            user_input_account_id: "B".to_string(),
+            inferred_is_debit: Some(false),
+            inferred_amount: Some(2.0),
+            ..Default::default()
+        };
+        let single5 = MockSingle {
+            user_input_account_id: "C".to_string(),
+            inferred_is_debit: Some(false),
+            inferred_amount: Some(3.0),
+            ..Default::default()
+        };
+        let single6 = MockSingle {
+            user_input_account_id: "F".to_string(),
+            inferred_is_debit: Some(false),
+            inferred_amount: Some(5.0),
+            ..Default::default()
+        };
+
+        let double = MockDouble {
+            singles: vec![single1, single2, single3, single4, single5, single6],
+        };
+        let mut container = MockEntryContainer {
+            doubles: vec![double],
+        };
+
+        // Call the function
+        vertical_correct_to_common_subset_sum(&mut container);
+
+        // After splitting, we expect 2 doubles.
+        let updated_doubles = &container.doubles;
+        dbg!(&updated_doubles);
+        assert_eq!(updated_doubles.len(), 2);
+        assert_eq!(updated_doubles[0].len(), 3);
+        assert_eq!(updated_doubles[1].len(), 3);
     }
 }

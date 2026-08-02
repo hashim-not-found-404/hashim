@@ -1,5 +1,4 @@
 use std::collections::HashSet;
-use std::iter::Sum;
 use std::ops::Add;
 use std::ops::Sub;
 
@@ -72,7 +71,7 @@ where
 pub fn split_to_max<T, N, F>(lhs: &[T], rhs: &[T], weight: &F) -> Vec<(Vec<T>, Vec<T>)>
 where
     T: Clone,
-    N: Copy + Add<Output = N> + Sub<Output = N> + Sum + Eq + std::hash::Hash + Default,
+    N: Copy + Add<Output = N> + Sub<Output = N> + Eq + std::hash::Hash + Default,
     F: Fn(&T) -> N,
 {
     // 1. Base case: empty side means no equation
@@ -83,14 +82,6 @@ where
     // 2. Extract weights
     let l_w: Vec<N> = lhs.iter().map(weight).collect();
     let r_w: Vec<N> = rhs.iter().map(weight).collect();
-
-    let sum_l: N = l_w.iter().copied().sum();
-    let sum_r: N = r_w.iter().copied().sum();
-
-    // 3. Check if total sums match; if not, treat as atomic
-    if sum_l != sum_r {
-        return vec![(lhs.to_vec(), rhs.to_vec())];
-    }
 
     // 4. Build DP sets
     let dp_l = build_dp(&l_w);
@@ -258,6 +249,19 @@ mod tests {
         for (l, r) in equations {
             assert_eq!(l.iter().map(&weight).sum::<i64>(), r.iter().map(&weight).sum::<i64>());
         }
+    }
+
+    #[test]
+    fn unequal_equation() {
+        let lhs = vec![1, 2, 1, 6];
+        let rhs = vec![4, 5];
+        let weight = |x: &usize| *x;
+        let equations = split_to_max(&lhs, &rhs, &weight);
+        assert_eq!(equations.len(), 2);
+        assert_eq!(equations[0].0, vec![1, 2, 1]);
+        assert_eq!(equations[0].1, vec![4]);
+        assert_eq!(equations[1].0, vec![6]);
+        assert_eq!(equations[1].1, vec![5]);
     }
 
     #[test]
