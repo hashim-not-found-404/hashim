@@ -267,14 +267,13 @@ fn horizontal_infer_for_quantity_and_amount<C, A>(
 
                 if quantity_from_user > total_quantity_in_inventory {
                     quantity_from_user = total_quantity_in_inventory;
+                    single.set_inferred_quantity(Some(quantity_from_user));
                 }
 
                 accounting_stuff::sort_inventory(&inferred_outflow_type, info.inventory);
 
                 match inferred_outflow_type {
                     accounting_stuff::OutFlowType::Manual => {
-                        single.set_inferred_quantity(Some(quantity_from_user));
-
                         if let Some(mut amount_from_user) = single.get_inferred_amount() {
                             let total_amount_in_inventory = info
                                 .inventory
@@ -289,8 +288,6 @@ fn horizontal_infer_for_quantity_and_amount<C, A>(
                         };
                     }
                     accounting_stuff::OutFlowType::QuantityEqualAmount => {
-                        single.set_inferred_quantity(Some(quantity_from_user));
-
                         if let Some(_) = single.get_inferred_amount() {
                             let total_amount_in_inventory = info
                                 .inventory
@@ -368,6 +365,32 @@ fn horizontal_infer_for_quantity_and_amount<C, A>(
     }
 }
 
+fn vertical_infer_for_amount<C>(entry: &mut C)
+where
+    C: EntryContainer,
+    C::Double: DoubleEntry,
+    <C::Double as DoubleEntry>::Single: SingleEntry,
+{
+    for double in entry.iter_mut() {
+        for single in double.iter_mut() {
+            todo!()
+        }
+    }
+}
+
+fn vertical_correct_to_common_subset_sum<C>(entry: &mut C)
+where
+    C: EntryContainer,
+    C::Double: DoubleEntry,
+    <C::Double as DoubleEntry>::Single: SingleEntry,
+{
+    for double in entry.iter_mut() {
+        for single in double.iter_mut() {
+            todo!()
+        }
+    }
+}
+
 fn horizontal_correct<C>(entry: &mut C)
 where
     C: EntryContainer,
@@ -415,14 +438,16 @@ where
     horizontal_infer_for_inflow_type(entry, &mut account_info);
     horizontal_infer_for_outflow_type(entry, &mut account_info);
     horizontal_infer_for_quantity_and_amount(time_unix, entry, &mut account_info);
+    vertical_infer_for_amount(entry);
+    vertical_correct_to_common_subset_sum(entry);
     horizontal_correct(entry);
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::accounting_domain::utility::accounting_stuff;
     use crate::accounting_domain::utility::accounting_stuff::InventoryRecord;
-    use crate::accounting_domain::utility::accounting_stuff::{self};
     use std::collections::HashMap;
 
     // ---------- Dummy inventory ----------
