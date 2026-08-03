@@ -417,8 +417,54 @@ where
     <C::Double as DoubleEntry>::Single: SingleEntry,
 {
     for double in entry.iter_mut() {
-        for single in double.iter_mut() {
-            todo!()
+        let mut total_debit = 0.0;
+        let mut total_credit = 0.0;
+
+        let mut pool_of_debit_idx_for_not_inferred_amount = HashSet::new();
+        let mut pool_of_credit_idx_for_not_inferred_amount = HashSet::new();
+
+        for (idx, single) in double.iter_mut().enumerate() {
+            let get_inferred_is_debit = single.get_inferred_is_debit().unwrap_or_default();
+
+            if let Some(get_inferred_amount) = single.get_inferred_amount() {
+                if get_inferred_is_debit {
+                    total_debit += get_inferred_amount;
+                } else {
+                    total_credit += get_inferred_amount;
+                }
+            } else {
+                if get_inferred_is_debit {
+                    pool_of_debit_idx_for_not_inferred_amount.insert(idx);
+                } else {
+                    pool_of_credit_idx_for_not_inferred_amount.insert(idx);
+                }
+            };
+        }
+
+        if total_debit == total_credit {
+            continue;
+        }
+
+        let is_add_to_credit = total_debit > total_credit;
+        let diff = (total_debit - total_credit).abs();
+
+        let amount_per_credit_account =
+            diff / pool_of_credit_idx_for_not_inferred_amount.len() as f64;
+        let amount_per_debit_account =
+            diff / pool_of_debit_idx_for_not_inferred_amount.len() as f64;
+
+        if is_add_to_credit {
+            for (idx, single) in double.iter_mut().enumerate() {
+                if pool_of_credit_idx_for_not_inferred_amount.contains(&idx) {
+                    single.set_inferred_amount(Some(amount_per_credit_account));
+                }
+            }
+        } else {
+            for (idx, single) in double.iter_mut().enumerate() {
+                if pool_of_debit_idx_for_not_inferred_amount.contains(&idx) {
+                    single.set_inferred_amount(Some(amount_per_debit_account));
+                }
+            }
         }
     }
 }
@@ -512,7 +558,11 @@ where
     horizontal_infer_for_inflow_type(entry, &mut account_info);
     horizontal_infer_for_outflow_type(entry, &mut account_info);
     horizontal_infer_for_quantity_and_amount(time_unix, entry, &mut account_info);
+
+    vertical_infer_for_is_debit(entry);
+    horizontal_infer_for_is_inflow(entry, &mut account_info);
     vertical_infer_for_amount(entry);
+
     vertical_correct_to_common_subset_sum(entry);
     horizontal_correct(entry);
 }
@@ -1680,5 +1730,220 @@ mod tests {
 
         assert_eq!(total_debit, 11.0);
         assert_eq!(total_credit, 9.0);
+    }
+
+    #[test]
+    fn vertical_infer_for_amount_infers_missing_amounts_to_balance() {
+        // Scenario 1: Debit total > Credit total, missing amounts on credit side.
+        // Debit: amounts 10, 20 (total 30)
+        // Credit: amounts 5, ? (missing) -> need ? = 25
+        let single1 = MockSingle {
+            user_input_account_id: "D1".to_string(),
+            inferred_is_debit: Some(true),
+            inferred_amount: Some(10.0),
+            ..Default::default()
+        };
+        let single2 = MockSingle {
+            user_input_account_id: "D2".to_string(),
+            inferred_is_debit: Some(true),
+            inferred_amount: Some(20.0),
+            ..Default::default()
+        };
+        let single3 = MockSingle {
+            user_input_account_id: "C1".to_string(),
+            inferred_is_debit: Some(false),
+            inferred_amount: Some(5.0),
+            ..Default::default()
+        };
+        let single4 = MockSingle {
+            user_input_account_id: "C2".to_string(),
+            inferred_is_debit: Some(false),
+            inferred_amount: None,
+            ..Default::default()
+        };
+
+        let double = MockDouble {
+            singles: vec![single1, single2, single3, single4],
+        };
+        let mut container = MockEntryContainer {
+            doubles: vec![double],
+        };
+
+        vertical_infer_for_amount(&mut container);
+
+        let updated_double = &container.doubles[0];
+        // C2 should now have inferred_amount = 25.0
+        let c2 = updated_double.singles.iter().find(|s| s.user_input_account_id == "C2").unwrap();
+        assert_eq!(c2.inferred_amount, Some(25.0));
+
+        // Check totals balance
+        let total_debit: f64 = updated_double
+            .singles
+            .iter()
+            .filter(|s| s.inferred_is_debit == Some(true))
+            .map(|s| s.inferred_amount.unwrap_or(0.0))
+            .sum();
+        let total_credit: f64 = updated_double
+            .singles
+            .iter()
+            .filter(|s| s.inferred_is_debit == Some(false))
+            .map(|s| s.inferred_amount.unwrap_or(0.0))
+            .sum();
+        assert!((total_debit - total_credit).abs() < 1.0e-9);
+    }
+
+    #[test]
+    fn vertical_infer_for_amount_does_nothing_when_already_balanced() {
+        // Balanced: debit 10, credit 10, both amounts known.
+        let single1 = MockSingle {
+            user_input_account_id: "D1".to_string(),
+            inferred_is_debit: Some(true),
+            inferred_amount: Some(10.0),
+            ..Default::default()
+        };
+        let single2 = MockSingle {
+            user_input_account_id: "C1".to_string(),
+            inferred_is_debit: Some(false),
+            inferred_amount: Some(10.0),
+            ..Default::default()
+        };
+
+        let double = MockDouble {
+            singles: vec![single1, single2],
+        };
+        let mut container = MockEntryContainer {
+            doubles: vec![double],
+        };
+
+        vertical_infer_for_amount(&mut container);
+
+        let updated = &container.doubles[0];
+        assert_eq!(updated.singles[0].inferred_amount, Some(10.0));
+        assert_eq!(updated.singles[1].inferred_amount, Some(10.0));
+    }
+
+    #[test]
+    fn vertical_infer_for_amount_infers_on_debit_side_when_credit_greater() {
+        // Credit > Debit: Debit has missing amount.
+        // Debit: amounts 5, ? (missing) => total debit = 5 + ?
+        // Credit: amounts 10, 15 (total 25) -> need ? = 20
+        let single1 = MockSingle {
+            user_input_account_id: "D1".to_string(),
+            inferred_is_debit: Some(true),
+            inferred_amount: Some(5.0),
+            ..Default::default()
+        };
+        let single2 = MockSingle {
+            user_input_account_id: "D2".to_string(),
+            inferred_is_debit: Some(true),
+            inferred_amount: None,
+            ..Default::default()
+        };
+        let single3 = MockSingle {
+            user_input_account_id: "C1".to_string(),
+            inferred_is_debit: Some(false),
+            inferred_amount: Some(10.0),
+            ..Default::default()
+        };
+        let single4 = MockSingle {
+            user_input_account_id: "C2".to_string(),
+            inferred_is_debit: Some(false),
+            inferred_amount: Some(15.0),
+            ..Default::default()
+        };
+
+        let double = MockDouble {
+            singles: vec![single1, single2, single3, single4],
+        };
+        let mut container = MockEntryContainer {
+            doubles: vec![double],
+        };
+
+        vertical_infer_for_amount(&mut container);
+
+        let updated = &container.doubles[0];
+        let d2 = updated.singles.iter().find(|s| s.user_input_account_id == "D2").unwrap();
+        assert_eq!(d2.inferred_amount, Some(20.0));
+
+        // Check balance
+        let total_debit: f64 = updated
+            .singles
+            .iter()
+            .filter(|s| s.inferred_is_debit == Some(true))
+            .map(|s| s.inferred_amount.unwrap_or(0.0))
+            .sum();
+        let total_credit: f64 = updated
+            .singles
+            .iter()
+            .filter(|s| s.inferred_is_debit == Some(false))
+            .map(|s| s.inferred_amount.unwrap_or(0.0))
+            .sum();
+        assert!((total_debit - total_credit).abs() < 1.0e-9);
+    }
+
+    #[test]
+    fn vertical_infer_for_amount_handles_multiple_missing_on_same_side() {
+        // Debit: amounts 10, ? , ? ; known debits = 10, missing two => each gets equal share
+        // Credit: amounts 20, 30 (total 50) -> need missing sum = 40, each gets 20.
+        let single1 = MockSingle {
+            user_input_account_id: "D1".to_string(),
+            inferred_is_debit: Some(true),
+            inferred_amount: Some(10.0),
+            ..Default::default()
+        };
+        let single2 = MockSingle {
+            user_input_account_id: "D2".to_string(),
+            inferred_is_debit: Some(true),
+            inferred_amount: None,
+            ..Default::default()
+        };
+        let single3 = MockSingle {
+            user_input_account_id: "D3".to_string(),
+            inferred_is_debit: Some(true),
+            inferred_amount: None,
+            ..Default::default()
+        };
+        let single4 = MockSingle {
+            user_input_account_id: "C1".to_string(),
+            inferred_is_debit: Some(false),
+            inferred_amount: Some(20.0),
+            ..Default::default()
+        };
+        let single5 = MockSingle {
+            user_input_account_id: "C2".to_string(),
+            inferred_is_debit: Some(false),
+            inferred_amount: Some(30.0),
+            ..Default::default()
+        };
+
+        let double = MockDouble {
+            singles: vec![single1, single2, single3, single4, single5],
+        };
+        let mut container = MockEntryContainer {
+            doubles: vec![double],
+        };
+
+        vertical_infer_for_amount(&mut container);
+
+        let updated = &container.doubles[0];
+        let d2 = updated.singles.iter().find(|s| s.user_input_account_id == "D2").unwrap();
+        let d3 = updated.singles.iter().find(|s| s.user_input_account_id == "D3").unwrap();
+        assert_eq!(d2.inferred_amount, Some(20.0));
+        assert_eq!(d3.inferred_amount, Some(20.0));
+
+        // Check balance
+        let total_debit: f64 = updated
+            .singles
+            .iter()
+            .filter(|s| s.inferred_is_debit == Some(true))
+            .map(|s| s.inferred_amount.unwrap_or(0.0))
+            .sum();
+        let total_credit: f64 = updated
+            .singles
+            .iter()
+            .filter(|s| s.inferred_is_debit == Some(false))
+            .map(|s| s.inferred_amount.unwrap_or(0.0))
+            .sum();
+        assert!((total_debit - total_credit).abs() < 1.0e-9);
     }
 }
