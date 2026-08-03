@@ -216,6 +216,10 @@ pub trait EntryContainer {
     fn len(&self) -> usize {
         self.iter().len()
     }
+
+    fn retain<F>(&mut self, f: F)
+    where
+        F: FnMut(&Self::Double) -> bool;
 }
 
 /// Provides account information (nature) and inventory for a given account.
@@ -621,8 +625,14 @@ pub mod wrapper {
     use std::ops::Add;
     use std::ops::Sub;
 
-    #[derive(Clone, Copy, Debug, PartialEq)]
+    #[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
     pub(crate) struct T(pub f64);
+
+    impl Ord for T {
+        fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+            self.0.total_cmp(&other.0)
+        }
+    }
 
     impl Eq for T {}
     impl std::hash::Hash for T {
@@ -982,6 +992,13 @@ mod tests {
 
         fn set_doubles(&mut self, doubles: Vec<Self::Double>) {
             self.groups = doubles;
+        }
+
+        fn retain<F>(&mut self, f: F)
+        where
+            F: FnMut(&Self::Double) -> bool,
+        {
+            self.groups.retain(f);
         }
     }
 
