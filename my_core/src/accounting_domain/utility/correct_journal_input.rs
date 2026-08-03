@@ -200,7 +200,7 @@ where
     }
 }
 
-fn vertical_correct_to_remove_duplicate_account<C>(entry: &mut C)
+fn vertical_correct_by_remove_duplicate_account<C>(entry: &mut C)
 where
     C: EntryContainer,
     C::Double: DoubleEntry,
@@ -219,7 +219,7 @@ where
     entry.retain(|double| double.is_empty());
 }
 
-fn horizontal_infer_for_quantity_and_amount<C, A>(
+fn horizontal_infer_for_amount_from_quantity<C, A>(
     time_unix: u64,
     entry: &mut C,
     account_info: &mut A,
@@ -469,7 +469,7 @@ where
     }
 }
 
-fn vertical_correct_to_common_subset_sum<C>(entry: &mut C)
+fn vertical_correct_by_common_subset_sum<C>(entry: &mut C)
 where
     C: EntryContainer,
     C::Double: DoubleEntry + Clone,
@@ -552,18 +552,19 @@ where
     A::Inventory: Inventory,
 {
     reset_all_inferred_values(entry);
-    vertical_correct_to_remove_duplicate_account(entry);
+    vertical_correct_by_remove_duplicate_account(entry);
     horizontal_infer_for_is_debit(entry, &mut account_info);
     horizontal_infer_for_is_inflow(entry, &mut account_info);
     horizontal_infer_for_inflow_type(entry, &mut account_info);
     horizontal_infer_for_outflow_type(entry, &mut account_info);
-    horizontal_infer_for_quantity_and_amount(time_unix, entry, &mut account_info);
+    horizontal_infer_for_amount_from_quantity(time_unix, entry, &mut account_info);
 
     vertical_infer_for_is_debit(entry);
     horizontal_infer_for_is_inflow(entry, &mut account_info);
     vertical_infer_for_amount(entry);
+    // horizontal_infer_for_quantity_from_amount(time_unix, entry, &mut account_info);
 
-    vertical_correct_to_common_subset_sum(entry);
+    vertical_correct_by_common_subset_sum(entry);
     horizontal_correct(entry);
 }
 
@@ -1235,7 +1236,7 @@ mod tests {
         };
 
         // Call the function
-        vertical_correct_to_remove_duplicate_account(&mut container);
+        vertical_correct_by_remove_duplicate_account(&mut container);
 
         let updated_double = &container.doubles[0];
         let remaining = &updated_double.singles;
@@ -1285,7 +1286,7 @@ mod tests {
             inventory:    Vec::new(),
         });
 
-        horizontal_infer_for_quantity_and_amount(100, &mut container, &mut provider);
+        horizontal_infer_for_amount_from_quantity(100, &mut container, &mut provider);
 
         let updated = &container.doubles[0].singles[0];
         assert_eq!(updated.get_from_user_input_quantity(), Some(5.0));
@@ -1320,7 +1321,7 @@ mod tests {
         });
 
         reset_all_inferred_values(&mut container);
-        horizontal_infer_for_quantity_and_amount(100, &mut container, &mut provider);
+        horizontal_infer_for_amount_from_quantity(100, &mut container, &mut provider);
 
         let updated = &container.doubles[0].singles[0];
         assert_eq!(updated.get_inferred_quantity(), Some(5.0));
@@ -1354,7 +1355,7 @@ mod tests {
         });
 
         reset_all_inferred_values(&mut container);
-        horizontal_infer_for_quantity_and_amount(100, &mut container, &mut provider);
+        horizontal_infer_for_amount_from_quantity(100, &mut container, &mut provider);
 
         let updated = &container.doubles[0].singles[0];
         assert_eq!(updated.get_inferred_quantity(), Some(0.0));
@@ -1400,7 +1401,7 @@ mod tests {
         });
 
         reset_all_inferred_values(&mut container);
-        horizontal_infer_for_quantity_and_amount(100, &mut container, &mut provider);
+        horizontal_infer_for_amount_from_quantity(100, &mut container, &mut provider);
 
         let updated = &container.doubles[0].singles[0];
         // Quantity should be capped at 5.0 (total inventory quantity)
@@ -1461,7 +1462,7 @@ mod tests {
         };
 
         // Call the function
-        vertical_correct_to_common_subset_sum(&mut container);
+        vertical_correct_by_common_subset_sum(&mut container);
 
         // After splitting, we expect 2 doubles.
         let updated_doubles = &container.doubles;
@@ -1518,7 +1519,7 @@ mod tests {
         };
 
         // Call the function
-        vertical_correct_to_common_subset_sum(&mut container);
+        vertical_correct_by_common_subset_sum(&mut container);
 
         // After splitting, we expect 2 doubles.
         let updated_doubles = &container.doubles;
