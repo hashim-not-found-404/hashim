@@ -238,7 +238,7 @@ pub trait Inventory {
     fn is_empty(&self) -> bool;
     fn iter1(&self) -> impl Iterator<Item = &InventoryRecord>;
     fn iter_mut1(&mut self) -> impl Iterator<Item = &mut InventoryRecord>;
-    fn sort_by<F>(&mut self, compare: F)
+    fn sort_by1<F>(&mut self, compare: F)
     where
         F: FnMut(&InventoryRecord, &InventoryRecord) -> std::cmp::Ordering;
     fn retain<F>(&mut self, f: F)
@@ -551,20 +551,20 @@ pub fn sort_inventory<I: Inventory>(out_flow_type: &OutFlowType, inventory: &mut
             combine_all_inventory_record_in_one_record(inventory);
         }
         OutFlowType::Fifo => {
-            inventory.sort_by(|a, b| a.time_unix.cmp(&b.time_unix));
+            inventory.sort_by1(|a, b| a.time_unix.cmp(&b.time_unix));
         }
         OutFlowType::Lifo => {
-            inventory.sort_by(|a, b| b.time_unix.cmp(&a.time_unix));
+            inventory.sort_by1(|a, b| b.time_unix.cmp(&a.time_unix));
         }
         OutFlowType::Hifo => {
-            inventory.sort_by(|a, b| {
+            inventory.sort_by1(|a, b| {
                 price(b.amount, b.quantity)
                     .partial_cmp(&price(a.amount, a.quantity))
                     .unwrap_or(std::cmp::Ordering::Equal)
             });
         }
         OutFlowType::Lofo => {
-            inventory.sort_by(|a, b| {
+            inventory.sort_by1(|a, b| {
                 price(a.amount, a.quantity)
                     .partial_cmp(&price(b.amount, b.quantity))
                     .unwrap_or(std::cmp::Ordering::Equal)
@@ -574,6 +574,7 @@ pub fn sort_inventory<I: Inventory>(out_flow_type: &OutFlowType, inventory: &mut
 }
 
 pub fn get_amount<I: Inventory>(quantity: f64, inventory: &I) -> f64 {
+    assert!(quantity.is_sign_positive());
     let mut remaining = quantity;
     let mut accumulator = 0.0;
 
@@ -587,6 +588,33 @@ pub fn get_amount<I: Inventory>(quantity: f64, inventory: &I) -> f64 {
             break;
         }
     }
+    accumulator
+}
+
+pub fn get_quantity<I: Inventory>(amount: f64, inventory: &I) -> f64 {
+    // Non‑positive amount returns zero quantity
+    if amount <= 0.0 {
+        return 0.0;
+    }
+
+    let mut remaining = amount;
+    let mut accumulator = 0.0;
+
+    for record in inventory.iter1() {
+        if record.amount <= remaining {
+            remaining -= record.amount;
+            accumulator += record.quantity;
+        } else {
+            if record.quantity == 0.0 {
+            } else {
+                let price = record.amount / record.quantity;
+                accumulator += remaining / price;
+            }
+
+            break;
+        }
+    }
+
     accumulator
 }
 
@@ -664,23 +692,7 @@ pub mod wrapper {
 
 #[cfg(test)]
 mod tests {
-    use super::AccountInfoProvider;
-    use super::DoubleEntry;
-    use super::EntryContainer;
-    use super::InFlowType;
-    use super::Inventory;
-    use super::InventoryRecord;
-    use super::OutFlowType;
-    use super::SingleEntry;
-    use super::apply_entry_on_inventory;
-    use super::decrease_inventory;
-    use super::get_amount;
-    use super::sort_inventory;
-    use super::state_full_check_for_entry;
-    use super::state_less_check_for_entry;
-    use super::sum_inventory;
-    use crate::accounting_domain::utility::accounting_stuff::ErrorSink;
-    use crate::accounting_domain::utility::accounting_stuff::combine_all_inventory_record_in_one_record;
+    use super::*;
     use crate::accounting_domain::utility::types;
     use crate::accounting_domain::utility::types::MyErrorTrait;
     use std::collections::HashMap;
@@ -1027,11 +1039,11 @@ mod tests {
             self.0.iter_mut1()
         }
 
-        fn sort_by<F>(&mut self, compare: F)
+        fn sort_by1<F>(&mut self, compare: F)
         where
             F: FnMut(&InventoryRecord, &InventoryRecord) -> std::cmp::Ordering,
         {
-            self.0.sort_by(compare)
+            self.0.sort_by1(compare)
         }
 
         fn retain<F>(&mut self, f: F)
@@ -2727,5 +2739,141 @@ mod tests {
         let inv = TestInventory::default();
         let amt = get_amount(5.0, &inv);
         assert_eq!(amt, 0.0);
+    }
+
+    #[test]
+    fn test_get_quantity_empty_inventory() {
+        let inv = TestInventory::default();
+        assert_eq!(get_quantity(10.0, &inv), 0.0);
+        assert_eq!(get_quantity(0.0, &inv), 0.0);
+    }
+
+    #[test]
+    fn test_get_quantity_single_record_exact_match() {
+        let mut inv = TestInventory::default();
+        inv.push(InventoryRecord {
+            time_unix: 1,
+            quantity:  2.0,
+            amount:    4.0,
+        });
+        // price = 2, amount 4 → quantity 2
+        assert_eq!(get_quantity(4.0, &inv), 2.0);
+    }
+
+    #[test]
+    fn test_get_quantity_single_record_partial() {
+        let mut inv = TestInventory::default();
+        inv.push(InventoryRecord {
+            time_unix: 1,
+            quantity:  5.0,
+            amount:    10.0,
+        });
+        // price = 2, amount 3 → 1.5
+        assert_eq!(get_quantity(3.0, &inv), 1.5);
+        // amount 0 → 0
+        assert_eq!(get_quantity(0.0, &inv), 0.0);
+        // amount equals total → 5
+        assert_eq!(get_quantity(10.0, &inv), 5.0);
+        // amount greater than total → 5 (all inventory)
+        assert_eq!(get_quantity(12.0, &inv), 5.0);
+    }
+
+    #[test]
+    fn test_get_quantity_multiple_records() {
+        let mut inv = TestInventory::default();
+        inv.push(InventoryRecord {
+            time_unix: 1,
+            quantity:  2.0,
+            amount:    4.0,
+        });
+        inv.push(InventoryRecord {
+            time_unix: 2,
+            quantity:  3.0,
+            amount:    6.0,
+        });
+        // Both price=2, total qty=5, total amt=10
+
+        // Amount 5 → 2 (first full) + 0.5 (half of second) = 2.5
+        assert_eq!(get_quantity(5.0, &inv), 2.5);
+        // Amount 4 → exact first record
+        assert_eq!(get_quantity(4.0, &inv), 2.0);
+        // Amount 6 → first full (2) + 1 from second (since 6-4=2, /2=1) = 3
+        assert_eq!(get_quantity(6.0, &inv), 3.0);
+        // Amount 10 → total qty 5
+        assert_eq!(get_quantity(10.0, &inv), 5.0);
+        // Amount 20 → total qty 5 (all consumed)
+        assert_eq!(get_quantity(20.0, &inv), 5.0);
+    }
+
+    #[test]
+    fn test_get_quantity_with_zero_quantity_record() {
+        // Rare case: record with qty=0 but positive amount (pure value adjustment)
+        let mut inv = TestInventory::default();
+        inv.push(InventoryRecord {
+            time_unix: 1,
+            quantity:  0.0,
+            amount:    5.0,
+        });
+        inv.push(InventoryRecord {
+            time_unix: 2,
+            quantity:  2.0,
+            amount:    4.0,
+        });
+        assert_eq!(get_quantity(4.0, &inv), 0.0);
+        assert_eq!(get_quantity(6.0, &inv), 0.5);
+        assert_eq!(get_quantity(0.0, &inv), 0.0);
+    }
+
+    #[test]
+    fn test_get_quantity_negative_amount() {
+        let mut inv = TestInventory::default();
+        inv.push(InventoryRecord {
+            time_unix: 1,
+            quantity:  5.0,
+            amount:    10.0,
+        });
+        // Negative amount yields 0 quantity (no panic)
+        assert_eq!(get_quantity(-1.0, &inv), 0.0);
+        assert_eq!(get_quantity(-5.0, &inv), 0.0);
+    }
+
+    #[test]
+    fn test_get_quantity_with_wac_combined() {
+        // WAC combines all records into one; test that case explicitly.
+        let mut inv = TestInventory::default();
+        inv.push(InventoryRecord {
+            time_unix: 1,
+            quantity:  5.0,
+            amount:    10.0,
+        });
+        inv.push(InventoryRecord {
+            time_unix: 2,
+            quantity:  3.0,
+            amount:    6.0,
+        });
+        sort_inventory(&OutFlowType::Wac, &mut inv);
+        // Now one record: total qty=8, total amt=16, price=2
+        assert_eq!(get_quantity(8.0, &inv), 4.0); // 8 / 2 = 4
+        assert_eq!(get_quantity(16.0, &inv), 8.0);
+        assert_eq!(get_quantity(4.0, &inv), 2.0);
+        assert_eq!(get_quantity(0.0, &inv), 0.0);
+    }
+
+    #[test]
+    fn test_get_quantity_with_only_zero_quantity_records() {
+        let mut inv = TestInventory::default();
+        inv.push(InventoryRecord {
+            time_unix: 1,
+            quantity:  0.0,
+            amount:    5.0,
+        });
+        inv.push(InventoryRecord {
+            time_unix: 2,
+            quantity:  0.0,
+            amount:    10.0,
+        });
+        // No record can provide quantity → 0
+        assert_eq!(get_quantity(5.0, &inv), 0.0);
+        assert_eq!(get_quantity(0.0, &inv), 0.0);
     }
 }
