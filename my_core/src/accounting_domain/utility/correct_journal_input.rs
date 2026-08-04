@@ -2,7 +2,6 @@ use crate::accounting_domain::utility::accounting_stuff;
 use crate::accounting_domain::utility::accounting_stuff::DoubleEntry;
 use crate::accounting_domain::utility::accounting_stuff::EntryContainer;
 use crate::accounting_domain::utility::accounting_stuff::Inventory;
-use crate::accounting_domain::utility::accounting_stuff::wrapper;
 use crate::accounting_domain::utility::common_subset_sum;
 use crate::accounting_domain::utility::constrained_partition;
 use std::collections::HashSet;
@@ -11,7 +10,7 @@ use std::hash::Hash;
 pub trait SingleEntry {
     type AccountId: Eq + Hash + Clone;
 
-    fn get_from_user_input_account_id(&self) -> Self::AccountId;
+    fn get_account_id(&self) -> Self::AccountId;
 
     fn get_from_user_input_is_debit(&self) -> Option<bool>;
     fn get_from_user_input_is_inflow(&self) -> Option<bool>;
@@ -102,11 +101,9 @@ where
 {
     for double in entry.iter_mut() {
         for single in double.iter_mut() {
-            if let Some(is_debit) = single.get_from_user_input_is_debit() {
-                single.set_inferred_is_debit(Some(is_debit));
-            } else {
-                if let Some(is_inflow) = single.get_from_user_input_is_inflow() {
-                    let account_id = single.get_from_user_input_account_id();
+            if single.get_inferred_is_debit().is_none() {
+                if let Some(is_inflow) = single.get_inferred_is_inflow() {
+                    let account_id = single.get_account_id();
                     if let Some(info) = account_info.get_info(&account_id) {
                         single.set_inferred_is_debit(Some(accounting_stuff::is_debit(
                             info.is_debit,
@@ -132,7 +129,7 @@ where
     for double in entry.iter_mut() {
         for single in double.iter_mut() {
             if let Some(is_debit) = single.get_inferred_is_debit() {
-                let account_id = single.get_from_user_input_account_id();
+                let account_id = single.get_account_id();
                 if let Some(info) = account_info.get_info(&account_id) {
                     single.set_inferred_is_inflow(Some(accounting_stuff::is_inflow(
                         info.is_debit,
@@ -156,12 +153,12 @@ where
 {
     for double in entry.iter_mut() {
         for single in double.iter_mut() {
-            match single.get_from_user_input_inflow_type() {
+            match single.get_inferred_inflow_type() {
                 Some(inflow_type_from_user) => {
                     single.set_inferred_inflow_type(Some(inflow_type_from_user));
                 }
                 None => {
-                    let account_id = single.get_from_user_input_account_id();
+                    let account_id = single.get_account_id();
 
                     if let Some(info) = account_info.get_info(&account_id) {
                         single.set_inferred_inflow_type(Some(info.inflow_type));
@@ -184,12 +181,12 @@ where
 {
     for double in entry.iter_mut() {
         for single in double.iter_mut() {
-            match single.get_from_user_input_outflow_type() {
+            match single.get_inferred_outflow_type() {
                 Some(outflow_type_from_user) => {
                     single.set_inferred_outflow_type(Some(outflow_type_from_user));
                 }
                 None => {
-                    let account_id = single.get_from_user_input_account_id();
+                    let account_id = single.get_account_id();
 
                     if let Some(info) = account_info.get_info(&account_id) {
                         single.set_inferred_outflow_type(Some(info.outflow_type));
@@ -208,7 +205,7 @@ where
 {
     for double in entry.iter_mut() {
         let mut seen_accounts = HashSet::new();
-        double.retain(|single| seen_accounts.insert(single.get_from_user_input_account_id()));
+        double.retain(|single| seen_accounts.insert(single.get_account_id()));
     }
 }
 
@@ -244,7 +241,7 @@ fn horizontal_infer_for_amount_from_quantity<C, A>(
                 None => continue,
             };
 
-            let account_id = single.get_from_user_input_account_id();
+            let account_id = single.get_account_id();
 
             let info = match account_info.get_info(&account_id) {
                 Some(a) => a,
@@ -650,7 +647,7 @@ mod tests {
         type AccountId = String;
 
         // ---------- Getters ----------
-        fn get_from_user_input_account_id(&self) -> Self::AccountId {
+        fn get_account_id(&self) -> Self::AccountId {
             self.user_input_account_id.clone()
         }
 
@@ -982,6 +979,7 @@ mod tests {
         });
 
         // Call the function
+        reset_all_inferred_values(&mut container);
         horizontal_infer_for_is_debit(&mut container, &mut provider);
         horizontal_infer_for_is_inflow(&mut container, &mut provider);
         horizontal_correct(&mut container);
@@ -1065,6 +1063,7 @@ mod tests {
         });
 
         // Call the function
+        reset_all_inferred_values(&mut container);
         horizontal_infer_for_inflow_type(&mut container, &mut provider);
 
         let updated_double = &container.doubles[0];
@@ -1159,6 +1158,7 @@ mod tests {
         });
 
         // Call the function
+        reset_all_inferred_values(&mut container);
         horizontal_infer_for_outflow_type(&mut container, &mut provider);
 
         let updated_double = &container.doubles[0];
