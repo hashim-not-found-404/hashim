@@ -71,48 +71,73 @@ where
 pub fn split_to_max<T, N, F>(lhs: &[T], rhs: &[T], weight: &F) -> Vec<(Vec<T>, Vec<T>)>
 where
     T: Clone,
-    N: Copy + Add<Output = N> + Sub<Output = N> + Eq + std::hash::Hash + Default,
+    N: Copy + Add<Output = N> + Sub<Output = N> + Eq + std::hash::Hash + Default + Ord,
     F: Fn(&T) -> N,
 {
-    // 1. Base case: empty side means no equation
     if lhs.is_empty() || rhs.is_empty() {
         return Vec::new();
     }
 
-    // 2. Extract weights
     let l_w: Vec<N> = lhs.iter().map(weight).collect();
     let r_w: Vec<N> = rhs.iter().map(weight).collect();
 
-    // 4. Build DP sets
     let dp_l = build_dp(&l_w);
     let dp_r = build_dp(&r_w);
 
     let last_l = dp_l.last().unwrap();
     let last_r = dp_r.last().unwrap();
 
-    // 5. Find a non‑trivial common subset sum
-    let mut chosen_sum = None;
+    // Collect all common sums and sort them for deterministic order
+    let mut common_sums: Vec<N> = last_l.iter().filter(|&s| last_r.contains(s)).cloned().collect();
+    common_sums.sort(); // smallest first
 
-    for &s in last_l.iter() {
-        // Avoid picking the empty subset (0) or the full subset (total sum)
-        if last_r.contains(&s) {
-            let l_idx = reconstruct_indices(&l_w, s, &dp_l);
-            let r_idx = reconstruct_indices(&r_w, s, &dp_r);
+    let mut chosen = None;
 
-            // Skip if the subset is empty (sum = 0) or covers everything
-            if !l_idx.is_empty() && l_idx.len() < lhs.len() {
-                chosen_sum = Some((s, l_idx, r_idx));
-                break;
+    for s in common_sums {
+        // Skip empty subset (sum = 0) and full subset (sum == total)
+        if s == N::default() {
+            continue;
+        }
+
+        let l_idx = reconstruct_indices(&l_w, s, &dp_l);
+        let r_idx = reconstruct_indices(&r_w, s, &dp_r);
+
+        // Must not cover everything on either side
+        if l_idx.is_empty() || l_idx.len() == lhs.len() {
+            continue;
+        }
+        if r_idx.is_empty() || r_idx.len() == rhs.len() {
+            continue;
+        }
+
+        // Build the remaining items to check they are both non‑empty
+        let mut l2 = Vec::new();
+        let mut r2 = Vec::new();
+        for (i, item) in lhs.iter().enumerate() {
+            if !l_idx.contains(&i) {
+                l2.push(item.clone());
             }
+        }
+        for (i, item) in rhs.iter().enumerate() {
+            if !r_idx.contains(&i) {
+                r2.push(item.clone());
+            }
+        }
+
+        // Prefer splits that leave both sides non‑empty (to avoid discarding items)
+        if !l2.is_empty() && !r2.is_empty() {
+            chosen = Some((s, l_idx, r_idx));
+            break;
         }
     }
 
-    let Some((s, l_idx, r_idx)) = chosen_sum else {
-        // No non‑trivial split exists → irreducible
-        return vec![(lhs.to_vec(), rhs.to_vec())];
+    // If no suitable split found, return the whole as one irreducible equation
+    let (s, l_idx, r_idx) = match chosen {
+        Some(v) => v,
+        None => return vec![(lhs.to_vec(), rhs.to_vec())],
     };
 
-    // 6. Split the original items according to the found indices
+    // Split the original items
     let mut l1 = Vec::new();
     let mut l2 = Vec::new();
     for (i, item) in lhs.iter().enumerate() {
@@ -133,7 +158,7 @@ where
         }
     }
 
-    // 7. Recurse on both halves to find the finest partition
+    // Recurse on both parts
     let mut result = split_to_max(&l1, &r1, weight);
     result.extend(split_to_max(&l2, &r2, weight));
     result
