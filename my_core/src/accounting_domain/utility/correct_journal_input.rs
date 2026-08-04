@@ -422,12 +422,11 @@ where
     C::Double: DoubleEntry,
     <C::Double as DoubleEntry>::Single: SingleEntry,
 {
-    for double in entry.iter_mut() {
+    'l1: for double in entry.iter_mut() {
         let mut total_debit = 0.0;
         let mut total_credit = 0.0;
 
-        let mut pool_of_debit_idx_for_not_inferred_amount = HashSet::new();
-        let mut pool_of_credit_idx_for_not_inferred_amount = HashSet::new();
+        let mut idx_for_not_inferred_amount: Option<usize> = None;
 
         for (idx, single) in double.iter_mut().enumerate() {
             let get_inferred_is_debit = single.get_inferred_is_debit().unwrap_or_default();
@@ -439,10 +438,10 @@ where
                     total_credit += get_inferred_amount;
                 }
             } else {
-                if get_inferred_is_debit {
-                    pool_of_debit_idx_for_not_inferred_amount.insert(idx);
+                if idx_for_not_inferred_amount.is_none() {
+                    idx_for_not_inferred_amount = Some(idx);
                 } else {
-                    pool_of_credit_idx_for_not_inferred_amount.insert(idx);
+                    continue 'l1;
                 }
             };
         }
@@ -451,25 +450,16 @@ where
             continue;
         }
 
-        let is_add_to_credit = total_debit > total_credit;
         let diff = (total_debit - total_credit).abs();
 
-        let amount_per_credit_account =
-            diff / pool_of_credit_idx_for_not_inferred_amount.len() as f64;
-        let amount_per_debit_account =
-            diff / pool_of_debit_idx_for_not_inferred_amount.len() as f64;
+        let the_idx = match idx_for_not_inferred_amount {
+            Some(idx) => idx,
+            None => continue,
+        };
 
-        if is_add_to_credit {
-            for (idx, single) in double.iter_mut().enumerate() {
-                if pool_of_credit_idx_for_not_inferred_amount.contains(&idx) {
-                    single.set_inferred_amount(Some(amount_per_credit_account));
-                }
-            }
-        } else {
-            for (idx, single) in double.iter_mut().enumerate() {
-                if pool_of_debit_idx_for_not_inferred_amount.contains(&idx) {
-                    single.set_inferred_amount(Some(amount_per_debit_account));
-                }
+        for (idx, single) in double.iter_mut().enumerate() {
+            if the_idx == idx {
+                single.set_inferred_amount(Some(diff));
             }
         }
     }
@@ -1948,8 +1938,6 @@ mod tests {
 
     #[test]
     fn vertical_infer_for_amount_handles_multiple_missing_on_same_side() {
-        // Debit: amounts 10, ? , ? ; known debits = 10, missing two => each gets equal share
-        // Credit: amounts 20, 30 (total 50) -> need missing sum = 40, each gets 20.
         let single1 = MockSingle {
             user_input_account_id: "D1".to_string(),
             inferred_is_debit: Some(true),
@@ -1993,8 +1981,8 @@ mod tests {
         let updated = &container.doubles[0];
         let d2 = updated.singles.iter().find(|s| s.user_input_account_id == "D2").unwrap();
         let d3 = updated.singles.iter().find(|s| s.user_input_account_id == "D3").unwrap();
-        assert_eq!(d2.inferred_amount, Some(20.0));
-        assert_eq!(d3.inferred_amount, Some(20.0));
+        assert_eq!(d2.inferred_amount, None);
+        assert_eq!(d3.inferred_amount, None);
 
         // Check balance
         let total_debit: f64 = updated
@@ -2009,6 +1997,6 @@ mod tests {
             .filter(|s| s.inferred_is_debit == Some(false))
             .map(|s| s.inferred_amount.unwrap_or(0.0))
             .sum();
-        assert!((total_debit - total_credit).abs() < 1.0e-9);
+        assert!((total_debit != total_credit));
     }
 }
