@@ -383,9 +383,14 @@ where
 {
     for double in entry.iter_mut() {
         let mut new_double = Vec::new();
+        let mut other_double = Vec::new();
 
         for single in double.iter() {
-            new_double.push(single.clone());
+            if single.get_inferred_amount().is_some() {
+                new_double.push(single.clone());
+            } else {
+                other_double.push(single.clone());
+            }
         }
 
         constrained_partition::assign_partition(
@@ -406,6 +411,7 @@ where
             |single, b| single.set_inferred_is_debit(Some(b == constrained_partition::Side::RHS)),
         );
 
+        new_double.append(&mut other_double);
         double.set_singles(new_double);
     }
 }
@@ -1662,6 +1668,64 @@ mod tests {
         // but we can verify that the groups are non‑empty and balanced.
         // For this specific case, the only balanced split is {4,6} vs {3,7}.
         // But to be robust, we just check the balance.
+    }
+
+    #[test]
+    fn vertical_infer_for_is_debit_assigns_sides_to_unknown_amount() {
+        let single1 = MockSingle {
+            user_input_account_id: "A".to_string(),
+            inferred_amount: None,
+            inferred_is_debit: None,
+            ..Default::default()
+        };
+        let single2 = MockSingle {
+            user_input_account_id: "B".to_string(),
+            inferred_amount: Some(6.0),
+            inferred_is_debit: None,
+            ..Default::default()
+        };
+        let single3 = MockSingle {
+            user_input_account_id: "C".to_string(),
+            inferred_amount: Some(3.0),
+            inferred_is_debit: Some(true),
+            ..Default::default()
+        };
+        let single4 = MockSingle {
+            user_input_account_id: "D".to_string(),
+            inferred_amount: Some(7.0),
+            inferred_is_debit: None,
+            ..Default::default()
+        };
+
+        let double = MockDouble {
+            singles: vec![single1, single2, single3, single4],
+        };
+        let mut container = MockEntryContainer {
+            doubles: vec![double],
+        };
+
+        // Call the function
+        vertical_infer_for_is_debit(&mut container);
+
+        // Verify results
+        let updated_double = &container.doubles[0];
+
+        // The debit and credit totals must be equal.
+        let total_debit: f64 = updated_double
+            .singles
+            .iter()
+            .filter(|s| s.inferred_is_debit == Some(true))
+            .map(|s| s.inferred_amount.unwrap_or(0.0))
+            .sum();
+        let total_credit: f64 = updated_double
+            .singles
+            .iter()
+            .filter(|s| s.inferred_is_debit == Some(false))
+            .map(|s| s.inferred_amount.unwrap_or(0.0))
+            .sum();
+
+        assert_eq!(total_debit, 9.0);
+        assert_eq!(total_credit, 7.0);
     }
 
     #[test]
