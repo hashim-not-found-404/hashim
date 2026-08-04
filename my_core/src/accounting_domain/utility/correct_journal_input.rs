@@ -603,7 +603,7 @@ fn horizontal_infer_for_quantity_from_amount<C, A>(
                     | accounting_stuff::OutFlowType::Lifo
                     | accounting_stuff::OutFlowType::Hifo
                     | accounting_stuff::OutFlowType::Lofo => {
-                        todo!()
+                        todo!("here i should get the quantity from amount")
                     }
                 }
             }
@@ -643,13 +643,12 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::accounting_domain::utility::accounting_stuff;
     use crate::accounting_domain::utility::accounting_stuff::InventoryRecord;
     use std::collections::HashMap;
 
     // ---------- Dummy inventory ----------
 
-    impl accounting_stuff::Inventory for Vec<InventoryRecord> {
+    impl Inventory for Vec<InventoryRecord> {
         fn push(&mut self, record: accounting_stuff::InventoryRecord) {
             self.push(record);
         }

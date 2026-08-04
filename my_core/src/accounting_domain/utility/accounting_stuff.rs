@@ -1014,49 +1014,7 @@ mod tests {
         }
     }
 
-    // Dummy Inventory – a simple vector wrapper
-    #[derive(Clone, Debug, Default)]
-    struct TestInventory(Vec<InventoryRecord>);
-
-    impl Inventory for TestInventory {
-        fn push(&mut self, record: InventoryRecord) {
-            self.0.push(record);
-        }
-
-        fn clear(&mut self) {
-            self.0.clear();
-        }
-
-        fn is_empty(&self) -> bool {
-            self.0.is_empty()
-        }
-
-        fn iter1(&self) -> impl Iterator<Item = &InventoryRecord> {
-            self.0.iter1()
-        }
-
-        fn iter_mut1(&mut self) -> impl Iterator<Item = &mut InventoryRecord> {
-            self.0.iter_mut1()
-        }
-
-        fn sort_by1<F>(&mut self, compare: F)
-        where
-            F: FnMut(&InventoryRecord, &InventoryRecord) -> std::cmp::Ordering,
-        {
-            self.0.sort_by1(compare)
-        }
-
-        fn retain<F>(&mut self, f: F)
-        where
-            F: FnMut(&InventoryRecord) -> bool,
-        {
-            self.0.retain(f)
-        }
-
-        fn pop(&mut self) -> Option<InventoryRecord> {
-            self.0.pop()
-        }
-    }
+    type TestInventory = Vec<InventoryRecord>;
 
     // AccountInfoProvider that stores nature and inventory per account
     struct TestAccountInfoProvider {
@@ -2472,8 +2430,8 @@ mod tests {
         // Rare case: amount == 0, quantity negative that exactly cancels total
         apply_entry_on_inventory(200, 0.0, 5.0, false, true, &mut inv);
         // Should clear inventory
-        assert_eq!(inv.0[0].quantity, 0.0);
-        assert_eq!(inv.0[0].amount, 10.0);
+        assert_eq!(inv[0].quantity, 0.0);
+        assert_eq!(inv[0].amount, 10.0);
     }
 
     #[test]
@@ -2485,8 +2443,8 @@ mod tests {
             amount:    10.0,
         });
         apply_entry_on_inventory(300, 10.0, 0.0, false, true, &mut inv);
-        assert_eq!(inv.0[0].quantity, 5.0);
-        assert_eq!(inv.0[0].amount, 0.0);
+        assert_eq!(inv[0].quantity, 5.0);
+        assert_eq!(inv[0].amount, 0.0);
     }
 
     // -------------------------------------------------------------------------
