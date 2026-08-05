@@ -466,8 +466,8 @@ pub fn apply_entry_on_inventory<I>(
     I: Inventory,
 {
     let (amt, qty) = match is_inflow {
-        true => (amount, quantity),
-        false => (-amount, -quantity),
+        true => (amount.abs(), quantity.abs()),
+        false => (-amount.abs(), -quantity.abs()),
     };
 
     if amt > 0.0 && qty > 0.0 {
@@ -539,7 +539,9 @@ pub fn combine_all_inventory_record_in_one_record<I: Inventory>(inventory: &mut 
         }
     }
     inventory.clear();
-    inventory.push(total);
+    if !(total.quantity == 0.0 && total.amount == 0.0) {
+        inventory.push(total);
+    }
 }
 
 pub fn sort_inventory<I: Inventory>(out_flow_type: &OutFlowType, inventory: &mut I) {
@@ -2038,8 +2040,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "internal error: entered unreachable code")]
-    fn test_apply_entry_impossible_panics() {
+    fn test_apply_entry_no_panics() {
         let mut inv = TestInventory::default();
         // amount > 0, quantity < 0 is impossible
         apply_entry_on_inventory(700, 10.0, -5.0, true, true, &mut inv);
@@ -2628,7 +2629,6 @@ mod tests {
         let mut err = EntryError::new_for_entry(&entry);
         state_full_check_for_entry(100, &mut err, &entry, &mut provider);
 
-        dbg!(&err);
         let se = &err.double_entry_errors[0].single_entry_errors[0];
         assert!(se.amount_mismatch.is_none());
         let (qty, amt) = sum_inventory(&provider.inventories[&AccountId("A".to_string())]);

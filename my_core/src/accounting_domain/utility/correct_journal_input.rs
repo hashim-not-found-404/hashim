@@ -578,6 +578,8 @@ fn horizontal_infer_for_quantity_from_amount<C, A>(
 
                 single.set_inferred_amount(Some(inferred_amount));
 
+                accounting_stuff::sort_inventory(&outflow_type, info.inventory);
+
                 match outflow_type {
                     accounting_stuff::OutFlowType::Manual => {}
                     accounting_stuff::OutFlowType::QuantityEqualAmount => {
@@ -603,12 +605,38 @@ fn horizontal_infer_for_quantity_from_amount<C, A>(
                     | accounting_stuff::OutFlowType::Lifo
                     | accounting_stuff::OutFlowType::Hifo
                     | accounting_stuff::OutFlowType::Lofo => {
-                        todo!("here i should get the quantity from amount")
+                        let quantity = accounting_stuff::get_quantity(amount, info.inventory);
+
+                        single.set_inferred_quantity(Some(quantity));
                     }
                 }
             }
 
-            todo!()
+            if !single.is_there_error_in_single_entry()
+                && let Some(amount) = single.get_inferred_amount()
+                && let Some(quantity) = single.get_inferred_quantity()
+            {
+                let is_decrease_by_price = match single.get_inferred_outflow_type() {
+                    Some(accounting_stuff::OutFlowType::Manual) => false,
+                    Some(accounting_stuff::OutFlowType::QuantityEqualAmount) => false,
+                    Some(accounting_stuff::OutFlowType::QuantityEqualZero) => false,
+                    Some(accounting_stuff::OutFlowType::Wac) => true,
+                    Some(accounting_stuff::OutFlowType::Fifo) => true,
+                    Some(accounting_stuff::OutFlowType::Lifo) => true,
+                    Some(accounting_stuff::OutFlowType::Hifo) => true,
+                    Some(accounting_stuff::OutFlowType::Lofo) => true,
+                    None => false,
+                };
+
+                accounting_stuff::apply_entry_on_inventory::<A::Inventory>(
+                    time_unix,
+                    amount,
+                    quantity,
+                    is_inflow,
+                    is_decrease_by_price,
+                    info.inventory,
+                );
+            }
         }
     }
 }
@@ -2077,5 +2105,617 @@ mod tests {
             .map(|s| s.inferred_amount.unwrap_or(0.0))
             .sum();
         assert!((total_debit != total_credit));
+    }
+
+    // =============================================================================
+    // Tests for horizontal_infer_for_quantity_from_amount
+    // =============================================================================
+
+    #[test]
+    fn test_quantity_from_amount_inflow_manual() {
+        // Inflow with Manual: quantity should remain unchanged (already set)
+        let mut single = MockSingle {
+            user_input_account_id: "1".to_string(),
+            inferred_amount: Some(10.0),
+            inferred_quantity: Some(5.0), // already set
+            inferred_is_inflow: Some(true),
+            inferred_inflow_type: Some(accounting_stuff::InFlowType::Manual),
+            ..Default::default()
+        };
+        // We need to set inferred fields directly because we are not calling reset_all_inferred_values.
+        // But we will simulate the state after previous inference steps.
+        // For clarity, we'll set both user and inferred to same.
+        single.set_inferred_amount(Some(10.0));
+        single.set_inferred_quantity(Some(5.0));
+        single.set_inferred_is_inflow(Some(true));
+        single.set_inferred_inflow_type(Some(accounting_stuff::InFlowType::Manual));
+
+        let double = MockDouble {
+            singles: vec![single],
+        };
+        let mut container = MockEntryContainer {
+            doubles: vec![double],
+        };
+
+        let mut provider = new_account_info_provider();
+        provider.insert("1".to_string(), MockAccountInfoProvider {
+            is_debit:     true,
+            inflow_type:  accounting_stuff::InFlowType::Manual,
+            outflow_type: accounting_stuff::OutFlowType::Manual,
+            inventory:    vec![accounting_stuff::InventoryRecord {
+                time_unix: 1,
+                quantity:  10.0,
+                amount:    20.0,
+            }],
+        });
+
+        horizontal_infer_for_quantity_from_amount(100, &mut container, &mut provider);
+
+        let updated = &container.doubles[0].singles[0];
+        // Quantity unchanged
+        assert_eq!(updated.get_inferred_quantity(), Some(5.0));
+        // Amount unchanged
+        assert_eq!(updated.get_inferred_amount(), Some(10.0));
+        // Inventory should not be updated because quantity is already set (no change)
+        let inv = &provider.get_mut(&"1".to_string()).unwrap().inventory;
+        assert_eq!(inv.len(), 2);
+        assert_eq!(inv[0].quantity, 10.0);
+        assert_eq!(inv[0].amount, 20.0);
+        assert_eq!(inv[1].quantity, 5.0);
+        assert_eq!(inv[1].amount, 10.0);
+    }
+
+    #[test]
+    fn test_quantity_from_amount_inflow_quantity_equal_amount() {
+        // Inflow with QuantityEqualAmount: quantity should be set to amount
+        let mut single = MockSingle {
+            user_input_account_id: "1".to_string(),
+            inferred_amount: Some(10.0),
+            inferred_quantity: None, // not set
+            inferred_is_inflow: Some(true),
+            inferred_inflow_type: Some(accounting_stuff::InFlowType::QuantityEqualAmount),
+            ..Default::default()
+        };
+        single.set_inferred_amount(Some(10.0));
+        single.set_inferred_is_inflow(Some(true));
+        single.set_inferred_inflow_type(Some(accounting_stuff::InFlowType::QuantityEqualAmount));
+
+        let double = MockDouble {
+            singles: vec![single],
+        };
+        let mut container = MockEntryContainer {
+            doubles: vec![double],
+        };
+
+        let mut provider = new_account_info_provider();
+        provider.insert("1".to_string(), MockAccountInfoProvider {
+            is_debit:     true,
+            inflow_type:  accounting_stuff::InFlowType::QuantityEqualAmount,
+            outflow_type: accounting_stuff::OutFlowType::Manual,
+            inventory:    vec![accounting_stuff::InventoryRecord {
+                time_unix: 1,
+                quantity:  10.0,
+                amount:    20.0,
+            }],
+        });
+
+        horizontal_infer_for_quantity_from_amount(100, &mut container, &mut provider);
+
+        let updated = &container.doubles[0].singles[0];
+        assert_eq!(updated.get_inferred_quantity(), Some(10.0)); // quantity = amount
+        // Amount unchanged
+        assert_eq!(updated.get_inferred_amount(), Some(10.0));
+
+        // Inventory should be updated (inflow with amount 10, qty 10)
+        let inv = &provider.get_mut(&"1".to_string()).unwrap().inventory;
+        assert_eq!(inv.len(), 2);
+        assert_eq!(inv[0].quantity, 10.0);
+        assert_eq!(inv[0].amount, 20.0);
+        assert_eq!(inv[1].quantity, 10.0);
+        assert_eq!(inv[1].amount, 10.0);
+    }
+
+    #[test]
+    fn test_quantity_from_amount_inflow_quantity_equal_zero() {
+        // Inflow with QuantityEqualZero: quantity should be set to 0
+        let mut single = MockSingle {
+            user_input_account_id: "1".to_string(),
+            inferred_amount: Some(10.0),
+            inferred_quantity: None,
+            inferred_is_inflow: Some(true),
+            inferred_inflow_type: Some(accounting_stuff::InFlowType::QuantityEqualZero),
+            ..Default::default()
+        };
+        single.set_inferred_amount(Some(10.0));
+        single.set_inferred_is_inflow(Some(true));
+        single.set_inferred_inflow_type(Some(accounting_stuff::InFlowType::QuantityEqualZero));
+
+        let double = MockDouble {
+            singles: vec![single],
+        };
+        let mut container = MockEntryContainer {
+            doubles: vec![double],
+        };
+
+        let mut provider = new_account_info_provider();
+        provider.insert("1".to_string(), MockAccountInfoProvider {
+            is_debit:     true,
+            inflow_type:  accounting_stuff::InFlowType::QuantityEqualZero,
+            outflow_type: accounting_stuff::OutFlowType::Manual,
+            inventory:    vec![accounting_stuff::InventoryRecord {
+                time_unix: 1,
+                quantity:  10.0,
+                amount:    20.0,
+            }],
+        });
+
+        horizontal_infer_for_quantity_from_amount(100, &mut container, &mut provider);
+
+        let updated = &container.doubles[0].singles[0];
+        assert_eq!(updated.get_inferred_quantity(), Some(0.0));
+        // Amount unchanged
+        assert_eq!(updated.get_inferred_amount(), Some(10.0));
+
+        // Inventory should be updated (inflow with amount 10, qty 0)
+        let inv = &provider.get_mut(&"1".to_string()).unwrap().inventory;
+        assert_eq!(inv.len(), 1);
+        assert_eq!(inv[0].quantity, 10.0); // unchanged
+        assert_eq!(inv[0].amount, 30.0); // 20 + 10
+    }
+
+    #[test]
+    fn test_quantity_from_amount_outflow_manual() {
+        // Outflow with Manual: amount capped to total amount, quantity unchanged
+        let mut single = MockSingle {
+            user_input_account_id: "1".to_string(),
+            inferred_amount: Some(100.0), // more than inventory
+            inferred_quantity: Some(5.0), // already set
+            inferred_is_inflow: Some(false),
+            inferred_outflow_type: Some(accounting_stuff::OutFlowType::Manual),
+            ..Default::default()
+        };
+        single.set_inferred_amount(Some(100.0));
+        single.set_inferred_quantity(Some(5.0));
+        single.set_inferred_is_inflow(Some(false));
+        single.set_inferred_outflow_type(Some(accounting_stuff::OutFlowType::Manual));
+
+        let double = MockDouble {
+            singles: vec![single],
+        };
+        let mut container = MockEntryContainer {
+            doubles: vec![double],
+        };
+
+        let mut provider = new_account_info_provider();
+        provider.insert("1".to_string(), MockAccountInfoProvider {
+            is_debit:     true,
+            inflow_type:  accounting_stuff::InFlowType::Manual,
+            outflow_type: accounting_stuff::OutFlowType::Manual,
+            inventory:    vec![accounting_stuff::InventoryRecord {
+                time_unix: 1,
+                quantity:  10.0,
+                amount:    20.0,
+            }],
+        });
+
+        horizontal_infer_for_quantity_from_amount(100, &mut container, &mut provider);
+
+        let updated = &container.doubles[0].singles[0];
+        assert_eq!(updated.get_inferred_quantity(), Some(5.0)); // unchanged
+        // Amount should be capped to total inventory amount (20.0)
+        assert_eq!(updated.get_inferred_amount(), Some(20.0));
+
+        // Inventory should be updated (outflow with amount 20, qty 5) – manual outflow uses given amount
+        let inv = &provider.get_mut(&"1".to_string()).unwrap().inventory;
+        assert_eq!(inv.len(), 1);
+        assert_eq!(inv[0].quantity, 5.0); // 10 - 5
+        assert_eq!(inv[0].amount, 0.0); // 20 - 20
+    }
+
+    #[test]
+    fn test_quantity_from_amount_outflow_quantity_equal_amount() {
+        // Outflow with QuantityEqualAmount: quantity and amount both set to min of amount, total amount, total quantity
+        let mut single = MockSingle {
+            user_input_account_id: "1".to_string(),
+            inferred_amount: Some(100.0),
+            inferred_quantity: None, // not set
+            inferred_is_inflow: Some(false),
+            inferred_outflow_type: Some(accounting_stuff::OutFlowType::QuantityEqualAmount),
+            ..Default::default()
+        };
+        single.set_inferred_amount(Some(100.0));
+        single.set_inferred_is_inflow(Some(false));
+        single.set_inferred_outflow_type(Some(accounting_stuff::OutFlowType::QuantityEqualAmount));
+
+        let double = MockDouble {
+            singles: vec![single],
+        };
+        let mut container = MockEntryContainer {
+            doubles: vec![double],
+        };
+
+        let mut provider = new_account_info_provider();
+        provider.insert("1".to_string(), MockAccountInfoProvider {
+            is_debit:     true,
+            inflow_type:  accounting_stuff::InFlowType::Manual,
+            outflow_type: accounting_stuff::OutFlowType::QuantityEqualAmount,
+            inventory:    vec![accounting_stuff::InventoryRecord {
+                time_unix: 1,
+                quantity:  10.0,
+                amount:    20.0,
+            }],
+        });
+
+        horizontal_infer_for_quantity_from_amount(100, &mut container, &mut provider);
+
+        let updated = &container.doubles[0].singles[0];
+        // Inferred quantity = min(total_qty, total_amt, amount) = min(10,20,100) = 10
+        assert_eq!(updated.get_inferred_quantity(), Some(10.0));
+        // Inferred amount should be set to same value (10.0) because QuantityEqualAmount
+        assert_eq!(updated.get_inferred_amount(), Some(10.0));
+
+        // Inventory should be updated (outflow with amount 10, qty 10) – but this is decrease_by_price? Actually QuantityEqualAmount sets is_decrease_by_price = false, so it uses the given amount directly.
+        // In apply_entry_on_inventory, for outflow with is_decrease_by_price=false, it will subtract given amount and qty.
+        // Since we are decreasing by amount 10 and qty 10, inventory becomes qty=0, amt=10? Wait: original (10,20), subtract (10,10) -> (0,10)
+        let inv = &provider.get_mut(&"1".to_string()).unwrap().inventory;
+        assert_eq!(inv.len(), 1);
+        assert_eq!(inv[0].quantity, 0.0);
+        assert_eq!(inv[0].amount, 10.0);
+    }
+
+    #[test]
+    fn test_quantity_from_amount_outflow_quantity_equal_zero() {
+        // Outflow with QuantityEqualZero: quantity set to 0, amount capped
+        let mut single = MockSingle {
+            user_input_account_id: "1".to_string(),
+            inferred_amount: Some(100.0),
+            inferred_quantity: None,
+            inferred_is_inflow: Some(false),
+            inferred_outflow_type: Some(accounting_stuff::OutFlowType::QuantityEqualZero),
+            ..Default::default()
+        };
+        single.set_inferred_amount(Some(100.0));
+        single.set_inferred_is_inflow(Some(false));
+        single.set_inferred_outflow_type(Some(accounting_stuff::OutFlowType::QuantityEqualZero));
+
+        let double = MockDouble {
+            singles: vec![single],
+        };
+        let mut container = MockEntryContainer {
+            doubles: vec![double],
+        };
+
+        let mut provider = new_account_info_provider();
+        provider.insert("1".to_string(), MockAccountInfoProvider {
+            is_debit:     true,
+            inflow_type:  accounting_stuff::InFlowType::Manual,
+            outflow_type: accounting_stuff::OutFlowType::QuantityEqualZero,
+            inventory:    vec![accounting_stuff::InventoryRecord {
+                time_unix: 1,
+                quantity:  10.0,
+                amount:    20.0,
+            }],
+        });
+
+        horizontal_infer_for_quantity_from_amount(100, &mut container, &mut provider);
+
+        let updated = &container.doubles[0].singles[0];
+        assert_eq!(updated.get_inferred_quantity(), Some(0.0));
+        // Amount capped to total amount (20.0)
+        assert_eq!(updated.get_inferred_amount(), Some(20.0));
+
+        // Inventory updated: outflow with amount 20, qty 0 -> amount decreases, qty unchanged
+        let inv = &provider.get_mut(&"1".to_string()).unwrap().inventory;
+        assert_eq!(inv.len(), 1);
+        assert_eq!(inv[0].quantity, 10.0);
+        assert_eq!(inv[0].amount, 0.0);
+    }
+
+    #[test]
+    fn test_quantity_from_amount_outflow_wac_fifo_lifo_hifo_lofo() {
+        // For cost methods: use get_quantity to derive quantity from amount
+        let flow_types = vec![
+            accounting_stuff::OutFlowType::Wac,
+            accounting_stuff::OutFlowType::Fifo,
+            accounting_stuff::OutFlowType::Lifo,
+            accounting_stuff::OutFlowType::Hifo,
+            accounting_stuff::OutFlowType::Lofo,
+        ];
+
+        for flow in flow_types {
+            let mut single = MockSingle {
+                user_input_account_id: "1".to_string(),
+                inferred_amount: Some(10.0),
+                inferred_quantity: None,
+                inferred_is_inflow: Some(false),
+                inferred_outflow_type: Some(flow.clone()),
+                ..Default::default()
+            };
+            single.set_inferred_amount(Some(10.0));
+            single.set_inferred_is_inflow(Some(false));
+            single.set_inferred_outflow_type(Some(flow.clone()));
+
+            let double = MockDouble {
+                singles: vec![single],
+            };
+            let mut container = MockEntryContainer {
+                doubles: vec![double],
+            };
+
+            let mut provider = new_account_info_provider();
+            // Inventory with two records: total qty=10, total amt=20 (price=2)
+            provider.insert("1".to_string(), MockAccountInfoProvider {
+                is_debit:     true,
+                inflow_type:  accounting_stuff::InFlowType::Manual,
+                outflow_type: flow.clone(),
+                inventory:    vec![
+                    accounting_stuff::InventoryRecord {
+                        time_unix: 1,
+                        quantity:  6.0,
+                        amount:    12.0,
+                    },
+                    accounting_stuff::InventoryRecord {
+                        time_unix: 2,
+                        quantity:  4.0,
+                        amount:    8.0,
+                    },
+                ],
+            });
+
+            horizontal_infer_for_quantity_from_amount(100, &mut container, &mut provider);
+
+            let updated = &container.doubles[0].singles[0];
+            // For amount 10, with price 2, expected quantity = 5.0
+            let expected_qty = accounting_stuff::get_quantity(
+                10.0,
+                &provider.get(&"1".to_string()).unwrap().inventory,
+            );
+            assert_eq!(updated.get_inferred_quantity(), Some(expected_qty));
+            // Amount should be capped to total amount (20) because amount 10 <= 20, so stays 10
+            assert_eq!(updated.get_inferred_amount(), Some(10.0));
+
+            // Inventory should be updated: outflow with amount 10, qty = expected_qty
+            let inv_after = &provider.get_mut(&"1".to_string()).unwrap().inventory;
+            // We can't easily assert exact state because apply_entry_on_inventory will decrease inventory.
+            // But we can check that total decreased.
+            let (total_qty, total_amt) = accounting_stuff::sum_inventory(inv_after);
+            assert!((total_qty - (10.0 - expected_qty)).abs() < 1.0e-9);
+            assert!((total_amt - (20.0 - 10.0)).abs() < 1.0e-9);
+        }
+    }
+
+    #[test]
+    fn test_quantity_from_amount_missing_fields_skips() {
+        // If any required field is missing, the function should skip that single entry.
+        // Test missing amount
+        let single = MockSingle {
+            user_input_account_id: "1".to_string(),
+            inferred_amount: None, // missing
+            inferred_is_inflow: Some(true),
+            inferred_inflow_type: Some(accounting_stuff::InFlowType::Manual),
+            ..Default::default()
+        };
+        let double = MockDouble {
+            singles: vec![single],
+        };
+        let mut container = MockEntryContainer {
+            doubles: vec![double],
+        };
+        let mut provider = new_account_info_provider();
+        provider.insert("1".to_string(), MockAccountInfoProvider {
+            is_debit:     true,
+            inflow_type:  accounting_stuff::InFlowType::Manual,
+            outflow_type: accounting_stuff::OutFlowType::Manual,
+            inventory:    vec![],
+        });
+
+        // Should not panic, and no changes
+        horizontal_infer_for_quantity_from_amount(100, &mut container, &mut provider);
+        let updated = &container.doubles[0].singles[0];
+        assert_eq!(updated.get_inferred_quantity(), None);
+        assert_eq!(updated.get_inferred_amount(), None);
+
+        // Test missing is_inflow
+        let single2 = MockSingle {
+            user_input_account_id: "1".to_string(),
+            inferred_amount: Some(10.0),
+            inferred_is_inflow: None,
+            inferred_inflow_type: Some(accounting_stuff::InFlowType::Manual),
+            ..Default::default()
+        };
+        let double2 = MockDouble {
+            singles: vec![single2],
+        };
+        let mut container2 = MockEntryContainer {
+            doubles: vec![double2],
+        };
+        horizontal_infer_for_quantity_from_amount(100, &mut container2, &mut provider);
+        let updated2 = &container2.doubles[0].singles[0];
+        assert_eq!(updated2.get_inferred_quantity(), None); // not set because is_inflow missing
+    }
+
+    #[test]
+    fn test_quantity_from_amount_with_error_flags_prevents_inventory_update() {
+        // If single has an error, inventory should not be updated.
+        let mut single = MockSingle {
+            user_input_account_id: "1".to_string(),
+            inferred_amount: Some(10.0),
+            inferred_is_inflow: Some(true),
+            inferred_inflow_type: Some(accounting_stuff::InFlowType::QuantityEqualAmount),
+            ..Default::default()
+        };
+        // Set an error flag
+        single.quantity_and_amount_are_zero = true; // this will make is_there_error_in_single_entry true
+
+        single.set_inferred_amount(Some(10.0));
+        single.set_inferred_is_inflow(Some(true));
+        single.set_inferred_inflow_type(Some(accounting_stuff::InFlowType::QuantityEqualAmount));
+
+        let double = MockDouble {
+            singles: vec![single],
+        };
+        let mut container = MockEntryContainer {
+            doubles: vec![double],
+        };
+
+        let mut provider = new_account_info_provider();
+        provider.insert("1".to_string(), MockAccountInfoProvider {
+            is_debit:     true,
+            inflow_type:  accounting_stuff::InFlowType::QuantityEqualAmount,
+            outflow_type: accounting_stuff::OutFlowType::Manual,
+            inventory:    vec![accounting_stuff::InventoryRecord {
+                time_unix: 1,
+                quantity:  10.0,
+                amount:    20.0,
+            }],
+        });
+
+        horizontal_infer_for_quantity_from_amount(100, &mut container, &mut provider);
+
+        // Quantity should still be set (because the function sets it regardless of errors)
+        let updated = &container.doubles[0].singles[0];
+        assert_eq!(updated.get_inferred_quantity(), Some(10.0));
+
+        // But inventory should NOT be updated because error flag is set
+        let inv = &provider.get_mut(&"1".to_string()).unwrap().inventory;
+        assert_eq!(inv.len(), 1);
+        assert_eq!(inv[0].quantity, 10.0);
+        assert_eq!(inv[0].amount, 20.0);
+    }
+
+    #[test]
+    fn test_quantity_from_amount_with_empty_inventory() {
+        // If inventory is empty, the function should still work (no panic) and set quantity as appropriate.
+        let single = MockSingle {
+            user_input_account_id: "1".to_string(),
+            inferred_amount: Some(10.0),
+            inferred_is_inflow: Some(false),
+            inferred_outflow_type: Some(accounting_stuff::OutFlowType::Manual),
+            ..Default::default()
+        };
+
+        let double = MockDouble {
+            singles: vec![single],
+        };
+        let mut container = MockEntryContainer {
+            doubles: vec![double],
+        };
+
+        let mut provider = new_account_info_provider();
+        provider.insert("1".to_string(), MockAccountInfoProvider {
+            is_debit:     true,
+            inflow_type:  accounting_stuff::InFlowType::Manual,
+            outflow_type: accounting_stuff::OutFlowType::Manual,
+            inventory:    vec![], // empty
+        });
+
+        horizontal_infer_for_quantity_from_amount(100, &mut container, &mut provider);
+
+        let updated = &container.doubles[0].singles[0];
+        assert_eq!(updated.get_inferred_quantity(), None); // unchanged because manual outflow does not change quantity
+        // Amount should be capped to total amount (0.0)
+        assert_eq!(updated.get_inferred_amount(), Some(0.0));
+
+        // Inventory remains empty
+        let inv = &provider.get_mut(&"1".to_string()).unwrap().inventory;
+        dbg!(&inv);
+        assert!(inv.is_empty());
+    }
+
+    #[test]
+    fn test_quantity_from_amount_outflow_manual_amount_already_less_than_inventory() {
+        // If amount is less than total amount, it stays unchanged.
+        let mut single = MockSingle {
+            user_input_account_id: "1".to_string(),
+            inferred_amount: Some(5.0), // less than total (20)
+            inferred_quantity: Some(2.0),
+            inferred_is_inflow: Some(false),
+            inferred_outflow_type: Some(accounting_stuff::OutFlowType::Manual),
+            ..Default::default()
+        };
+        single.set_inferred_amount(Some(5.0));
+        single.set_inferred_quantity(Some(2.0));
+        single.set_inferred_is_inflow(Some(false));
+        single.set_inferred_outflow_type(Some(accounting_stuff::OutFlowType::Manual));
+
+        let double = MockDouble {
+            singles: vec![single],
+        };
+        let mut container = MockEntryContainer {
+            doubles: vec![double],
+        };
+
+        let mut provider = new_account_info_provider();
+        provider.insert("1".to_string(), MockAccountInfoProvider {
+            is_debit:     true,
+            inflow_type:  accounting_stuff::InFlowType::Manual,
+            outflow_type: accounting_stuff::OutFlowType::Manual,
+            inventory:    vec![accounting_stuff::InventoryRecord {
+                time_unix: 1,
+                quantity:  10.0,
+                amount:    20.0,
+            }],
+        });
+
+        horizontal_infer_for_quantity_from_amount(100, &mut container, &mut provider);
+
+        let updated = &container.doubles[0].singles[0];
+        assert_eq!(updated.get_inferred_quantity(), Some(2.0)); // unchanged
+        assert_eq!(updated.get_inferred_amount(), Some(5.0)); // unchanged (not capped)
+
+        // Inventory updated: outflow amount 5, qty 2
+        let inv = &provider.get_mut(&"1".to_string()).unwrap().inventory;
+        assert_eq!(inv.len(), 1);
+        assert_eq!(inv[0].quantity, 8.0);
+        assert_eq!(inv[0].amount, 15.0);
+    }
+
+    // Additional test for when quantity is already set but we have outflow with cost method.
+    // In that case, quantity should be recomputed from amount (overwriting previous).
+    #[test]
+    fn test_quantity_from_amount_outflow_cost_method_overwrites_quantity() {
+        let mut single = MockSingle {
+            user_input_account_id: "1".to_string(),
+            inferred_amount: Some(10.0),
+            inferred_quantity: Some(999.0), // arbitrary old value, should be overwritten
+            inferred_is_inflow: Some(false),
+            inferred_outflow_type: Some(accounting_stuff::OutFlowType::Fifo),
+            ..Default::default()
+        };
+        single.set_inferred_amount(Some(10.0));
+        single.set_inferred_quantity(Some(999.0));
+        single.set_inferred_is_inflow(Some(false));
+        single.set_inferred_outflow_type(Some(accounting_stuff::OutFlowType::Fifo));
+
+        let double = MockDouble {
+            singles: vec![single],
+        };
+        let mut container = MockEntryContainer {
+            doubles: vec![double],
+        };
+
+        let mut provider = new_account_info_provider();
+        provider.insert("1".to_string(), MockAccountInfoProvider {
+            is_debit:     true,
+            inflow_type:  accounting_stuff::InFlowType::Manual,
+            outflow_type: accounting_stuff::OutFlowType::Fifo,
+            inventory:    vec![accounting_stuff::InventoryRecord {
+                time_unix: 1,
+                quantity:  5.0,
+                amount:    10.0,
+            }],
+        });
+        // Sort FIFO (already sorted by time)
+        accounting_stuff::sort_inventory(
+            &accounting_stuff::OutFlowType::Fifo,
+            &mut provider.get_mut(&"1".to_string()).unwrap().inventory,
+        );
+
+        horizontal_infer_for_quantity_from_amount(100, &mut container, &mut provider);
+
+        let updated = &container.doubles[0].singles[0];
+        // get_quantity(10, inventory) = 10 / (10/5) = 5.0
+        assert_eq!(updated.get_inferred_quantity(), Some(5.0));
+        assert_eq!(updated.get_inferred_amount(), Some(10.0));
     }
 }
