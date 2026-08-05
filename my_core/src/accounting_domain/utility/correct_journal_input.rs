@@ -628,7 +628,7 @@ fn horizontal_infer_for_quantity_from_amount<C, A>(
     }
 }
 
-fn correct_the_input<C, A>(time_unix: u64, entry: &mut C, mut account_info: A)
+fn correct_the_input<C, A>(time_unix: u64, entry: &mut C, account_info: A)
 where
     C: EntryContainer,
     C::Double: DoubleEntry + Clone,
