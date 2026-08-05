@@ -8,7 +8,7 @@ use std::collections::HashSet;
 use std::hash::Hash;
 
 pub trait SingleEntry {
-    type AccountId: Eq + Hash + Clone;
+    type AccountId: Eq + Hash;
 
     fn get_account_id(&self) -> Self::AccountId;
 
@@ -39,25 +39,10 @@ pub trait SingleEntry {
     fn get_inferred_amount(&self) -> Option<f64>;
     fn get_inferred_inflow_type(&self) -> Option<accounting_stuff::InFlowType>;
     fn get_inferred_outflow_type(&self) -> Option<accounting_stuff::OutFlowType>;
-
-    // Errors
-
-    fn is_there_error_in_single_entry(&self) -> bool;
-
-    fn quantity_and_amount_are_zero(&mut self);
-    fn duplicate_account_in_entry(&mut self);
-    fn inventory_is_empty(&mut self);
-    fn the_amount_should_be_positive(&mut self);
-    fn the_quantity_should_be_positive(&mut self);
-    fn quantity_not_equal_amount(&mut self);
-    fn quantity_not_equal_zero(&mut self);
-    fn insufficient_quantity_in_inventory(&mut self, total_quantity: f64);
-    fn amount_mismatch(&mut self, expected_amount: f64);
-    fn insufficient_amount_in_inventory(&mut self, total_amount: f64);
 }
 
 pub trait AccountInfoProvider {
-    type AccountId: Eq + Hash + Clone;
+    type AccountId: Eq + Hash;
     type Inventory: Inventory;
 
     fn get_info<'a>(&'a mut self, id: &Self::AccountId)
@@ -327,8 +312,7 @@ fn horizontal_infer_for_amount_from_quantity<C, A>(
                 };
             }
 
-            if !single.is_there_error_in_single_entry()
-                && let Some(amount) = single.get_inferred_amount()
+            if let Some(amount) = single.get_inferred_amount()
                 && let Some(quantity) = single.get_inferred_quantity()
             {
                 let is_decrease_by_price = match single.get_inferred_outflow_type() {
@@ -612,8 +596,7 @@ fn horizontal_infer_for_quantity_from_amount<C, A>(
                 }
             }
 
-            if !single.is_there_error_in_single_entry()
-                && let Some(amount) = single.get_inferred_amount()
+            if let Some(amount) = single.get_inferred_amount()
                 && let Some(quantity) = single.get_inferred_quantity()
             {
                 let is_decrease_by_price = match single.get_inferred_outflow_type() {
@@ -855,60 +838,6 @@ mod tests {
 
         fn get_inferred_outflow_type(&self) -> Option<accounting_stuff::OutFlowType> {
             self.inferred_outflow_type.clone()
-        }
-
-        // ---------- Error methods ----------
-        fn is_there_error_in_single_entry(&self) -> bool {
-            self.quantity_and_amount_are_zero
-                || self.duplicate_account_in_entry
-                || self.inventory_is_empty
-                || self.the_amount_should_be_positive
-                || self.the_quantity_should_be_positive
-                || self.quantity_not_equal_amount
-                || self.quantity_not_equal_zero
-                || self.insufficient_quantity_in_inventory.is_some()
-                || self.amount_mismatch.is_some()
-                || self.insufficient_amount_in_inventory.is_some()
-        }
-
-        fn quantity_and_amount_are_zero(&mut self) {
-            self.quantity_and_amount_are_zero = true;
-        }
-
-        fn duplicate_account_in_entry(&mut self) {
-            self.duplicate_account_in_entry = true;
-        }
-
-        fn inventory_is_empty(&mut self) {
-            self.inventory_is_empty = true;
-        }
-
-        fn the_amount_should_be_positive(&mut self) {
-            self.the_amount_should_be_positive = true;
-        }
-
-        fn the_quantity_should_be_positive(&mut self) {
-            self.the_quantity_should_be_positive = true;
-        }
-
-        fn quantity_not_equal_amount(&mut self) {
-            self.quantity_not_equal_amount = true;
-        }
-
-        fn quantity_not_equal_zero(&mut self) {
-            self.quantity_not_equal_zero = true;
-        }
-
-        fn insufficient_quantity_in_inventory(&mut self, total_quantity: f64) {
-            self.insufficient_quantity_in_inventory = Some(total_quantity);
-        }
-
-        fn amount_mismatch(&mut self, expected_amount: f64) {
-            self.amount_mismatch = Some(expected_amount);
-        }
-
-        fn insufficient_amount_in_inventory(&mut self, total_amount: f64) {
-            self.insufficient_amount_in_inventory = Some(total_amount);
         }
     }
 
@@ -1511,8 +1440,6 @@ mod tests {
         assert_eq!(updated.get_inferred_quantity(), Some(5.0));
         // Amount should be capped at 50.0 (total inventory amount)
         assert_eq!(updated.get_inferred_amount(), Some(50.0));
-        // No error flags set
-        assert!(!updated.is_there_error_in_single_entry());
     }
 
     #[test]
@@ -2535,21 +2462,14 @@ mod tests {
     }
 
     #[test]
-    fn test_quantity_from_amount_with_error_flags_prevents_inventory_update() {
-        // If single has an error, inventory should not be updated.
-        let mut single = MockSingle {
+    fn test_quantity_from_amount() {
+        let single = MockSingle {
             user_input_account_id: "1".to_string(),
             inferred_amount: Some(10.0),
             inferred_is_inflow: Some(true),
             inferred_inflow_type: Some(accounting_stuff::InFlowType::QuantityEqualAmount),
             ..Default::default()
         };
-        // Set an error flag
-        single.quantity_and_amount_are_zero = true; // this will make is_there_error_in_single_entry true
-
-        single.set_inferred_amount(Some(10.0));
-        single.set_inferred_is_inflow(Some(true));
-        single.set_inferred_inflow_type(Some(accounting_stuff::InFlowType::QuantityEqualAmount));
 
         let double = MockDouble {
             singles: vec![single],
@@ -2578,9 +2498,11 @@ mod tests {
 
         // But inventory should NOT be updated because error flag is set
         let inv = &provider.get_mut(&"1".to_string()).unwrap().inventory;
-        assert_eq!(inv.len(), 1);
+        assert_eq!(inv.len(), 2);
         assert_eq!(inv[0].quantity, 10.0);
         assert_eq!(inv[0].amount, 20.0);
+        assert_eq!(inv[1].quantity, 10.0);
+        assert_eq!(inv[1].amount, 10.0);
     }
 
     #[test]

@@ -122,46 +122,39 @@ pub struct InventoryRecord {
 // Trait definitions – the core abstraction for accounting logic
 // -----------------------------------------------------------------------------
 
-pub trait ErrorSink {
-    fn is_there_error_single_entry(&self, double_idx: usize, single_idx: usize) -> bool;
+pub(crate) trait SingleEntryError: types::MyErrorTrait {
+    fn quantity_and_amount_are_zero(&mut self);
+    fn duplicate_account_in_entry(&mut self);
+    fn inventory_is_empty(&mut self);
+    fn the_amount_should_be_positive(&mut self);
+    fn the_quantity_should_be_positive(&mut self);
+    fn quantity_not_equal_amount(&mut self);
+    fn quantity_not_equal_zero(&mut self);
+    fn insufficient_quantity_in_inventory(&mut self, total_quantity: f64);
+    fn amount_mismatch(&mut self, expected_amount: f64);
+    fn insufficient_amount_in_inventory(&mut self, total_amount: f64);
+}
 
-    fn quantity_and_amount_are_zero(&mut self, double_idx: usize, single_idx: usize);
-    fn duplicate_account_in_entry(&mut self, double_idx: usize, single_idx: usize);
-    fn inventory_is_empty(&mut self, double_idx: usize, single_idx: usize);
-    fn the_amount_should_be_positive(&mut self, double_idx: usize, single_idx: usize);
-    fn the_quantity_should_be_positive(&mut self, double_idx: usize, single_idx: usize);
-    fn quantity_not_equal_amount(&mut self, double_idx: usize, single_idx: usize);
-    fn quantity_not_equal_zero(&mut self, double_idx: usize, single_idx: usize);
-    fn insufficient_quantity_in_inventory(
-        &mut self,
-        double_idx: usize,
-        single_idx: usize,
-        total_quantity: f64,
-    );
-    fn amount_mismatch(&mut self, double_idx: usize, single_idx: usize, expected_amount: f64);
-    fn insufficient_amount_in_inventory(
-        &mut self,
-        double_idx: usize,
-        single_idx: usize,
-        total_amount: f64,
-    );
+pub(crate) trait DoubleEntryError: types::MyErrorTrait {
+    fn entry_is_empty(&mut self);
+    fn you_need_to_split_the_entry(&mut self);
+    fn debit_not_equal_credit(&mut self, total_debit: f64, total_credit: f64);
+}
 
-    fn entry_is_empty(&mut self, double_idx: usize);
-    fn you_need_to_split_the_entry(&mut self, double_idx: usize);
-    fn debit_not_equal_credit(&mut self, double_idx: usize, total_debit: f64, total_credit: f64);
-
+pub(crate) trait EntryContainerError: types::MyErrorTrait {
     fn container_is_empty(&mut self);
 }
 
 /// Represents a single entry line (e.g., a line in a journal entry).
 pub trait SingleEntry {
-    type AccountId: Eq + Hash + Clone;
+    type AccountId: Eq + Hash;
 
-    fn account_id(&self) -> &Self::AccountId;
+    fn account_id(&self) -> Self::AccountId;
     fn is_debit(&self) -> bool;
     fn quantity(&self) -> f64;
     fn amount(&self) -> f64;
-    fn flow_type(&self) -> (InFlowType, OutFlowType);
+    fn inflow_type(&self) -> InFlowType;
+    fn outflow_type(&self) -> OutFlowType;
 }
 
 pub trait DoubleEntry {
@@ -278,25 +271,24 @@ fn price(amount: f64, quantity: f64) -> f64 {
 // -----------------------------------------------------------------------------
 
 /// State‑less check: only checks the entries themselves, no inventory/account info needed.
-pub(crate) fn state_less_check_for_entry<E, C>(errr: &mut E, entry: &C)
+pub(crate) fn state_less_check_for_entry<C>(entry: &mut C)
 where
-    E: ErrorSink,
-    C: EntryContainer,
-    C::Double: DoubleEntry,
-    <C::Double as DoubleEntry>::Single: SingleEntry,
+    C: EntryContainer + EntryContainerError,
+    C::Double: DoubleEntry + DoubleEntryError,
+    <C::Double as DoubleEntry>::Single: SingleEntry + SingleEntryError + Clone,
 {
     if entry.is_empty() {
-        errr.container_is_empty();
+        entry.container_is_empty();
         return;
     }
 
-    for (double_idx, double) in entry.iter().enumerate() {
+    for double in entry.iter_mut() {
         if double.is_empty() {
-            errr.entry_is_empty(double_idx);
+            double.entry_is_empty();
             continue;
         }
 
-        let mut seen_accounts = HashSet::with_capacity(entry.len());
+        let mut seen_accounts = HashSet::with_capacity(double.len());
 
         let mut total_debit = 0.0;
         let mut total_credit = 0.0;
@@ -304,27 +296,27 @@ where
         let mut debit_side = Vec::new();
         let mut credit_side = Vec::new();
 
-        for (single_idx, single) in double.iter().enumerate() {
-            if !seen_accounts.insert(single.account_id().clone()) {
-                errr.duplicate_account_in_entry(double_idx, single_idx);
+        for single in double.iter_mut() {
+            if !seen_accounts.insert(single.account_id()) {
+                single.duplicate_account_in_entry();
             }
 
             if single.amount() == 0.0 && single.quantity() == 0.0 {
-                errr.quantity_and_amount_are_zero(double_idx, single_idx);
+                single.quantity_and_amount_are_zero();
             }
             if single.amount() < 0.0 {
-                errr.the_amount_should_be_positive(double_idx, single_idx);
+                single.the_amount_should_be_positive();
             }
             if single.quantity() < 0.0 {
-                errr.the_quantity_should_be_positive(double_idx, single_idx);
+                single.the_quantity_should_be_positive();
             }
 
             if single.is_debit() {
                 total_debit += single.amount();
-                debit_side.push(single);
+                debit_side.push(single.clone());
             } else {
                 total_credit += single.amount();
-                credit_side.push(single);
+                credit_side.push(single.clone());
             }
         }
 
@@ -332,41 +324,37 @@ where
             .len()
             > 1
         {
-            errr.you_need_to_split_the_entry(double_idx);
+            double.you_need_to_split_the_entry();
         }
 
         if total_debit != total_credit {
-            errr.debit_not_equal_credit(double_idx, total_debit, total_credit);
+            double.debit_not_equal_credit(total_debit, total_credit);
         }
     }
 }
 
 /// Full validation including account info and inventory.
-pub(crate) fn state_full_check_for_entry<E, C, A>(
-    time_unix: u64,
-    errr: &mut E,
-    entry: &C,
-    account_info: &mut A,
-) where
-    E: ErrorSink,
-    C: EntryContainer,
-    C::Double: DoubleEntry,
-    <C::Double as DoubleEntry>::Single: SingleEntry,
+pub(crate) fn state_full_check_for_entry<C, A>(time_unix: u64, entry: &mut C, account_info: &mut A)
+where
+    C: EntryContainer + EntryContainerError,
+    C::Double: DoubleEntry + DoubleEntryError,
+    <C::Double as DoubleEntry>::Single: SingleEntry + SingleEntryError,
     A: AccountInfoProvider<
         AccountId = <<C::Double as DoubleEntry>::Single as SingleEntry>::AccountId,
     >,
     A::Inventory: Inventory,
 {
-    for (double_idx, double) in entry.iter().enumerate() {
-        for (single_idx, single) in double.iter().enumerate() {
+    for double in entry.iter_mut() {
+        for single in double.iter_mut() {
             let account_id = single.account_id();
-            let nature = account_info.is_debit_nature(account_id);
-            let (in_flow_type, out_flow_type) = single.flow_type();
-            let inventory = account_info.get_or_create_inventory(account_id);
+            let nature = account_info.is_debit_nature(&account_id);
+            let in_flow_type = single.inflow_type();
+            let out_flow_type = single.outflow_type();
+            let inventory = account_info.get_or_create_inventory(&account_id);
 
             // Check if inventory is empty
             if inventory.is_empty() {
-                errr.inventory_is_empty(double_idx, single_idx);
+                single.inventory_is_empty();
             }
 
             let is_inflow = is_inflow(nature, single.is_debit());
@@ -381,12 +369,12 @@ pub(crate) fn state_full_check_for_entry<E, C, A>(
                     InFlowType::Manual => {}
                     InFlowType::QuantityEqualAmount => {
                         if qty != amt {
-                            errr.quantity_not_equal_amount(double_idx, single_idx);
+                            single.quantity_not_equal_amount();
                         }
                     }
                     InFlowType::QuantityEqualZero => {
                         if qty != 0.0 {
-                            errr.quantity_not_equal_zero(double_idx, single_idx);
+                            single.quantity_not_equal_zero();
                         }
                     }
                 }
@@ -394,10 +382,10 @@ pub(crate) fn state_full_check_for_entry<E, C, A>(
                 let (total_qty, total_amt) = sum_inventory(inventory);
                 // Check sufficient amount
                 if total_amt + amt < 0.0 {
-                    errr.insufficient_amount_in_inventory(double_idx, single_idx, total_amt);
+                    single.insufficient_amount_in_inventory(total_amt);
                 }
                 if total_qty + qty < 0.0 {
-                    errr.insufficient_quantity_in_inventory(double_idx, single_idx, total_qty);
+                    single.insufficient_quantity_in_inventory(total_qty);
                 }
 
                 // Sort inventory for the flow type
@@ -413,17 +401,17 @@ pub(crate) fn state_full_check_for_entry<E, C, A>(
                     | OutFlowType::Lofo => {
                         let expected_amount = get_amount(single.quantity(), inventory);
                         if expected_amount != single.amount() {
-                            errr.amount_mismatch(double_idx, single_idx, expected_amount);
+                            single.amount_mismatch(expected_amount);
                         }
                     }
                     OutFlowType::QuantityEqualAmount => {
                         if qty != amt {
-                            errr.quantity_not_equal_amount(double_idx, single_idx);
+                            single.quantity_not_equal_amount();
                         }
                     }
                     OutFlowType::QuantityEqualZero => {
                         if qty != 0.0 {
-                            errr.quantity_not_equal_zero(double_idx, single_idx);
+                            single.quantity_not_equal_zero();
                         }
                     }
                 }
@@ -440,7 +428,7 @@ pub(crate) fn state_full_check_for_entry<E, C, A>(
                 OutFlowType::Lofo => true,
             };
 
-            if !errr.is_there_error_single_entry(double_idx, single_idx) {
+            if !single.is_there_error() {
                 apply_entry_on_inventory::<A::Inventory>(
                     time_unix,
                     single.amount(),
@@ -695,7 +683,7 @@ pub mod wrapper {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::accounting_domain::utility::types;
+    use crate::accounting_domain::utility::accounting_stuff::SingleEntryError;
     use crate::accounting_domain::utility::types::MyErrorTrait;
     use std::collections::HashMap;
 
@@ -724,8 +712,146 @@ mod tests {
         total_amount: f64,
     }
 
-    #[derive(Debug, Clone, PartialEq, Default)]
-    pub(crate) struct SingleEntryError {
+    // -----------------------------------------------------------------------------
+    // ErrorSink implementation for EntryError
+    // -----------------------------------------------------------------------------
+
+    impl MyErrorTrait for TestSingleEntry {
+        fn is_there_error(&self) -> bool {
+            self.quantity_and_amount_are_zero
+                || self.duplicate_account_in_entry
+                || self.inventory_is_empty
+                || self.the_amount_should_be_positive
+                || self.the_quantity_should_be_positive
+                || self.quantity_not_equal_amount
+                || self.quantity_not_equal_zero
+                || self.insufficient_quantity_in_inventory.is_some()
+                || self.amount_mismatch.is_some()
+                || self.insufficient_amount_in_inventory.is_some()
+        }
+    }
+
+    impl SingleEntryError for TestSingleEntry {
+        fn quantity_and_amount_are_zero(&mut self) {
+            self.quantity_and_amount_are_zero = true;
+        }
+
+        fn duplicate_account_in_entry(&mut self) {
+            self.duplicate_account_in_entry = true;
+        }
+
+        fn inventory_is_empty(&mut self) {
+            self.inventory_is_empty = true;
+        }
+
+        fn the_amount_should_be_positive(&mut self) {
+            self.the_amount_should_be_positive = true;
+        }
+
+        fn the_quantity_should_be_positive(&mut self) {
+            self.the_quantity_should_be_positive = true;
+        }
+
+        fn quantity_not_equal_amount(&mut self) {
+            self.quantity_not_equal_amount = true;
+        }
+
+        fn quantity_not_equal_zero(&mut self) {
+            self.quantity_not_equal_zero = true;
+        }
+
+        fn insufficient_quantity_in_inventory(&mut self, total_quantity: f64) {
+            self.insufficient_quantity_in_inventory = Some(InsufficientQuantityInInventory {
+                total_quantity,
+            });
+        }
+
+        fn amount_mismatch(&mut self, expected_amount: f64) {
+            self.amount_mismatch = Some(AmountMismatch {
+                expected_amount,
+            });
+        }
+
+        fn insufficient_amount_in_inventory(&mut self, total_amount: f64) {
+            self.insufficient_amount_in_inventory = Some(InsufficientAmountInInventory {
+                total_amount,
+            });
+        }
+    }
+
+    impl MyErrorTrait for TestDoubleEntry {
+        fn is_there_error(&self) -> bool {
+            if self.entry_is_empty
+                || self.you_need_to_split_the_entry
+                || self.debit_not_equal_credit.is_some()
+            {
+                return true;
+            }
+
+            for i in &self.lines {
+                if i.is_there_error() {
+                    return true;
+                }
+            }
+
+            false
+        }
+    }
+    impl DoubleEntryError for TestDoubleEntry {
+        fn entry_is_empty(&mut self) {
+            self.entry_is_empty = true;
+        }
+
+        fn you_need_to_split_the_entry(&mut self) {
+            self.you_need_to_split_the_entry = true;
+        }
+
+        fn debit_not_equal_credit(&mut self, total_debit: f64, total_credit: f64) {
+            self.debit_not_equal_credit = Some(DebitNotEqualCreditError {
+                total_debit,
+                total_credit,
+            });
+        }
+    }
+
+    impl MyErrorTrait for TestEntryContainer {
+        fn is_there_error(&self) -> bool {
+            if self.container_is_empty {
+                return true;
+            }
+
+            for i in self.groups.clone() {
+                if i.is_there_error() {
+                    return true;
+                }
+            }
+
+            false
+        }
+    }
+
+    impl EntryContainerError for TestEntryContainer {
+        fn container_is_empty(&mut self) {
+            self.container_is_empty = true;
+        }
+    }
+
+    // -----------------------------------------------------------------------------
+    // Initialization function for EntryError
+    // -----------------------------------------------------------------------------
+
+    #[derive(Clone, PartialEq, Eq, Hash, Debug, Default)]
+    struct AccountId(String);
+
+    #[derive(Clone, Debug, PartialEq, Default)]
+    struct TestSingleEntry {
+        account:  AccountId,
+        debit:    bool,
+        qty:      f64,
+        amt:      f64,
+        in_flow:  InFlowType,
+        out_flow: OutFlowType,
+
         quantity_and_amount_are_zero:       bool,
         duplicate_account_in_entry:         bool,
         inventory_is_empty:                 bool,
@@ -738,189 +864,11 @@ mod tests {
         insufficient_amount_in_inventory:   Option<InsufficientAmountInInventory>,
     }
 
-    #[derive(Debug, Clone, PartialEq, Default)]
-    pub(crate) struct DoubleEntryError {
-        entry_is_empty:              bool,
-        you_need_to_split_the_entry: bool,
-        debit_not_equal_credit:      Option<DebitNotEqualCreditError>,
-        single_entry_errors:         Vec<SingleEntryError>,
-    }
-
-    #[derive(Debug, Clone, PartialEq, Default)]
-    pub(crate) struct EntryError {
-        container_is_empty:  bool,
-        double_entry_errors: Vec<DoubleEntryError>,
-    }
-
-    // -----------------------------------------------------------------------------
-    // ErrorSink implementation for EntryError
-    // -----------------------------------------------------------------------------
-
-    impl ErrorSink for EntryError {
-        fn is_there_error_single_entry(&self, double_idx: usize, single_idx: usize) -> bool {
-            self.double_entry_errors[double_idx].single_entry_errors[single_idx].is_there_error()
-        }
-
-        fn quantity_and_amount_are_zero(&mut self, double_idx: usize, single_idx: usize) {
-            self.double_entry_errors[double_idx].single_entry_errors[single_idx]
-                .quantity_and_amount_are_zero = true;
-        }
-
-        fn duplicate_account_in_entry(&mut self, double_idx: usize, single_idx: usize) {
-            self.double_entry_errors[double_idx].single_entry_errors[single_idx]
-                .duplicate_account_in_entry = true;
-        }
-
-        fn inventory_is_empty(&mut self, double_idx: usize, single_idx: usize) {
-            self.double_entry_errors[double_idx].single_entry_errors[single_idx]
-                .inventory_is_empty = true;
-        }
-
-        fn the_amount_should_be_positive(&mut self, double_idx: usize, single_idx: usize) {
-            self.double_entry_errors[double_idx].single_entry_errors[single_idx]
-                .the_amount_should_be_positive = true;
-        }
-
-        fn the_quantity_should_be_positive(&mut self, double_idx: usize, single_idx: usize) {
-            self.double_entry_errors[double_idx].single_entry_errors[single_idx]
-                .the_quantity_should_be_positive = true;
-        }
-
-        fn quantity_not_equal_amount(&mut self, double_idx: usize, single_idx: usize) {
-            self.double_entry_errors[double_idx].single_entry_errors[single_idx]
-                .quantity_not_equal_amount = true;
-        }
-
-        fn quantity_not_equal_zero(&mut self, double_idx: usize, single_idx: usize) {
-            self.double_entry_errors[double_idx].single_entry_errors[single_idx]
-                .quantity_not_equal_zero = true;
-        }
-
-        fn insufficient_quantity_in_inventory(
-            &mut self,
-            double_idx: usize,
-            single_idx: usize,
-            total_quantity: f64,
-        ) {
-            self.double_entry_errors[double_idx].single_entry_errors[single_idx]
-                .insufficient_quantity_in_inventory = Some(InsufficientQuantityInInventory {
-                total_quantity,
-            });
-        }
-
-        fn amount_mismatch(&mut self, double_idx: usize, single_idx: usize, expected_amount: f64) {
-            self.double_entry_errors[double_idx].single_entry_errors[single_idx].amount_mismatch =
-                Some(AmountMismatch {
-                    expected_amount,
-                });
-        }
-
-        fn insufficient_amount_in_inventory(
-            &mut self,
-            double_idx: usize,
-            single_idx: usize,
-            total_amount: f64,
-        ) {
-            self.double_entry_errors[double_idx].single_entry_errors[single_idx]
-                .insufficient_amount_in_inventory = Some(InsufficientAmountInInventory {
-                total_amount,
-            });
-        }
-
-        fn entry_is_empty(&mut self, double_idx: usize) {
-            self.double_entry_errors[double_idx].entry_is_empty = true;
-        }
-
-        fn you_need_to_split_the_entry(&mut self, double_idx: usize) {
-            self.double_entry_errors[double_idx].you_need_to_split_the_entry = true;
-        }
-
-        fn debit_not_equal_credit(
-            &mut self,
-            double_idx: usize,
-            total_debit: f64,
-            total_credit: f64,
-        ) {
-            self.double_entry_errors[double_idx].debit_not_equal_credit =
-                Some(DebitNotEqualCreditError {
-                    total_debit,
-                    total_credit,
-                });
-        }
-
-        fn container_is_empty(&mut self) {
-            self.container_is_empty = true;
-        }
-    }
-
-    // -----------------------------------------------------------------------------
-    // Initialization function for EntryError
-    // -----------------------------------------------------------------------------
-
-    impl EntryError {
-        /// Creates a new `EntryError` with pre‑allocated vectors matching the structure
-        /// of the given entry container.
-        pub fn new_for_entry<C: EntryContainer>(entry: &C) -> Self {
-            let double_count = entry.len();
-            let mut double_errors = Vec::with_capacity(double_count);
-
-            for double in entry.iter() {
-                let single_count = double.len();
-                let single_errors = vec![SingleEntryError::default(); single_count];
-                double_errors.push(DoubleEntryError {
-                    entry_is_empty:              false,
-                    you_need_to_split_the_entry: false,
-                    debit_not_equal_credit:      None,
-                    single_entry_errors:         single_errors,
-                });
-            }
-
-            EntryError {
-                container_is_empty:  false,
-                double_entry_errors: double_errors,
-            }
-        }
-    }
-
-    impl types::MyErrorTrait for DoubleEntryError {
-        fn is_there_error(&self) -> bool {
-            if self.entry_is_empty
-                || self.you_need_to_split_the_entry
-                || self.debit_not_equal_credit.is_some()
-            {
-                return true;
-            }
-
-            for line in self.single_entry_errors.iter() {
-                if *line != Default::default() {
-                    return true;
-                }
-            }
-
-            false
-        }
-    }
-
-    impl types::MyErrorTrait for SingleEntryError {}
-
-    #[derive(Clone, PartialEq, Eq, Hash, Debug)]
-    struct AccountId(String);
-
-    #[derive(Clone, Debug)]
-    struct TestSingleEntry {
-        account:  AccountId,
-        debit:    bool,
-        qty:      f64,
-        amt:      f64,
-        in_flow:  InFlowType,
-        out_flow: OutFlowType,
-    }
-
     impl SingleEntry for TestSingleEntry {
         type AccountId = AccountId;
 
-        fn account_id(&self) -> &Self::AccountId {
-            &self.account
+        fn account_id(&self) -> Self::AccountId {
+            self.account.clone()
         }
 
         fn is_debit(&self) -> bool {
@@ -935,14 +883,22 @@ mod tests {
             self.amt
         }
 
-        fn flow_type(&self) -> (InFlowType, OutFlowType) {
-            (self.in_flow.clone(), self.out_flow.clone())
+        fn inflow_type(&self) -> InFlowType {
+            self.in_flow.clone()
+        }
+
+        fn outflow_type(&self) -> OutFlowType {
+            self.out_flow.clone()
         }
     }
 
-    #[derive(Clone, Debug)]
+    #[derive(Clone, Debug, PartialEq, Default)]
     struct TestDoubleEntry {
         lines: Vec<TestSingleEntry>,
+
+        entry_is_empty:              bool,
+        you_need_to_split_the_entry: bool,
+        debit_not_equal_credit:      Option<DebitNotEqualCreditError>,
     }
 
     impl DoubleEntry for TestDoubleEntry {
@@ -978,9 +934,11 @@ mod tests {
         }
     }
 
-    #[derive(Clone, Debug)]
+    #[derive(Clone, Debug, PartialEq, Default)]
     struct TestEntryContainer {
         groups: Vec<TestDoubleEntry>,
+
+        container_is_empty: bool,
     }
 
     impl EntryContainer for TestEntryContainer {
@@ -1067,6 +1025,7 @@ mod tests {
             amt,
             in_flow,
             out_flow,
+            ..Default::default()
         }
     }
 
@@ -1080,14 +1039,14 @@ mod tests {
 
     #[test]
     fn test_state_less_empty_entry() {
-        let entry = TestEntryContainer {
+        let mut entry = TestEntryContainer {
             groups: vec![],
+            ..Default::default()
         };
 
-        let mut err = EntryError::new_for_entry(&entry);
-        state_less_check_for_entry(&mut err, &entry);
-        assert!(err.container_is_empty);
-        assert_eq!(err.double_entry_errors.len(), 0);
+        state_less_check_for_entry(&mut entry);
+        assert!(entry.container_is_empty);
+        assert!(entry.is_there_error());
     }
 
     #[test]
@@ -1096,18 +1055,19 @@ mod tests {
         let single2 = simple_entry("A", false, 1.0, 10.0); // same account
         let double = TestDoubleEntry {
             lines: vec![single1, single2],
+            ..Default::default()
         };
-        let entry = TestEntryContainer {
+        let mut entry = TestEntryContainer {
             groups: vec![double],
+            ..Default::default()
         };
-        let mut err = EntryError::new_for_entry(&entry);
-        state_less_check_for_entry(&mut err, &entry);
-        assert!(!err.container_is_empty);
-        assert_eq!(err.double_entry_errors.len(), 1);
-        let de = &err.double_entry_errors[0];
+        state_less_check_for_entry(&mut entry);
+        assert!(!entry.container_is_empty);
+        assert!(entry.is_there_error());
+        let de = &entry.groups[0];
         assert!(!de.entry_is_empty);
-        assert_eq!(de.single_entry_errors.len(), 2);
-        assert!(de.single_entry_errors[1].duplicate_account_in_entry);
+        assert_eq!(de.lines.len(), 2);
+        assert!(de.lines[1].duplicate_account_in_entry);
     }
 
     #[test]
@@ -1115,13 +1075,14 @@ mod tests {
         let single = entry("A", true, 0.0, 0.0, InFlowType::Manual, OutFlowType::Manual);
         let double = TestDoubleEntry {
             lines: vec![single],
+            ..Default::default()
         };
-        let entry = TestEntryContainer {
+        let mut entry = TestEntryContainer {
             groups: vec![double],
+            ..Default::default()
         };
-        let mut err = EntryError::new_for_entry(&entry);
-        state_less_check_for_entry(&mut err, &entry);
-        let se = &err.double_entry_errors[0].single_entry_errors[0];
+        state_less_check_for_entry(&mut entry);
+        let se = &entry.groups[0].lines[0];
         assert!(se.quantity_and_amount_are_zero);
     }
 
@@ -1130,13 +1091,14 @@ mod tests {
         let single = simple_entry("A", true, -1.0, -5.0);
         let double = TestDoubleEntry {
             lines: vec![single],
+            ..Default::default()
         };
-        let entry = TestEntryContainer {
+        let mut entry = TestEntryContainer {
             groups: vec![double],
+            ..Default::default()
         };
-        let mut err = EntryError::new_for_entry(&entry);
-        state_less_check_for_entry(&mut err, &entry);
-        let se = &err.double_entry_errors[0].single_entry_errors[0];
+        state_less_check_for_entry(&mut entry);
+        let se = &entry.groups[0].lines[0];
         assert!(se.the_amount_should_be_positive);
         assert!(se.the_quantity_should_be_positive);
     }
@@ -1148,13 +1110,14 @@ mod tests {
         let c1 = simple_entry("B", false, 1.0, 8.0);
         let double = TestDoubleEntry {
             lines: vec![d1, c1],
+            ..Default::default()
         };
-        let entry = TestEntryContainer {
+        let mut entry = TestEntryContainer {
             groups: vec![double],
+            ..Default::default()
         };
-        let mut err = EntryError::new_for_entry(&entry);
-        state_less_check_for_entry(&mut err, &entry);
-        let de = &err.double_entry_errors[0];
+        state_less_check_for_entry(&mut entry);
+        let de = &entry.groups[0];
         assert!(de.debit_not_equal_credit.is_some());
         let dnc = de.debit_not_equal_credit.as_ref().unwrap();
         assert_eq!(dnc.total_debit, 10.0);
@@ -1173,13 +1136,14 @@ mod tests {
         let c3 = entry("F", false, 1.0, 5.0, InFlowType::Manual, OutFlowType::Manual);
         let double = TestDoubleEntry {
             lines: vec![d1, d2, d3, c1, c2, c3],
+            ..Default::default()
         };
-        let entry = TestEntryContainer {
+        let mut entry = TestEntryContainer {
             groups: vec![double],
+            ..Default::default()
         };
-        let mut err = EntryError::new_for_entry(&entry);
-        state_less_check_for_entry(&mut err, &entry);
-        let de = &err.double_entry_errors[0];
+        state_less_check_for_entry(&mut entry);
+        let de = &entry.groups[0];
         assert!(de.you_need_to_split_the_entry);
     }
 
@@ -1193,13 +1157,14 @@ mod tests {
         let c2 = simple_entry("E", false, 1.0, 5.0);
         let double = TestDoubleEntry {
             lines: vec![d1, d2, d3, c1, c2],
+            ..Default::default()
         };
-        let entry = TestEntryContainer {
+        let mut entry = TestEntryContainer {
             groups: vec![double],
+            ..Default::default()
         };
-        let mut err = EntryError::new_for_entry(&entry);
-        state_less_check_for_entry(&mut err, &entry);
-        let de = &err.double_entry_errors[0];
+        state_less_check_for_entry(&mut entry);
+        let de = &entry.groups[0];
         assert!(!de.you_need_to_split_the_entry);
     }
 
@@ -1226,13 +1191,14 @@ mod tests {
         let single = simple_entry("A", true, 1.0, 10.0); // inflow, but inventory empty
         let double = TestDoubleEntry {
             lines: vec![single],
+            ..Default::default()
         };
-        let entry = TestEntryContainer {
+        let mut entry = TestEntryContainer {
             groups: vec![double],
+            ..Default::default()
         };
-        let mut err = EntryError::new_for_entry(&entry);
-        state_full_check_for_entry(100000000000, &mut err, &entry, &mut provider);
-        let se = &err.double_entry_errors[0].single_entry_errors[0];
+        state_full_check_for_entry(100000000000, &mut entry, &mut provider);
+        let se = &entry.groups[0].lines[0];
         assert!(se.inventory_is_empty);
     }
 
@@ -1252,13 +1218,14 @@ mod tests {
             entry("A", true, 5.0, 5.0, InFlowType::QuantityEqualAmount, OutFlowType::Manual);
         let double = TestDoubleEntry {
             lines: vec![single],
+            ..Default::default()
         };
-        let entry = TestEntryContainer {
+        let mut entry = TestEntryContainer {
             groups: vec![double],
+            ..Default::default()
         };
-        let mut err = EntryError::new_for_entry(&entry);
-        state_full_check_for_entry(100000000000, &mut err, &entry, &mut provider);
-        let se = &err.double_entry_errors[0].single_entry_errors[0];
+        state_full_check_for_entry(100000000000, &mut entry, &mut provider);
+        let se = &entry.groups[0].lines[0];
         assert!(!se.quantity_not_equal_amount); // should be ok
     }
 
@@ -1282,13 +1249,14 @@ mod tests {
         );
         let double = TestDoubleEntry {
             lines: vec![single],
+            ..Default::default()
         };
-        let entry = TestEntryContainer {
+        let mut entry = TestEntryContainer {
             groups: vec![double],
+            ..Default::default()
         };
-        let mut err = EntryError::new_for_entry(&entry);
-        state_full_check_for_entry(100000000000, &mut err, &entry, &mut provider);
-        let se = &err.double_entry_errors[0].single_entry_errors[0];
+        state_full_check_for_entry(100000000000, &mut entry, &mut provider);
+        let se = &entry.groups[0].lines[0];
         assert!(se.quantity_not_equal_amount);
     }
 
@@ -1306,13 +1274,14 @@ mod tests {
             entry("A", true, 0.0, 10.0, InFlowType::QuantityEqualZero, OutFlowType::Manual);
         let double = TestDoubleEntry {
             lines: vec![single],
+            ..Default::default()
         };
-        let entry = TestEntryContainer {
+        let mut entry = TestEntryContainer {
             groups: vec![double],
+            ..Default::default()
         };
-        let mut err = EntryError::new_for_entry(&entry);
-        state_full_check_for_entry(100000000000, &mut err, &entry, &mut provider);
-        let se = &err.double_entry_errors[0].single_entry_errors[0];
+        state_full_check_for_entry(100000000000, &mut entry, &mut provider);
+        let se = &entry.groups[0].lines[0];
         assert!(!se.quantity_not_equal_zero); // ok
     }
 
@@ -1336,13 +1305,14 @@ mod tests {
         );
         let double = TestDoubleEntry {
             lines: vec![single],
+            ..Default::default()
         };
-        let entry = TestEntryContainer {
+        let mut entry = TestEntryContainer {
             groups: vec![double],
+            ..Default::default()
         };
-        let mut err = EntryError::new_for_entry(&entry);
-        state_full_check_for_entry(100000000000, &mut err, &entry, &mut provider);
-        let se = &err.double_entry_errors[0].single_entry_errors[0];
+        state_full_check_for_entry(100000000000, &mut entry, &mut provider);
+        let se = &entry.groups[0].lines[0];
         assert!(se.quantity_not_equal_zero);
     }
 
@@ -1360,13 +1330,14 @@ mod tests {
         let single = entry("A", false, 5.0, 20.0, InFlowType::Manual, OutFlowType::Manual);
         let double = TestDoubleEntry {
             lines: vec![single],
+            ..Default::default()
         };
-        let entry = TestEntryContainer {
+        let mut entry = TestEntryContainer {
             groups: vec![double],
+            ..Default::default()
         };
-        let mut err = EntryError::new_for_entry(&entry);
-        state_full_check_for_entry(100000000000, &mut err, &entry, &mut provider);
-        let se = &err.double_entry_errors[0].single_entry_errors[0];
+        state_full_check_for_entry(100000000000, &mut entry, &mut provider);
+        let se = &entry.groups[0].lines[0];
         assert!(se.insufficient_amount_in_inventory.is_some());
         let ia = se.insufficient_amount_in_inventory.as_ref().unwrap();
         assert_eq!(ia.total_amount, 10.0);
@@ -1392,13 +1363,14 @@ mod tests {
         );
         let double = TestDoubleEntry {
             lines: vec![single],
+            ..Default::default()
         };
-        let entry = TestEntryContainer {
+        let mut entry = TestEntryContainer {
             groups: vec![double],
+            ..Default::default()
         };
-        let mut err = EntryError::new_for_entry(&entry);
-        state_full_check_for_entry(100000000000, &mut err, &entry, &mut provider);
-        let se = &err.double_entry_errors[0].single_entry_errors[0];
+        state_full_check_for_entry(100000000000, &mut entry, &mut provider);
+        let se = &entry.groups[0].lines[0];
         assert!(se.insufficient_quantity_in_inventory.is_some());
         let iq = se.insufficient_quantity_in_inventory.as_ref().unwrap();
         assert_eq!(iq.total_quantity, 2.0);
@@ -1420,13 +1392,14 @@ mod tests {
         let single = entry("A", false, 2.0, 25.0, InFlowType::Manual, OutFlowType::Wac);
         let double = TestDoubleEntry {
             lines: vec![single],
+            ..Default::default()
         };
-        let entry = TestEntryContainer {
+        let mut entry = TestEntryContainer {
             groups: vec![double],
+            ..Default::default()
         };
-        let mut err = EntryError::new_for_entry(&entry);
-        state_full_check_for_entry(100000000000, &mut err, &entry, &mut provider);
-        let se = &err.double_entry_errors[0].single_entry_errors[0];
+        state_full_check_for_entry(100000000000, &mut entry, &mut provider);
+        let se = &entry.groups[0].lines[0];
         assert!(se.amount_mismatch.is_some());
         let am = se.amount_mismatch.as_ref().unwrap();
         assert_eq!(am.expected_amount, 20.0);
@@ -1459,13 +1432,14 @@ mod tests {
         );
         let double = TestDoubleEntry {
             lines: vec![single],
+            ..Default::default()
         };
-        let entry = TestEntryContainer {
+        let mut entry = TestEntryContainer {
             groups: vec![double],
+            ..Default::default()
         };
-        let mut err = EntryError::new_for_entry(&entry);
-        state_full_check_for_entry(100000000000, &mut err, &entry, &mut provider);
-        let se = &err.double_entry_errors[0].single_entry_errors[0];
+        state_full_check_for_entry(100000000000, &mut entry, &mut provider);
+        let se = &entry.groups[0].lines[0];
         assert!(se.amount_mismatch.is_some());
         let am = se.amount_mismatch.as_ref().unwrap();
         assert_eq!(am.expected_amount, 16.0);
@@ -1487,13 +1461,14 @@ mod tests {
             entry("A", false, 2.0, 2.0, InFlowType::Manual, OutFlowType::QuantityEqualAmount);
         let double = TestDoubleEntry {
             lines: vec![single],
+            ..Default::default()
         };
-        let entry = TestEntryContainer {
+        let mut entry = TestEntryContainer {
             groups: vec![double],
+            ..Default::default()
         };
-        let mut err = EntryError::new_for_entry(&entry);
-        state_full_check_for_entry(100000000000, &mut err, &entry, &mut provider);
-        let se = &err.double_entry_errors[0].single_entry_errors[0];
+        state_full_check_for_entry(100000000000, &mut entry, &mut provider);
+        let se = &entry.groups[0].lines[0];
         assert!(!se.quantity_not_equal_amount);
     }
 
@@ -1511,13 +1486,14 @@ mod tests {
             entry("A", false, 2.0, 3.0, InFlowType::Manual, OutFlowType::QuantityEqualAmount);
         let double = TestDoubleEntry {
             lines: vec![single],
+            ..Default::default()
         };
-        let entry = TestEntryContainer {
+        let mut entry = TestEntryContainer {
             groups: vec![double],
+            ..Default::default()
         };
-        let mut err = EntryError::new_for_entry(&entry);
-        state_full_check_for_entry(100000000000, &mut err, &entry, &mut provider);
-        let se = &err.double_entry_errors[0].single_entry_errors[0];
+        state_full_check_for_entry(100000000000, &mut entry, &mut provider);
+        let se = &entry.groups[0].lines[0];
         assert!(se.quantity_not_equal_amount);
     }
 
@@ -1535,13 +1511,14 @@ mod tests {
             entry("A", false, 0.0, 5.0, InFlowType::Manual, OutFlowType::QuantityEqualZero);
         let double = TestDoubleEntry {
             lines: vec![single],
+            ..Default::default()
         };
-        let entry = TestEntryContainer {
+        let mut entry = TestEntryContainer {
             groups: vec![double],
+            ..Default::default()
         };
-        let mut err = EntryError::new_for_entry(&entry);
-        state_full_check_for_entry(100000000000, &mut err, &entry, &mut provider);
-        let se = &err.double_entry_errors[0].single_entry_errors[0];
+        state_full_check_for_entry(100000000000, &mut entry, &mut provider);
+        let se = &entry.groups[0].lines[0];
         assert!(!se.quantity_not_equal_zero);
     }
 
@@ -1559,13 +1536,14 @@ mod tests {
             entry("A", false, 1.0, 5.0, InFlowType::Manual, OutFlowType::QuantityEqualZero);
         let double = TestDoubleEntry {
             lines: vec![single],
+            ..Default::default()
         };
-        let entry = TestEntryContainer {
+        let mut entry = TestEntryContainer {
             groups: vec![double],
+            ..Default::default()
         };
-        let mut err = EntryError::new_for_entry(&entry);
-        state_full_check_for_entry(100000000000, &mut err, &entry, &mut provider);
-        let se = &err.double_entry_errors[0].single_entry_errors[0];
+        state_full_check_for_entry(100000000000, &mut entry, &mut provider);
+        let se = &entry.groups[0].lines[0];
         assert!(se.quantity_not_equal_zero);
     }
 
@@ -1577,13 +1555,14 @@ mod tests {
         let single = simple_entry("A", false, 1.0, 10.0);
         let double = TestDoubleEntry {
             lines: vec![single],
+            ..Default::default()
         };
-        let entry = TestEntryContainer {
+        let mut entry = TestEntryContainer {
             groups: vec![double],
+            ..Default::default()
         };
-        let mut err = EntryError::new_for_entry(&entry);
-        state_full_check_for_entry(100000000000, &mut err, &entry, &mut provider);
-        let se = &err.double_entry_errors[0].single_entry_errors[0];
+        state_full_check_for_entry(100000000000, &mut entry, &mut provider);
+        let se = &entry.groups[0].lines[0];
         assert!(se.inventory_is_empty);
     }
 
@@ -1630,14 +1609,15 @@ mod tests {
         });
 
         let single = entry("A", false, 5.0, 20.0, InFlowType::Manual, OutFlowType::Manual);
-        let entry = TestEntryContainer {
+        let mut entry = TestEntryContainer {
             groups: vec![TestDoubleEntry {
                 lines: vec![single],
+                ..Default::default()
             }],
+            ..Default::default()
         };
 
-        let mut err = EntryError::new_for_entry(&entry);
-        state_full_check_for_entry(100, &mut err, &entry, &mut provider);
+        state_full_check_for_entry(100, &mut entry, &mut provider);
 
         // Inventory should STILL be exactly as before (10.0 amount, 5 qty)
         let (qty, amt) = sum_inventory(&provider.inventories[&AccountId("A".to_string())]);
@@ -1657,13 +1637,14 @@ mod tests {
         let e3 = simple_entry("A", true, 1.0, 5.0);
         let double = TestDoubleEntry {
             lines: vec![e1, e2, e3],
+            ..Default::default()
         };
-        let entry = TestEntryContainer {
+        let mut entry = TestEntryContainer {
             groups: vec![double],
+            ..Default::default()
         };
-        let mut err = EntryError::new_for_entry(&entry);
-        state_less_check_for_entry(&mut err, &entry);
-        let se = &err.double_entry_errors[0].single_entry_errors;
+        state_less_check_for_entry(&mut entry);
+        let se = &entry.groups[0].lines;
         assert!(!se[0].duplicate_account_in_entry);
         assert!(!se[1].duplicate_account_in_entry);
         assert!(se[2].duplicate_account_in_entry);
@@ -1673,17 +1654,18 @@ mod tests {
     fn test_state_less_empty_double_entry() {
         let double = TestDoubleEntry {
             lines: vec![],
+            ..Default::default()
         };
-        let entry = TestEntryContainer {
+        let mut entry = TestEntryContainer {
             groups: vec![double],
+            ..Default::default()
         };
-        let mut err = EntryError::new_for_entry(&entry);
-        state_less_check_for_entry(&mut err, &entry);
-        assert!(!err.container_is_empty);
-        assert_eq!(err.double_entry_errors.len(), 1);
-        let de = &err.double_entry_errors[0];
+        state_less_check_for_entry(&mut entry);
+        assert!(!entry.container_is_empty);
+        assert!(entry.is_there_error());
+        let de = &entry.groups[0];
         assert!(de.entry_is_empty);
-        assert_eq!(de.single_entry_errors.len(), 0);
+        assert_eq!(de.lines.len(), 0);
     }
 
     #[test]
@@ -1693,25 +1675,27 @@ mod tests {
         let c1 = simple_entry("B", false, 1.0, 10.0); // balanced
         let double1 = TestDoubleEntry {
             lines: vec![d1, c1],
+            ..Default::default()
         };
 
         let d2 = simple_entry("C", true, 1.0, 5.0);
         let c2 = simple_entry("D", false, 1.0, 3.0); // mismatch
         let double2 = TestDoubleEntry {
             lines: vec![d2, c2],
+            ..Default::default()
         };
 
-        let entry = TestEntryContainer {
+        let mut entry = TestEntryContainer {
             groups: vec![double1, double2],
+            ..Default::default()
         };
-        let mut err = EntryError::new_for_entry(&entry);
-        state_less_check_for_entry(&mut err, &entry);
-        assert_eq!(err.double_entry_errors.len(), 2);
+        state_less_check_for_entry(&mut entry);
+        assert!(entry.is_there_error());
         // First entry: no error
-        let de1 = &err.double_entry_errors[0];
+        let de1 = &entry.groups[0];
         assert!(de1.debit_not_equal_credit.is_none());
         // Second entry: error
-        let de2 = &err.double_entry_errors[1];
+        let de2 = &entry.groups[1];
         assert!(de2.debit_not_equal_credit.is_some());
         let dnc = de2.debit_not_equal_credit.as_ref().unwrap();
         assert_eq!(dnc.total_debit, 5.0);
@@ -1744,15 +1728,16 @@ mod tests {
         let single = entry("A", false, 10.0, 20.0, InFlowType::Manual, OutFlowType::Wac);
         let double = TestDoubleEntry {
             lines: vec![single],
+            ..Default::default()
         };
-        let entry = TestEntryContainer {
+        let mut entry = TestEntryContainer {
             groups: vec![double],
+            ..Default::default()
         };
-        let mut err = EntryError::new_for_entry(&entry);
-        state_full_check_for_entry(100, &mut err, &entry, &mut provider);
+        state_full_check_for_entry(100, &mut entry, &mut provider);
 
         // Error should be present
-        let se = &err.double_entry_errors[0].single_entry_errors[0];
+        let se = &entry.groups[0].lines[0];
         assert!(se.insufficient_quantity_in_inventory.is_some());
 
         // BUT inventory should now be combined into a single record (BUG)
@@ -1784,13 +1769,14 @@ mod tests {
         let single = entry("A", false, 4.0, 8.0, InFlowType::Manual, OutFlowType::Manual);
         let double = TestDoubleEntry {
             lines: vec![single],
+            ..Default::default()
         };
-        let entry = TestEntryContainer {
+        let mut entry = TestEntryContainer {
             groups: vec![double],
+            ..Default::default()
         };
 
-        let mut err = EntryError::new_for_entry(&entry);
-        state_full_check_for_entry(100, &mut err, &entry, &mut provider);
+        state_full_check_for_entry(100, &mut entry, &mut provider);
 
         // Inventory should still have two records (Manual doesn't combine)
         let inv_after = provider.get_or_create_inventory(&AccountId("A".to_string()));
@@ -2052,14 +2038,14 @@ mod tests {
 
     #[test]
     fn test_single_entry_error_is_there_error() {
-        let err = SingleEntryError::default();
+        let err = TestSingleEntry::default();
         assert!(!err.is_there_error());
 
-        let mut err2 = SingleEntryError::default();
+        let mut err2 = TestSingleEntry::default();
         err2.quantity_and_amount_are_zero = true;
         assert!(err2.is_there_error());
 
-        let mut err3 = SingleEntryError::default();
+        let mut err3 = TestSingleEntry::default();
         err3.insufficient_quantity_in_inventory = Some(InsufficientQuantityInInventory {
             total_quantity: 5.0,
         });
@@ -2091,13 +2077,14 @@ mod tests {
         let single = entry("A", false, 4.0, 15.0, InFlowType::Manual, OutFlowType::Lifo);
         let double = TestDoubleEntry {
             lines: vec![single],
+            ..Default::default()
         };
-        let entry = TestEntryContainer {
+        let mut entry = TestEntryContainer {
             groups: vec![double],
+            ..Default::default()
         };
-        let mut err = EntryError::new_for_entry(&entry);
-        state_full_check_for_entry(100, &mut err, &entry, &mut provider);
-        let se = &err.double_entry_errors[0].single_entry_errors[0];
+        state_full_check_for_entry(100, &mut entry, &mut provider);
+        let se = &entry.groups[0].lines[0];
         assert!(se.amount_mismatch.is_some());
         let am = se.amount_mismatch.as_ref().unwrap();
         assert_eq!(am.expected_amount, 11.0);
@@ -2128,13 +2115,14 @@ mod tests {
         let single = entry("A", false, 3.0, 12.0, InFlowType::Manual, OutFlowType::Hifo);
         let double = TestDoubleEntry {
             lines: vec![single],
+            ..Default::default()
         };
-        let entry = TestEntryContainer {
+        let mut entry = TestEntryContainer {
             groups: vec![double],
+            ..Default::default()
         };
-        let mut err = EntryError::new_for_entry(&entry);
-        state_full_check_for_entry(100, &mut err, &entry, &mut provider);
-        let se = &err.double_entry_errors[0].single_entry_errors[0];
+        state_full_check_for_entry(100, &mut entry, &mut provider);
+        let se = &entry.groups[0].lines[0];
         assert!(se.amount_mismatch.is_some());
         let am = se.amount_mismatch.as_ref().unwrap();
         assert_eq!(am.expected_amount, 11.0);
@@ -2165,13 +2153,14 @@ mod tests {
         let single = entry("A", false, 6.0, 14.0, InFlowType::Manual, OutFlowType::Lofo);
         let double = TestDoubleEntry {
             lines: vec![single],
+            ..Default::default()
         };
-        let entry = TestEntryContainer {
+        let mut entry = TestEntryContainer {
             groups: vec![double],
+            ..Default::default()
         };
-        let mut err = EntryError::new_for_entry(&entry);
-        state_full_check_for_entry(100, &mut err, &entry, &mut provider);
-        let se = &err.double_entry_errors[0].single_entry_errors[0];
+        state_full_check_for_entry(100, &mut entry, &mut provider);
+        let se = &entry.groups[0].lines[0];
         assert!(se.amount_mismatch.is_some());
         let am = se.amount_mismatch.as_ref().unwrap();
         assert_eq!(am.expected_amount, 13.0);
@@ -2193,14 +2182,15 @@ mod tests {
         let single = entry("G", false, 2.0, 10.0, InFlowType::Manual, OutFlowType::Manual);
         let double = TestDoubleEntry {
             lines: vec![single],
+            ..Default::default()
         };
-        let entry = TestEntryContainer {
+        let mut entry = TestEntryContainer {
             groups: vec![double],
+            ..Default::default()
         };
-        let mut err = EntryError::new_for_entry(&entry);
-        state_full_check_for_entry(100, &mut err, &entry, &mut provider);
+        state_full_check_for_entry(100, &mut entry, &mut provider);
         // No errors expected
-        assert!(err.double_entry_errors[0].single_entry_errors[0].is_there_error() == false);
+        assert!(entry.groups[0].lines[0].is_there_error() == false);
         // Inventory should have been increased by 2 qty and 10 amt
         let (qty, amt) = sum_inventory(&provider.inventories[&AccountId("G".to_string())]);
         assert_eq!(qty, 7.0);
@@ -2221,14 +2211,15 @@ mod tests {
         let single = entry("G", true, 2.0, 4.0, InFlowType::Manual, OutFlowType::Manual);
         let double = TestDoubleEntry {
             lines: vec![single],
+            ..Default::default()
         };
-        let entry = TestEntryContainer {
+        let mut entry = TestEntryContainer {
             groups: vec![double],
+            ..Default::default()
         };
-        let mut err = EntryError::new_for_entry(&entry);
-        state_full_check_for_entry(100, &mut err, &entry, &mut provider);
+        state_full_check_for_entry(100, &mut entry, &mut provider);
         // No errors expected
-        assert!(err.double_entry_errors[0].single_entry_errors[0].is_there_error() == false);
+        assert!(entry.groups[0].lines[0].is_there_error() == false);
         // Inventory should have decreased (outflow)
         let (qty, amt) = sum_inventory(&provider.inventories[&AccountId("G".to_string())]);
         assert_eq!(qty, 3.0);
@@ -2254,21 +2245,18 @@ mod tests {
         let e2 = entry("A", true, 3.0, 15.0, InFlowType::Manual, OutFlowType::Manual);
         let double = TestDoubleEntry {
             lines: vec![e1, e2],
+            ..Default::default()
         };
-        let entry = TestEntryContainer {
+        let mut entry = TestEntryContainer {
             groups: vec![double],
+            ..Default::default()
         };
-        let mut err = EntryError::new_for_entry(&entry);
-        state_full_check_for_entry(100, &mut err, &entry, &mut provider);
+        state_full_check_for_entry(100, &mut entry, &mut provider);
 
         // Error should be present on line 1
-        assert!(
-            err.double_entry_errors[0].single_entry_errors[0]
-                .insufficient_amount_in_inventory
-                .is_some()
-        );
+        assert!(&entry.groups[0].lines[0].insufficient_amount_in_inventory.is_some());
         // Line 2 should have no error
-        assert!(!err.double_entry_errors[0].single_entry_errors[1].is_there_error());
+        assert!(!&entry.groups[0].lines[1].is_there_error());
 
         // However, line 2 will have been applied (since no error), so inventory increased by 3 qty and 15 amt
         // But line 1 error should not have applied. But line 2 applied, so total inventory: 5+3=8 qty, 10+15=25 amt.
@@ -2285,7 +2273,7 @@ mod tests {
 
     #[test]
     fn test_double_entry_error_is_there_error() {
-        let mut de = DoubleEntryError::default();
+        let mut de = TestDoubleEntry::default();
         assert!(!de.is_there_error());
 
         de.entry_is_empty = true;
@@ -2303,11 +2291,11 @@ mod tests {
         assert!(de.is_there_error());
 
         de.debit_not_equal_credit = None;
-        let se = SingleEntryError {
+        let se = TestSingleEntry {
             quantity_and_amount_are_zero: true,
             ..Default::default()
         };
-        de.single_entry_errors.push(se);
+        de.lines.push(se);
         assert!(de.is_there_error());
     }
 
@@ -2465,14 +2453,15 @@ mod tests {
         let single = entry("A", true, 0.0, 3.0, InFlowType::Manual, OutFlowType::Manual);
         let double = TestDoubleEntry {
             lines: vec![single],
+            ..Default::default()
         };
-        let entry = TestEntryContainer {
+        let mut entry = TestEntryContainer {
             groups: vec![double],
+            ..Default::default()
         };
-        let mut err = EntryError::new_for_entry(&entry);
-        state_full_check_for_entry(100, &mut err, &entry, &mut provider);
+        state_full_check_for_entry(100, &mut entry, &mut provider);
         // Should have no error (it's rare but allowed)
-        assert!(!err.double_entry_errors[0].single_entry_errors[0].is_there_error());
+        assert!(!&entry.groups[0].lines[0].is_there_error());
         // Inventory should have amount increased, quantity unchanged
         let (qty, amt) = sum_inventory(&provider.inventories[&AccountId("A".to_string())]);
         assert_eq!(qty, 5.0);
@@ -2492,13 +2481,14 @@ mod tests {
         let single = entry("A", true, 2.0, 0.0, InFlowType::Manual, OutFlowType::Manual);
         let double = TestDoubleEntry {
             lines: vec![single],
+            ..Default::default()
         };
-        let entry = TestEntryContainer {
+        let mut entry = TestEntryContainer {
             groups: vec![double],
+            ..Default::default()
         };
-        let mut err = EntryError::new_for_entry(&entry);
-        state_full_check_for_entry(100, &mut err, &entry, &mut provider);
-        assert!(!err.double_entry_errors[0].single_entry_errors[0].is_there_error());
+        state_full_check_for_entry(100, &mut entry, &mut provider);
+        assert!(!&entry.groups[0].lines[0].is_there_error());
         let (qty, amt) = sum_inventory(&provider.inventories[&AccountId("A".to_string())]);
         assert_eq!(qty, 7.0);
         assert_eq!(amt, 10.0);
@@ -2522,13 +2512,14 @@ mod tests {
         let single = entry("A", false, 0.0, 5.0, InFlowType::Manual, OutFlowType::Manual);
         let double = TestDoubleEntry {
             lines: vec![single],
+            ..Default::default()
         };
-        let entry = TestEntryContainer {
+        let mut entry = TestEntryContainer {
             groups: vec![double],
+            ..Default::default()
         };
-        let mut err = EntryError::new_for_entry(&entry);
-        state_full_check_for_entry(100, &mut err, &entry, &mut provider);
-        assert!(!err.double_entry_errors[0].single_entry_errors[0].is_there_error());
+        state_full_check_for_entry(100, &mut entry, &mut provider);
+        assert!(!&entry.groups[0].lines[0].is_there_error());
         let (qty, amt) = sum_inventory(&provider.inventories[&AccountId("A".to_string())]);
         assert_eq!(qty, 5.0);
         assert_eq!(amt, 5.0); // 10 - 5
@@ -2547,13 +2538,14 @@ mod tests {
         let single = entry("A", false, 2.0, 0.0, InFlowType::Manual, OutFlowType::Manual);
         let double = TestDoubleEntry {
             lines: vec![single],
+            ..Default::default()
         };
-        let entry = TestEntryContainer {
+        let mut entry = TestEntryContainer {
             groups: vec![double],
+            ..Default::default()
         };
-        let mut err = EntryError::new_for_entry(&entry);
-        state_full_check_for_entry(100, &mut err, &entry, &mut provider);
-        assert!(!err.double_entry_errors[0].single_entry_errors[0].is_there_error());
+        state_full_check_for_entry(100, &mut entry, &mut provider);
+        assert!(!&entry.groups[0].lines[0].is_there_error());
         let (qty, amt) = sum_inventory(&provider.inventories[&AccountId("A".to_string())]);
         assert_eq!(qty, 3.0);
         assert_eq!(amt, 10.0);
@@ -2622,14 +2614,15 @@ mod tests {
         let single = entry("A", false, 2.0, 10.0, InFlowType::Manual, OutFlowType::Manual);
         let double = TestDoubleEntry {
             lines: vec![single],
+            ..Default::default()
         };
-        let entry = TestEntryContainer {
+        let mut entry = TestEntryContainer {
             groups: vec![double],
+            ..Default::default()
         };
-        let mut err = EntryError::new_for_entry(&entry);
-        state_full_check_for_entry(100, &mut err, &entry, &mut provider);
+        state_full_check_for_entry(100, &mut entry, &mut provider);
 
-        let se = &err.double_entry_errors[0].single_entry_errors[0];
+        let se = &entry.groups[0].lines[0];
         assert!(se.amount_mismatch.is_none());
         let (qty, amt) = sum_inventory(&provider.inventories[&AccountId("A".to_string())]);
         assert_eq!(qty, 3.0);
@@ -2649,14 +2642,15 @@ mod tests {
         let single = entry("A", false, 2.0, 11.0, InFlowType::Manual, OutFlowType::Manual);
         let double = TestDoubleEntry {
             lines: vec![single],
+            ..Default::default()
         };
-        let entry = TestEntryContainer {
+        let mut entry = TestEntryContainer {
             groups: vec![double],
+            ..Default::default()
         };
-        let mut err = EntryError::new_for_entry(&entry);
-        state_full_check_for_entry(100, &mut err, &entry, &mut provider);
+        state_full_check_for_entry(100, &mut entry, &mut provider);
 
-        let se = &err.double_entry_errors[0].single_entry_errors[0];
+        let se = &entry.groups[0].lines[0];
         assert!(se.amount_mismatch.is_none());
         let (qty, amt) = sum_inventory(&provider.inventories[&AccountId("A".to_string())]);
         assert_eq!(qty, 5.0);
