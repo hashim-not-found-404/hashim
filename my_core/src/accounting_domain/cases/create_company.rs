@@ -28,7 +28,11 @@ pub struct Error {
     pub(crate) new_uuid:  Option<types::RowIdError>,
 }
 
-impl types::MyErrorTrait for Error {}
+impl types::MyErrorTrait for Error {
+    fn is_there_error(&self) -> bool {
+        *self != Self::default()
+    }
+}
 
 pub struct ReadInput {
     pub new_uuid: types::UuidType,

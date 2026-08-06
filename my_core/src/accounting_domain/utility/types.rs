@@ -22,10 +22,8 @@ pub trait JWT: 'static {
     fn validate(&self, token: JsonWebTokenType) -> Option<UuidType>;
 }
 
-pub(crate) trait MyErrorTrait: Default + PartialEq {
-    fn is_there_error(&self) -> bool {
-        *self != Self::default()
-    }
+pub(crate) trait MyErrorTrait {
+    fn is_there_error(&self) -> bool;
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, Default, PartialEq, Hash, Eq, PartialOrd, Ord)]

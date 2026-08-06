@@ -36,7 +36,11 @@ pub struct Error {
     pub(crate) account_name:      Option<AccountNameError>,
 }
 
-impl types::MyErrorTrait for Error {}
+impl types::MyErrorTrait for Error {
+    fn is_there_error(&self) -> bool {
+        *self != Self::default()
+    }
+}
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
 pub(crate) enum AccountNameError {
