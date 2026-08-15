@@ -28,7 +28,7 @@ pub enum CostFlowType {
     OutFlow(OutFlowType),
 }
 
-#[derive(PartialEq, Debug, Deserialize, Serialize, Clone, Default)]
+#[derive(PartialEq, Debug, Deserialize, Serialize, Clone, Copy, Default)]
 pub enum OutFlowType {
     Manual, // reorderable
     QuantityEqualAmount,
@@ -74,7 +74,7 @@ impl std::str::FromStr for OutFlowType {
     }
 }
 
-#[derive(PartialEq, Debug, Deserialize, Serialize, Clone, Default)]
+#[derive(PartialEq, Debug, Deserialize, Serialize, Clone, Copy, Default)]
 pub enum InFlowType {
     #[default]
     Manual,
@@ -172,20 +172,13 @@ pub trait DoubleEntry {
     where
         Self: 'a;
 
-    fn iter<'a>(self) -> Self::Iter<'a>;
+    fn into_iter<'a>(self) -> Self::Iter<'a>;
     fn iter_ref(&self) -> Self::IterRef<'_>;
     fn iter_mut(&mut self) -> Self::IterMut<'_>;
 
     fn set_singles(&mut self, singles: Vec<Self::Single>);
-
-    fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
-
-    fn len(&self) -> usize {
-        self.iter_ref().len()
-    }
-
+    fn is_empty(&self) -> bool;
+    fn len(&self) -> usize;
     fn retain<F>(&mut self, f: F)
     where
         F: FnMut(&Self::Single) -> bool;
@@ -213,15 +206,8 @@ pub trait EntryContainer {
     fn iter_mut(&mut self) -> Self::IterMut<'_>;
 
     fn set_doubles(&mut self, doubles: Vec<Self::Double<'_>>);
-
-    fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
-
-    fn len(&self) -> usize {
-        self.iter_ref().len()
-    }
-
+    fn is_empty(&self) -> bool;
+    fn len(&self) -> usize;
     fn retain<F>(&mut self, f: F)
     where
         F: FnMut(&Self::Double<'_>) -> bool;
@@ -922,7 +908,7 @@ mod tests {
         type IterRef<'a> = std::slice::Iter<'a, TestSingleEntry>;
         type Single = TestSingleEntry;
 
-        fn iter<'a>(self) -> Self::Iter<'a> {
+        fn into_iter<'a>(self) -> Self::Iter<'a> {
             self.lines.into_iter()
         }
 

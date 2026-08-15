@@ -436,7 +436,7 @@ where
         let mut debit_side = Vec::new();
         let mut credit_side = Vec::new();
 
-        for single in double.clone().iter() {
+        for single in double.clone().into_iter() {
             if let Some(is_debit) = single.get_inferred_is_debit() {
                 if is_debit {
                     debit_side.push(single.clone());
@@ -843,7 +843,7 @@ mod tests {
         type IterRef<'a> = std::slice::Iter<'a, MockSingle>;
         type Single = MockSingle;
 
-        fn iter<'a>(self) -> Self::Iter<'a> {
+        fn into_iter<'a>(self) -> Self::Iter<'a> {
             self.singles.into_iter()
         }
 
@@ -857,6 +857,14 @@ mod tests {
 
         fn set_singles(&mut self, singles: Vec<Self::Single>) {
             self.singles = singles;
+        }
+
+        fn is_empty(&self) -> bool {
+            self.singles.is_empty()
+        }
+
+        fn len(&self) -> usize {
+            self.singles.len()
         }
 
         fn retain<F>(&mut self, f: F)
@@ -893,6 +901,14 @@ mod tests {
 
         fn set_doubles(&mut self, doubles: Vec<Self::Double<'_>>) {
             self.doubles = doubles;
+        }
+
+        fn is_empty(&self) -> bool {
+            self.doubles.is_empty()
+        }
+
+        fn len(&self) -> usize {
+            self.doubles.len()
         }
 
         fn retain<F>(&mut self, f: F)
