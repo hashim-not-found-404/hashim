@@ -160,7 +160,11 @@ pub trait SingleEntry {
 pub trait DoubleEntry {
     type Single;
 
-    type Iter<'a>: Iterator<Item = &'a Self::Single> + ExactSizeIterator
+    type Iter<'a>: IntoIterator<Item = Self::Single> + ExactSizeIterator
+    where
+        Self: 'a;
+
+    type IterRef<'a>: Iterator<Item = &'a Self::Single> + ExactSizeIterator
     where
         Self: 'a;
 
@@ -168,7 +172,8 @@ pub trait DoubleEntry {
     where
         Self: 'a;
 
-    fn iter(&self) -> Self::Iter<'_>;
+    fn iter<'a>(self) -> Self::Iter<'a>;
+    fn iter_ref(&self) -> Self::IterRef<'_>;
     fn iter_mut(&mut self) -> Self::IterMut<'_>;
 
     fn set_singles(&mut self, singles: Vec<Self::Single>);
@@ -178,7 +183,7 @@ pub trait DoubleEntry {
     }
 
     fn len(&self) -> usize {
-        self.iter().len()
+        self.iter_ref().len()
     }
 
     fn retain<F>(&mut self, f: F)
@@ -187,32 +192,39 @@ pub trait DoubleEntry {
 }
 
 pub trait EntryContainer {
-    type Double: DoubleEntry;
-
-    type Iter<'a>: Iterator<Item = &'a Self::Double> + ExactSizeIterator
+    type Double<'a>: DoubleEntry + 'a
     where
         Self: 'a;
 
-    type IterMut<'a>: Iterator<Item = &'a mut Self::Double> + ExactSizeIterator
+    type Iter<'a>: IntoIterator<Item = Self::Double<'a>> + ExactSizeIterator
     where
         Self: 'a;
 
-    fn iter(&self) -> Self::Iter<'_>;
+    type IterRef<'a>: Iterator<Item = &'a Self::Double<'a>> + ExactSizeIterator
+    where
+        Self: 'a;
+
+    type IterMut<'a>: Iterator<Item = &'a mut Self::Double<'a>> + ExactSizeIterator
+    where
+        Self: 'a;
+
+    fn iter<'a>(self) -> Self::Iter<'a>;
+    fn iter_ref(&self) -> Self::IterRef<'_>;
     fn iter_mut(&mut self) -> Self::IterMut<'_>;
 
-    fn set_doubles(&mut self, doubles: Vec<Self::Double>);
+    fn set_doubles(&mut self, doubles: Vec<Self::Double<'_>>);
 
     fn is_empty(&self) -> bool {
         self.len() == 0
     }
 
     fn len(&self) -> usize {
-        self.iter().len()
+        self.iter_ref().len()
     }
 
     fn retain<F>(&mut self, f: F)
     where
-        F: FnMut(&Self::Double) -> bool;
+        F: FnMut(&Self::Double<'_>) -> bool;
 }
 
 /// Provides account information (nature) and inventory for a given account.
@@ -271,11 +283,11 @@ fn price(amount: f64, quantity: f64) -> f64 {
 // -----------------------------------------------------------------------------
 
 /// State‑less check: only checks the entries themselves, no inventory/account info needed.
-pub(crate) fn state_less_check_for_entry<C>(entry: &mut C)
+pub(crate) fn state_less_check_for_entry<'a, C>(entry: &'a mut C)
 where
-    C: EntryContainer + EntryContainerError,
-    C::Double: DoubleEntry + DoubleEntryError,
-    <C::Double as DoubleEntry>::Single: SingleEntry + SingleEntryError + Clone,
+    C: EntryContainer + EntryContainerError + 'a,
+    C::Double<'a>: DoubleEntry + DoubleEntryError,
+    <C::Double<'a> as DoubleEntry>::Single: SingleEntry + SingleEntryError + Clone,
 {
     if entry.is_empty() {
         entry.container_is_empty();
@@ -334,13 +346,16 @@ where
 }
 
 /// Full validation including account info and inventory.
-pub(crate) fn state_full_check_for_entry<C, A>(time_unix: u64, entry: &mut C, account_info: &mut A)
-where
-    C: EntryContainer + EntryContainerError,
-    C::Double: DoubleEntry + DoubleEntryError,
-    <C::Double as DoubleEntry>::Single: SingleEntry + SingleEntryError,
+pub(crate) fn state_full_check_for_entry<'a, C, A>(
+    time_unix: u64,
+    entry: &'a mut C,
+    account_info: &mut A,
+) where
+    C: EntryContainer + EntryContainerError + 'a,
+    C::Double<'a>: DoubleEntry + DoubleEntryError,
+    <C::Double<'a> as DoubleEntry>::Single: SingleEntry + SingleEntryError,
     A: AccountInfoProvider<
-        AccountId = <<C::Double as DoubleEntry>::Single as SingleEntry>::AccountId,
+        AccountId = <<C::Double<'a> as DoubleEntry>::Single as SingleEntry>::AccountId,
     >,
     A::Inventory: Inventory,
 {
@@ -902,16 +917,25 @@ mod tests {
     }
 
     impl DoubleEntry for TestDoubleEntry {
-        type Iter<'a> = std::slice::Iter<'a, TestSingleEntry>;
+        type Iter<'a> = std::vec::IntoIter<TestSingleEntry>;
         type IterMut<'a> = std::slice::IterMut<'a, TestSingleEntry>;
+        type IterRef<'a> = std::slice::Iter<'a, TestSingleEntry>;
         type Single = TestSingleEntry;
 
-        fn iter(&self) -> Self::Iter<'_> {
+        fn iter<'a>(self) -> Self::Iter<'a> {
+            self.lines.into_iter()
+        }
+
+        fn iter_ref(&self) -> Self::IterRef<'_> {
             self.lines.iter()
         }
 
         fn iter_mut(&mut self) -> Self::IterMut<'_> {
             self.lines.iter_mut()
+        }
+
+        fn set_singles(&mut self, singles: Vec<Self::Single>) {
+            self.lines = singles;
         }
 
         fn is_empty(&self) -> bool {
@@ -928,10 +952,6 @@ mod tests {
         {
             self.lines.retain(f);
         }
-
-        fn set_singles(&mut self, singles: Vec<Self::Single>) {
-            self.lines = singles;
-        }
     }
 
     #[derive(Clone, Debug, PartialEq, Default)]
@@ -942,16 +962,25 @@ mod tests {
     }
 
     impl EntryContainer for TestEntryContainer {
-        type Double = TestDoubleEntry;
-        type Iter<'a> = std::slice::Iter<'a, TestDoubleEntry>;
+        type Double<'a> = TestDoubleEntry;
+        type Iter<'a> = std::vec::IntoIter<TestDoubleEntry>;
         type IterMut<'a> = std::slice::IterMut<'a, TestDoubleEntry>;
+        type IterRef<'a> = std::slice::Iter<'a, TestDoubleEntry>;
 
-        fn iter(&self) -> Self::Iter<'_> {
+        fn iter<'a>(self) -> Self::Iter<'a> {
+            self.groups.into_iter()
+        }
+
+        fn iter_ref(&self) -> Self::IterRef<'_> {
             self.groups.iter()
         }
 
         fn iter_mut(&mut self) -> Self::IterMut<'_> {
             self.groups.iter_mut()
+        }
+
+        fn set_doubles(&mut self, doubles: Vec<Self::Double<'_>>) {
+            self.groups = doubles;
         }
 
         fn is_empty(&self) -> bool {
@@ -962,13 +991,9 @@ mod tests {
             self.groups.len()
         }
 
-        fn set_doubles(&mut self, doubles: Vec<Self::Double>) {
-            self.groups = doubles;
-        }
-
         fn retain<F>(&mut self, f: F)
         where
-            F: FnMut(&Self::Double) -> bool,
+            F: FnMut(&Self::Double<'_>) -> bool,
         {
             self.groups.retain(f);
         }

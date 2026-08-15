@@ -20,6 +20,8 @@ impl<'a, T1, T2> PairIter<'a, T1, T2> {
 impl<'a, T1, T2> Iterator for PairIter<'a, T1, T2> {
     type Item = &'a Pair<&'a T1, &'a T2>;
 
+    // TODO remove  the refrence
+
     fn next(&mut self) -> Option<Self::Item> {
         if let (Some(x), Some(y)) = (self.a_iter.next(), self.b_iter.next()) {
             self.current = Some(Pair(x, y));

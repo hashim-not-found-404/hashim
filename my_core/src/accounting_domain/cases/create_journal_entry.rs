@@ -1,6 +1,7 @@
 use crate::accounting_domain::utility::accounting_stuff;
 use crate::accounting_domain::utility::types;
 use crate::accounting_domain::utility::types::MyErrorTrait;
+use crate::utility::iterators;
 use crate::utility::traits;
 use serde::Deserialize;
 use serde::Serialize;
@@ -20,14 +21,14 @@ pub struct Input {
     pub user_uuid:                types::UuidType,
     pub notes:                    Option<String>,
     pub shared_entry_id:          Option<types::UuidType>,
-    pub double_entries:           Vec<DoubleEntry>,
+    pub double_entries:           Vec<DoubleEntryInput>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct DoubleEntry(Vec<SingleEntry>);
+pub struct DoubleEntryInput(Vec<SingleEntryInput>);
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct SingleEntry {
+pub struct SingleEntryInput {
     pub new_uuid:     types::UuidType,
     pub account:      types::UuidType,
     pub is_debit:     Option<bool>,
@@ -75,16 +76,16 @@ pub struct Error {
     pub(crate) belong_to_company_branch: Option<types::RowIdError>,
     pub(crate) shared_entry_id:          Option<types::RowIdError>,
 
-    container_is_empty:        bool,
-    pub(crate) double_entries: Vec<DoubleEntryError>,
+    pub(crate) container_is_empty: bool,
+    pub(crate) double_entries:     Vec<DoubleEntryError>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
 pub struct DoubleEntryError {
-    entry_is_empty:                 bool,
-    you_need_to_split_the_entry:    bool,
-    debit_not_equal_credit:         Option<DebitNotEqualCreditError>,
-    pub(crate) single_entry_errors: Vec<SingleEntryError>,
+    pub(crate) entry_is_empty:              bool,
+    pub(crate) you_need_to_split_the_entry: bool,
+    pub(crate) debit_not_equal_credit:      Option<DebitNotEqualCreditError>,
+    pub(crate) single_entry_errors:         Vec<SingleEntryError>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
@@ -92,16 +93,16 @@ pub struct SingleEntryError {
     pub(crate) new_uuid: Option<types::RowIdError>,
     pub(crate) account:  Option<types::RowIdError>,
 
-    quantity_and_amount_are_zero:       bool,
-    duplicate_account_in_entry:         bool,
-    inventory_is_empty:                 bool,
-    the_amount_should_be_positive:      bool,
-    the_quantity_should_be_positive:    bool,
-    quantity_not_equal_amount:          bool,
-    quantity_not_equal_zero:            bool,
-    insufficient_quantity_in_inventory: Option<InsufficientQuantityInInventory>,
-    amount_mismatch:                    Option<AmountMismatch>,
-    insufficient_amount_in_inventory:   Option<InsufficientAmountInInventory>,
+    pub(crate) quantity_and_amount_are_zero:       bool,
+    pub(crate) duplicate_account_in_entry:         bool,
+    pub(crate) inventory_is_empty:                 bool,
+    pub(crate) the_amount_should_be_positive:      bool,
+    pub(crate) the_quantity_should_be_positive:    bool,
+    pub(crate) quantity_not_equal_amount:          bool,
+    pub(crate) quantity_not_equal_zero:            bool,
+    pub(crate) insufficient_quantity_in_inventory: Option<InsufficientQuantityInInventory>,
+    pub(crate) amount_mismatch:                    Option<AmountMismatch>,
+    pub(crate) insufficient_amount_in_inventory:   Option<InsufficientAmountInInventory>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
@@ -162,12 +163,16 @@ pub trait DatabaseRead {
 }
 
 // -----------------------------------------------------------------------------
-// error impls
+// impls
 // -----------------------------------------------------------------------------
 
-impl types::MyErrorTrait for SingleEntryError {}
+impl types::MyErrorTrait for SingleEntryError {
+    fn is_there_error(&self) -> bool {
+        *self != Self::default()
+    }
+}
 
-impl types::MyErrorTrait for DoubleEntryError {
+impl MyErrorTrait for DoubleEntryError {
     fn is_there_error(&self) -> bool {
         if self.entry_is_empty
             || self.you_need_to_split_the_entry
@@ -176,7 +181,7 @@ impl types::MyErrorTrait for DoubleEntryError {
             return true;
         }
 
-        for line in self.single_entry_errors.iter() {
+        for line in &self.single_entry_errors {
             if line.is_there_error() {
                 return true;
             }
@@ -186,7 +191,7 @@ impl types::MyErrorTrait for DoubleEntryError {
     }
 }
 
-impl types::MyErrorTrait for Error {
+impl MyErrorTrait for Error {
     fn is_there_error(&self) -> bool {
         if self.container_is_empty
             || self.user_uuid.is_some()
@@ -197,7 +202,7 @@ impl types::MyErrorTrait for Error {
             return true;
         }
 
-        for double in self.double_entries.iter() {
+        for double in &self.double_entries {
             if double.is_there_error() {
                 return true;
             }
@@ -207,11 +212,10 @@ impl types::MyErrorTrait for Error {
     }
 }
 
-// -----------------------------------------------------------------------------
-// Helpers for error initialization and resolution
-// -----------------------------------------------------------------------------
+type SingleEntryInputAndError<'a> = iterators::PairIter<'a, SingleEntryInput, SingleEntryError>;
+type DoubleEntryInputAndError<'a> = iterators::PairIter<'a, DoubleEntryInput, DoubleEntryError>;
+type ContainerEntryInputAndError<'a> = iterators::PairIter<'a, Input, Error>;
 
-/// Pre‑allocate an `Error` sink matching the structure of `entry`.
 pub(crate) fn init_error_sink(entry: &Input) -> Error {
     let mut err = Error::default();
     err.double_entries = vec![DoubleEntryError::default(); entry.double_entries.len()];
@@ -221,7 +225,3 @@ pub(crate) fn init_error_sink(entry: &Input) -> Error {
     }
     err
 }
-
-// -----------------------------------------------------------------------------
-// Validation methods on Input
-// -----------------------------------------------------------------------------

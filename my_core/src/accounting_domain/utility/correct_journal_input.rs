@@ -60,11 +60,11 @@ pub struct AccountInfo<I> {
     inventory:    I,
 }
 
-fn reset_all_inferred_values<C>(entry: &mut C)
+fn reset_all_inferred_values<C, AId>(entry: &mut C)
 where
     C: EntryContainer,
-    C::Double: DoubleEntry,
-    <C::Double as DoubleEntry>::Single: SingleEntry,
+    for<'a> C::Double<'a>: DoubleEntry,
+    for<'a> <C::Double<'a> as DoubleEntry>::Single: SingleEntry<AccountId = AId>,
 {
     for double in entry.iter_mut() {
         for single in double.iter_mut() {
@@ -78,14 +78,12 @@ where
     }
 }
 
-fn horizontal_infer_for_is_debit<C, A>(entry: &mut C, account_info: &A)
+fn horizontal_infer_for_is_debit<C, A, AId>(entry: &mut C, account_info: &A)
 where
     C: EntryContainer,
-    C::Double: DoubleEntry,
-    <C::Double as DoubleEntry>::Single: SingleEntry,
-    A: AccountInfoProvider<
-        AccountId = <<C::Double as DoubleEntry>::Single as SingleEntry>::AccountId,
-    >,
+    for<'a> C::Double<'a>: DoubleEntry,
+    for<'a> <C::Double<'a> as DoubleEntry>::Single: SingleEntry<AccountId = AId>,
+    A: AccountInfoProvider<AccountId = AId>,
     A::Inventory: Inventory,
 {
     for double in entry.iter_mut() {
@@ -105,14 +103,12 @@ where
     }
 }
 
-fn horizontal_infer_for_is_inflow<C, A>(entry: &mut C, account_info: &A)
+fn horizontal_infer_for_is_inflow<C, A, AId>(entry: &mut C, account_info: &A)
 where
     C: EntryContainer,
-    C::Double: DoubleEntry,
-    <C::Double as DoubleEntry>::Single: SingleEntry,
-    A: AccountInfoProvider<
-        AccountId = <<C::Double as DoubleEntry>::Single as SingleEntry>::AccountId,
-    >,
+    for<'a> C::Double<'a>: DoubleEntry,
+    for<'a> <C::Double<'a> as DoubleEntry>::Single: SingleEntry<AccountId = AId>,
+    A: AccountInfoProvider<AccountId = AId>,
     A::Inventory: Inventory,
 {
     for double in entry.iter_mut() {
@@ -130,14 +126,12 @@ where
     }
 }
 
-fn horizontal_infer_for_inflow_type<C, A>(entry: &mut C, account_info: &A)
+fn horizontal_infer_for_inflow_type<C, A, AId>(entry: &mut C, account_info: &A)
 where
     C: EntryContainer,
-    C::Double: DoubleEntry,
-    <C::Double as DoubleEntry>::Single: SingleEntry,
-    A: AccountInfoProvider<
-        AccountId = <<C::Double as DoubleEntry>::Single as SingleEntry>::AccountId,
-    >,
+    for<'a> C::Double<'a>: DoubleEntry,
+    for<'a> <C::Double<'a> as DoubleEntry>::Single: SingleEntry<AccountId = AId>,
+    A: AccountInfoProvider<AccountId = AId>,
     A::Inventory: Inventory,
 {
     for double in entry.iter_mut() {
@@ -158,14 +152,12 @@ where
     }
 }
 
-fn horizontal_infer_for_outflow_type<C, A>(entry: &mut C, account_info: &A)
+fn horizontal_infer_for_outflow_type<C, A, AId>(entry: &mut C, account_info: &A)
 where
     C: EntryContainer,
-    C::Double: DoubleEntry,
-    <C::Double as DoubleEntry>::Single: SingleEntry,
-    A: AccountInfoProvider<
-        AccountId = <<C::Double as DoubleEntry>::Single as SingleEntry>::AccountId,
-    >,
+    for<'a> C::Double<'a>: DoubleEntry,
+    for<'a> <C::Double<'a> as DoubleEntry>::Single: SingleEntry<AccountId = AId>,
+    A: AccountInfoProvider<AccountId = AId>,
     A::Inventory: Inventory,
 {
     for double in entry.iter_mut() {
@@ -189,8 +181,8 @@ where
 fn vertical_correct_by_remove_duplicate_account<C>(entry: &mut C)
 where
     C: EntryContainer,
-    C::Double: DoubleEntry,
-    <C::Double as DoubleEntry>::Single: SingleEntry,
+    for<'a> C::Double<'a>: DoubleEntry,
+    for<'a> <C::Double<'a> as DoubleEntry>::Single: SingleEntry,
 {
     for double in entry.iter_mut() {
         let mut seen_accounts = HashSet::new();
@@ -205,17 +197,15 @@ where
     entry.retain(|double| double.is_empty());
 }
 
-fn horizontal_infer_for_amount_from_quantity<C, A>(
+fn horizontal_infer_for_amount_from_quantity<C, A, AId>(
     time_unix: u64,
     entry: &mut C,
     mut account_info: A,
 ) where
     C: EntryContainer,
-    C::Double: DoubleEntry,
-    <C::Double as DoubleEntry>::Single: SingleEntry,
-    A: AccountInfoProvider<
-        AccountId = <<C::Double as DoubleEntry>::Single as SingleEntry>::AccountId,
-    >,
+    for<'a> C::Double<'a>: DoubleEntry,
+    for<'a> <C::Double<'a> as DoubleEntry>::Single: SingleEntry<AccountId = AId>,
+    A: AccountInfoProvider<AccountId = AId>,
     A::Inventory: Inventory,
 {
     for double in entry.iter_mut() {
@@ -347,14 +337,14 @@ fn horizontal_infer_for_amount_from_quantity<C, A>(
 fn vertical_infer_for_is_debit<C>(entry: &mut C)
 where
     C: EntryContainer,
-    C::Double: DoubleEntry,
-    <C::Double as DoubleEntry>::Single: SingleEntry + Clone,
+    for<'a> C::Double<'a>: DoubleEntry,
+    for<'a> <C::Double<'a> as DoubleEntry>::Single: SingleEntry + Clone,
 {
     for double in entry.iter_mut() {
         let mut new_double = Vec::new();
         let mut other_double = Vec::new();
 
-        for single in double.iter() {
+        for single in double.iter_ref() {
             if single.get_inferred_amount().is_some() {
                 new_double.push(single.clone());
             } else {
@@ -388,8 +378,8 @@ where
 fn vertical_infer_for_amount<C>(entry: &mut C)
 where
     C: EntryContainer,
-    C::Double: DoubleEntry,
-    <C::Double as DoubleEntry>::Single: SingleEntry,
+    for<'a> C::Double<'a>: DoubleEntry,
+    for<'a> <C::Double<'a> as DoubleEntry>::Single: SingleEntry,
 {
     'l1: for double in entry.iter_mut() {
         let mut total_debit = 0.0;
@@ -436,17 +426,17 @@ where
 
 fn vertical_correct_by_common_subset_sum<C>(entry: &mut C)
 where
-    C: EntryContainer,
-    C::Double: DoubleEntry + Clone,
-    <C::Double as DoubleEntry>::Single: SingleEntry + Clone,
+    C: EntryContainer + Clone,
+    for<'a> C::Double<'a>: DoubleEntry + Clone,
+    for<'a> <C::Double<'a> as DoubleEntry>::Single: SingleEntry + Clone,
 {
-    let mut new_doubles: Vec<C::Double> = Vec::new();
+    let mut new_doubles = Vec::new();
 
-    for double in entry.iter() {
+    for double in entry.clone().iter() {
         let mut debit_side = Vec::new();
         let mut credit_side = Vec::new();
 
-        for single in double.iter() {
+        for single in double.clone().iter() {
             if let Some(is_debit) = single.get_inferred_is_debit() {
                 if is_debit {
                     debit_side.push(single.clone());
@@ -459,7 +449,7 @@ where
         }
 
         let groups = common_subset_sum::split_to_max(&debit_side, &credit_side, &|s| {
-            accounting_stuff::wrapper::T(s.get_inferred_amount().unwrap_or(0.0))
+            accounting_stuff::wrapper::T(s.get_inferred_amount().unwrap_or_default())
         });
 
         for (debit_group, credit_group) in groups {
@@ -467,7 +457,7 @@ where
             combined.extend(debit_group);
             combined.extend(credit_group);
 
-            let mut new_double = double.clone();
+            let mut new_double: <C as EntryContainer>::Double<'_> = double.clone();
             new_double.set_singles(combined);
             new_doubles.push(new_double);
         }
@@ -479,8 +469,8 @@ where
 fn horizontal_correct<C>(entry: &mut C)
 where
     C: EntryContainer,
-    C::Double: DoubleEntry,
-    <C::Double as DoubleEntry>::Single: SingleEntry,
+    for<'a> C::Double<'a>: DoubleEntry,
+    for<'a> <C::Double<'a> as DoubleEntry>::Single: SingleEntry,
 {
     for double in entry.iter_mut() {
         for single in double.iter_mut() {
@@ -506,17 +496,15 @@ where
     }
 }
 
-fn horizontal_infer_for_quantity_from_amount<C, A>(
+fn horizontal_infer_for_quantity_from_amount<C, A, AId>(
     time_unix: u64,
     entry: &mut C,
     mut account_info: A,
 ) where
     C: EntryContainer,
-    C::Double: DoubleEntry,
-    <C::Double as DoubleEntry>::Single: SingleEntry,
-    A: AccountInfoProvider<
-        AccountId = <<C::Double as DoubleEntry>::Single as SingleEntry>::AccountId,
-    >,
+    for<'a> C::Double<'a>: DoubleEntry,
+    for<'a> <C::Double<'a> as DoubleEntry>::Single: SingleEntry<AccountId = AId>,
+    A: AccountInfoProvider<AccountId = AId>,
     A::Inventory: Inventory,
 {
     for double in entry.iter_mut() {
@@ -628,14 +616,12 @@ fn horizontal_infer_for_quantity_from_amount<C, A>(
     }
 }
 
-fn correct_the_input<C, A>(time_unix: u64, entry: &mut C, account_info: A)
+fn correct_the_input<C, A, AId>(time_unix: u64, entry: &mut C, account_info: A)
 where
-    C: EntryContainer,
-    C::Double: DoubleEntry + Clone,
-    <C::Double as DoubleEntry>::Single: SingleEntry + Clone,
-    A: AccountInfoProvider<
-            AccountId = <<C::Double as DoubleEntry>::Single as SingleEntry>::AccountId,
-        > + Clone,
+    C: EntryContainer + Clone,
+    for<'a> C::Double<'a>: DoubleEntry + Clone,
+    for<'a> <C::Double<'a> as DoubleEntry>::Single: SingleEntry<AccountId = AId> + Clone,
+    A: AccountInfoProvider<AccountId = AId> + Clone,
     A::Inventory: Inventory,
 {
     reset_all_inferred_values(entry);
@@ -852,16 +838,25 @@ mod tests {
     }
 
     impl DoubleEntry for MockDouble {
-        type Iter<'a> = std::slice::Iter<'a, MockSingle>;
+        type Iter<'a> = std::vec::IntoIter<MockSingle>;
         type IterMut<'a> = std::slice::IterMut<'a, MockSingle>;
+        type IterRef<'a> = std::slice::Iter<'a, MockSingle>;
         type Single = MockSingle;
 
-        fn iter(&self) -> Self::Iter<'_> {
+        fn iter<'a>(self) -> Self::Iter<'a> {
+            self.singles.into_iter()
+        }
+
+        fn iter_ref(&self) -> Self::IterRef<'_> {
             self.singles.iter()
         }
 
         fn iter_mut(&mut self) -> Self::IterMut<'_> {
             self.singles.iter_mut()
+        }
+
+        fn set_singles(&mut self, singles: Vec<Self::Single>) {
+            self.singles = singles;
         }
 
         fn retain<F>(&mut self, f: F)
@@ -870,24 +865,25 @@ mod tests {
         {
             self.singles.retain(f);
         }
-
-        fn set_singles(&mut self, singles: Vec<Self::Single>) {
-            self.singles = singles;
-        }
     }
 
     // ---------- Mock EntryContainer ----------
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     pub struct MockEntryContainer {
         pub doubles: Vec<MockDouble>,
     }
 
     impl EntryContainer for MockEntryContainer {
-        type Double = MockDouble;
-        type Iter<'a> = std::slice::Iter<'a, MockDouble>;
+        type Double<'a> = MockDouble;
+        type Iter<'a> = std::vec::IntoIter<MockDouble>;
         type IterMut<'a> = std::slice::IterMut<'a, MockDouble>;
+        type IterRef<'a> = std::slice::Iter<'a, MockDouble>;
 
-        fn iter(&self) -> Self::Iter<'_> {
+        fn iter<'a>(self) -> Self::Iter<'a> {
+            self.doubles.into_iter()
+        }
+
+        fn iter_ref(&self) -> Self::IterRef<'_> {
             self.doubles.iter()
         }
 
@@ -895,13 +891,13 @@ mod tests {
             self.doubles.iter_mut()
         }
 
-        fn set_doubles(&mut self, doubles: Vec<Self::Double>) {
+        fn set_doubles(&mut self, doubles: Vec<Self::Double<'_>>) {
             self.doubles = doubles;
         }
 
         fn retain<F>(&mut self, f: F)
         where
-            F: FnMut(&Self::Double) -> bool,
+            F: FnMut(&Self::Double<'_>) -> bool,
         {
             self.doubles.retain(f);
         }
