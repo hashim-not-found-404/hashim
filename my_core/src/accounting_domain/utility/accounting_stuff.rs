@@ -145,7 +145,6 @@ pub(crate) trait EntryContainerError: types::MyErrorTrait {
     fn container_is_empty(&mut self);
 }
 
-/// Represents a single entry line (e.g., a line in a journal entry).
 pub trait SingleEntry {
     type AccountId: Eq + Hash;
 

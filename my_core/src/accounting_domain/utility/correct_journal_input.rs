@@ -54,10 +54,10 @@ pub trait AccountInfoProvider {
 }
 
 pub struct AccountInfo<I> {
-    is_debit:     bool,
-    inflow_type:  accounting_stuff::InFlowType,
-    outflow_type: accounting_stuff::OutFlowType,
-    inventory:    I,
+    pub is_debit:      bool,
+    pub in_flow_type:  accounting_stuff::InFlowType,
+    pub out_flow_type: accounting_stuff::OutFlowType,
+    pub inventory:     I,
 }
 
 fn reset_all_inferred_values<C, AId>(entry: &mut C)
@@ -144,7 +144,7 @@ where
                     let account_id = single.get_account_id();
 
                     if let Some(info) = account_info.get_info(&account_id) {
-                        single.set_inferred_inflow_type(Some(info.inflow_type));
+                        single.set_inferred_inflow_type(Some(info.in_flow_type));
                     }
                 }
             }
@@ -170,7 +170,7 @@ where
                     let account_id = single.get_account_id();
 
                     if let Some(info) = account_info.get_info(&account_id) {
-                        single.set_inferred_outflow_type(Some(info.outflow_type));
+                        single.set_inferred_outflow_type(Some(info.out_flow_type));
                     }
                 }
             }
@@ -616,7 +616,7 @@ fn horizontal_infer_for_quantity_from_amount<C, A, AId>(
     }
 }
 
-fn correct_the_input<C, A, AId>(time_unix: u64, entry: &mut C, account_info: A)
+pub fn correct_the_input<C, A, AId>(time_unix: u64, entry: &mut C, account_info: A)
 where
     C: EntryContainer + Clone,
     for<'a> C::Double<'a>: DoubleEntry + Clone,
@@ -943,10 +943,10 @@ mod tests {
                 // Safety: The raw pointer is valid for the entire lifetime of the provider,
                 // and we never mutate the inventory (only read is_debit from infos).
                 AccountInfo {
-                    is_debit:     a.is_debit,
-                    inflow_type:  a.inflow_type.clone(),
-                    outflow_type: a.outflow_type.clone(),
-                    inventory:    &a.inventory,
+                    is_debit:      a.is_debit,
+                    in_flow_type:  a.inflow_type.clone(),
+                    out_flow_type: a.outflow_type.clone(),
+                    inventory:     &a.inventory,
                 }
             })
         }
@@ -959,10 +959,10 @@ mod tests {
                 // Safety: The raw pointer is valid for the entire lifetime of the provider,
                 // and we never mutate the inventory (only read is_debit from infos).
                 AccountInfo {
-                    is_debit:     a.is_debit,
-                    inflow_type:  a.inflow_type.clone(),
-                    outflow_type: a.outflow_type.clone(),
-                    inventory:    &mut a.inventory,
+                    is_debit:      a.is_debit,
+                    in_flow_type:  a.inflow_type.clone(),
+                    out_flow_type: a.outflow_type.clone(),
+                    inventory:     &mut a.inventory,
                 }
             })
         }
