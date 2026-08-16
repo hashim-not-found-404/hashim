@@ -111,9 +111,9 @@ pub struct SingleEntryError {
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
-pub(crate) struct DebitNotEqualCreditError {
-    pub(crate) total_debit:  f64,
-    pub(crate) total_credit: f64,
+pub struct DebitNotEqualCreditError {
+    pub total_debit:  f64,
+    pub total_credit: f64,
 }
 
 // -----------------------------------------------------------------------------

@@ -160,7 +160,7 @@ impl<Mpsc: traits::MultiProducerSingleConsumer> Commander<Mpsc> {
                             .await
                         }
                         ui_model::Message::CreateJournalEntry(msg) => {
-                            msg.update::<Rn, Rt, Id, Mpsc, Rg, Ti, As, Ch, Dbb::CreateJournalEntry>(
+                            msg.update::<Rn, Rt, Id, Mpsc, Rg, Ti, As, Ch, Dbb::CreateJournalEntry,Dbb::GetAllAccountsForBranch>(
                                 model,
                                 cache,
                                 commander_local_state,

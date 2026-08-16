@@ -312,6 +312,13 @@ pub enum CreateAccountForBranch {
 
 #[derive(Debug)]
 pub enum CreateJournalEntry {
+    Subscribe,
+    UnSubscribe,
+    SelectSuggestion {
+        double_index: usize,
+        single_index: usize,
+        account_uuid: types::UuidType,
+    },
     Submit,
     Consent(UserConsent),
     Clean,

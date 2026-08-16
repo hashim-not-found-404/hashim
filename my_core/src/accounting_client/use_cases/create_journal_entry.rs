@@ -6,11 +6,13 @@ use crate::accounting_client::client_domain::commander;
 use crate::accounting_client::client_domain::process_manager;
 use crate::accounting_client::client_domain::ui_model;
 use crate::accounting_client::client_domain::ui_model::HashimSignal;
+use crate::accounting_client::fetches;
 use crate::accounting_domain::cases;
 use crate::accounting_domain::cases::create_journal_entry;
 use crate::accounting_domain::request_response;
 use crate::accounting_domain::utility::resource_utils;
 use crate::accounting_domain::utility::types;
+use crate::utility::tools;
 use crate::utility::traits;
 use crate::utility::traits::JoinHandle;
 use crate::utility::traits::Receiver;
@@ -283,17 +285,74 @@ impl ui_model::CreateJournalEntry {
         Rg: traits::Regex,
         Ti: traits::Time,
         As: ui_model::AllSignalTypes,
-        Ch: cache::Cache,
-        LongCache: for<'a> cases::create_journal_entry::DatabaseRead<Db<'a> = Ch>,
+        Ch: cache::Cache + 'static,
+        LongCache: for<'a> cases::create_journal_entry::DatabaseRead<Db<'a> = Ch> + 'static,
+        LongCacheForGetAllAccountsForBranch: for<'a> cases::get_all_accounts_for_branch::DatabaseRead<Db<'a> = Ch> + 'static,
     >(
         self,
         model: &'static ui_model::Model<As>,
-        cache: client_traits::CacheActorStruct<Mpsc>,
+        mut cache: client_traits::CacheActorStruct<Mpsc>,
         commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
     ) {
         let local_state = &model.page_create_journal_entry;
 
         match self {
+            ui_model::CreateJournalEntry::Subscribe => {
+                // 1. Fetch the list of available accounts (cache + server)
+                let user_uuid = model.user_uuid.read().clone().unwrap();
+                let company_branch_uuid = model.selected_company_branch.read().unwrap();
+
+                let input = cases::get_all_accounts_for_branch::Input {
+                    user_uuid:           user_uuid.clone(),
+                    company_branch_uuid: company_branch_uuid.clone(),
+                };
+
+                let txn_number = Rn::generate();
+                let mut receiver = cache
+                    .send_to_cache_actor(
+                        cache_actor::CachingStrategy::ReadCacheAndServer,
+                        txn_number,
+                        <fetches::get_all_accounts_for_branch::ViewAndCacheType as ViewAndCache<
+                            Ch,
+                            LongCacheForGetAllAccountsForBranch,
+                        >>::wrap_input(input),
+                    )
+                    .await;
+
+                // Wait for the first response
+                if let cache_actor::Response::Data {
+                    data,
+                    ..
+                } = receiver.recv().await.unwrap()
+                {
+                    let result =
+                        <fetches::get_all_accounts_for_branch::ViewAndCacheType as ViewAndCache<
+                            Ch,
+                            LongCacheForGetAllAccountsForBranch,
+                        >>::unwrap_output(data);
+                    apply_fetch_result::<As>(&result, model);
+                }
+
+                // 2. Set up a subscription listener for live updates
+                let listener_aborter =
+                    handle_listener::<
+                        Rn,
+                        Rt,
+                        Id,
+                        Mpsc,
+                        Rg,
+                        As,
+                        Ch,
+                        LongCacheForGetAllAccountsForBranch,
+                    >(model, cache.clone(), commander_local_state.clone());
+
+                // Store the aborter to cancel on unmount (requires adding field to CommanderLocalState)
+                *commander_local_state.aborter_to_accounts_listener.lock().unwrap() =
+                    Some(Box::new(listener_aborter));
+            }
+            ui_model::CreateJournalEntry::UnSubscribe => {
+                handle_unsubscribe(commander_local_state);
+            }
             ui_model::CreateJournalEntry::Submit => {
                 handle_submit::<Rn, Rt, Id, Mpsc, Rg, Ti, As, Ch, LongCache>(
                     model,
@@ -361,7 +420,13 @@ impl ui_model::CreateJournalEntry {
                     if let Some(single) = double.singles.get_mut(single_index) {
                         match value {
                             ui_model::SingleEntryField::Account(name) => {
+                                // Filter the master list
+                                let master =
+                                    local_state.list_of_available_account.lock().unwrap().clone();
+                                let filtered = tools::select_strings(master, name.clone());
+                                local_state.filtered_list.set(filtered);
                                 single.user_input_account_name = name;
+                                single.inferred_account_id = None;
                             }
                             ui_model::SingleEntryField::IsDebit(b) => {
                                 single.user_input_is_debit = Some(b);
@@ -389,12 +454,161 @@ impl ui_model::CreateJournalEntry {
             ui_model::CreateJournalEntry::SetSharedEntryId(uuid_type) => {
                 local_state.shared_entry_id.set(uuid_type);
             }
+            ui_model::CreateJournalEntry::SelectSuggestion {
+                double_index,
+                single_index,
+                account_uuid,
+            } => {
+                let mut entries = local_state.double_entries.read();
+                if let Some(double) = entries.get_mut(double_index) {
+                    if let Some(single) = double.singles.get_mut(single_index) {
+                        // Find the account name from the master list
+                        let master = local_state.list_of_available_account.lock().unwrap().clone();
+                        if let Some(account) = master.iter().find(|a| a.row_uuid == account_uuid) {
+                            single.user_input_account_name = account.account_name.clone();
+                            single.inferred_account_id = Some(account_uuid);
+                            local_state.filtered_list.set(Vec::new());
+                        }
+                        local_state.double_entries.set(entries);
+                    }
+                }
+            }
         }
     }
 }
 
 // -----------------------------------------------------------------------------
-// Helper functions
+// Helper functions for fetching and listener
+// -----------------------------------------------------------------------------
+
+/// Apply the fetch result to the model, converting domain accounts to UI accounts.
+fn apply_fetch_result<As: ui_model::AllSignalTypes>(
+    result: &cases::get_all_accounts_for_branch::MyResult,
+    model: &ui_model::Model<As>,
+) {
+    if let Ok(ok) = result {
+        let accounts: Vec<ui_model::Accounts> = ok
+            .accounts
+            .iter()
+            .map(|a| {
+                ui_model::Accounts {
+                    row_uuid:                        a.row_uuid.clone(),
+                    is_debit:                        a.is_debit,
+                    is_permanent_account:            a.is_permanent_account,
+                    account_name:                    a.account_name.clone(),
+                    notes:                           a.notes.clone(),
+                    unit_of_measurement_of_quantity: a.unit_of_measurement_of_quantity.clone(),
+                }
+            })
+            .collect();
+        *model.page_create_journal_entry.list_of_available_account.lock().unwrap() = accounts;
+        // Optionally reset filtered list? We'll leave it empty initially.
+    }
+}
+
+/// Spawn a listener that re‑fetches whenever subscribed resources change.
+fn handle_listener<
+    Rn: traits::RandomNumber,
+    Rt: traits::Runtime,
+    Id: types::RowId,
+    Mpsc: traits::MultiProducerSingleConsumer,
+    Rg: traits::Regex,
+    As: ui_model::AllSignalTypes,
+    Ch: cache::Cache,
+    LongCacheForGetAllAccountsForBranch: for<'a> cases::get_all_accounts_for_branch::DatabaseRead<Db<'a> = Ch>,
+>(
+    model: &'static ui_model::Model<As>,
+    mut cache: client_traits::CacheActorStruct<Mpsc>,
+    _: Arc<commander::CommanderLocalState<Mpsc, As>>,
+) -> impl FnOnce() {
+    let component_id = Rn::generate() as u16;
+    let mut cache1 = cache.clone();
+
+    let mut handle = Rt::abortable_spawn_local(async move {
+        // Subscribe to the relevant resources
+        let mut receiver_to_poke = cache
+            .send_subs_to_cache_actor(
+                component_id,
+                <fetches::get_all_accounts_for_branch::ViewAndCacheType as ViewAndCache<
+                    Ch,
+                    LongCacheForGetAllAccountsForBranch,
+                >>::subs(),
+            )
+            .await;
+
+        let user_uuid = model.user_uuid.read().clone().unwrap();
+        let company_branch_uuid = model.selected_company_branch.read().unwrap();
+
+        loop {
+            // Wait for a poke (data changed)
+            receiver_to_poke.recv().await.unwrap();
+
+            // Re‑fetch from cache only (no server round trip)
+            let input = cases::get_all_accounts_for_branch::Input {
+                user_uuid:           user_uuid.clone(),
+                company_branch_uuid: company_branch_uuid.clone(),
+            };
+            let txn_number = Rn::generate();
+            let value = cache
+                .send_to_cache_actor(
+                    cache_actor::CachingStrategy::ReadCacheOnly,
+                    txn_number,
+                    <fetches::get_all_accounts_for_branch::ViewAndCacheType as ViewAndCache<
+                        Ch,
+                        LongCacheForGetAllAccountsForBranch,
+                    >>::wrap_input(input),
+                )
+                .await
+                .recv()
+                .await
+                .unwrap();
+
+            let value = match value {
+                cache_actor::Response::CloseTheChannel => break,
+                cache_actor::Response::ServerCannotBeReached => break,
+                cache_actor::Response::Data {
+                    is_response_from_server: _,
+                    data,
+                } => {
+                    <fetches::get_all_accounts_for_branch::ViewAndCacheType as ViewAndCache<
+                        Ch,
+                        LongCacheForGetAllAccountsForBranch,
+                    >>::unwrap_output(data)
+                }
+            };
+
+            apply_fetch_result::<As>(&value, model);
+
+            if value.is_err() {
+                break;
+            }
+        }
+
+        // Clean up subscription when loop exits
+        cache.send_unsubs_to_cache_actor(component_id).await;
+    });
+
+    // Return a closure that aborts the listener and unsubscribes
+    move || {
+        Rt::spawn_local(async move {
+            handle.abort().await;
+            cache1.send_unsubs_to_cache_actor(component_id).await;
+        });
+    }
+}
+
+// ---- UnSubscribe ----
+fn handle_unsubscribe<Mpsc: traits::MultiProducerSingleConsumer, As: ui_model::AllSignalTypes>(
+    commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
+) {
+    let mut guard = commander_local_state.aborter_to_accounts_listener.lock().unwrap();
+    if let Some(f) = guard.take() {
+        f();
+    }
+}
+
+// -----------------------------------------------------------------------------
+// Clean and Submit (unchanged except for minor adjustments)
 // -----------------------------------------------------------------------------
 
 fn handle_clean<As: ui_model::AllSignalTypes>(model: &ui_model::Model<As>) {
@@ -402,7 +616,9 @@ fn handle_clean<As: ui_model::AllSignalTypes>(model: &ui_model::Model<As>) {
     local_state.is_loading.reset();
     local_state.show_dialog.reset();
     local_state.double_entries.reset();
-    local_state.some_account_are_not_inferred.reset(); // clear error on clean
+    local_state.some_account_are_not_inferred.reset();
+    // Also clear the filtered list and master list? Master list is kept; filtered list reset.
+    local_state.filtered_list.reset();
 }
 
 async fn handle_submit<
