@@ -105,30 +105,15 @@ pub struct SingleEntryError {
     pub(crate) the_quantity_should_be_positive:    bool,
     pub(crate) quantity_not_equal_amount:          bool,
     pub(crate) quantity_not_equal_zero:            bool,
-    pub(crate) insufficient_quantity_in_inventory: Option<InsufficientQuantityInInventory>,
-    pub(crate) amount_mismatch:                    Option<AmountMismatch>,
-    pub(crate) insufficient_amount_in_inventory:   Option<InsufficientAmountInInventory>,
+    pub(crate) insufficient_quantity_in_inventory: Option<f64>,
+    pub(crate) amount_mismatch:                    Option<f64>,
+    pub(crate) insufficient_amount_in_inventory:   Option<f64>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
 pub(crate) struct DebitNotEqualCreditError {
-    total_debit:  f64,
-    total_credit: f64,
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
-pub(crate) struct InsufficientQuantityInInventory {
-    total_quantity: f64,
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
-pub(crate) struct AmountMismatch {
-    expected_amount: f64,
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
-pub(crate) struct InsufficientAmountInInventory {
-    total_amount: f64,
+    pub(crate) total_debit:  f64,
+    pub(crate) total_credit: f64,
 }
 
 // -----------------------------------------------------------------------------
@@ -378,21 +363,15 @@ impl accounting_stuff::SingleEntryError for SingleEntryView {
     }
 
     fn insufficient_quantity_in_inventory(&mut self, total_quantity: f64) {
-        self.error.insufficient_quantity_in_inventory = Some(InsufficientQuantityInInventory {
-            total_quantity,
-        });
+        self.error.insufficient_quantity_in_inventory = Some(total_quantity);
     }
 
     fn amount_mismatch(&mut self, expected_amount: f64) {
-        self.error.amount_mismatch = Some(AmountMismatch {
-            expected_amount,
-        });
+        self.error.amount_mismatch = Some(expected_amount);
     }
 
     fn insufficient_amount_in_inventory(&mut self, total_amount: f64) {
-        self.error.insufficient_amount_in_inventory = Some(InsufficientAmountInInventory {
-            total_amount,
-        });
+        self.error.insufficient_amount_in_inventory = Some(total_amount);
     }
 }
 

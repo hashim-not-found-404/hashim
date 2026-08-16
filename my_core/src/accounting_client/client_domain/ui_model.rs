@@ -1,3 +1,4 @@
+use crate::accounting_domain::cases::create_journal_entry;
 use crate::accounting_domain::utility::accounting_stuff;
 use crate::accounting_domain::utility::types;
 use crate::utility::tools;
@@ -160,38 +161,19 @@ pub struct PageCreateJournalEntry<As: AllSignalTypes> {
     pub show_dialog:     As::Dialog,
     pub shared_entry_id: As::OptionUuid,
 
-    pub error_container_is_empty: As::Bool,
-    pub double_entries:           As::JournalEntry,
+    pub some_account_are_not_inferred: As::Bool,
+    pub error_container_is_empty:      As::Bool,
+    pub not_all_entry_inferred:        As::Bool,
+    pub double_entries:                As::JournalEntry,
 }
 
 #[derive(Debug, Clone, Default)]
 pub struct DoubleEntry {
     pub entry_is_empty:              bool,
     pub you_need_to_split_the_entry: bool,
-    pub debit_not_equal_credit:      Option<DebitNotEqualCreditError>,
+    pub debit_not_equal_credit:      Option<create_journal_entry::DebitNotEqualCreditError>,
 
     pub singles: Vec<SingleEntry>,
-}
-
-#[derive(Debug, Clone, PartialEq, Default)]
-pub(crate) struct DebitNotEqualCreditError {
-    total_debit:  f64,
-    total_credit: f64,
-}
-
-#[derive(Debug, Clone, PartialEq, Default)]
-pub(crate) struct InsufficientQuantityInInventory {
-    total_quantity: f64,
-}
-
-#[derive(Debug, Clone, PartialEq, Default)]
-pub(crate) struct AmountMismatch {
-    expected_amount: f64,
-}
-
-#[derive(Debug, Clone, PartialEq, Default)]
-pub(crate) struct InsufficientAmountInInventory {
-    total_amount: f64,
 }
 
 #[derive(Debug, Clone, Default)]

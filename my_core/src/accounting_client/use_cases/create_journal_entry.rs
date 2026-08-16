@@ -7,16 +7,15 @@ use crate::accounting_client::client_domain::process_manager;
 use crate::accounting_client::client_domain::ui_model;
 use crate::accounting_client::client_domain::ui_model::HashimSignal;
 use crate::accounting_domain::cases;
+use crate::accounting_domain::cases::create_journal_entry;
 use crate::accounting_domain::request_response;
 use crate::accounting_domain::utility::resource_utils;
 use crate::accounting_domain::utility::types;
-use crate::accounting_domain::utility::types::MyErrorTrait;
 use crate::utility::traits;
 use crate::utility::traits::JoinHandle;
 use crate::utility::traits::Receiver;
 use crate::utility::traits::Sender;
 use crate::utility::utils::ReadAndSet;
-use std::collections::HashSet;
 use std::marker::PhantomData;
 use std::sync::Arc;
 
@@ -48,11 +47,8 @@ where
         db: &mut Self::Db<'_>,
         read_input: &cases::create_journal_entry::ReadInput,
     ) -> Result<cases::create_journal_entry::ReadOutput, traits::DynamicError> {
-        // 1. Read from the underlying cache (database)
         let mut read_output = LongCache::read(&mut db.cache, read_input).await?;
 
-        // 2. Merge pending transactions (uncommitted changes)
-        //    - Check if the user has roles from pending access controls
         for (_, acf) in &db.state_of_pending_txn.access_control_for_company {
             if acf.user_ == read_input.user_uuid {
                 read_output.user_roles.push(acf.role.clone());
@@ -64,34 +60,21 @@ where
             }
         }
 
-        //    - Check if new_uuid is already used in pending transactions
         if db.state_of_pending_txn.entry.contains_key(&read_input.new_uuid) {
             read_output.is_new_uuid_used = true;
         }
 
-        //    - Check if shared_entry_id exists in pending transactions
         if let Some(shared_id) = &read_input.shared_entry_id {
             if db.state_of_pending_txn.shared_entry.contains_key(shared_id) {
                 read_output.is_shared_entry_exist = true;
             }
         }
 
-        //    - Check if any new entry UUIDs are used in pending transactions
         for uuid in &read_input.new_entries_uuid {
             if db.state_of_pending_txn.entry.contains_key(uuid) {
                 read_output.is_new_entries_uuid_used.insert(uuid.clone(), true);
             }
         }
-
-        //    - Merge account information from pending transactions
-        //      For each account, we need to combine the info from the underlying cache
-        //      with any pending inventory changes. This is complex; we'll assume
-        //      the underlying LongCache already handles this, but we may need to
-        //      override some fields if they exist in pending transactions.
-        //      For simplicity, we just use the read_output as is, because the
-        //      underlying LongCache should already incorporate pending changes
-        //      via its own logic. However, we might need to merge pending account
-        //      flow types, etc. We'll skip that for now as it's out of scope.
 
         Ok(read_output)
     }
@@ -198,7 +181,6 @@ where
                     });
                 }
 
-                // Inventory updates
                 for (account_uuid, inventory) in &ok.inventory {
                     resources.push(resource_utils::ResourceInfo {
                         row_uuid: account_uuid.clone(),
@@ -216,10 +198,9 @@ where
 
     fn unwrap_output(output: request_response::push_data::OperationsResult) -> Self::Type4 {
         if let request_response::push_data::OperationsResult::CreateJournalEntry(result) = output {
-            result
-        } else {
-            unreachable!("Expected CreateJournalEntry, got {:?}", output)
+            return result;
         }
+        unreachable!()
     }
 
     fn apply_on_the_model<As: ui_model::AllSignalTypes>(
@@ -229,13 +210,61 @@ where
         let local_state = &model.page_create_journal_entry;
 
         match output {
-            Ok(_) => {
-                local_state.is_loading.reset();
-                local_state.show_dialog.reset();
-                local_state.double_entries.reset();
-            }
+            Ok(_) => {}
             Err(business_error) => {
-                local_state.is_loading.reset();
+                local_state.error_container_is_empty.set(business_error.container_is_empty);
+                local_state.not_all_entry_inferred.set(business_error.not_all_entry_inferred);
+
+                let mut ui_double_entries = local_state.double_entries.read();
+
+                if ui_double_entries.len() == business_error.double_entries.len() {
+                    for (ui_double, domain_double_error) in
+                        ui_double_entries.iter_mut().zip(business_error.double_entries.iter())
+                    {
+                        // Map double-level errors
+                        ui_double.entry_is_empty = domain_double_error.entry_is_empty;
+                        ui_double.you_need_to_split_the_entry =
+                            domain_double_error.you_need_to_split_the_entry;
+                        ui_double.debit_not_equal_credit =
+                            domain_double_error.debit_not_equal_credit.as_ref().map(|e| {
+                                create_journal_entry::DebitNotEqualCreditError {
+                                    total_debit:  e.total_debit,
+                                    total_credit: e.total_credit,
+                                }
+                            });
+
+                        // Map single entry errors
+                        if ui_double.singles.len() == domain_double_error.single_entries.len() {
+                            for (ui_single, domain_single_error) in ui_double
+                                .singles
+                                .iter_mut()
+                                .zip(domain_double_error.single_entries.iter())
+                            {
+                                ui_single.quantity_and_amount_are_zero =
+                                    domain_single_error.quantity_and_amount_are_zero;
+                                ui_single.duplicate_account_in_entry =
+                                    domain_single_error.duplicate_account_in_entry;
+                                ui_single.inventory_is_empty =
+                                    domain_single_error.inventory_is_empty;
+                                ui_single.the_amount_should_be_positive =
+                                    domain_single_error.the_amount_should_be_positive;
+                                ui_single.the_quantity_should_be_positive =
+                                    domain_single_error.the_quantity_should_be_positive;
+                                ui_single.quantity_not_equal_amount =
+                                    domain_single_error.quantity_not_equal_amount;
+                                ui_single.quantity_not_equal_zero =
+                                    domain_single_error.quantity_not_equal_zero;
+                                ui_single.insufficient_quantity_in_inventory =
+                                    domain_single_error.insufficient_quantity_in_inventory;
+                                ui_single.amount_mismatch = domain_single_error.amount_mismatch;
+                                ui_single.insufficient_amount_in_inventory =
+                                    domain_single_error.insufficient_amount_in_inventory;
+                            }
+                        }
+                    }
+                }
+
+                local_state.double_entries.set(ui_double_entries);
             }
         }
     }
@@ -373,6 +402,7 @@ fn handle_clean<As: ui_model::AllSignalTypes>(model: &ui_model::Model<As>) {
     local_state.is_loading.reset();
     local_state.show_dialog.reset();
     local_state.double_entries.reset();
+    local_state.some_account_are_not_inferred.reset(); // clear error on clean
 }
 
 async fn handle_submit<
@@ -398,6 +428,16 @@ async fn handle_submit<
     local_state.is_loading.set(true);
 
     let ui_entries = local_state.double_entries.read();
+    for double in ui_entries.iter() {
+        for single in double.singles.iter() {
+            if single.inferred_account_id.is_none() {
+                local_state.some_account_are_not_inferred.set(true);
+                return;
+            }
+        }
+    }
+
+    // 2. Build the input (safe to unwrap now)
     let double_entries_input: Vec<cases::create_journal_entry::DoubleEntryInput> = ui_entries
         .into_iter()
         .map(|double| {
@@ -405,6 +445,7 @@ async fn handle_submit<
                 .singles
                 .into_iter()
                 .map(|single| {
+                    // safe because we validated above
                     let account = single.inferred_account_id.unwrap();
                     cases::create_journal_entry::SingleEntryInput {
                         new_uuid: Id::generate(),
