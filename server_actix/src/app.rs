@@ -14,6 +14,7 @@ use adapters::jwt;
 use adapters::random_number;
 use adapters::row_id;
 use adapters::runtime;
+use adapters::time;
 use db_client_cockroach::db_bundle;
 use db_client_cockroach::utility::db;
 use my_core::accounting_domain::utility::types;
@@ -58,7 +59,7 @@ async fn ws_handler(req: HttpRequest, stream: Payload) -> HttpResponse {
     state
         .clone()
         .into_inner()
-        .server_actor::<runtime::target::S, web_socket_server::S, random_number::target::S,encode_decode::target::S,row_id::target::S,functions::target::S,authentication::target::S,db_bundle::S>(
+        .server_actor::<runtime::target::S, web_socket_server::S, random_number::target::S,encode_decode::target::S,row_id::target::S,        time::target::S,functions::target::S,authentication::target::S,db_bundle::S>(
             session,
         );
 

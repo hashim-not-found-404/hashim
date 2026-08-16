@@ -221,7 +221,7 @@ impl Deref for InventoryWrapper {
 }
 
 #[derive(Clone)]
-pub struct AccountInfoProviderImpl(HashMap<types::UuidType, AccountInfo>);
+pub struct AccountInfoProviderImpl(pub HashMap<types::UuidType, AccountInfo>);
 
 impl DerefMut for AccountInfoProviderImpl {
     fn deref_mut(&mut self) -> &mut Self::Target {

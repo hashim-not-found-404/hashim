@@ -113,9 +113,9 @@ pub enum Nature {
 
 #[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
 pub struct InventoryRecord {
-    pub(crate) time_unix: u64,
-    pub(crate) quantity:  f64,
-    pub(crate) amount:    f64,
+    pub time_unix: u64,
+    pub quantity:  f64,
+    pub amount:    f64,
 }
 
 // -----------------------------------------------------------------------------

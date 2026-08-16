@@ -5,6 +5,7 @@ use adapters::functions;
 use adapters::random_number;
 use adapters::row_id;
 use adapters::runtime;
+use adapters::time;
 use adapters::web_socket_adapter;
 use cache_rusqlite::db_bundle;
 use cache_rusqlite::utility;
@@ -28,6 +29,7 @@ pub(crate) fn send(msg: ui_model::Message) {
             actors::target::S,
             encode_decode::target::S,
             functions::target::S,
+            time::target::S,
             utility::cache_adapter::S,
             web_socket_adapter::target::S,
             my_signals::S,

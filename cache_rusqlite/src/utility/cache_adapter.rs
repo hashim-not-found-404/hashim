@@ -275,6 +275,66 @@ impl Cache for S {
                         &value.as_str().to_string(),
                     )
                 }
+                resource_utils::Resource::TableAccountFieldInventory(value) => {
+                    let json = serde_json::to_string(value).unwrap();
+                    make_sql_statment_for_string("account", "inventory", uuid, &json)
+                }
+                resource_utils::Resource::TableSharedEntryFieldWriter(value) => {
+                    make_sql_statment_for_string("shared_entry", "writer", uuid, &value.to_string())
+                }
+                resource_utils::Resource::TableSharedEntryFieldNotes(value) => {
+                    make_sql_statement_for_option_string("shared_entry", "notes", uuid, value)
+                }
+                resource_utils::Resource::TableEntryFieldWriter(value) => {
+                    make_sql_statment_for_string("entry", "writer", uuid, &value.to_string())
+                }
+                resource_utils::Resource::TableEntryFieldTime(value) => {
+                    make_sql_statment_for_number("entry", "time", uuid, &(*value as f64))
+                }
+                resource_utils::Resource::TableEntryFieldSharedEntryId(value) => {
+                    make_sql_statment_for_string(
+                        "entry",
+                        "shared_entry_id",
+                        uuid,
+                        &value.to_string(),
+                    )
+                }
+                resource_utils::Resource::TableSingleEntryFieldDoubleEntry(value) => {
+                    make_sql_statment_for_number(
+                        "single_entry",
+                        "double_entry",
+                        uuid,
+                        &(*value as f64),
+                    )
+                }
+                resource_utils::Resource::TableSingleEntryFieldEntry(value) => {
+                    make_sql_statment_for_string("single_entry", "entry", uuid, &value.to_string())
+                }
+                resource_utils::Resource::TableSingleEntryFieldAccount(value) => {
+                    make_sql_statment_for_string(
+                        "single_entry",
+                        "account",
+                        uuid,
+                        &value.to_string(),
+                    )
+                }
+                resource_utils::Resource::TableSingleEntryFieldIsDebit(value) => {
+                    make_sql_statment_for_bool("single_entry", "is_debit", uuid, *value)
+                }
+                resource_utils::Resource::TableSingleEntryFieldCostOutFlowType(value) => {
+                    make_sql_statment_for_string(
+                        "single_entry",
+                        "cost_out_flow_type",
+                        uuid,
+                        &value.as_str().to_string(),
+                    )
+                }
+                resource_utils::Resource::TableSingleEntryFieldQuantity(value) => {
+                    make_sql_statment_for_number("single_entry", "quantity", uuid, value)
+                }
+                resource_utils::Resource::TableSingleEntryFieldAmount(value) => {
+                    make_sql_statment_for_number("single_entry", "amount", uuid, value)
+                }
             };
 
             stmts.push(stmt);
@@ -330,4 +390,21 @@ fn make_sql_statment_for_bool(
         "INSERT OR IGNORE INTO {table_name} (rowid) VALUES ('{uuid}');
          UPDATE {table_name} SET {field_name} = {value} WHERE rowid = '{uuid}';"
     )
+}
+
+fn make_sql_statement_for_option_string(
+    table_name: &str,
+    field_name: &str,
+    uuid: &String,
+    value: &Option<String>,
+) -> String {
+    match value {
+        Some(v) => make_sql_statment_for_string(table_name, field_name, uuid, v),
+        None => {
+            format!(
+                "INSERT OR IGNORE INTO {table_name} (rowid) VALUES ('{uuid}');
+             UPDATE {table_name} SET {field_name} = NULL WHERE rowid = '{uuid}';"
+            )
+        }
+    }
 }

@@ -14,6 +14,7 @@ impl AllSignalTypes for S {
     type Currency = my_signal::S<types::Currency>;
     type Dialog = my_signal::S<ui_model::Dialog>;
     type InFlowType = my_signal::S<accounting_stuff::InFlowType>;
+    type JournalEntry = my_signal::S<Vec<ui_model::DoubleEntry>>;
     type Location = my_signal::S<types::Location>;
     type Navigator = my_signal::S<ui_model::Navigator>;
     type OptionString = my_signal::S<Option<String>>;

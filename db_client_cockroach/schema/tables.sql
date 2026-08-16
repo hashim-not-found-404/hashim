@@ -72,16 +72,8 @@ CREATE TABLE IF NOT EXISTS accounting_app.account_flow_type(
     account                                     UUID REFERENCES accounting_app.account(rowid) ON DELETE CASCADE NOT NULL,
     company_branch                              UUID REFERENCES accounting_app.company_branch(rowid) ON DELETE CASCADE NOT NULL,
     outflow_type                                STRING NOT NULL,
-    inflow_type                                 STRING NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS accounting_app.inventory_record(
-    rowid                                       UUID PRIMARY KEY,
-
-    account                                     UUID REFERENCES accounting_app.account_flow_type(rowid) ON DELETE CASCADE NOT NULL,
-    time                                        TIMESTAMPTZ NOT NULL,
-    quantity                                    DECIMAL NOT NULL,
-    amount                                      DECIMAL NOT NULL
+    inflow_type                                 STRING NOT NULL,
+    inventory                                   JSONB NOT NULL DEFAULT '[]'::JSONB
 );
 
 CREATE TABLE IF NOT EXISTS accounting_app.shared_entry(

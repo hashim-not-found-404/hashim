@@ -68,16 +68,8 @@ CREATE TABLE IF NOT EXISTS account_flow_type(
     account                                     TEXT REFERENCES account(rowid) ON DELETE CASCADE,
     company_branch                              TEXT REFERENCES company_branch(rowid) ON DELETE CASCADE,
     outflow_type                                TEXT,
-    inflow_type                                 TEXT
-);
-
-CREATE TABLE IF NOT EXISTS inventory_record(
-    rowid                                       TEXT PRIMARY KEY,
-
-    account                                     TEXT REFERENCES account_flow_type(rowid) ON DELETE CASCADE,
-    time                                        INTEGER,
-    quantity                                    DECIMAL,
-    amount                                      DECIMAL
+    inflow_type                                 TEXT,
+    inventory                                   TEXT DEFAULT '[]'
 );
 
 CREATE TABLE IF NOT EXISTS shared_entry(
