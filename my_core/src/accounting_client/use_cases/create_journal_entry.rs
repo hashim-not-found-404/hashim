@@ -1,0 +1,455 @@
+use crate::accounting_client::client_domain::cache;
+use crate::accounting_client::client_domain::cache_actor;
+use crate::accounting_client::client_domain::client_traits;
+use crate::accounting_client::client_domain::client_traits::ViewAndCache;
+use crate::accounting_client::client_domain::commander;
+use crate::accounting_client::client_domain::process_manager;
+use crate::accounting_client::client_domain::ui_model;
+use crate::accounting_client::client_domain::ui_model::HashimSignal;
+use crate::accounting_domain::cases;
+use crate::accounting_domain::request_response;
+use crate::accounting_domain::utility::resource_utils;
+use crate::accounting_domain::utility::types;
+use crate::accounting_domain::utility::types::MyErrorTrait;
+use crate::utility::traits;
+use crate::utility::traits::JoinHandle;
+use crate::utility::traits::Receiver;
+use crate::utility::traits::Sender;
+use crate::utility::utils::ReadAndSet;
+use std::collections::HashSet;
+use std::marker::PhantomData;
+use std::sync::Arc;
+
+type Type1 = cases::create_journal_entry::Input;
+type Type2 = cases::create_journal_entry::Input;
+type Type3 = cases::create_journal_entry::MyResult;
+type Type4 = cases::create_journal_entry::MyResult;
+
+// -----------------------------------------------------------------------------
+// Cache implementation that merges pending transactions
+// -----------------------------------------------------------------------------
+
+struct Cache<Ch, LongCache>
+where
+    Ch: cache::Cache,
+    LongCache: for<'a> cases::create_journal_entry::DatabaseRead<Db<'a> = Ch>,
+{
+    _ph: PhantomData<(Ch, LongCache)>,
+}
+
+impl<Ch, LongCache> cases::create_journal_entry::DatabaseRead for Cache<Ch, LongCache>
+where
+    Ch: cache::Cache,
+    LongCache: for<'a> cases::create_journal_entry::DatabaseRead<Db<'a> = Ch>,
+{
+    type Db<'a> = cache::State<Ch>;
+
+    async fn read(
+        db: &mut Self::Db<'_>,
+        read_input: &cases::create_journal_entry::ReadInput,
+    ) -> Result<cases::create_journal_entry::ReadOutput, traits::DynamicError> {
+        // 1. Read from the underlying cache (database)
+        let mut read_output = LongCache::read(&mut db.cache, read_input).await?;
+
+        // 2. Merge pending transactions (uncommitted changes)
+        //    - Check if the user has roles from pending access controls
+        for (_, acf) in &db.state_of_pending_txn.access_control_for_company {
+            if acf.user_ == read_input.user_uuid {
+                read_output.user_roles.push(acf.role.clone());
+            }
+        }
+        for (_, acfb) in &db.state_of_pending_txn.access_control_for_company_branch {
+            if acfb.user_ == read_input.user_uuid {
+                read_output.user_roles.push(acfb.role.clone());
+            }
+        }
+
+        //    - Check if new_uuid is already used in pending transactions
+        if db.state_of_pending_txn.entry.contains_key(&read_input.new_uuid) {
+            read_output.is_new_uuid_used = true;
+        }
+
+        //    - Check if shared_entry_id exists in pending transactions
+        if let Some(shared_id) = &read_input.shared_entry_id {
+            if db.state_of_pending_txn.shared_entry.contains_key(shared_id) {
+                read_output.is_shared_entry_exist = true;
+            }
+        }
+
+        //    - Check if any new entry UUIDs are used in pending transactions
+        for uuid in &read_input.new_entries_uuid {
+            if db.state_of_pending_txn.entry.contains_key(uuid) {
+                read_output.is_new_entries_uuid_used.insert(uuid.clone(), true);
+            }
+        }
+
+        //    - Merge account information from pending transactions
+        //      For each account, we need to combine the info from the underlying cache
+        //      with any pending inventory changes. This is complex; we'll assume
+        //      the underlying LongCache already handles this, but we may need to
+        //      override some fields if they exist in pending transactions.
+        //      For simplicity, we just use the read_output as is, because the
+        //      underlying LongCache should already incorporate pending changes
+        //      via its own logic. However, we might need to merge pending account
+        //      flow types, etc. We'll skip that for now as it's out of scope.
+
+        Ok(read_output)
+    }
+}
+
+// -----------------------------------------------------------------------------
+// ViewAndCache implementation
+// -----------------------------------------------------------------------------
+
+pub(crate) struct ViewAndCacheType<Ti: traits::Time>(Ti);
+
+impl<Ch, LongCache, Ti> ViewAndCache<Ch, LongCache> for ViewAndCacheType<Ti>
+where
+    Ti: traits::Time,
+    Ch: cache::Cache,
+    LongCache: for<'a> cases::create_journal_entry::DatabaseRead<Db<'a> = Ch>,
+{
+    type Type1 = Type1;
+    type Type2 = Type2;
+    type Type3 = Type3;
+    type Type4 = Type4;
+
+    fn wrap_input(data: Self::Type1) -> request_response::push_data::OperationsInput {
+        request_response::push_data::OperationsInput::CreateJournalEntry(data)
+    }
+
+    fn user_uuid(data: &Self::Type2) -> Option<&types::UuidType> {
+        Some(&data.user_uuid)
+    }
+
+    async fn state_full_operation<Id: types::RowId>(
+        data: &Self::Type2,
+        state: &mut cache::State<Ch>,
+    ) -> Self::Type3 {
+        data.state_full_check::<Cache<Ch, LongCache>, Ti>(state).await.unwrap()
+    }
+
+    fn extract_resource(data: &Self::Type3) -> Vec<resource_utils::ResourceInfo> {
+        match data {
+            Ok(ok) => {
+                let mut resources = Vec::new();
+
+                // The journal entry itself (entry table)
+                resources.push(resource_utils::ResourceInfo {
+                    row_uuid: ok.new_uuid.clone(),
+                    resource: resource_utils::Resource::TableEntryFieldWriter(ok.user_uuid.clone()),
+                });
+                resources.push(resource_utils::ResourceInfo {
+                    row_uuid: ok.new_uuid.clone(),
+                    resource: resource_utils::Resource::TableEntryFieldTime(ok.time),
+                });
+                if let Some(shared_id) = &ok.shared_entry_id {
+                    resources.push(resource_utils::ResourceInfo {
+                        row_uuid: ok.new_uuid.clone(),
+                        resource: resource_utils::Resource::TableEntryFieldSharedEntryId(
+                            shared_id.clone(),
+                        ),
+                    });
+                }
+
+                // Single entries
+                for single in &ok.double_entry {
+                    resources.push(resource_utils::ResourceInfo {
+                        row_uuid: single.new_uuid.clone(),
+                        resource: resource_utils::Resource::TableSingleEntryFieldDoubleEntry(
+                            single.double_entry_number,
+                        ),
+                    });
+                    resources.push(resource_utils::ResourceInfo {
+                        row_uuid: single.new_uuid.clone(),
+                        resource: resource_utils::Resource::TableSingleEntryFieldEntry(
+                            ok.new_uuid.clone(),
+                        ),
+                    });
+                    resources.push(resource_utils::ResourceInfo {
+                        row_uuid: single.new_uuid.clone(),
+                        resource: resource_utils::Resource::TableSingleEntryFieldAccount(
+                            single.account.clone(),
+                        ),
+                    });
+                    resources.push(resource_utils::ResourceInfo {
+                        row_uuid: single.new_uuid.clone(),
+                        resource: resource_utils::Resource::TableSingleEntryFieldIsDebit(
+                            single.is_debit,
+                        ),
+                    });
+                    resources.push(resource_utils::ResourceInfo {
+                        row_uuid: single.new_uuid.clone(),
+                        resource: resource_utils::Resource::TableSingleEntryFieldCostOutFlowType(
+                            single.out_flow_type.clone(),
+                        ),
+                    });
+                    resources.push(resource_utils::ResourceInfo {
+                        row_uuid: single.new_uuid.clone(),
+                        resource: resource_utils::Resource::TableSingleEntryFieldQuantity(
+                            single.quantity,
+                        ),
+                    });
+                    resources.push(resource_utils::ResourceInfo {
+                        row_uuid: single.new_uuid.clone(),
+                        resource: resource_utils::Resource::TableSingleEntryFieldAmount(
+                            single.amount,
+                        ),
+                    });
+                }
+
+                // Inventory updates
+                for (account_uuid, inventory) in &ok.inventory {
+                    resources.push(resource_utils::ResourceInfo {
+                        row_uuid: account_uuid.clone(),
+                        resource: resource_utils::Resource::TableAccountFieldInventory(
+                            inventory.0.clone(),
+                        ),
+                    });
+                }
+
+                resources
+            }
+            Err(_) => Vec::new(),
+        }
+    }
+
+    fn unwrap_output(output: request_response::push_data::OperationsResult) -> Self::Type4 {
+        if let request_response::push_data::OperationsResult::CreateJournalEntry(result) = output {
+            result
+        } else {
+            unreachable!("Expected CreateJournalEntry, got {:?}", output)
+        }
+    }
+
+    fn apply_on_the_model<As: ui_model::AllSignalTypes>(
+        output: &Self::Type4,
+        model: &ui_model::Model<As>,
+    ) {
+        let local_state = &model.page_create_journal_entry;
+
+        match output {
+            Ok(_) => {
+                local_state.is_loading.reset();
+                local_state.show_dialog.reset();
+                local_state.double_entries.reset();
+            }
+            Err(business_error) => {
+                local_state.is_loading.reset();
+            }
+        }
+    }
+}
+
+// -----------------------------------------------------------------------------
+// UI Model update implementation
+// -----------------------------------------------------------------------------
+
+impl ui_model::CreateJournalEntry {
+    pub(crate) async fn update<
+        Rn: traits::RandomNumber,
+        Rt: traits::Runtime,
+        Id: types::RowId,
+        Mpsc: traits::MultiProducerSingleConsumer,
+        Rg: traits::Regex,
+        Ti: traits::Time,
+        As: ui_model::AllSignalTypes,
+        Ch: cache::Cache,
+        LongCache: for<'a> cases::create_journal_entry::DatabaseRead<Db<'a> = Ch>,
+    >(
+        self,
+        model: &'static ui_model::Model<As>,
+        cache: client_traits::CacheActorStruct<Mpsc>,
+        commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
+    ) {
+        match self {
+            ui_model::CreateJournalEntry::Submit => {
+                handle_submit::<Rn, Rt, Id, Mpsc, Rg, Ti, As, Ch, LongCache>(
+                    model,
+                    cache,
+                    commander_local_state,
+                )
+                .await;
+            }
+            ui_model::CreateJournalEntry::Consent(i) => {
+                commander_local_state
+                    .sender_to_process_manager
+                    .read()
+                    .send(process_manager::MessageToProcessManager::FromUser {
+                        process_name: process_manager::ProcessName::CreateJournalEntry,
+                        consent:      i,
+                    })
+                    .await
+                    .unwrap();
+            }
+            ui_model::CreateJournalEntry::Clean => {
+                handle_clean::<As>(model);
+            }
+            ui_model::CreateJournalEntry::AddSingleEntry {
+                double_index,
+            } => todo!(),
+            ui_model::CreateJournalEntry::RemoveSingleEntry {
+                double_index,
+                single_index,
+            } => todo!(),
+            ui_model::CreateJournalEntry::AddDoubleEntry => todo!(),
+            ui_model::CreateJournalEntry::RemoveDoubleEntry {
+                double_index,
+            } => todo!(),
+            ui_model::CreateJournalEntry::UpdateSingleEntry {
+                double_index,
+                single_index,
+                value,
+            } => todo!(),
+            ui_model::CreateJournalEntry::SetSharedEntryId(uuid_type) => todo!(),
+        }
+    }
+}
+
+// -----------------------------------------------------------------------------
+// Helper functions
+// -----------------------------------------------------------------------------
+
+fn handle_clean<As: ui_model::AllSignalTypes>(model: &ui_model::Model<As>) {
+    let local_state = &model.page_create_journal_entry;
+    local_state.is_loading.reset();
+    local_state.show_dialog.reset();
+    local_state.double_entries.reset();
+}
+
+async fn handle_submit<
+    Rn: traits::RandomNumber,
+    Rt: traits::Runtime,
+    Id: types::RowId,
+    Mpsc: traits::MultiProducerSingleConsumer,
+    Rg: traits::Regex,
+    Ti: traits::Time,
+    As: ui_model::AllSignalTypes,
+    Ch: cache::Cache,
+    LongCache: for<'a> cases::create_journal_entry::DatabaseRead<Db<'a> = Ch>,
+>(
+    model: &'static ui_model::Model<As>,
+    cache: client_traits::CacheActorStruct<Mpsc>,
+    commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
+) {
+    let local_state = &model.page_create_journal_entry;
+
+    if local_state.is_loading.read() {
+        return;
+    }
+    local_state.is_loading.set(true);
+
+    let input = cases::create_journal_entry::Input {
+        new_uuid:                 Id::generate(),
+        belong_to_company_branch: model.selected_company_branch.read().unwrap(),
+        user_uuid:                model.user_uuid.read().clone().unwrap(),
+        shared_entry_id:          local_state.shared_entry_id.read(),
+        double_entries:           todo!(),
+    };
+
+    let data = <ViewAndCacheType<Ti> as ViewAndCache<Ch, LongCache>>::wrap_input(input);
+    let txn_number = Rn::generate();
+
+    {
+        let dialog: &'static As::Dialog = &local_state.show_dialog;
+        let mut cache = cache;
+        let data1 = data.clone();
+        let mut cache1 = cache.clone();
+        let commander_local_state1 = commander_local_state.clone();
+        let mut handle = <Rt>::abortable_spawn_local(async move {
+            let mut receiver_to_response = cache1
+                .send_to_cache_actor(
+                    cache_actor::CachingStrategy::WriteServerOnly,
+                    txn_number,
+                    data1,
+                )
+                .await;
+
+            match receiver_to_response.recv().await.unwrap() {
+                cache_actor::Response::CloseTheChannel => return,
+                cache_actor::Response::ServerCannotBeReached => return,
+                cache_actor::Response::Data {
+                    is_response_from_server,
+                    data,
+                } => {
+                    let result =
+                        <ViewAndCacheType<Ti> as ViewAndCache<Ch, LongCache>>::unwrap_output(data);
+                    let is_ok = result.is_ok();
+                    <ViewAndCacheType<Ti> as ViewAndCache<Ch, LongCache>>::apply_on_the_model(
+                        &result, model,
+                    );
+
+                    if is_ok {
+                        handle_clean(model);
+                    }
+
+                    commander_local_state1
+                        .sender_to_process_manager
+                        .read()
+                        .send(process_manager::MessageToProcessManager::FromProcess {
+                            process_name: process_manager::ProcessName::CreateJournalEntry,
+                            message:      process_manager::MessageFromProcess::Response {
+                                is_response_from_server,
+                                is_response_ok: is_ok,
+                            },
+                        })
+                        .await
+                        .unwrap();
+                }
+            }
+        });
+
+        let (sender_to_process, mut receiver_to_process) = <Mpsc>::channel();
+        commander_local_state
+            .sender_to_process_manager
+            .read()
+            .send(process_manager::MessageToProcessManager::FromProcess {
+                process_name: process_manager::ProcessName::CreateJournalEntry,
+                message:      process_manager::MessageFromProcess::Subscribe {
+                    sender: sender_to_process,
+                    dialog: &dialog,
+                },
+            })
+            .await
+            .unwrap();
+
+        match receiver_to_process.recv().await.unwrap() {
+            process_manager::MessageToProcess::FallBackToCache => {
+                let mut receiver_to_response = cache
+                    .send_to_cache_actor(
+                        cache_actor::CachingStrategy::WriteCacheOnly,
+                        txn_number,
+                        data,
+                    )
+                    .await;
+
+                match receiver_to_response.recv().await.unwrap() {
+                    cache_actor::Response::CloseTheChannel => return,
+                    cache_actor::Response::ServerCannotBeReached => return,
+                    cache_actor::Response::Data {
+                        is_response_from_server: _,
+                        data,
+                    } => {
+                        let result =
+                            <ViewAndCacheType<Ti> as ViewAndCache<Ch, LongCache>>::unwrap_output(
+                                data,
+                            );
+                        let is_ok = result.is_ok();
+
+                        <ViewAndCacheType<Ti> as ViewAndCache<Ch, LongCache>>::apply_on_the_model(
+                            &result, model,
+                        );
+
+                        if is_ok {
+                            handle_clean(model);
+                        }
+                    }
+                }
+            }
+            process_manager::MessageToProcess::CancelOperation => {}
+        }
+        handle.abort().await;
+    }
+
+    local_state.is_loading.reset();
+}

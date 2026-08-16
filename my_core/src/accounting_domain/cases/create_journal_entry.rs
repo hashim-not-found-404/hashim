@@ -219,7 +219,7 @@ pub struct ContainerView {
 // -----------------------------------------------------------------------------
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct InventoryWrapper(Vec<accounting_stuff::InventoryRecord>);
+pub struct InventoryWrapper(pub Vec<accounting_stuff::InventoryRecord>);
 
 impl DerefMut for InventoryWrapper {
     fn deref_mut(&mut self) -> &mut Self::Target {

@@ -25,6 +25,7 @@ pub trait AllSignalTypes: 'static + Default + Clone {
     type OutFlowType: HashimSignal<accounting_stuff::OutFlowType>;
     type InFlowType: HashimSignal<accounting_stuff::InFlowType>;
     type AccountsSuggestionList: HashimSignal<Vec<Accounts>>;
+    type JournalEntry: HashimSignal<Vec<DoubleEntry>>;
 
     type Navigator: HashimSignal<Navigator>;
 }
@@ -81,6 +82,7 @@ pub struct Model<As: AllSignalTypes> {
     pub page_create_company_branch:     PageCreateCompanyBranch<As>,
     pub page_create_account:            PageCreateAccount<As>,
     pub page_create_account_for_branch: PageCreateAccountForBranch<As>,
+    pub page_create_journal_entry:      PageCreateJournalEntry<As>,
 }
 
 #[derive(Default)]
@@ -149,6 +151,78 @@ pub struct PageCreateAccountForBranch<As: AllSignalTypes> {
     pub inflow_type:   As::InFlowType,
 }
 
+#[derive(Default)]
+pub struct PageCreateJournalEntry<As: AllSignalTypes> {
+    pub is_loading:      As::Bool,
+    pub show_dialog:     As::Dialog,
+    pub shared_entry_id: As::OptionUuid,
+
+    pub error_container_is_empty: As::Bool,
+    pub double_entries:           As::JournalEntry,
+}
+
+#[derive(Debug, Clone)]
+pub struct DoubleEntry {
+    pub entry_is_empty:              bool,
+    pub you_need_to_split_the_entry: bool,
+    pub debit_not_equal_credit:      Option<DebitNotEqualCreditError>,
+
+    pub singles: Vec<SingleEntry>,
+}
+
+#[derive(Debug, Clone, PartialEq, Default)]
+pub(crate) struct DebitNotEqualCreditError {
+    total_debit:  f64,
+    total_credit: f64,
+}
+
+#[derive(Debug, Clone, PartialEq, Default)]
+pub(crate) struct InsufficientQuantityInInventory {
+    total_quantity: f64,
+}
+
+#[derive(Debug, Clone, PartialEq, Default)]
+pub(crate) struct AmountMismatch {
+    expected_amount: f64,
+}
+
+#[derive(Debug, Clone, PartialEq, Default)]
+pub(crate) struct InsufficientAmountInInventory {
+    total_amount: f64,
+}
+
+#[derive(Debug, Clone)]
+pub struct SingleEntry {
+    pub user_input_account_name: String,
+    inferred_account_id:         types::UuidType,
+
+    pub user_input_is_debit:     Option<bool>,
+    pub user_input_is_inflow:    Option<bool>,
+    pub user_input_quantity:     Option<f64>,
+    pub user_input_amount:       Option<f64>,
+    pub user_input_inflow_type:  Option<accounting_stuff::InFlowType>,
+    pub user_input_outflow_type: Option<accounting_stuff::OutFlowType>,
+
+    pub inferred_is_debit:     Option<bool>,
+    pub inferred_is_inflow:    Option<bool>,
+    pub inferred_quantity:     Option<f64>,
+    pub inferred_amount:       Option<f64>,
+    pub inferred_inflow_type:  Option<accounting_stuff::InFlowType>,
+    pub inferred_outflow_type: Option<accounting_stuff::OutFlowType>,
+
+    // Error flags
+    pub quantity_and_amount_are_zero:       bool,
+    pub duplicate_account_in_entry:         bool,
+    pub inventory_is_empty:                 bool,
+    pub the_amount_should_be_positive:      bool,
+    pub the_quantity_should_be_positive:    bool,
+    pub quantity_not_equal_amount:          bool,
+    pub quantity_not_equal_zero:            bool,
+    pub insufficient_quantity_in_inventory: Option<f64>,
+    pub amount_mismatch:                    Option<f64>,
+    pub insufficient_amount_in_inventory:   Option<f64>,
+}
+
 // message ////////////////////////////////////////////////////////////////////////////////////////
 
 #[derive(Debug, Clone, Copy)]
@@ -170,6 +244,7 @@ pub enum Message {
     Home(Home),
     CreateAccount(CreateAccount),
     CreateAccountForBranch(CreateAccountForBranch),
+    CreateJournalEntry(CreateJournalEntry),
 }
 
 #[derive(Debug)]
@@ -248,6 +323,41 @@ pub enum CreateAccountForBranch {
     AccountName(String),
     OutflowType(accounting_stuff::OutFlowType),
     InflowType(accounting_stuff::InFlowType),
+}
+
+#[derive(Debug)]
+pub enum CreateJournalEntry {
+    Submit,
+    Consent(UserConsent),
+    Clean,
+    AddSingleEntry {
+        double_index: usize,
+    },
+    RemoveSingleEntry {
+        double_index: usize,
+        single_index: usize,
+    },
+    AddDoubleEntry,
+    RemoveDoubleEntry {
+        double_index: usize,
+    },
+    UpdateSingleEntry {
+        double_index: usize,
+        single_index: usize,
+        value:        SingleEntryField,
+    },
+    SetSharedEntryId(Option<types::UuidType>),
+}
+
+#[derive(Debug, Clone)]
+pub enum SingleEntryField {
+    Account(String),
+    IsDebit(bool),
+    IsInflow(bool),
+    InflowType(accounting_stuff::InFlowType),
+    OutflowType(accounting_stuff::OutFlowType),
+    Amount(f64),
+    Quantity(f64),
 }
 
 // navigator types ////////////////////////////////////////////////////////////////////////////////

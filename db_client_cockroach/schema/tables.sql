@@ -95,7 +95,6 @@ CREATE TABLE IF NOT EXISTS accounting_app.entry(
     rowid                                       UUID PRIMARY KEY,
 
     writer                                      UUID REFERENCES accounting_app.user(rowid) ON DELETE CASCADE NOT NULL,
-    notes                                       STRING,
     time                                        TIMESTAMPTZ NOT NULL,
     shared_entry_id                             UUID REFERENCES accounting_app.shared_entry(rowid) ON DELETE CASCADE NOT NULL
 );

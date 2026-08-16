@@ -48,6 +48,7 @@ pub(crate) struct Account {
     pub(crate) name:                            String,
     pub(crate) notes:                           String,
     pub(crate) unit_of_measurement_of_quantity: String,
+    pub(crate) inventory:                       Vec<accounting_stuff::InventoryRecord>,
 }
 
 #[derive(Default)]
@@ -59,6 +60,32 @@ pub(crate) struct AccountFlowType {
 }
 
 #[derive(Default)]
+pub(crate) struct SharedEntry {
+    pub(crate) writer: types::UuidType,
+    pub(crate) notes:  Option<String>,
+}
+
+#[derive(Default)]
+pub(crate) struct Entry {
+    pub(crate) writer:          types::UuidType,
+    pub(crate) time:            u64,
+    pub(crate) shared_entry_id: types::UuidType,
+}
+
+#[derive(Default)]
+pub(crate) struct SingleEntry {
+    pub(crate) double_entry:       u32,
+    pub(crate) entry:              types::UuidType,
+    pub(crate) account:            types::UuidType,
+    pub(crate) is_debit:           bool,
+    pub(crate) cost_out_flow_type: accounting_stuff::OutFlowType,
+    pub(crate) quantity:           f64,
+    pub(crate) amount:             f64,
+}
+
+// -----------------------------------------------------------------------------
+
+#[derive(Default)]
 pub(crate) struct StateOfPendingTxn {
     pub(crate) access_control_for_company:        HashMap<types::UuidType, AccessControlForCompany>,
     pub(crate) access_control_for_company_branch:
@@ -68,10 +95,18 @@ pub(crate) struct StateOfPendingTxn {
     pub(crate) company:                           HashMap<types::UuidType, Company>,
     pub(crate) company_branch:                    HashMap<types::UuidType, CompanyBranch>,
     pub(crate) user:                              HashMap<types::UuidType, User>,
+
+    // ---- NEW: Pending transactions for journal entries ----
+    pub(crate) shared_entry: HashMap<types::UuidType, SharedEntry>,
+    pub(crate) entry:        HashMap<types::UuidType, Entry>,
+    pub(crate) single_entry: HashMap<types::UuidType, SingleEntry>,
 }
+
+// -----------------------------------------------------------------------------
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) enum Subscribe {
+    // Existing subscribes
     TableAccessControlForCompanyBranchFieldDataGroup,
     TableAccessControlForCompanyBranchFieldRole,
     TableAccessControlForCompanyBranchFieldUser,
@@ -84,6 +119,7 @@ pub(crate) enum Subscribe {
     TableAccountFieldName,
     TableAccountFieldNotes,
     TableAccountFieldUnitOfMeasurementOfQuantity,
+    TableAccountFieldInventory,
     TableAccountFlowTypeFieldAccount,
     TableAccountFlowTypeFieldCompanyBranch,
     TableAccountFlowTypeFieldInflowType,
@@ -96,10 +132,25 @@ pub(crate) enum Subscribe {
     TableCompanyFieldName,
     TableUserFieldId,
     TableUserFieldName,
+    TableSharedEntryFieldWriter,
+    TableSharedEntryFieldNotes,
+    TableEntryFieldWriter,
+    TableEntryFieldTime,
+    TableEntryFieldSharedEntryId,
+    TableSingleEntryFieldDoubleEntry,
+    TableSingleEntryFieldEntry,
+    TableSingleEntryFieldAccount,
+    TableSingleEntryFieldIsDebit,
+    TableSingleEntryFieldCostOutFlowType,
+    TableSingleEntryFieldQuantity,
+    TableSingleEntryFieldAmount,
 }
+
+// -----------------------------------------------------------------------------
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub enum Resource {
+    // Existing resources
     Jwt(types::JsonWebTokenType),
 
     TableAccessControlForCompanyBranchFieldDataGroup(types::UuidType),
@@ -114,6 +165,7 @@ pub enum Resource {
     TableAccountFieldName(String),
     TableAccountFieldNotes(String),
     TableAccountFieldUnitOfMeasurementOfQuantity(String),
+    TableAccountFieldInventory(Vec<accounting_stuff::InventoryRecord>),
     TableAccountFlowTypeFieldAccount(types::UuidType),
     TableAccountFlowTypeFieldCompanyBranch(types::UuidType),
     TableAccountFlowTypeFieldInflowType(accounting_stuff::InFlowType),
@@ -126,6 +178,18 @@ pub enum Resource {
     TableCompanyFieldName(String),
     TableUserFieldId(String),
     TableUserFieldName(String),
+    TableSharedEntryFieldWriter(types::UuidType),
+    TableSharedEntryFieldNotes(Option<String>),
+    TableEntryFieldWriter(types::UuidType),
+    TableEntryFieldTime(u64),
+    TableEntryFieldSharedEntryId(types::UuidType),
+    TableSingleEntryFieldDoubleEntry(u32),
+    TableSingleEntryFieldEntry(types::UuidType),
+    TableSingleEntryFieldAccount(types::UuidType),
+    TableSingleEntryFieldIsDebit(bool),
+    TableSingleEntryFieldCostOutFlowType(accounting_stuff::OutFlowType),
+    TableSingleEntryFieldQuantity(f64),
+    TableSingleEntryFieldAmount(f64),
 }
 
 impl Resource {
@@ -190,9 +254,42 @@ impl Resource {
             Resource::TableAccountFlowTypeFieldOutflowType(_) => {
                 Some(Subscribe::TableAccountFlowTypeFieldOutflowType)
             }
+
+            // ---- NEW: Journal entry mappings ----
+            Resource::TableSharedEntryFieldWriter(_) => {
+                Some(Subscribe::TableSharedEntryFieldWriter)
+            }
+            Resource::TableSharedEntryFieldNotes(_) => Some(Subscribe::TableSharedEntryFieldNotes),
+            Resource::TableEntryFieldWriter(_) => Some(Subscribe::TableEntryFieldWriter),
+            Resource::TableEntryFieldTime(_) => Some(Subscribe::TableEntryFieldTime),
+            Resource::TableEntryFieldSharedEntryId(_) => {
+                Some(Subscribe::TableEntryFieldSharedEntryId)
+            }
+            Resource::TableSingleEntryFieldDoubleEntry(_) => {
+                Some(Subscribe::TableSingleEntryFieldDoubleEntry)
+            }
+            Resource::TableSingleEntryFieldEntry(_) => Some(Subscribe::TableSingleEntryFieldEntry),
+            Resource::TableSingleEntryFieldAccount(_) => {
+                Some(Subscribe::TableSingleEntryFieldAccount)
+            }
+            Resource::TableSingleEntryFieldIsDebit(_) => {
+                Some(Subscribe::TableSingleEntryFieldIsDebit)
+            }
+            Resource::TableSingleEntryFieldCostOutFlowType(_) => {
+                Some(Subscribe::TableSingleEntryFieldCostOutFlowType)
+            }
+            Resource::TableSingleEntryFieldQuantity(_) => {
+                Some(Subscribe::TableSingleEntryFieldQuantity)
+            }
+            Resource::TableSingleEntryFieldAmount(_) => {
+                Some(Subscribe::TableSingleEntryFieldAmount)
+            }
+            Resource::TableAccountFieldInventory(_) => Some(Subscribe::TableAccountFieldInventory),
         }
     }
 }
+
+// -----------------------------------------------------------------------------
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ResourceInfo {
@@ -266,6 +363,9 @@ pub(crate) fn apply_change(resources: Vec<ResourceInfo>, state: &mut StateOfPend
             Resource::TableAccountFieldUnitOfMeasurementOfQuantity(r) => {
                 state.account.upsert(row_uuid, |table| table.unit_of_measurement_of_quantity = r)
             }
+            Resource::TableAccountFieldInventory(r) => {
+                state.account.upsert(row_uuid, |table| table.inventory = r)
+            }
             Resource::TableAccountFlowTypeFieldAccount(r) => {
                 state.account_flow_type.upsert(row_uuid, |table| table.account = r)
             }
@@ -277,6 +377,42 @@ pub(crate) fn apply_change(resources: Vec<ResourceInfo>, state: &mut StateOfPend
             }
             Resource::TableAccountFlowTypeFieldOutflowType(r) => {
                 state.account_flow_type.upsert(row_uuid, |table| table.outflow_type = r)
+            }
+            Resource::TableSharedEntryFieldWriter(r) => {
+                state.shared_entry.upsert(row_uuid, |table| table.writer = r)
+            }
+            Resource::TableSharedEntryFieldNotes(r) => {
+                state.shared_entry.upsert(row_uuid, |table| table.notes = r)
+            }
+            Resource::TableEntryFieldWriter(r) => {
+                state.entry.upsert(row_uuid, |table| table.writer = r)
+            }
+            Resource::TableEntryFieldTime(r) => {
+                state.entry.upsert(row_uuid, |table| table.time = r)
+            }
+            Resource::TableEntryFieldSharedEntryId(r) => {
+                state.entry.upsert(row_uuid, |table| table.shared_entry_id = r)
+            }
+            Resource::TableSingleEntryFieldDoubleEntry(r) => {
+                state.single_entry.upsert(row_uuid, |table| table.double_entry = r)
+            }
+            Resource::TableSingleEntryFieldEntry(r) => {
+                state.single_entry.upsert(row_uuid, |table| table.entry = r)
+            }
+            Resource::TableSingleEntryFieldAccount(r) => {
+                state.single_entry.upsert(row_uuid, |table| table.account = r)
+            }
+            Resource::TableSingleEntryFieldIsDebit(r) => {
+                state.single_entry.upsert(row_uuid, |table| table.is_debit = r)
+            }
+            Resource::TableSingleEntryFieldCostOutFlowType(r) => {
+                state.single_entry.upsert(row_uuid, |table| table.cost_out_flow_type = r)
+            }
+            Resource::TableSingleEntryFieldQuantity(r) => {
+                state.single_entry.upsert(row_uuid, |table| table.quantity = r)
+            }
+            Resource::TableSingleEntryFieldAmount(r) => {
+                state.single_entry.upsert(row_uuid, |table| table.amount = r)
             }
         }
     }
