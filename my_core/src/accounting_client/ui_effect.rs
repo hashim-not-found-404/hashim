@@ -32,6 +32,7 @@ impl<Mpsc: traits::MultiProducerSingleConsumer> Commander<Mpsc> {
         Rn: traits::RandomNumber,
         Id: types::RowId,
         Rg: traits::Regex,
+        Ti: traits::Time,
         Ch: cache::Cache + 'static,
         Dbb: cache_op::DbBundle<Ch>,
     >(
@@ -44,7 +45,7 @@ impl<Mpsc: traits::MultiProducerSingleConsumer> Commander<Mpsc> {
 
         listen_to_error_actor::<Rt, Mpsc, As>(receiver_to_error, &model.external_errors);
 
-        Self::commander_actor::<As, Rt, Rn, Id, Rg, Ch, Dbb>(
+        Self::commander_actor::<As, Rt, Rn, Id, Rg, Ti, Ch, Dbb>(
             receiver_to_commander,
             sender_to_process_manager,
             model,
@@ -69,6 +70,7 @@ impl<Mpsc: traits::MultiProducerSingleConsumer> Commander<Mpsc> {
         Rn: traits::RandomNumber,
         Id: types::RowId,
         Rg: traits::Regex,
+        Ti: traits::Time,
         Ch: cache::Cache + 'static,
         Dbb: cache_op::DbBundle<Ch>,
     >(
@@ -157,7 +159,13 @@ impl<Mpsc: traits::MultiProducerSingleConsumer> Commander<Mpsc> {
                             )
                             .await
                         }
-                    }
+                        ui_model::Message::CreateJournalEntry(msg) => {
+                            msg.update::<Rn, Rt, Id, Mpsc, Rg, Ti, As, Ch, Dbb::CreateJournalEntry>(
+                                model,
+                                cache,
+                                commander_local_state,
+                            ).await
+                        }}
                 });
             }
         });

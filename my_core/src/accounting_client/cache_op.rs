@@ -8,10 +8,12 @@ use crate::accounting_domain::request_response;
 use crate::accounting_domain::utility::resource_utils;
 use crate::accounting_domain::utility::resource_utils::apply_change;
 use crate::accounting_domain::utility::types;
+use crate::utility::traits;
 
 pub trait DbBundle<Ch: cache::Cache>: 'static {
     type CreateAccount: for<'a> cases::create_account::DatabaseRead<Db<'a> = Ch>;
     type CreateAccountForBranch: for<'a> cases::create_account_for_branch::DatabaseRead<Db<'a> = Ch>;
+    type CreateJournalEntry: for<'a> cases::create_journal_entry::DatabaseRead<Db<'a> = Ch>;
     type GetAllAccountsForBranch: for<'a> cases::get_all_accounts_for_branch::DatabaseRead<Db<'a> = Ch>;
     type CreateCompany: for<'a> cases::create_company::DatabaseRead<Db<'a> = Ch>;
     type CreateCompanyBranch: for<'a> cases::create_company_branch::DatabaseRead<Db<'a> = Ch>;
@@ -22,7 +24,7 @@ pub trait DbBundle<Ch: cache::Cache>: 'static {
 }
 
 impl<Ch: cache::Cache> cache::State<Ch> {
-    pub(crate) async fn new<Id: types::RowId, Dbb: DbBundle<Ch>>() -> Self {
+    pub(crate) async fn new<Id: types::RowId, Ti: traits::Time, Dbb: DbBundle<Ch>>() -> Self {
         let cache = Ch::new().await;
         let txns = cache.get_all_txn_input().await;
 
@@ -32,7 +34,7 @@ impl<Ch: cache::Cache> cache::State<Ch> {
         };
 
         for op in txns {
-            op.operation.run_operation_check_apply::<Id, Ch, Dbb>(&mut state).await;
+            op.operation.run_operation_check_apply::<Id, Ti, Ch, Dbb>(&mut state).await;
         }
 
         state
@@ -67,6 +69,7 @@ macro_rules! get_user_uuid {
 impl request_response::push_data::OperationsInput {
     pub(crate) async fn run_operation_check<
         Id: types::RowId,
+        Ti: traits::Time,
         Ch: cache::Cache,
         Dbb: DbBundle<Ch>,
     >(
@@ -125,11 +128,21 @@ impl request_response::push_data::OperationsInput {
                     state
                 )
             }
+            request_response::push_data::OperationsInput::CreateJournalEntry(i) => {
+                request_response::push_data::OperationsResult::CreateJournalEntry(
+                    <use_cases::create_journal_entry::ViewAndCacheType<Ti> as ViewAndCache<
+                        Ch,
+                        Dbb::CreateJournalEntry,
+                    >>::state_full_operation::<Id>(i, state)
+                    .await,
+                )
+            }
         }
     }
 
     pub(crate) async fn run_operation_check_apply<
         Id: types::RowId,
+        Ti: traits::Time,
         Ch: cache::Cache,
         Dbb: DbBundle<Ch>,
     >(
@@ -179,10 +192,24 @@ impl request_response::push_data::OperationsInput {
                     state
                 );
             }
+            request_response::push_data::OperationsInput::CreateJournalEntry(i) => {
+                let result =
+                    <use_cases::create_journal_entry::ViewAndCacheType<Ti> as ViewAndCache<
+                        Ch,
+                        Dbb::CreateJournalEntry,
+                    >>::state_full_operation::<Id>(i, state)
+                    .await;
+                let resources =
+                    <use_cases::create_journal_entry::ViewAndCacheType<Ti> as ViewAndCache<
+                        Ch,
+                        Dbb::CreateJournalEntry,
+                    >>::extract_resource(&result);
+                apply_change(resources, &mut state.state_of_pending_txn);
+            }
         }
     }
 
-    pub(crate) fn get_user_uuid<Ch: cache::Cache, Dbb: DbBundle<Ch>>(
+    pub(crate) fn get_user_uuid<Ti: traits::Time, Ch: cache::Cache, Dbb: DbBundle<Ch>>(
         &self,
     ) -> Option<&types::UuidType> {
         match self {
@@ -216,6 +243,12 @@ impl request_response::push_data::OperationsInput {
             request_response::push_data::OperationsInput::CreateAccountForBranch(i) => {
                 get_user_uuid!(create_account_for_branch, Dbb::CreateAccountForBranch, i)
             }
+            request_response::push_data::OperationsInput::CreateJournalEntry(i) => {
+                <use_cases::create_journal_entry::ViewAndCacheType<Ti> as ViewAndCache<
+                    Ch,
+                    Dbb::CreateJournalEntry,
+                >>::user_uuid(&i)
+            }
         }
     }
 }
@@ -227,7 +260,7 @@ macro_rules! extract_resource {
 }
 
 impl request_response::push_data::OperationsResult {
-    pub(crate) fn extract_resource<Ch: cache::Cache, Dbb: DbBundle<Ch>>(
+    pub(crate) fn extract_resource<Ti: traits::Time, Ch: cache::Cache, Dbb: DbBundle<Ch>>(
         &self,
     ) -> Vec<resource_utils::ResourceInfo> {
         match self {
@@ -261,6 +294,12 @@ impl request_response::push_data::OperationsResult {
             request_response::push_data::OperationsResult::CreateAccountForBranch(i) => {
                 extract_resource!(create_account_for_branch, Dbb::CreateAccountForBranch, i)
             }
+            request_response::push_data::OperationsResult::CreateJournalEntry(i) => {
+                <use_cases::create_journal_entry::ViewAndCacheType<Ti> as ViewAndCache<
+                    Ch,
+                    Dbb::CreateJournalEntry,
+                >>::extract_resource(i)
+            }
         }
     }
 
@@ -275,6 +314,7 @@ impl request_response::push_data::OperationsResult {
             request_response::push_data::OperationsResult::GetAllAccounts(i) => i.is_ok(),
             request_response::push_data::OperationsResult::CreateAccountForBranch(i) => i.is_ok(),
             request_response::push_data::OperationsResult::GetAllAccountsForBranch(i) => i.is_ok(),
+            request_response::push_data::OperationsResult::CreateJournalEntry(i) => i.is_ok(),
         }
     }
 }
