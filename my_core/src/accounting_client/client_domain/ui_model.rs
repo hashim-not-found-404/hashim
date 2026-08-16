@@ -153,6 +153,9 @@ pub struct PageCreateAccountForBranch<As: AllSignalTypes> {
 
 #[derive(Default)]
 pub struct PageCreateJournalEntry<As: AllSignalTypes> {
+    pub(crate) list_of_available_account: Mutex<Vec<Accounts>>,
+    pub filtered_list:                    As::AccountsSuggestionList,
+
     pub is_loading:      As::Bool,
     pub show_dialog:     As::Dialog,
     pub shared_entry_id: As::OptionUuid,
@@ -161,7 +164,7 @@ pub struct PageCreateJournalEntry<As: AllSignalTypes> {
     pub double_entries:           As::JournalEntry,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct DoubleEntry {
     pub entry_is_empty:              bool,
     pub you_need_to_split_the_entry: bool,
@@ -191,10 +194,10 @@ pub(crate) struct InsufficientAmountInInventory {
     total_amount: f64,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct SingleEntry {
-    pub user_input_account_name: String,
-    inferred_account_id:         types::UuidType,
+    pub user_input_account_name:    String,
+    pub(crate) inferred_account_id: Option<types::UuidType>,
 
     pub user_input_is_debit:     Option<bool>,
     pub user_input_is_inflow:    Option<bool>,

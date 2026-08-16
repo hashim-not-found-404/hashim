@@ -31,7 +31,7 @@ pub struct Input {
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct DoubleEntryInput {
-    single_entries: Vec<SingleEntryInput>,
+    pub(crate) single_entries: Vec<SingleEntryInput>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]

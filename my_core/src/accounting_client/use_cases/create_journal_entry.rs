@@ -262,6 +262,8 @@ impl ui_model::CreateJournalEntry {
         cache: client_traits::CacheActorStruct<Mpsc>,
         commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
     ) {
+        let local_state = &model.page_create_journal_entry;
+
         match self {
             ui_model::CreateJournalEntry::Submit => {
                 handle_submit::<Rn, Rt, Id, Mpsc, Rg, Ti, As, Ch, LongCache>(
@@ -287,21 +289,77 @@ impl ui_model::CreateJournalEntry {
             }
             ui_model::CreateJournalEntry::AddSingleEntry {
                 double_index,
-            } => todo!(),
+            } => {
+                let mut entries = local_state.double_entries.read();
+                if let Some(double) = entries.get_mut(double_index) {
+                    double.singles.push(ui_model::SingleEntry::default());
+                    local_state.double_entries.set(entries);
+                }
+            }
             ui_model::CreateJournalEntry::RemoveSingleEntry {
                 double_index,
                 single_index,
-            } => todo!(),
-            ui_model::CreateJournalEntry::AddDoubleEntry => todo!(),
+            } => {
+                let mut entries = local_state.double_entries.read();
+                if let Some(double) = entries.get_mut(double_index) {
+                    if single_index < double.singles.len() {
+                        double.singles.remove(single_index);
+                        local_state.double_entries.set(entries);
+                    }
+                }
+            }
+            ui_model::CreateJournalEntry::AddDoubleEntry => {
+                let mut entries = local_state.double_entries.read();
+                entries.push(ui_model::DoubleEntry::default());
+                local_state.double_entries.set(entries);
+            }
             ui_model::CreateJournalEntry::RemoveDoubleEntry {
                 double_index,
-            } => todo!(),
+            } => {
+                let mut entries = local_state.double_entries.read();
+                if double_index < entries.len() {
+                    entries.remove(double_index);
+                    local_state.double_entries.set(entries);
+                }
+            }
             ui_model::CreateJournalEntry::UpdateSingleEntry {
                 double_index,
                 single_index,
                 value,
-            } => todo!(),
-            ui_model::CreateJournalEntry::SetSharedEntryId(uuid_type) => todo!(),
+            } => {
+                let mut entries = local_state.double_entries.read();
+                if let Some(double) = entries.get_mut(double_index) {
+                    if let Some(single) = double.singles.get_mut(single_index) {
+                        match value {
+                            ui_model::SingleEntryField::Account(name) => {
+                                single.user_input_account_name = name;
+                            }
+                            ui_model::SingleEntryField::IsDebit(b) => {
+                                single.user_input_is_debit = Some(b);
+                            }
+                            ui_model::SingleEntryField::IsInflow(b) => {
+                                single.user_input_is_inflow = Some(b);
+                            }
+                            ui_model::SingleEntryField::InflowType(t) => {
+                                single.user_input_inflow_type = Some(t);
+                            }
+                            ui_model::SingleEntryField::OutflowType(t) => {
+                                single.user_input_outflow_type = Some(t);
+                            }
+                            ui_model::SingleEntryField::Amount(f) => {
+                                single.user_input_amount = Some(f);
+                            }
+                            ui_model::SingleEntryField::Quantity(f) => {
+                                single.user_input_quantity = Some(f);
+                            }
+                        }
+                        local_state.double_entries.set(entries);
+                    }
+                }
+            }
+            ui_model::CreateJournalEntry::SetSharedEntryId(uuid_type) => {
+                local_state.shared_entry_id.set(uuid_type);
+            }
         }
     }
 }
@@ -339,12 +397,39 @@ async fn handle_submit<
     }
     local_state.is_loading.set(true);
 
+    let ui_entries = local_state.double_entries.read();
+    let double_entries_input: Vec<cases::create_journal_entry::DoubleEntryInput> = ui_entries
+        .into_iter()
+        .map(|double| {
+            let singles_input: Vec<cases::create_journal_entry::SingleEntryInput> = double
+                .singles
+                .into_iter()
+                .map(|single| {
+                    let account = single.inferred_account_id.unwrap();
+                    cases::create_journal_entry::SingleEntryInput {
+                        new_uuid: Id::generate(),
+                        account,
+                        is_debit: single.user_input_is_debit,
+                        is_inflow: single.user_input_is_inflow,
+                        inflow_type: single.user_input_inflow_type,
+                        outflow_type: single.user_input_outflow_type,
+                        amount: single.user_input_amount,
+                        quantity: single.user_input_quantity,
+                    }
+                })
+                .collect();
+            cases::create_journal_entry::DoubleEntryInput {
+                single_entries: singles_input,
+            }
+        })
+        .collect();
+
     let input = cases::create_journal_entry::Input {
         new_uuid:                 Id::generate(),
         belong_to_company_branch: model.selected_company_branch.read().unwrap(),
         user_uuid:                model.user_uuid.read().clone().unwrap(),
         shared_entry_id:          local_state.shared_entry_id.read(),
-        double_entries:           todo!(),
+        double_entries:           double_entries_input,
     };
 
     let data = <ViewAndCacheType<Ti> as ViewAndCache<Ch, LongCache>>::wrap_input(input);
