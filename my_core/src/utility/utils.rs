@@ -94,6 +94,19 @@ impl<T: Clone> ReadAndSet<T> for Mutex<T> {
     }
 }
 
+pub trait MakeOptionIfEmpty: Sized {
+    fn none_if_empty(self) -> Option<Self>;
+}
+
+impl MakeOptionIfEmpty for String {
+    fn none_if_empty(self) -> Option<Self> {
+        if self.is_empty() {
+            return None;
+        }
+        Some(self)
+    }
+}
+
 #[macro_export]
 macro_rules! mbg {
     () => {

@@ -64,7 +64,7 @@ impl cases::get_all_accounts_for_branch::DatabaseRead for S {
             let is_debit: bool = row.try_get(1).log()?;
             let is_permanent_account: bool = row.try_get(2).log()?;
             let account_name: String = row.try_get(3).log()?;
-            let notes: String = row.try_get(4).log()?;
+            let notes: Option<String> = row.try_get(4).log()?;
             let unit_of_measurement_of_quantity: String = row.try_get(5).log()?;
 
             accounts.push(cases::get_all_accounts_for_branch::Account {

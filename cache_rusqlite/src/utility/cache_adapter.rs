@@ -233,7 +233,7 @@ impl Cache for S {
                     make_sql_statment_for_string("account", "name", uuid, value)
                 }
                 resource_utils::Resource::TableAccountFieldNotes(value) => {
-                    make_sql_statment_for_string("account", "notes", uuid, value)
+                    make_sql_statement_for_option_string("account", "notes", uuid, value)
                 }
                 resource_utils::Resource::TableAccountFieldUnitOfMeasurementOfQuantity(value) => {
                     make_sql_statment_for_string(

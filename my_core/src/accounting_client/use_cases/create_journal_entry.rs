@@ -494,7 +494,7 @@ fn apply_fetch_result<As: ui_model::AllSignalTypes>(
                     is_debit:                        a.is_debit,
                     is_permanent_account:            a.is_permanent_account,
                     account_name:                    a.account_name.clone(),
-                    notes:                           a.notes.clone(),
+                    notes:                           a.notes.clone().unwrap_or_default(),
                     unit_of_measurement_of_quantity: a.unit_of_measurement_of_quantity.clone(),
                 }
             })

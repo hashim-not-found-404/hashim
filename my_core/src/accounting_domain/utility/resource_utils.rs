@@ -46,7 +46,7 @@ pub(crate) struct Account {
     pub(crate) is_debit:                        bool,
     pub(crate) is_permanent_account:            bool,
     pub(crate) name:                            String,
-    pub(crate) notes:                           String,
+    pub(crate) notes:                           Option<String>,
     pub(crate) unit_of_measurement_of_quantity: String,
     pub(crate) inventory:                       Vec<accounting_stuff::InventoryRecord>,
 }
@@ -163,7 +163,7 @@ pub enum Resource {
     TableAccountFieldIsDebit(bool),
     TableAccountFieldIsPermanentAccount(bool),
     TableAccountFieldName(String),
-    TableAccountFieldNotes(String),
+    TableAccountFieldNotes(Option<String>),
     TableAccountFieldUnitOfMeasurementOfQuantity(String),
     TableAccountFieldInventory(Vec<accounting_stuff::InventoryRecord>),
     TableAccountFlowTypeFieldAccount(types::UuidType),

@@ -16,6 +16,7 @@ use crate::utility::traits;
 use crate::utility::traits::JoinHandle;
 use crate::utility::traits::Receiver;
 use crate::utility::traits::Sender;
+use crate::utility::utils::MakeOptionIfEmpty;
 use crate::utility::utils::ReadAndSet;
 use std::marker::PhantomData;
 use std::sync::Arc;
@@ -287,7 +288,7 @@ async fn handle_submit<
         is_debit: local_state.is_debit.read(),
         is_permanent_account: local_state.is_permanent_account.read(),
         account_name: local_state.account_name.read(),
-        notes: local_state.notes.read(),
+        notes: local_state.notes.read().none_if_empty(),
         unit_of_measurement_of_quantity: local_state.unit_of_measurement_of_quantity.read(),
         belong_to_company: model.selected_company.read().unwrap(),
     };
@@ -418,7 +419,7 @@ async fn handle_check<
         is_debit: local_state.is_debit.read(),
         is_permanent_account: local_state.is_permanent_account.read(),
         account_name: local_state.account_name.read(),
-        notes: local_state.notes.read(),
+        notes: local_state.notes.read().none_if_empty(),
         unit_of_measurement_of_quantity: local_state.unit_of_measurement_of_quantity.read(),
         belong_to_company: model.selected_company.read().unwrap(),
     };

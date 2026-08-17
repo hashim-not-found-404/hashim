@@ -23,7 +23,7 @@ pub struct Data {
     pub is_debit:                        bool,
     pub is_permanent_account:            bool,
     pub account_name:                    String,
-    pub notes:                           String,
+    pub notes:                           Option<String>,
     pub unit_of_measurement_of_quantity: String,
 }
 
