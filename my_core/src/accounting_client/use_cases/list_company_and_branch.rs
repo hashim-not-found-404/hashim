@@ -441,7 +441,9 @@ fn handle_list_company_and_branch_listener<
         let data: types::UuidType = model.user_uuid.read().clone().unwrap();
 
         loop {
-            receiver_to_poke.recv().await.unwrap();
+            if let Err(_) = receiver_to_poke.recv().await {
+                break;
+            }
 
             let txn_number = Rn::generate();
 

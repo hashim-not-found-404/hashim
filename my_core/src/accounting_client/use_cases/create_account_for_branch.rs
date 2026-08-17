@@ -348,10 +348,10 @@ fn handle_listener<
         let company_branch_uuid = model.selected_company_branch.read().unwrap();
 
         loop {
-            // Wait for a poke (data changed)
-            receiver_to_poke.recv().await.unwrap();
+            if let Err(_) = receiver_to_poke.recv().await {
+                break;
+            }
 
-            // Re‑fetch from cache only (no server round trip)
             let input = cases::get_all_accounts_for_branch::Input {
                 user_uuid:           user_uuid.clone(),
                 company_branch_uuid: company_branch_uuid.clone(),
