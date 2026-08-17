@@ -377,10 +377,18 @@ fn handle_listener<
                 cache_actor::Response::Data {
                     is_response_from_server: _,
                     data,
-                } => <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::unwrap_output(data),
+                } => {
+                    <fetches::get_all_accounts_for_branch::ViewAndCacheType as ViewAndCache<
+                        Ch,
+                        LongCacheForGetAllAccountsForBranch,
+                    >>::unwrap_output(data)
+                }
             };
 
-            <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::apply_on_the_model(&value, model);
+            <fetches::get_all_accounts_for_branch::ViewAndCacheType as ViewAndCache<
+                Ch,
+                LongCacheForGetAllAccountsForBranch,
+            >>::apply_on_the_model(&value, model);
 
             if value.is_err() {
                 break;
