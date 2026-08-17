@@ -371,16 +371,12 @@ impl ui_model::CompanyAndBranchSelection {
                         LongCache,
                     >(model, cache, commander_local_state.clone());
 
-                *commander_local_state.aborter_to_company_and_branch_listener.lock().unwrap() =
-                    Some(Box::new(listener_aborter));
+                commander_local_state
+                    .aborter_to_company_and_branch_listener
+                    .set(Box::new(listener_aborter));
             }
             Self::UnSubscribe => {
-                let mut guard =
-                    commander_local_state.aborter_to_company_and_branch_listener.lock().unwrap();
-
-                if let Some(f) = guard.take() {
-                    f();
-                }
+                commander_local_state.aborter_to_company_and_branch_listener.abort();
             }
             Self::ShowCreateCompany => {
                 model.navigator.set(ui_model::Navigator::ListCompanyAndBranch(

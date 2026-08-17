@@ -240,12 +240,10 @@ impl ui_model::CreateAccountForBranch {
                         LongCacheForGetAllAccountsForBranch,
                     >(model, cache.clone(), commander_local_state.clone());
 
-                // Store the aborter to cancel on unmount (requires adding field to CommanderLocalState)
-                *commander_local_state.aborter_to_accounts_listener.lock().unwrap() =
-                    Some(Box::new(listener_aborter));
+                commander_local_state.aborter_to_accounts_listener.set(Box::new(listener_aborter));
             }
             ui_model::CreateAccountForBranch::UnSubscribe => {
-                handle_unsubscribe(commander_local_state);
+                commander_local_state.aborter_to_accounts_listener.abort();
             }
 
             ui_model::CreateAccountForBranch::Submit => {
@@ -414,16 +412,6 @@ fn handle_clean<As: ui_model::AllSignalTypes>(model: &ui_model::Model<As>) {
     // Optionally clear filtered list as well
     local_state.filtered_list.reset();
     // Do NOT reset list_of_available_account – it's the master list from cache.
-}
-
-// ---- UnSubscribe ----
-fn handle_unsubscribe<Mpsc: traits::MultiProducerSingleConsumer, As: ui_model::AllSignalTypes>(
-    commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
-) {
-    let mut guard = commander_local_state.aborter_to_accounts_listener.lock().unwrap();
-    if let Some(f) = guard.take() {
-        f();
-    }
 }
 
 // ---- Submit ----

@@ -346,12 +346,10 @@ impl ui_model::CreateJournalEntry {
                         LongCacheForGetAllAccountsForBranch,
                     >(model, cache.clone(), commander_local_state.clone());
 
-                // Store the aborter to cancel on unmount (requires adding field to CommanderLocalState)
-                *commander_local_state.aborter_to_accounts_listener.lock().unwrap() =
-                    Some(Box::new(listener_aborter));
+                commander_local_state.aborter_to_accounts_listener.set(Box::new(listener_aborter));
             }
             ui_model::CreateJournalEntry::UnSubscribe => {
-                handle_unsubscribe(commander_local_state);
+                commander_local_state.aborter_to_accounts_listener.abort();
             }
             ui_model::CreateJournalEntry::Submit => {
                 handle_submit::<Rn, Rt, Id, Mpsc, Rg, Ti, As, Ch, LongCache>(
@@ -594,16 +592,6 @@ fn handle_listener<
             handle.abort().await;
             cache1.send_unsubs_to_cache_actor(component_id).await;
         });
-    }
-}
-
-// ---- UnSubscribe ----
-fn handle_unsubscribe<Mpsc: traits::MultiProducerSingleConsumer, As: ui_model::AllSignalTypes>(
-    commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
-) {
-    let mut guard = commander_local_state.aborter_to_accounts_listener.lock().unwrap();
-    if let Some(f) = guard.take() {
-        f();
     }
 }
 

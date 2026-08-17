@@ -244,6 +244,9 @@ impl ui_model::CreateAccount {
                 )
                 .await
             }
+            ui_model::CreateAccount::UnSubscribe => {
+                commander_local_state.aborter_to_accounts_listener.abort()
+            }
         }
     }
 }
