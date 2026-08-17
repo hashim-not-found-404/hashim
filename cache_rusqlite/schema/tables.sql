@@ -91,7 +91,7 @@ CREATE TABLE IF NOT EXISTS entry(
 CREATE TABLE IF NOT EXISTS single_entry(
     rowid                                       TEXT PRIMARY KEY,
 
-    double_entry                                INTEGER NOT NULL,
+    double_entry                                INTEGER,
     entry                                       TEXT REFERENCES entry(rowid) ON DELETE CASCADE,
     account                                     TEXT REFERENCES account_flow_type(rowid) ON DELETE CASCADE,
     is_debit                                    BOOLEAN,
@@ -117,13 +117,6 @@ CREATE TABLE IF NOT EXISTS invoice(
     purchaser_user_rowid                        TEXT REFERENCES user(rowid) ON DELETE CASCADE,
     purchaser_company_branch_rowid              TEXT REFERENCES company_branch(rowid) ON DELETE CASCADE,
     purchaser_person_out_side_the_system_rowid  TEXT REFERENCES person_out_side_the_system(rowid) ON DELETE CASCADE
-
-    -- Enforce: exactly one owner type is set
-     CONSTRAINT account_owner_exclusive CHECK (
-         (purchaser_user_rowid IS NOT NULL) +
-         (purchaser_company_branch_rowid IS NOT NULL) +
-         (purchaser_person_out_side_the_system_rowid IS NOT NULL) = 1
-     )
 );
 
 CREATE TABLE IF NOT EXISTS invoice_product(
@@ -169,13 +162,6 @@ CREATE TABLE IF NOT EXISTS their_product_on_my_hand(
     creditor_company_rowid                      TEXT REFERENCES company(rowid) ON DELETE CASCADE,
     creditor_company_branch_rowid               TEXT REFERENCES company_branch(rowid) ON DELETE CASCADE,
     creditor_person_out_side_the_system_rowid   TEXT REFERENCES person_out_side_the_system(rowid) ON DELETE CASCADE
-
-    -- Enforce: exactly one owner type is set
-     CONSTRAINT account_owner_exclusive CHECK (
-         (creditor_company_rowid IS NOT NULL) +
-         (creditor_company_branch_rowid IS NOT NULL) +
-         (creditor_person_out_side_the_system_rowid IS NOT NULL) = 1
-    )
 );
 
 CREATE TABLE IF NOT EXISTS product_places_for_company_branch(
@@ -187,12 +173,6 @@ CREATE TABLE IF NOT EXISTS product_places_for_company_branch(
 
     belong_my_product_on_my_hand_rowid          TEXT REFERENCES my_product_on_my_hand(rowid) ON DELETE CASCADE,
     belong_their_product_on_my_hand_rowid       TEXT REFERENCES their_product_on_my_hand(rowid) ON DELETE CASCADE
-
-    -- Enforce: exactly one owner type is set
-    CONSTRAINT account_owner_exclusive CHECK (
-        (belong_my_product_on_my_hand_rowid IS NOT NULL) +
-        (belong_their_product_on_my_hand_rowid IS NOT NULL) = 1
-    )
 );
 
 CREATE TABLE IF NOT EXISTS my_product_on_their_hand(
@@ -206,13 +186,6 @@ CREATE TABLE IF NOT EXISTS my_product_on_their_hand(
     debitor_company_rowid                       TEXT REFERENCES company(rowid) ON DELETE CASCADE,
     debitor_company_branch_rowid                TEXT REFERENCES company_branch(rowid) ON DELETE CASCADE,
     debitor_person_out_side_the_system_rowid    TEXT REFERENCES person_out_side_the_system(rowid) ON DELETE CASCADE
-
-    -- Enforce: exactly one owner type is set
-    CONSTRAINT account_owner_exclusive CHECK (
-        (debitor_company_rowid IS NOT NULL) +
-        (debitor_company_branch_rowid IS NOT NULL) +
-        (debitor_person_out_side_the_system_rowid IS NOT NULL) = 1
-    )
 );
 
 CREATE TABLE IF NOT EXISTS product_photo(
@@ -244,12 +217,6 @@ CREATE TABLE IF NOT EXISTS product_code(
 
     belong_my_product_on_my_hand_rowid          TEXT REFERENCES my_product_on_my_hand(rowid) ON DELETE CASCADE,
     belong_their_product_on_my_hand_rowid       TEXT REFERENCES their_product_on_my_hand(rowid) ON DELETE CASCADE
-
-    -- Enforce: exactly one owner type is set
-    CONSTRAINT account_owner_exclusive CHECK (
-        (belong_my_product_on_my_hand_rowid IS NOT NULL) +
-        (belong_their_product_on_my_hand_rowid IS NOT NULL) = 1
-    )
 );
 
 CREATE TABLE IF NOT EXISTS contact(
@@ -353,12 +320,6 @@ CREATE TABLE IF NOT EXISTS shopping_list(
 
     user_rowid                                  TEXT REFERENCES user(rowid) ON DELETE CASCADE,
     company_branch_rowid                        TEXT REFERENCES company_branch(rowid) ON DELETE CASCADE
-
-    -- Enforce: exactly one owner type is set
-    CONSTRAINT account_owner_exclusive CHECK (
-        (user_rowid IS NOT NULL) +
-        (company_branch_rowid IS NOT NULL) = 1
-    )
 );
 
 CREATE TABLE IF NOT EXISTS shopping_list_record(
@@ -371,12 +332,6 @@ CREATE TABLE IF NOT EXISTS shopping_list_record(
 
     product_my_product_on_my_hand_rowid         TEXT REFERENCES my_product_on_my_hand(rowid) ON DELETE CASCADE,
     product_their_product_on_my_hand_rowid      TEXT REFERENCES their_product_on_my_hand(rowid) ON DELETE CASCADE
-
-    -- Enforce: exactly one owner type is set
-    CONSTRAINT account_owner_exclusive CHECK (
-        (product_my_product_on_my_hand_rowid IS NOT NULL) +
-        (product_their_product_on_my_hand_rowid IS NOT NULL) = 1
-    )
 );
 
 CREATE TABLE IF NOT EXISTS account_translation(
