@@ -33,7 +33,10 @@ pub(crate) async fn main() {
             .allow_any_header()
             .max_age(3600);
 
-        App::new().wrap(cors).app_data(actions.clone()).route("/ws", web::get().to(ws_handler))
+        App::new()
+            .wrap(cors)
+            .app_data(actions.clone())
+            .route("/ws", web::get().to(ws_handler))
     })
     // .bind_rustls_0_23((HOST, PORT), get_tls_config())
     .bind((types::HOST, types::PORT))

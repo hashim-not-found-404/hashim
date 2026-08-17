@@ -6,6 +6,11 @@ pub mod target {
     pub struct S;
 
     impl RowId for S {
+        fn parse(s: impl AsRef<str>) -> Option<types::UuidType> {
+            let uuid = Uuid::parse_str(s.as_ref()).ok()?;
+            Some(types::UuidType(*uuid.as_bytes()))
+        }
+
         fn generate() -> types::UuidType {
             // Generate a random UUID v4
             types::UuidType(*Uuid::now_v7().as_bytes())

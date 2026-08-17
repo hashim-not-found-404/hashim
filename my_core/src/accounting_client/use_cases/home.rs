@@ -39,6 +39,12 @@ impl ui_model::Home {
                     page_to_present: ui_model::Menu::CreateAccountForBranch,
                 }));
             }
+            ui_model::Home::ShowCreateJournalEntry => {
+                model.navigator.set(ui_model::Navigator::Home(ui_model::HomeNav {
+                    show_menu:       false,
+                    page_to_present: ui_model::Menu::CreateJournalEntry,
+                }));
+            }
         }
     }
 }

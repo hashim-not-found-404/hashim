@@ -59,7 +59,9 @@ pub(crate) fn CreateAccountForBranch() -> Element {
                             onclick: move |_| {
                                 tools::send(
                                     ui_model::Message::CreateAccountForBranch(
-                                        ui_model::CreateAccountForBranch::AccountName(account.account_name.clone()),
+                                        ui_model::CreateAccountForBranch::AccountName(
+                                            account.account_name.clone(),
+                                        ),
                                     ),
                                 );
                             },
@@ -74,7 +76,8 @@ pub(crate) fn CreateAccountForBranch() -> Element {
                 value: local_state.outflow_type.read().as_str(),
                 onchange: move |event| {
                     let value = event.value();
-                    let outflow_type = accounting_stuff::OutFlowType::from_str(&value).unwrap_or_default();
+                    let outflow_type = accounting_stuff::OutFlowType::from_str(&value)
+                        .unwrap_or_default();
                     tools::send(
                         ui_model::Message::CreateAccountForBranch(
                             ui_model::CreateAccountForBranch::OutflowType(outflow_type),
@@ -96,7 +99,8 @@ pub(crate) fn CreateAccountForBranch() -> Element {
                 value: local_state.inflow_type.read().as_str(),
                 onchange: move |event| {
                     let value = event.value();
-                    let inflow_type = accounting_stuff::InFlowType::from_str(&value).unwrap_or_default();
+                    let inflow_type = accounting_stuff::InFlowType::from_str(&value)
+                        .unwrap_or_default();
                     tools::send(
                         ui_model::Message::CreateAccountForBranch(
                             ui_model::CreateAccountForBranch::InflowType(inflow_type),

@@ -1,5 +1,6 @@
 use crate::use_cases::create_account;
 use crate::use_cases::create_account_for_branch;
+use crate::use_cases::create_journal_entry;
 use crate::utility::tools;
 use dioxus::prelude::*;
 use my_core::accounting_client::client_domain::ui_model;
@@ -39,6 +40,12 @@ pub(crate) fn Home() -> Element {
                     },
                     "Add New Account For Branch"
                 }
+                button {
+                    onclick: move |_| {
+                        tools::send(ui_model::Message::Home(ui_model::Home::ShowCreateJournalEntry));
+                    },
+                    "Add Journal Entry"
+                }
             }
 
             div {
@@ -51,6 +58,9 @@ pub(crate) fn Home() -> Element {
                             },
                             ui_model::Menu::CreateAccountForBranch => rsx! {
                                 create_account_for_branch::CreateAccountForBranch {}
+                            },
+                            ui_model::Menu::CreateJournalEntry => rsx! {
+                                create_journal_entry::CreateJournalEntry {}
                             },
                         }
                     }

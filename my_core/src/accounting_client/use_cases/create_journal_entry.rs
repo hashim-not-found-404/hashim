@@ -685,7 +685,7 @@ async fn handle_submit<
         new_uuid:                 Id::generate(),
         belong_to_company_branch: model.selected_company_branch.read().unwrap(),
         user_uuid:                model.user_uuid.read().clone().unwrap(),
-        shared_entry_id:          local_state.shared_entry_id.read(),
+        shared_entry_id:          Id::parse(local_state.shared_entry_id.read()),
         double_entries:           double_entries_input,
     };
 

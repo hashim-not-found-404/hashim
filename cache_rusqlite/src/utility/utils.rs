@@ -19,8 +19,7 @@ pub(crate) trait MyUuidConverter1 {
 
 impl MyUuidConverter1 for String {
     fn to_uuid(self) -> types::UuidType {
-        // Parse string → Uuid → [u8; 16]
-        let uuid = Uuid::parse_str(&self).expect("Invalid UUID string");
+        let uuid = Uuid::parse_str(&self).unwrap();
         types::UuidType(*uuid.as_bytes())
     }
 }

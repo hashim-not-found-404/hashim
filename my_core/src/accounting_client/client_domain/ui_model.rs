@@ -159,7 +159,7 @@ pub struct PageCreateJournalEntry<As: AllSignalTypes> {
 
     pub is_loading:      As::Bool,
     pub show_dialog:     As::Dialog,
-    pub shared_entry_id: As::OptionUuid,
+    pub shared_entry_id: As::String,
 
     pub some_account_are_not_inferred: As::Bool,
     pub error_container_is_empty:      As::Bool,
@@ -283,6 +283,7 @@ pub enum Home {
     ShowDashboard,
     ShowCreateAccount,
     ShowCreateAccountForBranch,
+    ShowCreateJournalEntry,
 }
 
 #[derive(Debug)]
@@ -338,7 +339,7 @@ pub enum CreateJournalEntry {
         single_index: usize,
         value:        SingleEntryField,
     },
-    SetSharedEntryId(Option<types::UuidType>),
+    SetSharedEntryId(String),
 }
 
 #[derive(Debug, Clone)]
@@ -380,6 +381,7 @@ pub enum Menu {
     Dashboard,
     CreateAccount,
     CreateAccountForBranch,
+    CreateJournalEntry,
 }
 
 impl Default for Navigator {

@@ -6,6 +6,7 @@ use std::fmt::Display;
 use std::str::FromStr;
 
 pub trait RowId: 'static {
+    fn parse(s: impl AsRef<str>) -> Option<UuidType>;
     fn generate() -> UuidType;
     fn get_time_as_seconds(uuid: &UuidType) -> Option<u64>;
     fn validate(uuid: &UuidType) -> bool;
