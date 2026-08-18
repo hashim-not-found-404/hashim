@@ -15,6 +15,7 @@ use crate::utility::traits;
 use crate::utility::traits::JoinHandle;
 use crate::utility::traits::Receiver;
 use crate::utility::traits::Sender;
+use crate::utility::utils::MakeOptionIfEmpty;
 use crate::utility::utils::ReadAndSet;
 use std::marker::PhantomData;
 use std::sync::Arc;
@@ -236,13 +237,7 @@ async fn handle_submit<
     let new_uuid = Id::generate();
     let input = cases::sign_up::Input {
         new_uuid: new_uuid.clone(),
-        name:     {
-            let name = model.user_name.read();
-            match name.is_empty() {
-                true => None,
-                false => Some(name.to_string()),
-            }
-        },
+        name:     model.user_name.read().none_if_empty(),
         user_id:  model.user_id.read(),
         password: feature_state.user_password.read(),
     };
@@ -384,13 +379,7 @@ async fn handle_check<
             txn_number,
             <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::wrap_input(cases::sign_up::Input {
                 new_uuid: new_uuid.clone(),
-                name:     {
-                    let name = model.user_name.read();
-                    match name.is_empty() {
-                        true => None,
-                        false => Some(name.to_string()),
-                    }
-                },
+                name:     model.user_name.read().none_if_empty(),
                 user_id:  model.user_id.read(),
                 password: feature_state.user_password.read(),
             }),

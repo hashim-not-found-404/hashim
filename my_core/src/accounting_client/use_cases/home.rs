@@ -2,10 +2,7 @@ use crate::accounting_client::client_domain::ui_model;
 use crate::accounting_client::client_domain::ui_model::HashimSignal;
 
 impl ui_model::Home {
-    pub(crate) async fn update<As: ui_model::AllSignalTypes>(
-        self,
-        model: &'static ui_model::Model<As>,
-    ) {
+    pub(crate) fn update<As: ui_model::AllSignalTypes>(self, model: &'static ui_model::Model<As>) {
         match self {
             ui_model::Home::ShowDashboard => {
                 model.navigator.set(ui_model::Navigator::Home(ui_model::HomeNav {

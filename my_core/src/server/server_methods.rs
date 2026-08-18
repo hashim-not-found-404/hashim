@@ -9,6 +9,7 @@ use crate::utility::traits;
 use crate::utility::traits::Receiver;
 use crate::utility::traits::Sender;
 use crate::utility::utils::HashMapWithHashMapValue;
+use crate::utility::utils::LogError;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::sync::Arc;
@@ -93,50 +94,43 @@ impl<
                 let result = Rt::select(session.receive(), receiver_to_server.recv()).await;
                 match result {
                     traits::Either::One(msg) => {
-                        let msg = match msg {
-                            Ok(msg) => msg,
-                            Err(_) => break,
+                        let Ok(msg) = msg else {
+                            break;
                         };
 
                         match msg {
                             WSMessage::Close => break,
                             WSMessage::Binary(received_data) => {
-                                let input = match Ed::decode::<request_response::messages::FromClient>(
+                                let Ok(input) = Ed::decode::<request_response::messages::FromClient>(
                                     &received_data,
-                                ) {
-                                    Ok(ok) => ok,
-                                    Err(_) => {
-                                        if session
-                                            .send_bin(Ed::encode(
-                                                &request_response::messages::FromServer::Error(
-                                                    types::HashimError::InvalidDataFormat,
-                                                ),
-                                            ))
-                                            .await
-                                            .is_err()
-                                        {
-                                            break;
-                                        }
-                                        continue;
+                                ) else {
+                                    if session
+                                        .send_bin(Ed::encode(
+                                            &request_response::messages::FromServer::Error(
+                                                types::HashimError::InvalidDataFormat,
+                                            ),
+                                        ))
+                                        .await
+                                        .is_err()
+                                    {
+                                        break;
                                     }
+                                    continue;
                                 };
 
-                                let mut client = match self.database.get_client().await {
-                                    Ok(ok) => ok,
-                                    Err(_) => {
-                                        if session
-                                            .send_bin(Ed::encode(
-                                                &request_response::messages::FromServer::Error(
-                                                    types::HashimError::InternalServerError,
-                                                ),
-                                            ))
-                                            .await
-                                            .is_err()
-                                        {
-                                            break;
-                                        }
-                                        continue;
+                                let Ok(mut client) = self.database.get_client().await else {
+                                    if session
+                                        .send_bin(Ed::encode(
+                                            &request_response::messages::FromServer::Error(
+                                                types::HashimError::InternalServerError,
+                                            ),
+                                        ))
+                                        .await
+                                        .is_err()
+                                    {
+                                        break;
                                     }
+                                    continue;
                                 };
 
                                 dbg!(&input);
@@ -180,30 +174,27 @@ impl<
                                 }
 
                                 if !side_effects.users_to_resubscribe.is_empty() {
-                                    let subs = match get_table_of_subscribed_data::<Cli>(
+                                    let Ok(subs) = get_table_of_subscribed_data::<Cli>(
                                         &mut client,
                                         &side_effects.users_to_resubscribe,
                                     )
                                     .await
-                                    {
-                                        Ok(ok) => ok,
-                                        Err(_) => {
-                                            if session
-                                                .send_bin(Ed::encode(
-                                                    &request_response::messages::FromServer::Error(
-                                                        types::HashimError::InternalServerError,
-                                                    ),
-                                                ))
-                                                .await
-                                                .is_err()
-                                            {
-                                                break;
-                                            }
-                                            continue;
+                                    else {
+                                        if session
+                                            .send_bin(Ed::encode(
+                                                &request_response::messages::FromServer::Error(
+                                                    types::HashimError::InternalServerError,
+                                                ),
+                                            ))
+                                            .await
+                                            .is_err()
+                                        {
+                                            break;
                                         }
+                                        continue;
                                     };
 
-                                    sender_to_broker
+                                    if sender_to_broker
                                         .send(MessageToBroker::Subscribe {
                                             connection_id,
                                             list_of_subscribtion: subs,
@@ -211,13 +202,17 @@ impl<
                                             sender_to_server: sender_to_server.clone(),
                                         })
                                         .await
-                                        .unwrap();
+                                        .log()
+                                        .is_err()
+                                    {
+                                        break;
+                                    }
                                 }
 
                                 if !side_effects.resource_to_broadcast_for_company.is_empty()
                                     || !side_effects.resource_to_broadcast_for_branch.is_empty()
                                 {
-                                    sender_to_broker
+                                    if sender_to_broker
                                         .send(MessageToBroker::Publish {
                                             connection_id,
                                             list_of_resources_for_company: side_effects
@@ -226,7 +221,11 @@ impl<
                                                 .resource_to_broadcast_for_branch,
                                         })
                                         .await
-                                        .unwrap();
+                                        .log()
+                                        .is_err()
+                                    {
+                                        break;
+                                    }
                                 }
                             }
                         }
@@ -300,7 +299,7 @@ impl<
                     } => {
                         let mut user_to_remove = Vec::new();
 
-                        for (user_uuid, inner) in pool_of_server_facad_channels.iter_mut() {
+                        for (user_uuid, inner) in &mut pool_of_server_facad_channels {
                             if inner.remove(&connection_id).is_some() && inner.is_empty() {
                                 user_to_remove.push(user_uuid.clone());
                             }
@@ -340,24 +339,20 @@ impl<
                         for (user_uuid, resource) in resource_to_send {
                             let channels = pool_of_server_facad_channels.get_mut(&user_uuid);
 
-                            match channels {
-                                Some(channels) => {
-                                    for (connection_id1, mut sender) in channels.clone() {
-                                        if connection_id == connection_id1 {
-                                            continue;
-                                        }
-                                        if sender.send(resource.clone()).await.is_err() {
-                                            channels.remove(&connection_id1);
-                                        }
+                            if let Some(channels) = channels {
+                                for (connection_id1, mut sender) in channels.clone() {
+                                    if connection_id == connection_id1 {
+                                        continue;
                                     }
-                                    if channels.is_empty() {
-                                        pool_of_server_facad_channels.remove(&user_uuid);
+                                    if sender.send(resource.clone()).await.is_err() {
+                                        channels.remove(&connection_id1);
                                     }
                                 }
-                                None => {
-                                    dbg!("there is some problem here this should not happen");
-                                    continue;
+                                if channels.is_empty() {
+                                    pool_of_server_facad_channels.remove(&user_uuid);
                                 }
+                            } else {
+                                dbg!("there is some problem here this should not happen");
                             }
                         }
                     }
@@ -389,21 +384,18 @@ async fn push_data<
     let mut is_there_error = false;
 
     for jwt_value in &input.jwts {
-        match jwt.validate(jwt_value.clone()) {
-            Some(user_uuid) => {
-                side_effects.authenticated_users.insert(user_uuid);
-            }
-            None => {
-                the_return_result.jwts.push(Err(types::JWTError::Invalid));
-                is_there_error = true;
-            }
+        if let Some(user_uuid) = jwt.validate(jwt_value.clone()) {
+            side_effects.authenticated_users.insert(user_uuid);
+        } else {
+            the_return_result.jwts.push(Err(types::JWTError::Invalid));
+            is_there_error = true;
         }
     }
 
     if !Id::validate(&input.nonce) {
         the_return_result.nonce = Err(types::NonceError::Invalid);
         return Ok(the_return_result);
-    };
+    }
 
     let is_nonce_used = client.write_nonce_if_not_used(&input.nonce).await?;
 
@@ -519,9 +511,8 @@ fn check_nonce_if_valid<Id: RowId>(nonce: &types::UuidType, is_used: bool) -> bo
         return false;
     }
 
-    let nonce = match Id::get_time_as_seconds(nonce) {
-        Some(nonce) => nonce,
-        None => return false,
+    let Some(nonce) = Id::get_time_as_seconds(nonce) else {
+        return false;
     };
 
     let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
@@ -603,19 +594,15 @@ mod broker_functions {
     ) {
         for (company, resource) in list_of_resources {
             let user_and_subscribe = pool_of_pubsub.get(&company);
-            match user_and_subscribe {
-                Some(user_and_subscribe) => {
-                    for (user_uuid, subscribe) in user_and_subscribe {
-                        let resource_for_user =
-                            resource_filtering_based_on_subscribe(subscribe, &resource);
+            if let Some(user_and_subscribe) = user_and_subscribe {
+                for (user_uuid, subscribe) in user_and_subscribe {
+                    let resource_for_user =
+                        resource_filtering_based_on_subscribe(subscribe, &resource);
 
-                        resource_to_send.insert_append(user_uuid.clone(), resource_for_user);
-                    }
+                    resource_to_send.insert_append(user_uuid.clone(), resource_for_user);
                 }
-                None => {
-                    dbg!("there is some problem here this should not happen");
-                    continue;
-                }
+            } else {
+                dbg!("there is some problem here this should not happen");
             }
         }
     }
@@ -659,33 +646,16 @@ mod broker_functions {
 fn role_to_subscribe_mapping(roles: Vec<types::Role>) -> HashSet<resource_utils::Subscribe> {
     let mut subscribes = HashSet::with_capacity(200);
 
-    for role in roles {
-        match role {
-            types::Role::Manager => {
-                subscribes.insert(resource_utils::Subscribe::TableUserFieldName);
-                subscribes.insert(resource_utils::Subscribe::TableUserFieldId);
-                subscribes.insert(resource_utils::Subscribe::TableCompanyFieldName);
-                subscribes.insert(resource_utils::Subscribe::TableCompanyFieldCurrency);
-                subscribes.insert(resource_utils::Subscribe::TableCompanyBranchFieldName);
-                subscribes.insert(resource_utils::Subscribe::TableCompanyBranchFieldCompanyBelong);
-                subscribes.insert(resource_utils::Subscribe::TableAccessControlForCompanyFieldRole);
-                subscribes.insert(resource_utils::Subscribe::TableAccessControlForCompanyFieldUser);
-                subscribes
-                    .insert(resource_utils::Subscribe::TableAccessControlForCompanyFieldDataGroup);
-            }
-            types::Role::CoManager => {
-                subscribes.insert(resource_utils::Subscribe::TableUserFieldName);
-                subscribes.insert(resource_utils::Subscribe::TableUserFieldId);
-                subscribes.insert(resource_utils::Subscribe::TableCompanyFieldName);
-                subscribes.insert(resource_utils::Subscribe::TableCompanyFieldCurrency);
-                subscribes.insert(resource_utils::Subscribe::TableCompanyBranchFieldName);
-                subscribes.insert(resource_utils::Subscribe::TableCompanyBranchFieldCompanyBelong);
-                subscribes.insert(resource_utils::Subscribe::TableAccessControlForCompanyFieldRole);
-                subscribes.insert(resource_utils::Subscribe::TableAccessControlForCompanyFieldUser);
-                subscribes
-                    .insert(resource_utils::Subscribe::TableAccessControlForCompanyFieldDataGroup);
-            }
-        }
+    for _ in roles {
+        subscribes.insert(resource_utils::Subscribe::TableUserFieldName);
+        subscribes.insert(resource_utils::Subscribe::TableUserFieldId);
+        subscribes.insert(resource_utils::Subscribe::TableCompanyFieldName);
+        subscribes.insert(resource_utils::Subscribe::TableCompanyFieldCurrency);
+        subscribes.insert(resource_utils::Subscribe::TableCompanyBranchFieldName);
+        subscribes.insert(resource_utils::Subscribe::TableCompanyBranchFieldCompanyBelong);
+        subscribes.insert(resource_utils::Subscribe::TableAccessControlForCompanyFieldRole);
+        subscribes.insert(resource_utils::Subscribe::TableAccessControlForCompanyFieldUser);
+        subscribes.insert(resource_utils::Subscribe::TableAccessControlForCompanyFieldDataGroup);
     }
 
     subscribes.shrink_to_fit();

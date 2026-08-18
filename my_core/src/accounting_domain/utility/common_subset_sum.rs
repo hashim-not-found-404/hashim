@@ -19,7 +19,7 @@ where
     for &val in vals {
         let prev_set = dp.last().unwrap();
         let mut new_set = prev_set.clone();
-        for &sum in prev_set.iter() {
+        for &sum in prev_set {
             new_set.insert(sum + val);
         }
         dp.push(new_set);
@@ -39,10 +39,7 @@ where
 
     for i in (1..=n).rev() {
         let prev_set = &dp[i - 1];
-        if prev_set.contains(&remaining) {
-            // item i-1 was NOT used
-            continue;
-        } else {
+        if !prev_set.contains(&remaining) {
             // item i-1 MUST have been used
             let prev_remaining = remaining - vals[i - 1];
             // Safety: `prev_set` should contain `prev_remaining`
@@ -88,7 +85,7 @@ where
     let last_r = dp_r.last().unwrap();
 
     // Collect all common sums and sort them for deterministic order
-    let mut common_sums: Vec<N> = last_l.iter().filter(|&s| last_r.contains(s)).cloned().collect();
+    let mut common_sums: Vec<N> = last_l.iter().filter(|&s| last_r.contains(s)).copied().collect();
     common_sums.sort(); // smallest first
 
     let mut chosen = None;
@@ -132,9 +129,8 @@ where
     }
 
     // If no suitable split found, return the whole as one irreducible equation
-    let (_, l_idx, r_idx) = match chosen {
-        Some(v) => v,
-        None => return vec![(lhs.to_vec(), rhs.to_vec())],
+    let Some((_, l_idx, r_idx)) = chosen else {
+        return vec![(lhs.to_vec(), rhs.to_vec())];
     };
 
     // Split the original items

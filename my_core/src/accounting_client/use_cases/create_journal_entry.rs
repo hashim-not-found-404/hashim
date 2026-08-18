@@ -621,8 +621,8 @@ async fn handle_submit<
     local_state.is_loading.set(true);
 
     let ui_entries = local_state.double_entries.read();
-    for double in ui_entries.iter() {
-        for single in double.singles.iter() {
+    for double in &ui_entries {
+        for single in &double.singles {
             if single.inferred_account_id.is_none() {
                 local_state.some_account_are_not_inferred.set(true);
                 return;

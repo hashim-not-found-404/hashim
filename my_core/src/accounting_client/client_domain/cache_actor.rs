@@ -86,9 +86,7 @@ pub(crate) trait CacheActorUtils {
     type Resource;
     type MessageFromServer<'de>: serde::Deserialize<'de>;
 
-    fn to<'de>(
-        msg: Self::MessageFromServer<'de>,
-    ) -> FromServer<Self::E, Self::Response, Self::Resource>;
+    fn to(msg: Self::MessageFromServer<'_>) -> FromServer<Self::E, Self::Response, Self::Resource>;
     fn extract_resource(resp: &Self::Response) -> Vec<Self::Resource>;
     async fn write_resource(cache: &Self::Cache, resource: &[Self::Resource]);
 
@@ -341,7 +339,7 @@ where
                     } => {
                         pool_of_pokers.remove(&component_id);
 
-                        for (_, components) in pool_of_subscribes.iter_mut() {
+                        for (_, components) in &mut pool_of_subscribes {
                             components.remove(&component_id);
                         }
 
@@ -511,9 +509,8 @@ async fn poke_the_subs<
     let mut components_to_poke = HashSet::new();
 
     for one_sub in subs_to_poke {
-        let a = match pool_of_subscribes.get(one_sub) {
-            Some(a) => a,
-            None => continue,
+        let Some(a) = pool_of_subscribes.get(one_sub) else {
+            continue;
         };
 
         for a in a {

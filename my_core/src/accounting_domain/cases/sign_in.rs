@@ -76,29 +76,23 @@ impl Input {
 
         let mut errr = Error::default();
 
-        let (user_rowid, password_hash, user_name) = match &read_output
-            .user_rowid_and_password_hash_and_name
-        {
-            Some((user_rowid, password_hash, user_name)) => (user_rowid, password_hash, user_name),
-            None => {
-                errr.user_id = Some(UserIdError::NotExist);
-                return Ok(Err(errr));
-            }
+        let Some((user_rowid, password_hash, user_name)) =
+            &read_output.user_rowid_and_password_hash_and_name
+        else {
+            errr.user_id = Some(UserIdError::NotExist);
+            return Ok(Err(errr));
         };
 
-        match Auth::sign_in(&self.password, password_hash) {
-            true => {
-                Ok(Ok(Ok {
-                    user_uuid: user_rowid.clone(),
-                    jwt:       jwt.sign(user_rowid),
-                    user_id:   self.user_id.clone(),
-                    user_name: user_name.clone(),
-                }))
-            }
-            false => {
-                errr.password = Some(PasswordError::WrongPassword);
-                Ok(Err(errr))
-            }
+        if Auth::sign_in(&self.password, password_hash) {
+            Ok(Ok(Ok {
+                user_uuid: user_rowid.clone(),
+                jwt:       jwt.sign(user_rowid),
+                user_id:   self.user_id.clone(),
+                user_name: user_name.clone(),
+            }))
+        } else {
+            errr.password = Some(PasswordError::WrongPassword);
+            Ok(Err(errr))
         }
     }
 
@@ -106,12 +100,12 @@ impl Input {
         &self,
         jwt: &types::JsonWebTokenType,
         user_uuid: &types::UuidType,
-        user_name: &Option<String>,
+        user_name: Option<&String>,
     ) -> Ok {
         Ok {
             user_uuid: user_uuid.clone(),
             user_id:   self.user_id.clone(),
-            user_name: user_name.clone(),
+            user_name: user_name.cloned(),
             jwt:       jwt.clone(),
         }
     }

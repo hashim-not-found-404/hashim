@@ -86,7 +86,7 @@ where
                     Ok(data.state_full_operation(
                         &types::JsonWebTokenType(String::new()),
                         user_uuid.unwrap(),
-                        &user_name,
+                        user_name.as_ref(),
                     ))
                 } else {
                     Err(cases::sign_in::Error {

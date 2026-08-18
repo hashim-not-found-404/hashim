@@ -359,9 +359,10 @@ pub(crate) fn state_full_check_for_entry<'a, C, A>(
 
             let is_inflow = is_inflow(nature, single.is_debit());
 
-            let (amt, qty) = match is_inflow {
-                true => (single.amount(), single.quantity()),
-                false => (-single.amount(), -single.quantity()),
+            let (amt, qty) = if is_inflow {
+                (single.amount(), single.quantity())
+            } else {
+                (-single.amount(), -single.quantity())
             };
 
             if is_inflow {
@@ -453,9 +454,10 @@ pub fn apply_entry_on_inventory<I>(
 ) where
     I: Inventory,
 {
-    let (amt, qty) = match is_inflow {
-        true => (amount.abs(), quantity.abs()),
-        false => (-amount.abs(), -quantity.abs()),
+    let (amt, qty) = if is_inflow {
+        (amount.abs(), quantity.abs())
+    } else {
+        (-amount.abs(), -quantity.abs())
     };
 
     if amt > 0.0 && qty > 0.0 {

@@ -11,7 +11,7 @@ pub trait LogError {
 }
 
 impl<T, E: Debug> LogError for Result<T, E> {
-    #[inline(always)]
+    #[inline]
     #[track_caller]
     fn log(self) -> Self {
         if let Err(err) = &self {

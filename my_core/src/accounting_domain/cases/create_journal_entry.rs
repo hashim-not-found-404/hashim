@@ -814,7 +814,7 @@ pub fn is_fully_inferred(container: &ContainerView) -> bool {
     })
 }
 
-fn create_double_entry_from_container_view(container: ContainerView) -> Vec<SingleEntryOk> {
+fn create_double_entry_from_container_view(container: &ContainerView) -> Vec<SingleEntryOk> {
     let mut double_entry_ok = Vec::new();
     for (double_idx, double_view) in container.view_double_entries.iter().enumerate() {
         for single_view in &double_view.view_single_entries {
@@ -867,8 +867,8 @@ impl Input {
             container.error_shared_entry_id = Some(types::RowIdError::Invalid);
         }
 
-        for double_view in container.view_double_entries.iter_mut() {
-            for single_view in double_view.view_single_entries.iter_mut() {
+        for double_view in &mut container.view_double_entries {
+            for single_view in &mut double_view.view_single_entries {
                 if !Id::validate(&single_view.input.new_uuid) {
                     single_view.error.new_uuid = Some(types::RowIdError::Invalid);
                 }
@@ -880,8 +880,8 @@ impl Input {
 
         // Detect duplicate new_uuid within the input itself
         let mut seen_uuids = HashSet::new();
-        for double_view in container.view_double_entries.iter_mut() {
-            for single_view in double_view.view_single_entries.iter_mut() {
+        for double_view in &mut container.view_double_entries {
+            for single_view in &mut double_view.view_single_entries {
                 if !seen_uuids.insert(single_view.input.new_uuid.clone()) {
                     single_view.error.new_uuid = Some(types::RowIdError::Duplicated);
                 }
@@ -935,8 +935,8 @@ impl Input {
 
         // Check for duplicate new UUIDs already existing in the database
         for uuid in read_output.used_new_entries_uuid {
-            for double_view in container.view_double_entries.iter_mut() {
-                for single_view in double_view.view_single_entries.iter_mut() {
+            for double_view in &mut container.view_double_entries {
+                for single_view in &mut double_view.view_single_entries {
                     if single_view.input.new_uuid == uuid {
                         single_view.error.new_uuid = Some(types::RowIdError::Duplicated);
                     }
@@ -949,7 +949,7 @@ impl Input {
         correct_journal_input::correct_the_input(
             Ti::now_as_unix_milliseconds(),
             &mut container,
-            account_info.clone(),
+            &account_info,
         );
 
         if !is_fully_inferred(&container) {
@@ -976,7 +976,7 @@ impl Input {
             user_uuid:       self.user_uuid.clone(),
             time:            Ti::now_as_unix_milliseconds(),
             shared_entry_id: self.shared_entry_id.clone(),
-            double_entry:    create_double_entry_from_container_view(container),
+            double_entry:    create_double_entry_from_container_view(&container),
             inventory:       extract_inventory(account_info),
         };
 

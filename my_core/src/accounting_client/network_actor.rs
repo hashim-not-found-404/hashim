@@ -15,8 +15,8 @@ pub(crate) trait Network {
     async fn send_error(&mut self, error: traits::DynamicError);
 }
 
-async fn network_radar<Ws: WSClient>(ws: &Option<Ws>) -> Result<Vec<u8>, traits::DynamicError> {
-    match &ws {
+async fn network_radar<Ws: WSClient>(ws: Option<&Ws>) -> Result<Vec<u8>, traits::DynamicError> {
+    match ws {
         Some(ws) => ws.receive_bin().await,
         None => Err("error".into()),
     }
@@ -45,7 +45,9 @@ pub(crate) fn network_actor<Rt: traits::Runtime, Ws: WSClient, Nw: Network + 'st
         let mut ws: Option<Ws> = None;
 
         loop {
-            match Rt::select(network_utils.network_reciever(), network_radar::<Ws>(&ws)).await {
+            match Rt::select(network_utils.network_reciever(), network_radar::<Ws>(ws.as_ref()))
+                .await
+            {
                 Either::One(data) => {
                     match &ws {
                         Some(ws1) => {

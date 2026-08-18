@@ -2,11 +2,11 @@ pub(crate) trait Searchable {
     fn search_key(&self) -> String;
 }
 
-pub(crate) fn select_strings<T: Searchable>(s_list: Vec<T>, s: String) -> Vec<T> {
-    if s.is_empty() {
+pub(crate) fn select_strings<T: Searchable>(s_list: Vec<T>, s: impl AsRef<str>) -> Vec<T> {
+    if s.as_ref().is_empty() {
         return s_list;
     }
-    let needle = s.to_lowercase();
+    let needle = s.as_ref().to_lowercase();
     s_list
         .into_iter()
         .filter(|item| is_subsequence(&needle, &item.search_key().to_lowercase()))
@@ -20,7 +20,7 @@ fn is_subsequence(needle: &str, haystack: &str) -> bool {
         loop {
             match chars.next() {
                 Some(ch) if ch == c => break,
-                Some(_) => continue,
+                Some(_) => {}
                 None => return false,
             }
         }
@@ -124,7 +124,7 @@ pub(crate) trait Sortable {
 }
 
 pub(crate) fn sort<T: Sortable>(list: &mut Vec<T>) -> &Vec<T> {
-    list.sort_by_key(|a| a.key());
+    list.sort_by_key(T::key);
     list
 }
 

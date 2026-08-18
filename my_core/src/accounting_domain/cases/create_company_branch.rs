@@ -91,7 +91,7 @@ impl Input {
 
         if !Id::validate(&self.user_uuid) {
             errr.user_uuid = Some(types::UserUuidError::Invalid);
-        };
+        }
 
         if !Id::validate(&self.company_belong) {
             errr.company_belong = Some(CompanyBelongError::IdInWrongFormat);

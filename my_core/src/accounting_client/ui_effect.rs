@@ -136,7 +136,6 @@ impl<Mpsc: traits::MultiProducerSingleConsumer> Commander<Mpsc> {
                             msg.update::<  As>(
                                 model,
                             )
-                            .await
                         }
                         ui_model::Message::CreateAccount(msg) => {
                             msg.update::<Rn, Rt, Id, Mpsc, As, Ch, Dbb::CreateAccount>(

@@ -70,8 +70,8 @@ where
         for single in double.iter_mut() {
             single.set_inferred_is_debit(single.get_from_user_input_is_debit());
             single.set_inferred_is_inflow(single.get_from_user_input_is_inflow());
-            single.set_inferred_quantity(single.get_from_user_input_quantity().map(|a| a.abs()));
-            single.set_inferred_amount(single.get_from_user_input_amount().map(|a| a.abs()));
+            single.set_inferred_quantity(single.get_from_user_input_quantity().map(f64::abs));
+            single.set_inferred_amount(single.get_from_user_input_amount().map(f64::abs));
             single.set_inferred_inflow_type(single.get_from_user_input_inflow_type());
             single.set_inferred_outflow_type(single.get_from_user_input_outflow_type());
         }
@@ -136,16 +136,13 @@ where
 {
     for double in entry.iter_mut() {
         for single in double.iter_mut() {
-            match single.get_inferred_inflow_type() {
-                Some(inflow_type_from_user) => {
-                    single.set_inferred_inflow_type(Some(inflow_type_from_user));
-                }
-                None => {
-                    let account_id = single.get_account_id();
+            if let Some(inflow_type_from_user) = single.get_inferred_inflow_type() {
+                single.set_inferred_inflow_type(Some(inflow_type_from_user));
+            } else {
+                let account_id = single.get_account_id();
 
-                    if let Some(info) = account_info.get_info(&account_id) {
-                        single.set_inferred_inflow_type(Some(info.in_flow_type));
-                    }
+                if let Some(info) = account_info.get_info(&account_id) {
+                    single.set_inferred_inflow_type(Some(info.in_flow_type));
                 }
             }
         }
@@ -162,16 +159,13 @@ where
 {
     for double in entry.iter_mut() {
         for single in double.iter_mut() {
-            match single.get_inferred_outflow_type() {
-                Some(outflow_type_from_user) => {
-                    single.set_inferred_outflow_type(Some(outflow_type_from_user));
-                }
-                None => {
-                    let account_id = single.get_account_id();
+            if let Some(outflow_type_from_user) = single.get_inferred_outflow_type() {
+                single.set_inferred_outflow_type(Some(outflow_type_from_user));
+            } else {
+                let account_id = single.get_account_id();
 
-                    if let Some(info) = account_info.get_info(&account_id) {
-                        single.set_inferred_outflow_type(Some(info.out_flow_type));
-                    }
+                if let Some(info) = account_info.get_info(&account_id) {
+                    single.set_inferred_outflow_type(Some(info.out_flow_type));
                 }
             }
         }
@@ -210,27 +204,23 @@ fn horizontal_infer_for_amount_from_quantity<C, A, AId>(
 {
     for double in entry.iter_mut() {
         for single in double.iter_mut() {
-            let mut inferred_quantity = match single.get_inferred_quantity() {
-                Some(a) => a,
-                None => continue,
+            let Some(mut inferred_quantity) = single.get_inferred_quantity() else {
+                continue;
             };
 
-            let is_inflow = match single.get_inferred_is_inflow() {
-                Some(a) => a,
-                None => continue,
+            let Some(is_inflow) = single.get_inferred_is_inflow() else {
+                continue;
             };
 
             let account_id = single.get_account_id();
 
-            let info = match account_info.get_info_mut(&account_id) {
-                Some(a) => a,
-                None => continue,
+            let Some(info) = account_info.get_info_mut(&account_id) else {
+                continue;
             };
 
             if is_inflow {
-                let inferred_inflow_type = match single.get_inferred_inflow_type() {
-                    Some(a) => a,
-                    None => continue,
+                let Some(inferred_inflow_type) = single.get_inferred_inflow_type() else {
+                    continue;
                 };
 
                 match inferred_inflow_type {
@@ -243,9 +233,8 @@ fn horizontal_infer_for_amount_from_quantity<C, A, AId>(
                     }
                 }
             } else {
-                let inferred_outflow_type = match single.get_inferred_outflow_type() {
-                    Some(a) => a,
-                    None => continue,
+                let Some(inferred_outflow_type) = single.get_inferred_outflow_type() else {
+                    continue;
                 };
 
                 let total_quantity_in_inventory =
@@ -268,7 +257,7 @@ fn horizontal_infer_for_amount_from_quantity<C, A, AId>(
                             inferred_amount = total_amount_in_inventory.min(inferred_amount);
 
                             single.set_inferred_amount(Some(inferred_amount));
-                        };
+                        }
                     }
                     accounting_stuff::OutFlowType::QuantityEqualAmount => {
                         let total_amount_in_inventory =
@@ -291,7 +280,7 @@ fn horizontal_infer_for_amount_from_quantity<C, A, AId>(
                             inferred_amount = total_amount_in_inventory.min(inferred_amount);
 
                             single.set_inferred_amount(Some(inferred_amount));
-                        };
+                        }
                     }
                     accounting_stuff::OutFlowType::Wac
                     | accounting_stuff::OutFlowType::Fifo
@@ -303,7 +292,7 @@ fn horizontal_infer_for_amount_from_quantity<C, A, AId>(
 
                         single.set_inferred_amount(Some(expected_amount));
                     }
-                };
+                }
             }
 
             if let Some(amount) = single.get_inferred_amount()
@@ -402,7 +391,7 @@ where
                 } else {
                     continue 'l1;
                 }
-            };
+            }
         }
 
         if total_debit == total_credit {
@@ -411,9 +400,8 @@ where
 
         let diff = (total_debit - total_credit).abs();
 
-        let the_idx = match idx_for_not_inferred_amount {
-            Some(idx) => idx,
-            None => continue,
+        let Some(the_idx) = idx_for_not_inferred_amount else {
+            continue;
         };
 
         for (idx, single) in double.iter_mut().enumerate() {
@@ -509,16 +497,14 @@ fn horizontal_infer_for_quantity_from_amount<C, A, AId>(
 {
     for double in entry.iter_mut() {
         for single in double.iter_mut() {
-            let amount = match single.get_inferred_amount() {
-                Some(amount) => amount,
-                None => continue,
+            let Some(amount) = single.get_inferred_amount() else {
+                continue;
             };
 
             let account_id = single.get_account_id();
 
-            let info = match account_info.get_info_mut(&account_id) {
-                Some(a) => a,
-                None => continue,
+            let Some(info) = account_info.get_info_mut(&account_id) else {
+                continue;
             };
 
             let is_inflow = match single.get_inferred_is_inflow() {
@@ -527,9 +513,8 @@ fn horizontal_infer_for_quantity_from_amount<C, A, AId>(
             };
 
             if is_inflow {
-                let inflow_type = match single.get_inferred_inflow_type() {
-                    Some(inflow_type) => inflow_type,
-                    None => continue,
+                let Some(inflow_type) = single.get_inferred_inflow_type() else {
+                    continue;
                 };
 
                 match inflow_type {
@@ -542,9 +527,8 @@ fn horizontal_infer_for_quantity_from_amount<C, A, AId>(
                     }
                 }
             } else {
-                let outflow_type = match single.get_inferred_outflow_type() {
-                    Some(outflow_type) => outflow_type,
-                    None => continue,
+                let Some(outflow_type) = single.get_inferred_outflow_type() else {
+                    continue;
                 };
 
                 let total_amount_in_inventory =
@@ -616,7 +600,7 @@ fn horizontal_infer_for_quantity_from_amount<C, A, AId>(
     }
 }
 
-pub fn correct_the_input<C, A, AId>(time_unix: u64, entry: &mut C, account_info: A)
+pub fn correct_the_input<C, A, AId>(time_unix: u64, entry: &mut C, account_info: &A)
 where
     C: EntryContainer + Clone,
     for<'a> C::Double<'a>: DoubleEntry + Clone,
@@ -627,14 +611,14 @@ where
     reset_all_inferred_values(entry);
     vertical_correct_to_remove_empty_double_entry(entry);
     vertical_correct_by_remove_duplicate_account(entry);
-    horizontal_infer_for_is_debit(entry, &account_info);
-    horizontal_infer_for_is_inflow(entry, &account_info);
-    horizontal_infer_for_inflow_type(entry, &account_info);
-    horizontal_infer_for_outflow_type(entry, &account_info);
+    horizontal_infer_for_is_debit(entry, account_info);
+    horizontal_infer_for_is_inflow(entry, account_info);
+    horizontal_infer_for_inflow_type(entry, account_info);
+    horizontal_infer_for_outflow_type(entry, account_info);
     horizontal_infer_for_amount_from_quantity(time_unix, entry, account_info.clone());
 
     vertical_infer_for_is_debit(entry);
-    horizontal_infer_for_is_inflow(entry, &account_info);
+    horizontal_infer_for_is_inflow(entry, account_info);
     vertical_infer_for_amount(entry);
     horizontal_infer_for_quantity_from_amount(time_unix, entry, account_info.clone());
 

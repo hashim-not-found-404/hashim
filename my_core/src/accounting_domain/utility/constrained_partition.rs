@@ -22,7 +22,7 @@ where
     for &w in weights {
         let prev = dp.last().unwrap();
         let mut next = prev.clone();
-        for &sum in prev.iter() {
+        for &sum in prev {
             next.insert(sum + w);
         }
         dp.push(next);
@@ -40,9 +40,7 @@ where
 
     for i in (1..=n).rev() {
         let prev_set = &dp[i - 1];
-        if prev_set.contains(&remaining) {
-            continue;
-        } else {
+        if !prev_set.contains(&remaining) {
             let prev_remaining = remaining - weights[i - 1];
             if prev_set.contains(&prev_remaining) {
                 indices.push(i - 1);
@@ -98,7 +96,7 @@ where
     let mut best_diff = N::default();
     let mut first = true;
 
-    for &x in last_set.iter() {
+    for &x in last_set {
         let twice = x + x;
         let diff = if twice >= target2 {
             twice - target2
