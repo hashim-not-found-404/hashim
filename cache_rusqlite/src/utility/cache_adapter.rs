@@ -83,7 +83,7 @@ impl Cache for S {
         self.db.execute(QUERY5, rusqlite::params![*txn_number as i64]).unwrap();
     }
 
-    async fn write_resource(&self, resource: &Vec<resource_utils::ResourceInfo>) {
+    async fn write_resource(&self, resource: &[resource_utils::ResourceInfo]) {
         let mut stmts = Vec::with_capacity(resource.len());
 
         for reso in resource {
@@ -205,15 +205,10 @@ impl Cache for S {
                     )
                 }
                 resource_utils::Resource::TableAccountFieldIsDebit(value) => {
-                    make_sql_statment_for_bool("account", "is_debit", uuid, value.clone())
+                    make_sql_statment_for_bool("account", "is_debit", uuid, *value)
                 }
                 resource_utils::Resource::TableAccountFieldIsPermanentAccount(value) => {
-                    make_sql_statment_for_bool(
-                        "account",
-                        "is_permanent_account",
-                        uuid,
-                        value.clone(),
-                    )
+                    make_sql_statment_for_bool("account", "is_permanent_account", uuid, *value)
                 }
                 resource_utils::Resource::TableAccountFieldName(value) => {
                     make_sql_statment_for_string("account", "name", uuid, value)

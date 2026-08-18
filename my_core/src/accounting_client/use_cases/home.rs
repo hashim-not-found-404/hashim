@@ -2,17 +2,12 @@ use crate::accounting_client::client_domain::client_traits;
 use crate::accounting_client::client_domain::commander;
 use crate::accounting_client::client_domain::ui_model;
 use crate::accounting_client::client_domain::ui_model::HashimSignal;
-use crate::accounting_domain::utility::types;
 use crate::utility::traits;
 use std::sync::Arc;
 
 impl ui_model::Home {
     pub(crate) async fn update<
-        Rn: traits::RandomNumber,
-        Rt: traits::Runtime,
-        Id: types::RowId,
         Mpsc: traits::MultiProducerSingleConsumer,
-        Rg: traits::Regex,
         As: ui_model::AllSignalTypes,
     >(
         self,

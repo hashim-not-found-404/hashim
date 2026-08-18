@@ -313,23 +313,23 @@ impl accounting_stuff::SingleEntry for SingleEntryView {
     }
 
     fn is_debit(&self) -> bool {
-        self.input.is_debit.unwrap_or(false)
+        self.input.is_debit.unwrap()
     }
 
     fn quantity(&self) -> f64 {
-        self.input.quantity.unwrap_or(0.0)
+        self.input.quantity.unwrap()
     }
 
     fn amount(&self) -> f64 {
-        self.input.amount.unwrap_or(0.0)
+        self.input.amount.unwrap()
     }
 
     fn inflow_type(&self) -> accounting_stuff::InFlowType {
-        self.input.inflow_type.clone().unwrap_or(accounting_stuff::InFlowType::Manual)
+        self.input.inflow_type.unwrap()
     }
 
     fn outflow_type(&self) -> accounting_stuff::OutFlowType {
-        self.input.outflow_type.clone().unwrap_or(accounting_stuff::OutFlowType::Manual)
+        self.input.outflow_type.unwrap()
     }
 }
 
@@ -575,11 +575,11 @@ impl correct_journal_input::SingleEntry for SingleEntryView {
     }
 
     fn get_from_user_input_inflow_type(&self) -> Option<accounting_stuff::InFlowType> {
-        self.input.inflow_type.clone()
+        self.input.inflow_type
     }
 
     fn get_from_user_input_outflow_type(&self) -> Option<accounting_stuff::OutFlowType> {
-        self.input.outflow_type.clone()
+        self.input.outflow_type
     }
 
     fn set_user_input_is_debit(&mut self, i: Option<bool>) {
@@ -647,11 +647,11 @@ impl correct_journal_input::SingleEntry for SingleEntryView {
     }
 
     fn get_inferred_inflow_type(&self) -> Option<accounting_stuff::InFlowType> {
-        self.input.inflow_type.clone()
+        self.input.inflow_type
     }
 
     fn get_inferred_outflow_type(&self) -> Option<accounting_stuff::OutFlowType> {
-        self.input.outflow_type.clone()
+        self.input.outflow_type
     }
 }
 
@@ -823,7 +823,7 @@ fn create_double_entry_from_container_view(container: ContainerView) -> Vec<Sing
                 double_entry_number: double_idx as u32,
                 account:             single_view.input.account.clone(),
                 is_debit:            single_view.input.is_debit.unwrap(),
-                out_flow_type:       single_view.input.outflow_type.clone().unwrap(),
+                out_flow_type:       single_view.input.outflow_type.unwrap(),
                 quantity:            single_view.input.quantity.unwrap(),
                 amount:              single_view.input.amount.unwrap(),
             };
@@ -861,10 +861,10 @@ impl Input {
             container.error_belong_to_company_branch = Some(types::RowIdError::Invalid);
         }
 
-        if let Some(shared_id) = &self.shared_entry_id {
-            if !Id::validate(shared_id) {
-                container.error_shared_entry_id = Some(types::RowIdError::Invalid);
-            }
+        if let Some(shared_id) = &self.shared_entry_id
+            && !Id::validate(shared_id)
+        {
+            container.error_shared_entry_id = Some(types::RowIdError::Invalid);
         }
 
         for double_view in container.view_double_entries.iter_mut() {
@@ -929,10 +929,8 @@ impl Input {
             container.error_user_uuid = Some(types::UserUuidError::YouDontHavePermissionToDoThat);
         }
 
-        if let Some(_) = &self.shared_entry_id {
-            if !read_output.is_shared_entry_exist {
-                container.error_shared_entry_id = Some(types::RowIdError::NotExist);
-            }
+        if self.shared_entry_id.is_some() && !read_output.is_shared_entry_exist {
+            container.error_shared_entry_id = Some(types::RowIdError::NotExist);
         }
 
         // Check for duplicate new UUIDs already existing in the database

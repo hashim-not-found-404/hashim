@@ -13,7 +13,7 @@ pub mod target {
             to_allocvec(&data).unwrap().to_vec()
         }
 
-        fn decode<'de, T: Deserialize<'de>>(data: &'de Vec<u8>) -> Result<T, DynamicError> {
+        fn decode<'de, T: Deserialize<'de>>(data: &'de [u8]) -> Result<T, DynamicError> {
             match from_bytes::<T>(data) {
                 Ok(text) => Ok(text),
                 Err(err) => Err(Box::new(err)),

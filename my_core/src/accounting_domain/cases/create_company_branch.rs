@@ -100,7 +100,7 @@ impl Input {
         errr
     }
 
-    pub(crate) async fn state_full_check<Id: types::RowId, Db: DatabaseRead>(
+    pub(crate) async fn state_full_check<Db: DatabaseRead>(
         &self,
         db: &mut Db::Db<'_>,
     ) -> Result<Error, traits::DynamicError> {

@@ -23,6 +23,6 @@ impl cases::sign_in::Input {
             side_effects.users_to_resubscribe.insert(ok.user_uuid.clone());
         }
 
-        return Ok(result);
+        Ok(result)
     }
 }

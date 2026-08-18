@@ -61,17 +61,15 @@ where
         for (row_uuid, acft) in &db.state_of_pending_txn.account_flow_type {
             if acft.company_branch == read_input.company_branch_uuid {
                 let exists = output.accounts_for_branch.iter().any(|a| a.row_uuid == *row_uuid);
-                if !exists {
-                    if let Some(_) = db.state_of_pending_txn.account.get(&acft.account) {
-                        output.accounts_for_branch.push(
-                            cases::get_all_accounts_for_branch::AccountForBranch {
-                                row_uuid:     row_uuid.clone(),
-                                account_uuid: acft.account.clone(),
-                                outflow_type: acft.outflow_type.clone(),
-                                inflow_type:  acft.inflow_type.clone(),
-                            },
-                        );
-                    }
+                if !exists && db.state_of_pending_txn.account.contains_key(&acft.account) {
+                    output.accounts_for_branch.push(
+                        cases::get_all_accounts_for_branch::AccountForBranch {
+                            row_uuid:     row_uuid.clone(),
+                            account_uuid: acft.account.clone(),
+                            outflow_type: acft.outflow_type,
+                            inflow_type:  acft.inflow_type,
+                        },
+                    );
                 }
             }
         }
@@ -195,13 +193,13 @@ where
                     resources.push(resource_utils::ResourceInfo {
                         row_uuid: acc_branch.row_uuid.clone(),
                         resource: resource_utils::Resource::TableAccountFlowTypeFieldInflowType(
-                            acc_branch.inflow_type.clone(),
+                            acc_branch.inflow_type,
                         ),
                     });
                     resources.push(resource_utils::ResourceInfo {
                         row_uuid: acc_branch.row_uuid.clone(),
                         resource: resource_utils::Resource::TableAccountFlowTypeFieldOutflowType(
-                            acc_branch.outflow_type.clone(),
+                            acc_branch.outflow_type,
                         ),
                     });
                     resources.push(resource_utils::ResourceInfo {

@@ -51,12 +51,12 @@ where
     ) -> Result<cases::create_journal_entry::ReadOutput, traits::DynamicError> {
         let mut read_output = LongCache::read(&mut db.cache, read_input).await?;
 
-        for (_, acf) in &db.state_of_pending_txn.access_control_for_company {
+        for acf in db.state_of_pending_txn.access_control_for_company.values() {
             if acf.user_ == read_input.user_uuid {
                 read_output.user_roles.push(acf.role.clone());
             }
         }
-        for (_, acfb) in &db.state_of_pending_txn.access_control_for_company_branch {
+        for acfb in db.state_of_pending_txn.access_control_for_company_branch.values() {
             if acfb.user_ == read_input.user_uuid {
                 read_output.user_roles.push(acfb.role.clone());
             }
@@ -66,10 +66,10 @@ where
             read_output.is_new_uuid_used = true;
         }
 
-        if let Some(shared_id) = &read_input.shared_entry_id {
-            if db.state_of_pending_txn.shared_entry.contains_key(shared_id) {
-                read_output.is_shared_entry_exist = true;
-            }
+        if let Some(shared_id) = &read_input.shared_entry_id
+            && db.state_of_pending_txn.shared_entry.contains_key(shared_id)
+        {
+            read_output.is_shared_entry_exist = true;
         }
 
         for uuid in &read_input.new_entries_uuid {
@@ -166,7 +166,7 @@ where
                     resources.push(resource_utils::ResourceInfo {
                         row_uuid: single.new_uuid.clone(),
                         resource: resource_utils::Resource::TableSingleEntryFieldCostOutFlowType(
-                            single.out_flow_type.clone(),
+                            single.out_flow_type,
                         ),
                     });
                     resources.push(resource_utils::ResourceInfo {
@@ -282,7 +282,6 @@ impl ui_model::CreateJournalEntry {
         Rt: traits::Runtime,
         Id: types::RowId,
         Mpsc: traits::MultiProducerSingleConsumer,
-        Rg: traits::Regex,
         Ti: traits::Time,
         As: ui_model::AllSignalTypes,
         Ch: cache::Cache + 'static,
@@ -335,16 +334,11 @@ impl ui_model::CreateJournalEntry {
 
                 // 2. Set up a subscription listener for live updates
                 let listener_aborter =
-                    handle_listener::<
-                        Rn,
-                        Rt,
-                        Id,
-                        Mpsc,
-                        Rg,
-                        As,
-                        Ch,
-                        LongCacheForGetAllAccountsForBranch,
-                    >(model, cache.clone(), commander_local_state.clone());
+                    handle_listener::<Rn, Rt, Mpsc, As, Ch, LongCacheForGetAllAccountsForBranch>(
+                        model,
+                        cache.clone(),
+                        commander_local_state.clone(),
+                    );
 
                 commander_local_state
                     .aborter_to_create_journal_entry_listener
@@ -354,7 +348,7 @@ impl ui_model::CreateJournalEntry {
                 commander_local_state.aborter_to_create_journal_entry_listener.abort();
             }
             ui_model::CreateJournalEntry::Submit => {
-                handle_submit::<Rn, Rt, Id, Mpsc, Rg, Ti, As, Ch, LongCache>(
+                handle_submit::<Rn, Rt, Id, Mpsc, Ti, As, Ch, LongCache>(
                     model,
                     cache,
                     commander_local_state,
@@ -389,11 +383,11 @@ impl ui_model::CreateJournalEntry {
                 single_index,
             } => {
                 let mut entries = local_state.double_entries.read();
-                if let Some(double) = entries.get_mut(double_index) {
-                    if single_index < double.singles.len() {
-                        double.singles.remove(single_index);
-                        local_state.double_entries.set(entries);
-                    }
+                if let Some(double) = entries.get_mut(double_index)
+                    && single_index < double.singles.len()
+                {
+                    double.singles.remove(single_index);
+                    local_state.double_entries.set(entries);
                 }
             }
             ui_model::CreateJournalEntry::AddDoubleEntry => {
@@ -416,39 +410,38 @@ impl ui_model::CreateJournalEntry {
                 value,
             } => {
                 let mut entries = local_state.double_entries.read();
-                if let Some(double) = entries.get_mut(double_index) {
-                    if let Some(single) = double.singles.get_mut(single_index) {
-                        match value {
-                            ui_model::SingleEntryField::Account(name) => {
-                                // Filter the master list
-                                let master =
-                                    local_state.list_of_available_account.lock().unwrap().clone();
-                                let filtered = tools::select_strings(master, name.clone());
-                                local_state.filtered_list.set(filtered);
-                                single.user_input_account_name = name;
-                                single.inferred_account_id = None;
-                            }
-                            ui_model::SingleEntryField::IsDebit(b) => {
-                                single.user_input_is_debit = Some(b);
-                            }
-                            ui_model::SingleEntryField::IsInflow(b) => {
-                                single.user_input_is_inflow = Some(b);
-                            }
-                            ui_model::SingleEntryField::InflowType(t) => {
-                                single.user_input_inflow_type = Some(t);
-                            }
-                            ui_model::SingleEntryField::OutflowType(t) => {
-                                single.user_input_outflow_type = Some(t);
-                            }
-                            ui_model::SingleEntryField::Amount(f) => {
-                                single.user_input_amount = Some(f);
-                            }
-                            ui_model::SingleEntryField::Quantity(f) => {
-                                single.user_input_quantity = Some(f);
-                            }
+                if let Some(double) = entries.get_mut(double_index)
+                    && let Some(single) = double.singles.get_mut(single_index)
+                {
+                    match value {
+                        ui_model::SingleEntryField::Account(name) => {
+                            let master =
+                                local_state.list_of_available_account.lock().unwrap().clone();
+                            let filtered = tools::select_strings(master, name.clone());
+                            local_state.filtered_list.set(filtered);
+                            single.user_input_account_name = name;
+                            single.inferred_account_id = None;
                         }
-                        local_state.double_entries.set(entries);
+                        ui_model::SingleEntryField::IsDebit(b) => {
+                            single.user_input_is_debit = Some(b);
+                        }
+                        ui_model::SingleEntryField::IsInflow(b) => {
+                            single.user_input_is_inflow = Some(b);
+                        }
+                        ui_model::SingleEntryField::InflowType(t) => {
+                            single.user_input_inflow_type = Some(t);
+                        }
+                        ui_model::SingleEntryField::OutflowType(t) => {
+                            single.user_input_outflow_type = Some(t);
+                        }
+                        ui_model::SingleEntryField::Amount(f) => {
+                            single.user_input_amount = Some(f);
+                        }
+                        ui_model::SingleEntryField::Quantity(f) => {
+                            single.user_input_quantity = Some(f);
+                        }
                     }
+                    local_state.double_entries.set(entries);
                 }
             }
             ui_model::CreateJournalEntry::SetSharedEntryId(uuid_type) => {
@@ -460,17 +453,16 @@ impl ui_model::CreateJournalEntry {
                 account_uuid,
             } => {
                 let mut entries = local_state.double_entries.read();
-                if let Some(double) = entries.get_mut(double_index) {
-                    if let Some(single) = double.singles.get_mut(single_index) {
-                        // Find the account name from the master list
-                        let master = local_state.list_of_available_account.lock().unwrap().clone();
-                        if let Some(account) = master.iter().find(|a| a.row_uuid == account_uuid) {
-                            single.user_input_account_name = account.account_name.clone();
-                            single.inferred_account_id = Some(account_uuid);
-                            local_state.filtered_list.set(Vec::new());
-                        }
-                        local_state.double_entries.set(entries);
+                if let Some(double) = entries.get_mut(double_index)
+                    && let Some(single) = double.singles.get_mut(single_index)
+                {
+                    let master = local_state.list_of_available_account.lock().unwrap().clone();
+                    if let Some(account) = master.iter().find(|a| a.row_uuid == account_uuid) {
+                        single.user_input_account_name = account.account_name.clone();
+                        single.inferred_account_id = Some(account_uuid);
+                        local_state.filtered_list.set(Vec::new());
                     }
+                    local_state.double_entries.set(entries);
                 }
             }
         }
@@ -510,9 +502,7 @@ fn apply_fetch_result<As: ui_model::AllSignalTypes>(
 fn handle_listener<
     Rn: traits::RandomNumber,
     Rt: traits::Runtime,
-    Id: types::RowId,
     Mpsc: traits::MultiProducerSingleConsumer,
-    Rg: traits::Regex,
     As: ui_model::AllSignalTypes,
     Ch: cache::Cache,
     LongCacheForGetAllAccountsForBranch: for<'a> cases::get_all_accounts_for_branch::DatabaseRead<Db<'a> = Ch>,
@@ -540,7 +530,7 @@ fn handle_listener<
         let company_branch_uuid = model.selected_company_branch.read().unwrap();
 
         loop {
-            if let Err(_) = receiver_to_poke.recv().await {
+            if receiver_to_poke.recv().await.is_err() {
                 break;
             }
 
@@ -616,7 +606,6 @@ async fn handle_submit<
     Rt: traits::Runtime,
     Id: types::RowId,
     Mpsc: traits::MultiProducerSingleConsumer,
-    Rg: traits::Regex,
     Ti: traits::Time,
     As: ui_model::AllSignalTypes,
     Ch: cache::Cache,
@@ -698,8 +687,8 @@ async fn handle_submit<
                 .await;
 
             match receiver_to_response.recv().await.unwrap() {
-                cache_actor::Response::CloseTheChannel => return,
-                cache_actor::Response::ServerCannotBeReached => return,
+                cache_actor::Response::CloseTheChannel => {}
+                cache_actor::Response::ServerCannotBeReached => {}
                 cache_actor::Response::Data {
                     is_response_from_server,
                     data,
@@ -739,7 +728,7 @@ async fn handle_submit<
                 process_name: process_manager::ProcessName::CreateJournalEntry,
                 message:      process_manager::MessageFromProcess::Subscribe {
                     sender: sender_to_process,
-                    dialog: &dialog,
+                    dialog,
                 },
             })
             .await

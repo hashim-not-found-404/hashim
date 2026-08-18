@@ -27,7 +27,7 @@ impl cases::create_account_for_branch::Input {
         let mut txn = client.begin_transaction().await?;
         let errr = self.state_full_check::<Db>(&mut txn).await?;
         if errr.is_there_error() {
-            let _ = txn.rollback_transaction().await?;
+            txn.rollback_transaction().await?;
             return Ok(Err(errr));
         }
 
@@ -35,6 +35,6 @@ impl cases::create_account_for_branch::Input {
         txn.write_create_account_for_branch(&result).await?;
         let _ = txn.commit_transaction().await?;
 
-        return Ok(Ok(result));
+        Ok(Ok(result))
     }
 }

@@ -48,7 +48,7 @@ where
 
         // 2. Check pending transactions (uncommitted changes)
         // Check pending company access control for roles
-        for (_, acf) in &db.state_of_pending_txn.access_control_for_company {
+        for acf in db.state_of_pending_txn.access_control_for_company.values() {
             if acf.data_group == read_input.company_belong && acf.user_ == read_input.user_uuid {
                 read_output.user_roles.push(acf.role.clone());
             }
@@ -60,7 +60,7 @@ where
         }
 
         // Check pending branch name usage
-        for (_, branch) in &db.state_of_pending_txn.company_branch {
+        for branch in db.state_of_pending_txn.company_branch.values() {
             if branch.company_belong == read_input.company_belong
                 && branch.name == *read_input.branch_name
             {
@@ -97,15 +97,13 @@ where
         data: &Self::Type2,
         state: &mut cache::State<Ch>,
     ) -> Self::Type3 {
-        let errr = data.state_full_check::<Id, Cache<Ch, LongCache>>(state).await.unwrap();
+        let errr = data.state_full_check::<Cache<Ch, LongCache>>(state).await.unwrap();
 
         if errr.is_there_error() {
             return Err(errr);
         }
 
-        let result = data.state_less_operation();
-
-        return Ok(result);
+        Ok(data.state_less_operation())
     }
 
     fn extract_resource(data: &Self::Type3) -> Vec<resource_utils::ResourceInfo> {
@@ -185,8 +183,9 @@ where
             }
             Err(business_error) => {
                 mbg!(business_error);
-                local_state.branch_name_error.set(todo!());
-                local_state.location_error.set(todo!());
+                todo!();
+                // local_state.branch_name_error.set(todo!());
+                // local_state.location_error.set(todo!());
             }
         }
     }
@@ -198,7 +197,6 @@ impl ui_model::CreateCompanyBranch {
         Rt: traits::Runtime,
         Id: types::RowId,
         Mpsc: traits::MultiProducerSingleConsumer,
-        Rg: traits::Regex,
         As: ui_model::AllSignalTypes,
         Ch: cache::Cache,
         LongCache: for<'a> cases::create_company_branch::DatabaseRead<Db<'a> = Ch>,
@@ -210,7 +208,7 @@ impl ui_model::CreateCompanyBranch {
     ) {
         match self {
             Self::Submit => {
-                handle_submit::<Rn, Rt, Id, Mpsc, Rg, As, Ch, LongCache>(
+                handle_submit::<Rn, Rt, Id, Mpsc, As, Ch, LongCache>(
                     model,
                     cache,
                     commander_local_state,
@@ -232,7 +230,7 @@ impl ui_model::CreateCompanyBranch {
             Self::Name(i) => {
                 model.page_create_company_branch.branch_name.set(i);
 
-                handle_check::<Rn, Rt, Id, Mpsc, Rg, As, Ch, LongCache>(
+                handle_check::<Rn, Id, Mpsc, As, Ch, LongCache>(
                     model,
                     cache,
                     commander_local_state,
@@ -249,7 +247,6 @@ async fn handle_submit<
     Rt: traits::Runtime,
     Id: types::RowId,
     Mpsc: traits::MultiProducerSingleConsumer,
-    Rg: traits::Regex,
     As: ui_model::AllSignalTypes,
     Ch: cache::Cache,
     LongCache: for<'a> cases::create_company_branch::DatabaseRead<Db<'a> = Ch>,
@@ -260,7 +257,7 @@ async fn handle_submit<
 ) {
     let local_state = &model.page_create_company_branch;
 
-    if local_state.is_loading.read() == true {
+    if local_state.is_loading.read() {
         return;
     }
     local_state.is_loading.set(true);
@@ -295,8 +292,8 @@ async fn handle_submit<
                 .await;
 
             match receiver_to_response.recv().await.unwrap() {
-                cache_actor::Response::CloseTheChannel => return,
-                cache_actor::Response::ServerCannotBeReached => return,
+                cache_actor::Response::CloseTheChannel => {}
+                cache_actor::Response::ServerCannotBeReached => {}
                 cache_actor::Response::Data {
                     is_response_from_server,
                     data,
@@ -335,7 +332,7 @@ async fn handle_submit<
                 process_name: process_manager::ProcessName::CreateCompanyBranch,
                 message:      process_manager::MessageFromProcess::Subscribe {
                     sender: sender_to_process,
-                    dialog: &dialog,
+                    dialog,
                 },
             })
             .await
@@ -379,10 +376,8 @@ async fn handle_submit<
 
 async fn handle_check<
     Rn: traits::RandomNumber,
-    Rt: traits::Runtime,
     Id: types::RowId,
     Mpsc: traits::MultiProducerSingleConsumer,
-    Rg: traits::Regex,
     As: ui_model::AllSignalTypes,
     Ch: cache::Cache,
     LongCache: for<'a> cases::create_company_branch::DatabaseRead<Db<'a> = Ch>,

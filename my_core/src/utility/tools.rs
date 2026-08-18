@@ -124,7 +124,7 @@ pub(crate) trait Sortable {
 }
 
 pub(crate) fn sort<T: Sortable>(list: &mut Vec<T>) -> &Vec<T> {
-    list.sort_by(|a, b| a.key().cmp(&b.key()));
+    list.sort_by_key(|a| a.key());
     list
 }
 

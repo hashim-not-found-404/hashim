@@ -88,15 +88,15 @@ where
 {
     for double in entry.iter_mut() {
         for single in double.iter_mut() {
-            if single.get_inferred_is_debit().is_none() {
-                if let Some(is_inflow) = single.get_inferred_is_inflow() {
-                    let account_id = single.get_account_id();
-                    if let Some(info) = account_info.get_info(&account_id) {
-                        single.set_inferred_is_debit(Some(accounting_stuff::is_debit(
-                            info.is_debit,
-                            is_inflow,
-                        )));
-                    }
+            if single.get_inferred_is_debit().is_none()
+                && let Some(is_inflow) = single.get_inferred_is_inflow()
+            {
+                let account_id = single.get_account_id();
+                if let Some(info) = account_info.get_info(&account_id) {
+                    single.set_inferred_is_debit(Some(accounting_stuff::is_debit(
+                        info.is_debit,
+                        is_inflow,
+                    )));
                 }
             }
         }
@@ -360,14 +360,14 @@ where
                     constrained_partition::Side::Unknown,
                     |is_debit| {
                         if is_debit {
-                            constrained_partition::Side::RHS
+                            constrained_partition::Side::Rhs
                         } else {
-                            constrained_partition::Side::LHS
+                            constrained_partition::Side::Lhs
                         }
                     },
                 )
             },
-            |single, b| single.set_inferred_is_debit(Some(b == constrained_partition::Side::RHS)),
+            |single, b| single.set_inferred_is_debit(Some(b == constrained_partition::Side::Rhs)),
         );
 
         new_double.append(&mut other_double);

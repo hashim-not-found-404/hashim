@@ -126,8 +126,8 @@ impl Input {
     pub(crate) fn state_less_operation(&self) -> Ok {
         Ok {
             new_uuid:                        self.new_uuid.clone(),
-            is_debit:                        self.is_debit.clone(),
-            is_permanent_account:            self.is_permanent_account.clone(),
+            is_debit:                        self.is_debit,
+            is_permanent_account:            self.is_permanent_account,
             account_name:                    self.account_name.clone(),
             notes:                           self.notes.clone(),
             unit_of_measurement_of_quantity: self.unit_of_measurement_of_quantity.clone(),

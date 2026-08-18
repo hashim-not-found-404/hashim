@@ -75,7 +75,7 @@ where
         > = read_output.data.into_iter().map(|c| (c.company_uuid.clone(), c)).collect();
 
         // Process pending access controls for this user
-        for (_, acf) in &db.state_of_pending_txn.access_control_for_company {
+        for acf in db.state_of_pending_txn.access_control_for_company.values() {
             if acf.user_ != read_input.user_uuid {
                 continue;
             }
@@ -334,9 +334,7 @@ impl ui_model::CompanyAndBranchSelection {
     pub(crate) async fn update<
         Rn: traits::RandomNumber,
         Rt: traits::Runtime,
-        Id: types::RowId,
         Mpsc: traits::MultiProducerSingleConsumer,
-        Rg: traits::Regex,
         As: ui_model::AllSignalTypes,
         Ch: cache::Cache + 'static,
         LongCache: for<'a> cases::list_company_and_branch::DatabaseRead<Db<'a> = Ch> + 'static,
@@ -352,7 +350,7 @@ impl ui_model::CompanyAndBranchSelection {
                     ui_model::ListCompanyAndBranch::None,
                 ));
 
-                handle_list_company_and_branch::<Rn, Rt, Id, Mpsc, Rg, As, Ch, LongCache>(
+                handle_list_company_and_branch::<Rn, Mpsc, As, Ch, LongCache>(
                     model,
                     cache.clone(),
                     commander_local_state.clone(),
@@ -360,16 +358,11 @@ impl ui_model::CompanyAndBranchSelection {
                 .await;
 
                 let listener_aborter =
-                    handle_list_company_and_branch_listener::<
-                        Rn,
-                        Rt,
-                        Id,
-                        Mpsc,
-                        Rg,
-                        As,
-                        Ch,
-                        LongCache,
-                    >(model, cache, commander_local_state.clone());
+                    handle_list_company_and_branch_listener::<Rn, Rt, Mpsc, As, Ch, LongCache>(
+                        model,
+                        cache,
+                        commander_local_state.clone(),
+                    );
 
                 commander_local_state
                     .aborter_to_company_and_branch_listener
@@ -416,9 +409,7 @@ impl ui_model::CompanyAndBranchSelection {
 fn handle_list_company_and_branch_listener<
     Rn: traits::RandomNumber,
     Rt: traits::Runtime,
-    Id: types::RowId,
     Mpsc: traits::MultiProducerSingleConsumer,
-    Rg: traits::Regex,
     As: ui_model::AllSignalTypes,
     Ch: cache::Cache,
     LongCache: for<'a> cases::list_company_and_branch::DatabaseRead<Db<'a> = Ch>,
@@ -441,7 +432,7 @@ fn handle_list_company_and_branch_listener<
         let data: types::UuidType = model.user_uuid.read().clone().unwrap();
 
         loop {
-            if let Err(_) = receiver_to_poke.recv().await {
+            if receiver_to_poke.recv().await.is_err() {
                 break;
             }
 
@@ -489,10 +480,7 @@ fn handle_list_company_and_branch_listener<
 
 async fn handle_list_company_and_branch<
     Rn: traits::RandomNumber,
-    Rt: traits::Runtime,
-    Id: types::RowId,
     Mpsc: traits::MultiProducerSingleConsumer,
-    Rg: traits::Regex,
     As: ui_model::AllSignalTypes,
     Ch: cache::Cache,
     LongCache: for<'a> cases::list_company_and_branch::DatabaseRead<Db<'a> = Ch>,

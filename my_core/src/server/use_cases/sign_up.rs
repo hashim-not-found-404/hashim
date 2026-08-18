@@ -25,9 +25,9 @@ impl cases::sign_up::Input {
         }
 
         let mut txn = client.begin_transaction().await?;
-        let errr = self.state_full_check::<Id, Db>(&mut txn).await?;
+        let errr = self.state_full_check::<Db>(&mut txn).await?;
         if errr.is_there_error() {
-            let _ = txn.rollback_transaction().await?;
+            txn.rollback_transaction().await?;
             return Ok(Err(errr));
         }
         let result = self.state_full_operation::<Auth, Jwt>(jwt);
@@ -36,6 +36,6 @@ impl cases::sign_up::Input {
 
         side_effects.authenticated_users.insert(self.new_uuid.clone());
 
-        return Ok(Ok(result));
+        Ok(Ok(result))
     }
 }

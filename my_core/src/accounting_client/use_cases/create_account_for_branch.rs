@@ -58,7 +58,7 @@ where
             }
         }
 
-        for (_, table) in &db.state_of_pending_txn.access_control_for_company_branch {
+        for table in db.state_of_pending_txn.access_control_for_company_branch.values() {
             if read_input.user_uuid == table.user_ {
                 read_output.user_roles.push(table.role.clone());
             }
@@ -98,42 +98,38 @@ where
             return Err(errr);
         }
 
-        let ok = data.state_less_operation();
-
-        return Ok(ok);
+        Ok(data.state_less_operation())
     }
 
     fn extract_resource(data: &Self::Type3) -> Vec<resource_utils::ResourceInfo> {
         match data {
             Ok(ok) => {
-                let mut resources = Vec::new();
-
-                resources.push(resource_utils::ResourceInfo {
-                    row_uuid: ok.new_uuid.clone(),
-                    resource: resource_utils::Resource::TableAccountFlowTypeFieldAccount(
-                        ok.belong_to_account.clone(),
-                    ),
-                });
-                resources.push(resource_utils::ResourceInfo {
-                    row_uuid: ok.new_uuid.clone(),
-                    resource: resource_utils::Resource::TableAccountFlowTypeFieldCompanyBranch(
-                        ok.belong_to_company_branch.clone(),
-                    ),
-                });
-                resources.push(resource_utils::ResourceInfo {
-                    row_uuid: ok.new_uuid.clone(),
-                    resource: resource_utils::Resource::TableAccountFlowTypeFieldInflowType(
-                        ok.inflow_type.clone(),
-                    ),
-                });
-                resources.push(resource_utils::ResourceInfo {
-                    row_uuid: ok.new_uuid.clone(),
-                    resource: resource_utils::Resource::TableAccountFlowTypeFieldOutflowType(
-                        ok.outflow_type.clone(),
-                    ),
-                });
-
-                resources
+                vec![
+                    resource_utils::ResourceInfo {
+                        row_uuid: ok.new_uuid.clone(),
+                        resource: resource_utils::Resource::TableAccountFlowTypeFieldAccount(
+                            ok.belong_to_account.clone(),
+                        ),
+                    },
+                    resource_utils::ResourceInfo {
+                        row_uuid: ok.new_uuid.clone(),
+                        resource: resource_utils::Resource::TableAccountFlowTypeFieldCompanyBranch(
+                            ok.belong_to_company_branch.clone(),
+                        ),
+                    },
+                    resource_utils::ResourceInfo {
+                        row_uuid: ok.new_uuid.clone(),
+                        resource: resource_utils::Resource::TableAccountFlowTypeFieldInflowType(
+                            ok.inflow_type,
+                        ),
+                    },
+                    resource_utils::ResourceInfo {
+                        row_uuid: ok.new_uuid.clone(),
+                        resource: resource_utils::Resource::TableAccountFlowTypeFieldOutflowType(
+                            ok.outflow_type,
+                        ),
+                    },
+                ]
             }
             Err(_) => Vec::new(),
         }
@@ -178,7 +174,6 @@ impl ui_model::CreateAccountForBranch {
         Rt: traits::Runtime,
         Id: types::RowId,
         Mpsc: traits::MultiProducerSingleConsumer,
-        Rg: traits::Regex,
         As: ui_model::AllSignalTypes,
         Ch: cache::Cache + 'static,
         LongCache: for<'a> cases::create_account_for_branch::DatabaseRead<Db<'a> = Ch> + 'static,
@@ -228,17 +223,11 @@ impl ui_model::CreateAccountForBranch {
 
                 // 2. Set up a subscription listener for live updates
                 let listener_aborter =
-                    handle_listener::<
-                        Rn,
-                        Rt,
-                        Id,
-                        Mpsc,
-                        Rg,
-                        As,
-                        Ch,
-                        LongCache,
-                        LongCacheForGetAllAccountsForBranch,
-                    >(model, cache.clone(), commander_local_state.clone());
+                    handle_listener::<Rn, Rt, Mpsc, As, Ch, LongCacheForGetAllAccountsForBranch>(
+                        model,
+                        cache.clone(),
+                        commander_local_state.clone(),
+                    );
 
                 commander_local_state
                     .aborter_to_create_account_for_branch_listener
@@ -249,7 +238,7 @@ impl ui_model::CreateAccountForBranch {
             }
 
             ui_model::CreateAccountForBranch::Submit => {
-                handle_submit::<Rn, Rt, Id, Mpsc, Rg, As, Ch, LongCache>(
+                handle_submit::<Rn, Rt, Id, Mpsc, As, Ch, LongCache>(
                     model,
                     cache,
                     commander_local_state,
@@ -319,12 +308,9 @@ fn apply_fetch_result<As: ui_model::AllSignalTypes>(
 fn handle_listener<
     Rn: traits::RandomNumber,
     Rt: traits::Runtime,
-    Id: types::RowId,
     Mpsc: traits::MultiProducerSingleConsumer,
-    Rg: traits::Regex,
     As: ui_model::AllSignalTypes,
     Ch: cache::Cache,
-    LongCache: for<'a> cases::create_account_for_branch::DatabaseRead<Db<'a> = Ch>,
     LongCacheForGetAllAccountsForBranch: for<'a> cases::get_all_accounts_for_branch::DatabaseRead<Db<'a> = Ch>,
 >(
     model: &'static ui_model::Model<As>,
@@ -350,7 +336,7 @@ fn handle_listener<
         let company_branch_uuid = model.selected_company_branch.read().unwrap();
 
         loop {
-            if let Err(_) = receiver_to_poke.recv().await {
+            if receiver_to_poke.recv().await.is_err() {
                 break;
             }
 
@@ -430,7 +416,6 @@ async fn handle_submit<
     Rt: traits::Runtime,
     Id: types::RowId,
     Mpsc: traits::MultiProducerSingleConsumer,
-    Rg: traits::Regex,
     As: ui_model::AllSignalTypes,
     Ch: cache::Cache,
     LongCache: for<'a> cases::create_account_for_branch::DatabaseRead<Db<'a> = Ch>,
@@ -495,8 +480,8 @@ async fn handle_submit<
                 .await;
 
             match receiver_to_response.recv().await.unwrap() {
-                cache_actor::Response::CloseTheChannel => return,
-                cache_actor::Response::ServerCannotBeReached => return,
+                cache_actor::Response::CloseTheChannel => {}
+                cache_actor::Response::ServerCannotBeReached => {}
                 cache_actor::Response::Data {
                     is_response_from_server,
                     data,
@@ -535,7 +520,7 @@ async fn handle_submit<
                 process_name: process_manager::ProcessName::CreateAccountForBranch,
                 message:      process_manager::MessageFromProcess::Subscribe {
                     sender: sender_to_process,
-                    dialog: &dialog,
+                    dialog,
                 },
             })
             .await

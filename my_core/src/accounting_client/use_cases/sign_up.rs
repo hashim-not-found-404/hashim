@@ -82,21 +82,19 @@ where
         data: &Self::Type2,
         state: &mut cache::State<Ch>,
     ) -> Self::Type3 {
-        let errr = data.state_full_check::<Id, Cache<Ch, LongCache>>(state).await.unwrap();
+        let errr = data.state_full_check::<Cache<Ch, LongCache>>(state).await.unwrap();
 
         if errr.is_there_error() {
             return Err(errr);
         }
 
-        let result = cases::sign_up::Ok {
+        Ok(cases::sign_up::Ok {
             new_uuid:        data.new_uuid.clone(),
             user_id:         data.user_id.clone(),
             user_name:       data.name.clone(),
             hashed_password: String::new(),
             jwt:             types::JsonWebTokenType(String::new()),
-        };
-
-        return Ok(result);
+        })
     }
 
     fn extract_resource(data: &Self::Type3) -> Vec<resource_utils::ResourceInfo> {
@@ -145,14 +143,10 @@ where
                 local_state.user_name_error.reset();
             }
             Err(business_error) => {
-                local_state.user_id_error.set(match business_error.user_id {
-                    Some(_) => Some(String::from("duplicated user")),
-                    None => None,
-                });
-                local_state.user_name_error.set(match &business_error.name {
-                    Some(e) => Some(e.clone()),
-                    None => None,
-                });
+                local_state
+                    .user_id_error
+                    .set(business_error.user_id.as_ref().map(|_| String::from("duplicated user")));
+                local_state.user_name_error.set(business_error.name.clone());
             }
         }
     }
@@ -164,7 +158,6 @@ impl ui_model::SignUp {
         Rt: traits::Runtime,
         Id: types::RowId,
         Mpsc: traits::MultiProducerSingleConsumer,
-        Rg: traits::Regex,
         As: ui_model::AllSignalTypes,
         Ch: cache::Cache,
         LongCache: for<'a> cases::sign_up::DatabaseRead<Db<'a> = Ch>,
@@ -181,7 +174,7 @@ impl ui_model::SignUp {
                 }
             }
             Self::Submit => {
-                handle_submit::<Rn, Rt, Id, Mpsc, Rg, As, Ch, LongCache>(
+                handle_submit::<Rn, Rt, Id, Mpsc, As, Ch, LongCache>(
                     model,
                     cache,
                     commander_local_state,
@@ -201,7 +194,7 @@ impl ui_model::SignUp {
             }
             Self::UserName(i) => {
                 model.user_name.set(i);
-                handle_check::<Rn, Rt, Id, Mpsc, Rg, As, Ch, LongCache>(
+                handle_check::<Rn, Id, Mpsc, As, Ch, LongCache>(
                     model,
                     cache,
                     commander_local_state,
@@ -210,7 +203,7 @@ impl ui_model::SignUp {
             }
             Self::UserId(i) => {
                 model.user_id.set(i);
-                handle_check::<Rn, Rt, Id, Mpsc, Rg, As, Ch, LongCache>(
+                handle_check::<Rn, Id, Mpsc, As, Ch, LongCache>(
                     model,
                     cache,
                     commander_local_state,
@@ -219,7 +212,7 @@ impl ui_model::SignUp {
             }
             Self::Password(i) => {
                 model.feature_state_auth.user_password.set(i);
-                handle_check::<Rn, Rt, Id, Mpsc, Rg, As, Ch, LongCache>(
+                handle_check::<Rn, Id, Mpsc, As, Ch, LongCache>(
                     model,
                     cache,
                     commander_local_state,
@@ -235,7 +228,6 @@ async fn handle_submit<
     Rt: traits::Runtime,
     Id: types::RowId,
     Mpsc: traits::MultiProducerSingleConsumer,
-    Rg: traits::Regex,
     As: ui_model::AllSignalTypes,
     Ch: cache::Cache,
     LongCache: for<'a> cases::sign_up::DatabaseRead<Db<'a> = Ch>,
@@ -247,7 +239,7 @@ async fn handle_submit<
     let feature_state = &model.feature_state_auth;
     let local_state = &model.page_sign_up;
 
-    if feature_state.is_loading.read() == true {
+    if feature_state.is_loading.read() {
         return;
     }
     feature_state.is_loading.set(true);
@@ -290,8 +282,8 @@ async fn handle_submit<
                 .await;
 
             match receiver_to_response.recv().await.unwrap() {
-                cache_actor::Response::CloseTheChannel => return,
-                cache_actor::Response::ServerCannotBeReached => return,
+                cache_actor::Response::CloseTheChannel => {}
+                cache_actor::Response::ServerCannotBeReached => {}
                 cache_actor::Response::Data {
                     is_response_from_server,
                     data,
@@ -334,7 +326,7 @@ async fn handle_submit<
                 process_name: process_manager::ProcessName::SignUp,
                 message:      process_manager::MessageFromProcess::Subscribe {
                     sender: sender_to_process,
-                    dialog: &dialog,
+                    dialog,
                 },
             })
             .await
@@ -383,10 +375,8 @@ async fn handle_submit<
 
 async fn handle_check<
     Rn: traits::RandomNumber,
-    Rt: traits::Runtime,
     Id: types::RowId,
     Mpsc: traits::MultiProducerSingleConsumer,
-    Rg: traits::Regex,
     As: ui_model::AllSignalTypes,
     Ch: cache::Cache,
     LongCache: for<'a> cases::sign_up::DatabaseRead<Db<'a> = Ch>,

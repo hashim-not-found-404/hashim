@@ -30,8 +30,8 @@ pub mod target {
             })
         }
 
-        async fn send_bin(&self, data: &Vec<u8>) -> Result<(), DynamicError> {
-            self.write.lock().unwrap().send(Message::Binary(data.clone().into())).await.log()?;
+        async fn send_bin(&self, data: &[u8]) -> Result<(), DynamicError> {
+            self.write.lock().unwrap().send(Message::Binary(data.to_vec().into())).await.log()?;
 
             Ok(())
         }

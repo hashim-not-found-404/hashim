@@ -91,7 +91,7 @@ pub(crate) fn process_manager_actor<
 
                     match consent {
                         ui_model::UserConsent::WaitForServerResponse => {
-                            table.timer_handle = timer_handle::<Rt, As>(&table.dialog);
+                            table.timer_handle = timer_handle::<Rt, As>(table.dialog);
                         }
                         ui_model::UserConsent::DontWaitForServerResponse => {
                             table.sender.send(MessageToProcess::FallBackToCache).await.unwrap();
@@ -110,7 +110,7 @@ pub(crate) fn process_manager_actor<
                             sender,
                             dialog,
                         } => {
-                            let timer_handle = timer_handle::<Rt, As>(&dialog);
+                            let timer_handle = timer_handle::<Rt, As>(dialog);
 
                             process_states.insert(process_name, ProcessInfo {
                                 sender,

@@ -90,7 +90,7 @@ pub(crate) trait CacheActorUtils {
         msg: Self::MessageFromServer<'de>,
     ) -> FromServer<Self::E, Self::Response, Self::Resource>;
     fn extract_resource(resp: &Self::Response) -> Vec<Self::Resource>;
-    async fn write_resource(cache: &Self::Cache, resource: &Vec<Self::Resource>);
+    async fn write_resource(cache: &Self::Cache, resource: &[Self::Resource]);
 
     async fn delete_successful_txn_input(cache: &Self::Cache, resp: &Self::Response);
     async fn mark_txn_input_as_faild(cache: &Self::Cache, resp: &Self::Response);
@@ -101,11 +101,11 @@ pub(crate) trait CacheActorUtils {
     }
     fn collect_subs_to_poke(
         subs_to_poke: &mut HashSet<Self::Subscribe>,
-        resource: &Vec<Self::Resource>,
+        resource: &[Self::Resource],
     );
     async fn check_input(cache: &mut Self::Cache, data: &Self::OpInput) -> Self::OpResult;
     fn extract_resource1(data: &Self::OpResult) -> Vec<Self::Resource>;
-    fn apply_input(cache: &mut Self::Cache, resource: &Vec<Self::Resource>);
+    fn apply_input(cache: &mut Self::Cache, resource: &[Self::Resource]);
     async fn write_input(cache: &Self::Cache, txn_number: u64, data: &Self::OpInput);
 }
 
@@ -247,11 +247,11 @@ where
             loop {
                 match Cu::cache_receiver(&mut receiver_to_cache).await {
                     MessageToCache::WeAreBackOnline => {
-                        let txns = Cu::get_all_pending_txn(&mut cache).await;
+                        let txns = Cu::get_all_pending_txn(&cache).await;
                         if txns.is_empty() {
                             continue;
                         }
-                        let txns = Cu::prepare_txn_for_send(&mut cache, txns).await;
+                        let txns = Cu::prepare_txn_for_send(&cache, txns).await;
                         let txns = Ed::encode(&txns);
                         Cu::send_to_network(&mut sender_to_network, txns).await;
                     }
@@ -273,10 +273,10 @@ where
                                 let mut subs_to_poke = HashSet::new();
 
                                 let resource = Cu::extract_resource(&response);
-                                Cu::write_resource(&mut cache, &resource).await;
-                                Cu::delete_successful_txn_input(&mut cache, &response).await;
-                                Cu::mark_txn_input_as_faild(&mut cache, &response).await;
-                                Cu::write_faild_txn_result(&mut cache, &response).await;
+                                Cu::write_resource(&cache, &resource).await;
+                                Cu::delete_successful_txn_input(&cache, &response).await;
+                                Cu::mark_txn_input_as_faild(&cache, &response).await;
+                                Cu::write_faild_txn_result(&cache, &response).await;
                                 Cu::collect_subs_to_poke(&mut subs_to_poke, &resource);
 
                                 let txn_numbers = Cu::get_all_response_txn_numbers(&response).await;
@@ -294,7 +294,7 @@ where
                                 }
 
                                 Cu::clear_state_pending_txn(&mut cache).await;
-                                let txns = Cu::get_all_pending_txn(&mut cache).await;
+                                let txns = Cu::get_all_pending_txn(&cache).await;
 
                                 for (_, txn) in txns {
                                     let result = Cu::check_input(&mut cache, &txn).await;
@@ -310,7 +310,7 @@ where
                                 .await;
                             }
                             FromServer::Resources(resource) => {
-                                Cu::write_resource(&mut cache, &resource).await;
+                                Cu::write_resource(&cache, &resource).await;
 
                                 let mut subs_to_poke = HashSet::new();
                                 Cu::collect_subs_to_poke(&mut subs_to_poke, &resource);
@@ -379,8 +379,7 @@ where
 
                                 if Cu::is_online(&is_online).await {
                                     let txn_to_send =
-                                        Cu::prepare_txn_for_send(&mut cache, vec![operations])
-                                            .await;
+                                        Cu::prepare_txn_for_send(&cache, vec![operations]).await;
 
                                     let data = Ed::encode(&txn_to_send);
                                     Cu::send_to_network(&mut sender_to_network, data).await;
@@ -397,8 +396,7 @@ where
 
                                 if Cu::is_online(&is_online).await {
                                     let txn_to_send =
-                                        Cu::prepare_txn_for_send(&mut cache, vec![operations])
-                                            .await;
+                                        Cu::prepare_txn_for_send(&cache, vec![operations]).await;
 
                                     let data = Ed::encode(&txn_to_send);
                                     Cu::send_to_network(&mut sender_to_network, data).await;
@@ -466,8 +464,7 @@ where
 
                                 if Cu::is_online(&is_online).await {
                                     let txn_to_send =
-                                        Cu::prepare_txn_for_send(&mut cache, vec![operations])
-                                            .await;
+                                        Cu::prepare_txn_for_send(&cache, vec![operations]).await;
 
                                     let data = Ed::encode(&txn_to_send);
                                     Cu::send_to_network(&mut sender_to_network, data).await;
@@ -484,8 +481,7 @@ where
 
                                 if Cu::is_online(&is_online).await {
                                     let txn_to_send =
-                                        Cu::prepare_txn_for_send(&mut cache, vec![operations])
-                                            .await;
+                                        Cu::prepare_txn_for_send(&cache, vec![operations]).await;
 
                                     let data = Ed::encode(&txn_to_send);
                                     Cu::send_to_network(&mut sender_to_network, data).await;
@@ -515,18 +511,18 @@ async fn poke_the_subs<
     let mut components_to_poke = HashSet::new();
 
     for one_sub in subs_to_poke {
-        let a = match pool_of_subscribes.get(&one_sub) {
+        let a = match pool_of_subscribes.get(one_sub) {
             Some(a) => a,
             None => continue,
         };
 
         for a in a {
-            components_to_poke.insert(a.clone());
+            components_to_poke.insert(a);
         }
     }
 
     for i in components_to_poke {
-        let sender = pool_of_pokers.get_mut(&i).unwrap();
+        let sender = pool_of_pokers.get_mut(i).unwrap();
         let _ = sender.send(()).await;
     }
 }

@@ -7,11 +7,11 @@ pub type DynamicError = Box<dyn Error>;
 
 pub trait Coding {
     fn encode<T: Serialize>(data: &T) -> Vec<u8>;
-    fn decode<'de, T: Deserialize<'de>>(data: &'de Vec<u8>) -> Result<T, DynamicError>;
+    fn decode<'de, T: Deserialize<'de>>(data: &'de [u8]) -> Result<T, DynamicError>;
 }
 
 pub trait Regex: 'static {
-    fn is_regex(s: &String) -> Result<(), String>;
+    fn is_regex(s: &str) -> Result<(), String>;
 }
 
 pub trait Time: 'static {

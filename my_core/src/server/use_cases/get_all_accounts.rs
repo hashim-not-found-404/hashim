@@ -25,6 +25,6 @@ impl cases::get_all_accounts::Input {
 
         let ok = self.state_full_operation::<Db>(client).await?;
 
-        return Ok(Ok(ok));
+        Ok(Ok(ok))
     }
 }

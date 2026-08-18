@@ -10,7 +10,7 @@ pub mod target {
         LazyLock::new(|| Regex::new(r"^[\p{L}\p{M}]+(?:[-'][\p{L}\p{M}]+)*$").unwrap());
 
     impl MyRegex for S {
-        fn is_regex(s: &String) -> Result<(), String> {
+        fn is_regex(s: &str) -> Result<(), String> {
             match RE.is_match(s) {
                 true => Ok(()),
                 false => Err("not match".to_string()),

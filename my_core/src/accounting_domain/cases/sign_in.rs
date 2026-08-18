@@ -86,20 +86,20 @@ impl Input {
             }
         };
 
-        match Auth::sign_in(&self.password, &password_hash) {
+        match Auth::sign_in(&self.password, password_hash) {
             true => {
-                return Ok(Ok(Ok {
+                Ok(Ok(Ok {
                     user_uuid: user_rowid.clone(),
-                    jwt:       jwt.sign(&user_rowid),
+                    jwt:       jwt.sign(user_rowid),
                     user_id:   self.user_id.clone(),
                     user_name: user_name.clone(),
-                }));
+                }))
             }
             false => {
                 errr.password = Some(PasswordError::WrongPassword);
-                return Ok(Err(errr));
+                Ok(Err(errr))
             }
-        };
+        }
     }
 
     pub(crate) fn state_full_operation(
@@ -108,11 +108,11 @@ impl Input {
         user_uuid: &types::UuidType,
         user_name: &Option<String>,
     ) -> Ok {
-        return Ok {
+        Ok {
             user_uuid: user_uuid.clone(),
             user_id:   self.user_id.clone(),
             user_name: user_name.clone(),
             jwt:       jwt.clone(),
-        };
+        }
     }
 }

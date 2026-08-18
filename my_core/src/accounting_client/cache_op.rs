@@ -238,7 +238,7 @@ impl request_response::push_data::OperationsInput {
                 <fetches::get_all_accounts_for_branch::ViewAndCacheType as ViewAndCache<
                     Ch,
                     Dbb::GetAllAccountsForBranch,
-                >>::user_uuid(&i)
+                >>::user_uuid(i)
             }
             request_response::push_data::OperationsInput::CreateAccountForBranch(i) => {
                 get_user_uuid!(create_account_for_branch, Dbb::CreateAccountForBranch, i)
@@ -247,7 +247,7 @@ impl request_response::push_data::OperationsInput {
                 <use_cases::create_journal_entry::ViewAndCacheType<Ti> as ViewAndCache<
                     Ch,
                     Dbb::CreateJournalEntry,
-                >>::user_uuid(&i)
+                >>::user_uuid(i)
             }
         }
     }

@@ -28,9 +28,9 @@ impl cases::create_company_branch::Input {
         }
 
         let mut txn = client.begin_transaction().await?;
-        let errr = self.state_full_check::<Id, Db>(&mut txn).await?;
+        let errr = self.state_full_check::<Db>(&mut txn).await?;
         if errr.is_there_error() {
-            let _ = txn.rollback_transaction().await?;
+            txn.rollback_transaction().await?;
             return Ok(Err(errr));
         }
 
@@ -38,6 +38,6 @@ impl cases::create_company_branch::Input {
         txn.write_create_company_branch(&result).await?;
         let _ = txn.commit_transaction().await?;
 
-        return Ok(Ok(result));
+        Ok(Ok(result))
     }
 }

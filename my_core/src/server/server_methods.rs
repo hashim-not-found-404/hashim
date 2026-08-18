@@ -141,7 +141,7 @@ impl<
 
                                 dbg!(&input);
                                 let mut side_effects = server_traits::SideEffects::default();
-                                let output = push_data::<Rn, Id, Ti, Rg, Auth, Jwt, Cli, Dbb>(
+                                let output = push_data::<Id, Ti, Auth, Jwt, Cli, Dbb>(
                                     &input,
                                     &mut side_effects,
                                     &mut client,
@@ -301,10 +301,8 @@ impl<
                         let mut user_to_remove = Vec::new();
 
                         for (user_uuid, inner) in pool_of_server_facad_channels.iter_mut() {
-                            if inner.remove(&connection_id).is_some() {
-                                if inner.is_empty() {
-                                    user_to_remove.push(user_uuid.clone());
-                                }
+                            if inner.remove(&connection_id).is_some() && inner.is_empty() {
+                                user_to_remove.push(user_uuid.clone());
                             }
                         }
 
@@ -370,10 +368,8 @@ impl<
 }
 
 async fn push_data<
-    Rn: traits::RandomNumber,
     Id: types::RowId,
     Ti: traits::Time,
-    Rg: traits::Regex,
     Auth: types::HashedPassword,
     Jwt: types::JWT,
     Cli: DBClient,
@@ -427,7 +423,7 @@ async fn push_data<
                         .handle_operation::<Id, Auth, Jwt, Cli, Dbb::SignUp>(
                             side_effects,
                             client,
-                            &jwt,
+                            jwt,
                         )
                         .await?,
                 )
@@ -435,7 +431,7 @@ async fn push_data<
             request_response::push_data::OperationsInput::SignIn(input) => {
                 request_response::push_data::OperationsResult::SignIn(
                     input
-                        .handle_operation::<Auth, Jwt, Cli, Dbb::SignIn>(side_effects, client, &jwt)
+                        .handle_operation::<Auth, Jwt, Cli, Dbb::SignIn>(side_effects, client, jwt)
                         .await?,
                 )
             }
@@ -515,7 +511,7 @@ async fn push_data<
         });
     }
 
-    return Ok(the_return_result);
+    Ok(the_return_result)
 }
 
 fn check_nonce_if_valid<Id: RowId>(nonce: &types::UuidType, is_used: bool) -> bool {
@@ -528,7 +524,7 @@ fn check_nonce_if_valid<Id: RowId>(nonce: &types::UuidType, is_used: bool) -> bo
         None => return false,
     };
 
-    let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as u64;
+    let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
 
     // 1. Reject future timestamps (more than 5 seconds ahead)
     let max_future = 5; // 5 seconds tolerance for clock drift
@@ -649,10 +645,10 @@ mod broker_functions {
         let mut new_resource = Vec::new();
 
         for one_resource in resource {
-            if let Some(sub) = one_resource.resource.map_to_subs() {
-                if subscribe.contains(&sub) {
-                    new_resource.push(one_resource.clone());
-                }
+            if let Some(sub) = one_resource.resource.map_to_subs()
+                && subscribe.contains(&sub)
+            {
+                new_resource.push(one_resource.clone());
             }
         }
 

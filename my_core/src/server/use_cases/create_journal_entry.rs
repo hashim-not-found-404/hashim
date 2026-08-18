@@ -35,10 +35,10 @@ impl cases::create_journal_entry::Input {
                 let _ = txn.commit_transaction().await?;
             }
             _ => {
-                let _ = txn.rollback_transaction().await?;
+                txn.rollback_transaction().await?;
             }
         }
 
-        return result;
+        result
     }
 }

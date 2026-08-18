@@ -58,14 +58,12 @@ pub fn new<
 
     let sender_to_process_manager = process_manager::process_manager_actor::<Mpsc, As, Rt>();
 
-    let commander = ui_effect::Commander::new::<As, Rt, Rn, Id, Rg, Ti, Ch, Dbb>(
+    ui_effect::Commander::new::<As, Rt, Rn, Id, Ti, Ch, Dbb>(
         receiver_to_error,
         sender_to_process_manager,
         model,
         cache,
-    );
-
-    commander
+    )
 }
 
 struct MyNetwork<Mpsc: traits::MultiProducerSingleConsumer> {
@@ -185,10 +183,10 @@ impl<
     ) -> Self::SendingTxns {
         let mut jwts = Vec::new();
         for (_, txn) in &txns {
-            if let Some(user_uuid) = txn.get_user_uuid::<Ti, Ch, Dbb>() {
-                if let Some(jwt) = cache.cache.get_jwt(user_uuid).await {
-                    jwts.push(jwt)
-                }
+            if let Some(user_uuid) = txn.get_user_uuid::<Ti, Ch, Dbb>()
+                && let Some(jwt) = cache.cache.get_jwt(user_uuid).await
+            {
+                jwts.push(jwt)
             }
         }
 
@@ -201,13 +199,11 @@ impl<
             });
         }
 
-        let t = request_response::messages::FromClient {
+        request_response::messages::FromClient {
             jwts,
             nonce: Id::generate(),
             operations: operations1,
-        };
-
-        t
+        }
     }
 
     fn to<'de>(
@@ -228,7 +224,7 @@ impl<
         resp.operations.iter().flat_map(|a| a.operation.extract_resource::<Ti, Ch, Dbb>()).collect()
     }
 
-    async fn write_resource(cache: &Self::Cache, resource: &Vec<Self::Resource>) {
+    async fn write_resource(cache: &Self::Cache, resource: &[Self::Resource]) {
         cache.cache.write_resource(resource).await;
     }
 
@@ -262,7 +258,7 @@ impl<
 
     fn collect_subs_to_poke(
         subs_to_poke: &mut std::collections::HashSet<Self::Subscribe>,
-        resource: &Vec<Self::Resource>,
+        resource: &[Self::Resource],
     ) {
         for i in resource {
             if let Some(value) = i.resource.map_to_subs() {
@@ -279,8 +275,8 @@ impl<
         data.extract_resource::<Ti, Ch, Dbb>()
     }
 
-    fn apply_input(cache: &mut Self::Cache, resource: &Vec<Self::Resource>) {
-        resource_utils::apply_change(resource.clone(), &mut cache.state_of_pending_txn);
+    fn apply_input(cache: &mut Self::Cache, resource: &[Self::Resource]) {
+        resource_utils::apply_change(resource.to_vec(), &mut cache.state_of_pending_txn);
     }
 
     async fn write_input(cache: &Self::Cache, txn_number: u64, data: &Self::OpInput) {

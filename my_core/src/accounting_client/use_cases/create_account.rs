@@ -49,7 +49,7 @@ where
         read_output.is_company_uuid_exist = true;
         read_output.is_new_uuid_used = false;
 
-        for (_, table) in &db.state_of_pending_txn.account {
+        for table in db.state_of_pending_txn.account.values() {
             if read_input.account_name == table.name
                 && read_input.belong_to_company == table.company_belong
             {
@@ -57,7 +57,7 @@ where
             }
         }
 
-        for (_, table) in &db.state_of_pending_txn.access_control_for_company {
+        for table in db.state_of_pending_txn.access_control_for_company.values() {
             if read_input.user_uuid == table.user_ {
                 read_output.user_roles.push(table.role.clone());
             }
@@ -97,58 +97,49 @@ where
             return Err(errr);
         }
 
-        let ok = data.state_less_operation();
-
-        return Ok(ok);
+        Ok(data.state_less_operation())
     }
 
     fn extract_resource(data: &Self::Type3) -> Vec<resource_utils::ResourceInfo> {
         match data {
             Ok(ok) => {
-                let mut resources = Vec::new();
-
-                resources.push(resource_utils::ResourceInfo {
-                    row_uuid: ok.new_uuid.clone(),
-                    resource: resource_utils::Resource::TableAccountFieldCompanyBelong(
-                        ok.belong_to_company.clone(),
-                    ),
-                });
-
-                resources.push(resource_utils::ResourceInfo {
-                    row_uuid: ok.new_uuid.clone(),
-                    resource: resource_utils::Resource::TableAccountFieldIsDebit(
-                        ok.is_debit.clone(),
-                    ),
-                });
-
-                resources.push(resource_utils::ResourceInfo {
-                    row_uuid: ok.new_uuid.clone(),
-                    resource: resource_utils::Resource::TableAccountFieldIsPermanentAccount(
-                        ok.is_permanent_account.clone(),
-                    ),
-                });
-
-                resources.push(resource_utils::ResourceInfo {
-                    row_uuid: ok.new_uuid.clone(),
-                    resource: resource_utils::Resource::TableAccountFieldName(
-                        ok.account_name.clone(),
-                    ),
-                });
-
-                resources.push(resource_utils::ResourceInfo {
-                    row_uuid: ok.new_uuid.clone(),
-                    resource: resource_utils::Resource::TableAccountFieldNotes(ok.notes.clone()),
-                });
-
-                resources.push(resource_utils::ResourceInfo {
-                    row_uuid: ok.new_uuid.clone(),
-                    resource:
-                        resource_utils::Resource::TableAccountFieldUnitOfMeasurementOfQuantity(
-                            ok.unit_of_measurement_of_quantity.clone(),
+                vec![
+                    resource_utils::ResourceInfo {
+                        row_uuid: ok.new_uuid.clone(),
+                        resource: resource_utils::Resource::TableAccountFieldCompanyBelong(
+                            ok.belong_to_company.clone(),
                         ),
-                });
-
-                resources
+                    },
+                    resource_utils::ResourceInfo {
+                        row_uuid: ok.new_uuid.clone(),
+                        resource: resource_utils::Resource::TableAccountFieldIsDebit(ok.is_debit),
+                    },
+                    resource_utils::ResourceInfo {
+                        row_uuid: ok.new_uuid.clone(),
+                        resource: resource_utils::Resource::TableAccountFieldIsPermanentAccount(
+                            ok.is_permanent_account,
+                        ),
+                    },
+                    resource_utils::ResourceInfo {
+                        row_uuid: ok.new_uuid.clone(),
+                        resource: resource_utils::Resource::TableAccountFieldName(
+                            ok.account_name.clone(),
+                        ),
+                    },
+                    resource_utils::ResourceInfo {
+                        row_uuid: ok.new_uuid.clone(),
+                        resource: resource_utils::Resource::TableAccountFieldNotes(
+                            ok.notes.clone(),
+                        ),
+                    },
+                    resource_utils::ResourceInfo {
+                        row_uuid: ok.new_uuid.clone(),
+                        resource:
+                            resource_utils::Resource::TableAccountFieldUnitOfMeasurementOfQuantity(
+                                ok.unit_of_measurement_of_quantity.clone(),
+                            ),
+                    },
+                ]
             }
             Err(_) => Vec::new(),
         }
@@ -172,10 +163,9 @@ where
                 local_state.account_name_error.reset();
             }
             Err(business_error) => {
-                local_state.account_name_error.set(match business_error.account_name {
-                    Some(_) => Some(String::from("duplicated")),
-                    None => None,
-                });
+                local_state
+                    .account_name_error
+                    .set(business_error.account_name.as_ref().map(|_| String::from("duplicated")));
             }
         }
     }
@@ -187,7 +177,6 @@ impl ui_model::CreateAccount {
         Rt: traits::Runtime,
         Id: types::RowId,
         Mpsc: traits::MultiProducerSingleConsumer,
-        Rg: traits::Regex,
         As: ui_model::AllSignalTypes,
         Ch: cache::Cache,
         LongCache: for<'a> cases::create_account::DatabaseRead<Db<'a> = Ch>,
@@ -201,7 +190,7 @@ impl ui_model::CreateAccount {
 
         match self {
             ui_model::CreateAccount::Submit => {
-                handle_submit::<Rn, Rt, Id, Mpsc, Rg, As, Ch, LongCache>(
+                handle_submit::<Rn, Rt, Id, Mpsc, As, Ch, LongCache>(
                     model,
                     cache,
                     commander_local_state,
@@ -226,7 +215,7 @@ impl ui_model::CreateAccount {
             }
             ui_model::CreateAccount::AccountName(v) => {
                 local_state.account_name.set(v);
-                handle_check::<Rn, Rt, Id, Mpsc, Rg, As, Ch, LongCache>(
+                handle_check::<Rn, Id, Mpsc, As, Ch, LongCache>(
                     model,
                     cache,
                     commander_local_state,
@@ -266,7 +255,6 @@ async fn handle_submit<
     Rt: traits::Runtime,
     Id: types::RowId,
     Mpsc: traits::MultiProducerSingleConsumer,
-    Rg: traits::Regex,
     As: ui_model::AllSignalTypes,
     Ch: cache::Cache,
     LongCache: for<'a> cases::create_account::DatabaseRead<Db<'a> = Ch>,
@@ -308,8 +296,8 @@ async fn handle_submit<
                 .await;
 
             match receiver_to_response.recv().await.unwrap() {
-                cache_actor::Response::CloseTheChannel => return,
-                cache_actor::Response::ServerCannotBeReached => return,
+                cache_actor::Response::CloseTheChannel => {}
+                cache_actor::Response::ServerCannotBeReached => {}
                 cache_actor::Response::Data {
                     is_response_from_server,
                     data,
@@ -348,7 +336,7 @@ async fn handle_submit<
                 process_name: process_manager::ProcessName::CreateAccount,
                 message:      process_manager::MessageFromProcess::Subscribe {
                     sender: sender_to_process,
-                    dialog: &dialog,
+                    dialog,
                 },
             })
             .await
@@ -394,10 +382,8 @@ async fn handle_submit<
 
 async fn handle_check<
     Rn: traits::RandomNumber,
-    Rt: traits::Runtime,
     Id: types::RowId,
     Mpsc: traits::MultiProducerSingleConsumer,
-    Rg: traits::Regex,
     As: ui_model::AllSignalTypes,
     Ch: cache::Cache,
     LongCache: for<'a> cases::create_account::DatabaseRead<Db<'a> = Ch>,

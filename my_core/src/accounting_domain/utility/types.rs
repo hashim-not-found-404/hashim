@@ -13,8 +13,8 @@ pub trait RowId: 'static {
 }
 
 pub trait HashedPassword {
-    fn sign_up(password: &String) -> String;
-    fn sign_in(password: &String, password_hash: &String) -> bool;
+    fn sign_up(password: &str) -> String;
+    fn sign_in(password: &str, password_hash: &str) -> bool;
 }
 
 pub trait JWT: 'static {
@@ -123,7 +123,7 @@ impl Role {
         }
     }
 
-    pub(crate) fn has_any(user_roles: &Vec<Self>, roles: &[Role]) -> bool {
+    pub(crate) fn has_any(user_roles: &[Self], roles: &[Role]) -> bool {
         for role in roles {
             if user_roles.contains(role) {
                 return true;

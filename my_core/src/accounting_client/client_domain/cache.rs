@@ -23,10 +23,8 @@ pub trait Cache: Sized {
     fn mark_txn_input_as_faild(&self, txn_number: &u64) -> impl Future<Output = ()>;
     fn delete_txn_input(&self, txn_number: &u64) -> impl Future<Output = ()>;
 
-    fn write_resource(
-        &self,
-        resource: &Vec<resource_utils::ResourceInfo>,
-    ) -> impl Future<Output = ()>;
+    fn write_resource(&self, resource: &[resource_utils::ResourceInfo])
+    -> impl Future<Output = ()>;
     fn get_jwt(
         &self,
         user_uuid: &types::UuidType,

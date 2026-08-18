@@ -42,8 +42,7 @@ where
         data: &Self::Type2,
         _: &mut cache::State<Ch>,
     ) -> Self::Type3 {
-        let result = data.state_less_operation();
-        return Ok(result);
+        Ok(data.state_less_operation())
     }
 
     fn extract_resource(data: &Self::Type3) -> Vec<resource_utils::ResourceInfo> {
@@ -106,10 +105,8 @@ where
 impl ui_model::CreateCompany {
     pub(crate) async fn update<
         Rn: traits::RandomNumber,
-        Rt: traits::Runtime,
         Id: types::RowId,
         Mpsc: traits::MultiProducerSingleConsumer,
-        Rg: traits::Regex,
         As: ui_model::AllSignalTypes,
         Ch: cache::Cache,
         LongCache: for<'a> cases::create_company::DatabaseRead<Db<'a> = Ch>,
@@ -123,30 +120,21 @@ impl ui_model::CreateCompany {
 
         match self {
             Self::Submit => {
-                handle_submit::<Rn, Rt, Id, Mpsc, Rg, As, Ch, LongCache>(
+                handle_submit::<Rn, Id, Mpsc, As, Ch, LongCache>(
                     model,
                     cache,
                     commander_local_state,
                 )
                 .await
             }
-            Self::Close => handle_close::<Rn, Rt, Id, Mpsc, Rg, As>(model),
+            Self::Close => handle_close::<As>(model),
             Self::Name(i) => local_state.company_name.set(i),
             Self::Currency(i) => local_state.currency.set(i),
         }
     }
 }
 
-fn handle_close<
-    Rn: traits::RandomNumber,
-    Rt: traits::Runtime,
-    Id: types::RowId,
-    Mpsc: traits::MultiProducerSingleConsumer,
-    Rg: traits::Regex,
-    As: ui_model::AllSignalTypes,
->(
-    model: &'static ui_model::Model<As>,
-) {
+fn handle_close<As: ui_model::AllSignalTypes>(model: &'static ui_model::Model<As>) {
     let page_create_company = &model.page_create_company;
 
     page_create_company.company_name.reset();
@@ -159,10 +147,8 @@ fn handle_close<
 
 async fn handle_submit<
     Rn: traits::RandomNumber,
-    Rt: traits::Runtime,
     Id: types::RowId,
     Mpsc: traits::MultiProducerSingleConsumer,
-    Rg: traits::Regex,
     As: ui_model::AllSignalTypes,
     Ch: cache::Cache,
     LongCache: for<'a> cases::create_company::DatabaseRead<Db<'a> = Ch>,
@@ -192,5 +178,5 @@ async fn handle_submit<
         )
         .await;
 
-    handle_close::<Rn, Rt, Id, Mpsc, Rg, As>(model);
+    handle_close::<As>(model);
 }

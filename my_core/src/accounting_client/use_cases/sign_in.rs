@@ -58,15 +58,14 @@ where
         .unwrap();
 
         if let Some((user_uuid, jwt, user_name)) = read_output.user_rowid_and_password_hash_and_name
+            && !jwt.is_empty()
         {
-            if !jwt.is_empty() {
-                return Ok(cases::sign_in::Ok {
-                    user_uuid,
-                    jwt: types::JsonWebTokenType(String::new()),
-                    user_id: data.user_id.clone(),
-                    user_name,
-                });
-            }
+            return Ok(cases::sign_in::Ok {
+                user_uuid,
+                jwt: types::JsonWebTokenType(String::new()),
+                user_id: data.user_id.clone(),
+                user_name,
+            });
         }
 
         let mut password = None;
@@ -84,16 +83,16 @@ where
         match password {
             Some(password) => {
                 if password == data.password {
-                    return Ok(data.state_full_operation(
+                    Ok(data.state_full_operation(
                         &types::JsonWebTokenType(String::new()),
-                        &user_uuid.unwrap(),
+                        user_uuid.unwrap(),
                         &user_name,
-                    ));
+                    ))
                 } else {
-                    return Err(cases::sign_in::Error {
+                    Err(cases::sign_in::Error {
                         user_id:  None,
                         password: Some(cases::sign_in::PasswordError::WrongPassword),
-                    });
+                    })
                 }
             }
             None => {
@@ -162,14 +161,15 @@ where
                 model.user_name.set(ok.user_name.clone());
             }
             Err(business_error) => {
-                model.page_sign_in.user_id_error.set(match business_error.user_id {
-                    Some(_) => Some(String::from("user not exist")),
-                    None => None,
-                });
-                model.page_sign_in.user_password_error.set(match business_error.password {
-                    Some(_) => Some(String::from("wrong password")),
-                    None => None,
-                });
+                model
+                    .page_sign_in
+                    .user_id_error
+                    .set(business_error.user_id.as_ref().map(|_| String::from("user not exist")));
+
+                model
+                    .page_sign_in
+                    .user_password_error
+                    .set(business_error.password.as_ref().map(|_| String::from("wrong password")));
             }
         }
     }
@@ -179,9 +179,7 @@ impl ui_model::SignIn {
     pub(crate) async fn update<
         Rn: traits::RandomNumber,
         Rt: traits::Runtime,
-        Id: types::RowId,
         Mpsc: traits::MultiProducerSingleConsumer,
-        Rg: traits::Regex,
         As: ui_model::AllSignalTypes,
         Ch: cache::Cache,
         LongCache: for<'a> cases::sign_in::DatabaseRead<Db<'a> = Ch>,
@@ -198,7 +196,7 @@ impl ui_model::SignIn {
                 }
             }
             Self::Submit => {
-                handle_submit::<Rn, Rt, Id, Mpsc, Rg, As, Ch, LongCache>(
+                handle_submit::<Rn, Rt, Mpsc, As, Ch, LongCache>(
                     model,
                     cache,
                     commander_local_state,
@@ -218,21 +216,13 @@ impl ui_model::SignIn {
             }
             Self::UserId(i) => {
                 model.user_id.set(i);
-                handle_check::<Rn, Rt, Id, Mpsc, Rg, As, Ch, LongCache>(
-                    model,
-                    cache,
-                    commander_local_state,
-                )
-                .await;
+                handle_check::<Rn, Mpsc, As, Ch, LongCache>(model, cache, commander_local_state)
+                    .await;
             }
             Self::Password(i) => {
                 model.feature_state_auth.user_password.set(i);
-                handle_check::<Rn, Rt, Id, Mpsc, Rg, As, Ch, LongCache>(
-                    model,
-                    cache,
-                    commander_local_state,
-                )
-                .await;
+                handle_check::<Rn, Mpsc, As, Ch, LongCache>(model, cache, commander_local_state)
+                    .await;
             }
         }
     }
@@ -241,9 +231,7 @@ impl ui_model::SignIn {
 async fn handle_submit<
     Rn: traits::RandomNumber,
     Rt: traits::Runtime,
-    Id: types::RowId,
     Mpsc: traits::MultiProducerSingleConsumer,
-    Rg: traits::Regex,
     As: ui_model::AllSignalTypes,
     Ch: cache::Cache,
     LongCache: for<'a> cases::sign_in::DatabaseRead<Db<'a> = Ch>,
@@ -289,8 +277,8 @@ async fn handle_submit<
                 .await;
 
             match receiver_to_response.recv().await.unwrap() {
-                cache_actor::Response::CloseTheChannel => return,
-                cache_actor::Response::ServerCannotBeReached => return,
+                cache_actor::Response::CloseTheChannel => {}
+                cache_actor::Response::ServerCannotBeReached => {}
                 cache_actor::Response::Data {
                     is_response_from_server,
                     data,
@@ -333,7 +321,7 @@ async fn handle_submit<
                 process_name: process_manager::ProcessName::SignIn,
                 message:      process_manager::MessageFromProcess::Subscribe {
                     sender: sender_to_process,
-                    dialog: &dialog,
+                    dialog,
                 },
             })
             .await
@@ -381,10 +369,7 @@ async fn handle_submit<
 
 async fn handle_check<
     Rn: traits::RandomNumber,
-    Rt: traits::Runtime,
-    Id: types::RowId,
     Mpsc: traits::MultiProducerSingleConsumer,
-    Rg: traits::Regex,
     As: ui_model::AllSignalTypes,
     Ch: cache::Cache,
     LongCache: for<'a> cases::sign_in::DatabaseRead<Db<'a> = Ch>,
@@ -421,8 +406,8 @@ async fn handle_check<
         } => {
             let result: Type4 =
                 <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::unwrap_output(data);
-            handle_apply_result::<Rn, Rt, Id, Mpsc, Rg, As, Ch, LongCache>(
-                &model,
+            handle_apply_result::<Mpsc, As, Ch, LongCache>(
+                model,
                 commander_local_state.clone(),
                 result,
             );
@@ -431,11 +416,7 @@ async fn handle_check<
 }
 
 fn handle_apply_result<
-    Rn: traits::RandomNumber,
-    Rt: traits::Runtime,
-    Id: types::RowId,
     Mpsc: traits::MultiProducerSingleConsumer,
-    Rg: traits::Regex,
     As: ui_model::AllSignalTypes,
     Ch: cache::Cache,
     LongCache: for<'a> cases::sign_in::DatabaseRead<Db<'a> = Ch>,

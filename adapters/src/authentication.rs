@@ -13,7 +13,7 @@ pub mod target {
     pub struct S;
 
     impl HashedPassword for S {
-        fn sign_up(password: &String) -> String {
+        fn sign_up(password: &str) -> String {
             // 1. Generate a cryptographically random salt
             let salt = SaltString::generate(&mut OsRng);
 
@@ -29,7 +29,7 @@ pub mod target {
             password_hash
         }
 
-        fn sign_in(password: &String, password_hash: &String) -> bool {
+        fn sign_in(password: &str, password_hash: &str) -> bool {
             // 1. Parse the stored PHC string
             let parsed_hash = PasswordHash::new(password_hash).unwrap();
 

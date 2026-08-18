@@ -53,13 +53,13 @@ impl ReadServerOnly for ViewAndCacheType {
                     resources.push(resource_utils::ResourceInfo {
                         row_uuid: row_uuid.clone(),
                         resource: resource_utils::Resource::TableAccountFieldIsDebit(
-                            account.is_debit.clone(),
+                            account.is_debit,
                         ),
                     });
                     resources.push(resource_utils::ResourceInfo {
                         row_uuid: row_uuid.clone(),
                         resource: resource_utils::Resource::TableAccountFieldIsPermanentAccount(
-                            account.is_permanent_account.clone(),
+                            account.is_permanent_account,
                         ),
                     });
                     resources.push(resource_utils::ResourceInfo {

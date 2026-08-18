@@ -355,8 +355,9 @@ pub enum SingleEntryField {
 
 // navigator types ////////////////////////////////////////////////////////////////////////////////
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub enum Navigator {
+    #[default]
     SignIn,
     SignUp,
     ListCompanyAndBranch(ListCompanyAndBranch),
@@ -382,10 +383,4 @@ pub enum Menu {
     CreateAccount,
     CreateAccountForBranch,
     CreateJournalEntry,
-}
-
-impl Default for Navigator {
-    fn default() -> Self {
-        Self::SignIn
-    }
 }

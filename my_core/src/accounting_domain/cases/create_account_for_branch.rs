@@ -129,8 +129,8 @@ impl Input {
             new_uuid:                 self.new_uuid.clone(),
             belong_to_account:        self.belong_to_account.clone(),
             belong_to_company_branch: self.belong_to_company_branch.clone(),
-            outflow_type:             self.outflow_type.clone(),
-            inflow_type:              self.inflow_type.clone(),
+            outflow_type:             self.outflow_type,
+            inflow_type:              self.inflow_type,
         }
     }
 }

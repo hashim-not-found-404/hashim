@@ -71,7 +71,7 @@ impl Input {
         errr
     }
 
-    pub(crate) async fn state_full_check<Id: types::RowId, Db: DatabaseRead>(
+    pub(crate) async fn state_full_check<Db: DatabaseRead>(
         &self,
         db: &mut Db::Db<'_>,
     ) -> Result<Error, traits::DynamicError> {
@@ -101,12 +101,12 @@ impl Input {
         let hashed_password = Auth::sign_up(&self.password);
         let jwt = jwt.sign(&self.new_uuid);
 
-        return Ok {
+        Ok {
             new_uuid: self.new_uuid.clone(),
             user_id: self.user_id.clone(),
             user_name: self.name.clone(),
             hashed_password,
             jwt,
-        };
+        }
     }
 }

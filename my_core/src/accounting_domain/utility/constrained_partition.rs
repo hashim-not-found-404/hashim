@@ -5,8 +5,8 @@ use std::ops::Sub;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Side {
-    LHS,
-    RHS,
+    Lhs,
+    Rhs,
     Unknown,
 }
 
@@ -72,8 +72,8 @@ where
 
     for (idx, item) in items.iter().enumerate() {
         match get_side(item) {
-            Side::LHS => fixed_lhs_sum = fixed_lhs_sum + weight(item),
-            Side::RHS => fixed_rhs_sum = fixed_rhs_sum + weight(item),
+            Side::Lhs => fixed_lhs_sum = fixed_lhs_sum + weight(item),
+            Side::Rhs => fixed_rhs_sum = fixed_rhs_sum + weight(item),
             Side::Unknown => {
                 unknown_indices.push(idx);
                 unknown_weights.push(weight(item));
@@ -119,9 +119,9 @@ where
     // 6. Assign sides to all unknown items.
     for (pos, &idx) in unknown_indices.iter().enumerate() {
         let side = if selected_set.contains(&pos) {
-            Side::LHS
+            Side::Lhs
         } else {
-            Side::RHS
+            Side::Rhs
         };
         set_side(&mut items[idx], side);
     }
@@ -163,35 +163,35 @@ mod tests {
     }
 
     fn sum_lhs(items: &[Item]) -> i64 {
-        items.iter().filter(|it| it.side == Side::LHS).map(|it| it.value).sum()
+        items.iter().filter(|it| it.side == Side::Lhs).map(|it| it.value).sum()
     }
 
     fn sum_rhs(items: &[Item]) -> i64 {
-        items.iter().filter(|it| it.side == Side::RHS).map(|it| it.value).sum()
+        items.iter().filter(|it| it.side == Side::Rhs).map(|it| it.value).sum()
     }
 
     // --- Tests ---
 
     #[test]
     fn no_unknowns_already_balanced() {
-        let mut items = vec![Item::new('A', 5, Side::LHS), Item::new('B', 5, Side::RHS)];
+        let mut items = vec![Item::new('A', 5, Side::Lhs), Item::new('B', 5, Side::Rhs)];
         assign_partition(&mut items, weight, get_side, set_side);
         assert_eq!(sum_lhs(&items), 5);
         assert_eq!(sum_rhs(&items), 5);
         // Sides unchanged
-        assert_eq!(items[0].side, Side::LHS);
-        assert_eq!(items[1].side, Side::RHS);
+        assert_eq!(items[0].side, Side::Lhs);
+        assert_eq!(items[1].side, Side::Rhs);
     }
 
     #[test]
     fn no_unknowns_unbalanced() {
-        let mut items = vec![Item::new('A', 10, Side::LHS), Item::new('B', 6, Side::RHS)];
+        let mut items = vec![Item::new('A', 10, Side::Lhs), Item::new('B', 6, Side::Rhs)];
         assign_partition(&mut items, weight, get_side, set_side);
         assert_eq!(sum_lhs(&items), 10);
         assert_eq!(sum_rhs(&items), 6);
         // Sides unchanged
-        assert_eq!(items[0].side, Side::LHS);
-        assert_eq!(items[1].side, Side::RHS);
+        assert_eq!(items[0].side, Side::Lhs);
+        assert_eq!(items[1].side, Side::Rhs);
     }
 
     #[test]
@@ -228,8 +228,8 @@ mod tests {
     #[test]
     fn mixed_fixed_unknown_balanced() {
         let mut items = vec![
-            Item::new('A', 5, Side::LHS),
-            Item::new('B', 3, Side::RHS),
+            Item::new('A', 5, Side::Lhs),
+            Item::new('B', 3, Side::Rhs),
             Item::new('C', 2, Side::Unknown),
             Item::new('D', 4, Side::Unknown),
         ];
@@ -237,8 +237,8 @@ mod tests {
         assert_eq!(sum_lhs(&items), 7);
         assert_eq!(sum_rhs(&items), 7);
         // Fixed items unchanged
-        assert_eq!(items[0].side, Side::LHS);
-        assert_eq!(items[1].side, Side::RHS);
+        assert_eq!(items[0].side, Side::Lhs);
+        assert_eq!(items[1].side, Side::Rhs);
         // Unknowns assigned
         assert!(items[2].side != Side::Unknown);
         assert!(items[3].side != Side::Unknown);
@@ -249,8 +249,8 @@ mod tests {
         // LHS fixed = 10, RHS fixed = 1, unknowns = 2,3 → total = 16, half = 8
         // We need LHS sum = 8 → need x = -2 (impossible) → best is x=0 → LHS=10, RHS=6 diff=4
         let mut items = vec![
-            Item::new('A', 10, Side::LHS),
-            Item::new('B', 1, Side::RHS),
+            Item::new('A', 10, Side::Lhs),
+            Item::new('B', 1, Side::Rhs),
             Item::new('C', 2, Side::Unknown),
             Item::new('D', 3, Side::Unknown),
         ];
@@ -259,8 +259,8 @@ mod tests {
         let rhs = sum_rhs(&items);
         assert_eq!((lhs - rhs).abs(), 4); // 10 vs 6
         // Fixed unchanged
-        assert_eq!(items[0].side, Side::LHS);
-        assert_eq!(items[1].side, Side::RHS);
+        assert_eq!(items[0].side, Side::Lhs);
+        assert_eq!(items[1].side, Side::Rhs);
         // Unknowns assigned (likely C and D go to RHS)
         assert!(items[2].side != Side::Unknown);
         assert!(items[3].side != Side::Unknown);
@@ -270,8 +270,8 @@ mod tests {
     fn fixed_sums_already_equal_with_unknowns() {
         // LHS=5, RHS=5, unknowns=2,3 → total=15, half=7.5 → need x=2.5 → best x=2 or 3 → diff=1
         let mut items = vec![
-            Item::new('A', 5, Side::LHS),
-            Item::new('B', 5, Side::RHS),
+            Item::new('A', 5, Side::Lhs),
+            Item::new('B', 5, Side::Rhs),
             Item::new('C', 2, Side::Unknown),
             Item::new('D', 3, Side::Unknown),
         ];
@@ -281,8 +281,8 @@ mod tests {
         let diff = (lhs - rhs).abs();
         assert_eq!(diff, 1);
         // Fixed unchanged
-        assert_eq!(items[0].side, Side::LHS);
-        assert_eq!(items[1].side, Side::RHS);
+        assert_eq!(items[0].side, Side::Lhs);
+        assert_eq!(items[1].side, Side::Rhs);
     }
 
     #[test]
@@ -305,8 +305,8 @@ mod tests {
         // LHS=5, RHS=3, unknowns=-2, 4 → total=10, half=5 → need x=0 (since LHS fixed=5)
         // We can get x=0? possible sums: -2, 4, 2 → no 0 → best x=2 (diff=2) or x=-2 (diff=4) → choose x=2 diff=2
         let mut items = vec![
-            Item::new('A', 5, Side::LHS),
-            Item::new('B', 3, Side::RHS),
+            Item::new('A', 5, Side::Lhs),
+            Item::new('B', 3, Side::Rhs),
             Item::new('C', -2, Side::Unknown),
             Item::new('D', 4, Side::Unknown),
         ];
@@ -321,8 +321,8 @@ mod tests {
         // So best diff=2.
         assert_eq!(diff, 0);
         // Fixed unchanged
-        assert_eq!(items[0].side, Side::LHS);
-        assert_eq!(items[1].side, Side::RHS);
+        assert_eq!(items[0].side, Side::Lhs);
+        assert_eq!(items[1].side, Side::Rhs);
         // Unknowns assigned
         assert!(items[2].side != Side::Unknown);
         assert!(items[3].side != Side::Unknown);
@@ -331,8 +331,8 @@ mod tests {
     #[test]
     fn large_numbers() {
         let mut items = vec![
-            Item::new('A', 1_000_000, Side::LHS),
-            Item::new('B', 999_999, Side::RHS),
+            Item::new('A', 1_000_000, Side::Lhs),
+            Item::new('B', 999_999, Side::Rhs),
             Item::new('C', 1, Side::Unknown),
         ];
         assign_partition(&mut items, weight, get_side, set_side);
@@ -353,8 +353,8 @@ mod tests {
     #[test]
     fn single_unknown() {
         let mut items = vec![
-            Item::new('A', 10, Side::LHS),
-            Item::new('B', 5, Side::RHS),
+            Item::new('A', 10, Side::Lhs),
+            Item::new('B', 5, Side::Rhs),
             Item::new('C', 3, Side::Unknown),
         ];
         assign_partition(&mut items, weight, get_side, set_side);
@@ -363,18 +363,18 @@ mod tests {
         // Total=18, half=9. LHS=10, need x=-1 (impossible). Best: put C on LHS → LHS=13, RHS=5 diff=8; put on RHS → LHS=10, RHS=8 diff=2 → so C goes to RHS.
         assert_eq!(lhs, 10);
         assert_eq!(rhs, 8);
-        assert_eq!(items[2].side, Side::RHS);
+        assert_eq!(items[2].side, Side::Rhs);
         // Fixed unchanged
-        assert_eq!(items[0].side, Side::LHS);
-        assert_eq!(items[1].side, Side::RHS);
+        assert_eq!(items[0].side, Side::Lhs);
+        assert_eq!(items[1].side, Side::Rhs);
     }
 
     #[test]
     fn mixed_with_zero() {
         let mut items = vec![
             Item::new('A', 0, Side::Unknown),
-            Item::new('B', 5, Side::LHS),
-            Item::new('C', 5, Side::RHS),
+            Item::new('B', 5, Side::Lhs),
+            Item::new('C', 5, Side::Rhs),
         ];
         assign_partition(&mut items, weight, get_side, set_side);
         let lhs = sum_lhs(&items);
@@ -387,8 +387,8 @@ mod tests {
     #[test]
     fn fixed_items_remain_unchanged() {
         let mut items = vec![
-            Item::new('A', 5, Side::LHS),
-            Item::new('B', 3, Side::RHS),
+            Item::new('A', 5, Side::Lhs),
+            Item::new('B', 3, Side::Rhs),
             Item::new('C', 2, Side::Unknown),
         ];
         let original_lhs_side = items[0].side;
