@@ -10,10 +10,6 @@ pub(crate) fn CreateAccount() -> Element {
         tools::send(ui_model::Message::CreateAccount(ui_model::CreateAccount::Subscribe));
     });
 
-    use_drop(move || {
-        tools::send(ui_model::Message::CreateAccount(ui_model::CreateAccount::UnSubscribe));
-    });
-
     let local_state = &tools::MODEL.page_create_account;
 
     let consent_callback = move |consent: ui_model::UserConsent| {

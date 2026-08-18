@@ -346,10 +346,12 @@ impl ui_model::CreateJournalEntry {
                         LongCacheForGetAllAccountsForBranch,
                     >(model, cache.clone(), commander_local_state.clone());
 
-                commander_local_state.aborter_to_accounts_listener.set(Box::new(listener_aborter));
+                commander_local_state
+                    .aborter_to_create_journal_entry_listener
+                    .set(Box::new(listener_aborter));
             }
             ui_model::CreateJournalEntry::UnSubscribe => {
-                commander_local_state.aborter_to_accounts_listener.abort();
+                commander_local_state.aborter_to_create_journal_entry_listener.abort();
             }
             ui_model::CreateJournalEntry::Submit => {
                 handle_submit::<Rn, Rt, Id, Mpsc, Rg, Ti, As, Ch, LongCache>(

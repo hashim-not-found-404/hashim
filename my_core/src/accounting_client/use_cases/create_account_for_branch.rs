@@ -240,10 +240,12 @@ impl ui_model::CreateAccountForBranch {
                         LongCacheForGetAllAccountsForBranch,
                     >(model, cache.clone(), commander_local_state.clone());
 
-                commander_local_state.aborter_to_accounts_listener.set(Box::new(listener_aborter));
+                commander_local_state
+                    .aborter_to_create_account_for_branch_listener
+                    .set(Box::new(listener_aborter));
             }
             ui_model::CreateAccountForBranch::UnSubscribe => {
-                commander_local_state.aborter_to_accounts_listener.abort();
+                commander_local_state.aborter_to_create_account_for_branch_listener.abort();
             }
 
             ui_model::CreateAccountForBranch::Submit => {

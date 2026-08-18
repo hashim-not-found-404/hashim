@@ -289,7 +289,6 @@ pub enum Home {
 #[derive(Debug)]
 pub enum CreateAccount {
     Subscribe,
-    UnSubscribe,
     Submit,
     Consent(UserConsent),
     Clean,
