@@ -130,11 +130,11 @@ pub struct ReadInput {
 }
 
 pub struct ReadOutput {
-    pub is_new_uuid_used:         bool,
-    pub user_roles:               Vec<types::Role>,
-    pub is_shared_entry_exist:    bool,
-    pub is_new_entries_uuid_used: HashMap<types::UuidType, bool>,
-    pub account_info:             AccountInfoProviderImpl,
+    pub is_new_uuid_used:      bool,
+    pub user_roles:            Vec<types::Role>,
+    pub is_shared_entry_exist: bool,
+    pub used_new_entries_uuid: HashSet<types::UuidType>,
+    pub account_info:          AccountInfoProviderImpl,
 }
 
 #[derive(Debug, Clone)]
@@ -936,13 +936,11 @@ impl Input {
         }
 
         // Check for duplicate new UUIDs already existing in the database
-        for (uuid, used) in &read_output.is_new_entries_uuid_used {
-            if *used {
-                for double_view in container.view_double_entries.iter_mut() {
-                    for single_view in double_view.view_single_entries.iter_mut() {
-                        if single_view.input.new_uuid == *uuid {
-                            single_view.error.new_uuid = Some(types::RowIdError::Duplicated);
-                        }
+        for uuid in read_output.used_new_entries_uuid {
+            for double_view in container.view_double_entries.iter_mut() {
+                for single_view in double_view.view_single_entries.iter_mut() {
+                    if single_view.input.new_uuid == uuid {
+                        single_view.error.new_uuid = Some(types::RowIdError::Duplicated);
                     }
                 }
             }

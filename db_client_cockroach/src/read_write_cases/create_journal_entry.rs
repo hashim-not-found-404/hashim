@@ -7,6 +7,7 @@ use my_core::utility::traits;
 use my_core::utility::utils::LogError;
 use serde_json::Value;
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::str::FromStr;
 use uuid::Uuid;
 
@@ -107,7 +108,7 @@ impl cases::create_journal_entry::DatabaseRead for S {
             .collect();
 
         // Parse new entries UUID map
-        let mut is_new_entries_uuid_used = HashMap::new();
+        let mut used_new_entries_uuid = HashSet::new();
         if let Some(obj) = new_entries_map_json.as_object() {
             for (key, value) in obj {
                 let uuid_str = key.clone();
@@ -115,7 +116,9 @@ impl cases::create_journal_entry::DatabaseRead for S {
                 // Convert string back to UuidType
                 let uuid_parsed = Uuid::parse_str(&uuid_str).log()?;
                 let uuid_type = types::UuidType(uuid_parsed.into_bytes());
-                is_new_entries_uuid_used.insert(uuid_type, used);
+                if used {
+                    used_new_entries_uuid.insert(uuid_type);
+                }
             }
         }
 
@@ -152,7 +155,7 @@ impl cases::create_journal_entry::DatabaseRead for S {
             is_new_uuid_used,
             user_roles,
             is_shared_entry_exist,
-            is_new_entries_uuid_used,
+            used_new_entries_uuid,
             account_info,
         })
     }

@@ -5,6 +5,8 @@ use my_core::utility::traits;
 use rusqlite::OptionalExtension;
 use rusqlite::params;
 
+const QUERY: &str = "SELECT rowid, name, jwt FROM user WHERE id = ?1;";
+
 pub struct S;
 
 impl cases::sign_in::DatabaseRead for S {
@@ -14,7 +16,7 @@ impl cases::sign_in::DatabaseRead for S {
         db: &mut Self::Db<'_>,
         read_input: &cases::sign_in::ReadInput,
     ) -> Result<cases::sign_in::ReadOutput, traits::DynamicError> {
-        let query = "SELECT rowid, name, jwt FROM user WHERE id = ?1;";
+        let query = QUERY;
 
         let a = db
             .db
@@ -35,5 +37,16 @@ impl cases::sign_in::DatabaseRead for S {
         Ok(cases::sign_in::ReadOutput {
             user_rowid_and_password_hash_and_name: a,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::utility::test_helper::test_query_helper;
+
+    #[test]
+    fn test_query_string_directly() {
+        test_query_helper(QUERY);
     }
 }

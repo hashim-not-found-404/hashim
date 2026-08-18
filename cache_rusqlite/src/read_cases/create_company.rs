@@ -11,6 +11,6 @@ impl cases::create_company::DatabaseRead for S {
         _: &mut Self::Db<'_>,
         _: &cases::create_company::ReadInput,
     ) -> Result<cases::create_company::ReadOutput, traits::DynamicError> {
-        todo!()
+        unreachable!()
     }
 }

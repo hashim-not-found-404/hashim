@@ -74,7 +74,7 @@ where
 
         for uuid in &read_input.new_entries_uuid {
             if db.state_of_pending_txn.entry.contains_key(uuid) {
-                read_output.is_new_entries_uuid_used.insert(uuid.clone(), true);
+                read_output.used_new_entries_uuid.insert(uuid.clone());
             }
         }
 

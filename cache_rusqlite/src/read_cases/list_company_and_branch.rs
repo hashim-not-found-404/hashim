@@ -7,6 +7,18 @@ use my_core::utility::traits;
 use rusqlite::params;
 use std::str::FromStr;
 
+const QUERY1: &str = "
+    SELECT c.rowid, c.name, c.currency, acf.role
+    FROM access_control_for_company acf
+    JOIN company c ON acf.data_group = c.rowid
+    WHERE acf.user_ = ?1";
+
+const QUERY2: &str = "
+    SELECT cb.rowid, cb.name, cb.currency, cb.company_belong, acfb.role
+    FROM access_control_for_company_branch acfb
+    JOIN company_branch cb ON acfb.data_group = cb.rowid
+    WHERE acfb.user_ = ?1";
+
 pub struct S;
 
 impl cases::list_company_and_branch::DatabaseRead for S {
@@ -20,12 +32,7 @@ impl cases::list_company_and_branch::DatabaseRead for S {
         use types::Role;
 
         // ---- 1. Get company-level roles ----
-        let company_query = "
-            SELECT c.rowid, c.name, c.currency, acf.role
-            FROM access_control_for_company acf
-            JOIN company c ON acf.data_group = c.rowid
-            WHERE acf.user_ = ?1
-        ";
+        let company_query = QUERY1;
         let mut stmt = db.db.prepare(company_query).unwrap();
         let company_rows = stmt
             .query_map(params![read_input.user_uuid.to_string()], |row| {
@@ -56,12 +63,7 @@ impl cases::list_company_and_branch::DatabaseRead for S {
         }
 
         // ---- 2. Get branch-level roles ----
-        let branch_query = "
-            SELECT cb.rowid, cb.name, cb.currency, cb.company_belong, acfb.role
-            FROM access_control_for_company_branch acfb
-            JOIN company_branch cb ON acfb.data_group = cb.rowid
-            WHERE acfb.user_ = ?1
-        ";
+        let branch_query = QUERY2;
         let mut stmt = db.db.prepare(branch_query).unwrap();
         let branch_rows = stmt
             .query_map(params![read_input.user_uuid.to_string()], |row| {
@@ -139,5 +141,17 @@ impl cases::list_company_and_branch::DatabaseRead for S {
         Ok(cases::list_company_and_branch::ReadOutput {
             data: result,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::utility::test_helper::test_query_helper;
+
+    #[test]
+    fn test_query_string_directly() {
+        test_query_helper(QUERY1);
+        test_query_helper(QUERY2);
     }
 }

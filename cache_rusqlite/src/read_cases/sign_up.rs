@@ -4,6 +4,10 @@ use my_core::accounting_domain::cases;
 use my_core::utility::traits;
 use rusqlite::params;
 
+const QUERY: &str = "SELECT
+    EXISTS(SELECT 1 FROM user WHERE rowid = ?1),
+    EXISTS(SELECT 1 FROM user WHERE id = ?2)";
+
 pub struct S;
 
 impl cases::sign_up::DatabaseRead for S {
@@ -13,11 +17,7 @@ impl cases::sign_up::DatabaseRead for S {
         db: &mut Self::Db<'_>,
         read_input: &cases::sign_up::ReadInput,
     ) -> Result<cases::sign_up::ReadOutput, traits::DynamicError> {
-        let query = "
-            SELECT
-                EXISTS(SELECT 1 FROM user WHERE rowid = ?1),
-                EXISTS(SELECT 1 FROM user WHERE id = ?2)
-        ";
+        let query = QUERY;
 
         let a = db
             .db
@@ -30,5 +30,16 @@ impl cases::sign_up::DatabaseRead for S {
             .unwrap();
 
         Ok(a)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::utility::test_helper::test_query_helper;
+
+    #[test]
+    fn test_query_string_directly() {
+        test_query_helper(QUERY);
     }
 }

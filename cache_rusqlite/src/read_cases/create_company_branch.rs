@@ -6,6 +6,11 @@ use my_core::utility::traits;
 use rusqlite::params;
 use std::str::FromStr;
 
+const QUERY1: &str =
+    "SELECT role FROM access_control_for_company WHERE data_group = ?1 AND user_ = ?2";
+const QUERY2: &str = "SELECT 1 FROM company WHERE rowid = ?1";
+const QUERY3: &str = "SELECT 1 FROM company_branch WHERE company_belong = ?1 AND name = ?2";
+
 pub struct S;
 
 impl cases::create_company_branch::DatabaseRead for S {
@@ -16,12 +21,7 @@ impl cases::create_company_branch::DatabaseRead for S {
         read_input: &cases::create_company_branch::ReadInput,
     ) -> Result<cases::create_company_branch::ReadOutput, traits::DynamicError> {
         // 1. Get the user's roles in the company
-        let mut stmt = db
-            .db
-            .prepare(
-                "SELECT role FROM access_control_for_company WHERE data_group = ?1 AND user_ = ?2",
-            )
-            .unwrap();
+        let mut stmt = db.db.prepare(QUERY1).unwrap();
 
         let roles_iter = stmt
             .query_map(
@@ -40,14 +40,11 @@ impl cases::create_company_branch::DatabaseRead for S {
         }
 
         // 2. Check if the company exists
-        let mut stmt = db.db.prepare("SELECT 1 FROM company WHERE rowid = ?1").unwrap();
+        let mut stmt = db.db.prepare(QUERY2).unwrap();
         let company_exists = stmt.exists(params![read_input.company_belong.to_string()]).unwrap();
 
         // 3. Check if the branch name is already used under this company
-        let mut stmt = db
-            .db
-            .prepare("SELECT 1 FROM company_branch WHERE company_belong = ?1 AND name = ?2")
-            .unwrap();
+        let mut stmt = db.db.prepare(QUERY3).unwrap();
         let branch_name_used = stmt
             .exists(params![read_input.company_belong.to_string(), read_input.branch_name])
             .unwrap();
@@ -60,5 +57,18 @@ impl cases::create_company_branch::DatabaseRead for S {
         };
 
         Ok(a)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::utility::test_helper::test_query_helper;
+
+    #[test]
+    fn test_query_string_directly() {
+        test_query_helper(QUERY1);
+        test_query_helper(QUERY2);
+        test_query_helper(QUERY3);
     }
 }

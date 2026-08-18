@@ -5,12 +5,70 @@ use my_core::accounting_domain::cases;
 use my_core::accounting_domain::utility::accounting_stuff;
 use my_core::accounting_domain::utility::types;
 use my_core::utility::traits;
-use rusqlite::OptionalExtension;
 use rusqlite::params;
 use serde::Deserialize;
 use serde_json::Value;
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::str::FromStr;
+
+const QUERY: &'static str = r#"
+    WITH
+    new_uuid_check AS (
+        SELECT EXISTS(SELECT 1 FROM entry WHERE rowid = ?1) AS is_new_uuid_used
+    ),
+    user_roles AS (
+        SELECT COALESCE(
+            (
+                SELECT json_group_array(DISTINCT role)
+                FROM (
+                    SELECT role FROM access_control_for_company
+                    WHERE data_group = (SELECT company_belong FROM company_branch WHERE rowid = ?2)
+                    AND user_ = ?3
+                    UNION
+                    SELECT role FROM access_control_for_company_branch
+                    WHERE data_group = ?2 AND user_ = ?3
+                )
+            ),
+            '[]'
+        ) AS roles_json
+    ),
+    shared_entry_check AS (
+        SELECT EXISTS(SELECT 1 FROM shared_entry WHERE rowid = ?4) AS is_shared_entry_exist
+    ),
+    new_entries_checks AS (
+        SELECT json_group_object(rowid, exists_flag) AS new_entries_map
+        FROM (
+            SELECT rowid,
+                   EXISTS(SELECT 1 FROM single_entry WHERE rowid = rowid) AS exists_flag
+            FROM (
+                SELECT value as rowid FROM json_each(?5)
+            ) t
+        )
+    ),
+    account_infos AS (
+        SELECT json_group_array(
+            json_object(
+                'account_uuid', COALESCE(a.rowid, u.account_uuid),
+                'is_debit', COALESCE(a.is_debit, 1),
+                'in_flow_type', COALESCE(aft.inflow_type, 'Manual'),
+                'out_flow_type', COALESCE(aft.outflow_type, 'Manual'),
+                'inventory', COALESCE(aft.inventory, '[]')  -- fixed: use aft.inventory
+            )
+        ) AS account_infos_json
+        FROM (
+            SELECT value as account_uuid FROM json_each(?6)
+        ) u
+        LEFT JOIN account a ON a.rowid = u.account_uuid
+        LEFT JOIN account_flow_type aft ON aft.account = a.rowid AND aft.company_branch = ?2
+    )
+    SELECT
+        (SELECT is_new_uuid_used FROM new_uuid_check) AS is_new_uuid_used,
+        (SELECT roles_json FROM user_roles) AS user_roles,
+        (SELECT is_shared_entry_exist FROM shared_entry_check) AS is_shared_entry_exist,
+        (SELECT new_entries_map FROM new_entries_checks) AS new_entries_map,
+        (SELECT account_infos_json FROM account_infos) AS account_infos_json
+"#;
 
 pub struct S;
 
@@ -27,71 +85,12 @@ impl cases::create_journal_entry::DatabaseRead for S {
         let new_entries_uuid_vec: Vec<String> =
             read_input.new_entries_uuid.iter().map(|uuid| uuid.to_string()).collect();
 
-        // Prepare the query with CTEs and JSON aggregation
-        let query = r#"
-            WITH
-            new_uuid_check AS (
-                SELECT EXISTS(SELECT 1 FROM entry WHERE rowid = ?1) AS is_new_uuid_used
-            ),
-            user_roles AS (
-                SELECT COALESCE(
-                    (
-                        SELECT json_group_array(DISTINCT role)
-                        FROM (
-                            SELECT role FROM access_control_for_company
-                            WHERE data_group = (SELECT company_belong FROM company_branch WHERE rowid = ?2)
-                            AND user_ = ?3
-                            UNION
-                            SELECT role FROM access_control_for_company_branch
-                            WHERE data_group = ?2 AND user_ = ?3
-                        )
-                    ),
-                    '[]'
-                ) AS roles_json
-            ),
-            shared_entry_check AS (
-                SELECT EXISTS(SELECT 1 FROM shared_entry WHERE rowid = ?4) AS is_shared_entry_exist
-            ),
-            new_entries_checks AS (
-                SELECT json_group_object(rowid, exists_flag) AS new_entries_map
-                FROM (
-                    SELECT rowid,
-                           EXISTS(SELECT 1 FROM single_entry WHERE rowid = rowid) AS exists_flag
-                    FROM (
-                        SELECT value as rowid FROM json_each(?5)
-                    ) t
-                )
-            ),
-            account_infos AS (
-                SELECT json_group_array(
-                    json_object(
-                        'account_uuid', COALESCE(a.rowid, u.value),
-                        'is_debit', COALESCE(a.is_debit, 1),
-                        'in_flow_type', COALESCE(aft.inflow_type, 'Manual'),
-                        'out_flow_type', COALESCE(aft.outflow_type, 'Manual'),
-                        'inventory', COALESCE(a.inventory, '[]')
-                    )
-                ) AS account_infos_json
-                FROM (
-                    SELECT value as account_uuid FROM json_each(?6)
-                ) u
-                LEFT JOIN account a ON a.rowid = u.account_uuid
-                LEFT JOIN account_flow_type aft ON aft.account = a.rowid AND aft.company_branch = ?2
-            )
-            SELECT
-                (SELECT is_new_uuid_used FROM new_uuid_check) AS is_new_uuid_used,
-                (SELECT roles_json FROM user_roles) AS user_roles,
-                (SELECT is_shared_entry_exist FROM shared_entry_check) AS is_shared_entry_exist,
-                (SELECT new_entries_map FROM new_entries_checks) AS new_entries_map,
-                (SELECT account_infos_json FROM account_infos) AS account_infos_json
-        "#;
-
         // We need to pass the arrays as JSON strings to sqlite
         let accounts_json = serde_json::to_string(&accounts_uuid_vec).unwrap();
         let new_entries_json = serde_json::to_string(&new_entries_uuid_vec).unwrap();
 
         // Execute query
-        let mut stmt = db.db.prepare(query).unwrap();
+        let mut stmt = db.db.prepare(QUERY).unwrap();
         let mut rows = stmt
             .query(params![
                 &read_input.new_uuid.to_string(),
@@ -125,13 +124,15 @@ impl cases::create_journal_entry::DatabaseRead for S {
         // Parse new entries UUID map
         let new_entries_value: Value = serde_json::from_str(&new_entries_map_json)
             .unwrap_or(Value::Object(serde_json::Map::new()));
-        let mut is_new_entries_uuid_used = HashMap::new();
+        let mut used_new_entries_uuid = HashSet::new();
         if let Some(obj) = new_entries_value.as_object() {
             for (key, value) in obj {
                 let uuid_str = key.clone();
                 let used = value.as_bool().unwrap_or(false);
                 let uuid_type = uuid_str.to_uuid();
-                is_new_entries_uuid_used.insert(uuid_type, used);
+                if used {
+                    used_new_entries_uuid.insert(uuid_type);
+                }
             }
         }
 
@@ -167,8 +168,19 @@ impl cases::create_journal_entry::DatabaseRead for S {
             is_new_uuid_used,
             user_roles,
             is_shared_entry_exist,
-            is_new_entries_uuid_used,
+            used_new_entries_uuid,
             account_info,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::utility::test_helper::test_query_helper;
+
+    #[test]
+    fn test_query_string_directly() {
+        test_query_helper(QUERY);
     }
 }
