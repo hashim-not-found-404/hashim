@@ -230,12 +230,7 @@ impl ui_model::CreateCompanyBranch {
             Self::Name(i) => {
                 model.page_create_company_branch.branch_name.set(i);
 
-                handle_check::<Rn, Id, Mpsc, As, Ch, LongCache>(
-                    model,
-                    cache,
-                    commander_local_state,
-                )
-                .await;
+                handle_check::<Rn, Id, Mpsc, As, Ch, LongCache>(model, cache).await;
             }
             Self::Currency(i) => model.page_create_company_branch.currency.set(i),
         }
@@ -384,7 +379,6 @@ async fn handle_check<
 >(
     model: &'static ui_model::Model<As>,
     mut cache: client_traits::CacheActorStruct<Mpsc>,
-    _: Arc<commander::CommanderLocalState<Mpsc, As>>,
 ) {
     let local_state = &model.page_create_company_branch;
 

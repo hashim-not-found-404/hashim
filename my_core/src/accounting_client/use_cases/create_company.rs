@@ -2,7 +2,6 @@ use crate::accounting_client::client_domain::cache;
 use crate::accounting_client::client_domain::cache_actor;
 use crate::accounting_client::client_domain::client_traits;
 use crate::accounting_client::client_domain::client_traits::ViewAndCache;
-use crate::accounting_client::client_domain::commander;
 use crate::accounting_client::client_domain::ui_model;
 use crate::accounting_client::client_domain::ui_model::HashimSignal;
 use crate::accounting_domain::cases;
@@ -11,7 +10,6 @@ use crate::accounting_domain::utility::resource_utils;
 use crate::accounting_domain::utility::types;
 use crate::utility::traits;
 use crate::utility::utils::ReadAndSet;
-use std::sync::Arc;
 
 type Type1 = cases::create_company::Input;
 type Type2 = cases::create_company::Input;
@@ -114,19 +112,11 @@ impl ui_model::CreateCompany {
         self,
         model: &'static ui_model::Model<As>,
         cache: client_traits::CacheActorStruct<Mpsc>,
-        commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
     ) {
         let local_state = &model.page_create_company;
 
         match self {
-            Self::Submit => {
-                handle_submit::<Rn, Id, Mpsc, As, Ch, LongCache>(
-                    model,
-                    cache,
-                    commander_local_state,
-                )
-                .await
-            }
+            Self::Submit => handle_submit::<Rn, Id, Mpsc, As, Ch, LongCache>(model, cache).await,
             Self::Close => handle_close::<As>(model),
             Self::Name(i) => local_state.company_name.set(i),
             Self::Currency(i) => local_state.currency.set(i),
@@ -155,7 +145,6 @@ async fn handle_submit<
 >(
     model: &'static ui_model::Model<As>,
     mut cache: client_traits::CacheActorStruct<Mpsc>,
-    _: Arc<commander::CommanderLocalState<Mpsc, As>>,
 ) {
     let data = model.user_uuid.read().clone().unwrap();
 

@@ -194,30 +194,15 @@ impl ui_model::SignUp {
             }
             Self::UserName(i) => {
                 model.user_name.set(i);
-                handle_check::<Rn, Id, Mpsc, As, Ch, LongCache>(
-                    model,
-                    cache,
-                    commander_local_state,
-                )
-                .await;
+                handle_check::<Rn, Id, Mpsc, As, Ch, LongCache>(model, cache).await;
             }
             Self::UserId(i) => {
                 model.user_id.set(i);
-                handle_check::<Rn, Id, Mpsc, As, Ch, LongCache>(
-                    model,
-                    cache,
-                    commander_local_state,
-                )
-                .await;
+                handle_check::<Rn, Id, Mpsc, As, Ch, LongCache>(model, cache).await;
             }
             Self::Password(i) => {
                 model.feature_state_auth.user_password.set(i);
-                handle_check::<Rn, Id, Mpsc, As, Ch, LongCache>(
-                    model,
-                    cache,
-                    commander_local_state,
-                )
-                .await;
+                handle_check::<Rn, Id, Mpsc, As, Ch, LongCache>(model, cache).await;
             }
         }
     }
@@ -383,7 +368,6 @@ async fn handle_check<
 >(
     model: &'static ui_model::Model<As>,
     mut cache: client_traits::CacheActorStruct<Mpsc>,
-    _: Arc<commander::CommanderLocalState<Mpsc, As>>,
 ) {
     let feature_state = &model.feature_state_auth;
     let local_state = &model.page_sign_up;

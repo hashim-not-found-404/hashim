@@ -215,24 +215,14 @@ impl ui_model::CreateAccount {
             }
             ui_model::CreateAccount::AccountName(v) => {
                 local_state.account_name.set(v);
-                handle_check::<Rn, Id, Mpsc, As, Ch, LongCache>(
-                    model,
-                    cache,
-                    commander_local_state,
-                )
-                .await;
+                handle_check::<Rn, Id, Mpsc, As, Ch, LongCache>(model, cache).await;
             }
             ui_model::CreateAccount::Notes(v) => local_state.notes.set(v),
             ui_model::CreateAccount::UnitOfMeasurementOfQuantity(v) => {
                 local_state.unit_of_measurement_of_quantity.set(v)
             }
             ui_model::CreateAccount::Subscribe => {
-                fetches::get_all_accounts::fetch::<Rn, Mpsc, As>(
-                    model,
-                    cache,
-                    commander_local_state,
-                )
-                .await
+                fetches::get_all_accounts::fetch::<Rn, Mpsc, As>(model, cache).await
             }
         }
     }
@@ -390,7 +380,6 @@ async fn handle_check<
 >(
     model: &'static ui_model::Model<As>,
     mut cache: client_traits::CacheActorStruct<Mpsc>,
-    _: Arc<commander::CommanderLocalState<Mpsc, As>>,
 ) {
     let local_state = &model.page_create_account;
 

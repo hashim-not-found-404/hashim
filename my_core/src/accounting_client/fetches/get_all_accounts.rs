@@ -1,7 +1,6 @@
 use crate::accounting_client::client_domain::cache_actor;
 use crate::accounting_client::client_domain::client_traits;
 use crate::accounting_client::client_domain::client_traits::ReadServerOnly;
-use crate::accounting_client::client_domain::commander;
 use crate::accounting_client::client_domain::ui_model;
 use crate::accounting_client::client_domain::ui_model::HashimSignal;
 use crate::accounting_domain::cases;
@@ -10,7 +9,6 @@ use crate::accounting_domain::utility::resource_utils;
 use crate::accounting_domain::utility::types;
 use crate::utility::traits;
 use crate::utility::utils::ReadAndSet;
-use std::sync::Arc;
 
 type Type1 = cases::get_all_accounts::Input;
 type Type2 = cases::get_all_accounts::Input;
@@ -91,7 +89,6 @@ pub(crate) async fn fetch<
 >(
     model: &ui_model::Model<As>,
     mut cache: client_traits::CacheActorStruct<Mpsc>,
-    _: Arc<commander::CommanderLocalState<Mpsc, As>>,
 ) {
     let company_uuid = model.selected_company.read().unwrap();
 

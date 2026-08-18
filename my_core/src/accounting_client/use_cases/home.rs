@@ -1,19 +1,10 @@
-use crate::accounting_client::client_domain::client_traits;
-use crate::accounting_client::client_domain::commander;
 use crate::accounting_client::client_domain::ui_model;
 use crate::accounting_client::client_domain::ui_model::HashimSignal;
-use crate::utility::traits;
-use std::sync::Arc;
 
 impl ui_model::Home {
-    pub(crate) async fn update<
-        Mpsc: traits::MultiProducerSingleConsumer,
-        As: ui_model::AllSignalTypes,
-    >(
+    pub(crate) async fn update<As: ui_model::AllSignalTypes>(
         self,
         model: &'static ui_model::Model<As>,
-        _: client_traits::CacheActorStruct<Mpsc>,
-        _: Arc<commander::CommanderLocalState<Mpsc, As>>,
     ) {
         match self {
             ui_model::Home::ShowDashboard => {

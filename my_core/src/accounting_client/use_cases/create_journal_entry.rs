@@ -337,7 +337,6 @@ impl ui_model::CreateJournalEntry {
                     handle_listener::<Rn, Rt, Mpsc, As, Ch, LongCacheForGetAllAccountsForBranch>(
                         model,
                         cache.clone(),
-                        commander_local_state.clone(),
                     );
 
                 commander_local_state
@@ -509,7 +508,6 @@ fn handle_listener<
 >(
     model: &'static ui_model::Model<As>,
     mut cache: client_traits::CacheActorStruct<Mpsc>,
-    _: Arc<commander::CommanderLocalState<Mpsc, As>>,
 ) -> impl FnOnce() {
     let component_id = Rn::generate() as u16;
     let mut cache1 = cache.clone();

@@ -350,18 +350,12 @@ impl ui_model::CompanyAndBranchSelection {
                     ui_model::ListCompanyAndBranch::None,
                 ));
 
-                handle_list_company_and_branch::<Rn, Mpsc, As, Ch, LongCache>(
-                    model,
-                    cache.clone(),
-                    commander_local_state.clone(),
-                )
-                .await;
+                handle_list_company_and_branch::<Rn, Mpsc, As, Ch, LongCache>(model, cache.clone())
+                    .await;
 
                 let listener_aborter =
                     handle_list_company_and_branch_listener::<Rn, Rt, Mpsc, As, Ch, LongCache>(
-                        model,
-                        cache,
-                        commander_local_state.clone(),
+                        model, cache,
                     );
 
                 commander_local_state
@@ -416,7 +410,6 @@ fn handle_list_company_and_branch_listener<
 >(
     model: &'static ui_model::Model<As>,
     mut cache: client_traits::CacheActorStruct<Mpsc>,
-    _: Arc<commander::CommanderLocalState<Mpsc, As>>,
 ) -> impl FnOnce() {
     let component_id = Rn::generate() as u16;
     let mut cache1 = cache.clone();
@@ -487,7 +480,6 @@ async fn handle_list_company_and_branch<
 >(
     model: &'static ui_model::Model<As>,
     mut cache: client_traits::CacheActorStruct<Mpsc>,
-    _: Arc<commander::CommanderLocalState<Mpsc, As>>,
 ) {
     let user_uuid = model.user_uuid.read().clone().unwrap();
 

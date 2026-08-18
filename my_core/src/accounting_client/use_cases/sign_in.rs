@@ -216,13 +216,11 @@ impl ui_model::SignIn {
             }
             Self::UserId(i) => {
                 model.user_id.set(i);
-                handle_check::<Rn, Mpsc, As, Ch, LongCache>(model, cache, commander_local_state)
-                    .await;
+                handle_check::<Rn, Mpsc, As, Ch, LongCache>(model, cache).await;
             }
             Self::Password(i) => {
                 model.feature_state_auth.user_password.set(i);
-                handle_check::<Rn, Mpsc, As, Ch, LongCache>(model, cache, commander_local_state)
-                    .await;
+                handle_check::<Rn, Mpsc, As, Ch, LongCache>(model, cache).await;
             }
         }
     }
@@ -376,7 +374,6 @@ async fn handle_check<
 >(
     model: &'static ui_model::Model<As>,
     mut cache: client_traits::CacheActorStruct<Mpsc>,
-    commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
 ) {
     let feature_state = &model.feature_state_auth;
     let local_state = &model.page_sign_in;
@@ -406,23 +403,17 @@ async fn handle_check<
         } => {
             let result: Type4 =
                 <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::unwrap_output(data);
-            handle_apply_result::<Mpsc, As, Ch, LongCache>(
-                model,
-                commander_local_state.clone(),
-                result,
-            );
+            handle_apply_result::<As, Ch, LongCache>(model, result);
         }
     }
 }
 
 fn handle_apply_result<
-    Mpsc: traits::MultiProducerSingleConsumer,
     As: ui_model::AllSignalTypes,
     Ch: cache::Cache,
     LongCache: for<'a> cases::sign_in::DatabaseRead<Db<'a> = Ch>,
 >(
     model: &ui_model::Model<As>,
-    _: Arc<commander::CommanderLocalState<Mpsc, As>>,
     result: Type4,
 ) {
     <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::apply_on_the_model(&result, model);
