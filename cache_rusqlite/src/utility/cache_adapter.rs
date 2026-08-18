@@ -8,6 +8,17 @@ use my_core::utility::traits::Coding;
 use rusqlite::Connection;
 use std::ops::Add;
 
+const QUERY1: &str =
+    "SELECT txn_number, txn FROM write_cache_transactions_input WHERE is_faild = false";
+const QUERY2: &str =
+    "INSERT OR REPLACE INTO write_cache_transactions_input (txn_number, txn) VALUES (?1, ?2)";
+const QUERY3: &str =
+    "INSERT OR REPLACE INTO write_cache_transactions_result (txn_number, txn) VALUES (?1, ?2)";
+const QUERY4: &str =
+    "UPDATE write_cache_transactions_input SET is_faild = true WHERE txn_number = ?1";
+const QUERY5: &str = "DELETE FROM write_cache_transactions_input WHERE txn_number = ?1";
+const QUERY6: &str = "SELECT jwt FROM user WHERE rowid = ?1";
+
 pub struct S {
     pub(crate) db: Connection,
 }
@@ -27,12 +38,7 @@ impl Cache for S {
     async fn get_all_txn_input(
         &self,
     ) -> Vec<request_response::push_data::Txn<request_response::push_data::OperationsInput>> {
-        let mut stmt = self
-            .db
-            .prepare(
-                "SELECT txn_number, txn FROM write_cache_transactions_input WHERE is_faild = false",
-            )
-            .unwrap();
+        let mut stmt = self.db.prepare(QUERY1).unwrap();
 
         let rows = stmt
             .query_map([], |row| {
@@ -58,12 +64,7 @@ impl Cache for S {
         txn: &request_response::push_data::Txn<request_response::push_data::OperationsInput>,
     ) -> () {
         let txn_data = encode_decode::target::S::encode(&txn.operation);
-        self.db
-            .execute(
-                "INSERT OR REPLACE INTO write_cache_transactions_input (txn_number, txn) VALUES (?1, ?2)",
-                rusqlite::params![txn.txn_number as i64, txn_data],
-            )
-            .unwrap();
+        self.db.execute(QUERY2, rusqlite::params![txn.txn_number as i64, txn_data]).unwrap();
     }
 
     async fn write_txn_result(
@@ -71,30 +72,15 @@ impl Cache for S {
         txn: &request_response::push_data::Txn<request_response::push_data::OperationsResult>,
     ) {
         let txn_data = encode_decode::target::S::encode(&txn.operation);
-        self.db
-            .execute(
-                "INSERT OR REPLACE INTO write_cache_transactions_result (txn_number, txn) VALUES (?1, ?2)",
-                rusqlite::params![txn.txn_number as i64, txn_data],
-            )
-            .unwrap();
+        self.db.execute(QUERY3, rusqlite::params![txn.txn_number as i64, txn_data]).unwrap();
     }
 
     async fn mark_txn_input_as_faild(&self, txn_number: &u64) {
-        self.db
-            .execute(
-                "UPDATE write_cache_transactions_input SET is_faild = true WHERE txn_number = ?1",
-                rusqlite::params![*txn_number as i64],
-            )
-            .unwrap();
+        self.db.execute(QUERY4, rusqlite::params![*txn_number as i64]).unwrap();
     }
 
     async fn delete_txn_input(&self, txn_number: &u64) {
-        self.db
-            .execute(
-                "DELETE FROM write_cache_transactions_input WHERE txn_number = ?1",
-                rusqlite::params![*txn_number as i64],
-            )
-            .unwrap();
+        self.db.execute(QUERY5, rusqlite::params![*txn_number as i64]).unwrap();
     }
 
     async fn write_resource(&self, resource: &Vec<resource_utils::ResourceInfo>) {
@@ -345,7 +331,7 @@ impl Cache for S {
     }
 
     async fn get_jwt(&self, user_uuid: &types::UuidType) -> Option<types::JsonWebTokenType> {
-        let mut stmt = self.db.prepare("SELECT jwt FROM user WHERE rowid = ?1").unwrap();
+        let mut stmt = self.db.prepare(QUERY6).unwrap();
 
         let json_web_token_type = stmt.query_one([&user_uuid.to_string()], |row| row.get(0));
 
@@ -406,5 +392,21 @@ fn make_sql_statement_for_option_string(
              UPDATE {table_name} SET {field_name} = NULL WHERE rowid = '{uuid}';"
             )
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::utility::test_helper::test_query_helper;
+
+    #[test]
+    fn test_query_string_directly() {
+        test_query_helper(QUERY1);
+        test_query_helper(QUERY2);
+        test_query_helper(QUERY3);
+        test_query_helper(QUERY4);
+        test_query_helper(QUERY5);
+        test_query_helper(QUERY6);
     }
 }

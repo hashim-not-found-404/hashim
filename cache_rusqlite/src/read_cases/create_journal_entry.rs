@@ -12,7 +12,7 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use std::str::FromStr;
 
-const QUERY: &'static str = r#"
+const QUERY: &str = r#"
     WITH
     new_uuid_check AS (
         SELECT EXISTS(SELECT 1 FROM entry WHERE rowid = ?1) AS is_new_uuid_used
