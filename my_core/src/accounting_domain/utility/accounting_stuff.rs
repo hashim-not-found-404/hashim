@@ -645,8 +645,14 @@ pub mod wrapper {
     use std::ops::Add;
     use std::ops::Sub;
 
-    #[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
+    #[derive(Clone, Copy, Debug, PartialEq)]
     pub(crate) struct T(pub f64);
+
+    impl PartialOrd for T {
+        fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+            self.0.partial_cmp(&other.0)
+        }
+    }
 
     impl Ord for T {
         fn cmp(&self, other: &Self) -> std::cmp::Ordering {

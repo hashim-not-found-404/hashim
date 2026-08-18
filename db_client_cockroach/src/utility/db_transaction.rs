@@ -184,67 +184,64 @@ impl DBTransaction for S<'_> {
         Ok(())
     }
 
-    fn write_create_journal_entry(
+    async fn write_create_journal_entry(
         &mut self,
         data: &cases::create_journal_entry::Ok,
-    ) -> impl Future<Output = Result<(), traits::DynamicError>> {
-        async move {
-            // 1. Insert the entry
-            let query_entry = "
+    ) -> Result<(), traits::DynamicError> {
+        let query_entry = "
                 INSERT INTO accounting_app.entry (rowid, writer, time, shared_entry_id)
                 VALUES ($1, $2, $3, $4)
             ";
-            let stmt_entry = self.txn.prepare_cached(query_entry).await?;
-            self.txn
-                .execute(&stmt_entry, &[
-                    &data.new_uuid.to_externel_uuid(),
-                    &data.user_uuid.to_externel_uuid(),
-                    &(data.time as i64),
-                    &data.shared_entry_id.as_ref().map(|id| id.to_externel_uuid()),
-                ])
-                .await?;
+        let stmt_entry = self.txn.prepare_cached(query_entry).await?;
+        self.txn
+            .execute(&stmt_entry, &[
+                &data.new_uuid.to_externel_uuid(),
+                &data.user_uuid.to_externel_uuid(),
+                &(data.time as i64),
+                &data.shared_entry_id.as_ref().map(|id| id.to_externel_uuid()),
+            ])
+            .await?;
 
-            // 2. Insert single entries
-            let query_single = "
+        // 2. Insert single entries
+        let query_single = "
                 INSERT INTO accounting_app.single_entry (
                     rowid, double_entry, entry, account, is_debit,
                     cost_out_flow_type, quantity, amount
                 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
             ";
-            let stmt_single = self.txn.prepare_cached(query_single).await?;
-            for single in &data.double_entry {
-                self.txn
-                    .execute(&stmt_single, &[
-                        &single.new_uuid.to_externel_uuid(),
-                        &(single.double_entry_number as i16),
-                        &data.new_uuid.to_externel_uuid(),
-                        &single.account.to_externel_uuid(),
-                        &single.is_debit,
-                        &single.out_flow_type.as_str(),
-                        &single.quantity,
-                        &single.amount,
-                    ])
-                    .await?;
-            }
+        let stmt_single = self.txn.prepare_cached(query_single).await?;
+        for single in &data.double_entry {
+            self.txn
+                .execute(&stmt_single, &[
+                    &single.new_uuid.to_externel_uuid(),
+                    &(single.double_entry_number as i16),
+                    &data.new_uuid.to_externel_uuid(),
+                    &single.account.to_externel_uuid(),
+                    &single.is_debit,
+                    &single.out_flow_type.as_str(),
+                    &single.quantity,
+                    &single.amount,
+                ])
+                .await?;
+        }
 
-            // 3. Update inventory for each account (JSONB column)
-            for (account_uuid, inventory_wrapper) in &data.inventory {
-                let inventory_json = serde_json::to_value(&inventory_wrapper.0)
-                    .map_err(|e| traits::DynamicError::from(e.to_string()))?;
+        // 3. Update inventory for each account (JSONB column)
+        for (account_uuid, inventory_wrapper) in &data.inventory {
+            let inventory_json = serde_json::to_value(&inventory_wrapper.0)
+                .map_err(|e| traits::DynamicError::from(e.to_string()))?;
 
-                let query_inventory = "
+            let query_inventory = "
                     UPDATE accounting_app.account
                     SET inventory = $1
                     WHERE rowid = $2
                 ";
-                let stmt_inventory = self.txn.prepare_cached(query_inventory).await?;
-                self.txn
-                    .execute(&stmt_inventory, &[&inventory_json, &account_uuid.to_externel_uuid()])
-                    .await?;
-            }
-
-            Ok(())
+            let stmt_inventory = self.txn.prepare_cached(query_inventory).await?;
+            self.txn
+                .execute(&stmt_inventory, &[&inventory_json, &account_uuid.to_externel_uuid()])
+                .await?;
         }
+
+        Ok(())
     }
 }
 
