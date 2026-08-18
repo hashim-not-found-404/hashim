@@ -33,7 +33,10 @@ const QUERY1: &str = r#"
         SELECT EXISTS(SELECT 1 FROM accounting_app.shared_entry WHERE rowid = $4) AS is_shared_entry_exist
     ),
     new_entries_checks AS (
-        SELECT jsonb_object_agg(rowid::text, exists_flag) AS new_entries_map
+        SELECT COALESCE(
+            jsonb_object_agg(rowid::text, exists_flag),
+            '{}'::jsonb
+        ) AS new_entries_map
         FROM (
             SELECT rowid,
                    EXISTS(SELECT 1 FROM accounting_app.single_entry WHERE rowid = rowid) AS exists_flag
@@ -41,14 +44,17 @@ const QUERY1: &str = r#"
         ) t
     ),
     account_infos AS (
-        SELECT jsonb_agg(
-            jsonb_build_object(
-                'account_uuid', a.rowid,
-                'is_debit', COALESCE(a.is_debit, true),
-                'in_flow_type', COALESCE(aft.inflow_type, 'Manual'),
-                'out_flow_type', COALESCE(aft.outflow_type, 'Manual'),
-                'inventory', COALESCE(aft.inventory, '[]'::jsonb)
-            )
+        SELECT COALESCE(
+            jsonb_agg(
+                jsonb_build_object(
+                    'account_uuid', a.rowid,
+                    'is_debit', COALESCE(a.is_debit, true),
+                    'in_flow_type', COALESCE(aft.inflow_type, 'Manual'),
+                    'out_flow_type', COALESCE(aft.outflow_type, 'Manual'),
+                    'inventory', COALESCE(aft.inventory, '[]'::jsonb)
+                )
+            ),
+            '[]'::jsonb
         ) AS account_infos_json
         FROM unnest($6::uuid[]) AS u(account_uuid)
         LEFT JOIN accounting_app.account a ON a.rowid = u.account_uuid
