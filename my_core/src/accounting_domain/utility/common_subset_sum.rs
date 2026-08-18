@@ -132,7 +132,7 @@ where
     }
 
     // If no suitable split found, return the whole as one irreducible equation
-    let (s, l_idx, r_idx) = match chosen {
+    let (_, l_idx, r_idx) = match chosen {
         Some(v) => v,
         None => return vec![(lhs.to_vec(), rhs.to_vec())],
     };

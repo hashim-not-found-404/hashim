@@ -7,7 +7,6 @@ use crate::accounting_domain::request_response;
 use crate::accounting_domain::utility::resource_utils;
 use crate::accounting_domain::utility::types;
 use crate::utility::traits;
-use crate::utility::utils::MakeOptionIfEmpty;
 use std::collections::HashSet;
 use std::marker::PhantomData;
 

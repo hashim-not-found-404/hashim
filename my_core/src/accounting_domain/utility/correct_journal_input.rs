@@ -625,6 +625,7 @@ where
     A::Inventory: Inventory,
 {
     reset_all_inferred_values(entry);
+    vertical_correct_to_remove_empty_double_entry(entry);
     vertical_correct_by_remove_duplicate_account(entry);
     horizontal_infer_for_is_debit(entry, &account_info);
     horizontal_infer_for_is_inflow(entry, &account_info);
