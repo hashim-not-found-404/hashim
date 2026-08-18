@@ -17,11 +17,11 @@ impl<T, E: Debug> LogError for Result<T, E> {
         if let Err(err) = &self {
             let location = std::panic::Location::caller();
             eprintln!(
-                "called `Result::log()` on an `Err` value {:?}\nat {}:{}:{}",
-                err,
+                "\x1b[31mcalled `Result::log()` on an `Err` at {}:{}:{} for value:\n{:?} \x1b[0m",
                 location.file(),
                 location.line(),
-                location.column()
+                location.column(),
+                err,
             );
         }
         self
