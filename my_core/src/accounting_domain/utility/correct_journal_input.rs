@@ -710,18 +710,6 @@ mod tests {
         pub inferred_amount:       Option<f64>,
         pub inferred_inflow_type:  Option<accounting_stuff::InFlowType>,
         pub inferred_outflow_type: Option<accounting_stuff::OutFlowType>,
-
-        // Error flags
-        pub quantity_and_amount_are_zero:       bool,
-        pub duplicate_account_in_entry:         bool,
-        pub inventory_is_empty:                 bool,
-        pub the_amount_should_be_positive:      bool,
-        pub the_quantity_should_be_positive:    bool,
-        pub quantity_not_equal_amount:          bool,
-        pub quantity_not_equal_zero:            bool,
-        pub insufficient_quantity_in_inventory: Option<f64>,
-        pub amount_mismatch:                    Option<f64>,
-        pub insufficient_amount_in_inventory:   Option<f64>,
     }
 
     impl SingleEntry for MockSingle {
