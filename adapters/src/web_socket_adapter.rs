@@ -8,7 +8,6 @@ pub mod target {
     use my_core::accounting_domain::utility::types::HashimError;
     use my_core::utility::traits::DynamicError;
     use my_core::utility::utils::LogError;
-    use std::sync::Mutex;
     use tokio_tungstenite::MaybeTlsStream;
     use tokio_tungstenite::WebSocketStream;
     use tokio_tungstenite::connect_async;

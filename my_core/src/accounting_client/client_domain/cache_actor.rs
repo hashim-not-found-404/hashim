@@ -339,7 +339,7 @@ where
                     } => {
                         pool_of_pokers.remove(&component_id);
 
-                        for (_, components) in &mut pool_of_subscribes {
+                        for components in &mut pool_of_subscribes.values_mut() {
                             components.remove(&component_id);
                         }
 

@@ -209,10 +209,9 @@ impl<
                                     }
                                 }
 
-                                if !side_effects.resource_to_broadcast_for_company.is_empty()
-                                    || !side_effects.resource_to_broadcast_for_branch.is_empty()
-                                {
-                                    if sender_to_broker
+                                if (!side_effects.resource_to_broadcast_for_company.is_empty()
+                                    || !side_effects.resource_to_broadcast_for_branch.is_empty())
+                                    && sender_to_broker
                                         .send(MessageToBroker::Publish {
                                             connection_id,
                                             list_of_resources_for_company: side_effects
@@ -223,9 +222,8 @@ impl<
                                         .await
                                         .log()
                                         .is_err()
-                                    {
-                                        break;
-                                    }
+                                {
+                                    break;
                                 }
                             }
                         }
