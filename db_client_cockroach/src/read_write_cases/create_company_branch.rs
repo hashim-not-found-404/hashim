@@ -6,6 +6,26 @@ use my_core::utility::traits;
 use my_core::utility::utils::LogError;
 use std::str::FromStr;
 
+const QUERY1: &str = "
+    WITH user_roles AS (
+        SELECT array_agg(role) as roles
+        FROM accounting_app.access_control_for_company
+        WHERE data_group = $1 AND user_ = $2
+    ),
+    checks AS (
+        SELECT
+            EXISTS(SELECT 1 FROM accounting_app.company_branch WHERE rowid = $3) as new_uuid_exists,
+            EXISTS(SELECT 1 FROM accounting_app.company WHERE rowid = $1) as company_exists,
+            EXISTS(SELECT 1 FROM accounting_app.company_branch
+                  WHERE company_belong = $1 AND name = $4) as branch_name_used
+    )
+    SELECT
+        COALESCE((SELECT roles FROM user_roles), '{}'::text[]) as roles,
+        (SELECT new_uuid_exists FROM checks) as new_uuid_exists,
+        (SELECT company_exists FROM checks) as company_exists,
+        (SELECT branch_name_used FROM checks) as branch_name_used
+";
+
 pub struct S;
 
 impl cases::create_company_branch::DatabaseRead for S {
@@ -15,29 +35,9 @@ impl cases::create_company_branch::DatabaseRead for S {
         db: &mut Self::Db<'_>,
         read_input: &cases::create_company_branch::ReadInput,
     ) -> Result<cases::create_company_branch::ReadOutput, traits::DynamicError> {
-        let query = "
-            WITH user_roles AS (
-                SELECT array_agg(role) as roles
-                FROM accounting_app.access_control_for_company
-                WHERE data_group = $1 AND user_ = $2
-            ),
-            checks AS (
-                SELECT
-                    EXISTS(SELECT 1 FROM accounting_app.company_branch WHERE rowid = $3) as new_uuid_exists,
-                    EXISTS(SELECT 1 FROM accounting_app.company WHERE rowid = $1) as company_exists,
-                    EXISTS(SELECT 1 FROM accounting_app.company_branch
-                          WHERE company_belong = $1 AND name = $4) as branch_name_used
-            )
-            SELECT
-                COALESCE((SELECT roles FROM user_roles), '{}'::text[]) as roles,
-                (SELECT new_uuid_exists FROM checks) as new_uuid_exists,
-                (SELECT company_exists FROM checks) as company_exists,
-                (SELECT branch_name_used FROM checks) as branch_name_used
-        ";
-
         let row = db
             .txn
-            .query_one(query, &[
+            .query_one(QUERY1, &[
                 &read_input.company_belong.to_externel_uuid(),
                 &read_input.user_uuid.to_externel_uuid(),
                 &read_input.new_uuid.to_externel_uuid(),
@@ -60,5 +60,16 @@ impl cases::create_company_branch::DatabaseRead for S {
             is_branch_name_used: row.try_get(3).log()?,
         };
         Ok(a)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::utility::test_helper::test_query_helper;
+
+    #[tokio::test]
+    async fn test_query_string_directly() {
+        test_query_helper(QUERY1).await.unwrap();
     }
 }

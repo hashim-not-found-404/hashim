@@ -8,6 +8,33 @@ use my_core::utility::utils::LogError;
 use std::str::FromStr;
 use uuid::Uuid;
 
+const QUERY1: &str = "
+    SELECT company_belong FROM accounting_app.company_branch
+    WHERE rowid = $1
+";
+
+const QUERY2: &str = "
+    SELECT
+        rowid::text,
+        is_debit,
+        is_permanent_account,
+        name,
+        notes,
+        unit_of_measurement_of_quantity
+    FROM accounting_app.account
+    WHERE belong_to_company = $1
+";
+
+const QUERY3: &str = "
+    SELECT
+        rowid::text,
+        account,
+        outflow_type,
+        inflow_type
+    FROM accounting_app.account_flow_type
+    WHERE company_branch = $1
+";
+
 pub struct S;
 
 impl cases::get_all_accounts_for_branch::DatabaseRead for S {
@@ -18,11 +45,8 @@ impl cases::get_all_accounts_for_branch::DatabaseRead for S {
         read_input: &cases::get_all_accounts_for_branch::ReadInput,
     ) -> Result<cases::get_all_accounts_for_branch::ReadOutput, traits::DynamicError> {
         // 1. Get the company UUID that owns this branch
-        let branch_query = "
-            SELECT company_belong FROM accounting_app.company_branch
-            WHERE rowid = $1
-        ";
-        let branch_stmt = db.client.prepare_cached(branch_query).await.log()?;
+
+        let branch_stmt = db.client.prepare_cached(QUERY1).await.log()?;
         let branch_row = db
             .client
             .query_opt(&branch_stmt, &[&read_input.company_branch_uuid.to_externel_uuid()])
@@ -40,18 +64,8 @@ impl cases::get_all_accounts_for_branch::DatabaseRead for S {
         };
 
         // 2. Get all accounts that belong to that company
-        let accounts_query = "
-            SELECT
-                rowid::text,
-                is_debit,
-                is_permanent_account,
-                name,
-                notes,
-                unit_of_measurement_of_quantity
-            FROM accounting_app.account
-            WHERE belong_to_company = $1
-        ";
-        let accounts_stmt = db.client.prepare_cached(accounts_query).await.log()?;
+
+        let accounts_stmt = db.client.prepare_cached(QUERY2).await.log()?;
         let account_rows =
             db.client.query(&accounts_stmt, &[&company_uuid.to_externel_uuid()]).await.log()?;
 
@@ -78,16 +92,8 @@ impl cases::get_all_accounts_for_branch::DatabaseRead for S {
         }
 
         // 3. Get all account_flow_type entries for this branch
-        let flow_query = "
-            SELECT
-                rowid::text,
-                account,
-                outflow_type,
-                inflow_type
-            FROM accounting_app.account_flow_type
-            WHERE company_branch = $1
-        ";
-        let flow_stmt = db.client.prepare_cached(flow_query).await.log()?;
+
+        let flow_stmt = db.client.prepare_cached(QUERY3).await.log()?;
         let flow_rows = db
             .client
             .query(&flow_stmt, &[&read_input.company_branch_uuid.to_externel_uuid()])
@@ -122,5 +128,18 @@ impl cases::get_all_accounts_for_branch::DatabaseRead for S {
             accounts,
             accounts_for_branch,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::utility::test_helper::test_query_helper;
+
+    #[tokio::test]
+    async fn test_query_string_directly() {
+        test_query_helper(QUERY1).await.unwrap();
+        test_query_helper(QUERY2).await.unwrap();
+        test_query_helper(QUERY3).await.unwrap();
     }
 }

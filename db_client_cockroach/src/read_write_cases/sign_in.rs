@@ -5,6 +5,8 @@ use my_core::utility::traits;
 use my_core::utility::utils::LogError;
 use uuid::Uuid;
 
+const QUERY1: &str = "SELECT rowid,pass,name FROM accounting_app.user WHERE id = $1 LIMIT 1;";
+
 pub struct S;
 
 impl cases::sign_in::DatabaseRead for S {
@@ -14,8 +16,7 @@ impl cases::sign_in::DatabaseRead for S {
         db: &mut Self::Db<'_>,
         read_input: &cases::sign_in::ReadInput,
     ) -> Result<cases::sign_in::ReadOutput, traits::DynamicError> {
-        let query = "SELECT rowid,pass,name FROM accounting_app.user WHERE id = $1 LIMIT 1;";
-        let stmt = db.client.prepare_cached(query).await.log()?;
+        let stmt = db.client.prepare_cached(QUERY1).await.log()?;
         let row = db.client.query_opt(&stmt, &[&read_input.user_id]).await.log()?;
 
         match row {
@@ -39,5 +40,16 @@ impl cases::sign_in::DatabaseRead for S {
                 })
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::utility::test_helper::test_query_helper;
+
+    #[tokio::test]
+    async fn test_query_string_directly() {
+        test_query_helper(QUERY1).await.unwrap();
     }
 }

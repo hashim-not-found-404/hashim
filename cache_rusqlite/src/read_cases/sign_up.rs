@@ -40,6 +40,6 @@ mod tests {
 
     #[test]
     fn test_query_string_directly() {
-        test_query_helper(QUERY);
+        test_query_helper(QUERY).unwrap();
     }
 }

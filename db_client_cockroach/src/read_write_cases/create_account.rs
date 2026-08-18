@@ -6,6 +6,26 @@ use my_core::utility::traits;
 use my_core::utility::utils::LogError;
 use std::str::FromStr;
 
+const QUERY1: &str = "
+    WITH user_roles AS (
+        SELECT array_agg(role) as roles
+        FROM accounting_app.access_control_for_company
+        WHERE data_group = $1 AND user_ = $2
+    ),
+    checks AS (
+        SELECT
+            EXISTS(SELECT 1 FROM accounting_app.company WHERE rowid = $1) AS company_exists,
+            EXISTS(SELECT 1 FROM accounting_app.account WHERE rowid = $3) AS new_uuid_used,
+            EXISTS(SELECT 1 FROM accounting_app.account
+                  WHERE belong_to_company = $1 AND name = $4) AS account_name_used
+    )
+    SELECT
+        COALESCE((SELECT roles FROM user_roles), '{}'::text[]) AS roles,
+        (SELECT company_exists FROM checks) AS company_exists,
+        (SELECT new_uuid_used FROM checks) AS new_uuid_used,
+        (SELECT account_name_used FROM checks) AS account_name_used
+";
+
 pub struct S;
 
 impl cases::create_account::DatabaseRead for S {
@@ -15,27 +35,7 @@ impl cases::create_account::DatabaseRead for S {
         db: &mut Self::Db<'_>,
         read_input: &cases::create_account::ReadInput,
     ) -> Result<cases::create_account::ReadOutput, traits::DynamicError> {
-        let query = "
-            WITH user_roles AS (
-                SELECT array_agg(role) as roles
-                FROM accounting_app.access_control_for_company
-                WHERE data_group = $1 AND user_ = $2
-            ),
-            checks AS (
-                SELECT
-                    EXISTS(SELECT 1 FROM accounting_app.company WHERE rowid = $1) AS company_exists,
-                    EXISTS(SELECT 1 FROM accounting_app.account WHERE rowid = $3) AS new_uuid_used,
-                    EXISTS(SELECT 1 FROM accounting_app.account
-                          WHERE belong_to_company = $1 AND name = $4) AS account_name_used
-            )
-            SELECT
-                COALESCE((SELECT roles FROM user_roles), '{}'::text[]) AS roles,
-                (SELECT company_exists FROM checks) AS company_exists,
-                (SELECT new_uuid_used FROM checks) AS new_uuid_used,
-                (SELECT account_name_used FROM checks) AS account_name_used
-        ";
-
-        let stmt = db.txn.prepare_cached(query).await.log()?;
+        let stmt = db.txn.prepare_cached(QUERY1).await.log()?;
         let row = db
             .txn
             .query_one(&stmt, &[
@@ -60,5 +60,16 @@ impl cases::create_account::DatabaseRead for S {
             user_roles,
             is_account_name_used: row.try_get(3).log()?,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::utility::test_helper::test_query_helper;
+
+    #[tokio::test]
+    async fn test_query_string_directly() {
+        test_query_helper(QUERY1).await.unwrap();
     }
 }

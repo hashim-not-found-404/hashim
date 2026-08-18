@@ -66,9 +66,9 @@ mod tests {
 
     #[test]
     fn test_query_string_directly() {
-        test_query_helper(QUERY1);
-        test_query_helper(QUERY2);
-        test_query_helper(QUERY3);
-        test_query_helper(QUERY4);
+        test_query_helper(QUERY1).unwrap();
+        test_query_helper(QUERY2).unwrap();
+        test_query_helper(QUERY3).unwrap();
+        test_query_helper(QUERY4).unwrap();
     }
 }

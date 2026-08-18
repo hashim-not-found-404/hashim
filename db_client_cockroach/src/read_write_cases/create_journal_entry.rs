@@ -11,6 +11,57 @@ use std::collections::HashSet;
 use std::str::FromStr;
 use uuid::Uuid;
 
+const QUERY1: &str = r#"
+    WITH
+    new_uuid_check AS (
+        SELECT EXISTS(SELECT 1 FROM accounting_app.entry WHERE rowid = $1) AS is_new_uuid_used
+    ),
+    user_roles AS (
+        SELECT COALESCE(
+            (SELECT jsonb_agg(DISTINCT role) FROM (
+                SELECT role FROM accounting_app.access_control_for_company
+                WHERE data_group = (SELECT company_belong FROM accounting_app.company_branch WHERE rowid = $2)
+                AND user_ = $3
+                UNION
+                SELECT role FROM accounting_app.access_control_for_company_branch
+                WHERE data_group = $2 AND user_ = $3
+            )),
+            '[]'::jsonb
+        ) AS roles_json
+    ),
+    shared_entry_check AS (
+        SELECT EXISTS(SELECT 1 FROM accounting_app.shared_entry WHERE rowid = $4) AS is_shared_entry_exist
+    ),
+    new_entries_checks AS (
+        SELECT jsonb_object_agg(rowid::text, exists_flag) AS new_entries_map
+        FROM (
+            SELECT rowid,
+                   EXISTS(SELECT 1 FROM accounting_app.single_entry WHERE rowid = rowid) AS exists_flag
+            FROM unnest($5::uuid[]) AS rowid
+        ) t
+    ),
+    account_infos AS (
+        SELECT jsonb_agg(
+            jsonb_build_object(
+                'account_uuid', a.rowid,
+                'is_debit', COALESCE(a.is_debit, true),
+                'in_flow_type', COALESCE(aft.inflow_type, 'Manual'),
+                'out_flow_type', COALESCE(aft.outflow_type, 'Manual'),
+                'inventory', COALESCE(aft.inventory, '[]'::jsonb)
+            )
+        ) AS account_infos_json
+        FROM unnest($6::uuid[]) AS u(account_uuid)
+        LEFT JOIN accounting_app.account a ON a.rowid = u.account_uuid
+        LEFT JOIN accounting_app.account_flow_type aft ON aft.account = a.rowid AND aft.company_branch = $2
+    )
+    SELECT
+        (SELECT is_new_uuid_used FROM new_uuid_check) AS is_new_uuid_used,
+        (SELECT roles_json FROM user_roles) AS user_roles,
+        (SELECT is_shared_entry_exist FROM shared_entry_check) AS is_shared_entry_exist,
+        (SELECT new_entries_map FROM new_entries_checks) AS new_entries_map,
+        (SELECT account_infos_json FROM account_infos) AS account_infos_json
+"#;
+
 pub struct S;
 
 impl cases::create_journal_entry::DatabaseRead for S {
@@ -36,60 +87,8 @@ impl cases::create_journal_entry::DatabaseRead for S {
             &accounts_uuid_vec,
         ];
 
-        // Single query with CTEs
-        let query = r#"
-            WITH
-            new_uuid_check AS (
-                SELECT EXISTS(SELECT 1 FROM accounting_app.entry WHERE rowid = $1) AS is_new_uuid_used
-            ),
-            user_roles AS (
-                SELECT COALESCE(
-                    (SELECT jsonb_agg(DISTINCT role) FROM (
-                        SELECT role FROM accounting_app.access_control_for_company
-                        WHERE data_group = (SELECT company_belong FROM accounting_app.company_branch WHERE rowid = $2)
-                        AND user_ = $3
-                        UNION
-                        SELECT role FROM accounting_app.access_control_for_company_branch
-                        WHERE data_group = $2 AND user_ = $3
-                    )),
-                    '[]'::jsonb
-                ) AS roles_json
-            ),
-            shared_entry_check AS (
-                SELECT EXISTS(SELECT 1 FROM accounting_app.shared_entry WHERE rowid = $4) AS is_shared_entry_exist
-            ),
-            new_entries_checks AS (
-                SELECT jsonb_object_agg(rowid::text, exists_flag) AS new_entries_map
-                FROM (
-                    SELECT rowid,
-                           EXISTS(SELECT 1 FROM accounting_app.single_entry WHERE rowid = rowid) AS exists_flag
-                    FROM unnest($5::uuid[]) AS rowid
-                ) t
-            ),
-            account_infos AS (
-                SELECT jsonb_agg(
-                    jsonb_build_object(
-                        'account_uuid', a.rowid,
-                        'is_debit', COALESCE(a.is_debit, true),
-                        'in_flow_type', COALESCE(aft.inflow_type, 'Manual'),
-                        'out_flow_type', COALESCE(aft.outflow_type, 'Manual'),
-                        'inventory', COALESCE(a.inventory, '[]'::jsonb)
-                    )
-                ) AS account_infos_json
-                FROM unnest($6::uuid[]) AS u(account_uuid)
-                LEFT JOIN accounting_app.account a ON a.rowid = u.account_uuid
-                LEFT JOIN accounting_app.account_flow_type aft ON aft.account = a.rowid AND aft.company_branch = $2
-            )
-            SELECT
-                (SELECT is_new_uuid_used FROM new_uuid_check) AS is_new_uuid_used,
-                (SELECT roles_json FROM user_roles) AS user_roles,
-                (SELECT is_shared_entry_exist FROM shared_entry_check) AS is_shared_entry_exist,
-                (SELECT new_entries_map FROM new_entries_checks) AS new_entries_map,
-                (SELECT account_infos_json FROM account_infos) AS account_infos_json
-        "#;
-
         // Execute query
-        let row = db.txn.query_one(query, params).await.log()?;
+        let row = db.txn.query_one(QUERY1, params).await.log()?;
 
         // Parse results
         let is_new_uuid_used: bool = row.try_get(0).log()?;
@@ -158,5 +157,16 @@ impl cases::create_journal_entry::DatabaseRead for S {
             used_new_entries_uuid,
             account_info,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::utility::test_helper::test_query_helper;
+
+    #[tokio::test]
+    async fn test_query_string_directly() {
+        test_query_helper(QUERY1).await.unwrap();
     }
 }

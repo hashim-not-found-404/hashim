@@ -9,6 +9,41 @@ use std::collections::HashMap;
 use std::str::FromStr;
 use uuid::Uuid;
 
+const QUERY1: &str = "
+    WITH user_companies AS (
+        SELECT
+            c.rowid as company_uuid,
+            c.name as company_name,
+            c.currency as company_currency,
+            acf.role as user_role
+        FROM accounting_app.access_control_for_company acf
+        JOIN accounting_app.company c ON acf.data_group = c.rowid
+        WHERE acf.user_ = $1
+    ),
+    company_branches AS (
+        SELECT
+            cb.company_belong,
+            json_agg(
+                json_build_object(
+                    'uuid', cb.rowid::text,
+                    'name', cb.name,
+                    'currency', cb.currency
+                ) ORDER BY cb.name
+            ) as branches
+        FROM accounting_app.company_branch cb
+        WHERE cb.company_belong IN (SELECT company_uuid FROM user_companies)
+        GROUP BY cb.company_belong
+    )
+    SELECT
+        uc.company_uuid::text,       -- cast to text to match JSON representation
+        uc.company_name,
+        uc.company_currency,
+        uc.user_role,
+        COALESCE(cb.branches, '[]'::json) as branches
+    FROM user_companies uc
+    LEFT JOIN company_branches cb ON uc.company_uuid = cb.company_belong
+";
+
 pub struct S;
 
 impl cases::list_company_and_branch::DatabaseRead for S {
@@ -18,43 +53,8 @@ impl cases::list_company_and_branch::DatabaseRead for S {
         db: &mut Self::Db<'_>,
         read_input: &cases::list_company_and_branch::ReadInput,
     ) -> Result<cases::list_company_and_branch::ReadOutput, traits::DynamicError> {
-        let query = "
-            WITH user_companies AS (
-                SELECT
-                    c.rowid as company_uuid,
-                    c.name as company_name,
-                    c.currency as company_currency,
-                    acf.role as user_role
-                FROM accounting_app.access_control_for_company acf
-                JOIN accounting_app.company c ON acf.data_group = c.rowid
-                WHERE acf.user_ = $1
-            ),
-            company_branches AS (
-                SELECT
-                    cb.company_belong,
-                    json_agg(
-                        json_build_object(
-                            'uuid', cb.rowid::text,
-                            'name', cb.name,
-                            'currency', cb.currency
-                        ) ORDER BY cb.name
-                    ) as branches
-                FROM accounting_app.company_branch cb
-                WHERE cb.company_belong IN (SELECT company_uuid FROM user_companies)
-                GROUP BY cb.company_belong
-            )
-            SELECT
-                uc.company_uuid::text,       -- cast to text to match JSON representation
-                uc.company_name,
-                uc.company_currency,
-                uc.user_role,
-                COALESCE(cb.branches, '[]'::json) as branches
-            FROM user_companies uc
-            LEFT JOIN company_branches cb ON uc.company_uuid = cb.company_belong
-        ";
-
         let rows =
-            db.client.query(query, &[&read_input.user_uuid.to_externel_uuid()]).await.log()?;
+            db.client.query(QUERY1, &[&read_input.user_uuid.to_externel_uuid()]).await.log()?;
 
         #[derive(Deserialize)]
         struct BranchJson {
@@ -140,5 +140,16 @@ impl cases::list_company_and_branch::DatabaseRead for S {
         Ok(cases::list_company_and_branch::ReadOutput {
             data,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::utility::test_helper::test_query_helper;
+
+    #[tokio::test]
+    async fn test_query_string_directly() {
+        test_query_helper(QUERY1).await.unwrap();
     }
 }
