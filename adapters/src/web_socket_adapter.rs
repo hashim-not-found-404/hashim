@@ -86,7 +86,7 @@ pub mod target {
             })
         }
 
-        async fn send_bin(&self, data: &Vec<u8>) -> Result<(), DynamicError> {
+        async fn send_bin(&self, data: &[u8]) -> Result<(), DynamicError> {
             self.write.lock().unwrap().send(Message::Bytes(data.clone().into())).await.log()?;
 
             Ok(())
