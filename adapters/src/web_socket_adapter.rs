@@ -15,8 +15,8 @@ pub mod target {
     use tokio_tungstenite::tungstenite::Message;
 
     pub struct S {
-        write: Mutex<SplitSink<WebSocketStream<MaybeTlsStream<tokio::net::TcpStream>>, Message>>,
-        read:  Mutex<SplitStream<WebSocketStream<MaybeTlsStream<tokio::net::TcpStream>>>>,
+        write: SplitSink<WebSocketStream<MaybeTlsStream<tokio::net::TcpStream>>, Message>,
+        read:  SplitStream<WebSocketStream<MaybeTlsStream<tokio::net::TcpStream>>>,
     }
 
     impl WSClient for S {
@@ -25,21 +25,19 @@ pub mod target {
             let (write, read) = ws_stream.split();
 
             Ok(Self {
-                write: Mutex::new(write),
-                read:  Mutex::new(read),
+                write,
+                read,
             })
         }
 
-        async fn send_bin(&self, data: &[u8]) -> Result<(), DynamicError> {
-            self.write.lock().unwrap().send(Message::Binary(data.to_vec().into())).await.log()?;
+        async fn send_bin(&mut self, data: &[u8]) -> Result<(), DynamicError> {
+            self.write.send(Message::Binary(data.to_vec().into())).await.log()?;
 
             Ok(())
         }
 
-        async fn receive_bin(&self) -> Result<Vec<u8>, DynamicError> {
-            let mut guard = self.read.lock().unwrap();
-
-            match guard.next().await {
+        async fn receive_bin(&mut self) -> Result<Vec<u8>, DynamicError> {
+            match self.read.next().await {
                 Some(Ok(message)) => {
                     match message {
                         Message::Text(_) => Err("it's text".into()),
@@ -70,8 +68,8 @@ pub mod target {
     use std::sync::Mutex;
 
     pub struct S {
-        write: Mutex<SplitSink<WebSocket, Message>>,
-        read:  Mutex<SplitStream<WebSocket>>,
+        write: SplitSink<WebSocket, Message>,
+        read:  SplitStream<WebSocket>,
     }
 
     impl WSClient for S {
@@ -81,21 +79,19 @@ pub mod target {
             write.send(Message::Bytes(Vec::new())).await.log()?;
 
             Ok(Self {
-                write: Mutex::new(write),
-                read:  Mutex::new(read),
+                write,
+                read,
             })
         }
 
-        async fn send_bin(&self, data: &[u8]) -> Result<(), DynamicError> {
-            self.write.lock().unwrap().send(Message::Bytes(data.clone().into())).await.log()?;
+        async fn send_bin(&mut self, data: &[u8]) -> Result<(), DynamicError> {
+            self.write.send(Message::Bytes(data.clone().into())).await.log()?;
 
             Ok(())
         }
 
-        async fn receive_bin(&self) -> Result<Vec<u8>, DynamicError> {
-            let mut guard = self.read.lock().unwrap();
-
-            match guard.next().await {
+        async fn receive_bin(&mut self) -> Result<Vec<u8>, DynamicError> {
+            match self.read.next().await {
                 Some(Ok(message)) => {
                     match message {
                         Message::Text(_) => Err("it's text".into()),

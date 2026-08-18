@@ -4,8 +4,8 @@ use std::time::Duration;
 
 pub trait WSClient: Sized {
     fn connect(url: &str) -> impl Future<Output = Result<Self, traits::DynamicError>>;
-    fn send_bin(&self, data: &[u8]) -> impl Future<Output = Result<(), traits::DynamicError>>;
-    fn receive_bin(&self) -> impl Future<Output = Result<Vec<u8>, traits::DynamicError>>;
+    fn send_bin(&mut self, data: &[u8]) -> impl Future<Output = Result<(), traits::DynamicError>>;
+    fn receive_bin(&mut self) -> impl Future<Output = Result<Vec<u8>, traits::DynamicError>>;
 }
 
 pub(crate) trait Network {
@@ -15,7 +15,7 @@ pub(crate) trait Network {
     async fn send_error(&mut self, error: traits::DynamicError);
 }
 
-async fn network_radar<Ws: WSClient>(ws: Option<&Ws>) -> Result<Vec<u8>, traits::DynamicError> {
+async fn network_radar<Ws: WSClient>(ws: Option<&mut Ws>) -> Result<Vec<u8>, traits::DynamicError> {
     match ws {
         Some(ws) => ws.receive_bin().await,
         None => Err("error".into()),
@@ -45,11 +45,11 @@ pub(crate) fn network_actor<Rt: traits::Runtime, Ws: WSClient, Nw: Network + 'st
         let mut ws: Option<Ws> = None;
 
         loop {
-            match Rt::select(network_utils.network_reciever(), network_radar::<Ws>(ws.as_ref()))
+            match Rt::select(network_utils.network_reciever(), network_radar::<Ws>(ws.as_mut()))
                 .await
             {
                 Either::One(data) => {
-                    match &ws {
+                    match &mut ws {
                         Some(ws1) => {
                             let result = ws1.send_bin(&data).await;
                             if result.is_err() {
