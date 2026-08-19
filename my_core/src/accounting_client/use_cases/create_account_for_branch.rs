@@ -14,7 +14,6 @@ use crate::accounting_domain::utility::types;
 use crate::accounting_domain::utility::types::MyErrorTrait;
 use crate::utility::tools;
 use crate::utility::traits;
-use crate::utility::traits::JoinHandle;
 use crate::utility::traits::Receiver;
 use crate::utility::traits::Sender;
 use crate::utility::utils::ReadAndSet;
