@@ -349,17 +349,11 @@ impl ui_model::CompanyAndBranchSelection {
                     ui_model::ListCompanyAndBranch::None,
                 ));
 
-                handle_list_company_and_branch::<Rn, Mpsc, As, Ch, LongCache>(model, cache.clone())
-                    .await;
-
-                let listener_aborter =
-                    handle_list_company_and_branch_listener::<Rn, Rt, Mpsc, As, Ch, LongCache>(
-                        model, cache,
-                    );
-
-                commander_local_state
-                    .aborter_to_company_and_branch_listener
-                    .set(Box::new(listener_aborter));
+                spawn_listener::<Rn, Rt, Mpsc, As, Ch, LongCache>(
+                    model,
+                    cache,
+                    commander_local_state,
+                );
             }
             Self::UnSubscribe => {
                 commander_local_state.aborter_to_company_and_branch_listener.abort();
@@ -399,7 +393,7 @@ impl ui_model::CompanyAndBranchSelection {
     }
 }
 
-fn handle_list_company_and_branch_listener<
+fn spawn_listener<
     Rn: traits::RandomNumber,
     Rt: traits::Runtime,
     Mpsc: traits::MultiProducerSingleConsumer,
@@ -409,61 +403,21 @@ fn handle_list_company_and_branch_listener<
 >(
     model: &'static ui_model::Model<As>,
     cache: client_traits::CacheActorStruct<Mpsc>,
-) -> impl FnOnce() {
+    commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
+) {
     let data = <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::wrap_input(Type1 {
         user_uuid: model.user_uuid.read().clone().unwrap(),
     });
 
-    client_traits::spawn_listener::<Rn, Rt, Mpsc>(
+    let listener_aborter = client_traits::spawn_listener::<Rn, Rt, Mpsc>(
         cache,
         <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::subs(),
         data,
         move |data| {
             let data = <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::unwrap_output(data);
             <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::apply_on_the_model(&data, model);
-            data.is_err()
         },
-    )
-}
+    );
 
-async fn handle_list_company_and_branch<
-    Rn: traits::RandomNumber,
-    Mpsc: traits::MultiProducerSingleConsumer,
-    As: ui_model::AllSignalTypes,
-    Ch: cache::Cache,
-    LongCache: for<'a> cases::list_company_and_branch::DatabaseRead<Db<'a> = Ch>,
->(
-    model: &'static ui_model::Model<As>,
-    mut cache: client_traits::CacheActorStruct<Mpsc>,
-) {
-    let user_uuid = model.user_uuid.read().clone().unwrap();
-
-    let txn_number = Rn::generate();
-
-    let mut receiver_to_response = cache
-        .send_to_cache_actor(
-            cache_actor::CachingStrategy::ReadCacheAndServer,
-            txn_number,
-            <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::wrap_input(Type1 {
-                user_uuid,
-            }),
-        )
-        .await;
-
-    loop {
-        let value = match receiver_to_response.recv().await.unwrap() {
-            cache_actor::Response::CloseTheChannel => break,
-            cache_actor::Response::ServerCannotBeReached => break,
-            cache_actor::Response::Data {
-                is_response_from_server: _,
-                data,
-            } => <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::unwrap_output(data),
-        };
-
-        <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::apply_on_the_model(&value, model);
-
-        if value.is_err() {
-            break;
-        }
-    }
+    commander_local_state.aborter_to_company_and_branch_listener.set(Box::new(listener_aborter));
 }

@@ -296,51 +296,11 @@ impl ui_model::CreateJournalEntry {
 
         match self {
             ui_model::CreateJournalEntry::Subscribe => {
-                // 1. Fetch the list of available accounts (cache + server)
-                let user_uuid = model.user_uuid.read().clone().unwrap();
-                let company_branch_uuid = model.selected_company_branch.read().unwrap();
-
-                let input = cases::get_all_accounts_for_branch::Input {
-                    user_uuid:           user_uuid.clone(),
-                    company_branch_uuid: company_branch_uuid.clone(),
-                };
-
-                let txn_number = Rn::generate();
-                let mut receiver = cache
-                    .send_to_cache_actor(
-                        cache_actor::CachingStrategy::ReadCacheAndServer,
-                        txn_number,
-                        <fetches::get_all_accounts_for_branch::ViewAndCacheType as ViewAndCache<
-                            Ch,
-                            LongCacheForGetAllAccountsForBranch,
-                        >>::wrap_input(input),
-                    )
-                    .await;
-
-                // Wait for the first response
-                if let cache_actor::Response::Data {
-                    data,
-                    ..
-                } = receiver.recv().await.unwrap()
-                {
-                    let result =
-                        <fetches::get_all_accounts_for_branch::ViewAndCacheType as ViewAndCache<
-                            Ch,
-                            LongCacheForGetAllAccountsForBranch,
-                        >>::unwrap_output(data);
-                    apply_fetch_result::<As>(&result, model);
-                }
-
-                // 2. Set up a subscription listener for live updates
-                let listener_aborter =
-                    handle_listener::<Rn, Rt, Mpsc, As, Ch, LongCacheForGetAllAccountsForBranch>(
-                        model,
-                        cache.clone(),
-                    );
-
-                commander_local_state
-                    .aborter_to_create_journal_entry_listener
-                    .set(Box::new(listener_aborter));
+                spawn_listener::<Rn, Rt, Mpsc, As, Ch, LongCacheForGetAllAccountsForBranch>(
+                    model,
+                    cache.clone(),
+                    commander_local_state,
+                );
             }
             ui_model::CreateJournalEntry::UnSubscribe => {
                 commander_local_state.aborter_to_create_journal_entry_listener.abort();
@@ -497,7 +457,7 @@ fn apply_fetch_result<As: ui_model::AllSignalTypes>(
 }
 
 /// Spawn a listener that re‑fetches whenever subscribed resources change.
-fn handle_listener<
+fn spawn_listener<
     Rn: traits::RandomNumber,
     Rt: traits::Runtime,
     Mpsc: traits::MultiProducerSingleConsumer,
@@ -507,7 +467,8 @@ fn handle_listener<
 >(
     model: &'static ui_model::Model<As>,
     cache: client_traits::CacheActorStruct<Mpsc>,
-) -> impl FnOnce() {
+    commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
+) {
     let data = cases::get_all_accounts_for_branch::Input {
         user_uuid:           model.user_uuid.read().clone().unwrap().clone(),
         company_branch_uuid: model.selected_company_branch.read().unwrap().clone(),
@@ -517,7 +478,7 @@ fn handle_listener<
         LongCacheForGetAllAccountsForBranch,
     >>::wrap_input(data);
 
-    client_traits::spawn_listener::<Rn, Rt, Mpsc>(
+    let listener_aborter = client_traits::spawn_listener::<Rn, Rt, Mpsc>(
         cache,
         <fetches::get_all_accounts_for_branch::ViewAndCacheType as ViewAndCache<
             Ch,
@@ -531,10 +492,10 @@ fn handle_listener<
             >>::unwrap_output(data);
 
             apply_fetch_result::<As>(&data, model);
-
-            data.is_err()
         },
-    )
+    );
+
+    commander_local_state.aborter_to_create_journal_entry_listener.set(Box::new(listener_aborter));
 }
 
 // -----------------------------------------------------------------------------

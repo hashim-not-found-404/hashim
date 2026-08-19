@@ -152,7 +152,7 @@ pub(crate) fn spawn_listener<
     mut cache: CacheActorStruct<Mpsc>,
     list_of_subscribtion: &'static [resource_utils::Subscribe],
     data: request_response::push_data::OperationsInput,
-    is_error: impl Fn(OperationsResult) -> bool + 'static,
+    is_error: impl Fn(OperationsResult) + 'static,
 ) -> impl FnOnce() {
     let component_id = Rn::generate() as u16;
     let mut cache1 = cache.clone();
@@ -161,17 +161,22 @@ pub(crate) fn spawn_listener<
         let mut receiver_to_poke =
             cache.send_subs_to_cache_actor(component_id, list_of_subscribtion).await;
 
+        cache
+            .send_to_cache_actor(
+                cache_actor::CachingStrategy::ReadServerOnly,
+                Rn::generate(),
+                data.clone(),
+            )
+            .await
+            .recv()
+            .await
+            .unwrap();
+
         loop {
-            if receiver_to_poke.recv().await.is_err() {
-                break;
-            }
-
-            let txn_number = Rn::generate();
-
             let value = cache
                 .send_to_cache_actor(
                     cache_actor::CachingStrategy::ReadCacheOnly,
-                    txn_number,
+                    Rn::generate(),
                     data.clone(),
                 )
                 .await
@@ -179,17 +184,17 @@ pub(crate) fn spawn_listener<
                 .await
                 .unwrap();
 
-            match value {
-                cache_actor::Response::Data {
-                    data,
-                    ..
-                } => {
-                    if is_error(data) {
-                        break;
-                    }
-                }
-                _ => break,
+            if let cache_actor::Response::Data {
+                data,
+                ..
+            } = value
+            {
+                is_error(data);
             };
+
+            if receiver_to_poke.recv().await.is_err() {
+                break;
+            }
         }
         cache.send_unsubs_to_cache_actor(component_id).await;
     });
