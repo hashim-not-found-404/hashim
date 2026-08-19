@@ -167,10 +167,7 @@ pub(crate) fn spawn_listener<
                 Rn::generate(),
                 data.clone(),
             )
-            .await
-            .recv()
-            .await
-            .unwrap();
+            .await;
 
         loop {
             let value = cache
