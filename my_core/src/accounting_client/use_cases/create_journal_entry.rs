@@ -1,5 +1,4 @@
 use crate::accounting_client::client_domain::cache;
-use crate::accounting_client::client_domain::cache_actor;
 use crate::accounting_client::client_domain::client_traits;
 use crate::accounting_client::client_domain::client_traits::ViewAndCache;
 use crate::accounting_client::client_domain::commander;
@@ -14,7 +13,6 @@ use crate::accounting_domain::utility::resource_utils;
 use crate::accounting_domain::utility::types;
 use crate::utility::tools;
 use crate::utility::traits;
-use crate::utility::traits::Receiver;
 use crate::utility::traits::Sender;
 use crate::utility::utils::ReadAndSet;
 use std::marker::PhantomData;
@@ -289,7 +287,7 @@ impl ui_model::CreateJournalEntry {
     >(
         self,
         model: &'static ui_model::Model<As>,
-        mut cache: client_traits::CacheActorStruct<Mpsc>,
+        cache: client_traits::CacheActorStruct<Mpsc>,
         commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
     ) {
         let local_state = &model.page_create_journal_entry;
