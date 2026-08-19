@@ -234,12 +234,7 @@ async fn handle_submit<
     local_state.user_name_error.reset();
 
     let new_uuid = Id::generate();
-    let input = cases::sign_up::Input {
-        new_uuid: new_uuid.clone(),
-        name:     model.user_name.read().none_if_empty(),
-        user_id:  model.user_id.read(),
-        password: feature_state.user_password.read(),
-    };
+    let input = build_input::<As>(model, new_uuid.clone());
 
     let data = <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::wrap_input(input);
 
@@ -281,25 +276,17 @@ async fn handle_check<
     model: &'static ui_model::Model<As>,
     mut cache: client_traits::CacheActorStruct<Mpsc>,
 ) {
-    let feature_state = &model.feature_state_auth;
     let local_state = &model.page_sign_up;
 
     local_state.user_id_error.reset();
     local_state.user_name_error.reset();
 
-    let new_uuid = Id::generate();
-    let txn_number = Rn::generate();
-
+    let input = build_input::<As>(model, Id::generate());
     let mut receiver_to_response = cache
         .send_to_cache_actor(
             cache_actor::CachingStrategy::ReadCacheOnly,
-            txn_number,
-            <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::wrap_input(cases::sign_up::Input {
-                new_uuid: new_uuid.clone(),
-                name:     model.user_name.read().none_if_empty(),
-                user_id:  model.user_id.read(),
-                password: feature_state.user_password.read(),
-            }),
+            Rn::generate(),
+            <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::wrap_input(input),
         )
         .await;
 
@@ -314,5 +301,17 @@ async fn handle_check<
                 <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::unwrap_output(data);
             <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::apply_on_the_model(&result, model);
         }
+    }
+}
+
+fn build_input<As: ui_model::AllSignalTypes>(
+    model: &ui_model::Model<As>,
+    new_uuid: types::UuidType,
+) -> Type1 {
+    cases::sign_up::Input {
+        new_uuid,
+        name: model.user_name.read().none_if_empty(),
+        user_id: model.user_id.read(),
+        password: model.feature_state_auth.user_password.read(),
     }
 }

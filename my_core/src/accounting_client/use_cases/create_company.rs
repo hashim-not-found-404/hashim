@@ -146,26 +146,27 @@ async fn handle_submit<
     model: &'static ui_model::Model<As>,
     mut cache: client_traits::CacheActorStruct<Mpsc>,
 ) {
-    let data = model.user_uuid.read().clone().unwrap();
-
-    let local_state = &model.page_create_company;
-
-    let input = cases::create_company::Input {
-        user_uuid:    data,
-        new_uuid:     Id::generate(),
-        company_name: local_state.company_name.read(),
-        currency:     local_state.currency.read(),
-    };
-
-    let txn_number = Rn::generate();
-
+    let input = build_input::<Id, As>(model);
     cache
         .send_to_cache_actor(
             cache_actor::CachingStrategy::WriteCacheAndServer,
-            txn_number,
+            Rn::generate(),
             <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::wrap_input(input.clone()),
         )
         .await;
 
     handle_close::<As>(model);
+}
+
+fn build_input<Id: types::RowId, As: ui_model::AllSignalTypes>(
+    model: &ui_model::Model<As>,
+) -> Type1 {
+    let local_state = &model.page_create_company;
+
+    cases::create_company::Input {
+        user_uuid:    model.user_uuid.read().clone().unwrap(),
+        new_uuid:     Id::generate(),
+        company_name: local_state.company_name.read(),
+        currency:     local_state.currency.read(),
+    }
 }

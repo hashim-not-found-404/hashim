@@ -531,12 +531,48 @@ async fn handle_submit<
     }
     local_state.is_loading.set(true);
 
+    let Some(input) = build_input::<Id, As>(model) else {
+        model.page_create_journal_entry.is_loading.reset();
+        return;
+    };
+
+    let data = <ViewAndCacheType<Ti> as ViewAndCache<Ch, LongCache>>::wrap_input(input);
+
+    client_traits::handle_fall_back::<Rn, Rt, Mpsc, As>(
+        cache,
+        commander_local_state,
+        &model.page_create_journal_entry.show_dialog,
+        process_manager::ProcessName::CreateJournalEntry,
+        data,
+        move |data| {
+            let result = <ViewAndCacheType<Ti> as ViewAndCache<Ch, LongCache>>::unwrap_output(data);
+            <ViewAndCacheType<Ti> as ViewAndCache<Ch, LongCache>>::apply_on_the_model(
+                &result, model,
+            );
+
+            let is_ok = result.is_ok();
+            if is_ok {
+                handle_clean(model);
+            }
+
+            is_ok
+        },
+    )
+    .await;
+
+    local_state.is_loading.reset();
+}
+
+fn build_input<Id: types::RowId, As: ui_model::AllSignalTypes>(
+    model: &ui_model::Model<As>,
+) -> Option<Type1> {
+    let local_state = &model.page_create_journal_entry;
     let ui_entries = local_state.double_entries.read();
     for double in &ui_entries {
         for single in &double.singles {
             if single.inferred_account_id.is_none() {
                 local_state.some_account_are_not_inferred.set(true);
-                return;
+                return None;
             }
         }
     }
@@ -569,37 +605,11 @@ async fn handle_submit<
         })
         .collect();
 
-    let input = cases::create_journal_entry::Input {
+    Some(cases::create_journal_entry::Input {
         new_uuid:                 Id::generate(),
         belong_to_company_branch: model.selected_company_branch.read().unwrap(),
         user_uuid:                model.user_uuid.read().clone().unwrap(),
         shared_entry_id:          Id::parse(local_state.shared_entry_id.read()),
         double_entries:           double_entries_input,
-    };
-
-    let data = <ViewAndCacheType<Ti> as ViewAndCache<Ch, LongCache>>::wrap_input(input);
-
-    client_traits::handle_fall_back::<Rn, Rt, Mpsc, As>(
-        cache,
-        commander_local_state,
-        &model.page_create_journal_entry.show_dialog,
-        process_manager::ProcessName::CreateJournalEntry,
-        data,
-        move |data| {
-            let result = <ViewAndCacheType<Ti> as ViewAndCache<Ch, LongCache>>::unwrap_output(data);
-            <ViewAndCacheType<Ti> as ViewAndCache<Ch, LongCache>>::apply_on_the_model(
-                &result, model,
-            );
-
-            let is_ok = result.is_ok();
-            if is_ok {
-                handle_clean(model);
-            }
-
-            is_ok
-        },
-    )
-    .await;
-
-    local_state.is_loading.reset();
+    })
 }

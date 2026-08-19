@@ -337,36 +337,9 @@ async fn handle_submit<
     }
     model.page_create_account_for_branch.is_loading.set(true);
 
-    // 1. Gather inputs
-    let user_uuid = model.user_uuid.read().clone().unwrap();
-    let branch_uuid = model.selected_company_branch.read().unwrap();
-
-    // Find the account UUID by matching the account name
-    let account_uuid = model
-        .page_create_account_for_branch
-        .list_of_available_account
-        .read()
-        .first()
-        .map(|acc| acc.row_uuid.clone());
-
-    let account_uuid = match account_uuid {
-        Some(uuid) => uuid,
-        None => {
-            // No matching account – set error and bail
-            model.page_create_account_for_branch.is_loading.set(false);
-            return;
-        }
-    };
-
-    let new_uuid = Id::generate();
-
-    let input = cases::create_account_for_branch::Input {
-        user_uuid:                user_uuid.clone(),
-        new_uuid:                 new_uuid.clone(),
-        belong_to_account:        account_uuid.clone(),
-        belong_to_company_branch: branch_uuid.clone(),
-        outflow_type:             model.page_create_account_for_branch.outflow_type.read(),
-        inflow_type:              model.page_create_account_for_branch.inflow_type.read(),
+    let Some(input) = build_input::<Id, As>(model) else {
+        model.page_create_account_for_branch.is_loading.reset();
+        return;
     };
 
     let data = <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::wrap_input(input);
@@ -393,4 +366,24 @@ async fn handle_submit<
 
     // Reset the loading flag (already done in apply_on_the_model, but just in case)
     model.page_create_account_for_branch.is_loading.reset();
+}
+
+fn build_input<Id: types::RowId, As: ui_model::AllSignalTypes>(
+    model: &ui_model::Model<As>,
+) -> Option<Type1> {
+    let account_uuid = model
+        .page_create_account_for_branch
+        .list_of_available_account
+        .read()
+        .first()
+        .map(|acc| acc.row_uuid.clone())?;
+
+    Some(cases::create_account_for_branch::Input {
+        user_uuid:                model.user_uuid.read().clone().unwrap().clone(),
+        new_uuid:                 Id::generate().clone(),
+        belong_to_account:        account_uuid.clone(),
+        belong_to_company_branch: model.selected_company_branch.read().unwrap().clone(),
+        outflow_type:             model.page_create_account_for_branch.outflow_type.read(),
+        inflow_type:              model.page_create_account_for_branch.inflow_type.read(),
+    })
 }

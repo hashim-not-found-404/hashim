@@ -256,17 +256,7 @@ async fn handle_submit<
     }
     local_state.is_loading.set(true);
 
-    let data = model.user_uuid.read().clone().unwrap();
-
-    let input = cases::create_company_branch::Input {
-        user_uuid:      data,
-        new_uuid:       Id::generate(),
-        company_belong: model.selected_company.read().unwrap(),
-        currency:       local_state.currency.read(),
-        branch_name:    local_state.branch_name.read(),
-        location:       local_state.location.read(),
-    };
-
+    let input = build_input::<Id, As>(model);
     let data = <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::wrap_input(input);
 
     client_traits::handle_fall_back::<Rn, Rt, Mpsc, As>(
@@ -303,25 +293,12 @@ async fn handle_check<
     model: &'static ui_model::Model<As>,
     mut cache: client_traits::CacheActorStruct<Mpsc>,
 ) {
-    let local_state = &model.page_create_company_branch;
-
-    let data = model.user_uuid.read().clone().unwrap();
-
-    let input = cases::create_company_branch::Input {
-        user_uuid:      data,
-        new_uuid:       Id::generate(),
-        company_belong: model.selected_company.read().unwrap(),
-        currency:       local_state.currency.read(),
-        branch_name:    local_state.branch_name.read(),
-        location:       local_state.location.read(),
-    };
-
-    let txn_number = Rn::generate();
+    let input = build_input::<Id, As>(model);
 
     let mut receiver_to_response = cache
         .send_to_cache_actor(
             cache_actor::CachingStrategy::ReadCacheOnly,
-            txn_number,
+            Rn::generate(),
             <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::wrap_input(input),
         )
         .await;
@@ -359,4 +336,19 @@ fn handle_close<As: ui_model::AllSignalTypes>(model: &'static ui_model::Model<As
     model
         .navigator
         .set(ui_model::Navigator::ListCompanyAndBranch(ui_model::ListCompanyAndBranch::None));
+}
+
+fn build_input<Id: types::RowId, As: ui_model::AllSignalTypes>(
+    model: &ui_model::Model<As>,
+) -> Type1 {
+    let local_state = &model.page_create_company_branch;
+
+    cases::create_company_branch::Input {
+        user_uuid:      model.user_uuid.read().clone().unwrap(),
+        new_uuid:       Id::generate(),
+        company_belong: model.selected_company.read().unwrap(),
+        currency:       local_state.currency.read(),
+        branch_name:    local_state.branch_name.read(),
+        location:       local_state.location.read(),
+    }
 }

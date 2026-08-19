@@ -249,12 +249,7 @@ async fn handle_submit<
     local_state.user_id_error.reset();
     local_state.user_password_error.reset();
 
-    let user_id = model.user_id.read();
-    let input = cases::sign_in::Input {
-        user_id:  user_id.clone(),
-        password: feature_state.user_password.read(),
-    };
-
+    let input = build_input::<As>(model);
     let data = <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::wrap_input(input);
 
     client_traits::handle_fall_back::<Rn, Rt, Mpsc, As>(
@@ -294,22 +289,18 @@ async fn handle_check<
     model: &'static ui_model::Model<As>,
     mut cache: client_traits::CacheActorStruct<Mpsc>,
 ) {
-    let feature_state = &model.feature_state_auth;
     let local_state = &model.page_sign_in;
 
     local_state.user_id_error.reset();
     local_state.user_password_error.reset();
 
-    let txn_number = Rn::generate();
+    let input = build_input::<As>(model);
 
     let mut receiver_to_response = cache
         .send_to_cache_actor(
             cache_actor::CachingStrategy::ReadCacheOnly,
-            txn_number,
-            <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::wrap_input(cases::sign_in::Input {
-                user_id:  model.user_id.read(),
-                password: feature_state.user_password.read(),
-            }),
+            Rn::generate(),
+            <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::wrap_input(input),
         )
         .await;
 
@@ -338,5 +329,12 @@ fn handle_apply_result<
     <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::apply_on_the_model(&result, model);
     if let Ok(ok) = result {
         model.user_uuid.put(Some(ok.user_uuid));
+    }
+}
+
+fn build_input<As: ui_model::AllSignalTypes>(model: &ui_model::Model<As>) -> Type1 {
+    cases::sign_in::Input {
+        user_id:  model.user_id.read(),
+        password: model.feature_state_auth.user_password.read(),
     }
 }

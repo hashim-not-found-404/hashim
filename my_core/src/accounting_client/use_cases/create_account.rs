@@ -227,6 +227,23 @@ impl ui_model::CreateAccount {
     }
 }
 
+fn build_input<Id: types::RowId, As: ui_model::AllSignalTypes>(
+    model: &ui_model::Model<As>,
+) -> Type1 {
+    let local_state = &model.page_create_account;
+
+    cases::create_account::Input {
+        user_uuid:                       model.user_uuid.read().clone().unwrap(),
+        new_uuid:                        Id::generate(),
+        is_debit:                        local_state.is_debit.read(),
+        is_permanent_account:            local_state.is_permanent_account.read(),
+        account_name:                    local_state.account_name.read(),
+        notes:                           local_state.notes.read().none_if_empty(),
+        unit_of_measurement_of_quantity: local_state.unit_of_measurement_of_quantity.read(),
+        belong_to_company:               model.selected_company.read().unwrap(),
+    }
+}
+
 fn handle_clean<As: ui_model::AllSignalTypes>(model: &ui_model::Model<As>) {
     let local_state = &model.page_create_account;
 
@@ -252,21 +269,10 @@ async fn handle_submit<
     cache: client_traits::CacheActorStruct<Mpsc>,
     commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
 ) {
-    let user_uuid = model.user_uuid.read().clone().unwrap();
+    let input = build_input::<Id, As>(model);
+    let data = <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::wrap_input(input);
 
     let local_state = &model.page_create_account;
-
-    let input = cases::create_account::Input {
-        user_uuid,
-        new_uuid: Id::generate(),
-        is_debit: local_state.is_debit.read(),
-        is_permanent_account: local_state.is_permanent_account.read(),
-        account_name: local_state.account_name.read(),
-        notes: local_state.notes.read().none_if_empty(),
-        unit_of_measurement_of_quantity: local_state.unit_of_measurement_of_quantity.read(),
-        belong_to_company: model.selected_company.read().unwrap(),
-    };
-    let data = <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::wrap_input(input);
 
     client_traits::handle_fall_back::<Rn, Rt, Mpsc, As>(
         cache,
@@ -302,29 +308,11 @@ async fn handle_check<
     model: &'static ui_model::Model<As>,
     mut cache: client_traits::CacheActorStruct<Mpsc>,
 ) {
-    let local_state = &model.page_create_account;
-
-    let user_uuid = model.user_uuid.read().clone().unwrap();
-
-    let input = cases::create_account::Input {
-        user_uuid,
-        new_uuid: Id::generate(),
-        is_debit: local_state.is_debit.read(),
-        is_permanent_account: local_state.is_permanent_account.read(),
-        account_name: local_state.account_name.read(),
-        notes: local_state.notes.read().none_if_empty(),
-        unit_of_measurement_of_quantity: local_state.unit_of_measurement_of_quantity.read(),
-        belong_to_company: model.selected_company.read().unwrap(),
-    };
-
-    let txn_number = Rn::generate();
+    let input = build_input::<Id, As>(model);
+    let data = <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::wrap_input(input);
 
     let mut receiver_to_response = cache
-        .send_to_cache_actor(
-            cache_actor::CachingStrategy::ReadCacheOnly,
-            txn_number,
-            <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::wrap_input(input),
-        )
+        .send_to_cache_actor(cache_actor::CachingStrategy::ReadCacheOnly, Rn::generate(), data)
         .await;
 
     match receiver_to_response.recv().await.unwrap() {
