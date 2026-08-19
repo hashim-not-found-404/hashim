@@ -11,7 +11,6 @@ use crate::accounting_domain::request_response;
 use crate::accounting_domain::utility::resource_utils;
 use crate::accounting_domain::utility::types;
 use crate::utility::traits;
-use crate::utility::traits::JoinHandle;
 use crate::utility::traits::Receiver;
 use crate::utility::traits::Sender;
 use crate::utility::utils::ReadAndSet;
@@ -257,110 +256,30 @@ async fn handle_submit<
     };
 
     let data = <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::wrap_input(input);
-    let txn_number = Rn::generate();
 
-    {
-        let dialog: &'static As::Dialog = &local_state.show_dialog;
-        let mut cache = cache;
-        let data1 = data.clone();
-        let mut cache1 = cache.clone();
-        let commander_local_state1 = commander_local_state.clone();
-        let mut handle = <Rt>::abortable_spawn_local(async move {
-            let mut receiver_to_response = cache1
-                .send_to_cache_actor(
-                    cache_actor::CachingStrategy::WriteServerOnly,
-                    txn_number,
-                    data1,
-                )
-                .await;
+    client_traits::handle_fall_back::<Rn, Rt, Mpsc, As>(
+        cache,
+        commander_local_state,
+        &model.page_sign_in.show_dialog,
+        process_manager::ProcessName::SignIn,
+        data,
+        move |data| {
+            let result = <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::unwrap_output(data);
+            <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::apply_on_the_model(&result, model);
 
-            match receiver_to_response.recv().await.unwrap() {
-                cache_actor::Response::CloseTheChannel => {}
-                cache_actor::Response::ServerCannotBeReached => {}
-                cache_actor::Response::Data {
-                    is_response_from_server,
-                    data,
-                } => {
-                    let result =
-                        <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::unwrap_output(data);
-                    let is_ok = result.is_ok();
-                    <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::apply_on_the_model(
-                        &result, model,
-                    );
+            let is_ok = result.is_ok();
+            if let Ok(ok) = result {
+                model.user_uuid.put(Some(ok.user_uuid));
 
-                    if let Ok(ok) = result {
-                        model.user_uuid.put(Some(ok.user_uuid));
-
-                        model.navigator.set(ui_model::Navigator::ListCompanyAndBranch(
-                            ui_model::ListCompanyAndBranch::None,
-                        ));
-                    }
-
-                    commander_local_state1
-                        .sender_to_process_manager
-                        .read()
-                        .send(process_manager::MessageToProcessManager::FromProcess {
-                            process_name: process_manager::ProcessName::SignIn,
-                            message:      process_manager::MessageFromProcess::Response {
-                                is_response_from_server,
-                                is_response_ok: is_ok,
-                            },
-                        })
-                        .await
-                        .unwrap();
-                }
+                model.navigator.set(ui_model::Navigator::ListCompanyAndBranch(
+                    ui_model::ListCompanyAndBranch::None,
+                ));
             }
-        });
-        let (sender_to_process, mut receiver_to_process) = <Mpsc>::channel();
-        commander_local_state
-            .sender_to_process_manager
-            .read()
-            .send(process_manager::MessageToProcessManager::FromProcess {
-                process_name: process_manager::ProcessName::SignIn,
-                message:      process_manager::MessageFromProcess::Subscribe {
-                    sender: sender_to_process,
-                    dialog,
-                },
-            })
-            .await
-            .unwrap();
-        match receiver_to_process.recv().await.unwrap() {
-            process_manager::MessageToProcess::FallBackToCache => {
-                let mut receiver_to_response = cache
-                    .send_to_cache_actor(
-                        cache_actor::CachingStrategy::WriteCacheOnly,
-                        txn_number,
-                        data,
-                    )
-                    .await;
 
-                match receiver_to_response.recv().await.unwrap() {
-                    cache_actor::Response::CloseTheChannel => return,
-                    cache_actor::Response::ServerCannotBeReached => return,
-                    cache_actor::Response::Data {
-                        is_response_from_server: _,
-                        data,
-                    } => {
-                        let result =
-                            <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::unwrap_output(data);
-                        <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::apply_on_the_model(
-                            &result, model,
-                        );
-
-                        if let Ok(ok) = result {
-                            model.user_uuid.put(Some(ok.user_uuid));
-
-                            model.navigator.set(ui_model::Navigator::ListCompanyAndBranch(
-                                ui_model::ListCompanyAndBranch::None,
-                            ));
-                        }
-                    }
-                }
-            }
-            process_manager::MessageToProcess::CancelOperation => {}
-        }
-        handle.abort().await;
-    }
+            is_ok
+        },
+    )
+    .await;
 
     feature_state.is_loading.reset();
 }
