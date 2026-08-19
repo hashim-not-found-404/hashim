@@ -507,9 +507,8 @@ fn horizontal_infer_for_quantity_from_amount<C, A, AId>(
                 continue;
             };
 
-            let is_inflow = match single.get_inferred_is_inflow() {
-                Some(is_inflow) => is_inflow,
-                None => continue,
+            let Some(is_inflow) = single.get_inferred_is_inflow() else {
+                continue;
             };
 
             if is_inflow {

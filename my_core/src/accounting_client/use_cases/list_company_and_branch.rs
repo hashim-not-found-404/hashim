@@ -328,7 +328,7 @@ where
 }
 
 impl ui_model::CompanyAndBranchSelection {
-    pub(crate) async fn update<
+    pub(crate) fn update<
         Rn: traits::RandomNumber,
         Rt: traits::Runtime,
         Mpsc: traits::MultiProducerSingleConsumer,

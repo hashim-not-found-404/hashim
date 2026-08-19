@@ -206,8 +206,8 @@ impl<
         }
     }
 
-    fn to<'de>(
-        msg: Self::MessageFromServer<'de>,
+    fn to(
+        msg: Self::MessageFromServer<'_>,
     ) -> cache_actor::FromServer<Self::E, Self::Response, Self::Resource> {
         match msg {
             request_response::messages::FromServer::Error(a) => cache_actor::FromServer::Error(a),

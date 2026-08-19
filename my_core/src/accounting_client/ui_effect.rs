@@ -115,7 +115,7 @@ impl<Mpsc: traits::MultiProducerSingleConsumer> Commander<Mpsc> {
                                 cache,
                                 commander_local_state,
                             )
-                            .await
+
                         }
                         ui_model::Message::CreateCompany(msg) => {
                             msg.update::<Rn, Id, Mpsc, As, Ch, Dbb::CreateCompany>(

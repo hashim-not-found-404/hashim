@@ -272,8 +272,6 @@ async fn handle_submit<
     let input = build_input::<Id, As>(model);
     let data = <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::wrap_input(input);
 
-    let local_state = &model.page_create_account;
-
     client_traits::handle_fall_back::<Rn, Rt, Mpsc, As>(
         cache,
         commander_local_state,
@@ -282,9 +280,9 @@ async fn handle_submit<
         data,
         move |data| {
             let result = <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::unwrap_output(data);
-            let is_ok = result.is_ok();
             <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::apply_on_the_model(&result, model);
 
+            let is_ok = result.is_ok();
             if is_ok {
                 handle_clean(model);
             }
@@ -294,7 +292,7 @@ async fn handle_submit<
     )
     .await;
 
-    local_state.is_loading.reset();
+    model.page_create_account.is_loading.reset();
 }
 
 async fn handle_check<
