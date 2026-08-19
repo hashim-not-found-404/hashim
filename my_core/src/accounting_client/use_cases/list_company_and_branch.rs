@@ -409,66 +409,22 @@ fn handle_list_company_and_branch_listener<
     LongCache: for<'a> cases::list_company_and_branch::DatabaseRead<Db<'a> = Ch>,
 >(
     model: &'static ui_model::Model<As>,
-    mut cache: client_traits::CacheActorStruct<Mpsc>,
+    cache: client_traits::CacheActorStruct<Mpsc>,
 ) -> impl FnOnce() {
-    let component_id = Rn::generate() as u16;
-    let mut cache1 = cache.clone();
-
-    let mut handle = Rt::abortable_spawn_local(async move {
-        let mut receiver_to_poke = cache
-            .send_subs_to_cache_actor(
-                component_id,
-                <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::subs(),
-            )
-            .await;
-
-        let data: types::UuidType = model.user_uuid.read().clone().unwrap();
-
-        loop {
-            if receiver_to_poke.recv().await.is_err() {
-                break;
-            }
-
-            let txn_number = Rn::generate();
-
-            let value = cache
-                .send_to_cache_actor(
-                    cache_actor::CachingStrategy::ReadCacheOnly,
-                    txn_number,
-                    <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::wrap_input(Type1 {
-                        user_uuid: data.clone(),
-                    }),
-                )
-                .await
-                .recv()
-                .await
-                .unwrap();
-
-            let value = match value {
-                cache_actor::Response::CloseTheChannel => break,
-                cache_actor::Response::ServerCannotBeReached => break,
-                cache_actor::Response::Data {
-                    is_response_from_server: _,
-                    data,
-                } => <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::unwrap_output(data),
-            };
-
-            <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::apply_on_the_model(&value, model);
-
-            if value.is_err() {
-                break;
-            }
-        }
-
-        cache.send_unsubs_to_cache_actor(component_id).await
+    let data = <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::wrap_input(Type1 {
+        user_uuid: model.user_uuid.read().clone().unwrap(),
     });
 
-    move || {
-        Rt::spawn_local(async move {
-            handle.abort().await;
-            cache1.send_unsubs_to_cache_actor(component_id).await;
-        });
-    }
+    client_traits::spawn_listener::<Rn, Rt, Mpsc>(
+        cache,
+        <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::subs(),
+        data,
+        move |data| {
+            let data = <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::unwrap_output(data);
+            <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::apply_on_the_model(&data, model);
+            data.is_err()
+        },
+    )
 }
 
 async fn handle_list_company_and_branch<

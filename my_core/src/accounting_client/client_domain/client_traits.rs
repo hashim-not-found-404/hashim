@@ -143,3 +143,61 @@ pub(crate) async fn handle_fall_back<
     }
     handle.abort().await;
 }
+
+pub(crate) fn spawn_listener<
+    Rn: traits::RandomNumber,
+    Rt: traits::Runtime,
+    Mpsc: traits::MultiProducerSingleConsumer,
+>(
+    mut cache: CacheActorStruct<Mpsc>,
+    list_of_subscribtion: &'static [resource_utils::Subscribe],
+    data: request_response::push_data::OperationsInput,
+    is_error: impl Fn(OperationsResult) -> bool + 'static,
+) -> impl FnOnce() {
+    let component_id = Rn::generate() as u16;
+    let mut cache1 = cache.clone();
+
+    let mut handle = Rt::abortable_spawn_local(async move {
+        let mut receiver_to_poke =
+            cache.send_subs_to_cache_actor(component_id, list_of_subscribtion).await;
+
+        loop {
+            if receiver_to_poke.recv().await.is_err() {
+                break;
+            }
+
+            let txn_number = Rn::generate();
+
+            let value = cache
+                .send_to_cache_actor(
+                    cache_actor::CachingStrategy::ReadCacheOnly,
+                    txn_number,
+                    data.clone(),
+                )
+                .await
+                .recv()
+                .await
+                .unwrap();
+
+            match value {
+                cache_actor::Response::Data {
+                    data,
+                    ..
+                } => {
+                    if is_error(data) {
+                        break;
+                    }
+                }
+                _ => break,
+            };
+        }
+        cache.send_unsubs_to_cache_actor(component_id).await;
+    });
+
+    move || {
+        Rt::spawn_local(async move {
+            handle.abort().await;
+            cache1.send_unsubs_to_cache_actor(component_id).await;
+        });
+    }
+}

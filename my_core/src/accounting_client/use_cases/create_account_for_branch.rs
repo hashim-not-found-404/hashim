@@ -313,85 +313,35 @@ fn handle_listener<
     LongCacheForGetAllAccountsForBranch: for<'a> cases::get_all_accounts_for_branch::DatabaseRead<Db<'a> = Ch>,
 >(
     model: &'static ui_model::Model<As>,
-    mut cache: client_traits::CacheActorStruct<Mpsc>,
+    cache: client_traits::CacheActorStruct<Mpsc>,
 ) -> impl FnOnce() {
-    let component_id = Rn::generate() as u16;
-    let mut cache1 = cache.clone();
+    let data = cases::get_all_accounts_for_branch::Input {
+        user_uuid:           model.user_uuid.read().clone().unwrap().clone(),
+        company_branch_uuid: model.selected_company_branch.read().unwrap().clone(),
+    };
+    let data = <fetches::get_all_accounts_for_branch::ViewAndCacheType as ViewAndCache<
+        Ch,
+        LongCacheForGetAllAccountsForBranch,
+    >>::wrap_input(data);
 
-    let mut handle = Rt::abortable_spawn_local(async move {
-        // Subscribe to the relevant resources
-        let mut receiver_to_poke = cache
-            .send_subs_to_cache_actor(
-                component_id,
-                <fetches::get_all_accounts_for_branch::ViewAndCacheType as ViewAndCache<
-                    Ch,
-                    LongCacheForGetAllAccountsForBranch,
-                >>::subs(),
-            )
-            .await;
-
-        let user_uuid = model.user_uuid.read().clone().unwrap();
-        let company_branch_uuid = model.selected_company_branch.read().unwrap();
-
-        loop {
-            if receiver_to_poke.recv().await.is_err() {
-                break;
-            }
-
-            let input = cases::get_all_accounts_for_branch::Input {
-                user_uuid:           user_uuid.clone(),
-                company_branch_uuid: company_branch_uuid.clone(),
-            };
-            let txn_number = Rn::generate();
-            let value = cache
-                .send_to_cache_actor(
-                    cache_actor::CachingStrategy::ReadCacheOnly,
-                    txn_number,
-                    <fetches::get_all_accounts_for_branch::ViewAndCacheType as ViewAndCache<
-                        Ch,
-                        LongCacheForGetAllAccountsForBranch,
-                    >>::wrap_input(input),
-                )
-                .await
-                .recv()
-                .await
-                .unwrap();
-
-            let value = match value {
-                cache_actor::Response::CloseTheChannel => break,
-                cache_actor::Response::ServerCannotBeReached => break,
-                cache_actor::Response::Data {
-                    is_response_from_server: _,
-                    data,
-                } => {
-                    <fetches::get_all_accounts_for_branch::ViewAndCacheType as ViewAndCache<
-                        Ch,
-                        LongCacheForGetAllAccountsForBranch,
-                    >>::unwrap_output(data)
-                }
-            };
-
-            <fetches::get_all_accounts_for_branch::ViewAndCacheType as ViewAndCache<
+    client_traits::spawn_listener::<Rn, Rt, Mpsc>(
+        cache,
+        <fetches::get_all_accounts_for_branch::ViewAndCacheType as ViewAndCache<
+            Ch,
+            LongCacheForGetAllAccountsForBranch,
+        >>::subs(),
+        data,
+        move |data| {
+            let data = <fetches::get_all_accounts_for_branch::ViewAndCacheType as ViewAndCache<
                 Ch,
                 LongCacheForGetAllAccountsForBranch,
-            >>::apply_on_the_model(&value, model);
+            >>::unwrap_output(data);
 
-            if value.is_err() {
-                break;
-            }
-        }
+            apply_fetch_result::<As>(&data, model);
 
-        // Clean up subscription when loop exits
-        cache.send_unsubs_to_cache_actor(component_id).await;
-    });
-
-    // Return a closure that aborts the listener and unsubscribes
-    move || {
-        Rt::spawn_local(async move {
-            handle.abort().await;
-            cache1.send_unsubs_to_cache_actor(component_id).await;
-        });
-    }
+            data.is_err()
+        },
+    )
 }
 
 // ---- Clean ----
