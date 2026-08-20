@@ -74,6 +74,7 @@ pub(crate) trait CacheActorUtils {
 
     async fn get_all_pending_txn(cache: &Self::Cache) -> Vec<(u64, Self::OpInput)>;
     async fn clear_state_pending_txn(cache: &mut Self::Cache);
+    async fn start_state_pending_txn(cache: &mut Self::Cache);
 
     type SendingTxns: serde::Serialize;
     async fn prepare_txn_for_send(
@@ -103,7 +104,7 @@ pub(crate) trait CacheActorUtils {
     );
     async fn check_input(cache: &mut Self::Cache, data: &Self::OpInput) -> Self::OpResult;
     fn extract_resource1(data: &Self::OpResult) -> Vec<Self::Resource>;
-    fn apply_input(cache: &mut Self::Cache, resource: &[Self::Resource]);
+    async fn apply_input(cache: &mut Self::Cache, resource: &[Self::Resource]);
     async fn write_input(cache: &Self::Cache, txn_number: u64, data: &Self::OpInput);
 }
 
@@ -270,6 +271,7 @@ where
                             FromServer::Response(response) => {
                                 let mut subs_to_poke = HashSet::new();
 
+                                Cu::clear_state_pending_txn(&mut cache).await;
                                 let resource = Cu::extract_resource(&response);
                                 Cu::write_resource(&cache, &resource).await;
                                 Cu::delete_successful_txn_input(&cache, &response).await;
@@ -291,13 +293,13 @@ where
                                     }
                                 }
 
-                                Cu::clear_state_pending_txn(&mut cache).await;
+                                Cu::start_state_pending_txn(&mut cache).await;
                                 let txns = Cu::get_all_pending_txn(&cache).await;
 
                                 for (_, txn) in txns {
                                     let result = Cu::check_input(&mut cache, &txn).await;
                                     let resource = Cu::extract_resource1(&result);
-                                    Cu::apply_input(&mut cache, &resource);
+                                    Cu::apply_input(&mut cache, &resource).await;
                                 }
 
                                 poke_the_subs::<Mpsc, Subscribe>(
@@ -409,7 +411,7 @@ where
                                 let result = Cu::check_input(&mut cache, &data).await;
                                 let resource = Cu::extract_resource1(&result);
 
-                                Cu::apply_input(&mut cache, &resource);
+                                Cu::apply_input(&mut cache, &resource).await;
                                 Cu::write_input(&cache, txn_number, &data).await;
 
                                 let mut subs_to_poke = HashSet::new();
@@ -437,7 +439,7 @@ where
                                 let result = Cu::check_input(&mut cache, &data).await;
                                 let resource = Cu::extract_resource1(&result);
 
-                                Cu::apply_input(&mut cache, &resource);
+                                Cu::apply_input(&mut cache, &resource).await;
                                 Cu::write_input(&cache, txn_number, &data).await;
 
                                 let mut subs_to_poke = HashSet::new();

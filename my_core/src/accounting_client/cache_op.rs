@@ -6,7 +6,6 @@ use crate::accounting_client::use_cases;
 use crate::accounting_domain::cases;
 use crate::accounting_domain::request_response;
 use crate::accounting_domain::utility::resource_utils;
-use crate::accounting_domain::utility::resource_utils::apply_change;
 use crate::accounting_domain::utility::types;
 use crate::utility::traits;
 
@@ -23,22 +22,16 @@ pub trait DbBundle<Ch: cache::Cache>: 'static {
     type SignUp: for<'a> cases::sign_up::DatabaseRead<Db<'a> = Ch>;
 }
 
-impl<Ch: cache::Cache> cache::State<Ch> {
-    pub(crate) async fn new<Id: types::RowId, Ti: traits::Time, Dbb: DbBundle<Ch>>() -> Self {
-        let cache = Ch::new().await;
-        let txns = cache.get_all_txn_input().await;
+pub(crate) async fn new<Id: types::RowId, Ti: traits::Time, Dbb: DbBundle<Ch>, Ch: cache::Cache>()
+-> Ch {
+    let mut cache = Ch::new().await;
+    let txns = cache.get_all_txn_input().await;
 
-        let mut state = Self {
-            state_of_pending_txn: resource_utils::StateOfPendingTxn::default(),
-            cache,
-        };
-
-        for op in txns {
-            op.operation.run_operation_check_apply::<Id, Ti, Ch, Dbb>(&mut state).await;
-        }
-
-        state
+    for op in txns {
+        op.operation.run_operation_check_apply::<Id, Ti, Ch, Dbb>(&mut cache).await;
     }
+
+    cache
 }
 
 macro_rules! run_operation_check {
@@ -56,7 +49,7 @@ macro_rules! run_operation_check_apply {
     ($path:ident, $db:ty, $i:expr, $state:expr) => {
         let a= <use_cases::$path::ViewAndCacheType as ViewAndCache<Ch,$db>>::state_full_operation::<Id>($i, $state).await;
         let resources=<use_cases::$path::ViewAndCacheType as ViewAndCache<Ch,$db>>::extract_resource(&a);
-        apply_change(resources,&mut $state.state_of_pending_txn);
+        $state.write_resource_of_pending_txn(&resources).await;
     };
 }
 
@@ -74,7 +67,7 @@ impl request_response::push_data::OperationsInput {
         Dbb: DbBundle<Ch>,
     >(
         &self,
-        state: &mut cache::State<Ch>,
+        state: &mut Ch,
     ) -> request_response::push_data::OperationsResult {
         match self {
             request_response::push_data::OperationsInput::SignUp(i) => {
@@ -147,7 +140,7 @@ impl request_response::push_data::OperationsInput {
         Dbb: DbBundle<Ch>,
     >(
         &self,
-        state: &mut cache::State<Ch>,
+        state: &mut Ch,
     ) {
         match self {
             request_response::push_data::OperationsInput::SignUp(i) => {
@@ -204,7 +197,7 @@ impl request_response::push_data::OperationsInput {
                         Ch,
                         Dbb::CreateJournalEntry,
                     >>::extract_resource(&result);
-                apply_change(resources, &mut state.state_of_pending_txn);
+                state.write_resource_of_pending_txn(&resources).await;
             }
         }
     }

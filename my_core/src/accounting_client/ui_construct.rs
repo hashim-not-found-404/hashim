@@ -120,7 +120,7 @@ impl<
     Dbb: cache_op::DbBundle<Ch>,
 > cache_actor::CacheActorUtils for MyCache<Mpsc, Ch, Id, Ti, Dbb>
 {
-    type Cache = cache::State<Ch>;
+    type Cache = Ch;
     type E = types::HashimError;
     type ErrorSender = Mpsc::Sender<types::HashimError>;
     type MessageFromServer<'de> = request_response::messages::FromServer;
@@ -160,11 +160,11 @@ impl<
     }
 
     async fn new_cache() -> Self::Cache {
-        cache::State::<Ch>::new::<Id, Ti, Dbb>().await
+        cache_op::new::<Id, Ti, Dbb, Ch>().await
     }
 
     async fn get_all_pending_txn(cache: &Self::Cache) -> Vec<(u64, Self::OpInput)> {
-        let txns = cache.cache.get_all_txn_input().await;
+        let txns = cache.get_all_txn_input().await;
 
         let mut result = Vec::with_capacity(txns.len());
         for txn in txns {
@@ -174,7 +174,11 @@ impl<
     }
 
     async fn clear_state_pending_txn(cache: &mut Self::Cache) {
-        cache.state_of_pending_txn = Default::default();
+        cache.clear_pending_txn_state().await;
+    }
+
+    async fn start_state_pending_txn(cache: &mut Self::Cache) {
+        cache.start_pending_txn_state().await;
     }
 
     async fn prepare_txn_for_send(
@@ -184,7 +188,7 @@ impl<
         let mut jwts = Vec::new();
         for (_, txn) in &txns {
             if let Some(user_uuid) = txn.get_user_uuid::<Ti, Ch, Dbb>()
-                && let Some(jwt) = cache.cache.get_jwt(user_uuid).await
+                && let Some(jwt) = cache.get_jwt(user_uuid).await
             {
                 jwts.push(jwt)
             }
@@ -225,13 +229,13 @@ impl<
     }
 
     async fn write_resource(cache: &Self::Cache, resource: &[Self::Resource]) {
-        cache.cache.write_resource(resource).await;
+        cache.write_resource_from_server(resource).await;
     }
 
     async fn delete_successful_txn_input(cache: &Self::Cache, resp: &Self::Response) {
         for i in &resp.operations {
             if i.operation.is_ok() {
-                cache.cache.delete_txn_input(&i.txn_number).await;
+                cache.delete_txn_input(&i.txn_number).await;
             }
         }
     }
@@ -239,7 +243,7 @@ impl<
     async fn mark_txn_input_as_faild(cache: &Self::Cache, resp: &Self::Response) {
         for i in &resp.operations {
             if !i.operation.is_ok() {
-                cache.cache.mark_txn_input_as_faild(&i.txn_number).await;
+                cache.mark_txn_input_as_faild(&i.txn_number).await;
             }
         }
     }
@@ -247,7 +251,7 @@ impl<
     async fn write_faild_txn_result(cache: &Self::Cache, resp: &Self::Response) {
         for i in &resp.operations {
             if !i.operation.is_ok() {
-                cache.cache.write_txn_result(i).await;
+                cache.write_txn_result(i).await;
             }
         }
     }
@@ -275,13 +279,12 @@ impl<
         data.extract_resource::<Ti, Ch, Dbb>()
     }
 
-    fn apply_input(cache: &mut Self::Cache, resource: &[Self::Resource]) {
-        resource_utils::apply_change(resource.to_vec(), &mut cache.state_of_pending_txn);
+    async fn apply_input(cache: &mut Self::Cache, resource: &[Self::Resource]) {
+        cache.write_resource_of_pending_txn(resource).await;
     }
 
     async fn write_input(cache: &Self::Cache, txn_number: u64, data: &Self::OpInput) {
         cache
-            .cache
             .write_txn_input(&request_response::push_data::Txn {
                 txn_number,
                 operation: data.clone(),

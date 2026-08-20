@@ -20,7 +20,7 @@ impl cases::sign_up::DatabaseRead for S {
         let query = QUERY;
 
         let a = db
-            .db
+            .tables_db
             .query_one(query, params![read_input.new_uuid.to_string(), read_input.user_id], |row| {
                 Ok(cases::sign_up::ReadOutput {
                     is_new_uuid_exist: row.get(0).unwrap(),
@@ -36,10 +36,10 @@ impl cases::sign_up::DatabaseRead for S {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::utility::test_helper::test_query_helper;
+    use crate::utility::test_helper::test_query_helper_for_tables_schema;
 
     #[test]
     fn test_query_string_directly() {
-        test_query_helper(QUERY).unwrap();
+        test_query_helper_for_tables_schema(QUERY).unwrap();
     }
 }

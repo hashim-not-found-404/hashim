@@ -36,10 +36,7 @@ where
         Some(&data.user_uuid)
     }
 
-    async fn state_full_operation<Id: types::RowId>(
-        data: &Self::Type2,
-        _: &mut cache::State<Ch>,
-    ) -> Self::Type3 {
+    async fn state_full_operation<Id: types::RowId>(data: &Self::Type2, _: &mut Ch) -> Self::Type3 {
         Ok(data.state_less_operation())
     }
 

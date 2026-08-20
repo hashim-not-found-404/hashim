@@ -26,7 +26,7 @@ impl cases::get_all_accounts_for_branch::DatabaseRead for S {
         let branch_uuid_str = read_input.company_branch_uuid.to_string();
 
         // 1. Get the company UUID for this branch
-        let mut stmt = db.db.prepare(QUERY1).unwrap();
+        let mut stmt = db.tables_db.prepare(QUERY1).unwrap();
         let company_uuid_str: Option<String> =
             stmt.query_row(params![branch_uuid_str], |row| row.get::<_, String>(0)).ok();
         let company_uuid = match company_uuid_str {
@@ -37,7 +37,7 @@ impl cases::get_all_accounts_for_branch::DatabaseRead for S {
         };
 
         // 2. Get all accounts for that company
-        let mut stmt = db.db.prepare(QUERY2).unwrap();
+        let mut stmt = db.tables_db.prepare(QUERY2).unwrap();
         let account_rows = stmt
             .query_map(params![company_uuid.to_string()], |row| {
                 let row_uuid_str: String = row.get(0)?;
@@ -61,7 +61,7 @@ impl cases::get_all_accounts_for_branch::DatabaseRead for S {
             account_rows.filter_map(|row| row.ok()).collect();
 
         // 3. Get account_flow_type entries for this branch
-        let mut stmt = db.db.prepare(QUERY3).unwrap();
+        let mut stmt = db.tables_db.prepare(QUERY3).unwrap();
         let flow_rows = stmt
             .query_map(params![branch_uuid_str], |row| {
                 let row_uuid_str: String = row.get(0).unwrap();
@@ -94,7 +94,7 @@ impl cases::get_all_accounts_for_branch::DatabaseRead for S {
 mod tests {
     use super::*;
     use crate::utility::cache_adapter;
-    use crate::utility::test_helper::test_query_helper;
+    use crate::utility::test_helper::test_query_helper_for_tables_schema;
     use my_core::accounting_domain::cases::get_all_accounts_for_branch::DatabaseRead;
     use my_core::accounting_domain::utility::types::UuidType;
     use my_core::utility::utils::MakeOptionIfEmpty;
@@ -204,7 +204,8 @@ mod tests {
     async fn test_get_all_accounts_for_branch_success() {
         let (conn, company_uuid, branch_uuid) = setup_test_db();
         let mut db = cache_adapter::S {
-            db: conn,
+            tables_db:       conn,
+            transactions_db: Connection::open_in_memory().unwrap(),
         };
         let read_input = cases::get_all_accounts_for_branch::ReadInput {
             user_uuid:           UuidType([0; 16]), // not used in this test
@@ -247,13 +248,14 @@ mod tests {
     async fn test_get_all_accounts_for_branch_no_accounts() {
         let (conn, company_uuid, _) = setup_test_db();
         let mut db = cache_adapter::S {
-            db: conn,
+            tables_db:       conn,
+            transactions_db: Connection::open_in_memory().unwrap(),
         };
 
         // Create a second branch with no accounts or flow types
         let branch2_uuid = Uuid::from_str("00000000-0000-0000-0000-000000000006").unwrap();
         let branch2_uuid_str = branch2_uuid.to_string();
-        db.db.execute(
+        db.tables_db.execute(
             "INSERT INTO company_branch (rowid, company_belong, name, location_latitude, location_longitude, currency)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
             params![
@@ -282,7 +284,8 @@ mod tests {
     async fn test_get_all_accounts_for_branch_branch_not_found() {
         let (conn, _, _) = setup_test_db();
         let mut db = cache_adapter::S {
-            db: conn,
+            tables_db:       conn,
+            transactions_db: Connection::open_in_memory().unwrap(),
         };
 
         let nonexistent_uuid = Uuid::from_str("ffffffff-ffff-ffff-ffff-ffffffffffff").unwrap();
@@ -322,7 +325,8 @@ mod tests {
         ).unwrap();
 
         let mut db = cache_adapter::S {
-            db: conn,
+            tables_db:       conn,
+            transactions_db: Connection::open_in_memory().unwrap(),
         };
         let read_input = cases::get_all_accounts_for_branch::ReadInput {
             user_uuid:           UuidType([0; 16]),
@@ -366,7 +370,8 @@ mod tests {
         ).unwrap();
 
         let mut db = cache_adapter::S {
-            db: conn,
+            tables_db:       conn,
+            transactions_db: Connection::open_in_memory().unwrap(),
         };
         let read_input = cases::get_all_accounts_for_branch::ReadInput {
             user_uuid:           UuidType([0; 16]),
@@ -378,8 +383,8 @@ mod tests {
 
     #[test]
     fn test_query_string_directly() {
-        test_query_helper(QUERY1).unwrap();
-        test_query_helper(QUERY2).unwrap();
-        test_query_helper(QUERY3).unwrap();
+        test_query_helper_for_tables_schema(QUERY1).unwrap();
+        test_query_helper_for_tables_schema(QUERY2).unwrap();
+        test_query_helper_for_tables_schema(QUERY3).unwrap();
     }
 }

@@ -2,83 +2,11 @@ use crate::accounting_client::client_domain::cache;
 use crate::accounting_client::client_domain::client_traits::ViewAndCache;
 use crate::accounting_client::client_domain::ui_model;
 use crate::accounting_domain::cases;
-use crate::accounting_domain::cases::get_all_accounts_for_branch::DatabaseRead;
 use crate::accounting_domain::request_response;
 use crate::accounting_domain::utility::resource_utils;
 use crate::accounting_domain::utility::types;
-use crate::utility::traits;
 use std::collections::HashSet;
-use std::marker::PhantomData;
 
-// ---- 1. A DatabaseRead that merges pending transactions ----
-struct CacheRead<Ch, LongCache>
-where
-    Ch: cache::Cache,
-    LongCache: for<'a> cases::get_all_accounts_for_branch::DatabaseRead<Db<'a> = Ch>,
-{
-    _ph: PhantomData<(Ch, LongCache)>,
-}
-
-impl<Ch, LongCache> cases::get_all_accounts_for_branch::DatabaseRead for CacheRead<Ch, LongCache>
-where
-    Ch: cache::Cache,
-    LongCache: for<'a> cases::get_all_accounts_for_branch::DatabaseRead<Db<'a> = Ch>,
-{
-    type Db<'a> = cache::State<Ch>;
-
-    async fn read(
-        db: &mut Self::Db<'_>,
-        read_input: &cases::get_all_accounts_for_branch::ReadInput,
-    ) -> Result<cases::get_all_accounts_for_branch::ReadOutput, traits::DynamicError> {
-        // 1. Read from the underlying cache
-        let mut output = LongCache::read(&mut db.cache, read_input).await.unwrap();
-
-        for (row_uuid, company_branch) in &db.state_of_pending_txn.company_branch {
-            if *row_uuid == read_input.company_branch_uuid {
-                output.company_uuid = company_branch.company_belong.clone();
-            }
-        }
-
-        for (row_uuid, account) in &db.state_of_pending_txn.account {
-            if account.company_belong == output.company_uuid {
-                // Check if already present (by UUID)
-                if !output.accounts.iter().any(|a| a.row_uuid == *row_uuid) {
-                    output.accounts.push(cases::get_all_accounts_for_branch::Account {
-                        row_uuid:                        row_uuid.clone(),
-                        is_debit:                        account.is_debit,
-                        is_permanent_account:            account.is_permanent_account,
-                        account_name:                    account.name.clone(),
-                        notes:                           account.notes.clone(),
-                        unit_of_measurement_of_quantity: account
-                            .unit_of_measurement_of_quantity
-                            .clone(),
-                    });
-                }
-            }
-        }
-
-        // 2. Merge pending account_flow_type entries (uncommitted changes)
-        for (row_uuid, acft) in &db.state_of_pending_txn.account_flow_type {
-            if acft.company_branch == read_input.company_branch_uuid {
-                let exists = output.accounts_for_branch.iter().any(|a| a.row_uuid == *row_uuid);
-                if !exists && db.state_of_pending_txn.account.contains_key(&acft.account) {
-                    output.accounts_for_branch.push(
-                        cases::get_all_accounts_for_branch::AccountForBranch {
-                            row_uuid:     row_uuid.clone(),
-                            account_uuid: acft.account.clone(),
-                            outflow_type: acft.outflow_type,
-                            inflow_type:  acft.inflow_type,
-                        },
-                    );
-                }
-            }
-        }
-
-        Ok(output)
-    }
-}
-
-// ---- 2. The ViewAndCache implementation ----
 pub struct ViewAndCacheType;
 
 impl<Ch, LongCache> ViewAndCache<Ch, LongCache> for ViewAndCacheType
@@ -92,7 +20,6 @@ where
     type Type4 = cases::get_all_accounts_for_branch::MyResult;
 
     fn subs() -> &'static [resource_utils::Subscribe] {
-        // We care about account fields and account_flow_type fields.
         &[
             resource_utils::Subscribe::TableAccountFieldCompanyBelong,
             resource_utils::Subscribe::TableAccountFieldIsDebit,
@@ -117,16 +44,13 @@ where
 
     async fn state_full_operation<Id: types::RowId>(
         data: &Self::Type2,
-        state: &mut cache::State<Ch>,
+        state: &mut Ch,
     ) -> Self::Type3 {
         // Use the CacheRead to merge pending changes.
-        let read_output = CacheRead::<Ch, LongCache>::read(
-            state,
-            &cases::get_all_accounts_for_branch::ReadInput {
-                user_uuid:           data.user_uuid.clone(),
-                company_branch_uuid: data.company_branch_uuid.clone(),
-            },
-        )
+        let read_output = LongCache::read(state, &cases::get_all_accounts_for_branch::ReadInput {
+            user_uuid:           data.user_uuid.clone(),
+            company_branch_uuid: data.company_branch_uuid.clone(),
+        })
         .await
         .unwrap();
 

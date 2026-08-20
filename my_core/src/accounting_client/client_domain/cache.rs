@@ -23,15 +23,19 @@ pub trait Cache: Sized {
     fn mark_txn_input_as_faild(&self, txn_number: &u64) -> impl Future<Output = ()>;
     fn delete_txn_input(&self, txn_number: &u64) -> impl Future<Output = ()>;
 
-    fn write_resource(&self, resource: &[resource_utils::ResourceInfo])
-    -> impl Future<Output = ()>;
+    fn write_resource_from_server(
+        &self,
+        resource: &[resource_utils::ResourceInfo],
+    ) -> impl Future<Output = ()>;
+    fn write_resource_of_pending_txn(
+        &self,
+        resource: &[resource_utils::ResourceInfo],
+    ) -> impl Future<Output = ()>;
+    fn clear_pending_txn_state(&self) -> impl Future<Output = ()>;
+    fn start_pending_txn_state(&self) -> impl Future<Output = ()>;
+
     fn get_jwt(
         &self,
         user_uuid: &types::UuidType,
     ) -> impl Future<Output = Option<types::JsonWebTokenType>>;
-}
-
-pub(crate) struct State<Ch: Cache> {
-    pub(crate) state_of_pending_txn: resource_utils::StateOfPendingTxn,
-    pub(crate) cache:                Ch,
 }

@@ -33,7 +33,7 @@ impl cases::list_company_and_branch::DatabaseRead for S {
 
         // ---- 1. Get company-level roles ----
         let company_query = QUERY1;
-        let mut stmt = db.db.prepare(company_query).unwrap();
+        let mut stmt = db.tables_db.prepare(company_query).unwrap();
         let company_rows = stmt
             .query_map(params![read_input.user_uuid.to_string()], |row| {
                 let uuid: String = row.get(0).unwrap();
@@ -64,7 +64,7 @@ impl cases::list_company_and_branch::DatabaseRead for S {
 
         // ---- 2. Get branch-level roles ----
         let branch_query = QUERY2;
-        let mut stmt = db.db.prepare(branch_query).unwrap();
+        let mut stmt = db.tables_db.prepare(branch_query).unwrap();
         let branch_rows = stmt
             .query_map(params![read_input.user_uuid.to_string()], |row| {
                 let branch_uuid: String = row.get(0).unwrap();
@@ -147,11 +147,11 @@ impl cases::list_company_and_branch::DatabaseRead for S {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::utility::test_helper::test_query_helper;
+    use crate::utility::test_helper::test_query_helper_for_tables_schema;
 
     #[test]
     fn test_query_string_directly() {
-        test_query_helper(QUERY1).unwrap();
-        test_query_helper(QUERY2).unwrap();
+        test_query_helper_for_tables_schema(QUERY1).unwrap();
+        test_query_helper_for_tables_schema(QUERY2).unwrap();
     }
 }

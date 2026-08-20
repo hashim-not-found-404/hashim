@@ -16,47 +16,12 @@ use crate::utility::traits::Receiver;
 use crate::utility::traits::Sender;
 use crate::utility::utils::MakeOptionIfEmpty;
 use crate::utility::utils::ReadAndSet;
-use std::marker::PhantomData;
 use std::sync::Arc;
 
 type Type1 = cases::sign_up::Input;
 type Type2 = cases::sign_up::Input;
 type Type3 = cases::sign_up::MyResult;
 type Type4 = cases::sign_up::MyResult;
-
-struct Cache<Ch, LongCache>
-where
-    Ch: cache::Cache,
-    LongCache: for<'a> cases::sign_up::DatabaseRead<Db<'a> = Ch>,
-{
-    _ph: PhantomData<(Ch, LongCache)>,
-}
-
-impl<Ch, LongCache> cases::sign_up::DatabaseRead for Cache<Ch, LongCache>
-where
-    Ch: cache::Cache,
-    LongCache: for<'a> cases::sign_up::DatabaseRead<Db<'a> = Ch>,
-{
-    type Db<'a> = cache::State<Ch>;
-
-    async fn read(
-        db: &mut Self::Db<'_>,
-        read_input: &cases::sign_up::ReadInput,
-    ) -> Result<cases::sign_up::ReadOutput, traits::DynamicError> {
-        let mut read_output = LongCache::read(&mut db.cache, read_input).await.unwrap();
-
-        for (uuid, user) in &db.state_of_pending_txn.user {
-            if user.id == read_input.user_id {
-                read_output.is_user_id_exist = true;
-            }
-            if *uuid == read_input.new_uuid {
-                read_output.is_new_uuid_exist = true;
-            }
-        }
-
-        Ok(read_output)
-    }
-}
 
 pub(crate) struct ViewAndCacheType;
 
@@ -80,9 +45,9 @@ where
 
     async fn state_full_operation<Id: types::RowId>(
         data: &Self::Type2,
-        state: &mut cache::State<Ch>,
+        state: &mut Ch,
     ) -> Self::Type3 {
-        let errr = data.state_full_check::<Cache<Ch, LongCache>>(state).await.unwrap();
+        let errr = data.state_full_check::<LongCache>(state).await.unwrap();
 
         if errr.is_there_error() {
             return Err(errr);

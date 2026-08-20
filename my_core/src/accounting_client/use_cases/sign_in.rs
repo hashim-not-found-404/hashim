@@ -48,9 +48,9 @@ where
 
     async fn state_full_operation<Id: types::RowId>(
         data: &Self::Type2,
-        state: &mut cache::State<Ch>,
+        state: &mut Ch,
     ) -> Self::Type3 {
-        let read_output = LongCache::read(&mut state.cache, &cases::sign_in::ReadInput {
+        let read_output = LongCache::read(state, &cases::sign_in::ReadInput {
             user_id: data.user_id.clone(),
         })
         .await
@@ -67,17 +67,9 @@ where
             });
         }
 
-        let mut password = None;
+        let mut password: Option<String> = None;
         let mut user_uuid = None;
         let mut user_name = None;
-
-        for (rowid, user) in &state.state_of_pending_txn.user {
-            if user.id == data.user_id {
-                password = Some(user.password.clone());
-                user_uuid = Some(rowid);
-                user_name = user.name.clone();
-            }
-        }
 
         match password {
             Some(password) => {

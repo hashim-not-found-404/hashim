@@ -15,55 +15,12 @@ use crate::utility::tools;
 use crate::utility::traits;
 use crate::utility::traits::Sender;
 use crate::utility::utils::ReadAndSet;
-use std::marker::PhantomData;
 use std::sync::Arc;
 
 type Type1 = cases::create_account_for_branch::Input;
 type Type2 = cases::create_account_for_branch::Input;
 type Type3 = cases::create_account_for_branch::MyResult;
 type Type4 = cases::create_account_for_branch::MyResult;
-
-struct Cache<Ch, LongCache>
-where
-    Ch: cache::Cache,
-    LongCache: for<'a> cases::create_account_for_branch::DatabaseRead<Db<'a> = Ch>,
-{
-    _ph: PhantomData<(Ch, LongCache)>,
-}
-
-impl<Ch, LongCache> cases::create_account_for_branch::DatabaseRead for Cache<Ch, LongCache>
-where
-    Ch: cache::Cache,
-    LongCache: for<'a> cases::create_account_for_branch::DatabaseRead<Db<'a> = Ch>,
-{
-    type Db<'a> = cache::State<Ch>;
-
-    async fn read(
-        db: &mut Self::Db<'_>,
-        read_input: &cases::create_account_for_branch::ReadInput,
-    ) -> Result<cases::create_account_for_branch::ReadOutput, traits::DynamicError> {
-        let mut read_output = LongCache::read(&mut db.cache, read_input).await.unwrap();
-        read_output.is_company_branch_exist = true;
-        read_output.is_account_uuid_exist = true;
-        read_output.is_new_uuid_used = false;
-
-        for (row_uuid, table) in &db.state_of_pending_txn.account_flow_type {
-            if read_input.belong_to_account == *row_uuid
-                && read_input.belong_to_company_branch == table.company_branch
-            {
-                read_output.is_account_uuid_with_company_branch_used = true;
-            }
-        }
-
-        for table in db.state_of_pending_txn.access_control_for_company_branch.values() {
-            if read_input.user_uuid == table.user_ {
-                read_output.user_roles.push(table.role.clone());
-            }
-        }
-
-        Ok(read_output)
-    }
-}
 
 pub(crate) struct ViewAndCacheType;
 
@@ -87,9 +44,9 @@ where
 
     async fn state_full_operation<Id: types::RowId>(
         data: &Self::Type2,
-        state: &mut cache::State<Ch>,
+        state: &mut Ch,
     ) -> Self::Type3 {
-        let errr = data.state_full_check::<Cache<Ch, LongCache>>(state).await.unwrap();
+        let errr = data.state_full_check::<LongCache>(state).await.unwrap();
 
         if errr.is_there_error() {
             return Err(errr);

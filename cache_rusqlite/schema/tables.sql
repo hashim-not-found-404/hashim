@@ -387,18 +387,3 @@ CREATE TABLE IF NOT EXISTS triple_entry_for_package(
     package                                     TEXT REFERENCES package(rowid) ON DELETE CASCADE,
     time                                        INTEGER
 );
-
-CREATE TABLE IF NOT EXISTS write_cache_transactions_input(
-    txn_number                                  INTEGER PRIMARY KEY,
-
-    is_faild                                    BOOLEAN,
-    user_                                       TEXT REFERENCES user(rowid) ON DELETE CASCADE,
-    txn                                         BLOB
-);
-
-CREATE TABLE IF NOT EXISTS write_cache_transactions_result(
-    txn_number                                  INTEGER PRIMARY KEY,
-
-    user_                                       TEXT REFERENCES user(rowid) ON DELETE CASCADE,
-    txn                                         BLOB
-);

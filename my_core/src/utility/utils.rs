@@ -50,25 +50,6 @@ impl<K1: Eq + Hash, K2: Eq + Hash, V> HashMapWithHashMapValue<K1, K2, V>
     }
 }
 
-pub(crate) trait MyUpSert<K, V> {
-    fn upsert<F>(&mut self, k: K, f: F)
-    where
-        F: FnOnce(&mut V) + Clone;
-}
-
-impl<K: Eq + Hash, V: Default> MyUpSert<K, V> for HashMap<K, V> {
-    fn upsert<F>(&mut self, k: K, f: F)
-    where
-        F: FnOnce(&mut V) + Clone,
-    {
-        self.entry(k).and_modify(f.clone()).or_insert({
-            let mut v = V::default();
-            f(&mut v);
-            v
-        });
-    }
-}
-
 pub(crate) trait ReadAndSet<T: Clone> {
     fn read(&self) -> T;
     fn put(&self, v: T);

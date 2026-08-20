@@ -17,54 +17,12 @@ use crate::utility::traits::Receiver;
 use crate::utility::traits::Sender;
 use crate::utility::utils::MakeOptionIfEmpty;
 use crate::utility::utils::ReadAndSet;
-use std::marker::PhantomData;
 use std::sync::Arc;
 
 type Type1 = cases::create_account::Input;
 type Type2 = cases::create_account::Input;
 type Type3 = cases::create_account::MyResult;
 type Type4 = cases::create_account::MyResult;
-
-struct Cache<Ch, LongCache>
-where
-    Ch: cache::Cache,
-    LongCache: for<'a> cases::create_account::DatabaseRead<Db<'a> = Ch>,
-{
-    _ph: PhantomData<(Ch, LongCache)>,
-}
-
-impl<Ch, LongCache> cases::create_account::DatabaseRead for Cache<Ch, LongCache>
-where
-    Ch: cache::Cache,
-    LongCache: for<'a> cases::create_account::DatabaseRead<Db<'a> = Ch>,
-{
-    type Db<'a> = cache::State<Ch>;
-
-    async fn read(
-        db: &mut Self::Db<'_>,
-        read_input: &cases::create_account::ReadInput,
-    ) -> Result<cases::create_account::ReadOutput, traits::DynamicError> {
-        let mut read_output = LongCache::read(&mut db.cache, read_input).await.unwrap();
-        read_output.is_company_uuid_exist = true;
-        read_output.is_new_uuid_used = false;
-
-        for table in db.state_of_pending_txn.account.values() {
-            if read_input.account_name == table.name
-                && read_input.belong_to_company == table.company_belong
-            {
-                read_output.is_account_name_used = true;
-            }
-        }
-
-        for table in db.state_of_pending_txn.access_control_for_company.values() {
-            if read_input.user_uuid == table.user_ {
-                read_output.user_roles.push(table.role.clone());
-            }
-        }
-
-        Ok(read_output)
-    }
-}
 
 pub(crate) struct ViewAndCacheType;
 
@@ -88,9 +46,9 @@ where
 
     async fn state_full_operation<Id: types::RowId>(
         data: &Self::Type2,
-        state: &mut cache::State<Ch>,
+        state: &mut Ch,
     ) -> Self::Type3 {
-        let errr = data.state_full_check::<Cache<Ch, LongCache>>(state).await.unwrap();
+        let errr = data.state_full_check::<LongCache>(state).await.unwrap();
 
         if errr.is_there_error() {
             return Err(errr);

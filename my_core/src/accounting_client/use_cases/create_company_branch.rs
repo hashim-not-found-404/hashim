@@ -16,61 +16,12 @@ use crate::utility::traits;
 use crate::utility::traits::Receiver;
 use crate::utility::traits::Sender;
 use crate::utility::utils::ReadAndSet;
-use std::marker::PhantomData;
 use std::sync::Arc;
 
 type Type1 = cases::create_company_branch::Input;
 type Type2 = cases::create_company_branch::Input;
 type Type3 = cases::create_company_branch::MyResult;
 type Type4 = cases::create_company_branch::MyResult;
-
-struct Cache<Ch, LongCache>
-where
-    Ch: cache::Cache,
-    LongCache: for<'a> cases::create_company_branch::DatabaseRead<Db<'a> = Ch>,
-{
-    _ph: PhantomData<(Ch, LongCache)>,
-}
-
-impl<Ch, LongCache> cases::create_company_branch::DatabaseRead for Cache<Ch, LongCache>
-where
-    Ch: cache::Cache,
-    LongCache: for<'a> cases::create_company_branch::DatabaseRead<Db<'a> = Ch>,
-{
-    type Db<'a> = cache::State<Ch>;
-
-    async fn read(
-        db: &mut Self::Db<'_>,
-        read_input: &cases::create_company_branch::ReadInput,
-    ) -> Result<cases::create_company_branch::ReadOutput, traits::DynamicError> {
-        let mut read_output = LongCache::read(&mut db.cache, read_input).await.unwrap();
-
-        // 2. Check pending transactions (uncommitted changes)
-        // Check pending company access control for roles
-        for acf in db.state_of_pending_txn.access_control_for_company.values() {
-            if acf.data_group == read_input.company_belong && acf.user_ == read_input.user_uuid {
-                read_output.user_roles.push(acf.role.clone());
-            }
-        }
-
-        // Check pending company existence
-        if db.state_of_pending_txn.company.contains_key(&read_input.company_belong) {
-            read_output.is_company_exist = true;
-        }
-
-        // Check pending branch name usage
-        for branch in db.state_of_pending_txn.company_branch.values() {
-            if branch.company_belong == read_input.company_belong
-                && branch.name == *read_input.branch_name
-            {
-                read_output.is_branch_name_used = true;
-                break;
-            }
-        }
-
-        Ok(read_output)
-    }
-}
 
 pub(crate) struct ViewAndCacheType;
 
@@ -94,9 +45,9 @@ where
 
     async fn state_full_operation<Id: types::RowId>(
         data: &Self::Type2,
-        state: &mut cache::State<Ch>,
+        state: &mut Ch,
     ) -> Self::Type3 {
-        let errr = data.state_full_check::<Cache<Ch, LongCache>>(state).await.unwrap();
+        let errr = data.state_full_check::<LongCache>(state).await.unwrap();
 
         if errr.is_there_error() {
             return Err(errr);

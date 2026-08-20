@@ -22,7 +22,7 @@ impl cases::create_account::DatabaseRead for S {
         read_input: &cases::create_account::ReadInput,
     ) -> Result<cases::create_account::ReadOutput, traits::DynamicError> {
         // 1. User roles at the company
-        let mut stmt = db.db.prepare(QUERY1).unwrap();
+        let mut stmt = db.tables_db.prepare(QUERY1).unwrap();
         let roles_iter = stmt
             .query_map(
                 params![read_input.belong_to_company.to_string(), read_input.user_uuid.to_string()],
@@ -36,16 +36,16 @@ impl cases::create_account::DatabaseRead for S {
         let user_roles: Vec<types::Role> = roles_iter.map(|r| r.unwrap()).collect();
 
         // 2. Company exists
-        let mut stmt = db.db.prepare(QUERY2).unwrap();
+        let mut stmt = db.tables_db.prepare(QUERY2).unwrap();
         let is_company_uuid_exist =
             stmt.exists(params![read_input.belong_to_company.to_string()]).unwrap();
 
         // 3. New UUID already used
-        let mut stmt = db.db.prepare(QUERY3).unwrap();
+        let mut stmt = db.tables_db.prepare(QUERY3).unwrap();
         let is_new_uuid_used = stmt.exists(params![read_input.new_uuid.to_string()]).unwrap();
 
         // 4. Account name already used under the same company
-        let mut stmt = db.db.prepare(QUERY4).unwrap();
+        let mut stmt = db.tables_db.prepare(QUERY4).unwrap();
         let is_account_name_used = stmt
             .exists(params![read_input.belong_to_company.to_string(), &read_input.account_name])
             .unwrap();
@@ -62,13 +62,13 @@ impl cases::create_account::DatabaseRead for S {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::utility::test_helper::test_query_helper;
+    use crate::utility::test_helper::test_query_helper_for_tables_schema;
 
     #[test]
     fn test_query_string_directly() {
-        test_query_helper(QUERY1).unwrap();
-        test_query_helper(QUERY2).unwrap();
-        test_query_helper(QUERY3).unwrap();
-        test_query_helper(QUERY4).unwrap();
+        test_query_helper_for_tables_schema(QUERY1).unwrap();
+        test_query_helper_for_tables_schema(QUERY2).unwrap();
+        test_query_helper_for_tables_schema(QUERY3).unwrap();
+        test_query_helper_for_tables_schema(QUERY4).unwrap();
     }
 }

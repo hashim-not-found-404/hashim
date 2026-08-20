@@ -30,7 +30,7 @@ pub(crate) trait ViewAndCache<Ch: cache::Cache, T> {
 
     async fn state_full_operation<Id: types::RowId>(
         data: &Self::Type2,
-        state: &mut cache::State<Ch>,
+        state: &mut Ch,
     ) -> Self::Type3;
 
     fn extract_resource(data: &Self::Type3) -> Vec<resource_utils::ResourceInfo>;

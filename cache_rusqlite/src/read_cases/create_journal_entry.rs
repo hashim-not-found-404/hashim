@@ -90,7 +90,7 @@ impl cases::create_journal_entry::DatabaseRead for S {
         let new_entries_json = serde_json::to_string(&new_entries_uuid_vec).unwrap();
 
         // Execute query
-        let mut stmt = db.db.prepare(QUERY).unwrap();
+        let mut stmt = db.tables_db.prepare(QUERY).unwrap();
         let mut rows = stmt
             .query(params![
                 &read_input.new_uuid.to_string(),
@@ -177,10 +177,10 @@ impl cases::create_journal_entry::DatabaseRead for S {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::utility::test_helper::test_query_helper;
+    use crate::utility::test_helper::test_query_helper_for_tables_schema;
 
     #[test]
     fn test_query_string_directly() {
-        test_query_helper(QUERY).unwrap();
+        test_query_helper_for_tables_schema(QUERY).unwrap();
     }
 }

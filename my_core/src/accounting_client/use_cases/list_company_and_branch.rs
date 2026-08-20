@@ -11,8 +11,6 @@ use crate::accounting_domain::utility::types;
 use crate::utility::tools;
 use crate::utility::traits;
 use crate::utility::utils::ReadAndSet;
-use std::collections::HashMap;
-use std::marker::PhantomData;
 use std::sync::Arc;
 
 type Type1 = cases::list_company_and_branch::Input;
@@ -41,93 +39,6 @@ pub fn sort_companies(companies: &mut types::ListOfCompanies) {
     tools::sort(companies);
     for company in companies {
         tools::sort(&mut company.branches);
-    }
-}
-
-struct Cache<Ch, LongCache>
-where
-    Ch: cache::Cache,
-    LongCache: for<'a> cases::list_company_and_branch::DatabaseRead<Db<'a> = Ch>,
-{
-    _ph: PhantomData<(Ch, LongCache)>,
-}
-
-impl<Ch, LongCache> cases::list_company_and_branch::DatabaseRead for Cache<Ch, LongCache>
-where
-    Ch: cache::Cache,
-    LongCache: for<'a> cases::list_company_and_branch::DatabaseRead<Db<'a> = Ch>,
-{
-    type Db<'a> = cache::State<Ch>;
-
-    async fn read(
-        db: &mut Self::Db<'_>,
-        read_input: &cases::list_company_and_branch::ReadInput,
-    ) -> Result<cases::list_company_and_branch::ReadOutput, traits::DynamicError> {
-        let mut read_output = LongCache::read(&mut db.cache, read_input).await.unwrap();
-
-        // Build a map for O(1) lookup and updates
-        let mut company_map: HashMap<
-            types::UuidType,
-            cases::list_company_and_branch::AllCompaniesThatUserInWithRoles,
-        > = read_output.data.into_iter().map(|c| (c.company_uuid.clone(), c)).collect();
-
-        // Process pending access controls for this user
-        for acf in db.state_of_pending_txn.access_control_for_company.values() {
-            if acf.user_ != read_input.user_uuid {
-                continue;
-            }
-
-            let company_uuid = acf.data_group.clone();
-
-            // If the company exists in pending transaction, use its data
-            if let Some(company) = db.state_of_pending_txn.company.get(&company_uuid) {
-                // Get or create the company entry in the map
-                let company_entry = company_map.entry(company_uuid.clone()).or_insert_with(|| {
-                    cases::list_company_and_branch::AllCompaniesThatUserInWithRoles {
-                        company_uuid:     company_uuid.clone(),
-                        company_name:     company.name.clone(),
-                        company_currancy: company.currency.clone(),
-                        user_roles:       Vec::new(),
-                        branches:         Vec::new(),
-                    }
-                });
-
-                // Overwrite with pending data (pending is more recent)
-                company_entry.company_name = company.name.clone();
-                company_entry.company_currancy = company.currency.clone();
-
-                // Add the role from this access control (avoid duplicates)
-                if !company_entry.user_roles.contains(&acf.role) {
-                    company_entry.user_roles.push(acf.role.clone());
-                }
-
-                // Add pending branches that belong to this company
-                for (branch_uuid, branch) in &db.state_of_pending_txn.company_branch {
-                    if branch.company_belong == company_uuid {
-                        // Check if branch already exists (by UUID)
-                        let exists =
-                            company_entry.branches.iter().any(|b| b.branch_uuid == *branch_uuid);
-                        if !exists {
-                            company_entry.branches.push(
-                                cases::list_company_and_branch::AllBranchesThatUserInWithRoles {
-                                    branch_uuid:     branch_uuid.clone(),
-                                    branch_name:     branch.name.clone(),
-                                    branch_currancy: branch.currency.clone(),
-                                    user_roles:      Vec::new(), // No branch roles in pending transaction
-                                },
-                            );
-                        }
-                    }
-                }
-            }
-            // else: no pending company – this shouldn't happen if there's an access control,
-            // but we ignore it to avoid incomplete data.
-        }
-
-        // Convert the map back into a vector
-        read_output.data = company_map.into_values().collect();
-
-        Ok(read_output)
     }
 }
 
@@ -161,9 +72,9 @@ where
 
     async fn state_full_operation<Id: types::RowId>(
         data: &Self::Type2,
-        state: &mut cache::State<Ch>,
+        state: &mut Ch,
     ) -> Self::Type3 {
-        let result = data.state_full_operation::<Cache<Ch, LongCache>>(state).await.unwrap();
+        let result = data.state_full_operation::<LongCache>(state).await.unwrap();
 
         Ok(result)
     }

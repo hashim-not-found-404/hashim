@@ -19,7 +19,7 @@ impl cases::sign_in::DatabaseRead for S {
         let query = QUERY;
 
         let a = db
-            .db
+            .tables_db
             .query_row(query, params![read_input.user_id], |row| {
                 let user_uuid_str: String = row.get(0).unwrap();
                 let user_name: Option<String> = row.get(1).unwrap();
@@ -43,10 +43,10 @@ impl cases::sign_in::DatabaseRead for S {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::utility::test_helper::test_query_helper;
+    use crate::utility::test_helper::test_query_helper_for_tables_schema;
 
     #[test]
     fn test_query_string_directly() {
-        test_query_helper(QUERY).unwrap();
+        test_query_helper_for_tables_schema(QUERY).unwrap();
     }
 }

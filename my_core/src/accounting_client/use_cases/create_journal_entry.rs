@@ -15,69 +15,12 @@ use crate::utility::tools;
 use crate::utility::traits;
 use crate::utility::traits::Sender;
 use crate::utility::utils::ReadAndSet;
-use std::marker::PhantomData;
 use std::sync::Arc;
 
 type Type1 = cases::create_journal_entry::Input;
 type Type2 = cases::create_journal_entry::Input;
 type Type3 = cases::create_journal_entry::MyResult;
 type Type4 = cases::create_journal_entry::MyResult;
-
-// -----------------------------------------------------------------------------
-// Cache implementation that merges pending transactions
-// -----------------------------------------------------------------------------
-
-struct Cache<Ch, LongCache>
-where
-    Ch: cache::Cache,
-    LongCache: for<'a> cases::create_journal_entry::DatabaseRead<Db<'a> = Ch>,
-{
-    _ph: PhantomData<(Ch, LongCache)>,
-}
-
-impl<Ch, LongCache> cases::create_journal_entry::DatabaseRead for Cache<Ch, LongCache>
-where
-    Ch: cache::Cache,
-    LongCache: for<'a> cases::create_journal_entry::DatabaseRead<Db<'a> = Ch>,
-{
-    type Db<'a> = cache::State<Ch>;
-
-    async fn read(
-        db: &mut Self::Db<'_>,
-        read_input: &cases::create_journal_entry::ReadInput,
-    ) -> Result<cases::create_journal_entry::ReadOutput, traits::DynamicError> {
-        let mut read_output = LongCache::read(&mut db.cache, read_input).await?;
-
-        for acf in db.state_of_pending_txn.access_control_for_company.values() {
-            if acf.user_ == read_input.user_uuid {
-                read_output.user_roles.push(acf.role.clone());
-            }
-        }
-        for acfb in db.state_of_pending_txn.access_control_for_company_branch.values() {
-            if acfb.user_ == read_input.user_uuid {
-                read_output.user_roles.push(acfb.role.clone());
-            }
-        }
-
-        if db.state_of_pending_txn.entry.contains_key(&read_input.new_uuid) {
-            read_output.is_new_uuid_used = true;
-        }
-
-        if let Some(shared_id) = &read_input.shared_entry_id
-            && db.state_of_pending_txn.shared_entry.contains_key(shared_id)
-        {
-            read_output.is_shared_entry_exist = true;
-        }
-
-        for uuid in &read_input.new_entries_uuid {
-            if db.state_of_pending_txn.entry.contains_key(uuid) {
-                read_output.used_new_entries_uuid.insert(uuid.clone());
-            }
-        }
-
-        Ok(read_output)
-    }
-}
 
 // -----------------------------------------------------------------------------
 // ViewAndCache implementation
@@ -106,9 +49,9 @@ where
 
     async fn state_full_operation<Id: types::RowId>(
         data: &Self::Type2,
-        state: &mut cache::State<Ch>,
+        state: &mut Ch,
     ) -> Self::Type3 {
-        data.state_full_check::<Cache<Ch, LongCache>, Ti>(state).await.unwrap()
+        data.state_full_check::<LongCache, Ti>(state).await.unwrap()
     }
 
     fn extract_resource(data: &Self::Type3) -> Vec<resource_utils::ResourceInfo> {
