@@ -78,13 +78,11 @@ impl cases::create_journal_entry::DatabaseRead for S {
         db: &mut Self::Db<'_>,
         read_input: &cases::create_journal_entry::ReadInput,
     ) -> Result<cases::create_journal_entry::ReadOutput, traits::DynamicError> {
-        // Convert HashSets to Vec<Uuid> for query parameters
         let accounts_uuid_vec: Vec<Uuid> =
             read_input.accounts_uuid.iter().map(|uuid| uuid.to_externel_uuid()).collect();
         let new_entries_uuid_vec: Vec<Uuid> =
             read_input.new_entries_uuid.iter().map(|uuid| uuid.to_externel_uuid()).collect();
 
-        // Prepare parameters
         let params: &[&(dyn ToSql + Sync)] = &[
             &read_input.new_uuid.to_externel_uuid(),
             &read_input.belong_to_company_branch.to_externel_uuid(),
@@ -94,17 +92,14 @@ impl cases::create_journal_entry::DatabaseRead for S {
             &accounts_uuid_vec,
         ];
 
-        // Execute query
         let row = db.txn.query_one(QUERY1, params).await.log()?;
 
-        // Parse results
         let is_new_uuid_used: bool = row.try_get(0).log()?;
         let roles_json: Value = row.try_get(1).log()?;
         let is_shared_entry_exist: bool = row.try_get(2).log()?;
         let new_entries_map_json: Value = row.try_get(3).log()?;
         let account_infos_json: Value = row.try_get(4).log()?;
 
-        // Parse user roles
         let user_roles: Vec<types::Role> = roles_json
             .as_array()
             .unwrap_or(&vec![])
@@ -113,13 +108,11 @@ impl cases::create_journal_entry::DatabaseRead for S {
             .map(|s| types::Role::from_str(s).unwrap())
             .collect();
 
-        // Parse new entries UUID map
         let mut used_new_entries_uuid = HashSet::new();
         if let Some(obj) = new_entries_map_json.as_object() {
             for (key, value) in obj {
                 let uuid_str = key.clone();
                 let used = value.as_bool().unwrap_or(false);
-                // Convert string back to UuidType
                 let uuid_parsed = Uuid::parse_str(&uuid_str).log()?;
                 let uuid_type = types::UuidType(uuid_parsed.into_bytes());
                 if used {
@@ -128,7 +121,6 @@ impl cases::create_journal_entry::DatabaseRead for S {
             }
         }
 
-        // Parse account infos
         #[derive(serde::Deserialize)]
         struct AccountInfoJson {
             account_uuid:  String,

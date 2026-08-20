@@ -150,7 +150,6 @@ impl Resource {
                 Some(Subscribe::TableAccountFlowTypeFieldOutflowType)
             }
 
-            // ---- NEW: Journal entry mappings ----
             Resource::TableSharedEntryFieldWriter(_) => {
                 Some(Subscribe::TableSharedEntryFieldWriter)
             }

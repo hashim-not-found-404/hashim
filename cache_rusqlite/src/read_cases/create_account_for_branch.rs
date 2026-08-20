@@ -27,8 +27,6 @@ impl cases::create_account_for_branch::DatabaseRead for S {
         let user_uuid = read_input.user_uuid.to_string();
         let new_uuid = read_input.new_uuid.to_string();
         let account_uuid = read_input.belong_to_account.to_string();
-
-        // 1. Get user roles for the company that owns the branch
         let mut stmt = db.tables_db.prepare(QUERY1).unwrap();
         let roles_iter = stmt
             .query_map(params![branch_uuid, user_uuid], |row| {
@@ -42,20 +40,15 @@ impl cases::create_account_for_branch::DatabaseRead for S {
         for role in roles_iter {
             user_roles.push(role.unwrap());
         }
-
-        // 2. Check if the new UUID is already used
         let mut stmt = db.tables_db.prepare(QUERY2).unwrap();
         let is_new_uuid_used = stmt.exists(params![new_uuid]).unwrap();
 
-        // 3. Check if the account exists
         let mut stmt = db.tables_db.prepare(QUERY3).unwrap();
         let is_account_uuid_exist = stmt.exists(params![account_uuid]).unwrap();
 
-        // 4. Check if the branch exists
         let mut stmt = db.tables_db.prepare(QUERY4).unwrap();
         let is_company_branch_exist = stmt.exists(params![branch_uuid]).unwrap();
 
-        // 5. Check if the account is already linked to this branch
         let mut stmt = db.tables_db.prepare(QUERY5).unwrap();
         let is_account_uuid_with_company_branch_used =
             stmt.exists(params![account_uuid, branch_uuid]).unwrap();

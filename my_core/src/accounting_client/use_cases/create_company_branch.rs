@@ -62,7 +62,6 @@ where
                 let this = ok;
                 let branch_uuid = this.new_uuid.clone();
                 vec![
-                        // Branch fields
                         resource_utils::ResourceInfo {
                             row_uuid: branch_uuid.clone(),
                             resource: resource_utils::Resource::TableCompanyBranchFieldName(
@@ -87,7 +86,6 @@ where
                                 this.currency.clone(),
                             ),
                         },
-                        // Access control for this branch (row_uuid is the branch UUID)
                         resource_utils::ResourceInfo {
                             row_uuid: branch_uuid.clone(),
                             resource: resource_utils::Resource::TableAccessControlForCompanyBranchFieldRole(

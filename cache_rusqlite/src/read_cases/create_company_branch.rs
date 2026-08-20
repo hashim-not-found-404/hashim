@@ -20,7 +20,6 @@ impl cases::create_company_branch::DatabaseRead for S {
         db: &mut Self::Db<'_>,
         read_input: &cases::create_company_branch::ReadInput,
     ) -> Result<cases::create_company_branch::ReadOutput, traits::DynamicError> {
-        // 1. Get the user's roles in the company
         let mut stmt = db.tables_db.prepare(QUERY1).unwrap();
 
         let roles_iter = stmt
@@ -39,11 +38,9 @@ impl cases::create_company_branch::DatabaseRead for S {
             roles.push(role.unwrap());
         }
 
-        // 2. Check if the company exists
         let mut stmt = db.tables_db.prepare(QUERY2).unwrap();
         let company_exists = stmt.exists(params![read_input.company_belong.to_string()]).unwrap();
 
-        // 3. Check if the branch name is already used under this company
         let mut stmt = db.tables_db.prepare(QUERY3).unwrap();
         let branch_name_used = stmt
             .exists(params![read_input.company_belong.to_string(), read_input.branch_name])

@@ -13,7 +13,6 @@ pub(crate) fn select_strings<T: Searchable>(s_list: Vec<T>, s: impl AsRef<str>) 
         .collect()
 }
 
-/// Returns `true` if all characters of `needle` appear in `haystack` in order.
 fn is_subsequence(needle: &str, haystack: &str) -> bool {
     let mut chars = haystack.chars();
     for c in needle.chars() {
@@ -85,7 +84,7 @@ mod tests_select_strings {
     fn case_insensitive() {
         let list = vec!["Apple".to_string(), "BANANA".to_string(), "Grape".to_string()];
         let result = select_strings(list, "ap".to_string());
-        assert_eq!(result, vec!["Apple".to_string(), "Grape".to_string()]); // "Apple" contains "ap" case‑insensitively
+        assert_eq!(result, vec!["Apple".to_string(), "Grape".to_string()]);
 
         let list2 = vec!["Apple".to_string(), "BANANA".to_string(), "Grape".to_string()];
         let result2 = select_strings(list2, "ban".to_string());
@@ -108,12 +107,9 @@ mod tests_select_strings {
 
     #[test]
     fn does_not_modify_original_list() {
-        // If the function consumes ownership, you can't check the original, but we test that
-        // the returned vector is a new one (not a reference to the original).
         let original = vec!["one".to_string(), "two".to_string()];
         let result = select_strings(original.clone(), "o".to_string());
         assert_eq!(result, vec!["one".to_string(), "two".to_string()]);
-        // The original is still intact (if we cloned)
         assert_eq!(original, vec!["one".to_string(), "two".to_string()]);
     }
 }
@@ -132,28 +128,24 @@ pub(crate) fn sort<T: Sortable>(list: &mut Vec<T>) -> &Vec<T> {
 mod tests_sort {
     use super::*;
 
-    // Example struct
     #[derive(Debug, PartialEq, Clone)]
     struct Person {
         name: String,
         age:  u32,
     }
 
-    // Implement Sortable with different key types
     impl Sortable for Person {
         type Key = (u32, String);
 
-        // sort by age, then name
         fn key(&self) -> Self::Key {
             (self.age, self.name.clone())
         }
     }
 
-    // Another struct with a simpler key
     #[derive(Debug, PartialEq)]
     struct Product {
         id:    u32,
-        price: f64, // not Ord, so we can't sort by price directly, but we can sort by id
+        price: f64,
     }
 
     impl Sortable for Product {
@@ -254,8 +246,6 @@ mod tests_sort {
 
     #[test]
     fn sort_is_not_stable() {
-        // With equal keys, the order may change, but we don't rely on stability.
-        // Just test that it sorts correctly according to key.
         #[derive(Debug, PartialEq)]
         struct EqualKey {
             id:    u32,
@@ -282,18 +272,13 @@ mod tests_sort {
                 value: 'c',
             },
         ];
-        // Sorting by id only – order of equal elements is not defined,
-        // but after sorting, all id=1 must appear before id=2.
         let result = sort(&mut list);
-        // We can check that the list is partitioned: all id=1 then id=2.
         let ids: Vec<_> = result.iter().map(|e| e.id).collect();
         assert_eq!(ids, vec![1, 1, 2]);
     }
 
     #[test]
     fn sort_multiple_key() {
-        // With equal keys, the order may change, but we don't rely on stability.
-        // Just test that it sorts correctly according to key.
         #[derive(Debug, PartialEq)]
         struct EqualKey {
             id:    u32,
@@ -324,10 +309,7 @@ mod tests_sort {
                 value: 'c',
             },
         ];
-        // Sorting by id only – order of equal elements is not defined,
-        // but after sorting, all id=1 must appear before id=2.
         let result = sort(&mut list);
-        // We can check that the list is partitioned: all id=1 then id=2.
         let expected = vec![
             EqualKey {
                 id:    1,

@@ -22,10 +22,6 @@ type Type2 = cases::create_journal_entry::Input;
 type Type3 = cases::create_journal_entry::MyResult;
 type Type4 = cases::create_journal_entry::MyResult;
 
-// -----------------------------------------------------------------------------
-// ViewAndCache implementation
-// -----------------------------------------------------------------------------
-
 pub(crate) struct ViewAndCacheType<Ti: traits::Time>(Ti);
 
 impl<Ch, LongCache, Ti> ViewAndCache<Ch, LongCache> for ViewAndCacheType<Ti>
@@ -59,7 +55,6 @@ where
             Ok(ok) => {
                 let mut resources = Vec::new();
 
-                // The journal entry itself (entry table)
                 resources.push(resource_utils::ResourceInfo {
                     row_uuid: ok.new_uuid.clone(),
                     resource: resource_utils::Resource::TableEntryFieldWriter(ok.user_uuid.clone()),
@@ -77,7 +72,6 @@ where
                     });
                 }
 
-                // Single entries
                 for single in &ok.double_entry {
                     resources.push(resource_utils::ResourceInfo {
                         row_uuid: single.new_uuid.clone(),
@@ -163,7 +157,6 @@ where
                     for (ui_double, domain_double_error) in
                         ui_double_entries.iter_mut().zip(business_error.double_entries.iter())
                     {
-                        // Map double-level errors
                         ui_double.entry_is_empty = domain_double_error.entry_is_empty;
                         ui_double.you_need_to_split_the_entry =
                             domain_double_error.you_need_to_split_the_entry;
@@ -175,7 +168,6 @@ where
                                 }
                             });
 
-                        // Map single entry errors
                         if ui_double.singles.len() == domain_double_error.single_entries.len() {
                             for (ui_single, domain_single_error) in ui_double
                                 .singles
@@ -211,10 +203,6 @@ where
         }
     }
 }
-
-// -----------------------------------------------------------------------------
-// UI Model update implementation
-// -----------------------------------------------------------------------------
 
 impl ui_model::CreateJournalEntry {
     pub(crate) async fn update<
@@ -368,11 +356,6 @@ impl ui_model::CreateJournalEntry {
     }
 }
 
-// -----------------------------------------------------------------------------
-// Helper functions for fetching and listener
-// -----------------------------------------------------------------------------
-
-/// Apply the fetch result to the model, converting domain accounts to UI accounts.
 fn apply_fetch_result<As: ui_model::AllSignalTypes>(
     result: &cases::get_all_accounts_for_branch::MyResult,
     model: &ui_model::Model<As>,
@@ -393,11 +376,9 @@ fn apply_fetch_result<As: ui_model::AllSignalTypes>(
             })
             .collect();
         *model.page_create_journal_entry.list_of_available_account.lock().unwrap() = accounts;
-        // Optionally reset filtered list? We'll leave it empty initially.
     }
 }
 
-/// Spawn a listener that re‑fetches whenever subscribed resources change.
 fn spawn_listener<
     Rn: traits::RandomNumber,
     Rt: traits::Runtime,
@@ -439,17 +420,12 @@ fn spawn_listener<
     commander_local_state.aborter_to_create_journal_entry_listener.set(Box::new(listener_aborter));
 }
 
-// -----------------------------------------------------------------------------
-// Clean and Submit (unchanged except for minor adjustments)
-// -----------------------------------------------------------------------------
-
 fn handle_clean<As: ui_model::AllSignalTypes>(model: &ui_model::Model<As>) {
     let local_state = &model.page_create_journal_entry;
     local_state.is_loading.reset();
     local_state.show_dialog.reset();
     local_state.double_entries.reset();
     local_state.some_account_are_not_inferred.reset();
-    // Also clear the filtered list and master list? Master list is kept; filtered list reset.
     local_state.filtered_list.reset();
 }
 
@@ -520,7 +496,6 @@ fn build_input<Id: types::RowId, As: ui_model::AllSignalTypes>(
         }
     }
 
-    // 2. Build the input (safe to unwrap now)
     let double_entries_input: Vec<cases::create_journal_entry::DoubleEntryInput> = ui_entries
         .into_iter()
         .map(|double| {
@@ -528,7 +503,6 @@ fn build_input<Id: types::RowId, As: ui_model::AllSignalTypes>(
                 .singles
                 .into_iter()
                 .map(|single| {
-                    // safe because we validated above
                     let account = single.inferred_account_id.unwrap();
                     cases::create_journal_entry::SingleEntryInput {
                         new_uuid: Id::generate(),

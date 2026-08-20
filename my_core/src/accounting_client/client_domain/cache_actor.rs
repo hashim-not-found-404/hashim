@@ -67,8 +67,6 @@ pub(crate) trait CacheActorUtils {
     type NetworkStatus;
     async fn is_online(network_status: &Self::NetworkStatus) -> bool;
 
-    // cache
-
     type Cache;
     async fn new_cache() -> Self::Cache;
 

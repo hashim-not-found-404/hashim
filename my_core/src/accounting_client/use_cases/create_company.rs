@@ -46,7 +46,6 @@ where
                 let this = ok;
                 let company_uuid = this.new_uuid.clone();
                 vec![
-                    // Company fields
                     resource_utils::ResourceInfo {
                         row_uuid: company_uuid.clone(),
                         resource: resource_utils::Resource::TableCompanyFieldName(
@@ -59,7 +58,6 @@ where
                             this.currency.clone(),
                         ),
                     },
-                    // Access control fields (using the same UUID as the row identifier)
                     resource_utils::ResourceInfo {
                         row_uuid: company_uuid.clone(),
                         resource: resource_utils::Resource::TableAccessControlForCompanyFieldRole(

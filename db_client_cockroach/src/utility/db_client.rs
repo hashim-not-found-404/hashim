@@ -55,7 +55,6 @@ impl DBClient for S {
         };
 
         for user_uuid in users_uuid {
-            // Convert RowId to the actual UUID type expected by the database
             let user_id_param = user_uuid.clone().to_externel_uuid();
 
             let rows = self.client.query(&stmt, &[&user_id_param]).await.log()?;
@@ -66,10 +65,8 @@ impl DBClient for S {
                 let role_str: String = row.try_get("role").log()?;
                 let user_id: Uuid = row.try_get("user_").log()?;
 
-                // Parse role from string
                 let role = types::Role::from_str(&role_str).log()?;
 
-                // Convert Uuid to your RowId type
                 let data_group_id = types::UuidType(data_group.into_bytes());
                 let user_id_typed = types::UuidType(user_id.into_bytes());
 

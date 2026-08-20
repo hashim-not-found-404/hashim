@@ -79,17 +79,14 @@ impl cases::create_journal_entry::DatabaseRead for S {
         db: &mut Self::Db<'_>,
         read_input: &cases::create_journal_entry::ReadInput,
     ) -> Result<cases::create_journal_entry::ReadOutput, traits::DynamicError> {
-        // Convert HashSets to Vec<String> for query placeholders
         let accounts_uuid_vec: Vec<String> =
             read_input.accounts_uuid.iter().map(|uuid| uuid.to_string()).collect();
         let new_entries_uuid_vec: Vec<String> =
             read_input.new_entries_uuid.iter().map(|uuid| uuid.to_string()).collect();
 
-        // We need to pass the arrays as JSON strings to sqlite
         let accounts_json = serde_json::to_string(&accounts_uuid_vec).unwrap();
         let new_entries_json = serde_json::to_string(&new_entries_uuid_vec).unwrap();
 
-        // Execute query
         let mut stmt = db.tables_db.prepare(QUERY).unwrap();
         let mut rows = stmt
             .query(params![
@@ -104,14 +101,12 @@ impl cases::create_journal_entry::DatabaseRead for S {
 
         let row = rows.next().unwrap().unwrap();
 
-        // Parse results
         let is_new_uuid_used: bool = row.get(0).unwrap();
         let roles_json: String = row.get(1).unwrap();
         let is_shared_entry_exist: bool = row.get(2).unwrap();
         let new_entries_map_json: String = row.get(3).unwrap();
         let account_infos_json: String = row.get(4).unwrap();
 
-        // Parse user roles
         let roles_value: Value = serde_json::from_str(&roles_json).unwrap_or(Value::Array(vec![]));
         let user_roles: Vec<types::Role> = roles_value
             .as_array()
@@ -121,7 +116,6 @@ impl cases::create_journal_entry::DatabaseRead for S {
             .map(|s| types::Role::from_str(s).unwrap())
             .collect();
 
-        // Parse new entries UUID map
         let new_entries_value: Value = serde_json::from_str(&new_entries_map_json)
             .unwrap_or(Value::Object(serde_json::Map::new()));
         let mut used_new_entries_uuid = HashSet::new();
@@ -136,7 +130,6 @@ impl cases::create_journal_entry::DatabaseRead for S {
             }
         }
 
-        // Parse account infos
         #[derive(Deserialize)]
         struct AccountInfoJson {
             account_uuid:  String,

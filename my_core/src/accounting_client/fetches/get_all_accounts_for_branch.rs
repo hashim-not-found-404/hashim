@@ -46,7 +46,6 @@ where
         data: &Self::Type2,
         state: &mut Ch,
     ) -> Self::Type3 {
-        // Use the CacheRead to merge pending changes.
         let read_output = LongCache::read(state, &cases::get_all_accounts_for_branch::ReadInput {
             user_uuid:           data.user_uuid.clone(),
             company_branch_uuid: data.company_branch_uuid.clone(),
@@ -64,7 +63,6 @@ where
     }
 
     fn extract_resource(data: &Self::Type3) -> Vec<resource_utils::ResourceInfo> {
-        // Same as existing ReadServerOnly extract_resource
         match data {
             Ok(ok) => {
                 let mut resources = Vec::new();
@@ -143,14 +141,11 @@ where
         if let request_response::push_data::OperationsResult::GetAllAccountsForBranch(result) =
             output
         {
-            // Filter the accounts before returning.
             match result {
                 Ok(mut ok) => {
-                    // Build a set of account UUIDs that are already linked.
                     let linked: HashSet<types::UuidType> =
                         ok.accounts_for_branch.iter().map(|afb| afb.account_uuid.clone()).collect();
 
-                    // Keep only accounts that are NOT linked.
                     ok.accounts.retain(|acc| !linked.contains(&acc.row_uuid));
 
                     Ok(ok)
@@ -166,6 +161,5 @@ where
         _output: &Self::Type4,
         _model: &ui_model::Model<As>,
     ) {
-        // We'll apply manually in the listener.
     }
 }

@@ -66,8 +66,6 @@ pub struct Location {
 
 impl Location {
     pub(crate) fn is_valid(&self) -> bool {
-        // Check bounds for latitude and longitude
-        // Also ensure the values are finite (not NaN or Infinity)
         self.latitude >= -90.0
             && self.latitude <= 90.0
             && self.longitude >= -180.0
@@ -147,6 +145,7 @@ pub const PORT: u16 = 8081;
 pub const ADDRESS: &str = "127.0.0.1:8081";
 
 // there should be no generic in all the below types
+
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
 pub(crate) enum UserUuidError {
     Invalid,

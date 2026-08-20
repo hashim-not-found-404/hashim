@@ -515,18 +515,16 @@ fn check_nonce_if_valid<Id: RowId>(nonce: &types::UuidType, is_used: bool) -> bo
 
     let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
 
-    // 1. Reject future timestamps (more than 5 seconds ahead)
-    let max_future = 5; // 5 seconds tolerance for clock drift
+    let max_future = 5;
 
     if nonce > now + max_future {
-        return false; // Future nonce → reject immediately
+        return false;
     }
 
-    // 2. Reject old timestamps (more than 5 minutes old)
-    let max_age = 300; // 5 minutes
+    let max_age = 300;
 
     if now.saturating_sub(nonce) > max_age {
-        return false; // Too old
+        return false;
     }
 
     true

@@ -7,7 +7,7 @@ pub(crate) trait MyUuidConverter {
 
 impl MyUuidConverter for types::UuidType {
     fn to_externel_uuid(&self) -> Uuid {
-        Uuid::from_bytes(self.0) // assuming self.0 is [u8; 16]
+        Uuid::from_bytes(self.0)
     }
 }
 

@@ -21,7 +21,6 @@ impl cases::create_account::DatabaseRead for S {
         db: &mut Self::Db<'_>,
         read_input: &cases::create_account::ReadInput,
     ) -> Result<cases::create_account::ReadOutput, traits::DynamicError> {
-        // 1. User roles at the company
         let mut stmt = db.tables_db.prepare(QUERY1).unwrap();
         let roles_iter = stmt
             .query_map(
@@ -34,17 +33,11 @@ impl cases::create_account::DatabaseRead for S {
             )
             .unwrap();
         let user_roles: Vec<types::Role> = roles_iter.map(|r| r.unwrap()).collect();
-
-        // 2. Company exists
         let mut stmt = db.tables_db.prepare(QUERY2).unwrap();
         let is_company_uuid_exist =
             stmt.exists(params![read_input.belong_to_company.to_string()]).unwrap();
-
-        // 3. New UUID already used
         let mut stmt = db.tables_db.prepare(QUERY3).unwrap();
         let is_new_uuid_used = stmt.exists(params![read_input.new_uuid.to_string()]).unwrap();
-
-        // 4. Account name already used under the same company
         let mut stmt = db.tables_db.prepare(QUERY4).unwrap();
         let is_account_name_used = stmt
             .exists(params![read_input.belong_to_company.to_string(), &read_input.account_name])

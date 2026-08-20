@@ -202,7 +202,6 @@ impl DBTransaction for S<'_> {
             ])
             .await?;
 
-        // 2. Insert single entries
         let query_single = "
                 INSERT INTO accounting_app.single_entry (
                     rowid, double_entry, entry, account, is_debit,
@@ -225,7 +224,6 @@ impl DBTransaction for S<'_> {
                 .await?;
         }
 
-        // 3. Update inventory for each account (JSONB column)
         for (account_uuid, inventory_wrapper) in &data.inventory {
             let inventory_json = serde_json::to_value(&inventory_wrapper.0)
                 .map_err(|e| traits::DynamicError::from(e.to_string()))?;

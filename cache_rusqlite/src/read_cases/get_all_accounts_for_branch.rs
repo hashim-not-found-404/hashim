@@ -25,7 +25,6 @@ impl cases::get_all_accounts_for_branch::DatabaseRead for S {
     ) -> Result<cases::get_all_accounts_for_branch::ReadOutput, traits::DynamicError> {
         let branch_uuid_str = read_input.company_branch_uuid.to_string();
 
-        // 1. Get the company UUID for this branch
         let mut stmt = db.tables_db.prepare(QUERY1).unwrap();
         let company_uuid_str: Option<String> =
             stmt.query_row(params![branch_uuid_str], |row| row.get::<_, String>(0)).ok();
@@ -36,7 +35,6 @@ impl cases::get_all_accounts_for_branch::DatabaseRead for S {
             }
         };
 
-        // 2. Get all accounts for that company
         let mut stmt = db.tables_db.prepare(QUERY2).unwrap();
         let account_rows = stmt
             .query_map(params![company_uuid.to_string()], |row| {
@@ -60,7 +58,6 @@ impl cases::get_all_accounts_for_branch::DatabaseRead for S {
         let accounts: Vec<cases::get_all_accounts_for_branch::Account> =
             account_rows.filter_map(|row| row.ok()).collect();
 
-        // 3. Get account_flow_type entries for this branch
         let mut stmt = db.tables_db.prepare(QUERY3).unwrap();
         let flow_rows = stmt
             .query_map(params![branch_uuid_str], |row| {
@@ -102,14 +99,12 @@ mod tests {
     use std::str::FromStr;
     use uuid::Uuid;
 
-    // Helper to create a test database with the required schema and sample data.
     fn setup_test_db() -> (Connection, UuidType, UuidType) {
         let conn = Connection::open_in_memory().unwrap();
 
         const SCHEMA: &str = include_str!("../../schema/tables.sql");
         conn.execute_batch(SCHEMA).unwrap();
 
-        // Generate deterministic UUIDs for testing
         let company_uuid = Uuid::from_str("00000000-0000-0000-0000-000000000001").unwrap();
         let company_uuid_str = company_uuid.to_string();
         let branch_uuid = Uuid::from_str("00000000-0000-0000-0000-000000000002").unwrap();
@@ -121,7 +116,6 @@ mod tests {
         let flow_uuid1 = Uuid::from_str("00000000-0000-0000-0000-000000000005").unwrap();
         let flow_uuid1_str = flow_uuid1.to_string();
 
-        // Insert company
         conn.execute("INSERT INTO company (rowid, name, currency) VALUES (?1, ?2, ?3)", params![
             company_uuid_str,
             "TestCompany",
@@ -129,7 +123,6 @@ mod tests {
         ])
         .unwrap();
 
-        // Insert branch
         conn.execute(
             "INSERT INTO company_branch (rowid, company_belong, name, location_latitude, location_longitude, currency)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
@@ -144,7 +137,6 @@ mod tests {
         )
         .unwrap();
 
-        // Insert accounts
         conn.execute(
             "INSERT INTO account (rowid, is_debit, is_permanent_account, name, notes, unit_of_measurement_of_quantity, belong_to_company)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
@@ -174,7 +166,6 @@ mod tests {
         )
         .unwrap();
 
-        // Insert account_flow_type (only for account1)
         conn.execute(
             "INSERT INTO account_flow_type (rowid, account, company_branch, outflow_type, inflow_type)
              VALUES (?1, ?2, ?3, ?4, ?5)",
@@ -194,7 +185,6 @@ mod tests {
         (conn, company_uuid_type, branch_uuid_type)
     }
 
-    // Helper to convert UuidType to String using the MyUuidConverter trait.
     fn uuid_to_string(uuid: &UuidType) -> String {
         use crate::utility::utils::MyUuidConverter;
         uuid.to_string()
@@ -208,25 +198,21 @@ mod tests {
             transactions_db: Connection::open_in_memory().unwrap(),
         };
         let read_input = cases::get_all_accounts_for_branch::ReadInput {
-            user_uuid:           UuidType([0; 16]), // not used in this test
+            user_uuid:           UuidType([0; 16]),
             company_branch_uuid: branch_uuid.clone(),
         };
 
         let result = S::read(&mut db, &read_input).await.unwrap();
 
-        // Verify company_uuid
         assert_eq!(result.company_uuid, company_uuid);
 
-        // Verify accounts: two accounts
         assert_eq!(result.accounts.len(), 2);
-        // Check first account (cash)
         let cash = &result.accounts[0];
         assert_eq!(cash.account_name, "Cash");
         assert!(cash.is_debit);
         assert!(!cash.is_permanent_account);
         assert_eq!(cash.notes, "Cash account".to_string().none_if_empty());
         assert_eq!(cash.unit_of_measurement_of_quantity, "USD");
-        // Check second account (inventory)
         let inv = &result.accounts[1];
         assert_eq!(inv.account_name, "Inventory");
         assert!(!inv.is_debit);
@@ -234,12 +220,10 @@ mod tests {
         assert_eq!(inv.notes, "Inventory account".to_string().none_if_empty());
         assert_eq!(inv.unit_of_measurement_of_quantity, "kg");
 
-        // Verify account_flow_type: only one for cash account
         assert_eq!(result.accounts_for_branch.len(), 1);
         let flow = &result.accounts_for_branch[0];
         assert_eq!(flow.outflow_type, accounting_stuff::OutFlowType::Wac);
         assert_eq!(flow.inflow_type, accounting_stuff::InFlowType::Manual);
-        // The account_uuid should match the cash account UUID
         let cash_uuid = result.accounts[0].row_uuid.clone();
         assert_eq!(flow.account_uuid, cash_uuid);
     }
@@ -252,7 +236,6 @@ mod tests {
             transactions_db: Connection::open_in_memory().unwrap(),
         };
 
-        // Create a second branch with no accounts or flow types
         let branch2_uuid = Uuid::from_str("00000000-0000-0000-0000-000000000006").unwrap();
         let branch2_uuid_str = branch2_uuid.to_string();
         db.tables_db.execute(
@@ -296,7 +279,6 @@ mod tests {
 
         let result = S::read(&mut db, &read_input).await.unwrap();
 
-        // Should return default (company_uuid = [0;16], empty vectors)
         assert_eq!(result.company_uuid, UuidType([0; 16]));
         assert!(result.accounts.is_empty());
         assert!(result.accounts_for_branch.is_empty());
@@ -304,10 +286,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_all_accounts_for_branch_with_null_optional_fields() {
-        // Test that the read handles NULL notes and unit_of_measurement_of_quantity
         let (conn, company_uuid, branch_uuid) = setup_test_db();
 
-        // Insert an account with NULL notes and unit_of_measurement_of_quantity
         let account_uuid3 = Uuid::from_str("00000000-0000-0000-0000-000000000007").unwrap();
         let account_uuid3_str = account_uuid3.to_string();
         conn.execute(
@@ -318,8 +298,8 @@ mod tests {
                 true,
                 false,
                 "NullTest",
-                None::<String>, // NULL
-                None::<String>, // NULL
+                None::<String>,
+                None::<String>,
                 uuid_to_string(&company_uuid)
             ],
         ).unwrap();
@@ -333,20 +313,9 @@ mod tests {
             company_branch_uuid: branch_uuid,
         };
 
-        // This should panic because the code uses `row.get(4).unwrap()` on a NULL value.
-        // To make it pass, the code would need to read as Option<String>.
-        // Since the code uses unwrap, this test will panic, indicating the bug.
-        // We can either expect a panic or comment out until fixed.
-        // Here we'll just let it panic to highlight the issue.
         let result = S::read(&mut db, &read_input).await;
-        // If you want to test that it panics, use:
         assert!(!result.is_err());
-        // But the current implementation panics, so we can't assert on Result.
-        // We'll just call it and let the test runner catch the panic.
-        // To actually test, we'd need to modify the code to use `?` and return Result.
-        // For now, we'll comment out the assertion and just call it.
-        result.unwrap(); // This would panic.
-        // So we'll skip this test or mark it as should_panic.
+        result.unwrap();
     }
 
     #[tokio::test]
@@ -378,7 +347,7 @@ mod tests {
             company_branch_uuid: branch_uuid,
         };
 
-        let _ = S::read(&mut db, &read_input).await.unwrap(); // This will panic
+        let _ = S::read(&mut db, &read_input).await.unwrap();
     }
 
     #[test]

@@ -23,7 +23,6 @@ pub(crate) fn CreateAccountForBranch() -> Element {
     let model = &tools::MODEL;
     let local_state = &model.page_create_account_for_branch;
 
-    // Consent callback for the dialog
     let consent_callback = move |consent: ui_model::UserConsent| {
         tools::send(ui_model::Message::CreateAccountForBranch(
             ui_model::CreateAccountForBranch::Consent(consent),
@@ -32,14 +31,12 @@ pub(crate) fn CreateAccountForBranch() -> Element {
 
     rsx! {
         div {
-            // Dialog for offline consent (if needed)
             components::Dialog {
                 consent_callback,
                 operation_name: "create account for branch",
                 show_dialog: local_state.show_dialog.clone(),
             }
 
-            // Account name input with autocomplete
             div {
                 input {
                     placeholder: "Account Name (type to search)",
@@ -52,7 +49,6 @@ pub(crate) fn CreateAccountForBranch() -> Element {
                     },
                     value: local_state.account_name.read(),
                 }
-                // Dropdown suggestions
                 div {
                     for account in local_state.filtered_list.read() {
                         div {
@@ -71,7 +67,6 @@ pub(crate) fn CreateAccountForBranch() -> Element {
                 }
             }
 
-            // Outflow type selection
             select {
                 value: local_state.outflow_type.read().as_str(),
                 onchange: move |event| {
@@ -94,7 +89,6 @@ pub(crate) fn CreateAccountForBranch() -> Element {
                 option { value: "Lofo", "Lofo" }
             }
 
-            // Inflow type selection
             select {
                 value: local_state.inflow_type.read().as_str(),
                 onchange: move |event| {
@@ -113,7 +107,6 @@ pub(crate) fn CreateAccountForBranch() -> Element {
                 option { value: "Wac", "Wac" }
             }
 
-            // Submit button
             button {
                 disabled: local_state.is_loading.read(),
                 onclick: move |_| {
@@ -126,7 +119,6 @@ pub(crate) fn CreateAccountForBranch() -> Element {
                 "Create Account for Branch"
             }
 
-            // Clean button
             button {
                 onclick: move |_| {
                     tools::send(

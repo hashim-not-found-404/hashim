@@ -18,14 +18,12 @@ pub(crate) fn CreateAccount() -> Element {
 
     rsx! {
         div {
-            // Dialog for offline consent (if needed)
             components::Dialog {
                 consent_callback,
                 operation_name: "create account",
                 show_dialog: local_state.show_dialog.clone(),
             }
 
-            // Account Name
             input {
                 placeholder: "Account Name",
                 oninput: move |event| {
@@ -39,7 +37,6 @@ pub(crate) fn CreateAccount() -> Element {
             }
             label { {local_state.account_name_error.read().unwrap_or_default()} }
 
-            // Is Debit checkbox
             div {
                 label { "Is Debit" }
                 input {
@@ -55,7 +52,6 @@ pub(crate) fn CreateAccount() -> Element {
                 }
             }
 
-            // Is Permanent Account checkbox
             div {
                 label { "Is Permanent Account" }
                 input {
@@ -73,7 +69,6 @@ pub(crate) fn CreateAccount() -> Element {
                 }
             }
 
-            // Notes
             input {
                 placeholder: "Notes (optional)",
                 oninput: move |event| {
@@ -86,7 +81,6 @@ pub(crate) fn CreateAccount() -> Element {
                 value: local_state.notes.read(),
             }
 
-            // Unit of Measurement
             input {
                 placeholder: "Unit of Measurement (e.g., kg, pcs)",
                 oninput: move |event| {
@@ -99,7 +93,6 @@ pub(crate) fn CreateAccount() -> Element {
                 value: local_state.unit_of_measurement_of_quantity.read(),
             }
 
-            // Submit button
             button {
                 onclick: move |_| {
                     tools::send(ui_model::Message::CreateAccount(ui_model::CreateAccount::Submit));
@@ -107,7 +100,6 @@ pub(crate) fn CreateAccount() -> Element {
                 "Create Account"
             }
 
-            // Close button
             button {
                 onclick: move |_| {
                     tools::send(ui_model::Message::CreateAccount(ui_model::CreateAccount::Clean));

@@ -44,8 +44,6 @@ impl cases::get_all_accounts_for_branch::DatabaseRead for S {
         db: &mut Self::Db<'_>,
         read_input: &cases::get_all_accounts_for_branch::ReadInput,
     ) -> Result<cases::get_all_accounts_for_branch::ReadOutput, traits::DynamicError> {
-        // 1. Get the company UUID that owns this branch
-
         let branch_stmt = db.client.prepare_cached(QUERY1).await.log()?;
         let branch_row = db
             .client
@@ -62,8 +60,6 @@ impl cases::get_all_accounts_for_branch::DatabaseRead for S {
                 return Err("Branch not found".into());
             }
         };
-
-        // 2. Get all accounts that belong to that company
 
         let accounts_stmt = db.client.prepare_cached(QUERY2).await.log()?;
         let account_rows =
@@ -90,8 +86,6 @@ impl cases::get_all_accounts_for_branch::DatabaseRead for S {
                 unit_of_measurement_of_quantity,
             });
         }
-
-        // 3. Get all account_flow_type entries for this branch
 
         let flow_stmt = db.client.prepare_cached(QUERY3).await.log()?;
         let flow_rows = db

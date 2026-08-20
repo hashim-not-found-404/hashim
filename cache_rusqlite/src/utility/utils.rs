@@ -7,7 +7,6 @@ pub(crate) trait MyUuidConverter {
 
 impl MyUuidConverter for types::UuidType {
     fn to_string(&self) -> String {
-        // Convert [u8; 16] → Uuid → String
         let uuid = Uuid::from_bytes(self.0);
         uuid.to_string()
     }

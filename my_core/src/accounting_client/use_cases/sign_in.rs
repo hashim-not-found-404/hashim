@@ -101,19 +101,16 @@ where
                 let mut resources = Vec::with_capacity(3);
                 let user_uuid = &ok.user_uuid;
 
-                // JWT
                 resources.push(resource_utils::ResourceInfo {
                     row_uuid: user_uuid.clone(),
                     resource: resource_utils::Resource::Jwt(ok.jwt.clone()),
                 });
 
-                // User ID
                 resources.push(resource_utils::ResourceInfo {
                     row_uuid: user_uuid.clone(),
                     resource: resource_utils::Resource::TableUserFieldId(ok.user_id.clone()),
                 });
 
-                // User name (optional)
                 if let Some(name) = &ok.user_name {
                     resources.push(resource_utils::ResourceInfo {
                         row_uuid: user_uuid.clone(),

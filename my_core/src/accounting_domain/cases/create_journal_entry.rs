@@ -878,7 +878,6 @@ impl Input {
             }
         }
 
-        // Detect duplicate new_uuid within the input itself
         let mut seen_uuids = HashSet::new();
         for double_view in &mut container.view_double_entries {
             for single_view in &mut double_view.view_single_entries {
@@ -933,7 +932,6 @@ impl Input {
             container.error_shared_entry_id = Some(types::RowIdError::NotExist);
         }
 
-        // Check for duplicate new UUIDs already existing in the database
         for uuid in read_output.used_new_entries_uuid {
             for double_view in &mut container.view_double_entries {
                 for single_view in &mut double_view.view_single_entries {

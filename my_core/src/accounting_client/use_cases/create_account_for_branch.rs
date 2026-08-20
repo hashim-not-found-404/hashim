@@ -108,11 +108,9 @@ where
             Ok(_) => {
                 local_state.is_loading.reset();
                 local_state.show_dialog.reset();
-                // Optionally clear other fields
                 local_state.account_name.reset();
                 local_state.outflow_type.reset();
                 local_state.inflow_type.reset();
-                // Keep the list of available accounts, but reset filtered list?
                 local_state.filtered_list.reset();
             }
             Err(_) => {
@@ -192,7 +190,6 @@ impl ui_model::CreateAccountForBranch {
     }
 }
 
-/// Apply the fetch result to the model, converting domain accounts to UI accounts.
 fn apply_fetch_result<As: ui_model::AllSignalTypes>(
     result: &cases::get_all_accounts_for_branch::MyResult,
     model: &ui_model::Model<As>,
@@ -213,11 +210,9 @@ fn apply_fetch_result<As: ui_model::AllSignalTypes>(
             })
             .collect();
         model.page_create_account_for_branch.list_of_available_account.put(accounts);
-        // Optionally reset the filtered list and account name?
     }
 }
 
-/// Spawn a listener that re‑fetches whenever subscribed resources change.
 fn spawn_listener<
     Rn: traits::RandomNumber,
     Rt: traits::Runtime,
@@ -261,7 +256,6 @@ fn spawn_listener<
         .set(Box::new(listener_aborter));
 }
 
-// ---- Clean ----
 fn handle_clean<As: ui_model::AllSignalTypes>(model: &ui_model::Model<As>) {
     let local_state = &model.page_create_account_for_branch;
 
@@ -270,12 +264,9 @@ fn handle_clean<As: ui_model::AllSignalTypes>(model: &ui_model::Model<As>) {
     local_state.account_name.reset();
     local_state.outflow_type.reset();
     local_state.inflow_type.reset();
-    // Optionally clear filtered list as well
     local_state.filtered_list.reset();
-    // Do NOT reset list_of_available_account – it's the master list from cache.
 }
 
-// ---- Submit ----
 async fn handle_submit<
     Rn: traits::RandomNumber,
     Rt: traits::Runtime,
@@ -321,7 +312,6 @@ async fn handle_submit<
     )
     .await;
 
-    // Reset the loading flag (already done in apply_on_the_model, but just in case)
     model.page_create_account_for_branch.is_loading.reset();
 }
 

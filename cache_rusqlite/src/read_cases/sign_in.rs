@@ -25,11 +25,7 @@ impl cases::sign_in::DatabaseRead for S {
                 let user_name: Option<String> = row.get(1).unwrap();
                 let jwt: Option<String> = row.get(2).unwrap();
 
-                Ok((
-                    user_uuid_str.to_uuid(),
-                    jwt.unwrap_or_default(), // true if JWT exists
-                    user_name,
-                ))
+                Ok((user_uuid_str.to_uuid(), jwt.unwrap_or_default(), user_name))
             })
             .optional()
             .unwrap();

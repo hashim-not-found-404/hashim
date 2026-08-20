@@ -29,14 +29,12 @@ pub(crate) fn CreateJournalEntry() -> Element {
 
     rsx! {
         div {
-            // Dialog for offline consent
             components::Dialog {
                 consent_callback,
                 operation_name: "create journal entry",
                 show_dialog: local_state.show_dialog.clone(),
             }
 
-            // Shared Entry ID (optional)
             div {
                 label { "Shared Entry ID (optional)" }
                 input {
@@ -52,7 +50,6 @@ pub(crate) fn CreateJournalEntry() -> Element {
                 }
             }
 
-            // Display validation errors
             if local_state.error_container_is_empty.read() {
                 label { "Container cannot be empty" }
             }
@@ -63,10 +60,8 @@ pub(crate) fn CreateJournalEntry() -> Element {
                 label { "Some accounts have not been selected" }
             }
 
-            // Double entries
             for (double_idx, double) in local_state.double_entries.read().iter().enumerate() {
                 div {
-                    // Double-level errors
                     if double.entry_is_empty {
                         label { "Double entry cannot be empty" }
                     }
@@ -85,10 +80,8 @@ pub(crate) fn CreateJournalEntry() -> Element {
                         }
                     }
 
-                    // Single entries for this double
                     for (single_idx, single) in double.singles.iter().enumerate() {
                         div {
-                            // Single-level errors (display as needed)
                             if single.quantity_and_amount_are_zero {
                                 label { "Quantity and amount are both zero" }
                             }
@@ -124,7 +117,6 @@ pub(crate) fn CreateJournalEntry() -> Element {
                                 }
                             }
 
-                            // Account selection with autocomplete
                             div {
                                 input {
                                     placeholder: "Account Name",
@@ -140,7 +132,6 @@ pub(crate) fn CreateJournalEntry() -> Element {
                                         );
                                     },
                                 }
-                                // Suggestions dropdown
                                 for suggestion in local_state.filtered_list.read() {
                                     div {
                                         onclick: move |_| {
@@ -157,7 +148,6 @@ pub(crate) fn CreateJournalEntry() -> Element {
                                 }
                             }
 
-                            // Other fields
                             div {
                                 label { "Is Debit" }
                                 input {
@@ -276,7 +266,6 @@ pub(crate) fn CreateJournalEntry() -> Element {
                                 }
                             }
 
-                            // Remove single entry button
                             button {
                                 onclick: move |_| {
                                     tools::send(
@@ -291,7 +280,6 @@ pub(crate) fn CreateJournalEntry() -> Element {
                         }
                     }
 
-                    // Add single entry button
                     button {
                         onclick: move |_| {
                             tools::send(
@@ -304,7 +292,6 @@ pub(crate) fn CreateJournalEntry() -> Element {
                     }
                 }
 
-                // Remove double entry button
                 button {
                     onclick: move |_| {
                         tools::send(
@@ -317,7 +304,6 @@ pub(crate) fn CreateJournalEntry() -> Element {
                 }
             }
 
-            // Add double entry button
             button {
                 onclick: move |_| {
                     tools::send(
@@ -329,7 +315,6 @@ pub(crate) fn CreateJournalEntry() -> Element {
                 "Add Double Entry"
             }
 
-            // Submit and Clean buttons
             button {
                 disabled: local_state.is_loading.read(),
                 onclick: move |_| {

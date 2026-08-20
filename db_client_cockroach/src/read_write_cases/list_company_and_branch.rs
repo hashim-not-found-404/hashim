@@ -73,7 +73,6 @@ impl cases::list_company_and_branch::DatabaseRead for S {
         let mut company_map: HashMap<types::UuidType, CompanyAgg> = HashMap::new();
 
         for row in rows {
-            // ---- FIX: read as String, then parse to Uuid ----
             let company_uuid_str: String = row.try_get(0).log()?;
             let company_uuid_parsed = Uuid::parse_str(&company_uuid_str).log()?;
             let company_uuid = types::UuidType(company_uuid_parsed.into_bytes());
@@ -86,7 +85,6 @@ impl cases::list_company_and_branch::DatabaseRead for S {
             let company_currency = types::Currency::from_str(&company_currency_str).log()?;
             let role = types::Role::from_str(&user_role_str).log()?;
 
-            // Parse branches JSON
             let branches: Vec<BranchJson> = serde_json::from_value(branches_json).log()?;
             let branch_entries: Vec<
                 cases::list_company_and_branch::AllBranchesThatUserInWithRoles,
@@ -123,7 +121,6 @@ impl cases::list_company_and_branch::DatabaseRead for S {
             entry.branches = branch_entries;
         }
 
-        // Build final result
         let data = company_map
             .into_iter()
             .map(|(company_uuid, agg)| {

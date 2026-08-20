@@ -31,7 +31,6 @@ impl cases::list_company_and_branch::DatabaseRead for S {
         use std::collections::HashMap;
         use types::Role;
 
-        // ---- 1. Get company-level roles ----
         let company_query = QUERY1;
         let mut stmt = db.tables_db.prepare(company_query).unwrap();
         let company_rows = stmt
@@ -39,12 +38,11 @@ impl cases::list_company_and_branch::DatabaseRead for S {
                 let uuid: String = row.get(0).unwrap();
                 let name: String = row.get(1).unwrap();
                 let currency: String = row.get(2).unwrap();
-                let role: Option<String> = row.get(3).unwrap(); // read as Option<String>
+                let role: Option<String> = row.get(3).unwrap();
                 Ok((uuid, name, currency, role))
             })
             .unwrap();
 
-        // Group company roles by company UUID
         let mut company_map: HashMap<String, (String, String, Vec<Role>)> = HashMap::new();
         for row in company_rows {
             let (uuid, name, currency, role_opt) = row.unwrap();
@@ -56,13 +54,8 @@ impl cases::list_company_and_branch::DatabaseRead for S {
                     .2
                     .push(role);
             }
-            // If role is None, skip? Or still create company entry with empty roles?
-            // The code above creates the entry only when a role exists.
-            // To include companies with no roles, you'd need to create the entry regardless.
-            // But since we only get rows for companies with at least one role (due to the JOIN), it's fine.
         }
 
-        // ---- 2. Get branch-level roles ----
         let branch_query = QUERY2;
         let mut stmt = db.tables_db.prepare(branch_query).unwrap();
         let branch_rows = stmt
@@ -71,12 +64,11 @@ impl cases::list_company_and_branch::DatabaseRead for S {
                 let branch_name: String = row.get(1).unwrap();
                 let branch_currency: String = row.get(2).unwrap();
                 let company_belong: String = row.get(3).unwrap();
-                let role: Option<String> = row.get(4).unwrap(); // read as Option<String>
+                let role: Option<String> = row.get(4).unwrap();
                 Ok((branch_uuid, branch_name, branch_currency, company_belong, role))
             })
             .unwrap();
 
-        // Group branch roles by branch UUID, and remember which company it belongs to
         struct BranchAccumulator {
             branch_uuid:     String,
             branch_name:     String,
@@ -88,7 +80,6 @@ impl cases::list_company_and_branch::DatabaseRead for S {
         for row in branch_rows {
             let (branch_uuid, branch_name, branch_currency, company_belong, role_opt) =
                 row.unwrap();
-            // Create entry for the branch (even if role is None)
             let entry = branch_map.entry(branch_uuid.clone()).or_insert_with(|| {
                 BranchAccumulator {
                     branch_uuid:     branch_uuid.clone(),
@@ -102,16 +93,13 @@ impl cases::list_company_and_branch::DatabaseRead for S {
                 let role = Role::from_str(&role_str).unwrap();
                 entry.roles.push(role);
             }
-            // If role is None, we still keep the branch entry with empty roles.
         }
 
-        // ---- 3. Build the final result ----
         let mut result = Vec::new();
         for (company_uuid_str, (company_name, company_currency_str, company_roles)) in company_map {
             let company_uuid = company_uuid_str.clone().to_uuid();
             let company_currency = types::Currency::from_str(&company_currency_str).unwrap();
 
-            // Collect branches that belong to this company
             let branches: Vec<cases::list_company_and_branch::AllBranchesThatUserInWithRoles> =
                 branch_map
                     .iter()

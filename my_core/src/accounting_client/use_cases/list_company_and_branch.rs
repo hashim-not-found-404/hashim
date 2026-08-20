@@ -34,7 +34,6 @@ impl tools::Sortable for types::Branch {
     }
 }
 
-/// Sort a list of companies by name then by UUID, and sort branches inside each company similarly.
 pub fn sort_companies(companies: &mut types::ListOfCompanies) {
     tools::sort(companies);
     for company in companies {
@@ -88,7 +87,6 @@ where
                 for company in &ok.data {
                     let company_uuid = &company.company_uuid;
 
-                    // ---- Company fields ----
                     resources.push(resource_utils::ResourceInfo {
                         row_uuid: company_uuid.clone(),
                         resource: resource_utils::Resource::TableCompanyFieldName(
@@ -102,8 +100,6 @@ where
                         ),
                     });
 
-                    // ---- Company access control ----
-                    // One resource per role (multiple roles possible)
                     for role in &company.user_roles {
                         resources.push(resource_utils::ResourceInfo {
                             row_uuid: company_uuid.clone(),
@@ -113,7 +109,6 @@ where
                                 ),
                         });
                     }
-                    // Always add the user and data_group (self) once per company
                     resources.push(resource_utils::ResourceInfo {
                         row_uuid: company_uuid.clone(),
                         resource: resource_utils::Resource::TableAccessControlForCompanyFieldUser(
@@ -128,7 +123,6 @@ where
                             ),
                     });
 
-                    // ---- Branches ----
                     for branch in &company.branches {
                         let branch_uuid = &branch.branch_uuid;
 
@@ -152,7 +146,6 @@ where
                                 ),
                         });
 
-                        // Branch access control (roles)
                         for role in &branch.user_roles {
                             resources.push(resource_utils::ResourceInfo {
                                 row_uuid: branch_uuid.clone(),
@@ -161,7 +154,6 @@ where
                                 ),
                             });
                         }
-                        // Add user and data_group for each branch
                         resources.push(resource_utils::ResourceInfo {
                             row_uuid: branch_uuid.clone(),
                             resource: resource_utils::Resource::TableAccessControlForCompanyBranchFieldUser(
@@ -190,7 +182,6 @@ where
                     let mut companies = Vec::with_capacity(ok.data.len());
 
                     for company_entry in ok.data {
-                        // Convert branches for this company
                         let branches = company_entry
                             .branches
                             .into_iter()
@@ -202,8 +193,6 @@ where
                             })
                             .collect();
 
-                        // Pick a single role (e.g., the first one, or highest privilege)
-                        // If no role, provide a sensible default (adjust as needed)
                         let role = company_entry.user_roles.first().cloned().unwrap_or_default();
 
                         companies.push(types::Company {
