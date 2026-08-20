@@ -27,16 +27,22 @@ impl cases::create_journal_entry::Input {
 
         let mut txn = client.begin_transaction().await?;
 
-        let result = self.state_full_check::<Db, Ti>(&mut txn).await;
+        let result = (async || {
+            let result = self.state_full_check::<Db, Ti>(&mut txn).await?;
 
-        match &result {
-            Ok(Ok(ok)) => {
-                txn.write_create_journal_entry(ok).await?;
-                let _ = txn.commit_transaction().await?;
-            }
-            _ => {
-                txn.rollback_transaction().await?;
-            }
+            let Ok(result) = result else {
+                return Ok(Err(errr));
+            };
+
+            txn.write_create_journal_entry(&result).await?;
+            Ok(Ok(result))
+        })()
+        .await;
+
+        if let Ok(Ok(_)) = result {
+            let _ = txn.commit_transaction().await?;
+        } else {
+            txn.rollback_transaction().await?;
         }
 
         result

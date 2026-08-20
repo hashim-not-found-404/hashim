@@ -25,17 +25,27 @@ impl cases::sign_up::Input {
         }
 
         let mut txn = client.begin_transaction().await?;
-        let errr = self.state_full_check::<Db>(&mut txn).await?;
-        if errr.is_there_error() {
+
+        let result = (async || {
+            let errr = self.state_full_check::<Db>(&mut txn).await?;
+
+            if errr.is_there_error() {
+                return Ok(Err(errr));
+            }
+
+            let result = self.state_full_operation::<Auth, Jwt>(jwt);
+            txn.write_sign_up(&result).await?;
+            side_effects.authenticated_users.insert(self.new_uuid.clone());
+            Ok(Ok(result))
+        })()
+        .await;
+
+        if let Ok(Ok(_)) = result {
+            let _ = txn.commit_transaction().await?;
+        } else {
             txn.rollback_transaction().await?;
-            return Ok(Err(errr));
         }
-        let result = self.state_full_operation::<Auth, Jwt>(jwt);
-        txn.write_sign_up(&result).await?;
-        let _ = txn.commit_transaction().await?;
 
-        side_effects.authenticated_users.insert(self.new_uuid.clone());
-
-        Ok(Ok(result))
+        result
     }
 }
