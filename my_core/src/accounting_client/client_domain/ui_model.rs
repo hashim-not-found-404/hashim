@@ -1,7 +1,7 @@
 use crate::accounting_domain::cases::create_journal_entry;
-use crate::accounting_domain::utility::accounting_stuff;
 use crate::accounting_domain::utility::types;
 use crate::utility::tools;
+use accounting_engine::accounting_stuff;
 use std::sync::Mutex;
 
 pub trait HashimSignal<T: Default + Clone>: Default {

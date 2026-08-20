@@ -1,12 +1,18 @@
-use crate::accounting_domain::utility::accounting_stuff;
-use crate::accounting_domain::utility::accounting_stuff::DoubleEntry;
-use crate::accounting_domain::utility::accounting_stuff::EntryContainer;
-use crate::accounting_domain::utility::correct_journal_input;
 use crate::accounting_domain::utility::types;
 use crate::accounting_domain::utility::types::MyErrorTrait;
 use crate::accounting_domain::utility::types::RowId;
 use crate::utility::traits;
 use crate::utility::traits::Time;
+use accounting_engine::accounting_stuff;
+use accounting_engine::accounting_stuff::DoubleEntry;
+use accounting_engine::accounting_stuff::EntryContainer;
+use accounting_engine::accounting_stuff::InFlowType;
+use accounting_engine::accounting_stuff::Inventory;
+use accounting_engine::accounting_stuff::InventoryRecord;
+use accounting_engine::accounting_stuff::OutFlowType;
+use accounting_engine::check_journal_input;
+use accounting_engine::check_journal_input::MyErrorTrait as AccountingErrorTrait;
+use accounting_engine::correct_journal_input;
 use serde::Deserialize;
 use serde::Serialize;
 use std::collections::HashMap;
@@ -40,8 +46,8 @@ pub struct SingleEntryInput {
     pub account:      types::UuidType,
     pub is_debit:     Option<bool>,
     pub is_inflow:    Option<bool>,
-    pub inflow_type:  Option<accounting_stuff::InFlowType>,
-    pub outflow_type: Option<accounting_stuff::OutFlowType>,
+    pub inflow_type:  Option<InFlowType>,
+    pub outflow_type: Option<OutFlowType>,
     pub amount:       Option<f64>,
     pub quantity:     Option<f64>,
 }
@@ -66,7 +72,7 @@ pub struct SingleEntryOk {
     pub double_entry_number: u32,
     pub account:             types::UuidType,
     pub is_debit:            bool,
-    pub out_flow_type:       accounting_stuff::OutFlowType,
+    pub out_flow_type:       OutFlowType,
     pub quantity:            f64,
     pub amount:              f64,
 }
@@ -140,8 +146,8 @@ pub struct ReadOutput {
 #[derive(Debug, Clone)]
 pub struct AccountInfo {
     pub is_debit:      bool,
-    pub in_flow_type:  accounting_stuff::InFlowType,
-    pub out_flow_type: accounting_stuff::OutFlowType,
+    pub in_flow_type:  InFlowType,
+    pub out_flow_type: OutFlowType,
     pub inventory:     InventoryWrapper,
 }
 
@@ -204,7 +210,7 @@ pub struct ContainerView {
 // -----------------------------------------------------------------------------
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct InventoryWrapper(pub Vec<accounting_stuff::InventoryRecord>);
+pub struct InventoryWrapper(pub Vec<InventoryRecord>);
 
 impl DerefMut for InventoryWrapper {
     fn deref_mut(&mut self) -> &mut Self::Target {
@@ -213,7 +219,7 @@ impl DerefMut for InventoryWrapper {
 }
 
 impl Deref for InventoryWrapper {
-    type Target = Vec<accounting_stuff::InventoryRecord>;
+    type Target = Vec<InventoryRecord>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -241,13 +247,13 @@ impl Deref for AccountInfoProviderImpl {
 // implementations
 // -----------------------------------------------------------------------------
 
-impl MyErrorTrait for SingleEntryView {
+impl AccountingErrorTrait for SingleEntryView {
     fn is_there_error(&self) -> bool {
         self.error != SingleEntryError::default()
     }
 }
 
-impl MyErrorTrait for DoubleEntryView {
+impl AccountingErrorTrait for DoubleEntryView {
     fn is_there_error(&self) -> bool {
         if self.error_entry_is_empty
             || self.error_you_need_to_split_the_entry
@@ -259,7 +265,7 @@ impl MyErrorTrait for DoubleEntryView {
     }
 }
 
-impl MyErrorTrait for ContainerView {
+impl AccountingErrorTrait for ContainerView {
     fn is_there_error(&self) -> bool {
         if self.error_container_is_empty
             || self.error_user_uuid.is_some()
@@ -305,7 +311,7 @@ impl MyErrorTrait for Error {
     }
 }
 
-impl accounting_stuff::SingleEntry for SingleEntryView {
+impl check_journal_input::SingleEntry for SingleEntryView {
     type AccountId = types::UuidType;
 
     fn account_id(&self) -> Self::AccountId {
@@ -324,16 +330,16 @@ impl accounting_stuff::SingleEntry for SingleEntryView {
         self.input.amount.unwrap()
     }
 
-    fn inflow_type(&self) -> accounting_stuff::InFlowType {
+    fn inflow_type(&self) -> InFlowType {
         self.input.inflow_type.unwrap()
     }
 
-    fn outflow_type(&self) -> accounting_stuff::OutFlowType {
+    fn outflow_type(&self) -> OutFlowType {
         self.input.outflow_type.unwrap()
     }
 }
 
-impl accounting_stuff::SingleEntryError for SingleEntryView {
+impl check_journal_input::SingleEntryError for SingleEntryView {
     fn quantity_and_amount_are_zero(&mut self) {
         self.error.quantity_and_amount_are_zero = true;
     }
@@ -422,7 +428,7 @@ impl accounting_stuff::DoubleEntry for DoubleEntryView {
     }
 }
 
-impl accounting_stuff::DoubleEntryError for DoubleEntryView {
+impl check_journal_input::DoubleEntryError for DoubleEntryView {
     fn entry_is_empty(&mut self) {
         self.error_entry_is_empty = true;
     }
@@ -439,7 +445,7 @@ impl accounting_stuff::DoubleEntryError for DoubleEntryView {
     }
 }
 
-impl accounting_stuff::EntryContainer for ContainerView {
+impl EntryContainer for ContainerView {
     type Double<'b>
         = DoubleEntryView
     where
@@ -489,13 +495,13 @@ impl accounting_stuff::EntryContainer for ContainerView {
     }
 }
 
-impl accounting_stuff::EntryContainerError for ContainerView {
+impl check_journal_input::EntryContainerError for ContainerView {
     fn container_is_empty(&mut self) {
         self.error_container_is_empty = true;
     }
 }
 
-impl accounting_stuff::AccountInfoProvider for AccountInfoProviderImpl {
+impl check_journal_input::AccountInfoProvider for AccountInfoProviderImpl {
     type AccountId = types::UuidType;
     type Inventory = InventoryWrapper;
 
@@ -508,8 +514,8 @@ impl accounting_stuff::AccountInfoProvider for AccountInfoProviderImpl {
     }
 }
 
-impl accounting_stuff::Inventory for InventoryWrapper {
-    fn push(&mut self, record: accounting_stuff::InventoryRecord) {
+impl Inventory for InventoryWrapper {
+    fn push(&mut self, record: InventoryRecord) {
         Vec::push(self, record);
     }
 
@@ -521,32 +527,29 @@ impl accounting_stuff::Inventory for InventoryWrapper {
         Vec::is_empty(self)
     }
 
-    fn iter1(&self) -> impl Iterator<Item = &accounting_stuff::InventoryRecord> {
+    fn iter1(&self) -> impl Iterator<Item = &InventoryRecord> {
         self.iter()
     }
 
-    fn iter_mut1(&mut self) -> impl Iterator<Item = &mut accounting_stuff::InventoryRecord> {
+    fn iter_mut1(&mut self) -> impl Iterator<Item = &mut InventoryRecord> {
         self.iter_mut()
     }
 
     fn sort_by1<F>(&mut self, compare: F)
     where
-        F: FnMut(
-            &accounting_stuff::InventoryRecord,
-            &accounting_stuff::InventoryRecord,
-        ) -> std::cmp::Ordering,
+        F: FnMut(&InventoryRecord, &InventoryRecord) -> std::cmp::Ordering,
     {
         self.sort_by(compare);
     }
 
     fn retain<F>(&mut self, f: F)
     where
-        F: FnMut(&accounting_stuff::InventoryRecord) -> bool,
+        F: FnMut(&InventoryRecord) -> bool,
     {
         Vec::retain(self, f);
     }
 
-    fn pop(&mut self) -> Option<accounting_stuff::InventoryRecord> {
+    fn pop(&mut self) -> Option<InventoryRecord> {
         Vec::pop(self)
     }
 }
@@ -574,11 +577,11 @@ impl correct_journal_input::SingleEntry for SingleEntryView {
         self.input.amount
     }
 
-    fn get_from_user_input_inflow_type(&self) -> Option<accounting_stuff::InFlowType> {
+    fn get_from_user_input_inflow_type(&self) -> Option<InFlowType> {
         self.input.inflow_type
     }
 
-    fn get_from_user_input_outflow_type(&self) -> Option<accounting_stuff::OutFlowType> {
+    fn get_from_user_input_outflow_type(&self) -> Option<OutFlowType> {
         self.input.outflow_type
     }
 
@@ -598,11 +601,11 @@ impl correct_journal_input::SingleEntry for SingleEntryView {
         self.input.amount = i;
     }
 
-    fn set_user_input_inflow_type(&mut self, i: Option<accounting_stuff::InFlowType>) {
+    fn set_user_input_inflow_type(&mut self, i: Option<InFlowType>) {
         self.input.inflow_type = i;
     }
 
-    fn set_user_input_outflow_type(&mut self, i: Option<accounting_stuff::OutFlowType>) {
+    fn set_user_input_outflow_type(&mut self, i: Option<OutFlowType>) {
         self.input.outflow_type = i;
     }
 
@@ -622,11 +625,11 @@ impl correct_journal_input::SingleEntry for SingleEntryView {
         self.input.amount = i;
     }
 
-    fn set_inferred_inflow_type(&mut self, i: Option<accounting_stuff::InFlowType>) {
+    fn set_inferred_inflow_type(&mut self, i: Option<InFlowType>) {
         self.input.inflow_type = i;
     }
 
-    fn set_inferred_outflow_type(&mut self, i: Option<accounting_stuff::OutFlowType>) {
+    fn set_inferred_outflow_type(&mut self, i: Option<OutFlowType>) {
         self.input.outflow_type = i;
     }
 
@@ -646,11 +649,11 @@ impl correct_journal_input::SingleEntry for SingleEntryView {
         self.input.amount
     }
 
-    fn get_inferred_inflow_type(&self) -> Option<accounting_stuff::InFlowType> {
+    fn get_inferred_inflow_type(&self) -> Option<InFlowType> {
         self.input.inflow_type
     }
 
-    fn get_inferred_outflow_type(&self) -> Option<accounting_stuff::OutFlowType> {
+    fn get_inferred_outflow_type(&self) -> Option<OutFlowType> {
         self.input.outflow_type
     }
 }
@@ -958,9 +961,9 @@ impl Input {
             let (_, error) = split_container_view(container);
             return Ok(Err(error));
         }
-        accounting_stuff::state_less_check_for_entry(&mut container);
+        check_journal_input::state_less_check_for_entry(&mut container);
 
-        accounting_stuff::state_full_check_for_entry(
+        check_journal_input::state_full_check_for_entry(
             Ti::now_as_unix_milliseconds(),
             &mut container,
             &mut account_info,

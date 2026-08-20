@@ -18,3 +18,4 @@ cache_rusqlite = { workspace = true }
 dioxus = { version = "0.7.9", features = ["router"] }
 dioxus-logger = { workspace = true }
 my_core = { workspace = true }
+accounting_engine = { workspace = true }

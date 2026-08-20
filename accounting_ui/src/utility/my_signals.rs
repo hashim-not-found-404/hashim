@@ -1,7 +1,7 @@
 use crate::utility::my_signal;
+use accounting_engine::accounting_stuff;
 use my_core::accounting_client::client_domain::ui_model;
 use my_core::accounting_client::client_domain::ui_model::AllSignalTypes;
-use my_core::accounting_domain::utility::accounting_stuff;
 use my_core::accounting_domain::utility::types;
 
 #[derive(Default, Clone)]

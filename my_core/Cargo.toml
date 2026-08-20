@@ -7,6 +7,7 @@ edition = "2024"
 
 [dependencies]
 serde = { workspace = true }
+accounting_engine = { workspace = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 dioxus-logger = { workspace = true }

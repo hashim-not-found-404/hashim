@@ -1,6 +1,6 @@
-use crate::accounting_domain::utility::accounting_stuff;
 use crate::accounting_domain::utility::types;
 use crate::utility::traits;
+use accounting_engine::accounting_stuff;
 use serde::Deserialize;
 use serde::Serialize;
 
