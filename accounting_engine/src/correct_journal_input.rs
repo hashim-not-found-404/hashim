@@ -655,7 +655,7 @@ mod tests {
         }
     }
 
-    #[derive(Default, Debug, Clone)]
+    #[derive(Debug, Clone, Default)]
     pub struct MockSingle {
         pub user_input_account_id: String,
 

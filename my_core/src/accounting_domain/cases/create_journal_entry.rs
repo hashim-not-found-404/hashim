@@ -33,7 +33,7 @@ pub type MyResult = Result<Ok, Error>;
 // Input DTOs
 // -----------------------------------------------------------------------------
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Input {
     pub new_uuid:                 types::UuidType,
     pub belong_to_company_branch: types::UuidType,
@@ -42,12 +42,12 @@ pub struct Input {
     pub double_entries:           Vec<DoubleEntryInput>,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct DoubleEntryInput {
     pub(crate) single_entries: Vec<SingleEntryInput>,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct SingleEntryInput {
     pub new_uuid:     types::UuidType,
     pub account:      types::UuidType,
@@ -63,7 +63,7 @@ pub struct SingleEntryInput {
 // Ok DTOs
 // -----------------------------------------------------------------------------
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Ok {
     pub new_uuid:        types::UuidType,
     pub user_uuid:       types::UuidType,
@@ -73,7 +73,7 @@ pub struct Ok {
     pub inventory:       HashMap<types::UuidType, InventoryWrapper>,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct SingleEntryOk {
     pub new_uuid:            types::UuidType,
     pub double_entry_number: u32,
@@ -88,7 +88,7 @@ pub struct SingleEntryOk {
 // Error DTOs
 // -----------------------------------------------------------------------------
 
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
 pub struct Error {
     pub(crate) user_uuid:                Option<types::UserUuidError>,
     pub(crate) new_uuid:                 Option<types::RowIdError>,
@@ -99,7 +99,7 @@ pub struct Error {
     pub(crate) double_entries:           Vec<ErrorDoubleEntry>,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
 pub struct ErrorDoubleEntry {
     pub(crate) entry_is_empty:              bool,
     pub(crate) you_need_to_split_the_entry: bool,
@@ -107,7 +107,7 @@ pub struct ErrorDoubleEntry {
     pub(crate) single_entries:              Vec<ErrorSingleEntry>,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
 pub struct ErrorSingleEntry {
     pub(crate) new_uuid:                           Option<types::RowIdError>,
     pub(crate) account:                            Option<types::RowIdError>,
@@ -123,7 +123,7 @@ pub struct ErrorSingleEntry {
     pub(crate) insufficient_amount_in_inventory:   Option<f64>,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
 pub struct DebitNotEqualCreditError {
     pub total_debit:  f64,
     pub total_credit: f64,
@@ -216,7 +216,7 @@ pub struct ContainerView {
 // AccountInfoProvider
 // -----------------------------------------------------------------------------
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct InventoryWrapper(pub Vec<InventoryRecord>);
 
 impl DerefMut for InventoryWrapper {
@@ -233,7 +233,7 @@ impl Deref for InventoryWrapper {
     }
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct AccountInfoProviderImpl(pub HashMap<types::UuidType, AccountInfo>);
 
 impl DerefMut for AccountInfoProviderImpl {

@@ -5,7 +5,7 @@ use serde::Serialize;
 
 pub type MyResult = Result<Ok, Error>;
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Input {
     pub user_uuid:                       types::UuidType,
     pub new_uuid:                        types::UuidType,
@@ -17,7 +17,7 @@ pub struct Input {
     pub belong_to_company:               types::UuidType,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Ok {
     pub new_uuid:                        types::UuidType,
     pub is_debit:                        bool,
@@ -28,7 +28,7 @@ pub struct Ok {
     pub belong_to_company:               types::UuidType,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
 pub struct Error {
     pub(crate) user_uuid:         Option<types::UserUuidError>,
     pub(crate) new_uuid:          Option<types::RowIdError>,
@@ -38,7 +38,7 @@ pub struct Error {
 
 impl types::MarkerMyErrorTrait for Error {}
 
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub(crate) enum AccountNameError {
     Duplicated,
 }

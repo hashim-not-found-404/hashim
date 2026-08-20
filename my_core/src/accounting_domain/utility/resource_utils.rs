@@ -3,7 +3,7 @@ use accounting_engine::accounting_stuff;
 use serde::Deserialize;
 use serde::Serialize;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Eq, Hash, PartialEq)]
 pub(crate) enum Subscribe {
     TableAccessControlForCompanyBranchFieldDataGroup,
     TableAccessControlForCompanyBranchFieldRole,
@@ -44,7 +44,7 @@ pub(crate) enum Subscribe {
     TableSingleEntryFieldAmount,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub enum Resource {
     Jwt(types::JsonWebTokenType),
 
@@ -183,7 +183,7 @@ impl Resource {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ResourceInfo {
     pub row_uuid: types::UuidType,
     pub resource: Resource,

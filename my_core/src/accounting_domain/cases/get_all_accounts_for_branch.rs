@@ -6,13 +6,13 @@ use serde::Serialize;
 
 pub type MyResult = Result<Ok, Error>;
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Input {
     pub(crate) user_uuid:           types::UuidType,
     pub(crate) company_branch_uuid: types::UuidType,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Ok {
     pub(crate) company_uuid:        types::UuidType,
     pub(crate) company_branch_uuid: types::UuidType,
@@ -20,7 +20,7 @@ pub struct Ok {
     pub(crate) accounts_for_branch: Vec<AccountForBranch>,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Account {
     pub row_uuid:                        types::UuidType,
     pub is_debit:                        bool,
@@ -30,7 +30,7 @@ pub struct Account {
     pub unit_of_measurement_of_quantity: String,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct AccountForBranch {
     pub row_uuid:     types::UuidType,
     pub account_uuid: types::UuidType,
@@ -38,7 +38,7 @@ pub struct AccountForBranch {
     pub inflow_type:  accounting_stuff::InFlowType,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
 pub struct Error {
     pub(crate) user_uuid:           Option<types::UserUuidError>,
     pub(crate) company_branch_uuid: Option<types::RowIdError>,
@@ -51,7 +51,7 @@ pub struct ReadInput {
     pub company_branch_uuid: types::UuidType,
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct ReadOutput {
     pub company_uuid:        types::UuidType,
     pub accounts:            Vec<Account>,

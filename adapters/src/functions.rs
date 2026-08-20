@@ -3,7 +3,7 @@ pub mod target {
     use regex::Regex;
     use std::sync::LazyLock;
 
-    #[derive(Clone)]
+    #[derive(Debug, Clone)]
     pub struct S;
 
     static RE: LazyLock<Regex> =

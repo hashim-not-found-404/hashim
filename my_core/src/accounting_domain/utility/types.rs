@@ -36,10 +36,10 @@ impl<T: MarkerMyErrorTrait + Default + PartialEq> MyErrorTrait for T {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, Default, PartialEq, Hash, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Default, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
 pub struct UuidType(pub [u8; 16]);
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct JsonWebTokenType(pub String);
 
 pub type ListOfCompanies = Vec<Company>;
@@ -58,7 +58,7 @@ pub struct Branch {
     pub name: String,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, Default)]
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
 pub struct Location {
     pub latitude:  f64,
     pub longitude: f64,
@@ -75,7 +75,7 @@ impl Location {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, Default)]
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
 pub enum Currency {
     #[default]
     USD,
@@ -103,7 +103,7 @@ impl Currency {
     }
 }
 
-#[derive(Default, Debug, Deserialize, Serialize, Clone, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
 pub enum Role {
     #[default]
     Manager,
@@ -146,31 +146,31 @@ pub const ADDRESS: &str = "127.0.0.1:8081";
 
 // there should be no generic in all the below types
 
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub(crate) enum UserUuidError {
     Invalid,
     NotAuthenticated,
     YouDontHavePermissionToDoThat,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub(crate) enum RowIdError {
     Invalid,
     Duplicated,
     NotExist,
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, PartialEq, Deserialize, Serialize)]
 pub(crate) enum NonceError {
     Invalid,
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, PartialEq, Deserialize, Serialize)]
 pub(crate) enum JWTError {
     Invalid,
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, PartialEq, Deserialize, Serialize)]
 pub enum HashimError {
     InternalServerError,
     InvalidDataFormat,

@@ -15,13 +15,7 @@ use serde::Serialize;
 use std::cmp::Ordering;
 use std::str::FromStr;
 
-#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq)]
-pub enum CostFlowType {
-    InFlow(InFlowType),
-    OutFlow(OutFlowType),
-}
-
-#[derive(PartialEq, Debug, Deserialize, Serialize, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Deserialize, Serialize)]
 pub enum OutFlowType {
     Manual, // reorderable
     QuantityEqualAmount,
@@ -67,7 +61,7 @@ impl FromStr for OutFlowType {
     }
 }
 
-#[derive(PartialEq, Debug, Deserialize, Serialize, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Deserialize, Serialize)]
 pub enum InFlowType {
     #[default]
     Manual,
@@ -98,13 +92,13 @@ impl FromStr for InFlowType {
     }
 }
 
-#[derive(PartialEq, Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Nature {
     Debit,
     Credit,
 }
 
-#[derive(Debug, PartialEq, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct InventoryRecord {
     pub time_unix: u64,
     pub quantity:  f64,

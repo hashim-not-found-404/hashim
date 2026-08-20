@@ -9,7 +9,7 @@ pub mod target {
     use derive_more::From;
     use my_core::accounting_domain::utility::types::HashedPassword;
 
-    #[derive(Clone, From)]
+    #[derive(Debug, Clone, From)]
     pub struct S;
 
     impl HashedPassword for S {

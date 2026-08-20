@@ -5,19 +5,19 @@ use serde::Serialize;
 
 pub type MyResult = Result<Ok, Error>;
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Input {
     pub(crate) user_uuid:    types::UuidType,
     pub(crate) company_uuid: types::UuidType,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Ok {
     pub(crate) company_uuid: types::UuidType,
     pub(crate) data:         Vec<Data>,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Data {
     pub row_uuid:                        types::UuidType,
     pub is_debit:                        bool,
@@ -27,7 +27,7 @@ pub struct Data {
     pub unit_of_measurement_of_quantity: String,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
 pub struct Error {
     pub(crate) user_uuid:    Option<types::UserUuidError>,
     pub(crate) company_uuid: Option<types::RowIdError>,

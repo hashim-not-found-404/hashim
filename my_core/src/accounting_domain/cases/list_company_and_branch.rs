@@ -5,18 +5,18 @@ use serde::Serialize;
 
 pub type MyResult = Result<Ok, Error>;
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Input {
     pub(crate) user_uuid: types::UuidType,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Ok {
     pub(crate) user_uuid: types::UuidType,
     pub(crate) data:      Vec<AllCompaniesThatUserInWithRoles>,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct AllCompaniesThatUserInWithRoles {
     pub company_uuid:     types::UuidType,
     pub company_name:     String,
@@ -25,7 +25,7 @@ pub struct AllCompaniesThatUserInWithRoles {
     pub branches:         Vec<AllBranchesThatUserInWithRoles>,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct AllBranchesThatUserInWithRoles {
     pub branch_uuid:     types::UuidType,
     pub branch_name:     String,
@@ -33,7 +33,7 @@ pub struct AllBranchesThatUserInWithRoles {
     pub user_roles:      Vec<types::Role>,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
 pub struct Error {
     pub(crate) user_uuid: Option<types::UserUuidError>,
 }

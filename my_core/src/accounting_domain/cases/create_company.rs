@@ -5,7 +5,7 @@ use serde::Serialize;
 
 pub type MyResult = Result<Ok, Error>;
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Input {
     pub(crate) user_uuid:    types::UuidType,
     pub(crate) new_uuid:     types::UuidType,
@@ -13,7 +13,7 @@ pub struct Input {
     pub(crate) currency:     types::Currency,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Ok {
     pub new_uuid:     types::UuidType,
     pub company_name: String,
@@ -22,7 +22,7 @@ pub struct Ok {
     pub role:         types::Role,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
 pub struct Error {
     pub(crate) user_uuid: Option<types::UserUuidError>,
     pub(crate) new_uuid:  Option<types::RowIdError>,

@@ -7,7 +7,7 @@ use std::collections::HashSet;
 
 pub(crate) type ListOfResources = HashMap<types::UuidType, Vec<resource_utils::ResourceInfo>>;
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub(crate) struct SideEffects {
     pub(crate) authenticated_users:               HashSet<types::UuidType>,
     pub(crate) users_to_resubscribe:              HashSet<types::UuidType>,

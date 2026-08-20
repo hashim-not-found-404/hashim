@@ -229,7 +229,7 @@ mod tests {
 
     #[test]
     fn with_custom_struct() {
-        #[derive(Clone, Debug, PartialEq)]
+        #[derive(Debug, Clone, PartialEq)]
         struct Item {
             name:  char,
             value: u64,

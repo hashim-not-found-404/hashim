@@ -11,7 +11,7 @@ pub(crate) enum FromServer<E, Resp, Reso> {
     Resources(Vec<Reso>),
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub(crate) enum Response<OpResult: 'static> {
     CloseTheChannel,
     ServerCannotBeReached,

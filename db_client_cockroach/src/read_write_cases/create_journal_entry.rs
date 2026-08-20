@@ -121,7 +121,7 @@ impl cases::create_journal_entry::DatabaseRead for S {
             }
         }
 
-        #[derive(serde::Deserialize)]
+        #[derive(Debug, serde::Deserialize)]
         struct AccountInfoJson {
             account_uuid:  String,
             is_debit:      bool,

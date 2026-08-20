@@ -15,7 +15,7 @@ pub mod target {
     use serde::Serialize;
     use std::sync::Arc;
 
-    #[derive(Clone, Debug)]
+    #[derive(Debug, Clone)]
     pub struct S {
         key: Arc<Vec<u8>>,
     }
@@ -24,7 +24,7 @@ pub mod target {
         (Utc::now() + Duration::minutes(30)).timestamp() as u64
     }
 
-    #[derive(Serialize, Deserialize)]
+    #[derive(Debug, Deserialize, Serialize)]
     struct Claims {
         id:  types::UuidType,
         exp: u64,

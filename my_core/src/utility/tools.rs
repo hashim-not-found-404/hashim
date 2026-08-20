@@ -128,7 +128,7 @@ pub(crate) fn sort<T: Sortable>(list: &mut Vec<T>) -> &Vec<T> {
 mod tests_sort {
     use super::*;
 
-    #[derive(Debug, PartialEq, Clone)]
+    #[derive(Debug, Clone, PartialEq)]
     struct Person {
         name: String,
         age:  u32,

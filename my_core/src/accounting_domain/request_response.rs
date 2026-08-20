@@ -48,7 +48,7 @@ pub mod push_data {
         pub operation:  T,
     }
 
-    #[derive(Debug, Deserialize, Serialize, Clone)]
+    #[derive(Debug, Clone, Deserialize, Serialize)]
     pub enum OperationsInput {
         // auth
         SignUp(cases::sign_up::Input),
@@ -65,7 +65,7 @@ pub mod push_data {
         GetAllAccountsForBranch(cases::get_all_accounts_for_branch::Input),
     }
 
-    #[derive(Debug, Deserialize, Serialize, Clone)]
+    #[derive(Debug, Clone, Deserialize, Serialize)]
     pub enum OperationsResult {
         // auth
         SignUp(cases::sign_up::MyResult),

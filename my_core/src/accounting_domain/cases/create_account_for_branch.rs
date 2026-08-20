@@ -6,7 +6,7 @@ use serde::Serialize;
 
 pub type MyResult = Result<Ok, Error>;
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Input {
     pub user_uuid:                types::UuidType,
     pub new_uuid:                 types::UuidType,
@@ -16,7 +16,7 @@ pub struct Input {
     pub inflow_type:              accounting_stuff::InFlowType,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Ok {
     pub new_uuid:                 types::UuidType,
     pub belong_to_account:        types::UuidType,
@@ -25,7 +25,7 @@ pub struct Ok {
     pub inflow_type:              accounting_stuff::InFlowType,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
 pub struct Error {
     pub(crate) user_uuid:                                Option<types::UserUuidError>,
     pub(crate) new_uuid:                                 Option<types::RowIdError>,

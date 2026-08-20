@@ -37,7 +37,7 @@ pub trait AllSignalTypes: 'static + Default + Clone {
 
 // helper types ///////////////////////////////////////////////////////////////////////////////////
 
-#[derive(Default, Clone, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct Accounts {
     pub row_uuid:                        UuidType,
     pub is_debit:                        bool,
@@ -53,7 +53,7 @@ impl Searchable for Accounts {
     }
 }
 
-#[derive(Default, Clone, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub enum Dialog {
     #[default]
     Hide,
@@ -90,38 +90,38 @@ pub struct Model<As: AllSignalTypes> {
     pub page_create_journal_entry:      PageCreateJournalEntry<As>,
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct FeatureStateAuth<As: AllSignalTypes> {
     pub user_password: As::String,
     pub is_loading:    As::Bool,
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct PageSignIn<As: AllSignalTypes> {
     pub show_dialog:         As::Dialog,
     pub user_id_error:       As::OptionString,
     pub user_password_error: As::OptionString,
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct PageSignUp<As: AllSignalTypes> {
     pub show_dialog:     As::Dialog,
     pub user_id_error:   As::OptionString,
     pub user_name_error: As::OptionString,
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct PageCompanyBranchSelection<As: AllSignalTypes> {
     pub list: As::CompanyAndBranchList,
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct PageCreateCompany<As: AllSignalTypes> {
     pub company_name: As::String,
     pub currency:     As::Currency,
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct PageCreateCompanyBranch<As: AllSignalTypes> {
     pub is_loading:        As::Bool,
     pub show_dialog:       As::Dialog,
@@ -132,7 +132,7 @@ pub struct PageCreateCompanyBranch<As: AllSignalTypes> {
     pub location_error:    As::OptionString,
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct PageCreateAccount<As: AllSignalTypes> {
     pub is_loading:                      As::Bool,
     pub show_dialog:                     As::Dialog,
@@ -144,7 +144,7 @@ pub struct PageCreateAccount<As: AllSignalTypes> {
     pub account_name_error:              As::OptionString,
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct PageCreateAccountForBranch<As: AllSignalTypes> {
     pub(crate) list_of_available_account: Mutex<Vec<Accounts>>,
 
@@ -156,7 +156,7 @@ pub struct PageCreateAccountForBranch<As: AllSignalTypes> {
     pub inflow_type:   As::InFlowType,
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct PageCreateJournalEntry<As: AllSignalTypes> {
     pub(crate) list_of_available_account: Mutex<Vec<Accounts>>,
     pub filtered_list:                    As::AccountsSuggestionList,

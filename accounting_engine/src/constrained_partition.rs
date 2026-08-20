@@ -3,7 +3,7 @@ use std::hash::Hash;
 use std::ops::Add;
 use std::ops::Sub;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum Side {
     Lhs,
     Rhs,
@@ -129,7 +129,7 @@ where
 mod tests {
     use super::*;
 
-    #[derive(Clone, Debug, PartialEq)]
+    #[derive(Debug, Clone, PartialEq)]
     struct Item {
         name:  char,
         value: i64,

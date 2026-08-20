@@ -5,13 +5,13 @@ use serde::Serialize;
 
 pub type MyResult = Result<Ok, Error>;
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Input {
     pub(crate) user_id:  String,
     pub(crate) password: String,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Ok {
     pub user_uuid:  types::UuidType,
     pub user_id:    String,
@@ -19,7 +19,7 @@ pub struct Ok {
     pub(crate) jwt: types::JsonWebTokenType,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
 pub struct Error {
     pub(crate) user_id:  Option<UserIdError>,
     pub(crate) password: Option<PasswordError>,
@@ -45,12 +45,12 @@ pub trait DatabaseRead {
 
 // utility types
 
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub(crate) enum UserIdError {
     NotExist,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub(crate) enum PasswordError {
     WrongPassword,
 }

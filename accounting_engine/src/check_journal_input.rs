@@ -221,7 +221,7 @@ mod tests {
     use crate::accounting_stuff::InventoryRecord;
     use std::collections::HashMap;
 
-    #[derive(Debug, Clone, PartialEq, Default)]
+    #[derive(Debug, Clone, Default, PartialEq)]
     pub(crate) struct DebitNotEqualCreditError {
         total_debit:  f64,
         total_credit: f64,
@@ -336,10 +336,10 @@ mod tests {
         }
     }
 
-    #[derive(Clone, PartialEq, Eq, Hash, Debug, Default)]
+    #[derive(Debug, Clone, Default, Eq, Hash, PartialEq)]
     struct AccountId(String);
 
-    #[derive(Clone, Debug, PartialEq, Default)]
+    #[derive(Debug, Clone, Default, PartialEq)]
     struct TestSingleEntry {
         account:  AccountId,
         debit:    bool,
@@ -388,7 +388,7 @@ mod tests {
         }
     }
 
-    #[derive(Clone, Debug, PartialEq, Default)]
+    #[derive(Debug, Clone, Default, PartialEq)]
     struct TestDoubleEntry {
         lines: Vec<TestSingleEntry>,
 
@@ -435,7 +435,7 @@ mod tests {
         }
     }
 
-    #[derive(Clone, Debug, PartialEq, Default)]
+    #[derive(Debug, Clone, Default, PartialEq)]
     struct TestEntryContainer {
         groups: Vec<TestDoubleEntry>,
 

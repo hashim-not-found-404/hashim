@@ -56,7 +56,7 @@ impl cases::list_company_and_branch::DatabaseRead for S {
         let rows =
             db.client.query(QUERY1, &[&read_input.user_uuid.to_externel_uuid()]).await.log()?;
 
-        #[derive(Deserialize)]
+        #[derive(Debug, Deserialize)]
         struct BranchJson {
             uuid:     String,
             name:     String,

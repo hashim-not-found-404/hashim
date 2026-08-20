@@ -8,7 +8,7 @@ use std::collections::HashMap;
 use std::hash::Hash;
 use std::time::Duration;
 
-#[derive(PartialEq, Eq, Hash, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Eq, Hash, PartialEq)]
 pub(crate) enum ProcessName {
     SignIn,
     SignUp,

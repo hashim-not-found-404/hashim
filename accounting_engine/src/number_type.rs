@@ -24,7 +24,7 @@ pub trait Number:
 
 impl Number for Num {}
 
-#[derive(Clone, Copy, Debug, PartialEq, Default)]
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub(crate) struct Num(pub f64);
 
 impl Eq for Num {}
