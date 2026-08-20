@@ -6,9 +6,12 @@ use crate::accounting_domain::utility::types::UuidType;
 use crate::utility::tools::Searchable;
 use accounting_engine::accounting_stuff::InFlowType;
 use accounting_engine::accounting_stuff::OutFlowType;
+use serde::Deserialize;
+use serde::Serialize;
+use std::fmt::Debug;
 use std::sync::Mutex;
 
-pub trait HashimSignal<T: Default + Clone>: Default {
+pub trait HashimSignal<T: Clone + Default>: Default {
     fn reset(&self) {
         self.set(T::default());
     }
@@ -36,8 +39,7 @@ pub trait AllSignalTypes: 'static + Default + Clone {
 }
 
 // helper types ///////////////////////////////////////////////////////////////////////////////////
-
-#[derive(Debug, Clone, Default, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
 pub struct Accounts {
     pub row_uuid:                        UuidType,
     pub is_debit:                        bool,
@@ -53,7 +55,7 @@ impl Searchable for Accounts {
     }
 }
 
-#[derive(Debug, Clone, Default, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
 pub enum Dialog {
     #[default]
     Hide,
@@ -90,38 +92,38 @@ pub struct Model<As: AllSignalTypes> {
     pub page_create_journal_entry:      PageCreateJournalEntry<As>,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 pub struct FeatureStateAuth<As: AllSignalTypes> {
     pub user_password: As::String,
     pub is_loading:    As::Bool,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 pub struct PageSignIn<As: AllSignalTypes> {
     pub show_dialog:         As::Dialog,
     pub user_id_error:       As::OptionString,
     pub user_password_error: As::OptionString,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 pub struct PageSignUp<As: AllSignalTypes> {
     pub show_dialog:     As::Dialog,
     pub user_id_error:   As::OptionString,
     pub user_name_error: As::OptionString,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 pub struct PageCompanyBranchSelection<As: AllSignalTypes> {
     pub list: As::CompanyAndBranchList,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 pub struct PageCreateCompany<As: AllSignalTypes> {
     pub company_name: As::String,
     pub currency:     As::Currency,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 pub struct PageCreateCompanyBranch<As: AllSignalTypes> {
     pub is_loading:        As::Bool,
     pub show_dialog:       As::Dialog,
@@ -132,7 +134,7 @@ pub struct PageCreateCompanyBranch<As: AllSignalTypes> {
     pub location_error:    As::OptionString,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 pub struct PageCreateAccount<As: AllSignalTypes> {
     pub is_loading:                      As::Bool,
     pub show_dialog:                     As::Dialog,
@@ -144,7 +146,7 @@ pub struct PageCreateAccount<As: AllSignalTypes> {
     pub account_name_error:              As::OptionString,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 pub struct PageCreateAccountForBranch<As: AllSignalTypes> {
     pub(crate) list_of_available_account: Mutex<Vec<Accounts>>,
 
@@ -156,7 +158,7 @@ pub struct PageCreateAccountForBranch<As: AllSignalTypes> {
     pub inflow_type:   As::InFlowType,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 pub struct PageCreateJournalEntry<As: AllSignalTypes> {
     pub(crate) list_of_available_account: Mutex<Vec<Accounts>>,
     pub filtered_list:                    As::AccountsSuggestionList,
@@ -171,7 +173,7 @@ pub struct PageCreateJournalEntry<As: AllSignalTypes> {
     pub double_entries:                As::JournalEntry,
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
 pub struct DoubleEntry {
     pub entry_is_empty:              bool,
     pub you_need_to_split_the_entry: bool,
@@ -180,7 +182,7 @@ pub struct DoubleEntry {
     pub singles: Vec<SingleEntry>,
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
 pub struct SingleEntry {
     pub user_input_account_name:    String,
     pub(crate) inferred_account_id: Option<UuidType>,
@@ -359,7 +361,7 @@ pub enum SingleEntryField {
 
 // navigator types ////////////////////////////////////////////////////////////////////////////////
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Copy, Default, Deserialize, Serialize)]
 pub enum Navigator {
     #[default]
     SignIn,
@@ -368,20 +370,20 @@ pub enum Navigator {
     Home(HomeNav),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
 pub enum ListCompanyAndBranch {
     None,
     CreateCompany,
     CreateCompanyBranch,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
 pub struct HomeNav {
     pub show_menu:       bool,
     pub page_to_present: Menu,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
 pub enum Menu {
     Dashboard,
     CreateAccount,
