@@ -9,6 +9,7 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::str::FromStr;
+use tokio_postgres::types::ToSql;
 use uuid::Uuid;
 
 const QUERY1: &str = r#"
@@ -84,7 +85,7 @@ impl cases::create_journal_entry::DatabaseRead for S {
             read_input.new_entries_uuid.iter().map(|uuid| uuid.to_externel_uuid()).collect();
 
         // Prepare parameters
-        let params: &[&(dyn tokio_postgres::types::ToSql + Sync)] = &[
+        let params: &[&(dyn ToSql + Sync)] = &[
             &read_input.new_uuid.to_externel_uuid(),
             &read_input.belong_to_company_branch.to_externel_uuid(),
             &read_input.user_uuid.to_externel_uuid(),

@@ -1,4 +1,6 @@
+use std::cmp::Ordering;
 use std::hash::Hash;
+use std::hash::Hasher;
 use std::ops::Add;
 use std::ops::Deref;
 use std::ops::Div;
@@ -28,19 +30,19 @@ pub(crate) struct Num(pub f64);
 impl Eq for Num {}
 
 impl PartialOrd for Num {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
 impl Ord for Num {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+    fn cmp(&self, other: &Self) -> Ordering {
         self.0.total_cmp(&other.0)
     }
 }
 
 impl Hash for Num {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+    fn hash<H: Hasher>(&self, state: &mut H) {
         self.0.to_bits().hash(state);
     }
 }

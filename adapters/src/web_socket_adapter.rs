@@ -8,14 +8,15 @@ pub mod target {
     use my_core::accounting_domain::utility::types::HashimError;
     use my_core::utility::traits::DynamicError;
     use my_core::utility::utils::LogError;
+    use tokio::net::TcpStream;
     use tokio_tungstenite::MaybeTlsStream;
     use tokio_tungstenite::WebSocketStream;
     use tokio_tungstenite::connect_async;
     use tokio_tungstenite::tungstenite::Message;
 
     pub struct S {
-        write: SplitSink<WebSocketStream<MaybeTlsStream<tokio::net::TcpStream>>, Message>,
-        read:  SplitStream<WebSocketStream<MaybeTlsStream<tokio::net::TcpStream>>>,
+        write: SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>,
+        read:  SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>,
     }
 
     impl WSClient for S {

@@ -13,6 +13,7 @@ use crate::utility::traits;
 use crate::utility::traits::Receiver;
 use crate::utility::traits::Sender;
 use crate::utility::utils::ReadAndSet;
+use std::collections::HashSet;
 use std::marker::PhantomData;
 use std::sync::Arc;
 use std::sync::RwLock;
@@ -261,7 +262,7 @@ impl<
     }
 
     fn collect_subs_to_poke(
-        subs_to_poke: &mut std::collections::HashSet<Self::Subscribe>,
+        subs_to_poke: &mut HashSet<Self::Subscribe>,
         resource: &[Self::Resource],
     ) {
         for i in resource {

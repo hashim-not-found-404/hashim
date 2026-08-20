@@ -5,6 +5,7 @@ pub mod target {
     use my_core::utility::traits::Runtime;
     use std::time::Duration;
     use tokio;
+    use tokio::task::spawn_local;
 
     pub struct S;
 
@@ -12,14 +13,14 @@ pub mod target {
         type JoinHandle<F> = super::join_handle::target::S<F>;
 
         fn abortable_spawn_local<F: Future + 'static>(fut: F) -> Self::JoinHandle<F::Output> {
-            Self::JoinHandle::new(tokio::task::spawn_local(fut))
+            Self::JoinHandle::new(spawn_local(fut))
         }
 
         fn spawn_local<F>(fut: F)
         where
             F: Future + 'static,
         {
-            tokio::task::spawn_local(fut);
+            spawn_local(fut);
         }
 
         async fn timeout<T, F: Future<Output = T>>(

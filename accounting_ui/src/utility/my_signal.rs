@@ -2,6 +2,7 @@ use dioxus::core::ReactiveContext;
 use dioxus::prelude::*;
 use my_core::accounting_client::client_domain::ui_model::HashimSignal;
 use std::collections::HashSet;
+use std::mem::take;
 use std::sync::Arc;
 use std::sync::Mutex;
 
@@ -66,7 +67,7 @@ impl<T: 'static + Clone + Default> HashimSignal<T> for S<T> {
         // Update the state
         *self.value.lock().unwrap() = value;
         // Trigger a re-render of the components that observed the signal's previous value
-        let mut subscribers = std::mem::take(&mut *self.subscribers.lock().unwrap());
+        let mut subscribers = take(&mut *self.subscribers.lock().unwrap());
         subscribers.retain(|reactive_context| reactive_context.mark_dirty());
         // Extend the subscribers list instead of overwriting it in case a subscriber is added while reactive contexts are marked dirty
         self.subscribers.lock().unwrap().extend(subscribers);

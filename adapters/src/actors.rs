@@ -1,6 +1,7 @@
 pub mod target {
     use super::mpsc_receiver;
     use super::mpsc_sender;
+    use futures::channel::mpsc::unbounded;
     use my_core::utility::traits::MultiProducerSingleConsumer;
 
     pub struct S;
@@ -10,7 +11,7 @@ pub mod target {
         type Sender<T> = mpsc_sender::target::S<T>;
 
         fn channel<T>() -> (Self::Sender<T>, Self::Receiver<T>) {
-            let (tx, rx) = futures::channel::mpsc::unbounded();
+            let (tx, rx) = unbounded();
             (mpsc_sender::target::S::new(tx), mpsc_receiver::target::S::new(rx))
         }
     }

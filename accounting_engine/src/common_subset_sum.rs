@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use std::hash::Hash;
 use std::ops::Add;
 use std::ops::Sub;
 
@@ -6,7 +7,7 @@ use std::ops::Sub;
 /// dp[i] is a set of all sums reachable using the first i items.
 fn build_dp<N>(vals: &[N]) -> Vec<HashSet<N>>
 where
-    N: Copy + Add<Output = N> + Sub<Output = N> + Eq + std::hash::Hash + Default,
+    N: Copy + Add<Output = N> + Sub<Output = N> + Eq + Hash + Default,
 {
     let n = vals.len();
     let mut dp = Vec::with_capacity(n + 1);
@@ -31,7 +32,7 @@ where
 /// Assumes that `target` is reachable (i.e., `dp[vals.len()]` contains it).
 fn reconstruct_indices<N>(vals: &[N], target: N, dp: &[HashSet<N>]) -> Vec<usize>
 where
-    N: Copy + Add<Output = N> + Sub<Output = N> + Eq + std::hash::Hash,
+    N: Copy + Add<Output = N> + Sub<Output = N> + Eq + Hash,
 {
     let n = vals.len();
     let mut indices = Vec::new();
@@ -68,7 +69,7 @@ where
 pub fn split_to_max<T, N, F>(lhs: &[T], rhs: &[T], weight: &F) -> Vec<(Vec<T>, Vec<T>)>
 where
     T: Clone,
-    N: Copy + Add<Output = N> + Sub<Output = N> + Eq + std::hash::Hash + Default + Ord,
+    N: Copy + Add<Output = N> + Sub<Output = N> + Eq + Hash + Default + Ord,
     F: Fn(&T) -> N,
 {
     if lhs.is_empty() || rhs.is_empty() {

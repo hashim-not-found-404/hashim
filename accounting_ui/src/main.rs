@@ -2,7 +2,11 @@ mod ui;
 mod use_cases;
 mod utility;
 
+use dioxus::launch;
+use dioxus_logger::init;
+use dioxus_logger::tracing::Level;
+
 fn main() {
-    dioxus_logger::init(dioxus_logger::tracing::Level::INFO).unwrap();
-    dioxus::launch(ui::App);
+    init(Level::INFO).unwrap();
+    launch(ui::App);
 }

@@ -12,6 +12,8 @@ amount <  0 && quantity <  0 : normal     : this is normal like the outflow to t
 
 use serde::Deserialize;
 use serde::Serialize;
+use std::cmp::Ordering;
+use std::str::FromStr;
 
 #[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq)]
 pub enum CostFlowType {
@@ -47,7 +49,7 @@ impl OutFlowType {
     }
 }
 
-impl std::str::FromStr for OutFlowType {
+impl FromStr for OutFlowType {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -83,7 +85,7 @@ impl InFlowType {
     }
 }
 
-impl std::str::FromStr for InFlowType {
+impl FromStr for InFlowType {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -173,7 +175,7 @@ pub trait Inventory {
     fn iter_mut1(&mut self) -> impl Iterator<Item = &mut InventoryRecord>;
     fn sort_by1<F>(&mut self, compare: F)
     where
-        F: FnMut(&InventoryRecord, &InventoryRecord) -> std::cmp::Ordering;
+        F: FnMut(&InventoryRecord, &InventoryRecord) -> Ordering;
     fn retain<F>(&mut self, f: F)
     where
         F: FnMut(&InventoryRecord) -> bool;
@@ -307,14 +309,14 @@ pub(crate) fn sort_inventory<I: Inventory>(out_flow_type: OutFlowType, inventory
             inventory.sort_by1(|a, b| {
                 price(b.amount, b.quantity)
                     .partial_cmp(&price(a.amount, a.quantity))
-                    .unwrap_or(std::cmp::Ordering::Equal)
+                    .unwrap_or(Ordering::Equal)
             });
         }
         OutFlowType::Lofo => {
             inventory.sort_by1(|a, b| {
                 price(a.amount, a.quantity)
                     .partial_cmp(&price(b.amount, b.quantity))
-                    .unwrap_or(std::cmp::Ordering::Equal)
+                    .unwrap_or(Ordering::Equal)
             });
         }
     }

@@ -15,10 +15,14 @@ use accounting_engine::check_journal_input::MyErrorTrait as AccountingErrorTrait
 use accounting_engine::correct_journal_input;
 use serde::Deserialize;
 use serde::Serialize;
+use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::ops::Deref;
 use std::ops::DerefMut;
+use std::slice::Iter;
+use std::slice::IterMut;
+use std::vec::IntoIter;
 
 pub type MyResult = Result<Ok, Error>;
 
@@ -383,15 +387,15 @@ impl check_journal_input::SingleEntryError for SingleEntryView {
 
 impl accounting_stuff::DoubleEntry for DoubleEntryView {
     type Iter<'b>
-        = std::vec::IntoIter<Self::Single>
+        = IntoIter<Self::Single>
     where
         Self: 'b;
     type IterMut<'b>
-        = std::slice::IterMut<'b, Self::Single>
+        = IterMut<'b, Self::Single>
     where
         Self: 'b;
     type IterRef<'b>
-        = std::slice::Iter<'b, Self::Single>
+        = Iter<'b, Self::Single>
     where
         Self: 'b;
     type Single = SingleEntryView;
@@ -451,15 +455,15 @@ impl EntryContainer for ContainerView {
     where
         Self: 'b;
     type Iter<'b>
-        = std::vec::IntoIter<Self::Double<'b>>
+        = IntoIter<Self::Double<'b>>
     where
         Self: 'b;
     type IterMut<'b>
-        = std::slice::IterMut<'b, Self::Double<'b>>
+        = IterMut<'b, Self::Double<'b>>
     where
         Self: 'b;
     type IterRef<'b>
-        = std::slice::Iter<'b, Self::Double<'b>>
+        = Iter<'b, Self::Double<'b>>
     where
         Self: 'b;
 
@@ -537,7 +541,7 @@ impl Inventory for InventoryWrapper {
 
     fn sort_by1<F>(&mut self, compare: F)
     where
-        F: FnMut(&InventoryRecord, &InventoryRecord) -> std::cmp::Ordering,
+        F: FnMut(&InventoryRecord, &InventoryRecord) -> Ordering,
     {
         self.sort_by(compare);
     }

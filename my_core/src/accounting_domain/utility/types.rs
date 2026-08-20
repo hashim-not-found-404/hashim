@@ -3,6 +3,7 @@ use serde::Deserialize;
 use serde::Serialize;
 use std::error::Error;
 use std::fmt::Display;
+use std::fmt::Formatter;
 use std::str::FromStr;
 
 pub trait RowId: 'static {
@@ -180,7 +181,7 @@ pub enum HashimError {
 impl Error for HashimError {}
 
 impl Display for HashimError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             HashimError::InternalServerError => write!(f, "Internal Server Error"),
             HashimError::InvalidDataFormat => write!(f, "Invalid Data Format"),
