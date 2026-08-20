@@ -34,11 +34,7 @@ pub struct Error {
     pub(crate) is_account_uuid_with_company_branch_used: bool,
 }
 
-impl types::MyErrorTrait for Error {
-    fn is_there_error(&self) -> bool {
-        *self != Self::default()
-    }
-}
+impl types::MarkerMyErrorTrait for Error {}
 
 pub struct ReadInput {
     pub user_uuid:                types::UuidType,

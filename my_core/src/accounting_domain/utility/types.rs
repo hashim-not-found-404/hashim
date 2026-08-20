@@ -27,6 +27,14 @@ pub(crate) trait MyErrorTrait {
     fn is_there_error(&self) -> bool;
 }
 
+pub(crate) trait MarkerMyErrorTrait {}
+
+impl<T: MarkerMyErrorTrait + Default + PartialEq> MyErrorTrait for T {
+    fn is_there_error(&self) -> bool {
+        *self != Self::default()
+    }
+}
+
 #[derive(Debug, Deserialize, Serialize, Clone, Default, PartialEq, Hash, Eq, PartialOrd, Ord)]
 pub struct UuidType(pub [u8; 16]);
 

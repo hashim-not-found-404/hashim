@@ -44,11 +44,7 @@ pub struct Error {
     pub(crate) company_branch_uuid: Option<types::RowIdError>,
 }
 
-impl types::MyErrorTrait for Error {
-    fn is_there_error(&self) -> bool {
-        *self != Self::default()
-    }
-}
+impl types::MarkerMyErrorTrait for Error {}
 
 pub struct ReadInput {
     pub user_uuid:           types::UuidType,

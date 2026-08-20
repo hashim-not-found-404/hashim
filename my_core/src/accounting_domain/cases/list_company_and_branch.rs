@@ -38,11 +38,7 @@ pub struct Error {
     pub(crate) user_uuid: Option<types::UserUuidError>,
 }
 
-impl types::MyErrorTrait for Error {
-    fn is_there_error(&self) -> bool {
-        *self != Self::default()
-    }
-}
+impl types::MarkerMyErrorTrait for Error {}
 
 pub struct ReadInput {
     pub user_uuid: types::UuidType,
