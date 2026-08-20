@@ -13,9 +13,9 @@ mobile = ["dioxus/mobile"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+accounting_engine = { workspace = true }
 adapters = { workspace = true }
 cache_rusqlite = { workspace = true }
 dioxus = { version = "0.7.9", features = ["router"] }
 dioxus-logger = { workspace = true }
 my_core = { workspace = true }
-accounting_engine = { workspace = true }

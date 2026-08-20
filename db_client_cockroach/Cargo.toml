@@ -4,9 +4,9 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+accounting_engine = { workspace = true }
 deadpool-postgres = "0.14.1"
 my_core = { workspace = true }
-accounting_engine = { workspace = true }
 rust_decimal = { version = "1.42.1", features = ["db-tokio-postgres"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
