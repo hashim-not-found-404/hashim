@@ -1,4 +1,5 @@
 use crate::accounting_domain::utility::types;
+use crate::accounting_domain::utility::types::MarkerMyErrorTrait;
 use crate::accounting_domain::utility::types::MyErrorTrait;
 use crate::accounting_domain::utility::types::RowId;
 use crate::utility::traits;
@@ -11,7 +12,9 @@ use accounting_engine::accounting_stuff::Inventory;
 use accounting_engine::accounting_stuff::InventoryRecord;
 use accounting_engine::accounting_stuff::OutFlowType;
 use accounting_engine::check_journal_input;
-use accounting_engine::check_journal_input::MyErrorTrait as AccountingErrorTrait;
+use accounting_engine::check_journal_input::DoubleEntryError;
+use accounting_engine::check_journal_input::EntryContainerError;
+use accounting_engine::check_journal_input::SingleEntryError;
 use accounting_engine::correct_journal_input;
 use serde::Deserialize;
 use serde::Serialize;
@@ -93,19 +96,19 @@ pub struct Error {
     pub(crate) shared_entry_id:          Option<types::RowIdError>,
     pub(crate) container_is_empty:       bool,
     pub(crate) not_all_entry_inferred:   bool,
-    pub(crate) double_entries:           Vec<DoubleEntryError>,
+    pub(crate) double_entries:           Vec<ErrorDoubleEntry>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
-pub struct DoubleEntryError {
+pub struct ErrorDoubleEntry {
     pub(crate) entry_is_empty:              bool,
     pub(crate) you_need_to_split_the_entry: bool,
     pub(crate) debit_not_equal_credit:      Option<DebitNotEqualCreditError>,
-    pub(crate) single_entries:              Vec<SingleEntryError>,
+    pub(crate) single_entries:              Vec<ErrorSingleEntry>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Default)]
-pub struct SingleEntryError {
+pub struct ErrorSingleEntry {
     pub(crate) new_uuid:                           Option<types::RowIdError>,
     pub(crate) account:                            Option<types::RowIdError>,
     pub(crate) quantity_and_amount_are_zero:       bool,
@@ -173,7 +176,7 @@ pub struct SingleEntryView {
     input: SingleEntryInput,
 
     // error
-    error: SingleEntryError,
+    error: ErrorSingleEntry,
 }
 
 #[derive(Debug, Clone)]
@@ -251,45 +254,9 @@ impl Deref for AccountInfoProviderImpl {
 // implementations
 // -----------------------------------------------------------------------------
 
-impl AccountingErrorTrait for SingleEntryView {
-    fn is_there_error(&self) -> bool {
-        self.error != SingleEntryError::default()
-    }
-}
+impl MarkerMyErrorTrait for ErrorSingleEntry {}
 
-impl AccountingErrorTrait for DoubleEntryView {
-    fn is_there_error(&self) -> bool {
-        if self.error_entry_is_empty
-            || self.error_you_need_to_split_the_entry
-            || self.error_debit_not_equal_credit.is_some()
-        {
-            return true;
-        }
-        self.iter_ref().any(|e| e.is_there_error())
-    }
-}
-
-impl AccountingErrorTrait for ContainerView {
-    fn is_there_error(&self) -> bool {
-        if self.error_container_is_empty
-            || self.error_user_uuid.is_some()
-            || self.error_new_uuid.is_some()
-            || self.error_belong_to_company_branch.is_some()
-            || self.error_shared_entry_id.is_some()
-        {
-            return true;
-        }
-        self.iter_ref().any(|e| e.is_there_error())
-    }
-}
-
-impl MyErrorTrait for SingleEntryError {
-    fn is_there_error(&self) -> bool {
-        *self != Self::default()
-    }
-}
-
-impl MyErrorTrait for DoubleEntryError {
+impl MyErrorTrait for ErrorDoubleEntry {
     fn is_there_error(&self) -> bool {
         if self.entry_is_empty
             || self.you_need_to_split_the_entry
@@ -344,6 +311,10 @@ impl check_journal_input::SingleEntry for SingleEntryView {
 }
 
 impl check_journal_input::SingleEntryError for SingleEntryView {
+    fn is_there_error(&self) -> bool {
+        self.error != ErrorSingleEntry::default()
+    }
+
     fn quantity_and_amount_are_zero(&mut self) {
         self.error.quantity_and_amount_are_zero = true;
     }
@@ -433,6 +404,16 @@ impl accounting_stuff::DoubleEntry for DoubleEntryView {
 }
 
 impl check_journal_input::DoubleEntryError for DoubleEntryView {
+    fn is_there_error(&self) -> bool {
+        if self.error_entry_is_empty
+            || self.error_you_need_to_split_the_entry
+            || self.error_debit_not_equal_credit.is_some()
+        {
+            return true;
+        }
+        self.iter_ref().any(|e| e.is_there_error())
+    }
+
     fn entry_is_empty(&mut self) {
         self.error_entry_is_empty = true;
     }
@@ -500,6 +481,18 @@ impl EntryContainer for ContainerView {
 }
 
 impl check_journal_input::EntryContainerError for ContainerView {
+    fn is_there_error(&self) -> bool {
+        if self.error_container_is_empty
+            || self.error_user_uuid.is_some()
+            || self.error_new_uuid.is_some()
+            || self.error_belong_to_company_branch.is_some()
+            || self.error_shared_entry_id.is_some()
+        {
+            return true;
+        }
+        self.iter_ref().any(|e| e.is_there_error())
+    }
+
     fn container_is_empty(&mut self) {
         self.error_container_is_empty = true;
     }
@@ -707,7 +700,7 @@ pub fn create_container_view(input: Input) -> ContainerView {
                 .map(|single_input| {
                     SingleEntryView {
                         input: single_input,
-                        error: SingleEntryError::default(),
+                        error: ErrorSingleEntry::default(),
                     }
                 })
                 .collect();
@@ -777,7 +770,7 @@ pub fn split_container_view(container: ContainerView) -> (Input, Error) {
         let double_input = DoubleEntryInput {
             single_entries: singles_input,
         };
-        let double_error = DoubleEntryError {
+        let double_error = ErrorDoubleEntry {
             entry_is_empty:              error_entry_is_empty,
             you_need_to_split_the_entry: error_you_need_to_split_the_entry,
             debit_not_equal_credit:      error_debit_not_equal_credit,

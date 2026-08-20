@@ -14,11 +14,9 @@ use crate::number_type::Num;
 use std::collections::HashSet;
 use std::hash::Hash;
 
-pub trait MyErrorTrait {
+pub trait SingleEntryError {
     fn is_there_error(&self) -> bool;
-}
 
-pub trait SingleEntryError: MyErrorTrait {
     fn quantity_and_amount_are_zero(&mut self);
     fn duplicate_account_in_entry(&mut self);
     fn inventory_is_empty(&mut self);
@@ -31,13 +29,17 @@ pub trait SingleEntryError: MyErrorTrait {
     fn insufficient_amount_in_inventory(&mut self, total_amount: f64);
 }
 
-pub trait DoubleEntryError: MyErrorTrait {
+pub trait DoubleEntryError {
+    fn is_there_error(&self) -> bool;
+
     fn entry_is_empty(&mut self);
     fn you_need_to_split_the_entry(&mut self);
     fn debit_not_equal_credit(&mut self, total_debit: f64, total_credit: f64);
 }
 
-pub trait EntryContainerError: MyErrorTrait {
+pub trait EntryContainerError {
+    fn is_there_error(&self) -> bool;
+
     fn container_is_empty(&mut self);
 }
 
@@ -225,7 +227,7 @@ mod tests {
         total_credit: f64,
     }
 
-    impl MyErrorTrait for TestSingleEntry {
+    impl SingleEntryError for TestSingleEntry {
         fn is_there_error(&self) -> bool {
             self.quantity_and_amount_are_zero
                 || self.duplicate_account_in_entry
@@ -238,9 +240,7 @@ mod tests {
                 || self.amount_mismatch.is_some()
                 || self.insufficient_amount_in_inventory.is_some()
         }
-    }
 
-    impl SingleEntryError for TestSingleEntry {
         fn quantity_and_amount_are_zero(&mut self) {
             self.quantity_and_amount_are_zero = true;
         }
@@ -282,7 +282,7 @@ mod tests {
         }
     }
 
-    impl MyErrorTrait for TestDoubleEntry {
+    impl DoubleEntryError for TestDoubleEntry {
         fn is_there_error(&self) -> bool {
             if self.entry_is_empty
                 || self.you_need_to_split_the_entry
@@ -299,8 +299,7 @@ mod tests {
 
             false
         }
-    }
-    impl DoubleEntryError for TestDoubleEntry {
+
         fn entry_is_empty(&mut self) {
             self.entry_is_empty = true;
         }
@@ -317,7 +316,7 @@ mod tests {
         }
     }
 
-    impl MyErrorTrait for TestEntryContainer {
+    impl EntryContainerError for TestEntryContainer {
         fn is_there_error(&self) -> bool {
             if self.container_is_empty {
                 return true;
@@ -331,9 +330,7 @@ mod tests {
 
             false
         }
-    }
 
-    impl EntryContainerError for TestEntryContainer {
         fn container_is_empty(&mut self) {
             self.container_is_empty = true;
         }
