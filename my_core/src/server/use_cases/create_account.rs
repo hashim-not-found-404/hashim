@@ -26,7 +26,7 @@ impl cases::create_account::Input {
 
         let mut txn = client.begin_transaction().await?;
 
-        let result = (async || {
+        let result = async {
             let errr = self.state_full_check::<Db>(&mut txn).await?;
 
             if errr.is_there_error() {
@@ -36,7 +36,7 @@ impl cases::create_account::Input {
             let result = self.state_less_operation();
             txn.write_create_account(&result).await?;
             Ok(Ok(result))
-        })()
+        }
         .await;
 
         if let Ok(Ok(_)) = result {

@@ -27,7 +27,7 @@ impl cases::create_journal_entry::Input {
 
         let mut txn = client.begin_transaction().await?;
 
-        let result = (async || {
+        let result = async {
             let result = self.state_full_check::<Db, Ti>(&mut txn).await?;
 
             let Ok(result) = result else {
@@ -36,7 +36,7 @@ impl cases::create_journal_entry::Input {
 
             txn.write_create_journal_entry(&result).await?;
             Ok(Ok(result))
-        })()
+        }
         .await;
 
         if let Ok(Ok(_)) = result {

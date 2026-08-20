@@ -96,11 +96,11 @@ impl Cache for S {
     }
 
     async fn write_resource_from_server(&self, resource: &[resource_utils::ResourceInfo]) {
-        write_resource(&self, resource);
+        write_resource(self, resource);
     }
 
     async fn write_resource_of_pending_txn(&self, resource: &[resource_utils::ResourceInfo]) {
-        write_resource(&self, resource);
+        write_resource(self, resource);
     }
 
     async fn clear_pending_txn_state(&self) {
