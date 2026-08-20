@@ -1,7 +1,11 @@
-use crate::accounting_domain::cases::create_journal_entry;
-use crate::accounting_domain::utility::types;
-use crate::utility::tools;
-use accounting_engine::accounting_stuff;
+use crate::accounting_domain::cases::create_journal_entry::DebitNotEqualCreditError;
+use crate::accounting_domain::utility::types::Company;
+use crate::accounting_domain::utility::types::Currency;
+use crate::accounting_domain::utility::types::Location;
+use crate::accounting_domain::utility::types::UuidType;
+use crate::utility::tools::Searchable;
+use accounting_engine::accounting_stuff::InFlowType;
+use accounting_engine::accounting_stuff::OutFlowType;
 use std::sync::Mutex;
 
 pub trait HashimSignal<T: Default + Clone>: Default {
@@ -16,15 +20,15 @@ pub trait AllSignalTypes: 'static + Default + Clone {
     type String: HashimSignal<String>;
     type OptionString: HashimSignal<Option<String>>;
     type Dialog: HashimSignal<Dialog>;
-    type Uuid: HashimSignal<types::UuidType>;
-    type OptionUuid: HashimSignal<Option<types::UuidType>>;
+    type Uuid: HashimSignal<UuidType>;
+    type OptionUuid: HashimSignal<Option<UuidType>>;
     type Bool: HashimSignal<bool>;
     type StringVec: HashimSignal<String>;
-    type Currency: HashimSignal<types::Currency>;
-    type Location: HashimSignal<types::Location>;
-    type CompanyAndBranchList: HashimSignal<Vec<types::Company>>;
-    type OutFlowType: HashimSignal<accounting_stuff::OutFlowType>;
-    type InFlowType: HashimSignal<accounting_stuff::InFlowType>;
+    type Currency: HashimSignal<Currency>;
+    type Location: HashimSignal<Location>;
+    type CompanyAndBranchList: HashimSignal<Vec<Company>>;
+    type OutFlowType: HashimSignal<OutFlowType>;
+    type InFlowType: HashimSignal<InFlowType>;
     type AccountsSuggestionList: HashimSignal<Vec<Accounts>>;
     type JournalEntry: HashimSignal<Vec<DoubleEntry>>;
 
@@ -35,7 +39,7 @@ pub trait AllSignalTypes: 'static + Default + Clone {
 
 #[derive(Default, Clone, PartialEq)]
 pub struct Accounts {
-    pub row_uuid:                        types::UuidType,
+    pub row_uuid:                        UuidType,
     pub is_debit:                        bool,
     pub is_permanent_account:            bool,
     pub account_name:                    String,
@@ -43,7 +47,7 @@ pub struct Accounts {
     pub unit_of_measurement_of_quantity: String,
 }
 
-impl tools::Searchable for Accounts {
+impl Searchable for Accounts {
     fn search_key(&self) -> String {
         self.account_name.clone()
     }
@@ -61,8 +65,8 @@ pub enum Dialog {
 
 #[derive(Default)]
 pub struct Model<As: AllSignalTypes> {
-    pub(crate) user_uuid:               Mutex<Option<types::UuidType>>,
-    pub(crate) selected_company_branch: Mutex<Option<types::UuidType>>,
+    pub(crate) user_uuid:               Mutex<Option<UuidType>>,
+    pub(crate) selected_company_branch: Mutex<Option<UuidType>>,
 
     pub navigator: As::Navigator,
 
@@ -171,7 +175,7 @@ pub struct PageCreateJournalEntry<As: AllSignalTypes> {
 pub struct DoubleEntry {
     pub entry_is_empty:              bool,
     pub you_need_to_split_the_entry: bool,
-    pub debit_not_equal_credit:      Option<create_journal_entry::DebitNotEqualCreditError>,
+    pub debit_not_equal_credit:      Option<DebitNotEqualCreditError>,
 
     pub singles: Vec<SingleEntry>,
 }
@@ -179,21 +183,21 @@ pub struct DoubleEntry {
 #[derive(Debug, Clone, Default)]
 pub struct SingleEntry {
     pub user_input_account_name:    String,
-    pub(crate) inferred_account_id: Option<types::UuidType>,
+    pub(crate) inferred_account_id: Option<UuidType>,
 
     pub user_input_is_debit:     Option<bool>,
     pub user_input_is_inflow:    Option<bool>,
     pub user_input_quantity:     Option<f64>,
     pub user_input_amount:       Option<f64>,
-    pub user_input_inflow_type:  Option<accounting_stuff::InFlowType>,
-    pub user_input_outflow_type: Option<accounting_stuff::OutFlowType>,
+    pub user_input_inflow_type:  Option<InFlowType>,
+    pub user_input_outflow_type: Option<OutFlowType>,
 
     pub inferred_is_debit:     Option<bool>,
     pub inferred_is_inflow:    Option<bool>,
     pub inferred_quantity:     Option<f64>,
     pub inferred_amount:       Option<f64>,
-    pub inferred_inflow_type:  Option<accounting_stuff::InFlowType>,
-    pub inferred_outflow_type: Option<accounting_stuff::OutFlowType>,
+    pub inferred_inflow_type:  Option<InFlowType>,
+    pub inferred_outflow_type: Option<OutFlowType>,
 
     // Error flags
     pub quantity_and_amount_are_zero:       bool,
@@ -257,8 +261,8 @@ pub enum CompanyAndBranchSelection {
     UnSubscribe,
     ShowCreateCompany,
     ShowCreateCompanyBranch,
-    SelectedCompany(types::UuidType),
-    SelectedCompanyBranch(types::UuidType),
+    SelectedCompany(UuidType),
+    SelectedCompanyBranch(UuidType),
 }
 
 #[derive(Debug)]
@@ -266,7 +270,7 @@ pub enum CreateCompany {
     Submit,
     Close,
     Name(String),
-    Currency(types::Currency),
+    Currency(Currency),
 }
 
 #[derive(Debug)]
@@ -275,7 +279,7 @@ pub enum CreateCompanyBranch {
     Consent(UserConsent),
     Close,
     Name(String),
-    Currency(types::Currency),
+    Currency(Currency),
 }
 
 #[derive(Debug)]
@@ -307,8 +311,8 @@ pub enum CreateAccountForBranch {
     Consent(UserConsent),
     Clean,
     AccountName(String),
-    OutflowType(accounting_stuff::OutFlowType),
-    InflowType(accounting_stuff::InFlowType),
+    OutflowType(OutFlowType),
+    InflowType(InFlowType),
 }
 
 #[derive(Debug)]
@@ -318,7 +322,7 @@ pub enum CreateJournalEntry {
     SelectSuggestion {
         double_index: usize,
         single_index: usize,
-        account_uuid: types::UuidType,
+        account_uuid: UuidType,
     },
     Submit,
     Consent(UserConsent),
@@ -347,8 +351,8 @@ pub enum SingleEntryField {
     Account(String),
     IsDebit(bool),
     IsInflow(bool),
-    InflowType(accounting_stuff::InFlowType),
-    OutflowType(accounting_stuff::OutFlowType),
+    InflowType(InFlowType),
+    OutflowType(OutFlowType),
     Amount(f64),
     Quantity(f64),
 }
