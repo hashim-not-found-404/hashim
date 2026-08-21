@@ -15,7 +15,7 @@ use std::str::FromStr;
 use tokio_postgres::types::ToSql;
 use uuid::Uuid;
 
-const QUERY1: &str = r#"
+const READ_QUERY: &str = r#"
     WITH
     new_uuid_check AS (
         SELECT EXISTS(SELECT 1 FROM accounting_app.entry WHERE rowid = $1) AS is_new_uuid_used
@@ -100,7 +100,7 @@ impl DatabaseRead for S {
             &accounts_uuid_vec,
         ];
 
-        let row = db.txn.query_one(QUERY1, params).await.log()?;
+        let row = db.txn.query_one(READ_QUERY, params).await.log()?;
 
         let is_new_uuid_used: bool = row.try_get(0).log()?;
         let roles_json: Value = row.try_get(1).log()?;
@@ -167,6 +167,41 @@ impl DatabaseRead for S {
     }
 }
 
+const WRITE_QUERY: &str = r#"
+    WITH entry_insert AS (
+        INSERT INTO accounting_app.entry (rowid, writer, time, shared_entry_id)
+        VALUES ($3, $4, $5, $6)
+        RETURNING 1
+    ),
+    single_insert AS (
+        INSERT INTO accounting_app.single_entry (
+            rowid, double_entry, entry, account, is_debit,
+            cost_out_flow_type, quantity, amount
+        )
+        SELECT
+            (j->>'rowid')::uuid,
+            (j->>'double_entry')::smallint,
+            (j->>'entry')::uuid,
+            (j->>'account')::uuid,
+            (j->>'is_debit')::bool,
+            j->>'cost_out_flow_type',
+            (j->>'quantity')::decimal,
+            (j->>'amount')::decimal
+        FROM jsonb_array_elements($1::jsonb) AS j
+        RETURNING 1
+    ),
+    inventory_update AS (
+        UPDATE accounting_app.account_flow_type
+        SET inventory = (u.value->>'inventory')::jsonb
+        FROM (
+            SELECT jsonb_array_elements($2::jsonb) AS value
+        ) AS u
+        WHERE account_flow_type.rowid = (u.value->>'account_uuid')::uuid
+        RETURNING 1
+    )
+    SELECT 1
+"#;
+
 impl server_traits::DatabaseWrite for S {
     type Input = cases::create_journal_entry::Ok;
     type Txn<'a> = db_transaction::S<'a>;
@@ -175,56 +210,48 @@ impl server_traits::DatabaseWrite for S {
         txn: &mut Self::Txn<'_>,
         input: &Self::Input,
     ) -> Result<(), traits::DynamicError> {
-        let query_entry = "
-            INSERT INTO accounting_app.entry (rowid, writer, time, shared_entry_id)
-            VALUES ($1, $2, $3, $4)
-        ";
-        let stmt_entry = txn.txn.prepare_cached(query_entry).await?;
+        let single_entries: Vec<serde_json::Value> = input
+            .double_entry
+            .iter()
+            .map(|single| {
+                serde_json::json!({
+                    "rowid": single.new_uuid.to_externel_uuid(),
+                    "double_entry": single.double_entry_number as i16,
+                    "entry": input.new_uuid.to_externel_uuid(),
+                    "account": single.account.to_externel_uuid(),
+                    "is_debit": single.is_debit,
+                    "cost_out_flow_type": single.out_flow_type.as_str(),
+                    "quantity": single.quantity,
+                    "amount": single.amount,
+                })
+            })
+            .collect();
+        let single_json = serde_json::to_value(&single_entries)?;
+
+        let inventory_updates: Vec<serde_json::Value> = input
+            .inventory
+            .iter()
+            .map(|(account_uuid, inventory_wrapper)| {
+                serde_json::json!({
+                    "account_uuid": account_uuid.to_externel_uuid(),
+                    "inventory": inventory_wrapper.0,
+                })
+            })
+            .collect();
+        let inventory_json = serde_json::to_value(&inventory_updates)?;
+
+        let shared_entry_id_param = input.shared_entry_id.as_ref().map(|id| id.to_externel_uuid());
+
         txn.txn
-            .execute(&stmt_entry, &[
+            .execute(WRITE_QUERY, &[
+                &single_json,
+                &inventory_json,
                 &input.new_uuid.to_externel_uuid(),
                 &input.user_uuid.to_externel_uuid(),
                 &(input.time as i64),
-                &input.shared_entry_id.as_ref().map(|id| id.to_externel_uuid()),
+                &shared_entry_id_param,
             ])
             .await?;
-
-        let query_single = "
-            INSERT INTO accounting_app.single_entry (
-                rowid, double_entry, entry, account, is_debit,
-                cost_out_flow_type, quantity, amount
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-        ";
-        let stmt_single = txn.txn.prepare_cached(query_single).await?;
-        for single in &input.double_entry {
-            txn.txn
-                .execute(&stmt_single, &[
-                    &single.new_uuid.to_externel_uuid(),
-                    &(single.double_entry_number as i16),
-                    &input.new_uuid.to_externel_uuid(),
-                    &single.account.to_externel_uuid(),
-                    &single.is_debit,
-                    &single.out_flow_type.as_str(),
-                    &single.quantity,
-                    &single.amount,
-                ])
-                .await?;
-        }
-
-        for (account_uuid, inventory_wrapper) in &input.inventory {
-            let inventory_json = serde_json::to_value(&inventory_wrapper.0)
-                .map_err(|e| traits::DynamicError::from(e.to_string()))?;
-
-            let query_inventory = "
-                UPDATE accounting_app.account
-                SET inventory = $1
-                WHERE rowid = $2
-            ";
-            let stmt_inventory = txn.txn.prepare_cached(query_inventory).await?;
-            txn.txn
-                .execute(&stmt_inventory, &[&inventory_json, &account_uuid.to_externel_uuid()])
-                .await?;
-        }
 
         Ok(())
     }
@@ -237,6 +264,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_query_string_directly() {
-        test_query_helper(QUERY1).await.unwrap();
+        test_query_helper(READ_QUERY).await.unwrap();
+        test_query_helper(WRITE_QUERY).await.unwrap();
     }
 }

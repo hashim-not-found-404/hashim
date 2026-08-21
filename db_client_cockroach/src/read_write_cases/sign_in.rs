@@ -6,7 +6,7 @@ use my_core::utility::traits;
 use my_core::utility::utils::LogError;
 use uuid::Uuid;
 
-const QUERY1: &str = "SELECT rowid,pass,name FROM accounting_app.user WHERE id = $1 LIMIT 1;";
+const READ_QUERY: &str = "SELECT rowid,pass,name FROM accounting_app.user WHERE id = $1 LIMIT 1;";
 
 pub struct S;
 
@@ -22,7 +22,7 @@ impl DatabaseRead for S {
         db: &mut Self::Db<'_>,
         read_input: &Self::Input,
     ) -> Result<Self::Output, Self::Error> {
-        let stmt = db.client.prepare_cached(QUERY1).await.log()?;
+        let stmt = db.client.prepare_cached(READ_QUERY).await.log()?;
         let row = db.client.query_opt(&stmt, &[&read_input.user_id]).await.log()?;
 
         match row {
@@ -56,6 +56,6 @@ mod tests {
 
     #[tokio::test]
     async fn test_query_string_directly() {
-        test_query_helper(QUERY1).await.unwrap();
+        test_query_helper(READ_QUERY).await.unwrap();
     }
 }

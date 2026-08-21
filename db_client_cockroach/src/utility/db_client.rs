@@ -10,6 +10,31 @@ use std::collections::HashSet;
 use std::str::FromStr;
 use uuid::Uuid;
 
+const READ_ROLES_FOR_USER_QUERY: &str = r#"
+    SELECT
+        'company' as type,
+        data_group,
+        role,
+        user_
+    FROM accounting_app.access_control_for_company
+    WHERE user_ = $1
+
+    UNION ALL
+
+    SELECT
+        'branch' as type,
+        data_group,
+        role,
+        user_
+    FROM accounting_app.access_control_for_company_branch
+    WHERE user_ = $1
+"#;
+
+const WRITE_NONCE_IF_NOT_USED_QUERY: &str = "
+    INSERT INTO accounting_app.transaction_number (rowid) VALUES ($1)
+    ON CONFLICT (rowid) DO NOTHING
+    RETURNING true";
+
 pub struct S {
     pub(crate) client: deadpool_postgres::Object,
 }
@@ -27,27 +52,7 @@ impl DBClient for S {
         &mut self,
         users_uuid: &HashSet<types::UuidType>,
     ) -> Result<server_traits::AllRoles, DynamicError> {
-        let query = r#"
-            SELECT
-                'company' as type,
-                data_group,
-                role,
-                user_
-            FROM accounting_app.access_control_for_company
-            WHERE user_ = $1
-
-            UNION ALL
-
-            SELECT
-                'branch' as type,
-                data_group,
-                role,
-                user_
-            FROM accounting_app.access_control_for_company_branch
-            WHERE user_ = $1
-        "#;
-
-        let stmt = self.client.prepare_cached(query).await.log()?;
+        let stmt = self.client.prepare_cached(READ_ROLES_FOR_USER_QUERY).await.log()?;
 
         let mut result = server_traits::AllRoles {
             companies: HashMap::new(),
@@ -103,16 +108,23 @@ impl DBClient for S {
     ) -> Result<bool /* is nonce used */, DynamicError> {
         let row = self
             .client
-            .query_one(
-                "INSERT INTO accounting_app.transaction_number (rowid) VALUES ($1)
-                 ON CONFLICT (rowid) DO NOTHING
-                 RETURNING true",
-                &[&nonce.to_externel_uuid()],
-            )
+            .query_one(WRITE_NONCE_IF_NOT_USED_QUERY, &[&nonce.to_externel_uuid()])
             .await
             .log()?;
 
         let inserted: Option<Uuid> = row.try_get(0).ok();
         Ok(inserted.is_some())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::utility::test_helper::test_query_helper;
+
+    #[tokio::test]
+    async fn test_query_string_directly() {
+        test_query_helper(READ_ROLES_FOR_USER_QUERY).await.unwrap();
+        test_query_helper(WRITE_NONCE_IF_NOT_USED_QUERY).await.unwrap();
     }
 }

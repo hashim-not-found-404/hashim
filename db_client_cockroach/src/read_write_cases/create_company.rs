@@ -6,7 +6,7 @@ use my_core::server::utility::server_traits;
 use my_core::utility::traits;
 use my_core::utility::utils::LogError;
 
-const QUERY1: &str = "SELECT EXISTS(SELECT 1 FROM accounting_app.company WHERE rowid = $1)";
+const READ_QUERY: &str = "SELECT EXISTS(SELECT 1 FROM accounting_app.company WHERE rowid = $1)";
 
 pub struct S;
 
@@ -22,7 +22,7 @@ impl DatabaseRead for S {
         db: &mut Self::Db<'_>,
         read_input: &Self::Input,
     ) -> Result<Self::Output, Self::Error> {
-        let stmt = db.txn.prepare_cached(QUERY1).await.log()?;
+        let stmt = db.txn.prepare_cached(READ_QUERY).await.log()?;
         let row =
             db.txn.query_one(&stmt, &[&read_input.new_uuid.to_externel_uuid()]).await.log()?;
 
@@ -33,6 +33,16 @@ impl DatabaseRead for S {
     }
 }
 
+const WRITE_QUERY: &str = "
+    WITH company_insert AS (
+        INSERT INTO accounting_app.company (rowid, name, currency)
+        VALUES ($1, $2, $3)
+        RETURNING 1
+    )
+    INSERT INTO accounting_app.access_control_for_company (rowid, data_group, user_, role)
+    VALUES ($1, $1, $4, $5)
+;";
+
 impl server_traits::DatabaseWrite for S {
     type Input = cases::create_company::Ok;
     type Txn<'a> = db_transaction::S<'a>;
@@ -41,17 +51,7 @@ impl server_traits::DatabaseWrite for S {
         txn: &mut Self::Txn<'_>,
         input: &Self::Input,
     ) -> Result<(), traits::DynamicError> {
-        let query = "
-                WITH company_insert AS (
-                    INSERT INTO accounting_app.company (rowid, name, currency)
-                    VALUES ($1, $2, $3)
-                    RETURNING 1
-                )
-                INSERT INTO accounting_app.access_control_for_company (rowid, data_group, user_, role)
-                VALUES ($1, $1, $4, $5)
-                ;";
-
-        let stmt = txn.txn.prepare_cached(query).await.log()?;
+        let stmt = txn.txn.prepare_cached(WRITE_QUERY).await.log()?;
         txn.txn
             .execute(&stmt, &[
                 &input.new_uuid.to_externel_uuid(),
@@ -73,6 +73,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_query_string_directly() {
-        test_query_helper(QUERY1).await.unwrap();
+        test_query_helper(READ_QUERY).await.unwrap();
+        test_query_helper(WRITE_QUERY).await.unwrap();
     }
 }

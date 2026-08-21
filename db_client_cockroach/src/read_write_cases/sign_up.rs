@@ -6,7 +6,7 @@ use my_core::server::utility::server_traits;
 use my_core::utility::traits;
 use my_core::utility::utils::LogError;
 
-const QUERY1: &str = "
+const READ_QUERY: &str = "
      SELECT
          EXISTS(SELECT 1 FROM accounting_app.user WHERE rowid = $1) AS uuid_exists,
          EXISTS(SELECT 1 FROM accounting_app.user WHERE id = $2) AS user_id_exists
@@ -26,7 +26,7 @@ impl DatabaseRead for S {
         db: &mut Self::Db<'_>,
         read_input: &Self::Input,
     ) -> Result<Self::Output, Self::Error> {
-        let stmt = db.txn.prepare_cached(QUERY1).await.log()?;
+        let stmt = db.txn.prepare_cached(READ_QUERY).await.log()?;
         let row = db
             .txn
             .query_one(&stmt, &[&read_input.new_uuid.to_externel_uuid(), &read_input.user_id])
@@ -41,6 +41,9 @@ impl DatabaseRead for S {
     }
 }
 
+const WRITE_QUERY: &str =
+    "INSERT INTO accounting_app.user (rowid, id, pass, name) VALUES ($1, $2, $3, $4)";
+
 impl server_traits::DatabaseWrite for S {
     type Input = cases::sign_up::Ok;
     type Txn<'a> = db_transaction::S<'a>;
@@ -49,10 +52,7 @@ impl server_traits::DatabaseWrite for S {
         txn: &mut Self::Txn<'_>,
         input: &Self::Input,
     ) -> Result<(), traits::DynamicError> {
-        let query =
-            "INSERT INTO accounting_app.user (rowid, id, pass, name) VALUES ($1, $2, $3, $4)";
-
-        let stmt = txn.txn.prepare_cached(query).await.log()?;
+        let stmt = txn.txn.prepare_cached(WRITE_QUERY).await.log()?;
 
         txn.txn
             .execute(&stmt, &[
@@ -75,6 +75,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_query_string_directly() {
-        test_query_helper(QUERY1).await.unwrap();
+        test_query_helper(READ_QUERY).await.unwrap();
+        test_query_helper(WRITE_QUERY).await.unwrap();
     }
 }

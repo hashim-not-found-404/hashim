@@ -10,7 +10,7 @@ use rust_decimal::Decimal;
 use rust_decimal::prelude::FromPrimitive;
 use std::str::FromStr;
 
-const QUERY1: &str = "
+const READ_QUERY: &str = "
     WITH user_roles AS (
         SELECT array_agg(role) as roles
         FROM accounting_app.access_control_for_company
@@ -46,7 +46,7 @@ impl DatabaseRead for S {
     ) -> Result<Self::Output, Self::Error> {
         let row = db
             .txn
-            .query_one(QUERY1, &[
+            .query_one(READ_QUERY, &[
                 &read_input.company_belong.to_externel_uuid(),
                 &read_input.user_uuid.to_externel_uuid(),
                 &read_input.new_uuid.to_externel_uuid(),
@@ -72,6 +72,20 @@ impl DatabaseRead for S {
     }
 }
 
+const WRITE_QUERY: &str = "
+    WITH inserted_branch AS (
+        INSERT INTO accounting_app.company_branch (
+            rowid, company_belong, name,
+            location_latitude, location_longitude, currency
+        ) VALUES ($1, $2, $3, $4, $5, $6)
+        RETURNING rowid
+    )
+    INSERT INTO accounting_app.access_control_for_company_branch (
+        rowid, data_group, user_, role
+    )
+    SELECT rowid, rowid, $7, $8 FROM inserted_branch
+";
+
 impl server_traits::DatabaseWrite for S {
     type Input = cases::create_company_branch::Ok;
     type Txn<'a> = db_transaction::S<'a>;
@@ -80,20 +94,6 @@ impl server_traits::DatabaseWrite for S {
         txn: &mut Self::Txn<'_>,
         input: &Self::Input,
     ) -> Result<(), traits::DynamicError> {
-        let query = "
-        WITH inserted_branch AS (
-            INSERT INTO accounting_app.company_branch (
-                rowid, company_belong, name,
-                location_latitude, location_longitude, currency
-            ) VALUES ($1, $2, $3, $4, $5, $6)
-            RETURNING rowid
-        )
-        INSERT INTO accounting_app.access_control_for_company_branch (
-            rowid, data_group, user_, role
-        )
-        SELECT rowid, rowid, $7, $8 FROM inserted_branch
-    ";
-
         let lat = Decimal::from_f64(input.location.latitude)
             .ok_or(types::HashimError::InternalServerError)
             .log()?;
@@ -102,7 +102,7 @@ impl server_traits::DatabaseWrite for S {
             .log()?;
 
         txn.txn
-            .execute(query, &[
+            .execute(WRITE_QUERY, &[
                 &input.new_uuid.to_externel_uuid(),
                 &input.company_belong.to_externel_uuid(),
                 &input.branch_name,
@@ -126,6 +126,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_query_string_directly() {
-        test_query_helper(QUERY1).await.unwrap();
+        test_query_helper(READ_QUERY).await.unwrap();
+        test_query_helper(WRITE_QUERY).await.unwrap();
     }
 }

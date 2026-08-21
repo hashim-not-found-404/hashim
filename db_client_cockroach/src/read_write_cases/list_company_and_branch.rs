@@ -10,7 +10,7 @@ use std::collections::HashMap;
 use std::str::FromStr;
 use uuid::Uuid;
 
-const QUERY1: &str = "
+const READ_QUERY: &str = "
     WITH user_companies AS (
         SELECT
             c.rowid as company_uuid,
@@ -60,7 +60,7 @@ impl DatabaseRead for S {
         read_input: &Self::Input,
     ) -> Result<Self::Output, Self::Error> {
         let rows =
-            db.client.query(QUERY1, &[&read_input.user_uuid.to_externel_uuid()]).await.log()?;
+            db.client.query(READ_QUERY, &[&read_input.user_uuid.to_externel_uuid()]).await.log()?;
 
         #[derive(Debug, Deserialize)]
         struct BranchJson {
@@ -153,6 +153,6 @@ mod tests {
 
     #[tokio::test]
     async fn test_query_string_directly() {
-        test_query_helper(QUERY1).await.unwrap();
+        test_query_helper(READ_QUERY).await.unwrap();
     }
 }

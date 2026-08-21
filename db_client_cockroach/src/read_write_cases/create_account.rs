@@ -8,7 +8,7 @@ use my_core::utility::traits;
 use my_core::utility::utils::LogError;
 use std::str::FromStr;
 
-const QUERY1: &str = "
+const READ_QUERY: &str = "
     WITH user_roles AS (
         SELECT array_agg(role) as roles
         FROM accounting_app.access_control_for_company
@@ -42,7 +42,7 @@ impl DatabaseRead for S {
         db: &mut Self::Db<'_>,
         read_input: &Self::Input,
     ) -> Result<Self::Output, Self::Error> {
-        let stmt = db.txn.prepare_cached(QUERY1).await.log()?;
+        let stmt = db.txn.prepare_cached(READ_QUERY).await.log()?;
         let row = db
             .txn
             .query_one(&stmt, &[
@@ -70,6 +70,18 @@ impl DatabaseRead for S {
     }
 }
 
+const WRITE_QUERY: &str = "
+    INSERT INTO accounting_app.account (
+        rowid,
+        is_debit,
+        is_permanent_account,
+        name,
+        notes,
+        belong_to_company,
+        unit_of_measurement_of_quantity
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+";
+
 impl server_traits::DatabaseWrite for S {
     type Input = cases::create_account::Ok;
     type Txn<'a> = db_transaction::S<'a>;
@@ -78,19 +90,7 @@ impl server_traits::DatabaseWrite for S {
         txn: &mut Self::Txn<'_>,
         input: &Self::Input,
     ) -> Result<(), traits::DynamicError> {
-        let query = "
-        INSERT INTO accounting_app.account (
-            rowid,
-            is_debit,
-            is_permanent_account,
-            name,
-            notes,
-            belong_to_company,
-            unit_of_measurement_of_quantity
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7)
-    ";
-
-        let stmt = txn.txn.prepare_cached(query).await.log()?;
+        let stmt = txn.txn.prepare_cached(WRITE_QUERY).await.log()?;
         txn.txn
             .execute(&stmt, &[
                 &input.new_uuid.to_externel_uuid(),
@@ -115,6 +115,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_query_string_directly() {
-        test_query_helper(QUERY1).await.unwrap();
+        test_query_helper(READ_QUERY).await.unwrap();
+        test_query_helper(WRITE_QUERY).await.unwrap();
     }
 }

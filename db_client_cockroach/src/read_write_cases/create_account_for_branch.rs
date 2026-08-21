@@ -8,7 +8,7 @@ use my_core::utility::traits;
 use my_core::utility::utils::LogError;
 use std::str::FromStr;
 
-const QUERY1: &str = "
+const READ_QUERY: &str = "
     WITH
     -- 1. Get user roles for the company that owns the branch
     user_roles AS (
@@ -50,7 +50,7 @@ impl DatabaseRead for S {
     ) -> Result<Self::Output, Self::Error> {
         let row = db
             .txn
-            .query_one(QUERY1, &[
+            .query_one(READ_QUERY, &[
                 &read_input.belong_to_company_branch.to_externel_uuid(),
                 &read_input.user_uuid.to_externel_uuid(),
                 &read_input.new_uuid.to_externel_uuid(),
@@ -76,6 +76,16 @@ impl DatabaseRead for S {
     }
 }
 
+const WRITE_QUERY: &str = "
+    INSERT INTO accounting_app.account_flow_type (
+        rowid,
+        account,
+        company_branch,
+        outflow_type,
+        inflow_type
+    ) VALUES ($1, $2, $3, $4, $5)
+";
+
 impl server_traits::DatabaseWrite for S {
     type Input = cases::create_account_for_branch::Ok;
     type Txn<'a> = db_transaction::S<'a>;
@@ -84,17 +94,7 @@ impl server_traits::DatabaseWrite for S {
         txn: &mut Self::Txn<'_>,
         input: &Self::Input,
     ) -> Result<(), traits::DynamicError> {
-        let query = "
-        INSERT INTO accounting_app.account_flow_type (
-            rowid,
-            account,
-            company_branch,
-            outflow_type,
-            inflow_type
-        ) VALUES ($1, $2, $3, $4, $5)
-    ";
-
-        let stmt = txn.txn.prepare_cached(query).await.log()?;
+        let stmt = txn.txn.prepare_cached(WRITE_QUERY).await.log()?;
         txn.txn
             .execute(&stmt, &[
                 &input.new_uuid.to_externel_uuid(),
@@ -117,6 +117,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_query_string_directly() {
-        test_query_helper(QUERY1).await.unwrap();
+        test_query_helper(READ_QUERY).await.unwrap();
+        test_query_helper(WRITE_QUERY).await.unwrap();
     }
 }

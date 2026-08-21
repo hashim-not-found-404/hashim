@@ -7,7 +7,7 @@ use my_core::utility::traits;
 use my_core::utility::utils::LogError;
 use uuid::Uuid;
 
-const QUERY1: &str = "
+const READ_QUERY: &str = "
     SELECT
         rowid::text,
         is_debit,
@@ -34,8 +34,11 @@ impl DatabaseRead for S {
         db: &mut Self::Db<'_>,
         read_input: &Self::Input,
     ) -> Result<Self::Output, Self::Error> {
-        let rows =
-            db.client.query(QUERY1, &[&read_input.company_uuid.to_externel_uuid()]).await.log()?;
+        let rows = db
+            .client
+            .query(READ_QUERY, &[&read_input.company_uuid.to_externel_uuid()])
+            .await
+            .log()?;
 
         let mut data = Vec::with_capacity(rows.len());
         for row in rows {
@@ -72,6 +75,6 @@ mod tests {
 
     #[tokio::test]
     async fn test_query_string_directly() {
-        test_query_helper(QUERY1).await.unwrap();
+        test_query_helper(READ_QUERY).await.unwrap();
     }
 }
