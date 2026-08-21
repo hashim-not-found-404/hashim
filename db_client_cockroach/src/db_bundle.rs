@@ -24,4 +24,10 @@ impl server_methods::DbBundle<db_client::S> for S {
     type ListCompanyAndBranch = list_company_and_branch::S;
     type SignIn = sign_in::S;
     type SignUp = sign_up::S;
+    type WriteCreateAccount = create_account::S;
+    type WriteCreateAccountForBranch = create_account_for_branch::S;
+    type WriteCreateCompany = create_company::S;
+    type WriteCreateCompanyBranch = create_company_branch::S;
+    type WriteCreateJournalEntry = create_journal_entry::S;
+    type WriteSignUp = sign_up::S;
 }

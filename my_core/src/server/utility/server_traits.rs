@@ -1,4 +1,3 @@
-use crate::accounting_domain::cases;
 use crate::accounting_domain::utility::resource_utils;
 use crate::accounting_domain::utility::types;
 use crate::utility::traits;
@@ -44,35 +43,15 @@ pub trait DBTransaction {
         self,
     ) -> impl Future<Output = Result<Result<(), domain_errors::AtCommit>, traits::DynamicError>>;
     fn rollback_transaction(self) -> impl Future<Output = Result<(), traits::DynamicError>>;
+}
 
-    fn write_sign_up(
-        &mut self,
-        data: &cases::sign_up::Ok,
-    ) -> impl Future<Output = Result<(), traits::DynamicError>>;
+pub trait DatabaseWrite {
+    type Txn<'a>: DBTransaction;
+    type Input;
 
-    fn write_create_company(
-        &mut self,
-        data: &cases::create_company::Ok,
-    ) -> impl Future<Output = Result<(), traits::DynamicError>>;
-
-    fn write_create_company_branch(
-        &mut self,
-        data: &cases::create_company_branch::Ok,
-    ) -> impl Future<Output = Result<(), traits::DynamicError>>;
-
-    fn write_create_account(
-        &mut self,
-        input: &cases::create_account::Ok,
-    ) -> impl Future<Output = Result<(), traits::DynamicError>>;
-
-    fn write_create_account_for_branch(
-        &mut self,
-        input: &cases::create_account_for_branch::Ok,
-    ) -> impl Future<Output = Result<(), traits::DynamicError>>;
-
-    fn write_create_journal_entry(
-        &mut self,
-        data: &cases::create_journal_entry::Ok,
+    fn write(
+        txn: &mut Self::Txn<'_>,
+        input: &Self::Input,
     ) -> impl Future<Output = Result<(), traits::DynamicError>>;
 }
 

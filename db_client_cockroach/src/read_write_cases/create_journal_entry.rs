@@ -4,6 +4,7 @@ use accounting_engine::accounting_stuff;
 use my_core::accounting_domain::cases;
 use my_core::accounting_domain::utility::types;
 use my_core::accounting_domain::utility::types::DatabaseRead;
+use my_core::server::utility::server_traits;
 use my_core::utility::traits;
 use my_core::utility::utils::LogError;
 use serde::Deserialize;
@@ -163,6 +164,69 @@ impl DatabaseRead for S {
             used_new_entries_uuid,
             account_info,
         })
+    }
+}
+
+impl server_traits::DatabaseWrite for S {
+    type Input = cases::create_journal_entry::Ok;
+    type Txn<'a> = db_transaction::S<'a>;
+
+    async fn write(
+        txn: &mut Self::Txn<'_>,
+        input: &Self::Input,
+    ) -> Result<(), traits::DynamicError> {
+        let query_entry = "
+            INSERT INTO accounting_app.entry (rowid, writer, time, shared_entry_id)
+            VALUES ($1, $2, $3, $4)
+        ";
+        let stmt_entry = txn.txn.prepare_cached(query_entry).await?;
+        txn.txn
+            .execute(&stmt_entry, &[
+                &input.new_uuid.to_externel_uuid(),
+                &input.user_uuid.to_externel_uuid(),
+                &(input.time as i64),
+                &input.shared_entry_id.as_ref().map(|id| id.to_externel_uuid()),
+            ])
+            .await?;
+
+        let query_single = "
+            INSERT INTO accounting_app.single_entry (
+                rowid, double_entry, entry, account, is_debit,
+                cost_out_flow_type, quantity, amount
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        ";
+        let stmt_single = txn.txn.prepare_cached(query_single).await?;
+        for single in &input.double_entry {
+            txn.txn
+                .execute(&stmt_single, &[
+                    &single.new_uuid.to_externel_uuid(),
+                    &(single.double_entry_number as i16),
+                    &input.new_uuid.to_externel_uuid(),
+                    &single.account.to_externel_uuid(),
+                    &single.is_debit,
+                    &single.out_flow_type.as_str(),
+                    &single.quantity,
+                    &single.amount,
+                ])
+                .await?;
+        }
+
+        for (account_uuid, inventory_wrapper) in &input.inventory {
+            let inventory_json = serde_json::to_value(&inventory_wrapper.0)
+                .map_err(|e| traits::DynamicError::from(e.to_string()))?;
+
+            let query_inventory = "
+                UPDATE accounting_app.account
+                SET inventory = $1
+                WHERE rowid = $2
+            ";
+            let stmt_inventory = txn.txn.prepare_cached(query_inventory).await?;
+            txn.txn
+                .execute(&stmt_inventory, &[&inventory_json, &account_uuid.to_externel_uuid()])
+                .await?;
+        }
+
+        Ok(())
     }
 }
 

@@ -3,6 +3,7 @@ use crate::utility::utils::MyUuidConverter;
 use my_core::accounting_domain::cases;
 use my_core::accounting_domain::utility::types;
 use my_core::accounting_domain::utility::types::DatabaseRead;
+use my_core::server::utility::server_traits;
 use my_core::utility::traits;
 use my_core::utility::utils::LogError;
 use std::str::FromStr;
@@ -72,6 +73,40 @@ impl DatabaseRead for S {
             is_company_branch_exist: row.try_get(3).log()?,
             is_account_uuid_with_company_branch_used: row.try_get(4).log()?,
         })
+    }
+}
+
+impl server_traits::DatabaseWrite for S {
+    type Input = cases::create_account_for_branch::Ok;
+    type Txn<'a> = db_transaction::S<'a>;
+
+    async fn write(
+        txn: &mut Self::Txn<'_>,
+        input: &Self::Input,
+    ) -> Result<(), traits::DynamicError> {
+        let query = "
+        INSERT INTO accounting_app.account_flow_type (
+            rowid,
+            account,
+            company_branch,
+            outflow_type,
+            inflow_type
+        ) VALUES ($1, $2, $3, $4, $5)
+    ";
+
+        let stmt = txn.txn.prepare_cached(query).await.log()?;
+        txn.txn
+            .execute(&stmt, &[
+                &input.new_uuid.to_externel_uuid(),
+                &input.belong_to_account.to_externel_uuid(),
+                &input.belong_to_company_branch.to_externel_uuid(),
+                &input.outflow_type.as_str(),
+                &input.inflow_type.as_str(),
+            ])
+            .await
+            .log()?;
+
+        Ok(())
     }
 }
 

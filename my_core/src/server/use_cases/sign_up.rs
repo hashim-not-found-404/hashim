@@ -1,6 +1,7 @@
 use crate::accounting_domain::cases;
 use crate::accounting_domain::utility::types;
 use crate::accounting_domain::utility::types::MyErrorTrait;
+use crate::server::utility::server_traits;
 use crate::server::utility::server_traits::DBClient;
 use crate::server::utility::server_traits::DBTransaction;
 use crate::server::utility::server_traits::SideEffects;
@@ -13,6 +14,7 @@ impl cases::sign_up::Input {
         Jwt: types::JWT,
         Cli: DBClient,
         Db: for<'a> cases::sign_up::DatabaseRead<Db<'a> = Cli::Txn<'a>, Error = traits::DynamicError>,
+        DbWrite: for<'a> server_traits::DatabaseWrite<Txn<'a> = Cli::Txn<'a>, Input = cases::sign_up::Ok>,
     >(
         &self,
         side_effects: &mut SideEffects,
@@ -34,7 +36,7 @@ impl cases::sign_up::Input {
             }
 
             let result = self.state_full_operation::<Auth, Jwt>(jwt);
-            txn.write_sign_up(&result).await?;
+            DbWrite::write(&mut txn, &result).await?;
             side_effects.authenticated_users.insert(self.new_uuid.clone());
             Ok(Ok(result))
         }

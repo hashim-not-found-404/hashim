@@ -1,6 +1,7 @@
 use crate::accounting_domain::cases;
 use crate::accounting_domain::utility::types;
 use crate::accounting_domain::utility::types::MyErrorTrait;
+use crate::server::utility::server_traits;
 use crate::server::utility::server_traits::DBClient;
 use crate::server::utility::server_traits::DBTransaction;
 use crate::server::utility::server_traits::SideEffects;
@@ -13,6 +14,10 @@ impl cases::create_company::Input {
         Db: for<'a> cases::create_company::DatabaseRead<
                 Db<'a> = Cli::Txn<'a>,
                 Error = traits::DynamicError,
+            >,
+        DbWrite: for<'a> server_traits::DatabaseWrite<
+                Txn<'a> = Cli::Txn<'a>,
+                Input = cases::create_company::Ok,
             >,
     >(
         &self,
@@ -37,7 +42,7 @@ impl cases::create_company::Input {
             }
 
             let result = self.state_less_operation();
-            txn.write_create_company(&result).await?;
+            DbWrite::write(&mut txn, &result).await?;
             Ok(Ok(result))
         }
         .await;

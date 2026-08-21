@@ -5,6 +5,7 @@ use crate::accounting_domain::utility::types;
 use crate::accounting_domain::utility::types::RowId;
 use crate::server::utility::server_traits;
 use crate::server::utility::server_traits::DBClient;
+use crate::server::utility::server_traits::DatabaseWrite;
 use crate::utility::traits;
 use crate::utility::traits::DynamicError;
 use crate::utility::traits::Receiver;
@@ -19,24 +20,39 @@ use std::time::UNIX_EPOCH;
 
 pub trait DbBundle<Cli: DBClient>: 'static {
     type CreateAccount: for<'a> cases::create_account::DatabaseRead<Db<'a> = Cli::Txn<'a>, Error = DynamicError>;
+    type WriteCreateAccount: for<'a> DatabaseWrite<Txn<'a> = Cli::Txn<'a>, Input = cases::create_account::Ok>;
+
     type CreateAccountForBranch: for<'a> cases::create_account_for_branch::DatabaseRead<
             Db<'a> = Cli::Txn<'a>,
             Error = DynamicError,
         >;
+    type WriteCreateAccountForBranch: for<'a> DatabaseWrite<Txn<'a> = Cli::Txn<'a>, Input = cases::create_account_for_branch::Ok>;
+
     type CreateJournalEntry: for<'a> cases::create_journal_entry::DatabaseRead<
             Db<'a> = Cli::Txn<'a>,
             Error = DynamicError,
         >;
+    type WriteCreateJournalEntry: for<'a> DatabaseWrite<Txn<'a> = Cli::Txn<'a>, Input = cases::create_journal_entry::Ok>;
+
     type GetAllAccounts: for<'a> cases::get_all_accounts::DatabaseRead<Db<'a> = Cli, Error = DynamicError>;
+
     type GetAllAccountsForBranch: for<'a> cases::get_all_accounts_for_branch::DatabaseRead<Db<'a> = Cli, Error = DynamicError>;
+
     type CreateCompany: for<'a> cases::create_company::DatabaseRead<Db<'a> = Cli::Txn<'a>, Error = DynamicError>;
+    type WriteCreateCompany: for<'a> DatabaseWrite<Txn<'a> = Cli::Txn<'a>, Input = cases::create_company::Ok>;
+
     type CreateCompanyBranch: for<'a> cases::create_company_branch::DatabaseRead<
             Db<'a> = Cli::Txn<'a>,
             Error = DynamicError,
         >;
+    type WriteCreateCompanyBranch: for<'a> DatabaseWrite<Txn<'a> = Cli::Txn<'a>, Input = cases::create_company_branch::Ok>;
+
     type ListCompanyAndBranch: for<'a> cases::list_company_and_branch::DatabaseRead<Db<'a> = Cli, Error = DynamicError>;
+
     type SignIn: for<'a> cases::sign_in::DatabaseRead<Db<'a> = Cli, Error = DynamicError>;
+
     type SignUp: for<'a> cases::sign_up::DatabaseRead<Db<'a> = Cli::Txn<'a>, Error = DynamicError>;
+    type WriteSignUp: for<'a> DatabaseWrite<Txn<'a> = Cli::Txn<'a>, Input = cases::sign_up::Ok>;
 }
 
 pub trait Database: 'static {
@@ -420,7 +436,7 @@ async fn push_data<
             request_response::push_data::OperationsInput::SignUp(input) => {
                 request_response::push_data::OperationsResult::SignUp(
                     input
-                        .handle_operation::<Id, Auth, Jwt, Cli, Dbb::SignUp>(
+                        .handle_operation::<Id, Auth, Jwt, Cli, Dbb::SignUp, Dbb::WriteSignUp>(
                             side_effects,
                             client,
                             jwt,
@@ -438,14 +454,17 @@ async fn push_data<
             request_response::push_data::OperationsInput::CreateCompany(input) => {
                 request_response::push_data::OperationsResult::CreateCompany(
                     input
-                        .handle_operation::<Id, Cli, Dbb::CreateCompany>(side_effects, client)
+                        .handle_operation::<Id, Cli, Dbb::CreateCompany, Dbb::WriteCreateCompany>(
+                            side_effects,
+                            client,
+                        )
                         .await?,
                 )
             }
             request_response::push_data::OperationsInput::CreateCompanyBranch(input) => {
                 request_response::push_data::OperationsResult::CreateCompanyBranch(
                     input
-                        .handle_operation::<Id, Cli, Dbb::CreateCompanyBranch>(side_effects, client)
+                        .handle_operation::<Id, Cli, Dbb::CreateCompanyBranch,Dbb::WriteCreateCompanyBranch>(side_effects, client)
                         .await?,
                 )
             }
@@ -462,7 +481,7 @@ async fn push_data<
             request_response::push_data::OperationsInput::CreateAccount(input) => {
                 request_response::push_data::OperationsResult::CreateAccount(
                     input
-                        .handle_operation::<Id, Cli, Dbb::CreateAccount>(side_effects, client)
+                        .handle_operation::<Id, Cli, Dbb::CreateAccount,Dbb::WriteCreateAccount>(side_effects, client)
                         .await?,
                 )
             }
@@ -476,7 +495,7 @@ async fn push_data<
             request_response::push_data::OperationsInput::CreateAccountForBranch(input) => {
                 request_response::push_data::OperationsResult::CreateAccountForBranch(
                     input
-                        .handle_operation::<Id, Cli, Dbb::CreateAccountForBranch>(
+                        .handle_operation::<Id, Cli, Dbb::CreateAccountForBranch,Dbb::WriteCreateAccountForBranch>(
                             side_effects,
                             client,
                         )
@@ -496,7 +515,7 @@ async fn push_data<
             request_response::push_data::OperationsInput::CreateJournalEntry(input) => {
                 request_response::push_data::OperationsResult::CreateJournalEntry(
                     input
-                        .handle_operation::<Id, Ti, Cli, Dbb::CreateJournalEntry>(
+                        .handle_operation::<Id, Ti, Cli, Dbb::CreateJournalEntry,Dbb::WriteCreateJournalEntry>(
                             side_effects,
                             client,
                         )

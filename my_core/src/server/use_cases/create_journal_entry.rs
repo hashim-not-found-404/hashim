@@ -1,6 +1,7 @@
 use crate::accounting_domain::cases;
 use crate::accounting_domain::utility::types;
 use crate::accounting_domain::utility::types::MyErrorTrait;
+use crate::server::utility::server_traits;
 use crate::server::utility::server_traits::DBClient;
 use crate::server::utility::server_traits::DBTransaction;
 use crate::server::utility::server_traits::SideEffects;
@@ -14,6 +15,10 @@ impl cases::create_journal_entry::Input {
         Db: for<'a> cases::create_journal_entry::DatabaseRead<
                 Db<'a> = Cli::Txn<'a>,
                 Error = traits::DynamicError,
+            >,
+        DbWrite: for<'a> server_traits::DatabaseWrite<
+                Txn<'a> = Cli::Txn<'a>,
+                Input = cases::create_journal_entry::Ok,
             >,
     >(
         &self,
@@ -37,7 +42,7 @@ impl cases::create_journal_entry::Input {
                 return Ok(Err(errr));
             };
 
-            txn.write_create_journal_entry(&result).await?;
+            DbWrite::write(&mut txn, &result).await?;
             Ok(Ok(result))
         }
         .await;

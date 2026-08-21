@@ -2,6 +2,7 @@ use crate::utility::db_transaction;
 use crate::utility::utils::MyUuidConverter;
 use my_core::accounting_domain::cases;
 use my_core::accounting_domain::utility::types::DatabaseRead;
+use my_core::server::utility::server_traits;
 use my_core::utility::traits;
 use my_core::utility::utils::LogError;
 
@@ -37,6 +38,33 @@ impl DatabaseRead for S {
             is_user_id_exist:  row.try_get("user_id_exists").log()?,
         };
         Ok(a)
+    }
+}
+
+impl server_traits::DatabaseWrite for S {
+    type Input = cases::sign_up::Ok;
+    type Txn<'a> = db_transaction::S<'a>;
+
+    async fn write(
+        txn: &mut Self::Txn<'_>,
+        input: &Self::Input,
+    ) -> Result<(), traits::DynamicError> {
+        let query =
+            "INSERT INTO accounting_app.user (rowid, id, pass, name) VALUES ($1, $2, $3, $4)";
+
+        let stmt = txn.txn.prepare_cached(query).await.log()?;
+
+        txn.txn
+            .execute(&stmt, &[
+                &input.new_uuid.to_externel_uuid(),
+                &input.user_id,
+                &input.hashed_password,
+                &input.user_name,
+            ])
+            .await
+            .log()?;
+
+        Ok(())
     }
 }
 

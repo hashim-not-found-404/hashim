@@ -3,6 +3,7 @@ use crate::utility::utils::MyUuidConverter;
 use my_core::accounting_domain::cases;
 use my_core::accounting_domain::utility::types;
 use my_core::accounting_domain::utility::types::DatabaseRead;
+use my_core::server::utility::server_traits;
 use my_core::utility::traits;
 use my_core::utility::utils::LogError;
 use std::str::FromStr;
@@ -66,6 +67,44 @@ impl DatabaseRead for S {
             user_roles,
             is_account_name_used: row.try_get(3).log()?,
         })
+    }
+}
+
+impl server_traits::DatabaseWrite for S {
+    type Input = cases::create_account::Ok;
+    type Txn<'a> = db_transaction::S<'a>;
+
+    async fn write(
+        txn: &mut Self::Txn<'_>,
+        input: &Self::Input,
+    ) -> Result<(), traits::DynamicError> {
+        let query = "
+        INSERT INTO accounting_app.account (
+            rowid,
+            is_debit,
+            is_permanent_account,
+            name,
+            notes,
+            belong_to_company,
+            unit_of_measurement_of_quantity
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+    ";
+
+        let stmt = txn.txn.prepare_cached(query).await.log()?;
+        txn.txn
+            .execute(&stmt, &[
+                &input.new_uuid.to_externel_uuid(),
+                &input.is_debit,
+                &input.is_permanent_account,
+                &input.account_name,
+                &input.notes,
+                &input.belong_to_company.to_externel_uuid(),
+                &input.unit_of_measurement_of_quantity,
+            ])
+            .await
+            .log()?;
+
+        Ok(())
     }
 }
 

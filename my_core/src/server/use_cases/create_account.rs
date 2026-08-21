@@ -1,24 +1,26 @@
 use crate::accounting_domain::cases;
 use crate::accounting_domain::utility::types;
 use crate::accounting_domain::utility::types::MyErrorTrait;
+use crate::server::utility::server_traits;
 use crate::server::utility::server_traits::DBClient;
 use crate::server::utility::server_traits::DBTransaction;
 use crate::server::utility::server_traits::SideEffects;
-use crate::utility::traits;
+use crate::utility::traits::DynamicError;
 
 impl cases::create_account::Input {
     pub(crate) async fn handle_operation<
         Id: types::RowId,
         Cli: DBClient,
-        Db: for<'a> cases::create_account::DatabaseRead<
-                Db<'a> = Cli::Txn<'a>,
-                Error = traits::DynamicError,
+        Db: for<'a> cases::create_account::DatabaseRead<Db<'a> = Cli::Txn<'a>, Error = DynamicError>,
+        DbWrite: for<'a> server_traits::DatabaseWrite<
+                Txn<'a> = Cli::Txn<'a>,
+                Input = cases::create_account::Ok,
             >,
     >(
         &self,
         side_effects: &mut SideEffects,
         client: &mut Cli,
-    ) -> Result<cases::create_account::MyResult, traits::DynamicError> {
+    ) -> Result<cases::create_account::MyResult, DynamicError> {
         let mut errr = self.state_less_check::<Id>();
         if !side_effects.authenticated_users.contains(&self.user_uuid) {
             errr.user_uuid = Some(types::UserUuidError::NotAuthenticated);
@@ -37,7 +39,7 @@ impl cases::create_account::Input {
             }
 
             let result = self.state_less_operation();
-            txn.write_create_account(&result).await?;
+            DbWrite::write(&mut txn, &result).await?;
             Ok(Ok(result))
         }
         .await;
