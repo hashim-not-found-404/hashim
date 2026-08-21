@@ -5,6 +5,7 @@ use my_core::accounting_domain::cases;
 use my_core::accounting_domain::utility::types;
 use my_core::utility::traits;
 use my_core::utility::utils::LogError;
+use serde::Deserialize;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -121,7 +122,7 @@ impl cases::create_journal_entry::DatabaseRead for S {
             }
         }
 
-        #[derive(Debug, serde::Deserialize)]
+        #[derive(Debug, Deserialize)]
         struct AccountInfoJson {
             account_uuid:  String,
             is_debit:      bool,
