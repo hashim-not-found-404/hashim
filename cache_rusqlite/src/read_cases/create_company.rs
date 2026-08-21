@@ -14,8 +14,8 @@ impl DatabaseRead for S {
     type ReadOutput = cases::create_company::ReadOutput;
 
     async fn read(
-        db: &mut Self::Db<'_>,
-        read_input: &Self::ReadInput,
+        _db: &mut Self::Db<'_>,
+        _read_input: &Self::ReadInput,
     ) -> Result<Self::ReadOutput, Self::Error> {
         unreachable!()
     }

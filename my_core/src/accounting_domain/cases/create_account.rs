@@ -1,5 +1,4 @@
 use crate::accounting_domain::utility::types;
-use crate::utility::traits;
 use serde::Deserialize;
 use serde::Serialize;
 

@@ -2,7 +2,6 @@ use crate::accounting_domain::utility::types;
 use crate::accounting_domain::utility::types::MarkerMyErrorTrait;
 use crate::accounting_domain::utility::types::MyErrorTrait;
 use crate::accounting_domain::utility::types::RowId;
-use crate::utility::traits;
 use crate::utility::traits::Time;
 use accounting_engine::accounting_stuff;
 use accounting_engine::accounting_stuff::DoubleEntry;
