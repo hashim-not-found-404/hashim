@@ -40,10 +40,7 @@ pub struct ReadOutput {
     pub is_user_id_exist:  bool,
 }
 
-pub trait DatabaseRead:
-    types::DatabaseRead<ReadInput = ReadInput, ReadOutput = ReadOutput>
-{
-}
+pub trait DatabaseRead: types::DatabaseRead<Input = ReadInput, Output = ReadOutput> {}
 
 // utility types
 

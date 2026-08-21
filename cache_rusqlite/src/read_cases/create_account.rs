@@ -19,13 +19,13 @@ impl cases::create_account::DatabaseRead for S {}
 impl DatabaseRead for S {
     type Db<'a> = cache_adapter::S;
     type Error = traits::DynamicError;
-    type ReadInput = cases::create_account::ReadInput;
-    type ReadOutput = cases::create_account::ReadOutput;
+    type Input = cases::create_account::ReadInput;
+    type Output = cases::create_account::ReadOutput;
 
     async fn read(
         db: &mut Self::Db<'_>,
-        read_input: &Self::ReadInput,
-    ) -> Result<Self::ReadOutput, Self::Error> {
+        read_input: &Self::Input,
+    ) -> Result<Self::Output, Self::Error> {
         let mut stmt = db.tables_db.prepare(QUERY1).unwrap();
         let roles_iter = stmt
             .query_map(

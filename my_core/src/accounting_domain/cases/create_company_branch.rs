@@ -50,10 +50,7 @@ pub struct ReadOutput {
     pub is_branch_name_used: bool,
 }
 
-pub trait DatabaseRead:
-    types::DatabaseRead<ReadInput = ReadInput, ReadOutput = ReadOutput>
-{
-}
+pub trait DatabaseRead: types::DatabaseRead<Input = ReadInput, Output = ReadOutput> {}
 
 // utility types
 

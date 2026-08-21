@@ -27,13 +27,13 @@ impl cases::list_company_and_branch::DatabaseRead for S {}
 impl DatabaseRead for S {
     type Db<'a> = cache_adapter::S;
     type Error = traits::DynamicError;
-    type ReadInput = cases::list_company_and_branch::ReadInput;
-    type ReadOutput = cases::list_company_and_branch::ReadOutput;
+    type Input = cases::list_company_and_branch::ReadInput;
+    type Output = cases::list_company_and_branch::ReadOutput;
 
     async fn read(
         db: &mut Self::Db<'_>,
-        read_input: &Self::ReadInput,
-    ) -> Result<Self::ReadOutput, Self::Error> {
+        read_input: &Self::Input,
+    ) -> Result<Self::Output, Self::Error> {
         use std::collections::HashMap;
         use types::Role;
 

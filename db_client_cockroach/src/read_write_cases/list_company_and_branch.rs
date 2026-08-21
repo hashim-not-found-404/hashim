@@ -52,13 +52,13 @@ impl cases::list_company_and_branch::DatabaseRead for S {}
 impl DatabaseRead for S {
     type Db<'a> = db_client::S;
     type Error = traits::DynamicError;
-    type ReadInput = cases::list_company_and_branch::ReadInput;
-    type ReadOutput = cases::list_company_and_branch::ReadOutput;
+    type Input = cases::list_company_and_branch::ReadInput;
+    type Output = cases::list_company_and_branch::ReadOutput;
 
     async fn read(
         db: &mut Self::Db<'_>,
-        read_input: &Self::ReadInput,
-    ) -> Result<Self::ReadOutput, Self::Error> {
+        read_input: &Self::Input,
+    ) -> Result<Self::Output, Self::Error> {
         let rows =
             db.client.query(QUERY1, &[&read_input.user_uuid.to_externel_uuid()]).await.log()?;
 

@@ -57,10 +57,7 @@ pub struct ReadOutput {
     pub accounts_for_branch: Vec<AccountForBranch>,
 }
 
-pub trait DatabaseRead:
-    types::DatabaseRead<ReadInput = ReadInput, ReadOutput = ReadOutput>
-{
-}
+pub trait DatabaseRead: types::DatabaseRead<Input = ReadInput, Output = ReadOutput> {}
 
 impl Input {
     pub(crate) fn state_less_check<Id: types::RowId>(&self) -> Error {

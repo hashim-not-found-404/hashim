@@ -16,13 +16,13 @@ impl cases::sign_up::DatabaseRead for S {}
 impl DatabaseRead for S {
     type Db<'a> = cache_adapter::S;
     type Error = traits::DynamicError;
-    type ReadInput = cases::sign_up::ReadInput;
-    type ReadOutput = cases::sign_up::ReadOutput;
+    type Input = cases::sign_up::ReadInput;
+    type Output = cases::sign_up::ReadOutput;
 
     async fn read(
         db: &mut Self::Db<'_>,
-        read_input: &Self::ReadInput,
-    ) -> Result<Self::ReadOutput, Self::Error> {
+        read_input: &Self::Input,
+    ) -> Result<Self::Output, Self::Error> {
         let query = QUERY;
 
         let a = db

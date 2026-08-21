@@ -34,10 +34,7 @@ pub struct ReadOutput {
     pub user_rowid_and_password_hash_and_name: Option<(types::UuidType, String, Option<String>)>,
 }
 
-pub trait DatabaseRead:
-    types::DatabaseRead<ReadInput = ReadInput, ReadOutput = ReadOutput>
-{
-}
+pub trait DatabaseRead: types::DatabaseRead<Input = ReadInput, Output = ReadOutput> {}
 
 // utility types
 

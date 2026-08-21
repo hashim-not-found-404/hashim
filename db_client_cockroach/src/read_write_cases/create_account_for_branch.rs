@@ -41,13 +41,13 @@ impl cases::create_account_for_branch::DatabaseRead for S {}
 impl DatabaseRead for S {
     type Db<'a> = db_transaction::S<'a>;
     type Error = traits::DynamicError;
-    type ReadInput = cases::create_account_for_branch::ReadInput;
-    type ReadOutput = cases::create_account_for_branch::ReadOutput;
+    type Input = cases::create_account_for_branch::ReadInput;
+    type Output = cases::create_account_for_branch::ReadOutput;
 
     async fn read(
         db: &mut Self::Db<'_>,
-        read_input: &Self::ReadInput,
-    ) -> Result<Self::ReadOutput, Self::Error> {
+        read_input: &Self::Input,
+    ) -> Result<Self::Output, Self::Error> {
         let row = db
             .txn
             .query_one(QUERY1, &[

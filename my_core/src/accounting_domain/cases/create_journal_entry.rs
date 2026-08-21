@@ -157,10 +157,7 @@ pub struct AccountInfo {
     pub inventory:     InventoryWrapper,
 }
 
-pub trait DatabaseRead:
-    types::DatabaseRead<ReadInput = ReadInput, ReadOutput = ReadOutput>
-{
-}
+pub trait DatabaseRead: types::DatabaseRead<Input = ReadInput, Output = ReadOutput> {}
 
 // -----------------------------------------------------------------------------
 // Views that combine input and error

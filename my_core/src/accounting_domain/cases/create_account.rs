@@ -56,10 +56,7 @@ pub struct ReadOutput {
     pub is_account_name_used:  bool,
 }
 
-pub trait DatabaseRead:
-    types::DatabaseRead<ReadInput = ReadInput, ReadOutput = ReadOutput>
-{
-}
+pub trait DatabaseRead: types::DatabaseRead<Input = ReadInput, Output = ReadOutput> {}
 
 impl Input {
     pub(crate) fn state_less_check<Id: types::RowId>(&self) -> Error {

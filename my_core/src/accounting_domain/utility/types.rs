@@ -27,14 +27,14 @@ pub trait JWT: 'static {
 
 pub trait DatabaseRead {
     type Db<'a>;
-    type ReadInput;
-    type ReadOutput;
+    type Input;
+    type Output;
     type Error: Debug;
 
     fn read(
         db: &mut Self::Db<'_>,
-        read_input: &Self::ReadInput,
-    ) -> impl Future<Output = Result<Self::ReadOutput, Self::Error>>;
+        read_input: &Self::Input,
+    ) -> impl Future<Output = Result<Self::Output, Self::Error>>;
 }
 
 pub(crate) trait MyErrorTrait {
