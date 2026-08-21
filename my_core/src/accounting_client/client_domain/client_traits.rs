@@ -14,6 +14,47 @@ use crate::utility::traits::Sender;
 use crate::utility::utils::ReadAndSet;
 use std::sync::Arc;
 
+#[derive(Debug, Clone, Eq, Hash, PartialEq)]
+pub(crate) enum Subscribe {
+    TableAccessControlForCompanyBranchFieldDataGroup,
+    TableAccessControlForCompanyBranchFieldRole,
+    TableAccessControlForCompanyBranchFieldUser,
+    TableAccessControlForCompanyFieldDataGroup,
+    TableAccessControlForCompanyFieldRole,
+    TableAccessControlForCompanyFieldUser,
+    TableAccountFieldCompanyBelong,
+    TableAccountFieldIsDebit,
+    TableAccountFieldIsPermanentAccount,
+    TableAccountFieldName,
+    TableAccountFieldNotes,
+    TableAccountFieldUnitOfMeasurementOfQuantity,
+    TableAccountFieldInventory,
+    TableAccountFlowTypeFieldAccount,
+    TableAccountFlowTypeFieldCompanyBranch,
+    TableAccountFlowTypeFieldInflowType,
+    TableAccountFlowTypeFieldOutflowType,
+    TableCompanyBranchFieldCompanyBelong,
+    TableCompanyBranchFieldCurrency,
+    TableCompanyBranchFieldLocation,
+    TableCompanyBranchFieldName,
+    TableCompanyFieldCurrency,
+    TableCompanyFieldName,
+    TableUserFieldId,
+    TableUserFieldName,
+    TableSharedEntryFieldWriter,
+    TableSharedEntryFieldNotes,
+    TableEntryFieldWriter,
+    TableEntryFieldTime,
+    TableEntryFieldSharedEntryId,
+    TableSingleEntryFieldDoubleEntry,
+    TableSingleEntryFieldEntry,
+    TableSingleEntryFieldAccount,
+    TableSingleEntryFieldIsDebit,
+    TableSingleEntryFieldCostOutFlowType,
+    TableSingleEntryFieldQuantity,
+    TableSingleEntryFieldAmount,
+}
+
 pub(crate) trait ViewAndCache<Ch: cache::Cache, T> {
     type Type1;
     type Type2;

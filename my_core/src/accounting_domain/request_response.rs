@@ -1,5 +1,4 @@
 use crate::accounting_domain::cases;
-use crate::accounting_domain::utility::resource_utils;
 use crate::accounting_domain::utility::types;
 use serde::Deserialize;
 use serde::Serialize;
@@ -8,14 +7,23 @@ pub(crate) mod messages {
     use super::Deserialize;
     use super::Serialize;
     use super::push_data;
-    use super::resource_utils;
     use super::types;
+    use crate::accounting_domain::cases;
+
+    #[derive(Debug, Clone, Deserialize, Serialize)]
+    pub(crate) enum ResourcesDTO {
+        CreateCompany(cases::create_company::Ok),
+        CreateCompanyBranch(cases::create_company_branch::Ok),
+        CreateAccount(cases::create_account::Ok),
+        CreateAccountForBranch(cases::create_account_for_branch::Ok),
+        CreateJournalEntry(cases::create_journal_entry::Ok),
+    }
 
     #[derive(Debug, Deserialize, Serialize)]
     pub(crate) enum FromServer {
         Error(types::HashimError),
         PushData(push_data::MyResult),
-        Resources(Vec<resource_utils::ResourceInfo>),
+        Resources(Vec<ResourcesDTO>),
     }
 
     pub(crate) type FromClient = push_data::Input;

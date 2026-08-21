@@ -1,16 +1,17 @@
 use crate::accounting_domain::cases;
 use crate::accounting_domain::request_response;
-use crate::accounting_domain::utility::resource_utils;
+use crate::accounting_domain::request_response::messages::ResourcesDTO;
 use crate::accounting_domain::utility::types;
 use crate::accounting_domain::utility::types::RowId;
 use crate::server::utility::server_traits;
 use crate::server::utility::server_traits::DBClient;
 use crate::server::utility::server_traits::DatabaseWrite;
+use crate::server::utility::server_traits::ListOfResources;
+use crate::server::utility::server_traits::UserUuid;
 use crate::utility::traits;
 use crate::utility::traits::DynamicError;
 use crate::utility::traits::Receiver;
 use crate::utility::traits::Sender;
-use crate::utility::utils::HashMapWithHashMapValue;
 use crate::utility::utils::LogError;
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -112,8 +113,7 @@ impl<
     ) {
         Rt::spawn_local(async move {
             let mut sender_to_broker = self.sender_to_broker.clone();
-            let (sender_to_server, mut receiver_to_server) =
-                Mpsc::channel::<Vec<resource_utils::ResourceInfo>>();
+            let (sender_to_server, mut receiver_to_server) = Mpsc::channel::<Vec<ResourcesDTO>>();
             let connection_id = Rn::generate();
 
             loop {
@@ -235,13 +235,10 @@ impl<
                                     }
                                 }
 
-                                if (!side_effects.resource_to_broadcast_for_company.is_empty()
-                                    || !side_effects.resource_to_broadcast_for_branch.is_empty())
+                                if !side_effects.resource_to_broadcast_for_branch.is_empty()
                                     && sender_to_broker
                                         .send(MessageToBroker::Publish {
                                             connection_id,
-                                            list_of_resources_for_company: side_effects
-                                                .resource_to_broadcast_for_company,
                                             list_of_resources_for_branch: side_effects
                                                 .resource_to_broadcast_for_branch,
                                         })
@@ -301,21 +298,15 @@ impl<
                         sender_to_server,
                     } => {
                         for user_uuid in users_uuids {
-                            pool_of_server_facad_channels.nested_insert(
-                                user_uuid,
-                                connection_id,
-                                sender_to_server.clone(),
-                            );
+                            pool_of_server_facad_channels
+                                .entry(user_uuid)
+                                .or_default()
+                                .insert(connection_id, sender_to_server.clone());
                         }
 
                         broker_functions::merge_subscribes(
-                            &mut pool_of_pubsub_for_company,
-                            list_of_subscribtion.companies,
-                        );
-
-                        broker_functions::merge_subscribes(
                             &mut pool_of_pubsub_for_branch,
-                            list_of_subscribtion.branches,
+                            list_of_subscribtion,
                         );
                     }
                     MessageToBroker::Unsubscribe {
@@ -343,16 +334,9 @@ impl<
                     }
                     MessageToBroker::Publish {
                         connection_id,
-                        list_of_resources_for_company,
                         list_of_resources_for_branch,
                     } => {
-                        let mut resource_to_send: server_traits::ListOfResources = HashMap::new();
-
-                        broker_functions::map_resource_to_subscribes(
-                            &pool_of_pubsub_for_company,
-                            list_of_resources_for_company,
-                            &mut resource_to_send,
-                        );
+                        let mut resource_to_send = HashMap::new();
 
                         broker_functions::map_resource_to_subscribes(
                             &pool_of_pubsub_for_branch,
@@ -363,20 +347,22 @@ impl<
                         for (user_uuid, resource) in resource_to_send {
                             let channels = pool_of_server_facad_channels.get_mut(&user_uuid);
 
-                            if let Some(channels) = channels {
-                                for (connection_id1, mut sender) in channels.clone() {
-                                    if connection_id == connection_id1 {
-                                        continue;
-                                    }
-                                    if sender.send(resource.clone()).await.is_err() {
-                                        channels.remove(&connection_id1);
-                                    }
-                                }
-                                if channels.is_empty() {
-                                    pool_of_server_facad_channels.remove(&user_uuid);
-                                }
-                            } else {
+                            let Some(channels) = channels else {
                                 dbg!("there is some problem here this should not happen");
+                                continue;
+                            };
+
+                            for (connection_id1, mut sender) in channels.clone() {
+                                if connection_id == connection_id1 {
+                                    continue;
+                                }
+                                if sender.send(resource.clone()).await.is_err() {
+                                    channels.remove(&connection_id1);
+                                }
+                            }
+
+                            if channels.is_empty() {
+                                pool_of_server_facad_channels.remove(&user_uuid);
                             }
                         }
                     }
@@ -561,78 +547,67 @@ fn check_nonce_if_valid<Id: RowId>(nonce: &types::UuidType, is_used: bool) -> bo
 
 async fn get_table_of_subscribed_data<Cli: DBClient>(
     client: &mut Cli,
-    users_uuids: &HashSet<types::UuidType>,
-) -> Result<AllSubscribes, DynamicError> {
+    users_uuids: &HashSet<UserUuid>,
+) -> Result<broker_functions::UserSubscribes, DynamicError> {
     let roles = client.read_roles_for_user(users_uuids).await?;
 
-    let mut subs = AllSubscribes {
-        companies: HashMap::new(),
-        branches:  HashMap::new(),
-    };
+    let mut subs: broker_functions::UserSubscribes = HashMap::new();
 
     for (company, users_roles) in roles.companies {
-        let mut users_subscribes = HashMap::new();
+        // let mut users_subscribes = HashMap::new();
 
-        for (user, roles) in users_roles {
-            let subscribes = role_to_subscribe_mapping(roles);
-            users_subscribes.insert(user, subscribes);
-        }
+        // for (user, roles) in users_roles {
+        //     users_subscribes.insert(user);
+        // }
 
-        subs.companies.insert(company, users_subscribes);
+        // subs.companies.insert(company, users_subscribes);
     }
 
     for (branch, users_roles) in roles.branches {
-        let mut users_subscribes = HashMap::new();
+        // let mut users_subscribes = HashMap::new();
 
-        for (user, roles) in users_roles {
-            let subscribes = role_to_subscribe_mapping(roles);
-            users_subscribes.insert(user, subscribes);
-        }
+        // for (user, roles) in users_roles {
+        //     let subscribes = role_to_subscribe_mapping(roles);
+        //     users_subscribes.insert(user, subscribes);
+        // }
 
-        subs.companies.insert(branch, users_subscribes);
+        // subs.companies.insert(branch, users_subscribes);
     }
 
     Ok(subs)
 }
 
 mod broker_functions {
-    use crate::accounting_domain::utility::resource_utils;
-    use crate::accounting_domain::utility::types;
-    use crate::server::utility::server_traits;
-    use crate::utility::utils::HashMapWithHashMapValue;
-    use crate::utility::utils::HashMapWithVectorValue;
+    use crate::accounting_domain::request_response::messages::ResourcesDTO;
+    use crate::server::utility::server_traits::BranchUuid;
+    use crate::server::utility::server_traits::ListOfResources;
+    use crate::server::utility::server_traits::UserUuid;
     use std::collections::HashMap;
     use std::collections::HashSet;
 
-    pub(crate) type UserSubscribes = HashMap<
-        types::UuidType, // company uuid or branch
-        HashMap<
-            types::UuidType, // user uuid
-            HashSet<resource_utils::Subscribe>,
-        >,
-    >;
+    pub(crate) type UserSubscribes = HashMap<BranchUuid, HashSet<UserUuid>>;
 
     pub(crate) fn map_resource_to_subscribes(
         pool_of_pubsub: &UserSubscribes,
-        list_of_resources: server_traits::ListOfResources,
-        resource_to_send: &mut server_traits::ListOfResources,
+        list_of_resources: ListOfResources,
+        resource_to_send: &mut HashMap<UserUuid, Vec<ResourcesDTO>>,
     ) {
-        for (company, resource) in list_of_resources {
-            let user_and_subscribe = pool_of_pubsub.get(&company);
-            if let Some(user_and_subscribe) = user_and_subscribe {
-                for (user_uuid, subscribe) in user_and_subscribe {
-                    let resource_for_user =
-                        resource_filtering_based_on_subscribe(subscribe, &resource);
-
-                    resource_to_send.insert_append(user_uuid.clone(), resource_for_user);
-                }
-            } else {
+        for (branch, resources) in list_of_resources {
+            let user_and_subscribe = pool_of_pubsub.get(&branch);
+            let Some(user_and_subscribe) = user_and_subscribe else {
                 dbg!("there is some problem here this should not happen");
+                continue;
+            };
+
+            for user_uuid in user_and_subscribe {
+                for resource in resources.clone() {
+                    resource_to_send.entry(user_uuid.clone()).or_default().push(resource.clone());
+                }
             }
         }
     }
 
-    pub(crate) fn unsubscribe(pool_of_pubsub: &mut UserSubscribes, user_uuid: &types::UuidType) {
+    pub(crate) fn unsubscribe(pool_of_pubsub: &mut UserSubscribes, user_uuid: &UserUuid) {
         pool_of_pubsub.retain(|_, users_and_subs| {
             users_and_subs.remove(user_uuid);
             !users_and_subs.is_empty()
@@ -643,76 +618,31 @@ mod broker_functions {
         pool_of_pubsub: &mut UserSubscribes,
         list_of_subscribtion: UserSubscribes,
     ) {
-        for (company, users_subscribes) in list_of_subscribtion {
-            for (user_uuid, subscribes) in users_subscribes {
-                pool_of_pubsub.nested_insert(company.clone(), user_uuid, subscribes);
+        for (branch, users_subscribes) in list_of_subscribtion {
+            for user_uuid in users_subscribes {
+                pool_of_pubsub.entry(branch.clone()).or_default().insert(user_uuid);
             }
         }
     }
-
-    fn resource_filtering_based_on_subscribe(
-        subscribe: &HashSet<resource_utils::Subscribe>,
-        resource: &Vec<resource_utils::ResourceInfo>,
-    ) -> Vec<resource_utils::ResourceInfo> {
-        let mut new_resource = Vec::new();
-
-        for one_resource in resource {
-            if let Some(sub) = one_resource.resource.map_to_subs()
-                && subscribe.contains(&sub)
-            {
-                new_resource.push(one_resource.clone());
-            }
-        }
-
-        new_resource
-    }
-}
-
-fn role_to_subscribe_mapping(roles: Vec<types::Role>) -> HashSet<resource_utils::Subscribe> {
-    let mut subscribes = HashSet::with_capacity(200);
-
-    for _ in roles {
-        subscribes.insert(resource_utils::Subscribe::TableUserFieldName);
-        subscribes.insert(resource_utils::Subscribe::TableUserFieldId);
-        subscribes.insert(resource_utils::Subscribe::TableCompanyFieldName);
-        subscribes.insert(resource_utils::Subscribe::TableCompanyFieldCurrency);
-        subscribes.insert(resource_utils::Subscribe::TableCompanyBranchFieldName);
-        subscribes.insert(resource_utils::Subscribe::TableCompanyBranchFieldCompanyBelong);
-        subscribes.insert(resource_utils::Subscribe::TableAccessControlForCompanyFieldRole);
-        subscribes.insert(resource_utils::Subscribe::TableAccessControlForCompanyFieldUser);
-        subscribes.insert(resource_utils::Subscribe::TableAccessControlForCompanyFieldDataGroup);
-    }
-
-    subscribes.shrink_to_fit();
-    subscribes
-}
-
-pub(crate) struct AllSubscribes {
-    pub(crate) companies: broker_functions::UserSubscribes,
-    pub(crate) branches:  broker_functions::UserSubscribes,
 }
 
 type UserSenders<Mpsc> = HashMap<
-    types::UuidType, // user uuid
-    HashMap<
-        u64,
-        <Mpsc as traits::MultiProducerSingleConsumer>::Sender<Vec<resource_utils::ResourceInfo>>,
-    >, // because user may have multiple web socket connection
+    UserUuid,
+    HashMap<u64, <Mpsc as traits::MultiProducerSingleConsumer>::Sender<Vec<ResourcesDTO>>>, // because user may have multiple web socket connection
 >;
 
 pub(crate) enum MessageToBroker<Mpsc: traits::MultiProducerSingleConsumer> {
     Subscribe {
         connection_id:        u64,
-        list_of_subscribtion: AllSubscribes,
-        users_uuids:          HashSet<types::UuidType>,
-        sender_to_server:     Mpsc::Sender<Vec<resource_utils::ResourceInfo>>,
+        list_of_subscribtion: broker_functions::UserSubscribes,
+        users_uuids:          HashSet<UserUuid>,
+        sender_to_server:     Mpsc::Sender<Vec<ResourcesDTO>>,
     },
     Unsubscribe {
         connection_id: u64,
     },
     Publish {
-        connection_id:                 u64,
-        list_of_resources_for_company: server_traits::ListOfResources,
-        list_of_resources_for_branch:  server_traits::ListOfResources,
+        connection_id:                u64,
+        list_of_resources_for_branch: ListOfResources,
     },
 }
