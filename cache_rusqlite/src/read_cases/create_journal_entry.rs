@@ -4,6 +4,7 @@ use crate::utility::utils::MyUuidConverter1;
 use accounting_engine::accounting_stuff;
 use my_core::accounting_domain::cases;
 use my_core::accounting_domain::utility::types;
+use my_core::accounting_domain::utility::types::DatabaseRead;
 use my_core::utility::traits;
 use rusqlite::params;
 use serde::Deserialize;
@@ -72,13 +73,18 @@ const QUERY: &str = r#"
 
 pub struct S;
 
-impl cases::create_journal_entry::DatabaseRead for S {
+impl cases::create_journal_entry::DatabaseRead for S {}
+
+impl DatabaseRead for S {
     type Db<'a> = cache_adapter::S;
+    type Error = traits::DynamicError;
+    type ReadInput = cases::create_journal_entry::ReadInput;
+    type ReadOutput = cases::create_journal_entry::ReadOutput;
 
     async fn read(
         db: &mut Self::Db<'_>,
-        read_input: &cases::create_journal_entry::ReadInput,
-    ) -> Result<cases::create_journal_entry::ReadOutput, traits::DynamicError> {
+        read_input: &Self::ReadInput,
+    ) -> Result<Self::ReadOutput, Self::Error> {
         let accounts_uuid_vec: Vec<String> =
             read_input.accounts_uuid.iter().map(|uuid| uuid.to_string()).collect();
         let new_entries_uuid_vec: Vec<String> =

@@ -158,12 +158,9 @@ pub struct AccountInfo {
     pub inventory:     InventoryWrapper,
 }
 
-pub trait DatabaseRead {
-    type Db<'a>;
-    fn read(
-        db: &mut Self::Db<'_>,
-        read_input: &ReadInput,
-    ) -> impl Future<Output = Result<ReadOutput, traits::DynamicError>>;
+pub trait DatabaseRead:
+    types::DatabaseRead<ReadInput = ReadInput, ReadOutput = ReadOutput>
+{
 }
 
 // -----------------------------------------------------------------------------
@@ -894,7 +891,7 @@ impl Input {
     pub(crate) async fn state_full_check<Db: DatabaseRead, Ti: Time>(
         &self,
         db: &mut Db::Db<'_>,
-    ) -> Result<MyResult, traits::DynamicError> {
+    ) -> Result<MyResult, Db::Error> {
         let mut accounts_uuid = HashSet::new();
         let mut new_entries_uuid = HashSet::new();
         for double in &self.double_entries {

@@ -12,7 +12,7 @@ impl cases::sign_up::Input {
         Auth: types::HashedPassword,
         Jwt: types::JWT,
         Cli: DBClient,
-        Db: for<'a> cases::sign_up::DatabaseRead<Db<'a> = Cli::Txn<'a>>,
+        Db: for<'a> cases::sign_up::DatabaseRead<Db<'a> = Cli::Txn<'a>, Error = traits::DynamicError>,
     >(
         &self,
         side_effects: &mut SideEffects,

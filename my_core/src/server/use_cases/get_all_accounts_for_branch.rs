@@ -9,7 +9,10 @@ impl cases::get_all_accounts_for_branch::Input {
     pub(crate) async fn handle_operation<
         Id: types::RowId,
         Cli: DBClient,
-        Db: for<'a> cases::get_all_accounts_for_branch::DatabaseRead<Db<'a> = Cli>,
+        Db: for<'a> cases::get_all_accounts_for_branch::DatabaseRead<
+                Db<'a> = Cli,
+                Error = traits::DynamicError,
+            >,
     >(
         &self,
         side_effects: &mut SideEffects,

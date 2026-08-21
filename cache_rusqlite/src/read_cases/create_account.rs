@@ -1,7 +1,8 @@
 use crate::utility::cache_adapter;
 use crate::utility::utils::MyUuidConverter;
 use my_core::accounting_domain::cases;
-use my_core::accounting_domain::utility::types;
+use my_core::accounting_domain::utility::types::DatabaseRead;
+use my_core::accounting_domain::utility::types::{self};
 use my_core::utility::traits;
 use rusqlite::params;
 use std::str::FromStr;
@@ -13,14 +14,18 @@ const QUERY3: &str = "SELECT 1 FROM account WHERE rowid = ?1";
 const QUERY4: &str = "SELECT 1 FROM account WHERE belong_to_company = ?1 AND name = ?2";
 
 pub struct S;
+impl cases::create_account::DatabaseRead for S {}
 
-impl cases::create_account::DatabaseRead for S {
+impl DatabaseRead for S {
     type Db<'a> = cache_adapter::S;
+    type Error = traits::DynamicError;
+    type ReadInput = cases::create_account::ReadInput;
+    type ReadOutput = cases::create_account::ReadOutput;
 
     async fn read(
         db: &mut Self::Db<'_>,
-        read_input: &cases::create_account::ReadInput,
-    ) -> Result<cases::create_account::ReadOutput, traits::DynamicError> {
+        read_input: &Self::ReadInput,
+    ) -> Result<Self::ReadOutput, Self::Error> {
         let mut stmt = db.tables_db.prepare(QUERY1).unwrap();
         let roles_iter = stmt
             .query_map(

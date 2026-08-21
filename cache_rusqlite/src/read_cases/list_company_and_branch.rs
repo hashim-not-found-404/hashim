@@ -3,6 +3,7 @@ use crate::utility::utils::MyUuidConverter;
 use crate::utility::utils::MyUuidConverter1;
 use my_core::accounting_domain::cases;
 use my_core::accounting_domain::utility::types;
+use my_core::accounting_domain::utility::types::DatabaseRead;
 use my_core::utility::traits;
 use rusqlite::params;
 use std::str::FromStr;
@@ -21,13 +22,18 @@ const QUERY2: &str = "
 
 pub struct S;
 
-impl cases::list_company_and_branch::DatabaseRead for S {
+impl cases::list_company_and_branch::DatabaseRead for S {}
+
+impl DatabaseRead for S {
     type Db<'a> = cache_adapter::S;
+    type Error = traits::DynamicError;
+    type ReadInput = cases::list_company_and_branch::ReadInput;
+    type ReadOutput = cases::list_company_and_branch::ReadOutput;
 
     async fn read(
         db: &mut Self::Db<'_>,
-        read_input: &cases::list_company_and_branch::ReadInput,
-    ) -> Result<cases::list_company_and_branch::ReadOutput, traits::DynamicError> {
+        read_input: &Self::ReadInput,
+    ) -> Result<Self::ReadOutput, Self::Error> {
         use std::collections::HashMap;
         use types::Role;
 

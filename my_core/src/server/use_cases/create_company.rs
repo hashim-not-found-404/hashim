@@ -10,7 +10,10 @@ impl cases::create_company::Input {
     pub(crate) async fn handle_operation<
         Id: types::RowId,
         Cli: DBClient,
-        Db: for<'a> cases::create_company::DatabaseRead<Db<'a> = Cli::Txn<'a>>,
+        Db: for<'a> cases::create_company::DatabaseRead<
+                Db<'a> = Cli::Txn<'a>,
+                Error = traits::DynamicError,
+            >,
     >(
         &self,
         side_effects: &mut SideEffects,

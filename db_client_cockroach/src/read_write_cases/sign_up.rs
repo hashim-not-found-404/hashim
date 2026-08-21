@@ -1,6 +1,7 @@
 use crate::utility::db_transaction;
 use crate::utility::utils::MyUuidConverter;
 use my_core::accounting_domain::cases;
+use my_core::accounting_domain::utility::types::DatabaseRead;
 use my_core::utility::traits;
 use my_core::utility::utils::LogError;
 
@@ -12,13 +13,18 @@ const QUERY1: &str = "
 
 pub struct S;
 
-impl cases::sign_up::DatabaseRead for S {
+impl cases::sign_up::DatabaseRead for S {}
+
+impl DatabaseRead for S {
     type Db<'a> = db_transaction::S<'a>;
+    type Error = traits::DynamicError;
+    type ReadInput = cases::sign_up::ReadInput;
+    type ReadOutput = cases::sign_up::ReadOutput;
 
     async fn read(
         db: &mut Self::Db<'_>,
-        read_input: &cases::sign_up::ReadInput,
-    ) -> Result<cases::sign_up::ReadOutput, traits::DynamicError> {
+        read_input: &Self::ReadInput,
+    ) -> Result<Self::ReadOutput, Self::Error> {
         let stmt = db.txn.prepare_cached(QUERY1).await.log()?;
         let row = db
             .txn

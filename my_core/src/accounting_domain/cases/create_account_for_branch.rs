@@ -51,12 +51,9 @@ pub struct ReadOutput {
     pub is_account_uuid_with_company_branch_used: bool,
 }
 
-pub trait DatabaseRead {
-    type Db<'a>;
-    fn read(
-        db: &mut Self::Db<'_>,
-        read_input: &ReadInput,
-    ) -> impl Future<Output = Result<ReadOutput, traits::DynamicError>>;
+pub trait DatabaseRead:
+    types::DatabaseRead<ReadInput = ReadInput, ReadOutput = ReadOutput>
+{
 }
 
 impl Input {
@@ -84,7 +81,7 @@ impl Input {
     pub(crate) async fn state_full_check<Db: DatabaseRead>(
         &self,
         db: &mut Db::Db<'_>,
-    ) -> Result<Error, traits::DynamicError> {
+    ) -> Result<Error, Db::Error> {
         let read_output = Db::read(db, &ReadInput {
             user_uuid:                self.user_uuid.clone(),
             new_uuid:                 self.new_uuid.clone(),

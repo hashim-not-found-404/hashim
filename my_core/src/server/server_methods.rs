@@ -6,6 +6,7 @@ use crate::accounting_domain::utility::types::RowId;
 use crate::server::utility::server_traits;
 use crate::server::utility::server_traits::DBClient;
 use crate::utility::traits;
+use crate::utility::traits::DynamicError;
 use crate::utility::traits::Receiver;
 use crate::utility::traits::Sender;
 use crate::utility::utils::HashMapWithHashMapValue;
@@ -17,22 +18,31 @@ use std::time::SystemTime;
 use std::time::UNIX_EPOCH;
 
 pub trait DbBundle<Cli: DBClient>: 'static {
-    type CreateAccount: for<'a> cases::create_account::DatabaseRead<Db<'a> = Cli::Txn<'a>>;
-    type CreateAccountForBranch: for<'a> cases::create_account_for_branch::DatabaseRead<Db<'a> = Cli::Txn<'a>>;
-    type CreateJournalEntry: for<'a> cases::create_journal_entry::DatabaseRead<Db<'a> = Cli::Txn<'a>>;
-    type GetAllAccounts: for<'a> cases::get_all_accounts::DatabaseRead<Db<'a> = Cli>;
-    type GetAllAccountsForBranch: for<'a> cases::get_all_accounts_for_branch::DatabaseRead<Db<'a> = Cli>;
-    type CreateCompany: for<'a> cases::create_company::DatabaseRead<Db<'a> = Cli::Txn<'a>>;
-    type CreateCompanyBranch: for<'a> cases::create_company_branch::DatabaseRead<Db<'a> = Cli::Txn<'a>>;
-    type ListCompanyAndBranch: for<'a> cases::list_company_and_branch::DatabaseRead<Db<'a> = Cli>;
-    type SignIn: for<'a> cases::sign_in::DatabaseRead<Db<'a> = Cli>;
-    type SignUp: for<'a> cases::sign_up::DatabaseRead<Db<'a> = Cli::Txn<'a>>;
+    type CreateAccount: for<'a> cases::create_account::DatabaseRead<Db<'a> = Cli::Txn<'a>, Error = DynamicError>;
+    type CreateAccountForBranch: for<'a> cases::create_account_for_branch::DatabaseRead<
+            Db<'a> = Cli::Txn<'a>,
+            Error = DynamicError,
+        >;
+    type CreateJournalEntry: for<'a> cases::create_journal_entry::DatabaseRead<
+            Db<'a> = Cli::Txn<'a>,
+            Error = DynamicError,
+        >;
+    type GetAllAccounts: for<'a> cases::get_all_accounts::DatabaseRead<Db<'a> = Cli, Error = DynamicError>;
+    type GetAllAccountsForBranch: for<'a> cases::get_all_accounts_for_branch::DatabaseRead<Db<'a> = Cli, Error = DynamicError>;
+    type CreateCompany: for<'a> cases::create_company::DatabaseRead<Db<'a> = Cli::Txn<'a>, Error = DynamicError>;
+    type CreateCompanyBranch: for<'a> cases::create_company_branch::DatabaseRead<
+            Db<'a> = Cli::Txn<'a>,
+            Error = DynamicError,
+        >;
+    type ListCompanyAndBranch: for<'a> cases::list_company_and_branch::DatabaseRead<Db<'a> = Cli, Error = DynamicError>;
+    type SignIn: for<'a> cases::sign_in::DatabaseRead<Db<'a> = Cli, Error = DynamicError>;
+    type SignUp: for<'a> cases::sign_up::DatabaseRead<Db<'a> = Cli::Txn<'a>, Error = DynamicError>;
 }
 
 pub trait Database: 'static {
     type Client: DBClient;
     fn new() -> impl Future<Output = Self>;
-    fn get_client(&self) -> impl Future<Output = Result<Self::Client, traits::DynamicError>>;
+    fn get_client(&self) -> impl Future<Output = Result<Self::Client, DynamicError>>;
 }
 
 pub enum WSMessage {
@@ -41,9 +51,9 @@ pub enum WSMessage {
 }
 
 pub trait WSServer: 'static {
-    fn send_bin(&mut self, bin: Vec<u8>) -> impl Future<Output = Result<(), traits::DynamicError>>;
-    fn receive(&mut self) -> impl Future<Output = Result<WSMessage, traits::DynamicError>>;
-    fn close(self) -> impl Future<Output = Result<(), traits::DynamicError>>;
+    fn send_bin(&mut self, bin: Vec<u8>) -> impl Future<Output = Result<(), DynamicError>>;
+    fn receive(&mut self) -> impl Future<Output = Result<WSMessage, DynamicError>>;
+    fn close(self) -> impl Future<Output = Result<(), DynamicError>>;
 }
 
 pub struct ServerMethods<Mpsc: traits::MultiProducerSingleConsumer, Jwt: types::JWT, Db: Database> {
@@ -372,7 +382,7 @@ async fn push_data<
     side_effects: &mut server_traits::SideEffects,
     client: &mut Cli,
     jwt: &Jwt,
-) -> Result<request_response::push_data::MyResult, traits::DynamicError> {
+) -> Result<request_response::push_data::MyResult, DynamicError> {
     let mut the_return_result = request_response::push_data::MyResult {
         jwts:       Vec::with_capacity(input.jwts.len()),
         nonce:      Ok(()),
@@ -533,7 +543,7 @@ fn check_nonce_if_valid<Id: RowId>(nonce: &types::UuidType, is_used: bool) -> bo
 async fn get_table_of_subscribed_data<Cli: DBClient>(
     client: &mut Cli,
     users_uuids: &HashSet<types::UuidType>,
-) -> Result<AllSubscribes, traits::DynamicError> {
+) -> Result<AllSubscribes, DynamicError> {
     let roles = client.read_roles_for_user(users_uuids).await?;
 
     let mut subs = AllSubscribes {

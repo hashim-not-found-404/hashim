@@ -35,12 +35,9 @@ pub struct ReadOutput {
     pub user_rowid_and_password_hash_and_name: Option<(types::UuidType, String, Option<String>)>,
 }
 
-pub trait DatabaseRead {
-    type Db<'a>;
-    fn read(
-        db: &mut Self::Db<'_>,
-        read_input: &ReadInput,
-    ) -> impl Future<Output = Result<ReadOutput, traits::DynamicError>>;
+pub trait DatabaseRead:
+    types::DatabaseRead<ReadInput = ReadInput, ReadOutput = ReadOutput>
+{
 }
 
 // utility types
@@ -64,7 +61,7 @@ impl Input {
         &self,
         jwt: &Jwt,
         db: &mut Db::Db<'_>,
-    ) -> Result<MyResult, traits::DynamicError> {
+    ) -> Result<MyResult, Db::Error> {
         let read_output = Db::read(db, &ReadInput {
             user_id: self.user_id.clone(),
         })

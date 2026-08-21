@@ -1,6 +1,7 @@
 use crate::utility::cache_adapter;
 use crate::utility::utils::MyUuidConverter1;
 use my_core::accounting_domain::cases;
+use my_core::accounting_domain::utility::types::DatabaseRead;
 use my_core::utility::traits;
 use rusqlite::OptionalExtension;
 use rusqlite::params;
@@ -9,13 +10,18 @@ const QUERY: &str = "SELECT rowid, name, jwt FROM user WHERE id = ?1;";
 
 pub struct S;
 
-impl cases::sign_in::DatabaseRead for S {
+impl cases::sign_in::DatabaseRead for S {}
+
+impl DatabaseRead for S {
     type Db<'a> = cache_adapter::S;
+    type Error = traits::DynamicError;
+    type ReadInput = cases::sign_in::ReadInput;
+    type ReadOutput = cases::sign_in::ReadOutput;
 
     async fn read(
         db: &mut Self::Db<'_>,
-        read_input: &cases::sign_in::ReadInput,
-    ) -> Result<cases::sign_in::ReadOutput, traits::DynamicError> {
+        read_input: &Self::ReadInput,
+    ) -> Result<Self::ReadOutput, Self::Error> {
         let query = QUERY;
 
         let a = db

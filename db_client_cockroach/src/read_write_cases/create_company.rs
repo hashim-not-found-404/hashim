@@ -1,6 +1,7 @@
 use crate::utility::db_transaction;
 use crate::utility::utils::MyUuidConverter;
 use my_core::accounting_domain::cases;
+use my_core::accounting_domain::utility::types::DatabaseRead;
 use my_core::utility::traits;
 use my_core::utility::utils::LogError;
 
@@ -8,13 +9,18 @@ const QUERY1: &str = "SELECT EXISTS(SELECT 1 FROM accounting_app.company WHERE r
 
 pub struct S;
 
-impl cases::create_company::DatabaseRead for S {
+impl cases::create_company::DatabaseRead for S {}
+
+impl DatabaseRead for S {
     type Db<'a> = db_transaction::S<'a>;
+    type Error = traits::DynamicError;
+    type ReadInput = cases::create_company::ReadInput;
+    type ReadOutput = cases::create_company::ReadOutput;
 
     async fn read(
         db: &mut Self::Db<'_>,
-        read_input: &cases::create_company::ReadInput,
-    ) -> Result<cases::create_company::ReadOutput, traits::DynamicError> {
+        read_input: &Self::ReadInput,
+    ) -> Result<Self::ReadOutput, Self::Error> {
         let stmt = db.txn.prepare_cached(QUERY1).await.log()?;
         let row =
             db.txn.query_one(&stmt, &[&read_input.new_uuid.to_externel_uuid()]).await.log()?;

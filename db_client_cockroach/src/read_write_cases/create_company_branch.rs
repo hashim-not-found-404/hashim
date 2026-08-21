@@ -1,7 +1,8 @@
 use crate::utility::db_transaction;
 use crate::utility::utils::MyUuidConverter;
 use my_core::accounting_domain::cases;
-use my_core::accounting_domain::utility::types;
+use my_core::accounting_domain::utility::types::DatabaseRead;
+use my_core::accounting_domain::utility::types::{self};
 use my_core::utility::traits;
 use my_core::utility::utils::LogError;
 use std::str::FromStr;
@@ -28,13 +29,18 @@ const QUERY1: &str = "
 
 pub struct S;
 
-impl cases::create_company_branch::DatabaseRead for S {
+impl cases::create_company_branch::DatabaseRead for S {}
+
+impl DatabaseRead for S {
     type Db<'a> = db_transaction::S<'a>;
+    type Error = traits::DynamicError;
+    type ReadInput = cases::create_company_branch::ReadInput;
+    type ReadOutput = cases::create_company_branch::ReadOutput;
 
     async fn read(
         db: &mut Self::Db<'_>,
-        read_input: &cases::create_company_branch::ReadInput,
-    ) -> Result<cases::create_company_branch::ReadOutput, traits::DynamicError> {
+        read_input: &Self::ReadInput,
+    ) -> Result<Self::ReadOutput, Self::Error> {
         let row = db
             .txn
             .query_one(QUERY1, &[

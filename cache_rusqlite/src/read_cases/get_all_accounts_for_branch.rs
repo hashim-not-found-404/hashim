@@ -3,6 +3,7 @@ use crate::utility::utils::MyUuidConverter;
 use crate::utility::utils::MyUuidConverter1;
 use accounting_engine::accounting_stuff;
 use my_core::accounting_domain::cases;
+use my_core::accounting_domain::utility::types::DatabaseRead;
 use my_core::utility::traits;
 use rusqlite::params;
 use std::str::FromStr;
@@ -16,13 +17,18 @@ const QUERY3: &str = "SELECT rowid, account, outflow_type, inflow_type
 
 pub struct S;
 
-impl cases::get_all_accounts_for_branch::DatabaseRead for S {
+impl cases::get_all_accounts_for_branch::DatabaseRead for S {}
+
+impl DatabaseRead for S {
     type Db<'a> = cache_adapter::S;
+    type Error = traits::DynamicError;
+    type ReadInput = cases::get_all_accounts_for_branch::ReadInput;
+    type ReadOutput = cases::get_all_accounts_for_branch::ReadOutput;
 
     async fn read(
         db: &mut Self::Db<'_>,
-        read_input: &cases::get_all_accounts_for_branch::ReadInput,
-    ) -> Result<cases::get_all_accounts_for_branch::ReadOutput, traits::DynamicError> {
+        read_input: &Self::ReadInput,
+    ) -> Result<Self::ReadOutput, Self::Error> {
         let branch_uuid_str = read_input.company_branch_uuid.to_string();
 
         let mut stmt = db.tables_db.prepare(QUERY1).unwrap();
@@ -92,7 +98,7 @@ mod tests {
     use super::*;
     use crate::utility::cache_adapter;
     use crate::utility::test_helper::test_query_helper_for_tables_schema;
-    use my_core::accounting_domain::cases::get_all_accounts_for_branch::DatabaseRead;
+    use my_core::accounting_domain::utility::types::DatabaseRead;
     use my_core::accounting_domain::utility::types::UuidType;
     use my_core::utility::utils::MakeOptionIfEmpty;
     use rusqlite::Connection;

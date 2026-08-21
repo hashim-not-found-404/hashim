@@ -11,7 +11,10 @@ impl cases::create_journal_entry::Input {
         Id: types::RowId,
         Ti: traits::Time,
         Cli: DBClient,
-        Db: for<'a> cases::create_journal_entry::DatabaseRead<Db<'a> = Cli::Txn<'a>>,
+        Db: for<'a> cases::create_journal_entry::DatabaseRead<
+                Db<'a> = Cli::Txn<'a>,
+                Error = traits::DynamicError,
+            >,
     >(
         &self,
         side_effects: &mut SideEffects,

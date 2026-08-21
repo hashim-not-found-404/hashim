@@ -1,7 +1,8 @@
 use crate::utility::cache_adapter;
 use crate::utility::utils::MyUuidConverter;
 use my_core::accounting_domain::cases;
-use my_core::accounting_domain::utility::types;
+use my_core::accounting_domain::utility::types::DatabaseRead;
+use my_core::accounting_domain::utility::types::{self};
 use my_core::utility::traits;
 use rusqlite::params;
 use std::str::FromStr;
@@ -16,13 +17,18 @@ const QUERY5: &str = "SELECT 1 FROM account_flow_type WHERE account = ?1 AND com
 
 pub struct S;
 
-impl cases::create_account_for_branch::DatabaseRead for S {
+impl cases::create_account_for_branch::DatabaseRead for S {}
+
+impl DatabaseRead for S {
     type Db<'a> = cache_adapter::S;
+    type Error = traits::DynamicError;
+    type ReadInput = cases::create_account_for_branch::ReadInput;
+    type ReadOutput = cases::create_account_for_branch::ReadOutput;
 
     async fn read(
         db: &mut Self::Db<'_>,
-        read_input: &cases::create_account_for_branch::ReadInput,
-    ) -> Result<cases::create_account_for_branch::ReadOutput, traits::DynamicError> {
+        read_input: &Self::ReadInput,
+    ) -> Result<Self::ReadOutput, Self::Error> {
         let branch_uuid = read_input.belong_to_company_branch.to_string();
         let user_uuid = read_input.user_uuid.to_string();
         let new_uuid = read_input.new_uuid.to_string();

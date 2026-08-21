@@ -2,7 +2,8 @@ use crate::utility::db_client;
 use crate::utility::utils::MyUuidConverter;
 use accounting_engine::accounting_stuff;
 use my_core::accounting_domain::cases;
-use my_core::accounting_domain::utility::types;
+use my_core::accounting_domain::utility::types::DatabaseRead;
+use my_core::accounting_domain::utility::types::{self};
 use my_core::utility::traits;
 use my_core::utility::utils::LogError;
 use std::str::FromStr;
@@ -37,13 +38,18 @@ const QUERY3: &str = "
 
 pub struct S;
 
-impl cases::get_all_accounts_for_branch::DatabaseRead for S {
+impl cases::get_all_accounts_for_branch::DatabaseRead for S {}
+
+impl DatabaseRead for S {
     type Db<'a> = db_client::S;
+    type Error = traits::DynamicError;
+    type ReadInput = cases::get_all_accounts_for_branch::ReadInput;
+    type ReadOutput = cases::get_all_accounts_for_branch::ReadOutput;
 
     async fn read(
         db: &mut Self::Db<'_>,
-        read_input: &cases::get_all_accounts_for_branch::ReadInput,
-    ) -> Result<cases::get_all_accounts_for_branch::ReadOutput, traits::DynamicError> {
+        read_input: &Self::ReadInput,
+    ) -> Result<Self::ReadOutput, Self::Error> {
         let branch_stmt = db.client.prepare_cached(QUERY1).await.log()?;
         let branch_row = db
             .client

@@ -48,12 +48,9 @@ pub struct ReadOutput {
     pub data: Vec<AllCompaniesThatUserInWithRoles>,
 }
 
-pub trait DatabaseRead {
-    type Db<'a>;
-    fn read(
-        db: &mut Self::Db<'_>,
-        read_input: &ReadInput,
-    ) -> impl Future<Output = Result<ReadOutput, traits::DynamicError>>;
+pub trait DatabaseRead:
+    types::DatabaseRead<ReadInput = ReadInput, ReadOutput = ReadOutput>
+{
 }
 
 impl Input {
@@ -70,7 +67,7 @@ impl Input {
     pub(crate) async fn state_full_operation<Db: DatabaseRead>(
         &self,
         db: &mut Db::Db<'_>,
-    ) -> Result<Ok, traits::DynamicError> {
+    ) -> Result<Ok, Db::Error> {
         let read_output = Db::read(db, &ReadInput {
             user_uuid: self.user_uuid.clone(),
         })

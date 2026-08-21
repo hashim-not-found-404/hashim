@@ -2,6 +2,7 @@ use crate::utility::traits;
 use serde::Deserialize;
 use serde::Serialize;
 use std::error::Error;
+use std::fmt::Debug;
 use std::fmt::Display;
 use std::fmt::Formatter;
 use std::str::FromStr;
@@ -22,6 +23,18 @@ pub trait JWT: 'static {
     fn new() -> Self;
     fn sign(&self, user_uuid: &UuidType) -> JsonWebTokenType;
     fn validate(&self, token: JsonWebTokenType) -> Option<UuidType>;
+}
+
+pub trait DatabaseRead {
+    type Db<'a>;
+    type ReadInput;
+    type ReadOutput;
+    type Error: Debug;
+
+    fn read(
+        db: &mut Self::Db<'_>,
+        read_input: &Self::ReadInput,
+    ) -> impl Future<Output = Result<Self::ReadOutput, Self::Error>>;
 }
 
 pub(crate) trait MyErrorTrait {
