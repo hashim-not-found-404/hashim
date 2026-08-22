@@ -4,6 +4,7 @@ use accounting_engine::accounting_stuff;
 use my_core::accounting_domain::cases;
 use my_core::accounting_domain::utility::types;
 use my_core::accounting_domain::utility::types::DatabaseRead;
+use my_core::accounting_domain::utility::types::DatabaseWrite;
 use my_core::server::utility::server_traits;
 use my_core::utility::traits;
 use my_core::utility::utils::LogError;
@@ -82,20 +83,17 @@ impl DatabaseRead for S {
     type Input = cases::create_journal_entry::ReadInput;
     type Output = cases::create_journal_entry::ReadOutput;
 
-    async fn read(
-        db: &mut Self::Db<'_>,
-        read_input: &Self::Input,
-    ) -> Result<Self::Output, Self::Error> {
+    async fn read(db: &mut Self::Db<'_>, input: &Self::Input) -> Result<Self::Output, Self::Error> {
         let accounts_uuid_vec: Vec<Uuid> =
-            read_input.accounts_uuid.iter().map(|uuid| uuid.to_externel_uuid()).collect();
+            input.accounts_uuid.iter().map(|uuid| uuid.to_externel_uuid()).collect();
         let new_entries_uuid_vec: Vec<Uuid> =
-            read_input.new_entries_uuid.iter().map(|uuid| uuid.to_externel_uuid()).collect();
+            input.new_entries_uuid.iter().map(|uuid| uuid.to_externel_uuid()).collect();
 
         let params: &[&(dyn ToSql + Sync)] = &[
-            &read_input.new_uuid.to_externel_uuid(),
-            &read_input.belong_to_company_branch.to_externel_uuid(),
-            &read_input.user_uuid.to_externel_uuid(),
-            &read_input.shared_entry_id.as_ref().map(|id| id.to_externel_uuid()),
+            &input.new_uuid.to_externel_uuid(),
+            &input.belong_to_company_branch.to_externel_uuid(),
+            &input.user_uuid.to_externel_uuid(),
+            &input.shared_entry_id.as_ref().map(|id| id.to_externel_uuid()),
             &new_entries_uuid_vec,
             &accounts_uuid_vec,
         ];
@@ -202,12 +200,12 @@ const WRITE_QUERY: &str = r#"
     SELECT 1
 "#;
 
-impl server_traits::DatabaseWrite for S {
+impl DatabaseWrite for S {
+    type Db<'a> = db_transaction::S<'a>;
     type Input = cases::create_journal_entry::Ok;
-    type Txn<'a> = db_transaction::S<'a>;
 
     async fn write(
-        txn: &mut Self::Txn<'_>,
+        txn: &mut Self::Db<'_>,
         input: &Self::Input,
     ) -> Result<(), traits::DynamicError> {
         let single_entries: Vec<serde_json::Value> = input

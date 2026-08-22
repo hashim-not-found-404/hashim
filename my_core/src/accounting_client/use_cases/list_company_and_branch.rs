@@ -1,12 +1,12 @@
 use crate::accounting_client::client_domain::cache;
 use crate::accounting_client::client_domain::client_traits;
+use crate::accounting_client::client_domain::client_traits::Subscribe;
 use crate::accounting_client::client_domain::client_traits::ViewAndCache;
 use crate::accounting_client::client_domain::commander;
 use crate::accounting_client::client_domain::ui_model;
 use crate::accounting_client::client_domain::ui_model::HashimSignal;
 use crate::accounting_domain::cases;
 use crate::accounting_domain::request_response;
-use crate::accounting_domain::utility::resource_utils;
 use crate::accounting_domain::utility::types;
 use crate::utility::tools;
 use crate::utility::traits;
@@ -17,6 +17,7 @@ type Type1 = cases::list_company_and_branch::Input;
 type Type2 = cases::list_company_and_branch::Input;
 type Type3 = cases::list_company_and_branch::MyResult;
 type Type4 = Result<types::ListOfCompanies, ()>;
+type StorableType = cases::list_company_and_branch::Ok;
 
 impl tools::Sortable for types::Company {
     type Key = (String, types::UuidType);
@@ -48,16 +49,17 @@ where
     Ch: cache::Cache,
     LongCache: for<'a> cases::list_company_and_branch::DatabaseRead<Db<'a> = Ch>,
 {
+    type StorableType = StorableType;
     type Type1 = Type1;
     type Type2 = Type2;
     type Type3 = Type3;
     type Type4 = Type4;
 
-    fn subs() -> &'static [resource_utils::Subscribe] {
+    fn subs() -> &'static [Subscribe] {
         &[
-            resource_utils::Subscribe::TableCompanyBranchFieldName,
-            resource_utils::Subscribe::TableCompanyFieldName,
-            resource_utils::Subscribe::TableAccessControlForCompanyFieldRole,
+            Subscribe::TableCompanyBranchFieldName,
+            Subscribe::TableCompanyFieldName,
+            Subscribe::TableAccessControlForCompanyFieldRole,
         ]
     }
 
@@ -78,100 +80,10 @@ where
         Ok(result)
     }
 
-    fn extract_resource(data: &Self::Type3) -> Vec<resource_utils::ResourceInfo> {
+    fn store_resource(data: &Self::Type3) -> Option<Self::StorableType> {
         match data {
-            Ok(ok) => {
-                let mut resources = Vec::new();
-                let user_uuid = &ok.user_uuid;
-
-                for company in &ok.data {
-                    let company_uuid = &company.company_uuid;
-
-                    resources.push(resource_utils::ResourceInfo {
-                        row_uuid: company_uuid.clone(),
-                        resource: resource_utils::Resource::TableCompanyFieldName(
-                            company.company_name.clone(),
-                        ),
-                    });
-                    resources.push(resource_utils::ResourceInfo {
-                        row_uuid: company_uuid.clone(),
-                        resource: resource_utils::Resource::TableCompanyFieldCurrency(
-                            company.company_currancy.clone(),
-                        ),
-                    });
-
-                    for role in &company.user_roles {
-                        resources.push(resource_utils::ResourceInfo {
-                            row_uuid: company_uuid.clone(),
-                            resource:
-                                resource_utils::Resource::TableAccessControlForCompanyFieldRole(
-                                    role.clone(),
-                                ),
-                        });
-                    }
-                    resources.push(resource_utils::ResourceInfo {
-                        row_uuid: company_uuid.clone(),
-                        resource: resource_utils::Resource::TableAccessControlForCompanyFieldUser(
-                            user_uuid.clone(),
-                        ),
-                    });
-                    resources.push(resource_utils::ResourceInfo {
-                        row_uuid: company_uuid.clone(),
-                        resource:
-                            resource_utils::Resource::TableAccessControlForCompanyFieldDataGroup(
-                                company_uuid.clone(),
-                            ),
-                    });
-
-                    for branch in &company.branches {
-                        let branch_uuid = &branch.branch_uuid;
-
-                        resources.push(resource_utils::ResourceInfo {
-                            row_uuid: branch_uuid.clone(),
-                            resource: resource_utils::Resource::TableCompanyBranchFieldName(
-                                branch.branch_name.clone(),
-                            ),
-                        });
-                        resources.push(resource_utils::ResourceInfo {
-                            row_uuid: branch_uuid.clone(),
-                            resource: resource_utils::Resource::TableCompanyBranchFieldCurrency(
-                                branch.branch_currancy.clone(),
-                            ),
-                        });
-                        resources.push(resource_utils::ResourceInfo {
-                            row_uuid: branch_uuid.clone(),
-                            resource:
-                                resource_utils::Resource::TableCompanyBranchFieldCompanyBelong(
-                                    company_uuid.clone(),
-                                ),
-                        });
-
-                        for role in &branch.user_roles {
-                            resources.push(resource_utils::ResourceInfo {
-                                row_uuid: branch_uuid.clone(),
-                                resource: resource_utils::Resource::TableAccessControlForCompanyBranchFieldRole(
-                                    role.clone(),
-                                ),
-                            });
-                        }
-                        resources.push(resource_utils::ResourceInfo {
-                            row_uuid: branch_uuid.clone(),
-                            resource: resource_utils::Resource::TableAccessControlForCompanyBranchFieldUser(
-                                user_uuid.clone(),
-                            ),
-                        });
-                        resources.push(resource_utils::ResourceInfo {
-                            row_uuid: branch_uuid.clone(),
-                            resource: resource_utils::Resource::TableAccessControlForCompanyBranchFieldDataGroup(
-                                branch_uuid.clone(),
-                            ),
-                        });
-                    }
-                }
-
-                resources
-            }
-            Err(_) => Vec::new(),
+            Ok(ok) => Some(ok.clone()),
+            Err(_) => None,
         }
     }
 

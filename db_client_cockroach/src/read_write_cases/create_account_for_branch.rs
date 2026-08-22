@@ -3,7 +3,8 @@ use crate::utility::utils::MyUuidConverter;
 use my_core::accounting_domain::cases;
 use my_core::accounting_domain::utility::types;
 use my_core::accounting_domain::utility::types::DatabaseRead;
-use my_core::server::utility::server_traits;
+use my_core::server::utility::server_traits::DatabaseWrite;
+use my_core::server::utility::server_traits::{self};
 use my_core::utility::traits;
 use my_core::utility::utils::LogError;
 use std::str::FromStr;
@@ -44,17 +45,14 @@ impl DatabaseRead for S {
     type Input = cases::create_account_for_branch::ReadInput;
     type Output = cases::create_account_for_branch::ReadOutput;
 
-    async fn read(
-        db: &mut Self::Db<'_>,
-        read_input: &Self::Input,
-    ) -> Result<Self::Output, Self::Error> {
+    async fn read(db: &mut Self::Db<'_>, input: &Self::Input) -> Result<Self::Output, Self::Error> {
         let row = db
             .txn
             .query_one(READ_QUERY, &[
-                &read_input.belong_to_company_branch.to_externel_uuid(),
-                &read_input.user_uuid.to_externel_uuid(),
-                &read_input.new_uuid.to_externel_uuid(),
-                &read_input.belong_to_account.to_externel_uuid(),
+                &input.belong_to_company_branch.to_externel_uuid(),
+                &input.user_uuid.to_externel_uuid(),
+                &input.new_uuid.to_externel_uuid(),
+                &input.belong_to_account.to_externel_uuid(),
             ])
             .await
             .log()?;
@@ -86,12 +84,12 @@ const WRITE_QUERY: &str = "
     ) VALUES ($1, $2, $3, $4, $5)
 ";
 
-impl server_traits::DatabaseWrite for S {
+impl DatabaseWrite for S {
+    type Db<'a> = db_transaction::S<'a>;
     type Input = cases::create_account_for_branch::Ok;
-    type Txn<'a> = db_transaction::S<'a>;
 
     async fn write(
-        txn: &mut Self::Txn<'_>,
+        txn: &mut Self::Db<'_>,
         input: &Self::Input,
     ) -> Result<(), traits::DynamicError> {
         let stmt = txn.txn.prepare_cached(WRITE_QUERY).await.log()?;

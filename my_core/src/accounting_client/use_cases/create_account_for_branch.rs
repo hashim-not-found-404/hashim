@@ -1,51 +1,63 @@
-use crate::accounting_client::client_domain::cache;
+use crate::accounting_client::client_domain::cache::Cache;
 use crate::accounting_client::client_domain::client_traits;
+use crate::accounting_client::client_domain::client_traits::CacheActorStruct;
 use crate::accounting_client::client_domain::client_traits::ViewAndCache;
-use crate::accounting_client::client_domain::commander;
-use crate::accounting_client::client_domain::process_manager;
-use crate::accounting_client::client_domain::ui_model;
+use crate::accounting_client::client_domain::client_traits::handle_fall_back;
+use crate::accounting_client::client_domain::commander::CommanderLocalState;
+use crate::accounting_client::client_domain::process_manager::MessageToProcessManager;
+use crate::accounting_client::client_domain::process_manager::ProcessName;
+use crate::accounting_client::client_domain::ui_model::Accounts;
+use crate::accounting_client::client_domain::ui_model::AllSignalTypes;
+use crate::accounting_client::client_domain::ui_model::CreateAccountForBranch;
 use crate::accounting_client::client_domain::ui_model::HashimSignal;
+use crate::accounting_client::client_domain::ui_model::Model;
 use crate::accounting_client::fetches;
 use crate::accounting_domain::cases;
-use crate::accounting_domain::request_response;
-use crate::accounting_domain::utility::resource_utils;
-use crate::accounting_domain::utility::types;
+use crate::accounting_domain::cases::create_account_for_branch::DatabaseRead;
+use crate::accounting_domain::cases::create_account_for_branch::Input;
+use crate::accounting_domain::cases::create_account_for_branch::MyResult;
+use crate::accounting_domain::cases::create_account_for_branch::Ok;
+use crate::accounting_domain::request_response::push_data::OperationsInput;
+use crate::accounting_domain::request_response::push_data::OperationsResult;
 use crate::accounting_domain::utility::types::MyErrorTrait;
-use crate::utility::tools;
-use crate::utility::traits;
+use crate::accounting_domain::utility::types::RowId;
+use crate::accounting_domain::utility::types::UuidType;
+use crate::utility::tools::select_strings;
+use crate::utility::traits::MultiProducerSingleConsumer;
+use crate::utility::traits::RandomNumber;
+use crate::utility::traits::Runtime;
 use crate::utility::traits::Sender;
 use crate::utility::utils::ReadAndSet;
 use std::sync::Arc;
 
-type Type1 = cases::create_account_for_branch::Input;
-type Type2 = cases::create_account_for_branch::Input;
-type Type3 = cases::create_account_for_branch::MyResult;
-type Type4 = cases::create_account_for_branch::MyResult;
+type Type1 = Input;
+type Type2 = Input;
+type Type3 = MyResult;
+type Type4 = MyResult;
+type StorableType = Ok;
 
 pub(crate) struct ViewAndCacheType;
 
 impl<Ch, LongCache> ViewAndCache<Ch, LongCache> for ViewAndCacheType
 where
-    Ch: cache::Cache,
-    LongCache: for<'a> cases::create_account_for_branch::DatabaseRead<Db<'a> = Ch>,
+    Ch: Cache,
+    LongCache: for<'a> DatabaseRead<Db<'a> = Ch>,
 {
+    type StorableType = StorableType;
     type Type1 = Type1;
     type Type2 = Type2;
     type Type3 = Type3;
     type Type4 = Type4;
 
-    fn wrap_input(data: Self::Type1) -> request_response::push_data::OperationsInput {
-        request_response::push_data::OperationsInput::CreateAccountForBranch(data)
+    fn wrap_input(data: Self::Type1) -> OperationsInput {
+        OperationsInput::CreateAccountForBranch(data)
     }
 
-    fn user_uuid(data: &Self::Type2) -> Option<&types::UuidType> {
+    fn user_uuid(data: &Self::Type2) -> Option<&UuidType> {
         Some(&data.user_uuid)
     }
 
-    async fn state_full_operation<Id: types::RowId>(
-        data: &Self::Type2,
-        state: &mut Ch,
-    ) -> Self::Type3 {
+    async fn state_full_operation<Id: RowId>(data: &Self::Type2, state: &mut Ch) -> Self::Type3 {
         let errr = data.state_full_check::<LongCache>(state).await.unwrap();
 
         if errr.is_there_error() {
@@ -55,53 +67,21 @@ where
         Ok(data.state_less_operation())
     }
 
-    fn extract_resource(data: &Self::Type3) -> Vec<resource_utils::ResourceInfo> {
+    fn store_resource(data: &Self::Type3) -> Option<Self::StorableType> {
         match data {
-            Ok(ok) => {
-                vec![
-                    resource_utils::ResourceInfo {
-                        row_uuid: ok.new_uuid.clone(),
-                        resource: resource_utils::Resource::TableAccountFlowTypeFieldAccount(
-                            ok.belong_to_account.clone(),
-                        ),
-                    },
-                    resource_utils::ResourceInfo {
-                        row_uuid: ok.new_uuid.clone(),
-                        resource: resource_utils::Resource::TableAccountFlowTypeFieldCompanyBranch(
-                            ok.belong_to_company_branch.clone(),
-                        ),
-                    },
-                    resource_utils::ResourceInfo {
-                        row_uuid: ok.new_uuid.clone(),
-                        resource: resource_utils::Resource::TableAccountFlowTypeFieldInflowType(
-                            ok.inflow_type,
-                        ),
-                    },
-                    resource_utils::ResourceInfo {
-                        row_uuid: ok.new_uuid.clone(),
-                        resource: resource_utils::Resource::TableAccountFlowTypeFieldOutflowType(
-                            ok.outflow_type,
-                        ),
-                    },
-                ]
-            }
-            Err(_) => Vec::new(),
+            Ok(ok) => Some(ok.clone()),
+            Err(_) => None,
         }
     }
 
-    fn unwrap_output(output: request_response::push_data::OperationsResult) -> Self::Type4 {
-        if let request_response::push_data::OperationsResult::CreateAccountForBranch(result) =
-            output
-        {
+    fn unwrap_output(output: OperationsResult) -> Self::Type4 {
+        if let OperationsResult::CreateAccountForBranch(result) = output {
             return result;
         }
         unreachable!("{:?}", output)
     }
 
-    fn apply_on_the_model<As: ui_model::AllSignalTypes>(
-        output: &Self::Type4,
-        model: &ui_model::Model<As>,
-    ) {
+    fn apply_on_the_model<As: AllSignalTypes>(output: &Self::Type4, model: &Model<As>) {
         let local_state = &model.page_create_account_for_branch;
 
         match output {
@@ -120,35 +100,34 @@ where
     }
 }
 
-impl ui_model::CreateAccountForBranch {
+impl CreateAccountForBranch {
     pub(crate) async fn update<
-        Rn: traits::RandomNumber,
-        Rt: traits::Runtime,
-        Id: types::RowId,
-        Mpsc: traits::MultiProducerSingleConsumer,
-        As: ui_model::AllSignalTypes,
-        Ch: cache::Cache + 'static,
-        LongCache: for<'a> cases::create_account_for_branch::DatabaseRead<Db<'a> = Ch> + 'static,
+        Rn: RandomNumber,
+        Rt: Runtime,
+        Id: RowId,
+        Mpsc: MultiProducerSingleConsumer,
+        As: AllSignalTypes,
+        Ch: Cache + 'static,
+        LongCache: for<'a> DatabaseRead<Db<'a> = Ch> + 'static,
         LongCacheForGetAllAccountsForBranch: for<'a> cases::get_all_accounts_for_branch::DatabaseRead<Db<'a> = Ch> + 'static,
     >(
         self,
-        model: &'static ui_model::Model<As>,
-        cache: client_traits::CacheActorStruct<Mpsc>,
-        commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
+        model: &'static Model<As>,
+        cache: CacheActorStruct<Mpsc>,
+        commander_local_state: Arc<CommanderLocalState<Mpsc, As>>,
     ) {
         match self {
-            ui_model::CreateAccountForBranch::Subscribe => {
+            CreateAccountForBranch::Subscribe => {
                 spawn_listener::<Rn, Rt, Mpsc, As, Ch, LongCacheForGetAllAccountsForBranch>(
                     model,
                     cache.clone(),
                     commander_local_state,
                 );
             }
-            ui_model::CreateAccountForBranch::UnSubscribe => {
+            CreateAccountForBranch::UnSubscribe => {
                 commander_local_state.aborter_to_create_account_for_branch_listener.abort();
             }
-
-            ui_model::CreateAccountForBranch::Submit => {
+            CreateAccountForBranch::Submit => {
                 handle_submit::<Rn, Rt, Id, Mpsc, As, Ch, LongCache>(
                     model,
                     cache,
@@ -156,23 +135,22 @@ impl ui_model::CreateAccountForBranch {
                 )
                 .await;
             }
-
-            ui_model::CreateAccountForBranch::Clean => {
+            CreateAccountForBranch::Clean => {
                 handle_clean::<As>(model);
             }
-            ui_model::CreateAccountForBranch::Consent(i) => {
+            CreateAccountForBranch::Consent(i) => {
                 commander_local_state
                     .sender_to_process_manager
                     .read()
-                    .send(process_manager::MessageToProcessManager::FromUser {
-                        process_name: process_manager::ProcessName::CreateAccountForBranch,
+                    .send(MessageToProcessManager::FromUser {
+                        process_name: ProcessName::CreateAccountForBranch,
                         consent:      i,
                     })
                     .await
                     .unwrap();
             }
-            ui_model::CreateAccountForBranch::AccountName(i) => {
-                let new_list = tools::select_strings(
+            CreateAccountForBranch::AccountName(i) => {
+                let new_list = select_strings(
                     model.page_create_account_for_branch.list_of_available_account.read(),
                     i.clone(),
                 );
@@ -180,26 +158,26 @@ impl ui_model::CreateAccountForBranch {
                 model.page_create_account_for_branch.filtered_list.set(new_list);
                 model.page_create_account_for_branch.account_name.set(i);
             }
-            ui_model::CreateAccountForBranch::OutflowType(i) => {
+            CreateAccountForBranch::OutflowType(i) => {
                 model.page_create_account_for_branch.outflow_type.set(i)
             }
-            ui_model::CreateAccountForBranch::InflowType(i) => {
+            CreateAccountForBranch::InflowType(i) => {
                 model.page_create_account_for_branch.inflow_type.set(i)
             }
         }
     }
 }
 
-fn apply_fetch_result<As: ui_model::AllSignalTypes>(
+fn apply_fetch_result<As: AllSignalTypes>(
     result: &cases::get_all_accounts_for_branch::MyResult,
-    model: &ui_model::Model<As>,
+    model: &Model<As>,
 ) {
     if let Ok(ok) = result {
-        let accounts: Vec<ui_model::Accounts> = ok
+        let accounts: Vec<Accounts> = ok
             .accounts
             .iter()
             .map(|a| {
-                ui_model::Accounts {
+                Accounts {
                     row_uuid:                        a.row_uuid.clone(),
                     is_debit:                        a.is_debit,
                     is_permanent_account:            a.is_permanent_account,
@@ -214,16 +192,16 @@ fn apply_fetch_result<As: ui_model::AllSignalTypes>(
 }
 
 fn spawn_listener<
-    Rn: traits::RandomNumber,
-    Rt: traits::Runtime,
-    Mpsc: traits::MultiProducerSingleConsumer,
-    As: ui_model::AllSignalTypes,
-    Ch: cache::Cache,
+    Rn: RandomNumber,
+    Rt: Runtime,
+    Mpsc: MultiProducerSingleConsumer,
+    As: AllSignalTypes,
+    Ch: Cache,
     LongCacheForGetAllAccountsForBranch: for<'a> cases::get_all_accounts_for_branch::DatabaseRead<Db<'a> = Ch>,
 >(
-    model: &'static ui_model::Model<As>,
-    cache: client_traits::CacheActorStruct<Mpsc>,
-    commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
+    model: &'static Model<As>,
+    cache: CacheActorStruct<Mpsc>,
+    commander_local_state: Arc<CommanderLocalState<Mpsc, As>>,
 ) {
     let data = cases::get_all_accounts_for_branch::Input {
         user_uuid:           model.user_uuid.read().clone().unwrap().clone(),
@@ -256,7 +234,7 @@ fn spawn_listener<
         .set(Box::new(listener_aborter));
 }
 
-fn handle_clean<As: ui_model::AllSignalTypes>(model: &ui_model::Model<As>) {
+fn handle_clean<As: AllSignalTypes>(model: &Model<As>) {
     let local_state = &model.page_create_account_for_branch;
 
     local_state.is_loading.reset();
@@ -268,17 +246,17 @@ fn handle_clean<As: ui_model::AllSignalTypes>(model: &ui_model::Model<As>) {
 }
 
 async fn handle_submit<
-    Rn: traits::RandomNumber,
-    Rt: traits::Runtime,
-    Id: types::RowId,
-    Mpsc: traits::MultiProducerSingleConsumer,
-    As: ui_model::AllSignalTypes,
-    Ch: cache::Cache,
-    LongCache: for<'a> cases::create_account_for_branch::DatabaseRead<Db<'a> = Ch>,
+    Rn: RandomNumber,
+    Rt: Runtime,
+    Id: RowId,
+    Mpsc: MultiProducerSingleConsumer,
+    As: AllSignalTypes,
+    Ch: Cache,
+    LongCache: for<'a> DatabaseRead<Db<'a> = Ch>,
 >(
-    model: &'static ui_model::Model<As>,
-    cache: client_traits::CacheActorStruct<Mpsc>,
-    commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
+    model: &'static Model<As>,
+    cache: CacheActorStruct<Mpsc>,
+    commander_local_state: Arc<CommanderLocalState<Mpsc, As>>,
 ) {
     if model.page_create_account_for_branch.is_loading.read() {
         return;
@@ -292,11 +270,11 @@ async fn handle_submit<
 
     let data = <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::wrap_input(input);
 
-    client_traits::handle_fall_back::<Rn, Rt, Mpsc, As>(
+    handle_fall_back::<Rn, Rt, Mpsc, As>(
         cache,
         commander_local_state,
         &model.page_create_account_for_branch.show_dialog,
-        process_manager::ProcessName::CreateAccountForBranch,
+        ProcessName::CreateAccountForBranch,
         data,
         |data| {
             let result = <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::unwrap_output(data);
@@ -315,9 +293,7 @@ async fn handle_submit<
     model.page_create_account_for_branch.is_loading.reset();
 }
 
-fn build_input<Id: types::RowId, As: ui_model::AllSignalTypes>(
-    model: &ui_model::Model<As>,
-) -> Option<Type1> {
+fn build_input<Id: RowId, As: AllSignalTypes>(model: &Model<As>) -> Option<Type1> {
     let account_uuid = model
         .page_create_account_for_branch
         .list_of_available_account
@@ -325,7 +301,7 @@ fn build_input<Id: types::RowId, As: ui_model::AllSignalTypes>(
         .first()
         .map(|acc| acc.row_uuid.clone())?;
 
-    Some(cases::create_account_for_branch::Input {
+    Some(Input {
         user_uuid:                model.user_uuid.read().clone().unwrap().clone(),
         new_uuid:                 Id::generate().clone(),
         belong_to_account:        account_uuid.clone(),

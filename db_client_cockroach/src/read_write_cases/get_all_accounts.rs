@@ -30,15 +30,9 @@ impl DatabaseRead for S {
     type Input = cases::get_all_accounts::ReadInput;
     type Output = cases::get_all_accounts::ReadOutput;
 
-    async fn read(
-        db: &mut Self::Db<'_>,
-        read_input: &Self::Input,
-    ) -> Result<Self::Output, Self::Error> {
-        let rows = db
-            .client
-            .query(READ_QUERY, &[&read_input.company_uuid.to_externel_uuid()])
-            .await
-            .log()?;
+    async fn read(db: &mut Self::Db<'_>, input: &Self::Input) -> Result<Self::Output, Self::Error> {
+        let rows =
+            db.client.query(READ_QUERY, &[&input.company_uuid.to_externel_uuid()]).await.log()?;
 
         let mut data = Vec::with_capacity(rows.len());
         for row in rows {

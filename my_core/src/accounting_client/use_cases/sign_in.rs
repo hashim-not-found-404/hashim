@@ -8,7 +8,6 @@ use crate::accounting_client::client_domain::ui_model;
 use crate::accounting_client::client_domain::ui_model::HashimSignal;
 use crate::accounting_domain::cases;
 use crate::accounting_domain::request_response;
-use crate::accounting_domain::utility::resource_utils;
 use crate::accounting_domain::utility::types;
 use crate::utility::traits;
 use crate::utility::traits::Receiver;
@@ -20,7 +19,9 @@ type Type1 = cases::sign_in::Input;
 type Type2 = cases::sign_in::Input;
 type Type3 = cases::sign_in::MyResult;
 type Type4 = Result<SignInOk, cases::sign_in::Error>;
+type StorableType = cases::sign_in::Ok;
 
+#[derive(Clone)]
 pub(crate) struct SignInOk {
     user_uuid: types::UuidType,
     user_name: String,
@@ -33,6 +34,7 @@ where
     Ch: cache::Cache,
     LongCache: for<'a> cases::sign_in::DatabaseRead<Db<'a> = Ch>,
 {
+    type StorableType = StorableType;
     type Type1 = Type1;
     type Type2 = Type2;
     type Type3 = Type3;
@@ -95,32 +97,10 @@ where
         }
     }
 
-    fn extract_resource(data: &Self::Type3) -> Vec<resource_utils::ResourceInfo> {
+    fn store_resource(data: &Self::Type3) -> Option<Self::StorableType> {
         match data {
-            Ok(ok) => {
-                let mut resources = Vec::with_capacity(3);
-                let user_uuid = &ok.user_uuid;
-
-                resources.push(resource_utils::ResourceInfo {
-                    row_uuid: user_uuid.clone(),
-                    resource: resource_utils::Resource::Jwt(ok.jwt.clone()),
-                });
-
-                resources.push(resource_utils::ResourceInfo {
-                    row_uuid: user_uuid.clone(),
-                    resource: resource_utils::Resource::TableUserFieldId(ok.user_id.clone()),
-                });
-
-                if let Some(name) = &ok.user_name {
-                    resources.push(resource_utils::ResourceInfo {
-                        row_uuid: user_uuid.clone(),
-                        resource: resource_utils::Resource::TableUserFieldName(name.clone()),
-                    });
-                }
-
-                resources
-            }
-            Err(_) => Vec::new(),
+            Ok(ok) => Some(ok.clone()),
+            Err(_) => None,
         }
     }
 

@@ -30,17 +30,14 @@ impl DatabaseRead for S {
     type Input = cases::list_company_and_branch::ReadInput;
     type Output = cases::list_company_and_branch::ReadOutput;
 
-    async fn read(
-        db: &mut Self::Db<'_>,
-        read_input: &Self::Input,
-    ) -> Result<Self::Output, Self::Error> {
+    async fn read(db: &mut Self::Db<'_>, input: &Self::Input) -> Result<Self::Output, Self::Error> {
         use std::collections::HashMap;
         use types::Role;
 
         let company_query = QUERY1;
         let mut stmt = db.tables_db.prepare(company_query).unwrap();
         let company_rows = stmt
-            .query_map(params![read_input.user_uuid.to_string()], |row| {
+            .query_map(params![input.user_uuid.to_string()], |row| {
                 let uuid: String = row.get(0).unwrap();
                 let name: String = row.get(1).unwrap();
                 let currency: String = row.get(2).unwrap();
@@ -65,7 +62,7 @@ impl DatabaseRead for S {
         let branch_query = QUERY2;
         let mut stmt = db.tables_db.prepare(branch_query).unwrap();
         let branch_rows = stmt
-            .query_map(params![read_input.user_uuid.to_string()], |row| {
+            .query_map(params![input.user_uuid.to_string()], |row| {
                 let branch_uuid: String = row.get(0).unwrap();
                 let branch_name: String = row.get(1).unwrap();
                 let branch_currency: String = row.get(2).unwrap();

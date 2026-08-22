@@ -18,15 +18,12 @@ impl DatabaseRead for S {
     type Input = cases::sign_in::ReadInput;
     type Output = cases::sign_in::ReadOutput;
 
-    async fn read(
-        db: &mut Self::Db<'_>,
-        read_input: &Self::Input,
-    ) -> Result<Self::Output, Self::Error> {
+    async fn read(db: &mut Self::Db<'_>, input: &Self::Input) -> Result<Self::Output, Self::Error> {
         let query = QUERY;
 
         let a = db
             .tables_db
-            .query_row(query, params![read_input.user_id], |row| {
+            .query_row(query, params![input.user_id], |row| {
                 let user_uuid_str: String = row.get(0).unwrap();
                 let user_name: Option<String> = row.get(1).unwrap();
                 let jwt: Option<String> = row.get(2).unwrap();

@@ -8,7 +8,6 @@ use crate::accounting_client::client_domain::ui_model;
 use crate::accounting_client::client_domain::ui_model::HashimSignal;
 use crate::accounting_domain::cases;
 use crate::accounting_domain::request_response;
-use crate::accounting_domain::utility::resource_utils;
 use crate::accounting_domain::utility::types;
 use crate::accounting_domain::utility::types::MyErrorTrait;
 use crate::mbg;
@@ -22,6 +21,7 @@ type Type1 = cases::create_company_branch::Input;
 type Type2 = cases::create_company_branch::Input;
 type Type3 = cases::create_company_branch::MyResult;
 type Type4 = cases::create_company_branch::MyResult;
+type StorableType = cases::create_company_branch::Ok;
 
 pub(crate) struct ViewAndCacheType;
 
@@ -30,6 +30,7 @@ where
     Ch: cache::Cache,
     LongCache: for<'a> cases::create_company_branch::DatabaseRead<Db<'a> = Ch>,
 {
+    type StorableType = StorableType;
     type Type1 = Type1;
     type Type2 = Type2;
     type Type3 = Type3;
@@ -56,58 +57,10 @@ where
         Ok(data.state_less_operation())
     }
 
-    fn extract_resource(data: &Self::Type3) -> Vec<resource_utils::ResourceInfo> {
+    fn store_resource(data: &Self::Type3) -> Option<Self::StorableType> {
         match data {
-            Ok(ok) => {
-                let this = ok;
-                let branch_uuid = this.new_uuid.clone();
-                vec![
-                        resource_utils::ResourceInfo {
-                            row_uuid: branch_uuid.clone(),
-                            resource: resource_utils::Resource::TableCompanyBranchFieldName(
-                                this.branch_name.clone(),
-                            ),
-                        },
-                        resource_utils::ResourceInfo {
-                            row_uuid: branch_uuid.clone(),
-                            resource: resource_utils::Resource::TableCompanyBranchFieldCompanyBelong(
-                                this.company_belong.clone(),
-                            ),
-                        },
-                        resource_utils::ResourceInfo {
-                            row_uuid: branch_uuid.clone(),
-                            resource: resource_utils::Resource::TableCompanyBranchFieldLocation(
-                                this.location.clone(),
-                            ),
-                        },
-                        resource_utils::ResourceInfo {
-                            row_uuid: branch_uuid.clone(),
-                            resource: resource_utils::Resource::TableCompanyBranchFieldCurrency(
-                                this.currency.clone(),
-                            ),
-                        },
-                        resource_utils::ResourceInfo {
-                            row_uuid: branch_uuid.clone(),
-                            resource: resource_utils::Resource::TableAccessControlForCompanyBranchFieldRole(
-                                this.role.clone(),
-                            ),
-                        },
-                        resource_utils::ResourceInfo {
-                            row_uuid: branch_uuid.clone(),
-                            resource: resource_utils::Resource::TableAccessControlForCompanyBranchFieldUser(
-                                this.user_uuid.clone(),
-                            ),
-                        },
-                        resource_utils::ResourceInfo {
-                            row_uuid: branch_uuid,
-                            resource:
-                                resource_utils::Resource::TableAccessControlForCompanyBranchFieldDataGroup(
-                                    this.new_uuid.clone(),
-                                ),
-                        },
-                    ]
-            }
-            Err(_) => Vec::new(),
+            Ok(ok) => Some(ok.clone()),
+            Err(_) => None,
         }
     }
 

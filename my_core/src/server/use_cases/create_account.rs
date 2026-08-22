@@ -1,7 +1,7 @@
 use crate::accounting_domain::cases;
 use crate::accounting_domain::utility::types;
+use crate::accounting_domain::utility::types::DatabaseWrite;
 use crate::accounting_domain::utility::types::MyErrorTrait;
-use crate::server::utility::server_traits;
 use crate::server::utility::server_traits::DBClient;
 use crate::server::utility::server_traits::DBTransaction;
 use crate::server::utility::server_traits::SideEffects;
@@ -12,10 +12,7 @@ impl cases::create_account::Input {
         Id: types::RowId,
         Cli: DBClient,
         Db: for<'a> cases::create_account::DatabaseRead<Db<'a> = Cli::Txn<'a>, Error = DynamicError>,
-        DbWrite: for<'a> server_traits::DatabaseWrite<
-                Txn<'a> = Cli::Txn<'a>,
-                Input = cases::create_account::Ok,
-            >,
+        DbWrite: for<'a> DatabaseWrite<Db<'a> = Cli::Txn<'a>, Input = cases::create_account::Ok>,
     >(
         &self,
         side_effects: &mut SideEffects,

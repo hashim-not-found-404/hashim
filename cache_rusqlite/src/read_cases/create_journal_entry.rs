@@ -81,14 +81,11 @@ impl DatabaseRead for S {
     type Input = cases::create_journal_entry::ReadInput;
     type Output = cases::create_journal_entry::ReadOutput;
 
-    async fn read(
-        db: &mut Self::Db<'_>,
-        read_input: &Self::Input,
-    ) -> Result<Self::Output, Self::Error> {
+    async fn read(db: &mut Self::Db<'_>, input: &Self::Input) -> Result<Self::Output, Self::Error> {
         let accounts_uuid_vec: Vec<String> =
-            read_input.accounts_uuid.iter().map(|uuid| uuid.to_string()).collect();
+            input.accounts_uuid.iter().map(|uuid| uuid.to_string()).collect();
         let new_entries_uuid_vec: Vec<String> =
-            read_input.new_entries_uuid.iter().map(|uuid| uuid.to_string()).collect();
+            input.new_entries_uuid.iter().map(|uuid| uuid.to_string()).collect();
 
         let accounts_json = serde_json::to_string(&accounts_uuid_vec).unwrap();
         let new_entries_json = serde_json::to_string(&new_entries_uuid_vec).unwrap();
@@ -96,10 +93,10 @@ impl DatabaseRead for S {
         let mut stmt = db.tables_db.prepare(QUERY).unwrap();
         let mut rows = stmt
             .query(params![
-                &read_input.new_uuid.to_string(),
-                &read_input.belong_to_company_branch.to_string(),
-                &read_input.user_uuid.to_string(),
-                &read_input.shared_entry_id.as_ref().map(|id| id.to_string()),
+                &input.new_uuid.to_string(),
+                &input.belong_to_company_branch.to_string(),
+                &input.user_uuid.to_string(),
+                &input.shared_entry_id.as_ref().map(|id| id.to_string()),
                 &new_entries_json,
                 &accounts_json,
             ])

@@ -6,7 +6,6 @@ use crate::accounting_client::client_domain::ui_model;
 use crate::accounting_client::client_domain::ui_model::HashimSignal;
 use crate::accounting_domain::cases;
 use crate::accounting_domain::request_response;
-use crate::accounting_domain::utility::resource_utils;
 use crate::accounting_domain::utility::types;
 use crate::utility::traits;
 use crate::utility::utils::ReadAndSet;
@@ -15,6 +14,7 @@ type Type1 = cases::create_company::Input;
 type Type2 = cases::create_company::Input;
 type Type3 = cases::create_company::MyResult;
 type Type4 = cases::create_company::MyResult;
+type StorableType = cases::create_company::Ok;
 
 pub(crate) struct ViewAndCacheType;
 
@@ -23,6 +23,7 @@ where
     Ch: cache::Cache,
     LongCache: for<'a> cases::create_company::DatabaseRead<Db<'a> = Ch>,
 {
+    type StorableType = StorableType;
     type Type1 = Type1;
     type Type2 = Type2;
     type Type3 = Type3;
@@ -40,46 +41,10 @@ where
         Ok(data.state_less_operation())
     }
 
-    fn extract_resource(data: &Self::Type3) -> Vec<resource_utils::ResourceInfo> {
+    fn store_resource(data: &Self::Type3) -> Option<Self::StorableType> {
         match data {
-            Ok(ok) => {
-                let this = ok;
-                let company_uuid = this.new_uuid.clone();
-                vec![
-                    resource_utils::ResourceInfo {
-                        row_uuid: company_uuid.clone(),
-                        resource: resource_utils::Resource::TableCompanyFieldName(
-                            this.company_name.clone(),
-                        ),
-                    },
-                    resource_utils::ResourceInfo {
-                        row_uuid: company_uuid.clone(),
-                        resource: resource_utils::Resource::TableCompanyFieldCurrency(
-                            this.currency.clone(),
-                        ),
-                    },
-                    resource_utils::ResourceInfo {
-                        row_uuid: company_uuid.clone(),
-                        resource: resource_utils::Resource::TableAccessControlForCompanyFieldRole(
-                            this.role.clone(),
-                        ),
-                    },
-                    resource_utils::ResourceInfo {
-                        row_uuid: company_uuid.clone(),
-                        resource: resource_utils::Resource::TableAccessControlForCompanyFieldUser(
-                            this.user_uuid.clone(),
-                        ),
-                    },
-                    resource_utils::ResourceInfo {
-                        row_uuid: company_uuid.clone(),
-                        resource:
-                            resource_utils::Resource::TableAccessControlForCompanyFieldDataGroup(
-                                company_uuid,
-                            ),
-                    },
-                ]
-            }
-            Err(_) => Vec::new(),
+            Ok(ok) => Some(ok.clone()),
+            Err(_) => None,
         }
     }
 

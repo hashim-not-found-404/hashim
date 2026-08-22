@@ -1,94 +1,52 @@
-use crate::accounting_client::client_domain::cache_actor;
-use crate::accounting_client::client_domain::client_traits;
+use crate::accounting_client::client_domain::cache_actor::CachingStrategy;
+use crate::accounting_client::client_domain::client_traits::CacheActorStruct;
 use crate::accounting_client::client_domain::client_traits::ReadServerOnly;
-use crate::accounting_client::client_domain::ui_model;
+use crate::accounting_client::client_domain::ui_model::AllSignalTypes;
 use crate::accounting_client::client_domain::ui_model::HashimSignal;
+use crate::accounting_client::client_domain::ui_model::Model;
 use crate::accounting_domain::cases;
-use crate::accounting_domain::request_response;
-use crate::accounting_domain::utility::resource_utils;
-use crate::accounting_domain::utility::types;
-use crate::utility::traits;
+use crate::accounting_domain::request_response::push_data::OperationsInput;
+use crate::accounting_domain::utility::types::UuidType;
+use crate::utility::traits::MultiProducerSingleConsumer;
+use crate::utility::traits::RandomNumber;
 use crate::utility::utils::ReadAndSet;
 
 type Type1 = cases::get_all_accounts::Input;
 type Type2 = cases::get_all_accounts::Input;
 type Type3 = cases::get_all_accounts::MyResult;
+type StorableType = cases::get_all_accounts::Ok;
 
 pub(crate) struct ViewAndCacheType;
 
 impl ReadServerOnly for ViewAndCacheType {
+    type StorableType = StorableType;
     type Type1 = Type1;
     type Type2 = Type2;
     type Type3 = Type3;
 
-    fn wrap_input(data: Self::Type1) -> request_response::push_data::OperationsInput {
-        request_response::push_data::OperationsInput::GetAllAccounts(data)
+    fn wrap_input(data: Self::Type1) -> OperationsInput {
+        OperationsInput::GetAllAccounts(data)
     }
 
-    fn user_uuid(data: &Self::Type2) -> Option<&types::UuidType> {
+    fn user_uuid(data: &Self::Type2) -> Option<&UuidType> {
         Some(&data.user_uuid)
     }
 
-    fn extract_resource(data: &Self::Type3) -> Vec<resource_utils::ResourceInfo> {
+    fn extract_resource(data: &Self::Type3) -> Option<Self::StorableType> {
         match data {
-            Ok(ok) => {
-                let mut resources = Vec::new();
-                for account in &ok.data {
-                    let row_uuid = &account.row_uuid;
-
-                    resources.push(resource_utils::ResourceInfo {
-                        row_uuid: row_uuid.clone(),
-                        resource: resource_utils::Resource::TableAccountFieldName(
-                            account.account_name.clone(),
-                        ),
-                    });
-                    resources.push(resource_utils::ResourceInfo {
-                        row_uuid: row_uuid.clone(),
-                        resource: resource_utils::Resource::TableAccountFieldCompanyBelong(
-                            ok.company_uuid.clone(),
-                        ),
-                    });
-                    resources.push(resource_utils::ResourceInfo {
-                        row_uuid: row_uuid.clone(),
-                        resource: resource_utils::Resource::TableAccountFieldIsDebit(
-                            account.is_debit,
-                        ),
-                    });
-                    resources.push(resource_utils::ResourceInfo {
-                        row_uuid: row_uuid.clone(),
-                        resource: resource_utils::Resource::TableAccountFieldIsPermanentAccount(
-                            account.is_permanent_account,
-                        ),
-                    });
-                    resources.push(resource_utils::ResourceInfo {
-                        row_uuid: row_uuid.clone(),
-                        resource: resource_utils::Resource::TableAccountFieldNotes(
-                            account.notes.clone(),
-                        ),
-                    });
-                    resources.push(resource_utils::ResourceInfo {
-                        row_uuid: row_uuid.clone(),
-                        resource:
-                            resource_utils::Resource::TableAccountFieldUnitOfMeasurementOfQuantity(
-                                account.unit_of_measurement_of_quantity.clone(),
-                            ),
-                    });
-                }
-
-                resources
-            }
-            Err(_) => Vec::new(),
+            Ok(ok) => Some(ok.clone()),
+            Err(_) => None,
         }
     }
 }
 
 pub(crate) async fn fetch<
-    Rn: traits::RandomNumber,
-    Mpsc: traits::MultiProducerSingleConsumer,
-    As: ui_model::AllSignalTypes,
+    Rn: RandomNumber,
+    Mpsc: MultiProducerSingleConsumer,
+    As: AllSignalTypes,
 >(
-    model: &ui_model::Model<As>,
-    mut cache: client_traits::CacheActorStruct<Mpsc>,
+    model: &Model<As>,
+    mut cache: CacheActorStruct<Mpsc>,
 ) {
     let company_uuid = model.selected_company.read().unwrap();
 
@@ -101,7 +59,7 @@ pub(crate) async fn fetch<
 
     cache
         .send_to_cache_actor(
-            cache_actor::CachingStrategy::ReadServerOnly,
+            CachingStrategy::ReadServerOnly,
             txn_number,
             ViewAndCacheType::wrap_input(input),
         )

@@ -18,12 +18,9 @@ impl DatabaseRead for S {
     type Input = cases::sign_in::ReadInput;
     type Output = cases::sign_in::ReadOutput;
 
-    async fn read(
-        db: &mut Self::Db<'_>,
-        read_input: &Self::Input,
-    ) -> Result<Self::Output, Self::Error> {
+    async fn read(db: &mut Self::Db<'_>, input: &Self::Input) -> Result<Self::Output, Self::Error> {
         let stmt = db.client.prepare_cached(READ_QUERY).await.log()?;
-        let row = db.client.query_opt(&stmt, &[&read_input.user_id]).await.log()?;
+        let row = db.client.query_opt(&stmt, &[&input.user_id]).await.log()?;
 
         match row {
             Some(row) => {

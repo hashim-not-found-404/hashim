@@ -1,53 +1,62 @@
-use crate::accounting_client::client_domain::cache;
-use crate::accounting_client::client_domain::cache_actor;
-use crate::accounting_client::client_domain::client_traits;
+use crate::accounting_client::client_domain::cache::Cache;
+use crate::accounting_client::client_domain::cache_actor::CachingStrategy;
+use crate::accounting_client::client_domain::cache_actor::Response;
+use crate::accounting_client::client_domain::client_traits::CacheActorStruct;
 use crate::accounting_client::client_domain::client_traits::ViewAndCache;
-use crate::accounting_client::client_domain::commander;
-use crate::accounting_client::client_domain::process_manager;
-use crate::accounting_client::client_domain::ui_model;
+use crate::accounting_client::client_domain::client_traits::handle_fall_back;
+use crate::accounting_client::client_domain::commander::CommanderLocalState;
+use crate::accounting_client::client_domain::process_manager::MessageToProcessManager;
+use crate::accounting_client::client_domain::process_manager::ProcessName;
+use crate::accounting_client::client_domain::ui_model::AllSignalTypes;
+use crate::accounting_client::client_domain::ui_model::CreateAccount;
 use crate::accounting_client::client_domain::ui_model::HashimSignal;
+use crate::accounting_client::client_domain::ui_model::Model;
 use crate::accounting_client::fetches;
 use crate::accounting_domain::cases;
-use crate::accounting_domain::request_response;
-use crate::accounting_domain::utility::resource_utils;
-use crate::accounting_domain::utility::types;
+use crate::accounting_domain::cases::create_account::DatabaseRead;
+use crate::accounting_domain::cases::create_account::Input;
+use crate::accounting_domain::request_response::push_data::OperationsInput;
+use crate::accounting_domain::request_response::push_data::OperationsResult;
 use crate::accounting_domain::utility::types::MyErrorTrait;
-use crate::utility::traits;
+use crate::accounting_domain::utility::types::RowId;
+use crate::accounting_domain::utility::types::UuidType;
+use crate::utility::traits::MultiProducerSingleConsumer;
+use crate::utility::traits::RandomNumber;
 use crate::utility::traits::Receiver;
+use crate::utility::traits::Runtime;
 use crate::utility::traits::Sender;
 use crate::utility::utils::MakeOptionIfEmpty;
 use crate::utility::utils::ReadAndSet;
 use std::sync::Arc;
 
-type Type1 = cases::create_account::Input;
-type Type2 = cases::create_account::Input;
+type Type1 = Input;
+type Type2 = Input;
 type Type3 = cases::create_account::MyResult;
 type Type4 = cases::create_account::MyResult;
+type StorableType = cases::create_account::Ok;
 
 pub(crate) struct ViewAndCacheType;
 
 impl<Ch, LongCache> ViewAndCache<Ch, LongCache> for ViewAndCacheType
 where
-    Ch: cache::Cache,
-    LongCache: for<'a> cases::create_account::DatabaseRead<Db<'a> = Ch>,
+    Ch: Cache,
+    LongCache: for<'a> DatabaseRead<Db<'a> = Ch>,
 {
+    type StorableType = StorableType;
     type Type1 = Type1;
     type Type2 = Type2;
     type Type3 = Type3;
     type Type4 = Type4;
 
-    fn wrap_input(data: Self::Type1) -> request_response::push_data::OperationsInput {
-        request_response::push_data::OperationsInput::CreateAccount(data)
+    fn wrap_input(data: Self::Type1) -> OperationsInput {
+        OperationsInput::CreateAccount(data)
     }
 
-    fn user_uuid(data: &Self::Type2) -> Option<&types::UuidType> {
+    fn user_uuid(data: &Self::Type2) -> Option<&UuidType> {
         Some(&data.user_uuid)
     }
 
-    async fn state_full_operation<Id: types::RowId>(
-        data: &Self::Type2,
-        state: &mut Ch,
-    ) -> Self::Type3 {
+    async fn state_full_operation<Id: RowId>(data: &Self::Type2, state: &mut Ch) -> Self::Type3 {
         let errr = data.state_full_check::<LongCache>(state).await.unwrap();
 
         if errr.is_there_error() {
@@ -57,62 +66,21 @@ where
         Ok(data.state_less_operation())
     }
 
-    fn extract_resource(data: &Self::Type3) -> Vec<resource_utils::ResourceInfo> {
+    fn store_resource(data: &Self::Type3) -> Option<Self::StorableType> {
         match data {
-            Ok(ok) => {
-                vec![
-                    resource_utils::ResourceInfo {
-                        row_uuid: ok.new_uuid.clone(),
-                        resource: resource_utils::Resource::TableAccountFieldCompanyBelong(
-                            ok.belong_to_company.clone(),
-                        ),
-                    },
-                    resource_utils::ResourceInfo {
-                        row_uuid: ok.new_uuid.clone(),
-                        resource: resource_utils::Resource::TableAccountFieldIsDebit(ok.is_debit),
-                    },
-                    resource_utils::ResourceInfo {
-                        row_uuid: ok.new_uuid.clone(),
-                        resource: resource_utils::Resource::TableAccountFieldIsPermanentAccount(
-                            ok.is_permanent_account,
-                        ),
-                    },
-                    resource_utils::ResourceInfo {
-                        row_uuid: ok.new_uuid.clone(),
-                        resource: resource_utils::Resource::TableAccountFieldName(
-                            ok.account_name.clone(),
-                        ),
-                    },
-                    resource_utils::ResourceInfo {
-                        row_uuid: ok.new_uuid.clone(),
-                        resource: resource_utils::Resource::TableAccountFieldNotes(
-                            ok.notes.clone(),
-                        ),
-                    },
-                    resource_utils::ResourceInfo {
-                        row_uuid: ok.new_uuid.clone(),
-                        resource:
-                            resource_utils::Resource::TableAccountFieldUnitOfMeasurementOfQuantity(
-                                ok.unit_of_measurement_of_quantity.clone(),
-                            ),
-                    },
-                ]
-            }
-            Err(_) => Vec::new(),
+            Ok(ok) => Some(ok.clone()),
+            Err(_) => None,
         }
     }
 
-    fn unwrap_output(output: request_response::push_data::OperationsResult) -> Self::Type4 {
-        if let request_response::push_data::OperationsResult::CreateAccount(result) = output {
+    fn unwrap_output(output: OperationsResult) -> Self::Type4 {
+        if let OperationsResult::CreateAccount(result) = output {
             return result;
         }
         unreachable!("{:?}", output)
     }
 
-    fn apply_on_the_model<As: ui_model::AllSignalTypes>(
-        output: &Self::Type4,
-        model: &ui_model::Model<As>,
-    ) {
+    fn apply_on_the_model<As: AllSignalTypes>(output: &Self::Type4, model: &Model<As>) {
         let local_state = &model.page_create_account;
 
         match output {
@@ -128,25 +96,25 @@ where
     }
 }
 
-impl ui_model::CreateAccount {
+impl CreateAccount {
     pub(crate) async fn update<
-        Rn: traits::RandomNumber,
-        Rt: traits::Runtime,
-        Id: types::RowId,
-        Mpsc: traits::MultiProducerSingleConsumer,
-        As: ui_model::AllSignalTypes,
-        Ch: cache::Cache,
-        LongCache: for<'a> cases::create_account::DatabaseRead<Db<'a> = Ch>,
+        Rn: RandomNumber,
+        Rt: Runtime,
+        Id: RowId,
+        Mpsc: MultiProducerSingleConsumer,
+        As: AllSignalTypes,
+        Ch: Cache,
+        LongCache: for<'a> DatabaseRead<Db<'a> = Ch>,
     >(
         self,
-        model: &'static ui_model::Model<As>,
-        cache: client_traits::CacheActorStruct<Mpsc>,
-        commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
+        model: &'static Model<As>,
+        cache: CacheActorStruct<Mpsc>,
+        commander_local_state: Arc<CommanderLocalState<Mpsc, As>>,
     ) {
         let local_state = &model.page_create_account;
 
         match self {
-            ui_model::CreateAccount::Submit => {
+            CreateAccount::Submit => {
                 handle_submit::<Rn, Rt, Id, Mpsc, As, Ch, LongCache>(
                     model,
                     cache,
@@ -154,43 +122,39 @@ impl ui_model::CreateAccount {
                 )
                 .await
             }
-            ui_model::CreateAccount::Consent(i) => {
+            CreateAccount::Consent(i) => {
                 commander_local_state
                     .sender_to_process_manager
                     .read()
-                    .send(process_manager::MessageToProcessManager::FromUser {
-                        process_name: process_manager::ProcessName::CreateAccount,
+                    .send(MessageToProcessManager::FromUser {
+                        process_name: ProcessName::CreateAccount,
                         consent:      i,
                     })
                     .await
                     .unwrap();
             }
-            ui_model::CreateAccount::Clean => handle_clean::<As>(model),
-            ui_model::CreateAccount::IsDebit(v) => local_state.is_debit.set(v),
-            ui_model::CreateAccount::IsPermanentAccount(v) => {
-                local_state.is_permanent_account.set(v)
-            }
-            ui_model::CreateAccount::AccountName(v) => {
+            CreateAccount::Clean => handle_clean::<As>(model),
+            CreateAccount::IsDebit(v) => local_state.is_debit.set(v),
+            CreateAccount::IsPermanentAccount(v) => local_state.is_permanent_account.set(v),
+            CreateAccount::AccountName(v) => {
                 local_state.account_name.set(v);
                 handle_check::<Rn, Id, Mpsc, As, Ch, LongCache>(model, cache).await;
             }
-            ui_model::CreateAccount::Notes(v) => local_state.notes.set(v),
-            ui_model::CreateAccount::UnitOfMeasurementOfQuantity(v) => {
+            CreateAccount::Notes(v) => local_state.notes.set(v),
+            CreateAccount::UnitOfMeasurementOfQuantity(v) => {
                 local_state.unit_of_measurement_of_quantity.set(v)
             }
-            ui_model::CreateAccount::Subscribe => {
+            CreateAccount::Subscribe => {
                 fetches::get_all_accounts::fetch::<Rn, Mpsc, As>(model, cache).await
             }
         }
     }
 }
 
-fn build_input<Id: types::RowId, As: ui_model::AllSignalTypes>(
-    model: &ui_model::Model<As>,
-) -> Type1 {
+fn build_input<Id: RowId, As: AllSignalTypes>(model: &Model<As>) -> Type1 {
     let local_state = &model.page_create_account;
 
-    cases::create_account::Input {
+    Input {
         user_uuid:                       model.user_uuid.read().clone().unwrap(),
         new_uuid:                        Id::generate(),
         is_debit:                        local_state.is_debit.read(),
@@ -202,7 +166,7 @@ fn build_input<Id: types::RowId, As: ui_model::AllSignalTypes>(
     }
 }
 
-fn handle_clean<As: ui_model::AllSignalTypes>(model: &ui_model::Model<As>) {
+fn handle_clean<As: AllSignalTypes>(model: &Model<As>) {
     let local_state = &model.page_create_account;
 
     local_state.account_name.reset();
@@ -215,26 +179,26 @@ fn handle_clean<As: ui_model::AllSignalTypes>(model: &ui_model::Model<As>) {
 }
 
 async fn handle_submit<
-    Rn: traits::RandomNumber,
-    Rt: traits::Runtime,
-    Id: types::RowId,
-    Mpsc: traits::MultiProducerSingleConsumer,
-    As: ui_model::AllSignalTypes,
-    Ch: cache::Cache,
-    LongCache: for<'a> cases::create_account::DatabaseRead<Db<'a> = Ch>,
+    Rn: RandomNumber,
+    Rt: Runtime,
+    Id: RowId,
+    Mpsc: MultiProducerSingleConsumer,
+    As: AllSignalTypes,
+    Ch: Cache,
+    LongCache: for<'a> DatabaseRead<Db<'a> = Ch>,
 >(
-    model: &'static ui_model::Model<As>,
-    cache: client_traits::CacheActorStruct<Mpsc>,
-    commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
+    model: &'static Model<As>,
+    cache: CacheActorStruct<Mpsc>,
+    commander_local_state: Arc<CommanderLocalState<Mpsc, As>>,
 ) {
     let input = build_input::<Id, As>(model);
     let data = <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::wrap_input(input);
 
-    client_traits::handle_fall_back::<Rn, Rt, Mpsc, As>(
+    handle_fall_back::<Rn, Rt, Mpsc, As>(
         cache,
         commander_local_state,
         &model.page_create_account.show_dialog,
-        process_manager::ProcessName::CreateAccount,
+        ProcessName::CreateAccount,
         data,
         move |data| {
             let result = <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::unwrap_output(data);
@@ -254,27 +218,26 @@ async fn handle_submit<
 }
 
 async fn handle_check<
-    Rn: traits::RandomNumber,
-    Id: types::RowId,
-    Mpsc: traits::MultiProducerSingleConsumer,
-    As: ui_model::AllSignalTypes,
-    Ch: cache::Cache,
-    LongCache: for<'a> cases::create_account::DatabaseRead<Db<'a> = Ch>,
+    Rn: RandomNumber,
+    Id: RowId,
+    Mpsc: MultiProducerSingleConsumer,
+    As: AllSignalTypes,
+    Ch: Cache,
+    LongCache: for<'a> DatabaseRead<Db<'a> = Ch>,
 >(
-    model: &'static ui_model::Model<As>,
-    mut cache: client_traits::CacheActorStruct<Mpsc>,
+    model: &'static Model<As>,
+    mut cache: CacheActorStruct<Mpsc>,
 ) {
     let input = build_input::<Id, As>(model);
     let data = <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::wrap_input(input);
 
-    let mut receiver_to_response = cache
-        .send_to_cache_actor(cache_actor::CachingStrategy::ReadCacheOnly, Rn::generate(), data)
-        .await;
+    let mut receiver_to_response =
+        cache.send_to_cache_actor(CachingStrategy::ReadCacheOnly, Rn::generate(), data).await;
 
     match receiver_to_response.recv().await.unwrap() {
-        cache_actor::Response::CloseTheChannel => {}
-        cache_actor::Response::ServerCannotBeReached => {}
-        cache_actor::Response::Data {
+        Response::CloseTheChannel => {}
+        Response::ServerCannotBeReached => {}
+        Response::Data {
             is_response_from_server: _,
             data,
         } => {

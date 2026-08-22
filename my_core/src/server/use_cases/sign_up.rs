@@ -1,5 +1,6 @@
 use crate::accounting_domain::cases;
 use crate::accounting_domain::utility::types;
+use crate::accounting_domain::utility::types::DatabaseWrite;
 use crate::accounting_domain::utility::types::MyErrorTrait;
 use crate::server::utility::server_traits;
 use crate::server::utility::server_traits::DBClient;
@@ -14,7 +15,7 @@ impl cases::sign_up::Input {
         Jwt: types::JWT,
         Cli: DBClient,
         Db: for<'a> cases::sign_up::DatabaseRead<Db<'a> = Cli::Txn<'a>, Error = traits::DynamicError>,
-        DbWrite: for<'a> server_traits::DatabaseWrite<Txn<'a> = Cli::Txn<'a>, Input = cases::sign_up::Ok>,
+        DbWrite: for<'a> DatabaseWrite<Db<'a> = Cli::Txn<'a>, Input = cases::sign_up::Ok>,
     >(
         &self,
         side_effects: &mut SideEffects,

@@ -1,4 +1,5 @@
 use crate::utility::traits;
+use crate::utility::traits::DynamicError;
 use serde::Deserialize;
 use serde::Serialize;
 use std::error::Error;
@@ -33,8 +34,18 @@ pub trait DatabaseRead {
 
     fn read(
         db: &mut Self::Db<'_>,
-        read_input: &Self::Input,
+        input: &Self::Input,
     ) -> impl Future<Output = Result<Self::Output, Self::Error>>;
+}
+
+pub trait DatabaseWrite {
+    type Db<'a>;
+    type Input;
+
+    fn write(
+        db: &mut Self::Db<'_>,
+        input: &Self::Input,
+    ) -> impl Future<Output = Result<(), DynamicError>>;
 }
 
 pub(crate) trait MyErrorTrait {
