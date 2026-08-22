@@ -118,15 +118,13 @@ impl<
                         match msg {
                             WSMessage::Close => break,
                             WSMessage::Binary(received_data) => {
-                                let Ok(input) = Ed::decode::<request_response::messages::FromClient>(
-                                    &received_data,
-                                ) else {
+                                let Ok(input) =
+                                    Ed::decode::<request_response::FromClient>(&received_data)
+                                else {
                                     if session
-                                        .send_bin(Ed::encode(
-                                            &request_response::messages::FromServer::Error(
-                                                types::HashimError::InvalidDataFormat,
-                                            ),
-                                        ))
+                                        .send_bin(Ed::encode(&request_response::FromServer::Error(
+                                            types::HashimError::InvalidDataFormat,
+                                        )))
                                         .await
                                         .is_err()
                                     {
@@ -137,11 +135,9 @@ impl<
 
                                 let Ok(mut client) = self.database.get_client().await else {
                                     if session
-                                        .send_bin(Ed::encode(
-                                            &request_response::messages::FromServer::Error(
-                                                types::HashimError::InternalServerError,
-                                            ),
-                                        ))
+                                        .send_bin(Ed::encode(&request_response::FromServer::Error(
+                                            types::HashimError::InternalServerError,
+                                        )))
                                         .await
                                         .is_err()
                                     {
@@ -165,9 +161,7 @@ impl<
                                     Ok(ok) => {
                                         if session
                                             .send_bin(Ed::encode(
-                                                &request_response::messages::FromServer::PushData(
-                                                    ok,
-                                                ),
+                                                &request_response::FromServer::PushData(ok),
                                             ))
                                             .await
                                             .is_err()
@@ -178,7 +172,7 @@ impl<
                                     Err(_) => {
                                         if session
                                             .send_bin(Ed::encode(
-                                                &request_response::messages::FromServer::Error(
+                                                &request_response::FromServer::Error(
                                                     types::HashimError::InternalServerError,
                                                 ),
                                             ))
@@ -199,7 +193,7 @@ impl<
                                     else {
                                         if session
                                             .send_bin(Ed::encode(
-                                                &request_response::messages::FromServer::Error(
+                                                &request_response::FromServer::Error(
                                                     types::HashimError::InternalServerError,
                                                 ),
                                             ))
@@ -248,9 +242,9 @@ impl<
                     traits::Either::Two(wraped_resource) => {
                         let resource = wraped_resource.unwrap();
                         if session
-                            .send_bin(Ed::encode(
-                                &request_response::messages::FromServer::Resources(resource),
-                            ))
+                            .send_bin(Ed::encode(&request_response::FromServer::Resources(
+                                resource,
+                            )))
                             .await
                             .is_err()
                         {

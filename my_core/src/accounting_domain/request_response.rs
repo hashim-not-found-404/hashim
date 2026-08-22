@@ -1,25 +1,8 @@
 use crate::accounting_domain::cases;
 use crate::accounting_domain::utility::resource_utils;
-use crate::accounting_domain::utility::types;
+use crate::accounting_domain::utility::types::HashimError;
 use serde::Deserialize;
 use serde::Serialize;
-
-pub(crate) mod messages {
-    use super::Deserialize;
-    use super::Serialize;
-    use super::push_data;
-    use super::resource_utils;
-    use super::types;
-
-    #[derive(Debug, Deserialize, Serialize)]
-    pub(crate) enum FromServer {
-        Error(types::HashimError),
-        PushData(push_data::MyResult),
-        Resources(Vec<resource_utils::ResourceInfo>),
-    }
-
-    pub(crate) type FromClient = push_data::Input;
-}
 
 pub mod push_data {
     use super::Deserialize;
@@ -85,3 +68,12 @@ pub mod push_data {
         GetAllAccountsForBranch(cases::get_all_accounts_for_branch::MyResult),
     }
 }
+
+#[derive(Debug, Deserialize, Serialize)]
+pub(crate) enum FromServer {
+    Error(HashimError),
+    PushData(push_data::MyResult),
+    Resources(Vec<resource_utils::ResourceInfo>),
+}
+
+pub(crate) type FromClient = push_data::Input;

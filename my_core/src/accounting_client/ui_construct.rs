@@ -125,7 +125,7 @@ impl<
     type Cache = Ch;
     type E = types::HashimError;
     type ErrorSender = Mpsc::Sender<types::HashimError>;
-    type MessageFromServer<'de> = request_response::messages::FromServer;
+    type MessageFromServer<'de> = request_response::FromServer;
     type Mpsc = Mpsc;
     type NetworkSender = Mpsc::Sender<Vec<u8>>;
     type NetworkStatus = Arc<RwLock<bool>>;
@@ -133,7 +133,7 @@ impl<
     type OpResult = request_response::push_data::OperationsResult;
     type Resource = resource_utils::ResourceInfo;
     type Response = request_response::push_data::MyResult;
-    type SendingTxns = request_response::messages::FromClient;
+    type SendingTxns = request_response::FromClient;
     type Subscribe = resource_utils::Subscribe;
 
     async fn cache_receiver(
@@ -205,7 +205,7 @@ impl<
             });
         }
 
-        request_response::messages::FromClient {
+        request_response::FromClient {
             jwts,
             nonce: Id::generate(),
             operations: operations1,
@@ -216,13 +216,9 @@ impl<
         msg: Self::MessageFromServer<'_>,
     ) -> cache_actor::FromServer<Self::E, Self::Response, Self::Resource> {
         match msg {
-            request_response::messages::FromServer::Error(a) => cache_actor::FromServer::Error(a),
-            request_response::messages::FromServer::PushData(a) => {
-                cache_actor::FromServer::Response(a)
-            }
-            request_response::messages::FromServer::Resources(a) => {
-                cache_actor::FromServer::Resources(a)
-            }
+            request_response::FromServer::Error(a) => cache_actor::FromServer::Error(a),
+            request_response::FromServer::PushData(a) => cache_actor::FromServer::Response(a),
+            request_response::FromServer::Resources(a) => cache_actor::FromServer::Resources(a),
         }
     }
 
