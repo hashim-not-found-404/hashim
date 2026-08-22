@@ -4,25 +4,25 @@ use crate::client::utility::client_traits;
 use crate::client::utility::client_traits::ViewAndCache;
 use crate::client::utility::ui_model;
 use crate::client::utility::ui_model::HashimSignal;
-use crate::domain::cases;
 use crate::domain::request_response;
+use crate::domain::use_cases;
 use crate::domain::utility::resource_utils;
 use crate::domain::utility::types::RowId;
 use crate::domain::utility::uuid::User;
 use crate::utility::traits;
 use crate::utility::utils::ReadAndSet;
 
-type Type1 = cases::create_company::Input;
-type Type2 = cases::create_company::Input;
-type Type3 = cases::create_company::MyResult;
-type Type4 = cases::create_company::MyResult;
+type Type1 = use_cases::create_company::Input;
+type Type2 = use_cases::create_company::Input;
+type Type3 = use_cases::create_company::MyResult;
+type Type4 = use_cases::create_company::MyResult;
 
 pub(crate) struct ViewAndCacheType;
 
 impl<Ch, LongCache> ViewAndCache<Ch, LongCache> for ViewAndCacheType
 where
     Ch: cache::Cache,
-    LongCache: for<'a> cases::create_company::DatabaseRead<Db<'a> = Ch>,
+    LongCache: for<'a> use_cases::create_company::DatabaseRead<Db<'a> = Ch>,
 {
     type Type1 = Type1;
     type Type2 = Type2;
@@ -103,7 +103,7 @@ impl ui_model::CreateCompany {
         Mpsc: traits::MultiProducerSingleConsumer,
         As: ui_model::AllSignalTypes,
         Ch: cache::Cache,
-        LongCache: for<'a> cases::create_company::DatabaseRead<Db<'a> = Ch>,
+        LongCache: for<'a> use_cases::create_company::DatabaseRead<Db<'a> = Ch>,
     >(
         self,
         model: &'static ui_model::Model<As>,
@@ -137,7 +137,7 @@ async fn handle_submit<
     Mpsc: traits::MultiProducerSingleConsumer,
     As: ui_model::AllSignalTypes,
     Ch: cache::Cache,
-    LongCache: for<'a> cases::create_company::DatabaseRead<Db<'a> = Ch>,
+    LongCache: for<'a> use_cases::create_company::DatabaseRead<Db<'a> = Ch>,
 >(
     model: &'static ui_model::Model<As>,
     mut cache: client_traits::CacheActorStruct<Mpsc>,
@@ -157,7 +157,7 @@ async fn handle_submit<
 fn build_input<Id: RowId, As: ui_model::AllSignalTypes>(model: &ui_model::Model<As>) -> Type1 {
     let local_state = &model.page_create_company;
 
-    cases::create_company::Input {
+    use_cases::create_company::Input {
         user_uuid:    model.user_uuid.read().clone().unwrap(),
         new_uuid:     Id::generate().into(),
         company_name: local_state.company_name.read(),

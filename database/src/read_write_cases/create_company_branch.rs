@@ -1,6 +1,6 @@
 use crate::utility::db_transaction;
 use crate::utility::utils::MyUuidConverter;
-use my_core::domain::cases;
+use my_core::domain::use_cases;
 use my_core::domain::utility::types::DatabaseRead;
 use my_core::domain::utility::types::HashimError;
 use my_core::domain::utility::types::Role;
@@ -33,12 +33,12 @@ const READ_QUERY: &str = "
 
 pub struct S;
 
-impl cases::create_company_branch::DatabaseRead for S {}
+impl use_cases::create_company_branch::DatabaseRead for S {}
 
 impl DatabaseRead for S {
     type Db<'a> = db_transaction::S<'a>;
-    type Input = cases::create_company_branch::ReadInput;
-    type Output = cases::create_company_branch::ReadOutput;
+    type Input = use_cases::create_company_branch::ReadInput;
+    type Output = use_cases::create_company_branch::ReadOutput;
 
     async fn read(
         db: &mut Self::Db<'_>,
@@ -62,7 +62,7 @@ impl DatabaseRead for S {
             .collect::<Result<Vec<_>, _>>()
             .log()?;
 
-        let a = cases::create_company_branch::ReadOutput {
+        let a = use_cases::create_company_branch::ReadOutput {
             user_roles:          roles,
             is_new_uuid_used:    row.try_get(1).log()?,
             is_company_exist:    row.try_get(2).log()?,
@@ -88,7 +88,7 @@ const WRITE_QUERY: &str = "
 
 impl server_traits::DatabaseWrite for S {
     type Db<'a> = db_transaction::S<'a>;
-    type Input = cases::create_company_branch::Ok;
+    type Input = use_cases::create_company_branch::Ok;
 
     async fn write(txn: &mut Self::Db<'_>, input: &Self::Input) -> Result<(), DynamicError> {
         let lat = Decimal::from_f64(input.location.latitude)

@@ -3,7 +3,7 @@ use crate::utility::utils::MyUuidConverter;
 use crate::utility::utils::MyUuidConverter1;
 use accounting_engine::accounting_stuff;
 use accounting_engine::accounting_stuff::InventoryRecord;
-use my_core::domain::cases;
+use my_core::domain::use_cases;
 use my_core::domain::utility::types::DatabaseRead;
 use my_core::domain::utility::types::Role;
 use my_core::domain::utility::uuid::AccountForBranch;
@@ -75,12 +75,12 @@ const QUERY: &str = r#"
 
 pub struct S;
 
-impl cases::create_journal_entry::DatabaseRead for S {}
+impl use_cases::create_journal_entry::DatabaseRead for S {}
 
 impl DatabaseRead for S {
     type Db<'a> = cache_adapter::S;
-    type Input = cases::create_journal_entry::ReadInput;
-    type Output = cases::create_journal_entry::ReadOutput;
+    type Input = use_cases::create_journal_entry::ReadInput;
+    type Output = use_cases::create_journal_entry::ReadOutput;
 
     async fn read(
         db: &mut Self::Db<'_>,
@@ -149,13 +149,14 @@ impl DatabaseRead for S {
         let account_infos: Vec<AccountInfoJson> =
             serde_json::from_str(&account_infos_json).unwrap_or_default();
 
-        let mut account_info = cases::create_journal_entry::AccountInfoProviderImpl(HashMap::new());
+        let mut account_info =
+            use_cases::create_journal_entry::AccountInfoProviderImpl(HashMap::new());
         for info in account_infos {
             let uuid_type: AccountForBranch = info.account_uuid.to_uuid().into();
             let in_flow = accounting_stuff::InFlowType::from_str(&info.in_flow_type).unwrap();
             let out_flow = accounting_stuff::OutFlowType::from_str(&info.out_flow_type).unwrap();
-            let inventory = cases::create_journal_entry::InventoryWrapper(info.inventory);
-            let account_info_entry = cases::create_journal_entry::AccountInfo {
+            let inventory = use_cases::create_journal_entry::InventoryWrapper(info.inventory);
+            let account_info_entry = use_cases::create_journal_entry::AccountInfo {
                 is_debit: info.is_debit,
                 in_flow_type: in_flow,
                 out_flow_type: out_flow,
@@ -164,7 +165,7 @@ impl DatabaseRead for S {
             account_info.0.insert(uuid_type, account_info_entry);
         }
 
-        Ok(cases::create_journal_entry::ReadOutput {
+        Ok(use_cases::create_journal_entry::ReadOutput {
             is_new_uuid_used,
             user_roles,
             is_shared_entry_exist,

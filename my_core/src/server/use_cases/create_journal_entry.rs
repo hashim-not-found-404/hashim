@@ -1,4 +1,4 @@
-use crate::domain::cases;
+use crate::domain::use_cases;
 use crate::domain::utility::types::MyErrorTrait;
 use crate::domain::utility::types::RowId;
 use crate::domain::utility::types::UserUuidError;
@@ -9,21 +9,21 @@ use crate::server::utility::server_traits::SideEffects;
 use crate::utility::traits;
 use crate::utility::traits::DynamicError;
 
-impl cases::create_journal_entry::Input {
+impl use_cases::create_journal_entry::Input {
     pub(crate) async fn handle_operation<
         Id: RowId,
         Ti: traits::Time,
         Cli: DBClient,
-        Db: for<'a> cases::create_journal_entry::DatabaseRead<Db<'a> = Cli::Txn<'a>>,
+        Db: for<'a> use_cases::create_journal_entry::DatabaseRead<Db<'a> = Cli::Txn<'a>>,
         DbWrite: for<'a> server_traits::DatabaseWrite<
                 Db<'a> = Cli::Txn<'a>,
-                Input = cases::create_journal_entry::Ok,
+                Input = use_cases::create_journal_entry::Ok,
             >,
     >(
         &self,
         side_effects: &mut SideEffects,
         client: &mut Cli,
-    ) -> Result<cases::create_journal_entry::MyResult, DynamicError> {
+    ) -> Result<use_cases::create_journal_entry::MyResult, DynamicError> {
         let mut errr = self.state_less_check::<Id>();
         if !side_effects.authenticated_users.contains(&self.user_uuid) {
             errr.user_uuid = Some(UserUuidError::NotAuthenticated);

@@ -1,7 +1,7 @@
 use crate::utility::db_client;
 use crate::utility::utils::MyUuidConverter;
 use accounting_engine::accounting_stuff;
-use my_core::domain::cases;
+use my_core::domain::use_cases;
 use my_core::domain::utility::types::DatabaseRead;
 use my_core::domain::utility::uuid::UuidType;
 use my_core::utility::traits::DynamicError;
@@ -57,12 +57,12 @@ const READ_QUERY: &str = r#"
 
 pub struct S;
 
-impl cases::get_all_accounts_for_branch::DatabaseRead for S {}
+impl use_cases::get_all_accounts_for_branch::DatabaseRead for S {}
 
 impl DatabaseRead for S {
     type Db<'a> = db_client::S;
-    type Input = cases::get_all_accounts_for_branch::ReadInput;
-    type Output = cases::get_all_accounts_for_branch::ReadOutput;
+    type Input = use_cases::get_all_accounts_for_branch::ReadInput;
+    type Output = use_cases::get_all_accounts_for_branch::ReadOutput;
 
     async fn read(
         db: &mut Self::Db<'_>,
@@ -103,7 +103,7 @@ impl DatabaseRead for S {
                     .unwrap_or("")
                     .to_string();
 
-                accounts.push(cases::get_all_accounts_for_branch::Account {
+                accounts.push(use_cases::get_all_accounts_for_branch::Account {
                     row_uuid,
                     is_debit,
                     is_permanent_account,
@@ -138,16 +138,18 @@ impl DatabaseRead for S {
                     obj.get("inflow_type").and_then(|v| v.as_str()).unwrap_or("Manual");
                 let inflow_type = accounting_stuff::InFlowType::from_str(inflow_type_str).log()?;
 
-                accounts_for_branch.push(cases::get_all_accounts_for_branch::AccountForBranch {
-                    row_uuid,
-                    account_uuid,
-                    outflow_type,
-                    inflow_type,
-                });
+                accounts_for_branch.push(
+                    use_cases::get_all_accounts_for_branch::AccountForBranch {
+                        row_uuid,
+                        account_uuid,
+                        outflow_type,
+                        inflow_type,
+                    },
+                );
             }
         }
 
-        Ok(cases::get_all_accounts_for_branch::ReadOutput {
+        Ok(use_cases::get_all_accounts_for_branch::ReadOutput {
             company_uuid,
             accounts,
             accounts_for_branch,

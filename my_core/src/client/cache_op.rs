@@ -1,26 +1,26 @@
+use crate::client;
 use crate::client::fetches;
-use crate::client::use_cases;
 use crate::client::utility::cache;
 use crate::client::utility::client_traits::ReadServerOnly;
 use crate::client::utility::client_traits::ViewAndCache;
-use crate::domain::cases;
 use crate::domain::request_response;
+use crate::domain::use_cases;
 use crate::domain::utility::resource_utils;
 use crate::domain::utility::types::RowId;
 use crate::domain::utility::uuid::User;
 use crate::utility::traits;
 
 pub trait DbBundle<Ch: cache::Cache>: 'static {
-    type CreateAccount: for<'a> cases::create_account::DatabaseRead<Db<'a> = Ch>;
-    type CreateAccountForBranch: for<'a> cases::create_account_for_branch::DatabaseRead<Db<'a> = Ch>;
-    type CreateJournalEntry: for<'a> cases::create_journal_entry::DatabaseRead<Db<'a> = Ch>;
-    type GetAllAccountsForBranch: for<'a> cases::get_all_accounts_for_branch::DatabaseRead<Db<'a> = Ch>;
-    type CreateCompany: for<'a> cases::create_company::DatabaseRead<Db<'a> = Ch>;
-    type CreateCompanyBranch: for<'a> cases::create_company_branch::DatabaseRead<Db<'a> = Ch>;
-    type ListCompanyAndBranch: for<'a> cases::list_company_and_branch::DatabaseRead<Db<'a> = Ch>
+    type CreateAccount: for<'a> use_cases::create_account::DatabaseRead<Db<'a> = Ch>;
+    type CreateAccountForBranch: for<'a> use_cases::create_account_for_branch::DatabaseRead<Db<'a> = Ch>;
+    type CreateJournalEntry: for<'a> use_cases::create_journal_entry::DatabaseRead<Db<'a> = Ch>;
+    type GetAllAccountsForBranch: for<'a> use_cases::get_all_accounts_for_branch::DatabaseRead<Db<'a> = Ch>;
+    type CreateCompany: for<'a> use_cases::create_company::DatabaseRead<Db<'a> = Ch>;
+    type CreateCompanyBranch: for<'a> use_cases::create_company_branch::DatabaseRead<Db<'a> = Ch>;
+    type ListCompanyAndBranch: for<'a> use_cases::list_company_and_branch::DatabaseRead<Db<'a> = Ch>
         + 'static;
-    type SignIn: for<'a> cases::sign_in::DatabaseRead<Db<'a> = Ch>;
-    type SignUp: for<'a> cases::sign_up::DatabaseRead<Db<'a> = Ch>;
+    type SignIn: for<'a> use_cases::sign_in::DatabaseRead<Db<'a> = Ch>;
+    type SignUp: for<'a> use_cases::sign_up::DatabaseRead<Db<'a> = Ch>;
 }
 
 pub(crate) async fn new<Id: RowId, Ti: traits::Time, Dbb: DbBundle<Ch>, Ch: cache::Cache>() -> Ch {
@@ -37,7 +37,7 @@ pub(crate) async fn new<Id: RowId, Ti: traits::Time, Dbb: DbBundle<Ch>, Ch: cach
 macro_rules! run_operation_check {
     ($path:ident, $name:ident, $db:ty, $i:expr, $state:expr) => {
         request_response::OperationsResult::$name(
-            <use_cases::$path::ViewAndCacheType as ViewAndCache<Ch, $db>>::state_full_operation::<
+            <client::use_cases::$path::ViewAndCacheType as ViewAndCache<Ch, $db>>::state_full_operation::<
                 Id,
             >($i, $state)
             .await,
@@ -47,15 +47,15 @@ macro_rules! run_operation_check {
 
 macro_rules! run_operation_check_apply {
     ($path:ident, $db:ty, $i:expr, $state:expr) => {
-        let a= <use_cases::$path::ViewAndCacheType as ViewAndCache<Ch,$db>>::state_full_operation::<Id>($i, $state).await;
-        let resources=<use_cases::$path::ViewAndCacheType as ViewAndCache<Ch,$db>>::extract_resource(&a);
+        let a= <client::use_cases::$path::ViewAndCacheType as ViewAndCache<Ch,$db>>::state_full_operation::<Id>($i, $state).await;
+        let resources=<client::use_cases::$path::ViewAndCacheType as ViewAndCache<Ch,$db>>::extract_resource(&a);
         $state.write_resource_of_pending_txn(&resources).await;
     };
 }
 
 macro_rules! get_user_uuid {
     ($path:ident, $db:ty, $i:expr) => {
-        <use_cases::$path::ViewAndCacheType as ViewAndCache<Ch, $db>>::user_uuid(&$i)
+        <client::use_cases::$path::ViewAndCacheType as ViewAndCache<Ch, $db>>::user_uuid(&$i)
     };
 }
 
@@ -123,7 +123,7 @@ impl request_response::OperationsInput {
             }
             request_response::OperationsInput::CreateJournalEntry(i) => {
                 request_response::OperationsResult::CreateJournalEntry(
-                    <use_cases::create_journal_entry::ViewAndCacheType<Ti> as ViewAndCache<
+                    <client::use_cases::create_journal_entry::ViewAndCacheType<Ti> as ViewAndCache<
                         Ch,
                         Dbb::CreateJournalEntry,
                     >>::state_full_operation::<Id>(i, state)
@@ -187,13 +187,13 @@ impl request_response::OperationsInput {
             }
             request_response::OperationsInput::CreateJournalEntry(i) => {
                 let result =
-                    <use_cases::create_journal_entry::ViewAndCacheType<Ti> as ViewAndCache<
+                    <client::use_cases::create_journal_entry::ViewAndCacheType<Ti> as ViewAndCache<
                         Ch,
                         Dbb::CreateJournalEntry,
                     >>::state_full_operation::<Id>(i, state)
                     .await;
                 let resources =
-                    <use_cases::create_journal_entry::ViewAndCacheType<Ti> as ViewAndCache<
+                    <client::use_cases::create_journal_entry::ViewAndCacheType<Ti> as ViewAndCache<
                         Ch,
                         Dbb::CreateJournalEntry,
                     >>::extract_resource(&result);
@@ -237,7 +237,7 @@ impl request_response::OperationsInput {
                 get_user_uuid!(create_account_for_branch, Dbb::CreateAccountForBranch, i)
             }
             request_response::OperationsInput::CreateJournalEntry(i) => {
-                <use_cases::create_journal_entry::ViewAndCacheType<Ti> as ViewAndCache<
+                <client::use_cases::create_journal_entry::ViewAndCacheType<Ti> as ViewAndCache<
                     Ch,
                     Dbb::CreateJournalEntry,
                 >>::user_uuid(i)
@@ -248,7 +248,7 @@ impl request_response::OperationsInput {
 
 macro_rules! extract_resource {
     ($path:ident, $db:ty, $i:expr) => {
-        <use_cases::$path::ViewAndCacheType as ViewAndCache<Ch, $db>>::extract_resource($i)
+        <client::use_cases::$path::ViewAndCacheType as ViewAndCache<Ch, $db>>::extract_resource($i)
     };
 }
 
@@ -288,7 +288,7 @@ impl request_response::OperationsResult {
                 extract_resource!(create_account_for_branch, Dbb::CreateAccountForBranch, i)
             }
             request_response::OperationsResult::CreateJournalEntry(i) => {
-                <use_cases::create_journal_entry::ViewAndCacheType<Ti> as ViewAndCache<
+                <client::use_cases::create_journal_entry::ViewAndCacheType<Ti> as ViewAndCache<
                     Ch,
                     Dbb::CreateJournalEntry,
                 >>::extract_resource(i)

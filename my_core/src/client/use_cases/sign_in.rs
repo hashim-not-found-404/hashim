@@ -6,8 +6,8 @@ use crate::client::utility::commander;
 use crate::client::utility::process_manager;
 use crate::client::utility::ui_model;
 use crate::client::utility::ui_model::HashimSignal;
-use crate::domain::cases;
 use crate::domain::request_response;
+use crate::domain::use_cases;
 use crate::domain::utility::resource_utils;
 use crate::domain::utility::types::JsonWebTokenType;
 use crate::domain::utility::types::RowId;
@@ -18,10 +18,10 @@ use crate::utility::traits::Sender;
 use crate::utility::utils::ReadAndSet;
 use std::sync::Arc;
 
-type Type1 = cases::sign_in::Input;
-type Type2 = cases::sign_in::Input;
-type Type3 = cases::sign_in::MyResult;
-type Type4 = Result<SignInOk, cases::sign_in::Error>;
+type Type1 = use_cases::sign_in::Input;
+type Type2 = use_cases::sign_in::Input;
+type Type3 = use_cases::sign_in::MyResult;
+type Type4 = Result<SignInOk, use_cases::sign_in::Error>;
 
 pub(crate) struct SignInOk {
     user_uuid: User,
@@ -33,7 +33,7 @@ pub(crate) struct ViewAndCacheType;
 impl<Ch, LongCache> ViewAndCache<Ch, LongCache> for ViewAndCacheType
 where
     Ch: cache::Cache,
-    LongCache: for<'a> cases::sign_in::DatabaseRead<Db<'a> = Ch>,
+    LongCache: for<'a> use_cases::sign_in::DatabaseRead<Db<'a> = Ch>,
 {
     type Type1 = Type1;
     type Type2 = Type2;
@@ -49,7 +49,7 @@ where
     }
 
     async fn state_full_operation<Id: RowId>(data: &Self::Type2, state: &mut Ch) -> Self::Type3 {
-        let read_output = LongCache::read(state, &cases::sign_in::ReadInput {
+        let read_output = LongCache::read(state, &use_cases::sign_in::ReadInput {
             user_id: data.user_id.clone(),
         })
         .await
@@ -58,7 +58,7 @@ where
         if let Some((user_uuid, jwt, user_name)) = read_output.user_rowid_and_password_hash_and_name
             && !jwt.is_empty()
         {
-            return Ok(cases::sign_in::Ok {
+            return Ok(use_cases::sign_in::Ok {
                 user_uuid,
                 jwt: JsonWebTokenType(String::new()),
                 user_id: data.user_id.clone(),
@@ -79,15 +79,15 @@ where
                         user_name.as_ref(),
                     ))
                 } else {
-                    Err(cases::sign_in::Error {
+                    Err(use_cases::sign_in::Error {
                         user_id:  None,
-                        password: Some(cases::sign_in::PasswordError::WrongPassword),
+                        password: Some(use_cases::sign_in::PasswordError::WrongPassword),
                     })
                 }
             }
             None => {
-                Err(cases::sign_in::Error {
-                    user_id:  Some(cases::sign_in::UserIdError::NotExist),
+                Err(use_cases::sign_in::Error {
+                    user_id:  Some(use_cases::sign_in::UserIdError::NotExist),
                     password: None,
                 })
             }
@@ -169,7 +169,7 @@ impl ui_model::SignIn {
         Mpsc: traits::MultiProducerSingleConsumer,
         As: ui_model::AllSignalTypes,
         Ch: cache::Cache,
-        LongCache: for<'a> cases::sign_in::DatabaseRead<Db<'a> = Ch>,
+        LongCache: for<'a> use_cases::sign_in::DatabaseRead<Db<'a> = Ch>,
     >(
         self,
         model: &'static ui_model::Model<As>,
@@ -219,7 +219,7 @@ async fn handle_submit<
     Mpsc: traits::MultiProducerSingleConsumer,
     As: ui_model::AllSignalTypes,
     Ch: cache::Cache,
-    LongCache: for<'a> cases::sign_in::DatabaseRead<Db<'a> = Ch>,
+    LongCache: for<'a> use_cases::sign_in::DatabaseRead<Db<'a> = Ch>,
 >(
     model: &'static ui_model::Model<As>,
     cache: client_traits::CacheActorStruct<Mpsc>,
@@ -272,7 +272,7 @@ async fn handle_check<
     Mpsc: traits::MultiProducerSingleConsumer,
     As: ui_model::AllSignalTypes,
     Ch: cache::Cache,
-    LongCache: for<'a> cases::sign_in::DatabaseRead<Db<'a> = Ch>,
+    LongCache: for<'a> use_cases::sign_in::DatabaseRead<Db<'a> = Ch>,
 >(
     model: &'static ui_model::Model<As>,
     mut cache: client_traits::CacheActorStruct<Mpsc>,
@@ -309,7 +309,7 @@ async fn handle_check<
 fn handle_apply_result<
     As: ui_model::AllSignalTypes,
     Ch: cache::Cache,
-    LongCache: for<'a> cases::sign_in::DatabaseRead<Db<'a> = Ch>,
+    LongCache: for<'a> use_cases::sign_in::DatabaseRead<Db<'a> = Ch>,
 >(
     model: &ui_model::Model<As>,
     result: Type4,
@@ -321,7 +321,7 @@ fn handle_apply_result<
 }
 
 fn build_input<As: ui_model::AllSignalTypes>(model: &ui_model::Model<As>) -> Type1 {
-    cases::sign_in::Input {
+    use_cases::sign_in::Input {
         user_id:  model.user_id.read(),
         password: model.feature_state_auth.user_password.read(),
     }

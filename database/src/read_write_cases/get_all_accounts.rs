@@ -1,6 +1,6 @@
 use crate::utility::db_client;
 use crate::utility::utils::MyUuidConverter;
-use my_core::domain::cases;
+use my_core::domain::use_cases;
 use my_core::domain::utility::types::DatabaseRead;
 use my_core::domain::utility::uuid::UuidType;
 use my_core::utility::traits::DynamicError;
@@ -22,12 +22,12 @@ const READ_QUERY: &str = "
 
 pub struct S;
 
-impl cases::get_all_accounts::DatabaseRead for S {}
+impl use_cases::get_all_accounts::DatabaseRead for S {}
 
 impl DatabaseRead for S {
     type Db<'a> = db_client::S;
-    type Input = cases::get_all_accounts::ReadInput;
-    type Output = cases::get_all_accounts::ReadOutput;
+    type Input = use_cases::get_all_accounts::ReadInput;
+    type Output = use_cases::get_all_accounts::ReadOutput;
 
     async fn read(
         db: &mut Self::Db<'_>,
@@ -48,7 +48,7 @@ impl DatabaseRead for S {
             let notes: Option<String> = row.try_get(4).log()?;
             let unit_of_measurement_of_quantity: String = row.try_get(5).log()?;
 
-            data.push(cases::get_all_accounts::Data {
+            data.push(use_cases::get_all_accounts::Data {
                 row_uuid,
                 is_debit,
                 is_permanent_account,
@@ -58,7 +58,7 @@ impl DatabaseRead for S {
             });
         }
 
-        Ok(cases::get_all_accounts::ReadOutput {
+        Ok(use_cases::get_all_accounts::ReadOutput {
             data,
         })
     }

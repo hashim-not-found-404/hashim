@@ -1,6 +1,6 @@
 use crate::utility::db_transaction;
 use crate::utility::utils::MyUuidConverter;
-use my_core::domain::cases;
+use my_core::domain::use_cases;
 use my_core::domain::utility::types::DatabaseRead;
 use my_core::server::utility::server_traits;
 use my_core::utility::traits::DynamicError;
@@ -10,12 +10,12 @@ const READ_QUERY: &str = "SELECT EXISTS(SELECT 1 FROM accounting_app.company WHE
 
 pub struct S;
 
-impl cases::create_company::DatabaseRead for S {}
+impl use_cases::create_company::DatabaseRead for S {}
 
 impl DatabaseRead for S {
     type Db<'a> = db_transaction::S<'a>;
-    type Input = cases::create_company::ReadInput;
-    type Output = cases::create_company::ReadOutput;
+    type Input = use_cases::create_company::ReadInput;
+    type Output = use_cases::create_company::ReadOutput;
 
     async fn read(
         db: &mut Self::Db<'_>,
@@ -25,7 +25,7 @@ impl DatabaseRead for S {
         let row = db.txn.query_one(&stmt, &[&input.new_uuid.to_externel_uuid()]).await.log()?;
 
         let exists: bool = row.try_get(0).log()?;
-        Ok(cases::create_company::ReadOutput {
+        Ok(use_cases::create_company::ReadOutput {
             is_new_uuid_used: exists,
         })
     }
@@ -43,7 +43,7 @@ const WRITE_QUERY: &str = "
 
 impl server_traits::DatabaseWrite for S {
     type Db<'a> = db_transaction::S<'a>;
-    type Input = cases::create_company::Ok;
+    type Input = use_cases::create_company::Ok;
 
     async fn write(txn: &mut Self::Db<'_>, input: &Self::Input) -> Result<(), DynamicError> {
         let stmt = txn.txn.prepare_cached(WRITE_QUERY).await.log()?;

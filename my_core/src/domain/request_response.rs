@@ -1,4 +1,4 @@
-use crate::domain::cases;
+use crate::domain::use_cases;
 use crate::domain::utility::resource_utils;
 use crate::domain::utility::types::HashimError;
 use crate::domain::utility::types::JWTError;
@@ -32,35 +32,35 @@ pub struct Txn<T> {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub enum OperationsInput {
     // auth
-    SignUp(cases::sign_up::Input),
-    SignIn(cases::sign_in::Input),
+    SignUp(use_cases::sign_up::Input),
+    SignIn(use_cases::sign_in::Input),
     // write
-    CreateCompany(cases::create_company::Input),
-    CreateCompanyBranch(cases::create_company_branch::Input),
-    CreateAccount(cases::create_account::Input),
-    CreateAccountForBranch(cases::create_account_for_branch::Input),
-    CreateJournalEntry(cases::create_journal_entry::Input),
+    CreateCompany(use_cases::create_company::Input),
+    CreateCompanyBranch(use_cases::create_company_branch::Input),
+    CreateAccount(use_cases::create_account::Input),
+    CreateAccountForBranch(use_cases::create_account_for_branch::Input),
+    CreateJournalEntry(use_cases::create_journal_entry::Input),
     // read
-    ListCompanyAndBranch(cases::list_company_and_branch::Input),
-    GetAllAccounts(cases::get_all_accounts::Input),
-    GetAllAccountsForBranch(cases::get_all_accounts_for_branch::Input),
+    ListCompanyAndBranch(use_cases::list_company_and_branch::Input),
+    GetAllAccounts(use_cases::get_all_accounts::Input),
+    GetAllAccountsForBranch(use_cases::get_all_accounts_for_branch::Input),
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub enum OperationsResult {
     // auth
-    SignUp(cases::sign_up::MyResult),
-    SignIn(cases::sign_in::MyResult),
+    SignUp(use_cases::sign_up::MyResult),
+    SignIn(use_cases::sign_in::MyResult),
     // write
-    CreateCompany(cases::create_company::MyResult),
-    CreateCompanyBranch(cases::create_company_branch::MyResult),
-    CreateAccount(cases::create_account::MyResult),
-    CreateAccountForBranch(cases::create_account_for_branch::MyResult),
-    CreateJournalEntry(cases::create_journal_entry::MyResult),
+    CreateCompany(use_cases::create_company::MyResult),
+    CreateCompanyBranch(use_cases::create_company_branch::MyResult),
+    CreateAccount(use_cases::create_account::MyResult),
+    CreateAccountForBranch(use_cases::create_account_for_branch::MyResult),
+    CreateJournalEntry(use_cases::create_journal_entry::MyResult),
     // read
-    ListCompanyAndBranch(cases::list_company_and_branch::MyResult),
-    GetAllAccounts(cases::get_all_accounts::MyResult),
-    GetAllAccountsForBranch(cases::get_all_accounts_for_branch::MyResult),
+    ListCompanyAndBranch(use_cases::list_company_and_branch::MyResult),
+    GetAllAccounts(use_cases::get_all_accounts::MyResult),
+    GetAllAccountsForBranch(use_cases::get_all_accounts_for_branch::MyResult),
 }
 
 #[derive(Debug, Deserialize, Serialize)]

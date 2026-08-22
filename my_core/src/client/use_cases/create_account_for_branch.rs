@@ -6,8 +6,8 @@ use crate::client::utility::commander;
 use crate::client::utility::process_manager;
 use crate::client::utility::ui_model;
 use crate::client::utility::ui_model::HashimSignal;
-use crate::domain::cases;
 use crate::domain::request_response;
+use crate::domain::use_cases;
 use crate::domain::utility::resource_utils;
 use crate::domain::utility::types::MyErrorTrait;
 use crate::domain::utility::types::RowId;
@@ -18,17 +18,17 @@ use crate::utility::traits::Sender;
 use crate::utility::utils::ReadAndSet;
 use std::sync::Arc;
 
-type Type1 = cases::create_account_for_branch::Input;
-type Type2 = cases::create_account_for_branch::Input;
-type Type3 = cases::create_account_for_branch::MyResult;
-type Type4 = cases::create_account_for_branch::MyResult;
+type Type1 = use_cases::create_account_for_branch::Input;
+type Type2 = use_cases::create_account_for_branch::Input;
+type Type3 = use_cases::create_account_for_branch::MyResult;
+type Type4 = use_cases::create_account_for_branch::MyResult;
 
 pub(crate) struct ViewAndCacheType;
 
 impl<Ch, LongCache> ViewAndCache<Ch, LongCache> for ViewAndCacheType
 where
     Ch: cache::Cache,
-    LongCache: for<'a> cases::create_account_for_branch::DatabaseRead<Db<'a> = Ch>,
+    LongCache: for<'a> use_cases::create_account_for_branch::DatabaseRead<Db<'a> = Ch>,
 {
     type Type1 = Type1;
     type Type2 = Type2;
@@ -124,8 +124,8 @@ impl ui_model::CreateAccountForBranch {
         Mpsc: traits::MultiProducerSingleConsumer,
         As: ui_model::AllSignalTypes,
         Ch: cache::Cache + 'static,
-        LongCache: for<'a> cases::create_account_for_branch::DatabaseRead<Db<'a> = Ch> + 'static,
-        LongCacheForGetAllAccountsForBranch: for<'a> cases::get_all_accounts_for_branch::DatabaseRead<Db<'a> = Ch> + 'static,
+        LongCache: for<'a> use_cases::create_account_for_branch::DatabaseRead<Db<'a> = Ch> + 'static,
+        LongCacheForGetAllAccountsForBranch: for<'a> use_cases::get_all_accounts_for_branch::DatabaseRead<Db<'a> = Ch> + 'static,
     >(
         self,
         model: &'static ui_model::Model<As>,
@@ -187,7 +187,7 @@ impl ui_model::CreateAccountForBranch {
 }
 
 fn apply_fetch_result<As: ui_model::AllSignalTypes>(
-    result: &cases::get_all_accounts_for_branch::MyResult,
+    result: &use_cases::get_all_accounts_for_branch::MyResult,
     model: &ui_model::Model<As>,
 ) {
     if let Ok(ok) = result {
@@ -215,13 +215,13 @@ fn spawn_listener<
     Mpsc: traits::MultiProducerSingleConsumer,
     As: ui_model::AllSignalTypes,
     Ch: cache::Cache,
-    LongCacheForGetAllAccountsForBranch: for<'a> cases::get_all_accounts_for_branch::DatabaseRead<Db<'a> = Ch>,
+    LongCacheForGetAllAccountsForBranch: for<'a> use_cases::get_all_accounts_for_branch::DatabaseRead<Db<'a> = Ch>,
 >(
     model: &'static ui_model::Model<As>,
     cache: client_traits::CacheActorStruct<Mpsc>,
     commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
 ) {
-    let data = cases::get_all_accounts_for_branch::Input {
+    let data = use_cases::get_all_accounts_for_branch::Input {
         user_uuid:           model.user_uuid.read().clone().unwrap().clone(),
         company_branch_uuid: model.selected_company_branch.read().unwrap().clone(),
     };
@@ -270,7 +270,7 @@ async fn handle_submit<
     Mpsc: traits::MultiProducerSingleConsumer,
     As: ui_model::AllSignalTypes,
     Ch: cache::Cache,
-    LongCache: for<'a> cases::create_account_for_branch::DatabaseRead<Db<'a> = Ch>,
+    LongCache: for<'a> use_cases::create_account_for_branch::DatabaseRead<Db<'a> = Ch>,
 >(
     model: &'static ui_model::Model<As>,
     cache: client_traits::CacheActorStruct<Mpsc>,
@@ -321,7 +321,7 @@ fn build_input<Id: RowId, As: ui_model::AllSignalTypes>(
         .first()
         .map(|acc| acc.row_uuid.clone())?;
 
-    Some(cases::create_account_for_branch::Input {
+    Some(use_cases::create_account_for_branch::Input {
         user_uuid:                model.user_uuid.read().clone().unwrap().clone(),
         new_uuid:                 Id::generate().clone().into(),
         belong_to_account:        account_uuid.clone(),

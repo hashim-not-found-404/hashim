@@ -2,7 +2,7 @@ use crate::utility::cache_adapter;
 use crate::utility::utils::MyUuidConverter;
 use crate::utility::utils::MyUuidConverter1;
 use accounting_engine::accounting_stuff;
-use my_core::domain::cases;
+use my_core::domain::use_cases;
 use my_core::domain::utility::types::DatabaseRead;
 use my_core::domain::utility::uuid::Company;
 use my_core::utility::traits::DynamicError;
@@ -18,12 +18,12 @@ const QUERY3: &str = "SELECT rowid, account, outflow_type, inflow_type
 
 pub struct S;
 
-impl cases::get_all_accounts_for_branch::DatabaseRead for S {}
+impl use_cases::get_all_accounts_for_branch::DatabaseRead for S {}
 
 impl DatabaseRead for S {
     type Db<'a> = cache_adapter::S;
-    type Input = cases::get_all_accounts_for_branch::ReadInput;
-    type Output = cases::get_all_accounts_for_branch::ReadOutput;
+    type Input = use_cases::get_all_accounts_for_branch::ReadInput;
+    type Output = use_cases::get_all_accounts_for_branch::ReadOutput;
 
     async fn read(
         db: &mut Self::Db<'_>,
@@ -37,7 +37,7 @@ impl DatabaseRead for S {
         let company_uuid: Company = match company_uuid_str {
             Some(s) => s.to_uuid().into(),
             None => {
-                return Ok(cases::get_all_accounts_for_branch::ReadOutput::default());
+                return Ok(use_cases::get_all_accounts_for_branch::ReadOutput::default());
             }
         };
 
@@ -50,7 +50,7 @@ impl DatabaseRead for S {
                 let account_name: String = row.get(3)?;
                 let notes: Option<String> = row.get(4)?;
                 let unit_of_measurement: String = row.get(5)?;
-                Ok(cases::get_all_accounts_for_branch::Account {
+                Ok(use_cases::get_all_accounts_for_branch::Account {
                     row_uuid: row_uuid_str.to_uuid().into(),
                     is_debit,
                     is_permanent_account,
@@ -61,7 +61,7 @@ impl DatabaseRead for S {
             })
             .unwrap();
 
-        let accounts: Vec<cases::get_all_accounts_for_branch::Account> =
+        let accounts: Vec<use_cases::get_all_accounts_for_branch::Account> =
             account_rows.filter_map(|row| row.ok()).collect();
 
         let mut stmt = db.tables_db.prepare(QUERY3).unwrap();
@@ -74,7 +74,7 @@ impl DatabaseRead for S {
                 let outflow_type =
                     accounting_stuff::OutFlowType::from_str(&outflow_type_str).unwrap();
                 let inflow_type = accounting_stuff::InFlowType::from_str(&inflow_type_str).unwrap();
-                Ok(cases::get_all_accounts_for_branch::AccountForBranch {
+                Ok(use_cases::get_all_accounts_for_branch::AccountForBranch {
                     row_uuid: row_uuid_str.to_uuid().into(),
                     account_uuid: account_uuid_str.to_uuid().into(),
                     outflow_type,
@@ -85,7 +85,7 @@ impl DatabaseRead for S {
 
         let accounts_for_branch = flow_rows.collect::<Result<Vec<_>, _>>().unwrap();
 
-        Ok(cases::get_all_accounts_for_branch::ReadOutput {
+        Ok(use_cases::get_all_accounts_for_branch::ReadOutput {
             company_uuid,
             accounts,
             accounts_for_branch,

@@ -1,4 +1,4 @@
-use crate::domain::cases;
+use crate::domain::use_cases;
 use crate::domain::utility::types::MyErrorTrait;
 use crate::domain::utility::types::RowId;
 use crate::domain::utility::types::UserUuidError;
@@ -6,17 +6,17 @@ use crate::server::utility::server_traits::DBClient;
 use crate::server::utility::server_traits::SideEffects;
 use crate::utility::traits::DynamicError;
 
-impl cases::list_company_and_branch::Input {
+impl use_cases::list_company_and_branch::Input {
     pub(crate) async fn handle_operation<
         Id: RowId,
         Cli: DBClient,
-        Db: for<'a> cases::list_company_and_branch::DatabaseRead<Db<'a> = Cli>,
+        Db: for<'a> use_cases::list_company_and_branch::DatabaseRead<Db<'a> = Cli>,
     >(
         &self,
         side_effects: &mut SideEffects,
         client: &mut Cli,
     ) -> Result<
-        Result<cases::list_company_and_branch::Ok, cases::list_company_and_branch::Error>,
+        Result<use_cases::list_company_and_branch::Ok, use_cases::list_company_and_branch::Error>,
         DynamicError,
     > {
         let mut errr = self.state_less_check::<Id>();

@@ -1,7 +1,7 @@
 use crate::utility::cache_adapter;
 use crate::utility::utils::MyUuidConverter;
 use crate::utility::utils::MyUuidConverter1;
-use my_core::domain::cases;
+use my_core::domain::use_cases;
 use my_core::domain::utility::types::Currency;
 use my_core::domain::utility::types::DatabaseRead;
 use my_core::domain::utility::types::Role;
@@ -23,12 +23,12 @@ const QUERY2: &str = "
 
 pub struct S;
 
-impl cases::list_company_and_branch::DatabaseRead for S {}
+impl use_cases::list_company_and_branch::DatabaseRead for S {}
 
 impl DatabaseRead for S {
     type Db<'a> = cache_adapter::S;
-    type Input = cases::list_company_and_branch::ReadInput;
-    type Output = cases::list_company_and_branch::ReadOutput;
+    type Input = use_cases::list_company_and_branch::ReadInput;
+    type Output = use_cases::list_company_and_branch::ReadOutput;
 
     async fn read(
         db: &mut Self::Db<'_>,
@@ -106,14 +106,14 @@ impl DatabaseRead for S {
             let company_uuid = company_uuid_str.clone().to_uuid().into();
             let company_currency = Currency::from_str(&company_currency_str).unwrap();
 
-            let branches: Vec<cases::list_company_and_branch::AllBranchesThatUserInWithRoles> =
+            let branches: Vec<use_cases::list_company_and_branch::AllBranchesThatUserInWithRoles> =
                 branch_map
                     .iter()
                     .filter(|(_, info)| info.company_belong == company_uuid_str)
                     .map(|(_, info)| {
                         let branch_uuid = info.branch_uuid.clone().to_uuid().into();
                         let branch_currency = Currency::from_str(&info.branch_currency).unwrap();
-                        cases::list_company_and_branch::AllBranchesThatUserInWithRoles {
+                        use_cases::list_company_and_branch::AllBranchesThatUserInWithRoles {
                             branch_uuid,
                             branch_name: info.branch_name.clone(),
                             branch_currancy: branch_currency,
@@ -122,7 +122,7 @@ impl DatabaseRead for S {
                     })
                     .collect::<Vec<_>>();
 
-            result.push(cases::list_company_and_branch::AllCompaniesThatUserInWithRoles {
+            result.push(use_cases::list_company_and_branch::AllCompaniesThatUserInWithRoles {
                 company_uuid,
                 company_name,
                 company_currancy: company_currency,
@@ -131,7 +131,7 @@ impl DatabaseRead for S {
             });
         }
 
-        Ok(cases::list_company_and_branch::ReadOutput {
+        Ok(use_cases::list_company_and_branch::ReadOutput {
             data: result,
         })
     }

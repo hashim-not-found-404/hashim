@@ -6,8 +6,8 @@ use crate::client::utility::commander;
 use crate::client::utility::process_manager;
 use crate::client::utility::ui_model;
 use crate::client::utility::ui_model::HashimSignal;
-use crate::domain::cases;
 use crate::domain::request_response;
+use crate::domain::use_cases;
 use crate::domain::utility::resource_utils;
 use crate::domain::utility::types::MyErrorTrait;
 use crate::domain::utility::types::RowId;
@@ -19,17 +19,17 @@ use crate::utility::traits::Sender;
 use crate::utility::utils::ReadAndSet;
 use std::sync::Arc;
 
-type Type1 = cases::create_company_branch::Input;
-type Type2 = cases::create_company_branch::Input;
-type Type3 = cases::create_company_branch::MyResult;
-type Type4 = cases::create_company_branch::MyResult;
+type Type1 = use_cases::create_company_branch::Input;
+type Type2 = use_cases::create_company_branch::Input;
+type Type3 = use_cases::create_company_branch::MyResult;
+type Type4 = use_cases::create_company_branch::MyResult;
 
 pub(crate) struct ViewAndCacheType;
 
 impl<Ch, LongCache> ViewAndCache<Ch, LongCache> for ViewAndCacheType
 where
     Ch: cache::Cache,
-    LongCache: for<'a> cases::create_company_branch::DatabaseRead<Db<'a> = Ch>,
+    LongCache: for<'a> use_cases::create_company_branch::DatabaseRead<Db<'a> = Ch>,
 {
     type Type1 = Type1;
     type Type2 = Type2;
@@ -145,7 +145,7 @@ impl ui_model::CreateCompanyBranch {
         Mpsc: traits::MultiProducerSingleConsumer,
         As: ui_model::AllSignalTypes,
         Ch: cache::Cache,
-        LongCache: for<'a> cases::create_company_branch::DatabaseRead<Db<'a> = Ch>,
+        LongCache: for<'a> use_cases::create_company_branch::DatabaseRead<Db<'a> = Ch>,
     >(
         self,
         model: &'static ui_model::Model<As>,
@@ -190,7 +190,7 @@ async fn handle_submit<
     Mpsc: traits::MultiProducerSingleConsumer,
     As: ui_model::AllSignalTypes,
     Ch: cache::Cache,
-    LongCache: for<'a> cases::create_company_branch::DatabaseRead<Db<'a> = Ch>,
+    LongCache: for<'a> use_cases::create_company_branch::DatabaseRead<Db<'a> = Ch>,
 >(
     model: &'static ui_model::Model<As>,
     cache: client_traits::CacheActorStruct<Mpsc>,
@@ -235,7 +235,7 @@ async fn handle_check<
     Mpsc: traits::MultiProducerSingleConsumer,
     As: ui_model::AllSignalTypes,
     Ch: cache::Cache,
-    LongCache: for<'a> cases::create_company_branch::DatabaseRead<Db<'a> = Ch>,
+    LongCache: for<'a> use_cases::create_company_branch::DatabaseRead<Db<'a> = Ch>,
 >(
     model: &'static ui_model::Model<As>,
     mut cache: client_traits::CacheActorStruct<Mpsc>,
@@ -288,7 +288,7 @@ fn handle_close<As: ui_model::AllSignalTypes>(model: &'static ui_model::Model<As
 fn build_input<Id: RowId, As: ui_model::AllSignalTypes>(model: &ui_model::Model<As>) -> Type1 {
     let local_state = &model.page_create_company_branch;
 
-    cases::create_company_branch::Input {
+    use_cases::create_company_branch::Input {
         user_uuid:      model.user_uuid.read().clone().unwrap(),
         new_uuid:       Id::generate().into(),
         company_belong: model.selected_company.read().unwrap(),

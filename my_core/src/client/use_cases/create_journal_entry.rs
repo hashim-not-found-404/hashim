@@ -6,9 +6,9 @@ use crate::client::utility::commander;
 use crate::client::utility::process_manager;
 use crate::client::utility::ui_model;
 use crate::client::utility::ui_model::HashimSignal;
-use crate::domain::cases;
-use crate::domain::cases::create_journal_entry;
 use crate::domain::request_response;
+use crate::domain::use_cases;
+use crate::domain::use_cases::create_journal_entry;
 use crate::domain::utility::resource_utils;
 use crate::domain::utility::types::RowId;
 use crate::domain::utility::uuid::SharedEntry;
@@ -19,10 +19,10 @@ use crate::utility::traits::Sender;
 use crate::utility::utils::ReadAndSet;
 use std::sync::Arc;
 
-type Type1 = cases::create_journal_entry::Input;
-type Type2 = cases::create_journal_entry::Input;
-type Type3 = cases::create_journal_entry::MyResult;
-type Type4 = cases::create_journal_entry::MyResult;
+type Type1 = use_cases::create_journal_entry::Input;
+type Type2 = use_cases::create_journal_entry::Input;
+type Type3 = use_cases::create_journal_entry::MyResult;
+type Type4 = use_cases::create_journal_entry::MyResult;
 
 pub(crate) struct ViewAndCacheType<Ti: traits::Time>(Ti);
 
@@ -30,7 +30,7 @@ impl<Ch, LongCache, Ti> ViewAndCache<Ch, LongCache> for ViewAndCacheType<Ti>
 where
     Ti: traits::Time,
     Ch: cache::Cache,
-    LongCache: for<'a> cases::create_journal_entry::DatabaseRead<Db<'a> = Ch>,
+    LongCache: for<'a> use_cases::create_journal_entry::DatabaseRead<Db<'a> = Ch>,
 {
     type Type1 = Type1;
     type Type2 = Type2;
@@ -212,8 +212,8 @@ impl ui_model::CreateJournalEntry {
         Ti: traits::Time,
         As: ui_model::AllSignalTypes,
         Ch: cache::Cache + 'static,
-        LongCache: for<'a> cases::create_journal_entry::DatabaseRead<Db<'a> = Ch> + 'static,
-        LongCacheForGetAllAccountsForBranch: for<'a> cases::get_all_accounts_for_branch::DatabaseRead<Db<'a> = Ch> + 'static,
+        LongCache: for<'a> use_cases::create_journal_entry::DatabaseRead<Db<'a> = Ch> + 'static,
+        LongCacheForGetAllAccountsForBranch: for<'a> use_cases::get_all_accounts_for_branch::DatabaseRead<Db<'a> = Ch> + 'static,
     >(
         self,
         model: &'static ui_model::Model<As>,
@@ -356,7 +356,7 @@ impl ui_model::CreateJournalEntry {
 }
 
 fn apply_fetch_result<As: ui_model::AllSignalTypes>(
-    result: &cases::get_all_accounts_for_branch::MyResult,
+    result: &use_cases::get_all_accounts_for_branch::MyResult,
     model: &ui_model::Model<As>,
 ) {
     if let Ok(ok) = result {
@@ -384,13 +384,13 @@ fn spawn_listener<
     Mpsc: traits::MultiProducerSingleConsumer,
     As: ui_model::AllSignalTypes,
     Ch: cache::Cache,
-    LongCacheForGetAllAccountsForBranch: for<'a> cases::get_all_accounts_for_branch::DatabaseRead<Db<'a> = Ch>,
+    LongCacheForGetAllAccountsForBranch: for<'a> use_cases::get_all_accounts_for_branch::DatabaseRead<Db<'a> = Ch>,
 >(
     model: &'static ui_model::Model<As>,
     cache: client_traits::CacheActorStruct<Mpsc>,
     commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
 ) {
-    let data = cases::get_all_accounts_for_branch::Input {
+    let data = use_cases::get_all_accounts_for_branch::Input {
         user_uuid:           model.user_uuid.read().clone().unwrap().clone(),
         company_branch_uuid: model.selected_company_branch.read().unwrap().clone(),
     };
@@ -436,7 +436,7 @@ async fn handle_submit<
     Ti: traits::Time,
     As: ui_model::AllSignalTypes,
     Ch: cache::Cache,
-    LongCache: for<'a> cases::create_journal_entry::DatabaseRead<Db<'a> = Ch>,
+    LongCache: for<'a> use_cases::create_journal_entry::DatabaseRead<Db<'a> = Ch>,
 >(
     model: &'static ui_model::Model<As>,
     cache: client_traits::CacheActorStruct<Mpsc>,
@@ -495,15 +495,15 @@ fn build_input<Id: RowId, As: ui_model::AllSignalTypes>(
         }
     }
 
-    let double_entries_input: Vec<cases::create_journal_entry::DoubleEntryInput> = ui_entries
+    let double_entries_input: Vec<use_cases::create_journal_entry::DoubleEntryInput> = ui_entries
         .into_iter()
         .map(|double| {
-            let singles_input: Vec<cases::create_journal_entry::SingleEntryInput> = double
+            let singles_input: Vec<use_cases::create_journal_entry::SingleEntryInput> = double
                 .singles
                 .into_iter()
                 .map(|single| {
                     let account = single.inferred_account_id.unwrap();
-                    cases::create_journal_entry::SingleEntryInput {
+                    use_cases::create_journal_entry::SingleEntryInput {
                         new_uuid: Id::generate(),
                         account,
                         is_debit: single.user_input_is_debit,
@@ -515,13 +515,13 @@ fn build_input<Id: RowId, As: ui_model::AllSignalTypes>(
                     }
                 })
                 .collect();
-            cases::create_journal_entry::DoubleEntryInput {
+            use_cases::create_journal_entry::DoubleEntryInput {
                 single_entries: singles_input,
             }
         })
         .collect();
 
-    Some(cases::create_journal_entry::Input {
+    Some(use_cases::create_journal_entry::Input {
         new_uuid:                 Id::generate(),
         belong_to_company_branch: model.selected_company_branch.read().unwrap(),
         user_uuid:                model.user_uuid.read().clone().unwrap(),

@@ -1,6 +1,6 @@
 use crate::utility::cache_adapter;
 use crate::utility::utils::MyUuidConverter;
-use my_core::domain::cases;
+use my_core::domain::use_cases;
 use my_core::domain::utility::types::DatabaseRead;
 use my_core::domain::utility::types::Role;
 use my_core::utility::traits::DynamicError;
@@ -17,12 +17,12 @@ const QUERY5: &str = "SELECT 1 FROM account_flow_type WHERE account = ?1 AND com
 
 pub struct S;
 
-impl cases::create_account_for_branch::DatabaseRead for S {}
+impl use_cases::create_account_for_branch::DatabaseRead for S {}
 
 impl DatabaseRead for S {
     type Db<'a> = cache_adapter::S;
-    type Input = cases::create_account_for_branch::ReadInput;
-    type Output = cases::create_account_for_branch::ReadOutput;
+    type Input = use_cases::create_account_for_branch::ReadInput;
+    type Output = use_cases::create_account_for_branch::ReadOutput;
 
     async fn read(
         db: &mut Self::Db<'_>,
@@ -58,7 +58,7 @@ impl DatabaseRead for S {
         let is_account_uuid_with_company_branch_used =
             stmt.exists(params![account_uuid, branch_uuid]).unwrap();
 
-        Ok(cases::create_account_for_branch::ReadOutput {
+        Ok(use_cases::create_account_for_branch::ReadOutput {
             user_roles,
             is_new_uuid_used,
             is_account_uuid_exist,

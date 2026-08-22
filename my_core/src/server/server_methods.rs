@@ -1,5 +1,5 @@
-use crate::domain::cases;
 use crate::domain::request_response;
+use crate::domain::use_cases;
 use crate::domain::utility::resource_utils;
 use crate::domain::utility::resource_utils::Subscribe;
 use crate::domain::utility::types::HashedPassword;
@@ -30,31 +30,34 @@ use std::time::SystemTime;
 use std::time::UNIX_EPOCH;
 
 pub trait DbBundle<Cli: DBClient>: 'static {
-    type CreateAccount: for<'a> cases::create_account::DatabaseRead<Db<'a> = Cli::Txn<'a>>;
-    type WriteCreateAccount: for<'a> DatabaseWrite<Db<'a> = Cli::Txn<'a>, Input = cases::create_account::Ok>;
+    type CreateAccount: for<'a> use_cases::create_account::DatabaseRead<Db<'a> = Cli::Txn<'a>>;
+    type WriteCreateAccount: for<'a> DatabaseWrite<Db<'a> = Cli::Txn<'a>, Input = use_cases::create_account::Ok>;
 
-    type CreateAccountForBranch: for<'a> cases::create_account_for_branch::DatabaseRead<Db<'a> = Cli::Txn<'a>>;
-    type WriteCreateAccountForBranch: for<'a> DatabaseWrite<Db<'a> = Cli::Txn<'a>, Input = cases::create_account_for_branch::Ok>;
+    type CreateAccountForBranch: for<'a> use_cases::create_account_for_branch::DatabaseRead<Db<'a> = Cli::Txn<'a>>;
+    type WriteCreateAccountForBranch: for<'a> DatabaseWrite<
+            Db<'a> = Cli::Txn<'a>,
+            Input = use_cases::create_account_for_branch::Ok,
+        >;
 
-    type CreateJournalEntry: for<'a> cases::create_journal_entry::DatabaseRead<Db<'a> = Cli::Txn<'a>>;
-    type WriteCreateJournalEntry: for<'a> DatabaseWrite<Db<'a> = Cli::Txn<'a>, Input = cases::create_journal_entry::Ok>;
+    type CreateJournalEntry: for<'a> use_cases::create_journal_entry::DatabaseRead<Db<'a> = Cli::Txn<'a>>;
+    type WriteCreateJournalEntry: for<'a> DatabaseWrite<Db<'a> = Cli::Txn<'a>, Input = use_cases::create_journal_entry::Ok>;
 
-    type GetAllAccounts: for<'a> cases::get_all_accounts::DatabaseRead<Db<'a> = Cli>;
+    type GetAllAccounts: for<'a> use_cases::get_all_accounts::DatabaseRead<Db<'a> = Cli>;
 
-    type GetAllAccountsForBranch: for<'a> cases::get_all_accounts_for_branch::DatabaseRead<Db<'a> = Cli>;
+    type GetAllAccountsForBranch: for<'a> use_cases::get_all_accounts_for_branch::DatabaseRead<Db<'a> = Cli>;
 
-    type CreateCompany: for<'a> cases::create_company::DatabaseRead<Db<'a> = Cli::Txn<'a>>;
-    type WriteCreateCompany: for<'a> DatabaseWrite<Db<'a> = Cli::Txn<'a>, Input = cases::create_company::Ok>;
+    type CreateCompany: for<'a> use_cases::create_company::DatabaseRead<Db<'a> = Cli::Txn<'a>>;
+    type WriteCreateCompany: for<'a> DatabaseWrite<Db<'a> = Cli::Txn<'a>, Input = use_cases::create_company::Ok>;
 
-    type CreateCompanyBranch: for<'a> cases::create_company_branch::DatabaseRead<Db<'a> = Cli::Txn<'a>>;
-    type WriteCreateCompanyBranch: for<'a> DatabaseWrite<Db<'a> = Cli::Txn<'a>, Input = cases::create_company_branch::Ok>;
+    type CreateCompanyBranch: for<'a> use_cases::create_company_branch::DatabaseRead<Db<'a> = Cli::Txn<'a>>;
+    type WriteCreateCompanyBranch: for<'a> DatabaseWrite<Db<'a> = Cli::Txn<'a>, Input = use_cases::create_company_branch::Ok>;
 
-    type ListCompanyAndBranch: for<'a> cases::list_company_and_branch::DatabaseRead<Db<'a> = Cli>;
+    type ListCompanyAndBranch: for<'a> use_cases::list_company_and_branch::DatabaseRead<Db<'a> = Cli>;
 
-    type SignIn: for<'a> cases::sign_in::DatabaseRead<Db<'a> = Cli>;
+    type SignIn: for<'a> use_cases::sign_in::DatabaseRead<Db<'a> = Cli>;
 
-    type SignUp: for<'a> cases::sign_up::DatabaseRead<Db<'a> = Cli::Txn<'a>>;
-    type WriteSignUp: for<'a> DatabaseWrite<Db<'a> = Cli::Txn<'a>, Input = cases::sign_up::Ok>;
+    type SignUp: for<'a> use_cases::sign_up::DatabaseRead<Db<'a> = Cli::Txn<'a>>;
+    type WriteSignUp: for<'a> DatabaseWrite<Db<'a> = Cli::Txn<'a>, Input = use_cases::sign_up::Ok>;
 }
 
 pub trait Database: 'static {

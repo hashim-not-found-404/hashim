@@ -1,6 +1,6 @@
 use crate::utility::db_transaction;
 use crate::utility::utils::MyUuidConverter;
-use my_core::domain::cases;
+use my_core::domain::use_cases;
 use my_core::domain::utility::types::DatabaseRead;
 use my_core::server::utility::server_traits;
 use my_core::utility::traits::DynamicError;
@@ -14,12 +14,12 @@ const READ_QUERY: &str = "
 
 pub struct S;
 
-impl cases::sign_up::DatabaseRead for S {}
+impl use_cases::sign_up::DatabaseRead for S {}
 
 impl DatabaseRead for S {
     type Db<'a> = db_transaction::S<'a>;
-    type Input = cases::sign_up::ReadInput;
-    type Output = cases::sign_up::ReadOutput;
+    type Input = use_cases::sign_up::ReadInput;
+    type Output = use_cases::sign_up::ReadOutput;
 
     async fn read(
         db: &mut Self::Db<'_>,
@@ -32,7 +32,7 @@ impl DatabaseRead for S {
             .await
             .log()?;
 
-        let a = cases::sign_up::ReadOutput {
+        let a = use_cases::sign_up::ReadOutput {
             is_new_uuid_exist: row.try_get("uuid_exists").log()?,
             is_user_id_exist:  row.try_get("user_id_exists").log()?,
         };
@@ -45,7 +45,7 @@ const WRITE_QUERY: &str =
 
 impl server_traits::DatabaseWrite for S {
     type Db<'a> = db_transaction::S<'a>;
-    type Input = cases::sign_up::Ok;
+    type Input = use_cases::sign_up::Ok;
 
     async fn write(txn: &mut Self::Db<'_>, input: &Self::Input) -> Result<(), DynamicError> {
         let stmt = txn.txn.prepare_cached(WRITE_QUERY).await.log()?;

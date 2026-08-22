@@ -1,8 +1,8 @@
 use crate::client::utility::cache;
 use crate::client::utility::client_traits::ViewAndCache;
 use crate::client::utility::ui_model;
-use crate::domain::cases;
 use crate::domain::request_response;
+use crate::domain::use_cases;
 use crate::domain::utility::resource_utils;
 use crate::domain::utility::types::RowId;
 use crate::domain::utility::uuid::Account;
@@ -14,12 +14,12 @@ pub struct ViewAndCacheType;
 impl<Ch, LongCache> ViewAndCache<Ch, LongCache> for ViewAndCacheType
 where
     Ch: cache::Cache,
-    LongCache: for<'a> cases::get_all_accounts_for_branch::DatabaseRead<Db<'a> = Ch>,
+    LongCache: for<'a> use_cases::get_all_accounts_for_branch::DatabaseRead<Db<'a> = Ch>,
 {
-    type Type1 = cases::get_all_accounts_for_branch::Input;
-    type Type2 = cases::get_all_accounts_for_branch::Input;
-    type Type3 = cases::get_all_accounts_for_branch::MyResult;
-    type Type4 = cases::get_all_accounts_for_branch::MyResult;
+    type Type1 = use_cases::get_all_accounts_for_branch::Input;
+    type Type2 = use_cases::get_all_accounts_for_branch::Input;
+    type Type3 = use_cases::get_all_accounts_for_branch::MyResult;
+    type Type4 = use_cases::get_all_accounts_for_branch::MyResult;
 
     fn subs() -> &'static [resource_utils::Subscribe] {
         &[
@@ -45,14 +45,15 @@ where
     }
 
     async fn state_full_operation<Id: RowId>(data: &Self::Type2, state: &mut Ch) -> Self::Type3 {
-        let read_output = LongCache::read(state, &cases::get_all_accounts_for_branch::ReadInput {
-            user_uuid:           data.user_uuid.clone(),
-            company_branch_uuid: data.company_branch_uuid.clone(),
-        })
-        .await
-        .unwrap();
+        let read_output =
+            LongCache::read(state, &use_cases::get_all_accounts_for_branch::ReadInput {
+                user_uuid:           data.user_uuid.clone(),
+                company_branch_uuid: data.company_branch_uuid.clone(),
+            })
+            .await
+            .unwrap();
 
-        let ok = cases::get_all_accounts_for_branch::Ok {
+        let ok = use_cases::get_all_accounts_for_branch::Ok {
             company_uuid:        read_output.company_uuid,
             company_branch_uuid: data.company_branch_uuid.clone(),
             accounts:            read_output.accounts,

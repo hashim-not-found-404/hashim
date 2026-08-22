@@ -1,4 +1,4 @@
-use crate::domain::cases;
+use crate::domain::use_cases;
 use crate::domain::utility::types::MyErrorTrait;
 use crate::domain::utility::types::RowId;
 use crate::domain::utility::types::UserUuidError;
@@ -8,21 +8,21 @@ use crate::server::utility::server_traits::DBTransaction;
 use crate::server::utility::server_traits::SideEffects;
 use crate::utility::traits::DynamicError;
 
-impl cases::create_company_branch::Input {
+impl use_cases::create_company_branch::Input {
     pub(crate) async fn handle_operation<
         Id: RowId,
         Cli: DBClient,
-        Db: for<'a> cases::create_company_branch::DatabaseRead<Db<'a> = Cli::Txn<'a>>,
+        Db: for<'a> use_cases::create_company_branch::DatabaseRead<Db<'a> = Cli::Txn<'a>>,
         DbWrite: for<'a> server_traits::DatabaseWrite<
                 Db<'a> = Cli::Txn<'a>,
-                Input = cases::create_company_branch::Ok,
+                Input = use_cases::create_company_branch::Ok,
             >,
     >(
         &self,
         side_effects: &mut SideEffects,
         client: &mut Cli,
     ) -> Result<
-        Result<cases::create_company_branch::Ok, cases::create_company_branch::Error>,
+        Result<use_cases::create_company_branch::Ok, use_cases::create_company_branch::Error>,
         DynamicError,
     > {
         let mut errr = self.state_less_check::<Id>();

@@ -6,8 +6,8 @@ use crate::client::utility::commander;
 use crate::client::utility::process_manager;
 use crate::client::utility::ui_model;
 use crate::client::utility::ui_model::HashimSignal;
-use crate::domain::cases;
 use crate::domain::request_response;
+use crate::domain::use_cases;
 use crate::domain::utility::resource_utils;
 use crate::domain::utility::types::JsonWebTokenType;
 use crate::domain::utility::types::MyErrorTrait;
@@ -20,17 +20,17 @@ use crate::utility::utils::MakeOptionIfEmpty;
 use crate::utility::utils::ReadAndSet;
 use std::sync::Arc;
 
-type Type1 = cases::sign_up::Input;
-type Type2 = cases::sign_up::Input;
-type Type3 = cases::sign_up::MyResult;
-type Type4 = cases::sign_up::MyResult;
+type Type1 = use_cases::sign_up::Input;
+type Type2 = use_cases::sign_up::Input;
+type Type3 = use_cases::sign_up::MyResult;
+type Type4 = use_cases::sign_up::MyResult;
 
 pub(crate) struct ViewAndCacheType;
 
 impl<Ch, LongCache> ViewAndCache<Ch, LongCache> for ViewAndCacheType
 where
     Ch: cache::Cache,
-    LongCache: for<'a> cases::sign_up::DatabaseRead<Db<'a> = Ch>,
+    LongCache: for<'a> use_cases::sign_up::DatabaseRead<Db<'a> = Ch>,
 {
     type Type1 = Type1;
     type Type2 = Type2;
@@ -52,7 +52,7 @@ where
             return Err(errr);
         }
 
-        Ok(cases::sign_up::Ok {
+        Ok(use_cases::sign_up::Ok {
             new_uuid:        data.new_uuid.clone(),
             user_id:         data.user_id.clone(),
             user_name:       data.name.clone(),
@@ -124,7 +124,7 @@ impl ui_model::SignUp {
         Mpsc: traits::MultiProducerSingleConsumer,
         As: ui_model::AllSignalTypes,
         Ch: cache::Cache,
-        LongCache: for<'a> cases::sign_up::DatabaseRead<Db<'a> = Ch>,
+        LongCache: for<'a> use_cases::sign_up::DatabaseRead<Db<'a> = Ch>,
     >(
         self,
         model: &'static ui_model::Model<As>,
@@ -179,7 +179,7 @@ async fn handle_submit<
     Mpsc: traits::MultiProducerSingleConsumer,
     As: ui_model::AllSignalTypes,
     Ch: cache::Cache,
-    LongCache: for<'a> cases::sign_up::DatabaseRead<Db<'a> = Ch>,
+    LongCache: for<'a> use_cases::sign_up::DatabaseRead<Db<'a> = Ch>,
 >(
     model: &'static ui_model::Model<As>,
     cache: client_traits::CacheActorStruct<Mpsc>,
@@ -235,7 +235,7 @@ async fn handle_check<
     Mpsc: traits::MultiProducerSingleConsumer,
     As: ui_model::AllSignalTypes,
     Ch: cache::Cache,
-    LongCache: for<'a> cases::sign_up::DatabaseRead<Db<'a> = Ch>,
+    LongCache: for<'a> use_cases::sign_up::DatabaseRead<Db<'a> = Ch>,
 >(
     model: &'static ui_model::Model<As>,
     mut cache: client_traits::CacheActorStruct<Mpsc>,
@@ -269,7 +269,7 @@ async fn handle_check<
 }
 
 fn build_input<As: ui_model::AllSignalTypes>(model: &ui_model::Model<As>, new_uuid: User) -> Type1 {
-    cases::sign_up::Input {
+    use_cases::sign_up::Input {
         new_uuid,
         name: model.user_name.read().none_if_empty(),
         user_id: model.user_id.read(),

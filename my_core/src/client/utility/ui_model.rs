@@ -1,4 +1,4 @@
-use crate::domain::cases::create_journal_entry::DebitNotEqualCreditError;
+use crate::domain::use_cases::create_journal_entry::DebitNotEqualCreditError;
 use crate::domain::utility::types::Company;
 use crate::domain::utility::types::Currency;
 use crate::domain::utility::types::Location;

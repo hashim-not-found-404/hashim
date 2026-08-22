@@ -1,6 +1,6 @@
 use crate::utility::cache_adapter;
 use crate::utility::utils::MyUuidConverter;
-use my_core::domain::cases;
+use my_core::domain::use_cases;
 use my_core::domain::utility::types::DatabaseRead;
 use my_core::domain::utility::types::Role;
 use my_core::utility::traits::DynamicError;
@@ -14,12 +14,12 @@ const QUERY3: &str = "SELECT 1 FROM company_branch WHERE company_belong = ?1 AND
 
 pub struct S;
 
-impl cases::create_company_branch::DatabaseRead for S {}
+impl use_cases::create_company_branch::DatabaseRead for S {}
 
 impl DatabaseRead for S {
     type Db<'a> = cache_adapter::S;
-    type Input = cases::create_company_branch::ReadInput;
-    type Output = cases::create_company_branch::ReadOutput;
+    type Input = use_cases::create_company_branch::ReadInput;
+    type Output = use_cases::create_company_branch::ReadOutput;
 
     async fn read(
         db: &mut Self::Db<'_>,
@@ -50,7 +50,7 @@ impl DatabaseRead for S {
         let branch_name_used =
             stmt.exists(params![input.company_belong.to_string(), input.branch_name]).unwrap();
 
-        let a = cases::create_company_branch::ReadOutput {
+        let a = use_cases::create_company_branch::ReadOutput {
             user_roles:          roles,
             is_new_uuid_used:    false,
             is_company_exist:    company_exists,

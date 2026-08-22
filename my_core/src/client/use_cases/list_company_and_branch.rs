@@ -4,8 +4,8 @@ use crate::client::utility::client_traits::ViewAndCache;
 use crate::client::utility::commander;
 use crate::client::utility::ui_model;
 use crate::client::utility::ui_model::HashimSignal;
-use crate::domain::cases;
 use crate::domain::request_response;
+use crate::domain::use_cases;
 use crate::domain::utility::resource_utils;
 use crate::domain::utility::types::Branch;
 use crate::domain::utility::types::Company;
@@ -18,9 +18,9 @@ use crate::utility::traits;
 use crate::utility::utils::ReadAndSet;
 use std::sync::Arc;
 
-type Type1 = cases::list_company_and_branch::Input;
-type Type2 = cases::list_company_and_branch::Input;
-type Type3 = cases::list_company_and_branch::MyResult;
+type Type1 = use_cases::list_company_and_branch::Input;
+type Type2 = use_cases::list_company_and_branch::Input;
+type Type3 = use_cases::list_company_and_branch::MyResult;
 type Type4 = Result<ListOfCompanies, ()>;
 
 impl tools::Sortable for Company {
@@ -51,7 +51,7 @@ pub(crate) struct ViewAndCacheType;
 impl<Ch, LongCache> ViewAndCache<Ch, LongCache> for ViewAndCacheType
 where
     Ch: cache::Cache,
-    LongCache: for<'a> cases::list_company_and_branch::DatabaseRead<Db<'a> = Ch>,
+    LongCache: for<'a> use_cases::list_company_and_branch::DatabaseRead<Db<'a> = Ch>,
 {
     type Type1 = Type1;
     type Type2 = Type2;
@@ -236,7 +236,7 @@ impl ui_model::CompanyAndBranchSelection {
         Mpsc: traits::MultiProducerSingleConsumer,
         As: ui_model::AllSignalTypes,
         Ch: cache::Cache + 'static,
-        LongCache: for<'a> cases::list_company_and_branch::DatabaseRead<Db<'a> = Ch> + 'static,
+        LongCache: for<'a> use_cases::list_company_and_branch::DatabaseRead<Db<'a> = Ch> + 'static,
     >(
         self,
         model: &'static ui_model::Model<As>,
@@ -299,7 +299,7 @@ fn spawn_listener<
     Mpsc: traits::MultiProducerSingleConsumer,
     As: ui_model::AllSignalTypes,
     Ch: cache::Cache,
-    LongCache: for<'a> cases::list_company_and_branch::DatabaseRead<Db<'a> = Ch>,
+    LongCache: for<'a> use_cases::list_company_and_branch::DatabaseRead<Db<'a> = Ch>,
 >(
     model: &'static ui_model::Model<As>,
     cache: client_traits::CacheActorStruct<Mpsc>,

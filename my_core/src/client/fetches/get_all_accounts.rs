@@ -2,16 +2,16 @@ use crate::client::utility::cache_actor;
 use crate::client::utility::client_traits;
 use crate::client::utility::client_traits::ReadServerOnly;
 use crate::client::utility::ui_model;
-use crate::domain::cases;
 use crate::domain::request_response;
+use crate::domain::use_cases;
 use crate::domain::utility::resource_utils;
 use crate::domain::utility::uuid::User;
 use crate::utility::traits;
 use crate::utility::utils::ReadAndSet;
 
-type Type1 = cases::get_all_accounts::Input;
-type Type2 = cases::get_all_accounts::Input;
-type Type3 = cases::get_all_accounts::MyResult;
+type Type1 = use_cases::get_all_accounts::Input;
+type Type2 = use_cases::get_all_accounts::Input;
+type Type3 = use_cases::get_all_accounts::MyResult;
 
 pub(crate) struct ViewAndCacheType;
 
@@ -91,7 +91,7 @@ pub(crate) async fn fetch<
 ) {
     let company_uuid = model.selected_company.read().unwrap();
 
-    let input = cases::get_all_accounts::Input {
+    let input = use_cases::get_all_accounts::Input {
         user_uuid: model.user_uuid.read().clone().unwrap(),
         company_uuid,
     };
