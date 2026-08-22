@@ -2,8 +2,8 @@ use crate::utility::components;
 use crate::utility::tools;
 use accounting_engine::accounting_stuff;
 use dioxus::prelude::*;
-use my_core::accounting_client::client_domain::ui_model;
-use my_core::accounting_client::client_domain::ui_model::HashimSignal;
+use my_core::client::utility::ui_model;
+use my_core::client::utility::ui_model::HashimSignal;
 use std::str::FromStr;
 
 #[component]

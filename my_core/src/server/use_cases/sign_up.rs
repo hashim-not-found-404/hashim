@@ -1,8 +1,8 @@
-use crate::accounting_domain::cases;
-use crate::accounting_domain::utility::types::HashedPassword;
-use crate::accounting_domain::utility::types::JWT;
-use crate::accounting_domain::utility::types::MyErrorTrait;
-use crate::accounting_domain::utility::types::RowId;
+use crate::domain::cases;
+use crate::domain::utility::types::HashedPassword;
+use crate::domain::utility::types::JWT;
+use crate::domain::utility::types::MyErrorTrait;
+use crate::domain::utility::types::RowId;
 use crate::server::utility::server_traits;
 use crate::server::utility::server_traits::DBClient;
 use crate::server::utility::server_traits::DBTransaction;

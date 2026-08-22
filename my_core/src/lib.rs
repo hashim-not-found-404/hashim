@@ -1,4 +1,4 @@
-pub mod accounting_client;
-pub mod accounting_domain;
+pub mod client;
+pub mod domain;
 pub mod server;
 pub mod utility;

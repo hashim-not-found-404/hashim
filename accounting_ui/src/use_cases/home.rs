@@ -3,8 +3,8 @@ use crate::use_cases::create_account_for_branch;
 use crate::use_cases::create_journal_entry;
 use crate::utility::tools;
 use dioxus::prelude::*;
-use my_core::accounting_client::client_domain::ui_model;
-use my_core::accounting_client::client_domain::ui_model::HashimSignal;
+use my_core::client::utility::ui_model;
+use my_core::client::utility::ui_model::HashimSignal;
 
 #[component]
 pub(crate) fn Home() -> Element {

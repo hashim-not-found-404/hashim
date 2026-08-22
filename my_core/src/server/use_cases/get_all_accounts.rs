@@ -1,7 +1,7 @@
-use crate::accounting_domain::cases;
-use crate::accounting_domain::utility::types::MyErrorTrait;
-use crate::accounting_domain::utility::types::RowId;
-use crate::accounting_domain::utility::types::UserUuidError;
+use crate::domain::cases;
+use crate::domain::utility::types::MyErrorTrait;
+use crate::domain::utility::types::RowId;
+use crate::domain::utility::types::UserUuidError;
 use crate::server::utility::server_traits::DBClient;
 use crate::server::utility::server_traits::SideEffects;
 use crate::utility::traits::DynamicError;

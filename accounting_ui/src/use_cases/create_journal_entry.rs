@@ -1,6 +1,6 @@
 use crate::utility::tools;
 use dioxus::prelude::*;
-use my_core::accounting_client::client_domain::ui_model;
+use my_core::client::utility::ui_model;
 
 #[component]
 pub(crate) fn CreateJournalEntry() -> Element {

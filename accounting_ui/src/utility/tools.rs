@@ -10,9 +10,9 @@ use adapters::web_socket_adapter;
 use cache_rusqlite::db_bundle;
 use cache_rusqlite::utility;
 use dioxus::prelude::*;
-use my_core::accounting_client::client_domain::ui_model;
-use my_core::accounting_client::ui_construct;
-use my_core::accounting_client::ui_effect;
+use my_core::client::ui_construct;
+use my_core::client::ui_effect;
+use my_core::client::utility::ui_model;
 use std::sync::LazyLock;
 
 type TheModel = ui_model::Model<my_signals::S>;

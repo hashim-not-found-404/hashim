@@ -1,8 +1,8 @@
 use crate::utility::db_client;
 use crate::utility::utils::MyUuidConverter;
-use my_core::accounting_domain::cases;
-use my_core::accounting_domain::utility::types::DatabaseRead;
-use my_core::accounting_domain::utility::uuid::UuidType;
+use my_core::domain::cases;
+use my_core::domain::utility::types::DatabaseRead;
+use my_core::domain::utility::uuid::UuidType;
 use my_core::utility::traits::DynamicError;
 use my_core::utility::utils::LogError;
 use uuid::Uuid;

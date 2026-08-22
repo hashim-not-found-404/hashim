@@ -17,8 +17,8 @@ use adapters::runtime;
 use adapters::time;
 use db_client_cockroach::db_bundle;
 use db_client_cockroach::utility::db;
-use my_core::accounting_domain::utility::types::HOST;
-use my_core::accounting_domain::utility::types::PORT;
+use my_core::domain::utility::types::HOST;
+use my_core::domain::utility::types::PORT;
 use my_core::server::server_methods;
 
 type ServerMethodsType = server_methods::ServerMethods<actors::target::S, jwt::target::S, db::S>;

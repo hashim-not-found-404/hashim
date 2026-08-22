@@ -1,4 +1,4 @@
-use my_core::accounting_domain::utility::uuid::UuidType;
+use my_core::domain::utility::uuid::UuidType;
 use uuid::Uuid;
 
 pub(crate) trait MyUuidConverter {

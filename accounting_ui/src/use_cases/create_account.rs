@@ -2,10 +2,10 @@ use crate::utility::components::Dialog;
 use crate::utility::tools::send;
 use crate::utility::tools::MODEL;
 use dioxus::prelude::*;
-use my_core::accounting_client::client_domain::ui_model;
-use my_core::accounting_client::client_domain::ui_model::HashimSignal;
-use my_core::accounting_client::client_domain::ui_model::Message;
-use my_core::accounting_client::client_domain::ui_model::UserConsent;
+use my_core::client::utility::ui_model;
+use my_core::client::utility::ui_model::HashimSignal;
+use my_core::client::utility::ui_model::Message;
+use my_core::client::utility::ui_model::UserConsent;
 
 #[component]
 pub(crate) fn CreateAccount() -> Element {

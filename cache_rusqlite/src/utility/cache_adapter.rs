@@ -1,10 +1,10 @@
 use crate::utility::utils::MyUuidConverter;
 use adapters::encode_decode;
-use my_core::accounting_client::client_domain::cache::Cache;
-use my_core::accounting_domain::request_response;
-use my_core::accounting_domain::utility::resource_utils;
-use my_core::accounting_domain::utility::types::JsonWebTokenType;
-use my_core::accounting_domain::utility::uuid::User;
+use my_core::client::utility::cache::Cache;
+use my_core::domain::request_response;
+use my_core::domain::utility::resource_utils;
+use my_core::domain::utility::types::JsonWebTokenType;
+use my_core::domain::utility::uuid::User;
 use my_core::utility::traits::Coding;
 use rusqlite::Connection;
 use std::ops::Add;

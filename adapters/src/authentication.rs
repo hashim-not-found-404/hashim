@@ -7,7 +7,7 @@ pub mod target {
     use argon2::password_hash::SaltString;
     use argon2::password_hash::rand_core::OsRng;
     use derive_more::From;
-    use my_core::accounting_domain::utility::types::HashedPassword;
+    use my_core::domain::utility::types::HashedPassword;
 
     #[derive(Debug, Clone, From)]
     pub struct S;

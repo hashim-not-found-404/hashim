@@ -1,17 +1,17 @@
-use crate::accounting_domain::cases;
-use crate::accounting_domain::request_response;
-use crate::accounting_domain::utility::resource_utils;
-use crate::accounting_domain::utility::resource_utils::Subscribe;
-use crate::accounting_domain::utility::types::HashedPassword;
-use crate::accounting_domain::utility::types::HashimError;
-use crate::accounting_domain::utility::types::JWT;
-use crate::accounting_domain::utility::types::JWTError;
-use crate::accounting_domain::utility::types::NonceError;
-use crate::accounting_domain::utility::types::Role;
-use crate::accounting_domain::utility::types::RowId;
-use crate::accounting_domain::utility::uuid::Company;
-use crate::accounting_domain::utility::uuid::User;
-use crate::accounting_domain::utility::uuid::UuidType;
+use crate::domain::cases;
+use crate::domain::request_response;
+use crate::domain::utility::resource_utils;
+use crate::domain::utility::resource_utils::Subscribe;
+use crate::domain::utility::types::HashedPassword;
+use crate::domain::utility::types::HashimError;
+use crate::domain::utility::types::JWT;
+use crate::domain::utility::types::JWTError;
+use crate::domain::utility::types::NonceError;
+use crate::domain::utility::types::Role;
+use crate::domain::utility::types::RowId;
+use crate::domain::utility::uuid::Company;
+use crate::domain::utility::uuid::User;
+use crate::domain::utility::uuid::UuidType;
 use crate::server::utility::server_traits;
 use crate::server::utility::server_traits::DBClient;
 use crate::server::utility::server_traits::DatabaseWrite;
@@ -590,12 +590,12 @@ async fn get_table_of_subscribed_data<Cli: DBClient>(
 }
 
 mod broker_functions {
-    use crate::accounting_domain::utility::resource_utils;
-    use crate::accounting_domain::utility::resource_utils::ResourceInfo;
-    use crate::accounting_domain::utility::resource_utils::Subscribe;
-    use crate::accounting_domain::utility::uuid::Branch;
-    use crate::accounting_domain::utility::uuid::Company;
-    use crate::accounting_domain::utility::uuid::User;
+    use crate::domain::utility::resource_utils;
+    use crate::domain::utility::resource_utils::ResourceInfo;
+    use crate::domain::utility::resource_utils::Subscribe;
+    use crate::domain::utility::uuid::Branch;
+    use crate::domain::utility::uuid::Company;
+    use crate::domain::utility::uuid::User;
     use crate::utility::utils::HashMapWithHashMapValue;
     use crate::utility::utils::HashMapWithVectorValue;
     use std::collections::HashMap;

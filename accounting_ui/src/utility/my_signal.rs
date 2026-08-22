@@ -1,6 +1,6 @@
 use dioxus::core::ReactiveContext;
 use dioxus::prelude::*;
-use my_core::accounting_client::client_domain::ui_model::HashimSignal;
+use my_core::client::utility::ui_model::HashimSignal;
 use std::collections::HashSet;
 use std::mem::take;
 use std::sync::Arc;

@@ -4,8 +4,8 @@ pub mod target {
     use futures::StreamExt;
     use futures::stream::SplitSink;
     use futures::stream::SplitStream;
-    use my_core::accounting_client::network_actor::WSClient;
-    use my_core::accounting_domain::utility::types::HashimError;
+    use my_core::client::network_actor::WSClient;
+    use my_core::domain::utility::types::HashimError;
     use my_core::utility::traits::DynamicError;
     use my_core::utility::utils::LogError;
     use tokio::net::TcpStream;
@@ -61,8 +61,8 @@ pub mod target {
     use futures_util::stream::SplitStream;
     use gloo_net::websocket::Message;
     use gloo_net::websocket::futures::WebSocket;
-    use my_core::accounting_client::network_actor::WSClient;
-    use my_core::accounting_domain::utility::types::HashimError;
+    use my_core::client::network_actor::WSClient;
+    use my_core::domain::utility::types::HashimError;
     use my_core::utility::traits::DynamicError;
     use my_core::utility::utils::LogError;
     use std::sync::Mutex;

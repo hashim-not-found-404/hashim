@@ -1,9 +1,9 @@
-use crate::accounting_domain::utility::resource_utils;
-use crate::accounting_domain::utility::types::Role;
-use crate::accounting_domain::utility::uuid::Branch;
-use crate::accounting_domain::utility::uuid::Company;
-use crate::accounting_domain::utility::uuid::Nonce;
-use crate::accounting_domain::utility::uuid::User;
+use crate::domain::utility::resource_utils;
+use crate::domain::utility::types::Role;
+use crate::domain::utility::uuid::Branch;
+use crate::domain::utility::uuid::Company;
+use crate::domain::utility::uuid::Nonce;
+use crate::domain::utility::uuid::User;
 use crate::utility::traits::DynamicError;
 use std::collections::HashMap;
 use std::collections::HashSet;

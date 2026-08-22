@@ -9,9 +9,9 @@ pub mod target {
     use jsonwebtoken::Validation;
     use jsonwebtoken::decode;
     use jsonwebtoken::encode;
-    use my_core::accounting_domain::utility::types::JWT;
-    use my_core::accounting_domain::utility::types::JsonWebTokenType;
-    use my_core::accounting_domain::utility::uuid::User;
+    use my_core::domain::utility::types::JWT;
+    use my_core::domain::utility::types::JsonWebTokenType;
+    use my_core::domain::utility::uuid::User;
     use serde::Deserialize;
     use serde::Serialize;
     use std::sync::Arc;
