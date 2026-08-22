@@ -66,9 +66,9 @@ where
             });
         }
 
-        let mut password: Option<String> = None;
-        let mut user_uuid = None;
-        let mut user_name = None;
+        let password: Option<String> = None;
+        let user_uuid = None;
+        let user_name = None;
 
         match password {
             Some(password) => {

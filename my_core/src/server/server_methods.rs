@@ -584,15 +584,8 @@ async fn get_table_of_subscribed_data<Cli: DBClient>(
 
 mod broker_functions {
     use crate::accounting_domain::utility::resource_utils;
-    use crate::accounting_domain::utility::types::HashedPassword;
-    use crate::accounting_domain::utility::types::HashimError;
-    use crate::accounting_domain::utility::types::JWT;
-    use crate::accounting_domain::utility::types::JWTError;
-    use crate::accounting_domain::utility::types::NonceError;
-    use crate::accounting_domain::utility::types::Role;
-    use crate::accounting_domain::utility::types::RowId;
     use crate::accounting_domain::utility::types::UuidType;
-    use crate::server::utility::server_traits;
+    use crate::server::utility::server_traits::ListOfResources;
     use crate::utility::utils::HashMapWithHashMapValue;
     use crate::utility::utils::HashMapWithVectorValue;
     use std::collections::HashMap;
@@ -608,8 +601,8 @@ mod broker_functions {
 
     pub(crate) fn map_resource_to_subscribes(
         pool_of_pubsub: &UserSubscribes,
-        list_of_resources: server_traits::ListOfResources,
-        resource_to_send: &mut server_traits::ListOfResources,
+        list_of_resources: ListOfResources,
+        resource_to_send: &mut ListOfResources,
     ) {
         for (company, resource) in list_of_resources {
             let user_and_subscribe = pool_of_pubsub.get(&company);
