@@ -1,21 +1,22 @@
-use crate::utility::traits;
+use crate::utility::traits::DynamicError;
 use crate::utility::traits::Either;
+use crate::utility::traits::{self};
 use std::time::Duration;
 
 pub trait WSClient: Sized {
-    fn connect(url: &str) -> impl Future<Output = Result<Self, traits::DynamicError>>;
-    fn send_bin(&mut self, data: &[u8]) -> impl Future<Output = Result<(), traits::DynamicError>>;
-    fn receive_bin(&mut self) -> impl Future<Output = Result<Vec<u8>, traits::DynamicError>>;
+    fn connect(url: &str) -> impl Future<Output = Result<Self, DynamicError>>;
+    fn send_bin(&mut self, data: &[u8]) -> impl Future<Output = Result<(), DynamicError>>;
+    fn receive_bin(&mut self) -> impl Future<Output = Result<Vec<u8>, DynamicError>>;
 }
 
 pub(crate) trait Network {
     async fn network_state(&mut self, is_online: bool);
     async fn network_sender(&mut self, data: Vec<u8>);
     async fn network_reciever(&mut self) -> Vec<u8>;
-    async fn send_error(&mut self, error: traits::DynamicError);
+    async fn send_error(&mut self, error: DynamicError);
 }
 
-async fn network_radar<Ws: WSClient>(ws: Option<&mut Ws>) -> Result<Vec<u8>, traits::DynamicError> {
+async fn network_radar<Ws: WSClient>(ws: Option<&mut Ws>) -> Result<Vec<u8>, DynamicError> {
     match ws {
         Some(ws) => ws.receive_bin().await,
         None => Err("error".into()),

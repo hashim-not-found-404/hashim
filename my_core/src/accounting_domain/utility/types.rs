@@ -1,4 +1,4 @@
-use crate::utility::traits;
+use crate::utility::traits::DynamicError;
 use serde::Deserialize;
 use serde::Serialize;
 use std::error::Error;
@@ -96,7 +96,7 @@ pub enum Currency {
 }
 
 impl FromStr for Currency {
-    type Err = traits::DynamicError;
+    type Err = DynamicError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
@@ -124,7 +124,7 @@ pub enum Role {
 }
 
 impl FromStr for Role {
-    type Err = traits::DynamicError;
+    type Err = DynamicError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {

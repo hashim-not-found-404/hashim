@@ -10,6 +10,7 @@ use crate::accounting_domain::request_response;
 use crate::accounting_domain::utility::resource_utils;
 use crate::accounting_domain::utility::types;
 use crate::utility::traits;
+use crate::utility::traits::DynamicError;
 use crate::utility::traits::Receiver;
 use crate::utility::traits::Sender;
 use crate::utility::utils::ReadAndSet;
@@ -98,7 +99,7 @@ impl<Mpsc: traits::MultiProducerSingleConsumer> network_actor::Network for MyNet
         self.receiver_to_network.recv().await.unwrap()
     }
 
-    async fn send_error(&mut self, _: traits::DynamicError) {
+    async fn send_error(&mut self, _: DynamicError) {
         self.sender_to_error.send(types::HashimError::ConnectionClosed).await.unwrap();
     }
 }

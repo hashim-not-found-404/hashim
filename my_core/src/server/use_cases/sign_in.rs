@@ -2,20 +2,20 @@ use crate::accounting_domain::cases;
 use crate::accounting_domain::utility::types;
 use crate::server::utility::server_traits::DBClient;
 use crate::server::utility::server_traits::SideEffects;
-use crate::utility::traits;
+use crate::utility::traits::DynamicError;
 
 impl cases::sign_in::Input {
     pub(crate) async fn handle_operation<
         Auth: types::HashedPassword,
         Jwt: types::JWT,
         Cli: DBClient,
-        Db: for<'a> cases::sign_in::DatabaseRead<Db<'a> = Cli, Error = traits::DynamicError>,
+        Db: for<'a> cases::sign_in::DatabaseRead<Db<'a> = Cli, Error = DynamicError>,
     >(
         &self,
         side_effects: &mut SideEffects,
         client: &mut Cli,
         jwt: &Jwt,
-    ) -> Result<cases::sign_in::MyResult, traits::DynamicError> {
+    ) -> Result<cases::sign_in::MyResult, DynamicError> {
         let result = self.state_full_check::<Auth, Jwt, Db>(jwt, client).await?;
 
         if let Ok(ok) = &result {

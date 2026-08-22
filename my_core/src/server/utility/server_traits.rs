@@ -1,6 +1,6 @@
 use crate::accounting_domain::utility::resource_utils;
 use crate::accounting_domain::utility::types;
-use crate::utility::traits;
+use crate::utility::traits::DynamicError;
 use std::collections::HashMap;
 use std::collections::HashSet;
 
@@ -41,8 +41,8 @@ pub mod domain_errors {
 pub trait DBTransaction {
     fn commit_transaction(
         self,
-    ) -> impl Future<Output = Result<Result<(), domain_errors::AtCommit>, traits::DynamicError>>;
-    fn rollback_transaction(self) -> impl Future<Output = Result<(), traits::DynamicError>>;
+    ) -> impl Future<Output = Result<Result<(), domain_errors::AtCommit>, DynamicError>>;
+    fn rollback_transaction(self) -> impl Future<Output = Result<(), DynamicError>>;
 }
 
 pub trait DatabaseWrite {
@@ -52,7 +52,7 @@ pub trait DatabaseWrite {
     fn write(
         txn: &mut Self::Db<'_>,
         input: &Self::Input,
-    ) -> impl Future<Output = Result<(), traits::DynamicError>>;
+    ) -> impl Future<Output = Result<(), DynamicError>>;
 }
 
 pub trait DBClient {
@@ -60,19 +60,17 @@ pub trait DBClient {
     where
         Self: 'a;
 
-    fn begin_transaction(
-        &mut self,
-    ) -> impl Future<Output = Result<Self::Txn<'_>, traits::DynamicError>>;
+    fn begin_transaction(&mut self) -> impl Future<Output = Result<Self::Txn<'_>, DynamicError>>;
 
     fn write_nonce_if_not_used(
         &mut self,
         nonce: &types::UuidType,
-    ) -> impl Future<Output = Result<bool /* is nonce used */, traits::DynamicError>>;
+    ) -> impl Future<Output = Result<bool /* is nonce used */, DynamicError>>;
 
     // here we just do read we dont do here any set or check
 
     fn read_roles_for_user(
         &mut self,
         users_uuids: &HashSet<types::UuidType>,
-    ) -> impl Future<Output = Result<AllRoles, traits::DynamicError>>;
+    ) -> impl Future<Output = Result<AllRoles, DynamicError>>;
 }

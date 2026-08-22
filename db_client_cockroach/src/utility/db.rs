@@ -3,7 +3,7 @@ use deadpool_postgres::Config;
 use deadpool_postgres::Pool;
 use deadpool_postgres::Runtime;
 use my_core::server::server_methods::Database;
-use my_core::utility::traits;
+use my_core::utility::traits::DynamicError;
 use my_core::utility::utils::LogError;
 use tokio_postgres::NoTls;
 
@@ -29,7 +29,7 @@ impl Database for S {
         }
     }
 
-    async fn get_client(&self) -> Result<Self::Client, traits::DynamicError> {
+    async fn get_client(&self) -> Result<Self::Client, DynamicError> {
         Ok(db_client::S {
             client: self.pool.get().await.log()?,
         })

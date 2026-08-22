@@ -6,6 +6,7 @@ use crate::server::utility::server_traits::DBClient;
 use crate::server::utility::server_traits::DBTransaction;
 use crate::server::utility::server_traits::SideEffects;
 use crate::utility::traits;
+use crate::utility::traits::DynamicError;
 
 impl cases::create_journal_entry::Input {
     pub(crate) async fn handle_operation<
@@ -14,7 +15,7 @@ impl cases::create_journal_entry::Input {
         Cli: DBClient,
         Db: for<'a> cases::create_journal_entry::DatabaseRead<
                 Db<'a> = Cli::Txn<'a>,
-                Error = traits::DynamicError,
+                Error = DynamicError,
             >,
         DbWrite: for<'a> server_traits::DatabaseWrite<
                 Db<'a> = Cli::Txn<'a>,
@@ -24,7 +25,7 @@ impl cases::create_journal_entry::Input {
         &self,
         side_effects: &mut SideEffects,
         client: &mut Cli,
-    ) -> Result<cases::create_journal_entry::MyResult, traits::DynamicError> {
+    ) -> Result<cases::create_journal_entry::MyResult, DynamicError> {
         let mut errr = self.state_less_check::<Id>();
         if !side_effects.authenticated_users.contains(&self.user_uuid) {
             errr.user_uuid = Some(types::UserUuidError::NotAuthenticated);

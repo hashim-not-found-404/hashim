@@ -1,9 +1,9 @@
 use crate::utility::db_client;
 use crate::utility::utils::MyUuidConverter;
 use my_core::accounting_domain::cases;
+use my_core::accounting_domain::utility::types;
 use my_core::accounting_domain::utility::types::DatabaseRead;
-use my_core::accounting_domain::utility::types::{self};
-use my_core::utility::traits;
+use my_core::utility::traits::DynamicError;
 use my_core::utility::utils::LogError;
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -51,7 +51,7 @@ impl cases::list_company_and_branch::DatabaseRead for S {}
 
 impl DatabaseRead for S {
     type Db<'a> = db_client::S;
-    type Error = traits::DynamicError;
+    type Error = DynamicError;
     type Input = cases::list_company_and_branch::ReadInput;
     type Output = cases::list_company_and_branch::ReadOutput;
 
@@ -104,7 +104,7 @@ impl DatabaseRead for S {
                         user_roles: Vec::new(),
                     })
                 })
-                .collect::<Result<Vec<_>, traits::DynamicError>>()
+                .collect::<Result<Vec<_>, DynamicError>>()
                 .log()?;
 
             let entry = company_map.entry(company_uuid).or_insert_with(|| {

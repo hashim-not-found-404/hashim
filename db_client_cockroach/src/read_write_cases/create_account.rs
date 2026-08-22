@@ -4,7 +4,7 @@ use my_core::accounting_domain::cases;
 use my_core::accounting_domain::utility::types;
 use my_core::accounting_domain::utility::types::DatabaseRead;
 use my_core::server::utility::server_traits;
-use my_core::utility::traits;
+use my_core::utility::traits::DynamicError;
 use my_core::utility::utils::LogError;
 use std::str::FromStr;
 
@@ -34,7 +34,7 @@ impl cases::create_account::DatabaseRead for S {}
 
 impl DatabaseRead for S {
     type Db<'a> = db_transaction::S<'a>;
-    type Error = traits::DynamicError;
+    type Error = DynamicError;
     type Input = cases::create_account::ReadInput;
     type Output = cases::create_account::ReadOutput;
 
@@ -83,10 +83,7 @@ impl server_traits::DatabaseWrite for S {
     type Db<'a> = db_transaction::S<'a>;
     type Input = cases::create_account::Ok;
 
-    async fn write(
-        txn: &mut Self::Db<'_>,
-        input: &Self::Input,
-    ) -> Result<(), traits::DynamicError> {
+    async fn write(txn: &mut Self::Db<'_>, input: &Self::Input) -> Result<(), DynamicError> {
         let stmt = txn.txn.prepare_cached(WRITE_QUERY).await.log()?;
         txn.txn
             .execute(&stmt, &[

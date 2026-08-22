@@ -2,7 +2,7 @@ use crate::utility::cache_adapter;
 use crate::utility::utils::MyUuidConverter;
 use my_core::accounting_domain::cases;
 use my_core::accounting_domain::utility::types::DatabaseRead;
-use my_core::utility::traits;
+use my_core::utility::traits::DynamicError;
 use rusqlite::params;
 
 const QUERY: &str = "SELECT
@@ -15,7 +15,7 @@ impl cases::sign_up::DatabaseRead for S {}
 
 impl DatabaseRead for S {
     type Db<'a> = cache_adapter::S;
-    type Error = traits::DynamicError;
+    type Error = DynamicError;
     type Input = cases::sign_up::ReadInput;
     type Output = cases::sign_up::ReadOutput;
 

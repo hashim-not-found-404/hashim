@@ -2,9 +2,9 @@ use crate::utility::db_client;
 use crate::utility::utils::MyUuidConverter;
 use accounting_engine::accounting_stuff;
 use my_core::accounting_domain::cases;
+use my_core::accounting_domain::utility::types;
 use my_core::accounting_domain::utility::types::DatabaseRead;
-use my_core::accounting_domain::utility::types::{self};
-use my_core::utility::traits;
+use my_core::utility::traits::DynamicError;
 use my_core::utility::utils::LogError;
 use serde_json::Value;
 use std::str::FromStr;
@@ -61,7 +61,7 @@ impl cases::get_all_accounts_for_branch::DatabaseRead for S {}
 
 impl DatabaseRead for S {
     type Db<'a> = db_client::S;
-    type Error = traits::DynamicError;
+    type Error = DynamicError;
     type Input = cases::get_all_accounts_for_branch::ReadInput;
     type Output = cases::get_all_accounts_for_branch::ReadOutput;
 

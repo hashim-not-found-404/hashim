@@ -5,7 +5,7 @@ use crate::server::utility::server_traits;
 use crate::server::utility::server_traits::DBClient;
 use crate::server::utility::server_traits::DBTransaction;
 use crate::server::utility::server_traits::SideEffects;
-use crate::utility::traits;
+use crate::utility::traits::DynamicError;
 
 impl cases::sign_up::Input {
     pub(crate) async fn handle_operation<
@@ -13,14 +13,14 @@ impl cases::sign_up::Input {
         Auth: types::HashedPassword,
         Jwt: types::JWT,
         Cli: DBClient,
-        Db: for<'a> cases::sign_up::DatabaseRead<Db<'a> = Cli::Txn<'a>, Error = traits::DynamicError>,
+        Db: for<'a> cases::sign_up::DatabaseRead<Db<'a> = Cli::Txn<'a>, Error = DynamicError>,
         DbWrite: for<'a> server_traits::DatabaseWrite<Db<'a> = Cli::Txn<'a>, Input = cases::sign_up::Ok>,
     >(
         &self,
         side_effects: &mut SideEffects,
         client: &mut Cli,
         jwt: &Jwt,
-    ) -> Result<cases::sign_up::MyResult, traits::DynamicError> {
+    ) -> Result<cases::sign_up::MyResult, DynamicError> {
         let errr = self.state_less_check::<Id>();
         if errr.is_there_error() {
             return Ok(Err(errr));

@@ -1,7 +1,7 @@
-use my_core::utility::traits;
+use my_core::utility::traits::DynamicError;
 use tokio_postgres::NoTls;
 
-pub(crate) async fn test_query_helper(sql_query: &str) -> Result<(), traits::DynamicError> {
+pub(crate) async fn test_query_helper(sql_query: &str) -> Result<(), DynamicError> {
     let host = "localhost".to_string();
     let port = "26257".to_string();
     let user = "root".to_string();

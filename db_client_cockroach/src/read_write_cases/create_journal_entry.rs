@@ -5,7 +5,7 @@ use my_core::accounting_domain::cases;
 use my_core::accounting_domain::utility::types;
 use my_core::accounting_domain::utility::types::DatabaseRead;
 use my_core::server::utility::server_traits;
-use my_core::utility::traits;
+use my_core::utility::traits::DynamicError;
 use my_core::utility::utils::LogError;
 use serde::Deserialize;
 use serde_json::Value;
@@ -78,7 +78,7 @@ impl cases::create_journal_entry::DatabaseRead for S {}
 
 impl DatabaseRead for S {
     type Db<'a> = db_transaction::S<'a>;
-    type Error = traits::DynamicError;
+    type Error = DynamicError;
     type Input = cases::create_journal_entry::ReadInput;
     type Output = cases::create_journal_entry::ReadOutput;
 
@@ -203,10 +203,7 @@ impl server_traits::DatabaseWrite for S {
     type Db<'a> = db_transaction::S<'a>;
     type Input = cases::create_journal_entry::Ok;
 
-    async fn write(
-        txn: &mut Self::Db<'_>,
-        input: &Self::Input,
-    ) -> Result<(), traits::DynamicError> {
+    async fn write(txn: &mut Self::Db<'_>, input: &Self::Input) -> Result<(), DynamicError> {
         let single_entries: Vec<serde_json::Value> = input
             .double_entry
             .iter()

@@ -4,7 +4,7 @@ use crate::utility::utils::MyUuidConverter1;
 use my_core::accounting_domain::cases;
 use my_core::accounting_domain::utility::types;
 use my_core::accounting_domain::utility::types::DatabaseRead;
-use my_core::utility::traits;
+use my_core::utility::traits::DynamicError;
 use rusqlite::params;
 use std::str::FromStr;
 
@@ -26,7 +26,7 @@ impl cases::list_company_and_branch::DatabaseRead for S {}
 
 impl DatabaseRead for S {
     type Db<'a> = cache_adapter::S;
-    type Error = traits::DynamicError;
+    type Error = DynamicError;
     type Input = cases::list_company_and_branch::ReadInput;
     type Output = cases::list_company_and_branch::ReadOutput;
 

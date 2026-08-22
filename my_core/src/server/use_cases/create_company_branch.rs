@@ -5,7 +5,7 @@ use crate::server::utility::server_traits;
 use crate::server::utility::server_traits::DBClient;
 use crate::server::utility::server_traits::DBTransaction;
 use crate::server::utility::server_traits::SideEffects;
-use crate::utility::traits;
+use crate::utility::traits::DynamicError;
 
 impl cases::create_company_branch::Input {
     pub(crate) async fn handle_operation<
@@ -13,7 +13,7 @@ impl cases::create_company_branch::Input {
         Cli: DBClient,
         Db: for<'a> cases::create_company_branch::DatabaseRead<
                 Db<'a> = Cli::Txn<'a>,
-                Error = traits::DynamicError,
+                Error = DynamicError,
             >,
         DbWrite: for<'a> server_traits::DatabaseWrite<
                 Db<'a> = Cli::Txn<'a>,
@@ -25,7 +25,7 @@ impl cases::create_company_branch::Input {
         client: &mut Cli,
     ) -> Result<
         Result<cases::create_company_branch::Ok, cases::create_company_branch::Error>,
-        traits::DynamicError,
+        DynamicError,
     > {
         let mut errr = self.state_less_check::<Id>();
         if !side_effects.authenticated_users.contains(&self.user_uuid) {

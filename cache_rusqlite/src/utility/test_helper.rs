@@ -1,9 +1,7 @@
-use my_core::utility::traits;
+use my_core::utility::traits::DynamicError;
 use rusqlite::Connection;
 
-pub(crate) fn test_query_helper_for_tables_schema(
-    sql_query: &str,
-) -> Result<(), traits::DynamicError> {
+pub(crate) fn test_query_helper_for_tables_schema(sql_query: &str) -> Result<(), DynamicError> {
     let conn = Connection::open_in_memory().unwrap();
     const SCHEMA: &str = include_str!("../../schema/tables.sql");
     conn.execute_batch(SCHEMA).unwrap();
@@ -13,7 +11,7 @@ pub(crate) fn test_query_helper_for_tables_schema(
 
 pub(crate) fn test_query_helper_for_transactions_schema(
     sql_query: &str,
-) -> Result<(), traits::DynamicError> {
+) -> Result<(), DynamicError> {
     let conn = Connection::open_in_memory().unwrap();
     const SCHEMA: &str = include_str!("../../schema/transactions.sql");
     conn.execute_batch(SCHEMA).unwrap();

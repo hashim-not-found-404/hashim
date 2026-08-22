@@ -4,7 +4,7 @@ use actix_ws::Session;
 use futures_util::StreamExt;
 use my_core::server::server_methods;
 use my_core::server::server_methods::WSServer;
-use my_core::utility::traits;
+use my_core::utility::traits::DynamicError;
 use my_core::utility::utils::LogError;
 
 pub(crate) struct S {
@@ -22,12 +22,12 @@ impl S {
 }
 
 impl WSServer for S {
-    async fn send_bin(&mut self, bin: Vec<u8>) -> Result<(), traits::DynamicError> {
+    async fn send_bin(&mut self, bin: Vec<u8>) -> Result<(), DynamicError> {
         self.session.binary(bin).await.log()?;
         Ok(())
     }
 
-    async fn receive(&mut self) -> Result<server_methods::WSMessage, traits::DynamicError> {
+    async fn receive(&mut self) -> Result<server_methods::WSMessage, DynamicError> {
         match self.stream.next().await {
             Some(msg) => {
                 match msg.log()? {
@@ -48,7 +48,7 @@ impl WSServer for S {
         }
     }
 
-    async fn close(self) -> Result<(), traits::DynamicError> {
+    async fn close(self) -> Result<(), DynamicError> {
         self.session.clone().close(None).await.log()?;
         Ok(())
     }
