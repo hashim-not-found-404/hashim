@@ -13,7 +13,7 @@ impl cases::sign_up::Input {
         Auth: types::HashedPassword,
         Jwt: types::JWT,
         Cli: DBClient,
-        Db: for<'a> cases::sign_up::DatabaseRead<Db<'a> = Cli::Txn<'a>, Error = DynamicError>,
+        Db: for<'a> cases::sign_up::DatabaseRead<Db<'a> = Cli::Txn<'a>>,
         DbWrite: for<'a> server_traits::DatabaseWrite<Db<'a> = Cli::Txn<'a>, Input = cases::sign_up::Ok>,
     >(
         &self,

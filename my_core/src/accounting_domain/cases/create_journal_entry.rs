@@ -2,6 +2,7 @@ use crate::accounting_domain::utility::types;
 use crate::accounting_domain::utility::types::MarkerMyErrorTrait;
 use crate::accounting_domain::utility::types::MyErrorTrait;
 use crate::accounting_domain::utility::types::RowId;
+use crate::utility::traits::DynamicError;
 use crate::utility::traits::Time;
 use accounting_engine::accounting_stuff;
 use accounting_engine::accounting_stuff::DoubleEntry;
@@ -887,7 +888,7 @@ impl Input {
     pub(crate) async fn state_full_check<Db: DatabaseRead, Ti: Time>(
         &self,
         db: &mut Db::Db<'_>,
-    ) -> Result<MyResult, Db::Error> {
+    ) -> Result<MyResult, DynamicError> {
         let mut accounts_uuid = HashSet::new();
         let mut new_entries_uuid = HashSet::new();
         for double in &self.double_entries {

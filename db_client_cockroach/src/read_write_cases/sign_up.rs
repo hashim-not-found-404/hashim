@@ -18,11 +18,13 @@ impl cases::sign_up::DatabaseRead for S {}
 
 impl DatabaseRead for S {
     type Db<'a> = db_transaction::S<'a>;
-    type Error = DynamicError;
     type Input = cases::sign_up::ReadInput;
     type Output = cases::sign_up::ReadOutput;
 
-    async fn read(db: &mut Self::Db<'_>, input: &Self::Input) -> Result<Self::Output, Self::Error> {
+    async fn read(
+        db: &mut Self::Db<'_>,
+        input: &Self::Input,
+    ) -> Result<Self::Output, DynamicError> {
         let stmt = db.txn.prepare_cached(READ_QUERY).await.log()?;
         let row = db
             .txn

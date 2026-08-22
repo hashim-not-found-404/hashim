@@ -18,11 +18,13 @@ impl cases::create_company_branch::DatabaseRead for S {}
 
 impl DatabaseRead for S {
     type Db<'a> = cache_adapter::S;
-    type Error = DynamicError;
     type Input = cases::create_company_branch::ReadInput;
     type Output = cases::create_company_branch::ReadOutput;
 
-    async fn read(db: &mut Self::Db<'_>, input: &Self::Input) -> Result<Self::Output, Self::Error> {
+    async fn read(
+        db: &mut Self::Db<'_>,
+        input: &Self::Input,
+    ) -> Result<Self::Output, DynamicError> {
         let mut stmt = db.tables_db.prepare(QUERY1).unwrap();
 
         let roles_iter = stmt

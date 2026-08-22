@@ -9,7 +9,7 @@ impl cases::sign_in::Input {
         Auth: types::HashedPassword,
         Jwt: types::JWT,
         Cli: DBClient,
-        Db: for<'a> cases::sign_in::DatabaseRead<Db<'a> = Cli, Error = DynamicError>,
+        Db: for<'a> cases::sign_in::DatabaseRead<Db<'a> = Cli>,
     >(
         &self,
         side_effects: &mut SideEffects,

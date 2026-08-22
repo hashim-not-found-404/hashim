@@ -21,11 +21,13 @@ impl cases::get_all_accounts_for_branch::DatabaseRead for S {}
 
 impl DatabaseRead for S {
     type Db<'a> = cache_adapter::S;
-    type Error = DynamicError;
     type Input = cases::get_all_accounts_for_branch::ReadInput;
     type Output = cases::get_all_accounts_for_branch::ReadOutput;
 
-    async fn read(db: &mut Self::Db<'_>, input: &Self::Input) -> Result<Self::Output, Self::Error> {
+    async fn read(
+        db: &mut Self::Db<'_>,
+        input: &Self::Input,
+    ) -> Result<Self::Output, DynamicError> {
         let branch_uuid_str = input.company_branch_uuid.to_string();
 
         let mut stmt = db.tables_db.prepare(QUERY1).unwrap();

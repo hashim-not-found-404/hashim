@@ -11,7 +11,7 @@ impl cases::create_account::Input {
     pub(crate) async fn handle_operation<
         Id: types::RowId,
         Cli: DBClient,
-        Db: for<'a> cases::create_account::DatabaseRead<Db<'a> = Cli::Txn<'a>, Error = DynamicError>,
+        Db: for<'a> cases::create_account::DatabaseRead<Db<'a> = Cli::Txn<'a>>,
         DbWrite: for<'a> server_traits::DatabaseWrite<
                 Db<'a> = Cli::Txn<'a>,
                 Input = cases::create_account::Ok,

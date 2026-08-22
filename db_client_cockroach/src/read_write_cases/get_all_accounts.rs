@@ -26,11 +26,13 @@ impl cases::get_all_accounts::DatabaseRead for S {}
 
 impl DatabaseRead for S {
     type Db<'a> = db_client::S;
-    type Error = DynamicError;
     type Input = cases::get_all_accounts::ReadInput;
     type Output = cases::get_all_accounts::ReadOutput;
 
-    async fn read(db: &mut Self::Db<'_>, input: &Self::Input) -> Result<Self::Output, Self::Error> {
+    async fn read(
+        db: &mut Self::Db<'_>,
+        input: &Self::Input,
+    ) -> Result<Self::Output, DynamicError> {
         let rows =
             db.client.query(READ_QUERY, &[&input.company_uuid.to_externel_uuid()]).await.log()?;
 

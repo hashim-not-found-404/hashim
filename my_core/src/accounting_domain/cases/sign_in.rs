@@ -1,4 +1,5 @@
 use crate::accounting_domain::utility::types;
+use crate::utility::traits::DynamicError;
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -57,7 +58,7 @@ impl Input {
         &self,
         jwt: &Jwt,
         db: &mut Db::Db<'_>,
-    ) -> Result<MyResult, Db::Error> {
+    ) -> Result<MyResult, DynamicError> {
         let read_output = Db::read(db, &ReadInput {
             user_id: self.user_id.clone(),
         })

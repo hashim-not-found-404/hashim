@@ -29,12 +29,11 @@ pub trait DatabaseRead {
     type Db<'a>;
     type Input;
     type Output;
-    type Error: Debug;
 
     fn read(
         db: &mut Self::Db<'_>,
         input: &Self::Input,
-    ) -> impl Future<Output = Result<Self::Output, Self::Error>>;
+    ) -> impl Future<Output = Result<Self::Output, DynamicError>>;
 }
 
 pub(crate) trait MyErrorTrait {

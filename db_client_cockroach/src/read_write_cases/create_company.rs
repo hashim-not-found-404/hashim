@@ -14,11 +14,13 @@ impl cases::create_company::DatabaseRead for S {}
 
 impl DatabaseRead for S {
     type Db<'a> = db_transaction::S<'a>;
-    type Error = DynamicError;
     type Input = cases::create_company::ReadInput;
     type Output = cases::create_company::ReadOutput;
 
-    async fn read(db: &mut Self::Db<'_>, input: &Self::Input) -> Result<Self::Output, Self::Error> {
+    async fn read(
+        db: &mut Self::Db<'_>,
+        input: &Self::Input,
+    ) -> Result<Self::Output, DynamicError> {
         let stmt = db.txn.prepare_cached(READ_QUERY).await.log()?;
         let row = db.txn.query_one(&stmt, &[&input.new_uuid.to_externel_uuid()]).await.log()?;
 

@@ -78,11 +78,13 @@ impl cases::create_journal_entry::DatabaseRead for S {}
 
 impl DatabaseRead for S {
     type Db<'a> = db_transaction::S<'a>;
-    type Error = DynamicError;
     type Input = cases::create_journal_entry::ReadInput;
     type Output = cases::create_journal_entry::ReadOutput;
 
-    async fn read(db: &mut Self::Db<'_>, input: &Self::Input) -> Result<Self::Output, Self::Error> {
+    async fn read(
+        db: &mut Self::Db<'_>,
+        input: &Self::Input,
+    ) -> Result<Self::Output, DynamicError> {
         let accounts_uuid_vec: Vec<Uuid> =
             input.accounts_uuid.iter().map(|uuid| uuid.to_externel_uuid()).collect();
         let new_entries_uuid_vec: Vec<Uuid> =

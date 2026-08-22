@@ -14,11 +14,13 @@ impl cases::sign_in::DatabaseRead for S {}
 
 impl DatabaseRead for S {
     type Db<'a> = db_client::S;
-    type Error = DynamicError;
     type Input = cases::sign_in::ReadInput;
     type Output = cases::sign_in::ReadOutput;
 
-    async fn read(db: &mut Self::Db<'_>, input: &Self::Input) -> Result<Self::Output, Self::Error> {
+    async fn read(
+        db: &mut Self::Db<'_>,
+        input: &Self::Input,
+    ) -> Result<Self::Output, DynamicError> {
         let stmt = db.client.prepare_cached(READ_QUERY).await.log()?;
         let row = db.client.query_opt(&stmt, &[&input.user_id]).await.log()?;
 

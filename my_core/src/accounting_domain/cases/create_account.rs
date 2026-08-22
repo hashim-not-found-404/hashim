@@ -1,4 +1,5 @@
 use crate::accounting_domain::utility::types;
+use crate::utility::traits::DynamicError;
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -79,7 +80,7 @@ impl Input {
     pub(crate) async fn state_full_check<Db: DatabaseRead>(
         &self,
         db: &mut Db::Db<'_>,
-    ) -> Result<Error, Db::Error> {
+    ) -> Result<Error, DynamicError> {
         let read_output = Db::read(db, &ReadInput {
             user_uuid:         self.user_uuid.clone(),
             new_uuid:          self.new_uuid.clone(),

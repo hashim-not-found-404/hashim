@@ -13,10 +13,7 @@ impl cases::create_journal_entry::Input {
         Id: types::RowId,
         Ti: traits::Time,
         Cli: DBClient,
-        Db: for<'a> cases::create_journal_entry::DatabaseRead<
-                Db<'a> = Cli::Txn<'a>,
-                Error = DynamicError,
-            >,
+        Db: for<'a> cases::create_journal_entry::DatabaseRead<Db<'a> = Cli::Txn<'a>>,
         DbWrite: for<'a> server_traits::DatabaseWrite<
                 Db<'a> = Cli::Txn<'a>,
                 Input = cases::create_journal_entry::Ok,

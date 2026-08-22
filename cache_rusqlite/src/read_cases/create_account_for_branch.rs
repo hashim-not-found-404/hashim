@@ -3,7 +3,7 @@ use crate::utility::utils::MyUuidConverter;
 use my_core::accounting_domain::cases;
 use my_core::accounting_domain::utility::types::DatabaseRead;
 use my_core::accounting_domain::utility::types::{self};
-use my_core::utility::traits;
+use my_core::utility::traits::DynamicError;
 use rusqlite::params;
 use std::str::FromStr;
 
@@ -21,11 +21,13 @@ impl cases::create_account_for_branch::DatabaseRead for S {}
 
 impl DatabaseRead for S {
     type Db<'a> = cache_adapter::S;
-    type Error = traits::DynamicError;
     type Input = cases::create_account_for_branch::ReadInput;
     type Output = cases::create_account_for_branch::ReadOutput;
 
-    async fn read(db: &mut Self::Db<'_>, input: &Self::Input) -> Result<Self::Output, Self::Error> {
+    async fn read(
+        db: &mut Self::Db<'_>,
+        input: &Self::Input,
+    ) -> Result<Self::Output, DynamicError> {
         let branch_uuid = input.belong_to_company_branch.to_string();
         let user_uuid = input.user_uuid.to_string();
         let new_uuid = input.new_uuid.to_string();
