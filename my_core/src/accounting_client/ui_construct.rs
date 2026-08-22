@@ -73,8 +73,8 @@ struct MyNetwork<Mpsc: traits::MultiProducerSingleConsumer> {
         cache_actor::MessageToCache<
             Mpsc,
             resource_utils::Subscribe,
-            request_response::push_data::OperationsInput,
-            request_response::push_data::OperationsResult,
+            request_response::OperationsInput,
+            request_response::OperationsResult,
         >,
     >,
     receiver_to_network: Mpsc::Receiver<Vec<u8>>,
@@ -129,10 +129,10 @@ impl<
     type Mpsc = Mpsc;
     type NetworkSender = Mpsc::Sender<Vec<u8>>;
     type NetworkStatus = Arc<RwLock<bool>>;
-    type OpInput = request_response::push_data::OperationsInput;
-    type OpResult = request_response::push_data::OperationsResult;
+    type OpInput = request_response::OperationsInput;
+    type OpResult = request_response::OperationsResult;
     type Resource = resource_utils::ResourceInfo;
-    type Response = request_response::push_data::MyResult;
+    type Response = request_response::MyResult;
     type SendingTxns = request_response::FromClient;
     type Subscribe = resource_utils::Subscribe;
 
@@ -199,7 +199,7 @@ impl<
         let mut operations1 = Vec::with_capacity(txns.len());
 
         for i in txns {
-            operations1.push(request_response::push_data::Txn {
+            operations1.push(request_response::Txn {
                 txn_number: i.0,
                 operation:  i.1,
             });
@@ -283,7 +283,7 @@ impl<
 
     async fn write_input(cache: &Self::Cache, txn_number: u64, data: &Self::OpInput) {
         cache
-            .write_txn_input(&request_response::push_data::Txn {
+            .write_txn_input(&request_response::Txn {
                 txn_number,
                 operation: data.clone(),
             })

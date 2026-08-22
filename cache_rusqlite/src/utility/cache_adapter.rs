@@ -45,12 +45,12 @@ impl Cache for S {
 
     async fn get_all_txn_input(
         &self,
-    ) -> Vec<request_response::push_data::Txn<request_response::push_data::OperationsInput>> {
+    ) -> Vec<request_response::Txn<request_response::OperationsInput>> {
         let mut stmt = self.transactions_db.prepare(QUERY1).unwrap();
 
         let rows = stmt
             .query_map([], |row| {
-                Ok(request_response::push_data::Txn {
+                Ok(request_response::Txn {
                     txn_number: row.get::<usize, i64>(0).unwrap() as u64,
                     operation:  encode_decode::target::S::decode(
                         &row.get::<usize, Vec<u8>>(1).unwrap(),
@@ -69,7 +69,7 @@ impl Cache for S {
 
     async fn write_txn_input(
         &self,
-        txn: &request_response::push_data::Txn<request_response::push_data::OperationsInput>,
+        txn: &request_response::Txn<request_response::OperationsInput>,
     ) -> () {
         let txn_data = encode_decode::target::S::encode(&txn.operation);
         self.transactions_db
@@ -79,7 +79,7 @@ impl Cache for S {
 
     async fn write_txn_result(
         &self,
-        txn: &request_response::push_data::Txn<request_response::push_data::OperationsResult>,
+        txn: &request_response::Txn<request_response::OperationsResult>,
     ) {
         let txn_data = encode_decode::target::S::encode(&txn.operation);
         self.transactions_db

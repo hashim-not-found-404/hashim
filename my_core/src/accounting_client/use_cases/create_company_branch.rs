@@ -35,8 +35,8 @@ where
     type Type3 = Type3;
     type Type4 = Type4;
 
-    fn wrap_input(data: Self::Type1) -> request_response::push_data::OperationsInput {
-        request_response::push_data::OperationsInput::CreateCompanyBranch(data)
+    fn wrap_input(data: Self::Type1) -> request_response::OperationsInput {
+        request_response::OperationsInput::CreateCompanyBranch(data)
     }
 
     fn user_uuid(data: &Self::Type2) -> Option<&types::UuidType> {
@@ -111,8 +111,8 @@ where
         }
     }
 
-    fn unwrap_output(output: request_response::push_data::OperationsResult) -> Self::Type4 {
-        if let request_response::push_data::OperationsResult::CreateCompanyBranch(result) = output {
+    fn unwrap_output(output: request_response::OperationsResult) -> Self::Type4 {
+        if let request_response::OperationsResult::CreateCompanyBranch(result) = output {
             return result;
         }
         unreachable!("{:?}", output)

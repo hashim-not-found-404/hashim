@@ -7,18 +7,14 @@ pub trait Cache: Sized {
 
     fn get_all_txn_input(
         &self,
-    ) -> impl Future<
-        Output = Vec<
-            request_response::push_data::Txn<request_response::push_data::OperationsInput>,
-        >,
-    >;
+    ) -> impl Future<Output = Vec<request_response::Txn<request_response::OperationsInput>>>;
     fn write_txn_input(
         &self,
-        txn: &request_response::push_data::Txn<request_response::push_data::OperationsInput>,
+        txn: &request_response::Txn<request_response::OperationsInput>,
     ) -> impl Future<Output = ()>;
     fn write_txn_result(
         &self,
-        txn: &request_response::push_data::Txn<request_response::push_data::OperationsResult>,
+        txn: &request_response::Txn<request_response::OperationsResult>,
     ) -> impl Future<Output = ()>;
     fn mark_txn_input_as_faild(&self, txn_number: &u64) -> impl Future<Output = ()>;
     fn delete_txn_input(&self, txn_number: &u64) -> impl Future<Output = ()>;

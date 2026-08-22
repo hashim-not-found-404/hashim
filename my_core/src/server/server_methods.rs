@@ -379,12 +379,12 @@ async fn push_data<
     Cli: DBClient,
     Dbb: DbBundle<Cli>,
 >(
-    input: &request_response::push_data::Input,
+    input: &request_response::Input,
     side_effects: &mut server_traits::SideEffects,
     client: &mut Cli,
     jwt: &Jwt,
-) -> Result<request_response::push_data::MyResult, DynamicError> {
-    let mut the_return_result = request_response::push_data::MyResult {
+) -> Result<request_response::MyResult, DynamicError> {
+    let mut the_return_result = request_response::MyResult {
         jwts:       Vec::with_capacity(input.jwts.len()),
         nonce:      Ok(()),
         operations: Vec::with_capacity(input.operations.len()),
@@ -418,8 +418,8 @@ async fn push_data<
 
     for transaction in &input.operations {
         let result = match &transaction.operation {
-            request_response::push_data::OperationsInput::SignUp(input) => {
-                request_response::push_data::OperationsResult::SignUp(
+            request_response::OperationsInput::SignUp(input) => {
+                request_response::OperationsResult::SignUp(
                     input
                         .handle_operation::<Id, Auth, Jwt, Cli, Dbb::SignUp, Dbb::WriteSignUp>(
                             side_effects,
@@ -429,15 +429,15 @@ async fn push_data<
                         .await?,
                 )
             }
-            request_response::push_data::OperationsInput::SignIn(input) => {
-                request_response::push_data::OperationsResult::SignIn(
+            request_response::OperationsInput::SignIn(input) => {
+                request_response::OperationsResult::SignIn(
                     input
                         .handle_operation::<Auth, Jwt, Cli, Dbb::SignIn>(side_effects, client, jwt)
                         .await?,
                 )
             }
-            request_response::push_data::OperationsInput::CreateCompany(input) => {
-                request_response::push_data::OperationsResult::CreateCompany(
+            request_response::OperationsInput::CreateCompany(input) => {
+                request_response::OperationsResult::CreateCompany(
                     input
                         .handle_operation::<Id, Cli, Dbb::CreateCompany, Dbb::WriteCreateCompany>(
                             side_effects,
@@ -446,15 +446,15 @@ async fn push_data<
                         .await?,
                 )
             }
-            request_response::push_data::OperationsInput::CreateCompanyBranch(input) => {
-                request_response::push_data::OperationsResult::CreateCompanyBranch(
+            request_response::OperationsInput::CreateCompanyBranch(input) => {
+                request_response::OperationsResult::CreateCompanyBranch(
                     input
                         .handle_operation::<Id, Cli, Dbb::CreateCompanyBranch,Dbb::WriteCreateCompanyBranch>(side_effects, client)
                         .await?,
                 )
             }
-            request_response::push_data::OperationsInput::ListCompanyAndBranch(input) => {
-                request_response::push_data::OperationsResult::ListCompanyAndBranch(
+            request_response::OperationsInput::ListCompanyAndBranch(input) => {
+                request_response::OperationsResult::ListCompanyAndBranch(
                     input
                         .handle_operation::<Id, Cli, Dbb::ListCompanyAndBranch>(
                             side_effects,
@@ -463,22 +463,22 @@ async fn push_data<
                         .await?,
                 )
             }
-            request_response::push_data::OperationsInput::CreateAccount(input) => {
-                request_response::push_data::OperationsResult::CreateAccount(
+            request_response::OperationsInput::CreateAccount(input) => {
+                request_response::OperationsResult::CreateAccount(
                     input
                         .handle_operation::<Id, Cli, Dbb::CreateAccount,Dbb::WriteCreateAccount>(side_effects, client)
                         .await?,
                 )
             }
-            request_response::push_data::OperationsInput::GetAllAccounts(input) => {
-                request_response::push_data::OperationsResult::GetAllAccounts(
+            request_response::OperationsInput::GetAllAccounts(input) => {
+                request_response::OperationsResult::GetAllAccounts(
                     input
                         .handle_operation::<Id, Cli, Dbb::GetAllAccounts>(side_effects, client)
                         .await?,
                 )
             }
-            request_response::push_data::OperationsInput::CreateAccountForBranch(input) => {
-                request_response::push_data::OperationsResult::CreateAccountForBranch(
+            request_response::OperationsInput::CreateAccountForBranch(input) => {
+                request_response::OperationsResult::CreateAccountForBranch(
                     input
                         .handle_operation::<Id, Cli, Dbb::CreateAccountForBranch,Dbb::WriteCreateAccountForBranch>(
                             side_effects,
@@ -487,8 +487,8 @@ async fn push_data<
                         .await?,
                 )
             }
-            request_response::push_data::OperationsInput::GetAllAccountsForBranch(input) => {
-                request_response::push_data::OperationsResult::GetAllAccountsForBranch(
+            request_response::OperationsInput::GetAllAccountsForBranch(input) => {
+                request_response::OperationsResult::GetAllAccountsForBranch(
                     input
                         .handle_operation::<Id, Cli, Dbb::GetAllAccountsForBranch>(
                             side_effects,
@@ -497,8 +497,8 @@ async fn push_data<
                         .await?,
                 )
             }
-            request_response::push_data::OperationsInput::CreateJournalEntry(input) => {
-                request_response::push_data::OperationsResult::CreateJournalEntry(
+            request_response::OperationsInput::CreateJournalEntry(input) => {
+                request_response::OperationsResult::CreateJournalEntry(
                     input
                         .handle_operation::<Id, Ti, Cli, Dbb::CreateJournalEntry,Dbb::WriteCreateJournalEntry>(
                             side_effects,
@@ -509,7 +509,7 @@ async fn push_data<
             }
         };
 
-        the_return_result.operations.push(request_response::push_data::Txn {
+        the_return_result.operations.push(request_response::Txn {
             txn_number: transaction.txn_number,
             operation:  result,
         });

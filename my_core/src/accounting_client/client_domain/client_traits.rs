@@ -4,7 +4,7 @@ use crate::accounting_client::client_domain::commander;
 use crate::accounting_client::client_domain::process_manager;
 use crate::accounting_client::client_domain::ui_model;
 use crate::accounting_domain::request_response;
-use crate::accounting_domain::request_response::push_data::OperationsResult;
+use crate::accounting_domain::request_response::OperationsResult;
 use crate::accounting_domain::utility::resource_utils;
 use crate::accounting_domain::utility::types;
 use crate::utility::traits;
@@ -24,7 +24,7 @@ pub(crate) trait ViewAndCache<Ch: cache::Cache, T> {
         unreachable!("we dont need it here")
     }
 
-    fn wrap_input(data: Self::Type1) -> request_response::push_data::OperationsInput;
+    fn wrap_input(data: Self::Type1) -> request_response::OperationsInput;
 
     fn user_uuid(data: &Self::Type2) -> Option<&types::UuidType>;
 
@@ -35,7 +35,7 @@ pub(crate) trait ViewAndCache<Ch: cache::Cache, T> {
 
     fn extract_resource(data: &Self::Type3) -> Vec<resource_utils::ResourceInfo>;
 
-    fn unwrap_output(output: request_response::push_data::OperationsResult) -> Self::Type4;
+    fn unwrap_output(output: request_response::OperationsResult) -> Self::Type4;
 
     fn apply_on_the_model<As: ui_model::AllSignalTypes>(
         output: &Self::Type4,
@@ -48,7 +48,7 @@ pub(crate) trait ReadServerOnly {
     type Type2;
     type Type3;
 
-    fn wrap_input(data: Self::Type1) -> request_response::push_data::OperationsInput;
+    fn wrap_input(data: Self::Type1) -> request_response::OperationsInput;
     fn user_uuid(data: &Self::Type2) -> Option<&types::UuidType>;
     fn extract_resource(data: &Self::Type3) -> Vec<resource_utils::ResourceInfo>;
 }
@@ -56,8 +56,8 @@ pub(crate) trait ReadServerOnly {
 pub(crate) type CacheActorStruct<Mpsc> = cache_actor::CacheStruct<
     Mpsc,
     resource_utils::Subscribe,
-    request_response::push_data::OperationsInput,
-    request_response::push_data::OperationsResult,
+    request_response::OperationsInput,
+    request_response::OperationsResult,
 >;
 
 pub(crate) async fn handle_fall_back<
@@ -70,7 +70,7 @@ pub(crate) async fn handle_fall_back<
     commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
     dialog: &'static As::Dialog,
     process_name: process_manager::ProcessName,
-    data: request_response::push_data::OperationsInput,
+    data: request_response::OperationsInput,
     f: impl Fn(OperationsResult) -> bool + Clone + 'static,
 ) {
     let txn_number = Rn::generate();
@@ -151,7 +151,7 @@ pub(crate) fn spawn_listener<
 >(
     mut cache: CacheActorStruct<Mpsc>,
     list_of_subscribtion: &'static [resource_utils::Subscribe],
-    data: request_response::push_data::OperationsInput,
+    data: request_response::OperationsInput,
     is_error: impl Fn(OperationsResult) + 'static,
 ) -> impl FnOnce() {
     let component_id = Rn::generate() as u16;

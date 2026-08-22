@@ -61,8 +61,8 @@ where
         ]
     }
 
-    fn wrap_input(data: Self::Type1) -> request_response::push_data::OperationsInput {
-        request_response::push_data::OperationsInput::ListCompanyAndBranch(data)
+    fn wrap_input(data: Self::Type1) -> request_response::OperationsInput {
+        request_response::OperationsInput::ListCompanyAndBranch(data)
     }
 
     fn user_uuid(data: &Self::Type2) -> Option<&types::UuidType> {
@@ -175,8 +175,8 @@ where
         }
     }
 
-    fn unwrap_output(output: request_response::push_data::OperationsResult) -> Self::Type4 {
-        if let request_response::push_data::OperationsResult::ListCompanyAndBranch(res) = output {
+    fn unwrap_output(output: request_response::OperationsResult) -> Self::Type4 {
+        if let request_response::OperationsResult::ListCompanyAndBranch(res) = output {
             match res {
                 Ok(ok) => {
                     let mut companies = Vec::with_capacity(ok.data.len());

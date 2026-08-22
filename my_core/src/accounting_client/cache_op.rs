@@ -36,7 +36,7 @@ pub(crate) async fn new<Id: types::RowId, Ti: traits::Time, Dbb: DbBundle<Ch>, C
 
 macro_rules! run_operation_check {
     ($path:ident, $name:ident, $db:ty, $i:expr, $state:expr) => {
-        request_response::push_data::OperationsResult::$name(
+        request_response::OperationsResult::$name(
             <use_cases::$path::ViewAndCacheType as ViewAndCache<Ch, $db>>::state_full_operation::<
                 Id,
             >($i, $state)
@@ -59,7 +59,7 @@ macro_rules! get_user_uuid {
     };
 }
 
-impl request_response::push_data::OperationsInput {
+impl request_response::OperationsInput {
     pub(crate) async fn run_operation_check<
         Id: types::RowId,
         Ti: traits::Time,
@@ -68,18 +68,18 @@ impl request_response::push_data::OperationsInput {
     >(
         &self,
         state: &mut Ch,
-    ) -> request_response::push_data::OperationsResult {
+    ) -> request_response::OperationsResult {
         match self {
-            request_response::push_data::OperationsInput::SignUp(i) => {
+            request_response::OperationsInput::SignUp(i) => {
                 run_operation_check!(sign_up, SignUp, Dbb::SignUp, i, state)
             }
-            request_response::push_data::OperationsInput::SignIn(i) => {
+            request_response::OperationsInput::SignIn(i) => {
                 run_operation_check!(sign_in, SignIn, Dbb::SignIn, i, state)
             }
-            request_response::push_data::OperationsInput::CreateCompany(i) => {
+            request_response::OperationsInput::CreateCompany(i) => {
                 run_operation_check!(create_company, CreateCompany, Dbb::CreateCompany, i, state)
             }
-            request_response::push_data::OperationsInput::CreateCompanyBranch(i) => {
+            request_response::OperationsInput::CreateCompanyBranch(i) => {
                 run_operation_check!(
                     create_company_branch,
                     CreateCompanyBranch,
@@ -88,7 +88,7 @@ impl request_response::push_data::OperationsInput {
                     state
                 )
             }
-            request_response::push_data::OperationsInput::ListCompanyAndBranch(i) => {
+            request_response::OperationsInput::ListCompanyAndBranch(i) => {
                 run_operation_check!(
                     list_company_and_branch,
                     ListCompanyAndBranch,
@@ -97,14 +97,14 @@ impl request_response::push_data::OperationsInput {
                     state
                 )
             }
-            request_response::push_data::OperationsInput::CreateAccount(i) => {
+            request_response::OperationsInput::CreateAccount(i) => {
                 run_operation_check!(create_account, CreateAccount, Dbb::CreateAccount, i, state)
             }
-            request_response::push_data::OperationsInput::GetAllAccounts(_) => {
+            request_response::OperationsInput::GetAllAccounts(_) => {
                 unreachable!()
             }
-            request_response::push_data::OperationsInput::GetAllAccountsForBranch(i) => {
-                request_response::push_data::OperationsResult::GetAllAccountsForBranch(
+            request_response::OperationsInput::GetAllAccountsForBranch(i) => {
+                request_response::OperationsResult::GetAllAccountsForBranch(
                     <fetches::get_all_accounts_for_branch::ViewAndCacheType as ViewAndCache<
                         Ch,
                         Dbb::GetAllAccountsForBranch,
@@ -112,7 +112,7 @@ impl request_response::push_data::OperationsInput {
                     .await,
                 )
             }
-            request_response::push_data::OperationsInput::CreateAccountForBranch(i) => {
+            request_response::OperationsInput::CreateAccountForBranch(i) => {
                 run_operation_check!(
                     create_account_for_branch,
                     CreateAccountForBranch,
@@ -121,8 +121,8 @@ impl request_response::push_data::OperationsInput {
                     state
                 )
             }
-            request_response::push_data::OperationsInput::CreateJournalEntry(i) => {
-                request_response::push_data::OperationsResult::CreateJournalEntry(
+            request_response::OperationsInput::CreateJournalEntry(i) => {
+                request_response::OperationsResult::CreateJournalEntry(
                     <use_cases::create_journal_entry::ViewAndCacheType<Ti> as ViewAndCache<
                         Ch,
                         Dbb::CreateJournalEntry,
@@ -143,16 +143,16 @@ impl request_response::push_data::OperationsInput {
         state: &mut Ch,
     ) {
         match self {
-            request_response::push_data::OperationsInput::SignUp(i) => {
+            request_response::OperationsInput::SignUp(i) => {
                 run_operation_check_apply!(sign_up, Dbb::SignUp, i, state);
             }
-            request_response::push_data::OperationsInput::SignIn(i) => {
+            request_response::OperationsInput::SignIn(i) => {
                 run_operation_check_apply!(sign_in, Dbb::SignIn, i, state);
             }
-            request_response::push_data::OperationsInput::CreateCompany(i) => {
+            request_response::OperationsInput::CreateCompany(i) => {
                 run_operation_check_apply!(create_company, Dbb::CreateCompany, i, state);
             }
-            request_response::push_data::OperationsInput::CreateCompanyBranch(i) => {
+            request_response::OperationsInput::CreateCompanyBranch(i) => {
                 run_operation_check_apply!(
                     create_company_branch,
                     Dbb::CreateCompanyBranch,
@@ -160,7 +160,7 @@ impl request_response::push_data::OperationsInput {
                     state
                 );
             }
-            request_response::push_data::OperationsInput::ListCompanyAndBranch(i) => {
+            request_response::OperationsInput::ListCompanyAndBranch(i) => {
                 run_operation_check_apply!(
                     list_company_and_branch,
                     Dbb::ListCompanyAndBranch,
@@ -168,16 +168,16 @@ impl request_response::push_data::OperationsInput {
                     state
                 );
             }
-            request_response::push_data::OperationsInput::CreateAccount(i) => {
+            request_response::OperationsInput::CreateAccount(i) => {
                 run_operation_check_apply!(create_account, Dbb::CreateAccount, i, state);
             }
-            request_response::push_data::OperationsInput::GetAllAccounts(_) => {
+            request_response::OperationsInput::GetAllAccounts(_) => {
                 unreachable!()
             }
-            request_response::push_data::OperationsInput::GetAllAccountsForBranch(_) => {
+            request_response::OperationsInput::GetAllAccountsForBranch(_) => {
                 unreachable!()
             }
-            request_response::push_data::OperationsInput::CreateAccountForBranch(i) => {
+            request_response::OperationsInput::CreateAccountForBranch(i) => {
                 run_operation_check_apply!(
                     create_account_for_branch,
                     Dbb::CreateAccountForBranch,
@@ -185,7 +185,7 @@ impl request_response::push_data::OperationsInput {
                     state
                 );
             }
-            request_response::push_data::OperationsInput::CreateJournalEntry(i) => {
+            request_response::OperationsInput::CreateJournalEntry(i) => {
                 let result =
                     <use_cases::create_journal_entry::ViewAndCacheType<Ti> as ViewAndCache<
                         Ch,
@@ -206,37 +206,37 @@ impl request_response::push_data::OperationsInput {
         &self,
     ) -> Option<&types::UuidType> {
         match self {
-            request_response::push_data::OperationsInput::SignUp(i) => {
+            request_response::OperationsInput::SignUp(i) => {
                 get_user_uuid!(sign_up, Dbb::SignUp, i)
             }
-            request_response::push_data::OperationsInput::SignIn(i) => {
+            request_response::OperationsInput::SignIn(i) => {
                 get_user_uuid!(sign_in, Dbb::SignIn, i)
             }
-            request_response::push_data::OperationsInput::CreateCompany(i) => {
+            request_response::OperationsInput::CreateCompany(i) => {
                 get_user_uuid!(create_company, Dbb::CreateCompany, i)
             }
-            request_response::push_data::OperationsInput::CreateCompanyBranch(i) => {
+            request_response::OperationsInput::CreateCompanyBranch(i) => {
                 get_user_uuid!(create_company_branch, Dbb::CreateCompanyBranch, i)
             }
-            request_response::push_data::OperationsInput::ListCompanyAndBranch(i) => {
+            request_response::OperationsInput::ListCompanyAndBranch(i) => {
                 get_user_uuid!(list_company_and_branch, Dbb::ListCompanyAndBranch, i)
             }
-            request_response::push_data::OperationsInput::CreateAccount(i) => {
+            request_response::OperationsInput::CreateAccount(i) => {
                 get_user_uuid!(create_account, Dbb::CreateAccount, i)
             }
-            request_response::push_data::OperationsInput::GetAllAccounts(i) => {
+            request_response::OperationsInput::GetAllAccounts(i) => {
                 fetches::get_all_accounts::ViewAndCacheType::user_uuid(i)
             }
-            request_response::push_data::OperationsInput::GetAllAccountsForBranch(i) => {
+            request_response::OperationsInput::GetAllAccountsForBranch(i) => {
                 <fetches::get_all_accounts_for_branch::ViewAndCacheType as ViewAndCache<
                     Ch,
                     Dbb::GetAllAccountsForBranch,
                 >>::user_uuid(i)
             }
-            request_response::push_data::OperationsInput::CreateAccountForBranch(i) => {
+            request_response::OperationsInput::CreateAccountForBranch(i) => {
                 get_user_uuid!(create_account_for_branch, Dbb::CreateAccountForBranch, i)
             }
-            request_response::push_data::OperationsInput::CreateJournalEntry(i) => {
+            request_response::OperationsInput::CreateJournalEntry(i) => {
                 <use_cases::create_journal_entry::ViewAndCacheType<Ti> as ViewAndCache<
                     Ch,
                     Dbb::CreateJournalEntry,
@@ -252,42 +252,42 @@ macro_rules! extract_resource {
     };
 }
 
-impl request_response::push_data::OperationsResult {
+impl request_response::OperationsResult {
     pub(crate) fn extract_resource<Ti: traits::Time, Ch: cache::Cache, Dbb: DbBundle<Ch>>(
         &self,
     ) -> Vec<resource_utils::ResourceInfo> {
         match self {
-            request_response::push_data::OperationsResult::SignIn(i) => {
+            request_response::OperationsResult::SignIn(i) => {
                 extract_resource!(sign_in, Dbb::SignIn, i)
             }
-            request_response::push_data::OperationsResult::SignUp(i) => {
+            request_response::OperationsResult::SignUp(i) => {
                 extract_resource!(sign_up, Dbb::SignUp, i)
             }
-            request_response::push_data::OperationsResult::CreateCompany(i) => {
+            request_response::OperationsResult::CreateCompany(i) => {
                 extract_resource!(create_company, Dbb::CreateCompany, i)
             }
-            request_response::push_data::OperationsResult::CreateCompanyBranch(i) => {
+            request_response::OperationsResult::CreateCompanyBranch(i) => {
                 extract_resource!(create_company_branch, Dbb::CreateCompanyBranch, i)
             }
-            request_response::push_data::OperationsResult::ListCompanyAndBranch(i) => {
+            request_response::OperationsResult::ListCompanyAndBranch(i) => {
                 extract_resource!(list_company_and_branch, Dbb::ListCompanyAndBranch, i)
             }
-            request_response::push_data::OperationsResult::CreateAccount(i) => {
+            request_response::OperationsResult::CreateAccount(i) => {
                 extract_resource!(create_account, Dbb::CreateAccount, i)
             }
-            request_response::push_data::OperationsResult::GetAllAccounts(i) => {
+            request_response::OperationsResult::GetAllAccounts(i) => {
                 fetches::get_all_accounts::ViewAndCacheType::extract_resource(i)
             }
-            request_response::push_data::OperationsResult::GetAllAccountsForBranch(i) => {
+            request_response::OperationsResult::GetAllAccountsForBranch(i) => {
                 <fetches::get_all_accounts_for_branch::ViewAndCacheType as ViewAndCache<
                     Ch,
                     Dbb::GetAllAccountsForBranch,
                 >>::extract_resource(i)
             }
-            request_response::push_data::OperationsResult::CreateAccountForBranch(i) => {
+            request_response::OperationsResult::CreateAccountForBranch(i) => {
                 extract_resource!(create_account_for_branch, Dbb::CreateAccountForBranch, i)
             }
-            request_response::push_data::OperationsResult::CreateJournalEntry(i) => {
+            request_response::OperationsResult::CreateJournalEntry(i) => {
                 <use_cases::create_journal_entry::ViewAndCacheType<Ti> as ViewAndCache<
                     Ch,
                     Dbb::CreateJournalEntry,
@@ -298,16 +298,16 @@ impl request_response::push_data::OperationsResult {
 
     pub(crate) fn is_ok(&self) -> bool {
         match self {
-            request_response::push_data::OperationsResult::SignUp(i) => i.is_ok(),
-            request_response::push_data::OperationsResult::SignIn(i) => i.is_ok(),
-            request_response::push_data::OperationsResult::CreateCompany(i) => i.is_ok(),
-            request_response::push_data::OperationsResult::CreateCompanyBranch(i) => i.is_ok(),
-            request_response::push_data::OperationsResult::ListCompanyAndBranch(i) => i.is_ok(),
-            request_response::push_data::OperationsResult::CreateAccount(i) => i.is_ok(),
-            request_response::push_data::OperationsResult::GetAllAccounts(i) => i.is_ok(),
-            request_response::push_data::OperationsResult::CreateAccountForBranch(i) => i.is_ok(),
-            request_response::push_data::OperationsResult::GetAllAccountsForBranch(i) => i.is_ok(),
-            request_response::push_data::OperationsResult::CreateJournalEntry(i) => i.is_ok(),
+            request_response::OperationsResult::SignUp(i) => i.is_ok(),
+            request_response::OperationsResult::SignIn(i) => i.is_ok(),
+            request_response::OperationsResult::CreateCompany(i) => i.is_ok(),
+            request_response::OperationsResult::CreateCompanyBranch(i) => i.is_ok(),
+            request_response::OperationsResult::ListCompanyAndBranch(i) => i.is_ok(),
+            request_response::OperationsResult::CreateAccount(i) => i.is_ok(),
+            request_response::OperationsResult::GetAllAccounts(i) => i.is_ok(),
+            request_response::OperationsResult::CreateAccountForBranch(i) => i.is_ok(),
+            request_response::OperationsResult::GetAllAccountsForBranch(i) => i.is_ok(),
+            request_response::OperationsResult::CreateJournalEntry(i) => i.is_ok(),
         }
     }
 }

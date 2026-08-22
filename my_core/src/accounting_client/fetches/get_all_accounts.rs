@@ -21,8 +21,8 @@ impl ReadServerOnly for ViewAndCacheType {
     type Type2 = Type2;
     type Type3 = Type3;
 
-    fn wrap_input(data: Self::Type1) -> request_response::push_data::OperationsInput {
-        request_response::push_data::OperationsInput::GetAllAccounts(data)
+    fn wrap_input(data: Self::Type1) -> request_response::OperationsInput {
+        request_response::OperationsInput::GetAllAccounts(data)
     }
 
     fn user_uuid(data: &Self::Type2) -> Option<&types::UuidType> {

@@ -34,8 +34,8 @@ where
         ]
     }
 
-    fn wrap_input(data: Self::Type1) -> request_response::push_data::OperationsInput {
-        request_response::push_data::OperationsInput::GetAllAccountsForBranch(data)
+    fn wrap_input(data: Self::Type1) -> request_response::OperationsInput {
+        request_response::OperationsInput::GetAllAccountsForBranch(data)
     }
 
     fn user_uuid(data: &Self::Type2) -> Option<&types::UuidType> {
@@ -137,10 +137,8 @@ where
         }
     }
 
-    fn unwrap_output(output: request_response::push_data::OperationsResult) -> Self::Type4 {
-        if let request_response::push_data::OperationsResult::GetAllAccountsForBranch(result) =
-            output
-        {
+    fn unwrap_output(output: request_response::OperationsResult) -> Self::Type4 {
+        if let request_response::OperationsResult::GetAllAccountsForBranch(result) = output {
             match result {
                 Ok(mut ok) => {
                     let linked: HashSet<types::UuidType> =

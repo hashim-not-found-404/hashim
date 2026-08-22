@@ -36,8 +36,8 @@ where
     type Type3 = Type3;
     type Type4 = Type4;
 
-    fn wrap_input(data: Self::Type1) -> request_response::push_data::OperationsInput {
-        request_response::push_data::OperationsInput::CreateAccount(data)
+    fn wrap_input(data: Self::Type1) -> request_response::OperationsInput {
+        request_response::OperationsInput::CreateAccount(data)
     }
 
     fn user_uuid(data: &Self::Type2) -> Option<&types::UuidType> {
@@ -102,8 +102,8 @@ where
         }
     }
 
-    fn unwrap_output(output: request_response::push_data::OperationsResult) -> Self::Type4 {
-        if let request_response::push_data::OperationsResult::CreateAccount(result) = output {
+    fn unwrap_output(output: request_response::OperationsResult) -> Self::Type4 {
+        if let request_response::OperationsResult::CreateAccount(result) = output {
             return result;
         }
         unreachable!("{:?}", output)
