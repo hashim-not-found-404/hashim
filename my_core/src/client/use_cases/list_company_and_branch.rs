@@ -4,7 +4,6 @@ use crate::client::utility::client_traits::ViewAndCache;
 use crate::client::utility::commander;
 use crate::client::utility::ui_model;
 use crate::client::utility::ui_model::HashimSignal;
-use crate::domain::request_response;
 use crate::domain::use_cases;
 use crate::domain::utility::resource_utils;
 use crate::domain::utility::types::Branch;
@@ -13,6 +12,8 @@ use crate::domain::utility::types::ListOfCompanies;
 use crate::domain::utility::types::RowId;
 use crate::domain::utility::uuid;
 use crate::domain::utility::uuid::User;
+use crate::make_user_uuid;
+use crate::make_wrap_unwrap;
 use crate::utility::tools;
 use crate::utility::traits;
 use crate::utility::utils::ReadAndSet;
@@ -21,7 +22,10 @@ use std::sync::Arc;
 type Type1 = use_cases::list_company_and_branch::Input;
 type Type2 = use_cases::list_company_and_branch::Input;
 type Type3 = use_cases::list_company_and_branch::MyResult;
-type Type4 = Result<ListOfCompanies, ()>;
+type Type4 = use_cases::list_company_and_branch::MyResult;
+
+make_wrap_unwrap!(list_company_and_branch, ListCompanyAndBranch);
+make_user_uuid!(list_company_and_branch);
 
 impl tools::Sortable for Company {
     type Key = (String, uuid::Company);
@@ -64,14 +68,6 @@ where
             resource_utils::Subscribe::TableCompanyFieldName,
             resource_utils::Subscribe::TableAccessControlForCompanyFieldRole,
         ]
-    }
-
-    fn wrap_input(data: Self::Type1) -> request_response::OperationsInput {
-        request_response::OperationsInput::ListCompanyAndBranch(data)
-    }
-
-    fn user_uuid(data: &Self::Type2) -> Option<&User> {
-        Some(&data.user_uuid)
     }
 
     async fn state_full_operation<Id: RowId>(data: &Self::Type2, state: &mut Ch) -> Self::Type3 {
@@ -177,55 +173,16 @@ where
         }
     }
 
-    fn unwrap_output(output: request_response::OperationsResult) -> Self::Type4 {
-        if let request_response::OperationsResult::ListCompanyAndBranch(res) = output {
-            match res {
-                Ok(ok) => {
-                    let mut companies = Vec::with_capacity(ok.data.len());
-
-                    for company_entry in ok.data {
-                        let branches = company_entry
-                            .branches
-                            .into_iter()
-                            .map(|branch_entry| {
-                                Branch {
-                                    uuid: branch_entry.branch_uuid,
-                                    name: branch_entry.branch_name,
-                                }
-                            })
-                            .collect();
-
-                        let role = company_entry.user_roles.first().cloned().unwrap_or_default();
-
-                        companies.push(Company {
-                            uuid: company_entry.company_uuid,
-                            name: company_entry.company_name,
-                            role,
-                            branches,
-                        });
-                    }
-
-                    sort_companies(&mut companies);
-
-                    Ok(companies)
-                }
-                Err(_) => Err(()),
-            }
-        } else {
-            unreachable!("Expected ListCompanyAndBranch, got {:?}", output)
-        }
-    }
-
     fn apply_on_the_model<As: ui_model::AllSignalTypes>(
         output: &Self::Type4,
         model: &ui_model::Model<As>,
     ) {
-        match &output {
-            Ok(ok) => model.page_company_branch_selection.list.set(ok.clone()),
-            Err(_) => {
-                model.navigator.set(ui_model::Navigator::SignIn);
-            }
-        }
+        // match &output {
+        //     Ok(ok) => model.page_company_branch_selection.list.set(ok.clone()),
+        //     Err(_) => {
+        //         model.navigator.set(ui_model::Navigator::SignIn);
+        //     }
+        // }
     }
 }
 
@@ -305,7 +262,7 @@ fn spawn_listener<
     cache: client_traits::CacheActorStruct<Mpsc>,
     commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
 ) {
-    let data = <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::wrap_input(Type1 {
+    let data = wrap_input(Type1 {
         user_uuid: model.user_uuid.read().clone().unwrap(),
     });
 
@@ -314,7 +271,7 @@ fn spawn_listener<
         <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::subs(),
         data,
         move |data| {
-            let data = <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::unwrap_output(data);
+            let data = unwrap_output(data);
             <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::apply_on_the_model(&data, model);
         },
     );

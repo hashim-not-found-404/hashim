@@ -2,10 +2,11 @@ use crate::client::utility::cache_actor;
 use crate::client::utility::client_traits;
 use crate::client::utility::client_traits::ReadServerOnly;
 use crate::client::utility::ui_model;
-use crate::domain::request_response;
 use crate::domain::use_cases;
 use crate::domain::utility::resource_utils;
 use crate::domain::utility::uuid::User;
+use crate::make_user_uuid;
+use crate::make_wrap_unwrap;
 use crate::utility::traits;
 use crate::utility::utils::ReadAndSet;
 
@@ -13,20 +14,15 @@ type Type1 = use_cases::get_all_accounts::Input;
 type Type2 = use_cases::get_all_accounts::Input;
 type Type3 = use_cases::get_all_accounts::MyResult;
 
+make_wrap_unwrap!(get_all_accounts, GetAllAccounts);
+make_user_uuid!(get_all_accounts);
+
 pub(crate) struct ViewAndCacheType;
 
 impl ReadServerOnly for ViewAndCacheType {
     type Type1 = Type1;
     type Type2 = Type2;
     type Type3 = Type3;
-
-    fn wrap_input(data: Self::Type1) -> request_response::OperationsInput {
-        request_response::OperationsInput::GetAllAccounts(data)
-    }
-
-    fn user_uuid(data: &Self::Type2) -> Option<&User> {
-        Some(&data.user_uuid)
-    }
 
     fn extract_resource(data: &Self::Type3) -> Vec<resource_utils::ResourceInfo> {
         match data {
@@ -102,7 +98,7 @@ pub(crate) async fn fetch<
         .send_to_cache_actor(
             cache_actor::CachingStrategy::ReadServerOnly,
             txn_number,
-            ViewAndCacheType::wrap_input(input),
+            wrap_input(input),
         )
         .await;
 }

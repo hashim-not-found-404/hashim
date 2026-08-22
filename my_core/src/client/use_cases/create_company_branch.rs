@@ -6,12 +6,13 @@ use crate::client::utility::commander;
 use crate::client::utility::process_manager;
 use crate::client::utility::ui_model;
 use crate::client::utility::ui_model::HashimSignal;
-use crate::domain::request_response;
 use crate::domain::use_cases;
 use crate::domain::utility::resource_utils;
 use crate::domain::utility::types::MyErrorTrait;
 use crate::domain::utility::types::RowId;
 use crate::domain::utility::uuid::User;
+use crate::make_user_uuid;
+use crate::make_wrap_unwrap;
 use crate::mbg;
 use crate::utility::traits;
 use crate::utility::traits::Receiver;
@@ -24,6 +25,9 @@ type Type2 = use_cases::create_company_branch::Input;
 type Type3 = use_cases::create_company_branch::MyResult;
 type Type4 = use_cases::create_company_branch::MyResult;
 
+make_wrap_unwrap!(create_company_branch, CreateCompanyBranch);
+make_user_uuid!(create_company_branch);
+
 pub(crate) struct ViewAndCacheType;
 
 impl<Ch, LongCache> ViewAndCache<Ch, LongCache> for ViewAndCacheType
@@ -35,14 +39,6 @@ where
     type Type2 = Type2;
     type Type3 = Type3;
     type Type4 = Type4;
-
-    fn wrap_input(data: Self::Type1) -> request_response::OperationsInput {
-        request_response::OperationsInput::CreateCompanyBranch(data)
-    }
-
-    fn user_uuid(data: &Self::Type2) -> Option<&User> {
-        Some(&data.user_uuid)
-    }
 
     async fn state_full_operation<Id: RowId>(data: &Self::Type2, state: &mut Ch) -> Self::Type3 {
         let errr = data.state_full_check::<LongCache>(state).await.unwrap();
@@ -107,13 +103,6 @@ where
             }
             Err(_) => Vec::new(),
         }
-    }
-
-    fn unwrap_output(output: request_response::OperationsResult) -> Self::Type4 {
-        if let request_response::OperationsResult::CreateCompanyBranch(result) = output {
-            return result;
-        }
-        unreachable!("{:?}", output)
     }
 
     fn apply_on_the_model<As: ui_model::AllSignalTypes>(
@@ -204,7 +193,7 @@ async fn handle_submit<
     local_state.is_loading.set(true);
 
     let input = build_input::<Id, As>(model);
-    let data = <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::wrap_input(input);
+    let data = wrap_input(input);
 
     client_traits::handle_fall_back::<Rn, Rt, Mpsc, As>(
         cache,
@@ -213,7 +202,7 @@ async fn handle_submit<
         process_manager::ProcessName::CreateCompanyBranch,
         data,
         move |data| {
-            let result = <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::unwrap_output(data);
+            let result = unwrap_output(data);
             <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::apply_on_the_model(&result, model);
 
             let is_ok = result.is_ok();
@@ -246,7 +235,7 @@ async fn handle_check<
         .send_to_cache_actor(
             cache_actor::CachingStrategy::ReadCacheOnly,
             Rn::generate(),
-            <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::wrap_input(input),
+            wrap_input(input),
         )
         .await;
 
@@ -257,8 +246,7 @@ async fn handle_check<
             is_response_from_server: _,
             data,
         } => {
-            let result: Type4 =
-                <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::unwrap_output(data);
+            let result: Type4 = unwrap_output(data);
 
             <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::apply_on_the_model(&result, model);
         }

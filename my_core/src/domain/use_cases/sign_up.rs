@@ -14,10 +14,10 @@ pub type MyResult = Result<Ok, Error>;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Input {
-    pub(crate) new_uuid: User,
-    pub(crate) name:     Option<String>,
-    pub(crate) user_id:  String,
-    pub(crate) password: String,
+    pub(crate) user_uuid: User,
+    pub(crate) name:      Option<String>,
+    pub(crate) user_id:   String,
+    pub(crate) password:  String,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -61,7 +61,7 @@ impl Input {
     pub(crate) fn state_less_check<Id: RowId>(&self) -> Error {
         let mut errr = Error::default();
 
-        if !Id::validate(&self.new_uuid) {
+        if !Id::validate(&self.user_uuid) {
             errr.new_uuid = Some(RowIdError::Invalid);
         }
 
@@ -73,7 +73,7 @@ impl Input {
         db: &mut Db::Db<'_>,
     ) -> Result<Error, DynamicError> {
         let read_output = Db::read(db, &ReadInput {
-            new_uuid: self.new_uuid.clone(),
+            new_uuid: self.user_uuid.clone(),
             user_id:  self.user_id.clone(),
         })
         .await?;
@@ -93,10 +93,10 @@ impl Input {
 
     pub(crate) fn state_full_operation<Auth: HashedPassword, Jwt: JWT>(&self, jwt: &Jwt) -> Ok {
         let hashed_password = Auth::sign_up(&self.password);
-        let jwt = jwt.sign(&self.new_uuid);
+        let jwt = jwt.sign(&self.user_uuid);
 
         Ok {
-            new_uuid: self.new_uuid.clone(),
+            new_uuid: self.user_uuid.clone(),
             user_id: self.user_id.clone(),
             user_name: self.name.clone(),
             hashed_password,

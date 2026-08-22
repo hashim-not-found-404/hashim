@@ -39,7 +39,7 @@ impl use_cases::sign_up::Input {
 
             let result = self.state_full_operation::<Auth, Jwt>(jwt);
             DbWrite::write(&mut txn, &result).await?;
-            side_effects.authenticated_users.insert(self.new_uuid.clone());
+            side_effects.authenticated_users.insert(self.user_uuid.clone());
             Ok(Ok(result))
         }
         .await;

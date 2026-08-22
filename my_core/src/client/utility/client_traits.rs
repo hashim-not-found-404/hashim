@@ -14,7 +14,6 @@ use crate::domain::request_response::OperationsResult;
 use crate::domain::utility::resource_utils;
 use crate::domain::utility::resource_utils::Subscribe;
 use crate::domain::utility::types::RowId;
-use crate::domain::utility::uuid::User;
 use crate::utility::traits::JoinHandle;
 use crate::utility::traits::MultiProducerSingleConsumer;
 use crate::utility::traits::RandomNumber;
@@ -34,11 +33,8 @@ pub(crate) trait ViewAndCache<Ch: Cache, T> {
         unreachable!("we dont need it here")
     }
 
-    fn wrap_input(data: Self::Type1) -> OperationsInput;
-    fn user_uuid(data: &Self::Type2) -> Option<&User>;
     async fn state_full_operation<Id: RowId>(data: &Self::Type2, state: &mut Ch) -> Self::Type3;
     fn extract_resource(data: &Self::Type3) -> Vec<resource_utils::ResourceInfo>;
-    fn unwrap_output(output: OperationsResult) -> Self::Type4;
     fn apply_on_the_model<As: AllSignalTypes>(output: &Self::Type4, model: &Model<As>);
 }
 
@@ -47,9 +43,37 @@ pub(crate) trait ReadServerOnly {
     type Type2;
     type Type3;
 
-    fn wrap_input(data: Self::Type1) -> OperationsInput;
-    fn user_uuid(data: &Self::Type2) -> Option<&User>;
     fn extract_resource(data: &Self::Type3) -> Vec<resource_utils::ResourceInfo>;
+}
+
+#[macro_export]
+macro_rules! make_wrap_unwrap {
+    ($case_name:ident, $variant:ident) => {
+        pub(crate) fn wrap_input(
+            data: crate::domain::use_cases::$case_name::Input,
+        ) -> crate::domain::request_response::OperationsInput {
+            crate::domain::request_response::OperationsInput::$variant(data)
+        }
+        pub(crate) fn unwrap_output(
+            output: crate::domain::request_response::OperationsResult,
+        ) -> crate::domain::use_cases::$case_name::MyResult {
+            if let crate::domain::request_response::OperationsResult::$variant(result) = output {
+                return result;
+            }
+            unreachable!("{:?}", output)
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! make_user_uuid {
+    ($case_name:ident) => {
+        pub(crate) fn user_uuid(
+            data: &crate::domain::use_cases::$case_name::Input,
+        ) -> Option<&User> {
+            Some(&data.user_uuid)
+        }
+    };
 }
 
 pub(crate) type CacheActorStruct<Mpsc> =

@@ -1,13 +1,15 @@
 use crate::client::utility::cache;
 use crate::client::utility::client_traits::ViewAndCache;
 use crate::client::utility::ui_model;
-use crate::domain::request_response;
 use crate::domain::use_cases;
 use crate::domain::utility::resource_utils;
 use crate::domain::utility::types::RowId;
-use crate::domain::utility::uuid::Account;
 use crate::domain::utility::uuid::User;
-use std::collections::HashSet;
+use crate::make_user_uuid;
+use crate::make_wrap_unwrap;
+
+make_wrap_unwrap!(get_all_accounts_for_branch, GetAllAccountsForBranch);
+make_user_uuid!(get_all_accounts_for_branch);
 
 pub struct ViewAndCacheType;
 
@@ -34,14 +36,6 @@ where
             resource_utils::Subscribe::TableAccountFlowTypeFieldInflowType,
             resource_utils::Subscribe::TableAccountFlowTypeFieldOutflowType,
         ]
-    }
-
-    fn wrap_input(data: Self::Type1) -> request_response::OperationsInput {
-        request_response::OperationsInput::GetAllAccountsForBranch(data)
-    }
-
-    fn user_uuid(data: &Self::Type2) -> Option<&User> {
-        Some(&data.user_uuid)
     }
 
     async fn state_full_operation<Id: RowId>(data: &Self::Type2, state: &mut Ch) -> Self::Type3 {
@@ -134,24 +128,6 @@ where
                 resources
             }
             Err(_) => Vec::new(),
-        }
-    }
-
-    fn unwrap_output(output: request_response::OperationsResult) -> Self::Type4 {
-        if let request_response::OperationsResult::GetAllAccountsForBranch(result) = output {
-            match result {
-                Ok(mut ok) => {
-                    let linked: HashSet<Account> =
-                        ok.accounts_for_branch.iter().map(|afb| afb.account_uuid.clone()).collect();
-
-                    ok.accounts.retain(|acc| !linked.contains(&acc.row_uuid));
-
-                    Ok(ok)
-                }
-                Err(e) => Err(e),
-            }
-        } else {
-            unreachable!("{:?}", output)
         }
     }
 

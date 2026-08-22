@@ -53,12 +53,6 @@ macro_rules! run_operation_check_apply {
     };
 }
 
-macro_rules! get_user_uuid {
-    ($path:ident, $db:ty, $i:expr) => {
-        <client::use_cases::$path::ViewAndCacheType as ViewAndCache<Ch, $db>>::user_uuid(&$i)
-    };
-}
-
 impl request_response::OperationsInput {
     pub(crate) async fn run_operation_check<
         Id: RowId,
@@ -207,40 +201,34 @@ impl request_response::OperationsInput {
     ) -> Option<&User> {
         match self {
             request_response::OperationsInput::SignUp(i) => {
-                get_user_uuid!(sign_up, Dbb::SignUp, i)
+                client::use_cases::sign_up::user_uuid(i)
             }
             request_response::OperationsInput::SignIn(i) => {
-                get_user_uuid!(sign_in, Dbb::SignIn, i)
+                client::use_cases::sign_in::user_uuid(i)
             }
             request_response::OperationsInput::CreateCompany(i) => {
-                get_user_uuid!(create_company, Dbb::CreateCompany, i)
+                client::use_cases::create_company::user_uuid(i)
             }
             request_response::OperationsInput::CreateCompanyBranch(i) => {
-                get_user_uuid!(create_company_branch, Dbb::CreateCompanyBranch, i)
+                client::use_cases::create_company_branch::user_uuid(i)
             }
             request_response::OperationsInput::ListCompanyAndBranch(i) => {
-                get_user_uuid!(list_company_and_branch, Dbb::ListCompanyAndBranch, i)
+                client::use_cases::list_company_and_branch::user_uuid(i)
             }
             request_response::OperationsInput::CreateAccount(i) => {
-                get_user_uuid!(create_account, Dbb::CreateAccount, i)
+                client::use_cases::create_account::user_uuid(i)
             }
             request_response::OperationsInput::GetAllAccounts(i) => {
-                fetches::get_all_accounts::ViewAndCacheType::user_uuid(i)
+                client::fetches::get_all_accounts::user_uuid(i)
             }
             request_response::OperationsInput::GetAllAccountsForBranch(i) => {
-                <fetches::get_all_accounts_for_branch::ViewAndCacheType as ViewAndCache<
-                    Ch,
-                    Dbb::GetAllAccountsForBranch,
-                >>::user_uuid(i)
+                client::fetches::get_all_accounts_for_branch::user_uuid(i)
             }
             request_response::OperationsInput::CreateAccountForBranch(i) => {
-                get_user_uuid!(create_account_for_branch, Dbb::CreateAccountForBranch, i)
+                client::use_cases::create_account_for_branch::user_uuid(i)
             }
             request_response::OperationsInput::CreateJournalEntry(i) => {
-                <client::use_cases::create_journal_entry::ViewAndCacheType<Ti> as ViewAndCache<
-                    Ch,
-                    Dbb::CreateJournalEntry,
-                >>::user_uuid(i)
+                client::use_cases::create_journal_entry::user_uuid(i)
             }
         }
     }

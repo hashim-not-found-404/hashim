@@ -6,13 +6,14 @@ use crate::client::utility::commander;
 use crate::client::utility::process_manager;
 use crate::client::utility::ui_model;
 use crate::client::utility::ui_model::HashimSignal;
-use crate::domain::request_response;
 use crate::domain::use_cases;
 use crate::domain::utility::resource_utils;
 use crate::domain::utility::types::JsonWebTokenType;
 use crate::domain::utility::types::MyErrorTrait;
 use crate::domain::utility::types::RowId;
 use crate::domain::utility::uuid::User;
+use crate::make_user_uuid;
+use crate::make_wrap_unwrap;
 use crate::utility::traits;
 use crate::utility::traits::Receiver;
 use crate::utility::traits::Sender;
@@ -24,6 +25,9 @@ type Type1 = use_cases::sign_up::Input;
 type Type2 = use_cases::sign_up::Input;
 type Type3 = use_cases::sign_up::MyResult;
 type Type4 = use_cases::sign_up::MyResult;
+
+make_wrap_unwrap!(sign_up, SignUp);
+make_user_uuid!(sign_up);
 
 pub(crate) struct ViewAndCacheType;
 
@@ -37,14 +41,6 @@ where
     type Type3 = Type3;
     type Type4 = Type4;
 
-    fn wrap_input(data: Self::Type1) -> request_response::OperationsInput {
-        request_response::OperationsInput::SignUp(data)
-    }
-
-    fn user_uuid(data: &Self::Type2) -> Option<&User> {
-        Some(&data.new_uuid)
-    }
-
     async fn state_full_operation<Id: RowId>(data: &Self::Type2, state: &mut Ch) -> Self::Type3 {
         let errr = data.state_full_check::<LongCache>(state).await.unwrap();
 
@@ -53,7 +49,7 @@ where
         }
 
         Ok(use_cases::sign_up::Ok {
-            new_uuid:        data.new_uuid.clone(),
+            new_uuid:        data.user_uuid.clone(),
             user_id:         data.user_id.clone(),
             user_name:       data.name.clone(),
             hashed_password: String::new(),
@@ -87,13 +83,6 @@ where
             }
             Err(_) => Vec::new(),
         }
-    }
-
-    fn unwrap_output(output: request_response::OperationsResult) -> Self::Type4 {
-        if let request_response::OperationsResult::SignUp(result) = output {
-            return result;
-        }
-        unreachable!("{:?}", output)
     }
 
     fn apply_on_the_model<As: ui_model::AllSignalTypes>(
@@ -200,7 +189,7 @@ async fn handle_submit<
     let new_uuid: User = Id::generate().into();
     let input = build_input::<As>(model, new_uuid.clone());
 
-    let data = <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::wrap_input(input);
+    let data = wrap_input(input);
 
     client_traits::handle_fall_back::<Rn, Rt, Mpsc, As>(
         cache,
@@ -209,7 +198,7 @@ async fn handle_submit<
         process_manager::ProcessName::SignUp,
         data,
         move |data| {
-            let result = <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::unwrap_output(data);
+            let result = unwrap_output(data);
             <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::apply_on_the_model(&result, model);
 
             let is_ok = result.is_ok();
@@ -250,7 +239,7 @@ async fn handle_check<
         .send_to_cache_actor(
             cache_actor::CachingStrategy::ReadCacheOnly,
             Rn::generate(),
-            <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::wrap_input(input),
+            wrap_input(input),
         )
         .await;
 
@@ -261,8 +250,7 @@ async fn handle_check<
             is_response_from_server: _,
             data,
         } => {
-            let result: Type4 =
-                <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::unwrap_output(data);
+            let result: Type4 = unwrap_output(data);
             <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::apply_on_the_model(&result, model);
         }
     }
@@ -270,9 +258,9 @@ async fn handle_check<
 
 fn build_input<As: ui_model::AllSignalTypes>(model: &ui_model::Model<As>, new_uuid: User) -> Type1 {
     use_cases::sign_up::Input {
-        new_uuid,
-        name: model.user_name.read().none_if_empty(),
-        user_id: model.user_id.read(),
-        password: model.feature_state_auth.user_password.read(),
+        user_uuid: new_uuid,
+        name:      model.user_name.read().none_if_empty(),
+        user_id:   model.user_id.read(),
+        password:  model.feature_state_auth.user_password.read(),
     }
 }

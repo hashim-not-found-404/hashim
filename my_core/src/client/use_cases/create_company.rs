@@ -4,11 +4,12 @@ use crate::client::utility::client_traits;
 use crate::client::utility::client_traits::ViewAndCache;
 use crate::client::utility::ui_model;
 use crate::client::utility::ui_model::HashimSignal;
-use crate::domain::request_response;
 use crate::domain::use_cases;
 use crate::domain::utility::resource_utils;
 use crate::domain::utility::types::RowId;
 use crate::domain::utility::uuid::User;
+use crate::make_user_uuid;
+use crate::make_wrap_unwrap;
 use crate::utility::traits;
 use crate::utility::utils::ReadAndSet;
 
@@ -16,6 +17,9 @@ type Type1 = use_cases::create_company::Input;
 type Type2 = use_cases::create_company::Input;
 type Type3 = use_cases::create_company::MyResult;
 type Type4 = use_cases::create_company::MyResult;
+
+make_wrap_unwrap!(create_company, CreateCompany);
+make_user_uuid!(create_company);
 
 pub(crate) struct ViewAndCacheType;
 
@@ -28,14 +32,6 @@ where
     type Type2 = Type2;
     type Type3 = Type3;
     type Type4 = Type4;
-
-    fn wrap_input(data: Self::Type1) -> request_response::OperationsInput {
-        request_response::OperationsInput::CreateCompany(data)
-    }
-
-    fn user_uuid(data: &Self::Type2) -> Option<&User> {
-        Some(&data.user_uuid)
-    }
 
     async fn state_full_operation<Id: RowId>(data: &Self::Type2, _: &mut Ch) -> Self::Type3 {
         Ok(data.state_less_operation())
@@ -82,13 +78,6 @@ where
             }
             Err(_) => Vec::new(),
         }
-    }
-
-    fn unwrap_output(output: request_response::OperationsResult) -> Self::Type4 {
-        if let request_response::OperationsResult::CreateCompany(result) = output {
-            return result;
-        }
-        unreachable!("{:?}", output)
     }
 
     fn apply_on_the_model<As: ui_model::AllSignalTypes>(_: &Self::Type4, _: &ui_model::Model<As>) {
@@ -147,7 +136,7 @@ async fn handle_submit<
         .send_to_cache_actor(
             cache_actor::CachingStrategy::WriteCacheAndServer,
             Rn::generate(),
-            <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::wrap_input(input.clone()),
+            wrap_input(input.clone()),
         )
         .await;
 

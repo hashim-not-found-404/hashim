@@ -6,12 +6,13 @@ use crate::client::utility::commander;
 use crate::client::utility::process_manager;
 use crate::client::utility::ui_model;
 use crate::client::utility::ui_model::HashimSignal;
-use crate::domain::request_response;
 use crate::domain::use_cases;
 use crate::domain::utility::resource_utils;
 use crate::domain::utility::types::MyErrorTrait;
 use crate::domain::utility::types::RowId;
 use crate::domain::utility::uuid::User;
+use crate::make_user_uuid;
+use crate::make_wrap_unwrap;
 use crate::utility::tools;
 use crate::utility::traits;
 use crate::utility::traits::Sender;
@@ -22,6 +23,9 @@ type Type1 = use_cases::create_account_for_branch::Input;
 type Type2 = use_cases::create_account_for_branch::Input;
 type Type3 = use_cases::create_account_for_branch::MyResult;
 type Type4 = use_cases::create_account_for_branch::MyResult;
+
+make_wrap_unwrap!(create_account_for_branch, CreateAccountForBranch);
+make_user_uuid!(create_account_for_branch);
 
 pub(crate) struct ViewAndCacheType;
 
@@ -34,14 +38,6 @@ where
     type Type2 = Type2;
     type Type3 = Type3;
     type Type4 = Type4;
-
-    fn wrap_input(data: Self::Type1) -> request_response::OperationsInput {
-        request_response::OperationsInput::CreateAccountForBranch(data)
-    }
-
-    fn user_uuid(data: &Self::Type2) -> Option<&User> {
-        Some(&data.user_uuid)
-    }
 
     async fn state_full_operation<Id: RowId>(data: &Self::Type2, state: &mut Ch) -> Self::Type3 {
         let errr = data.state_full_check::<LongCache>(state).await.unwrap();
@@ -85,13 +81,6 @@ where
             }
             Err(_) => Vec::new(),
         }
-    }
-
-    fn unwrap_output(output: request_response::OperationsResult) -> Self::Type4 {
-        if let request_response::OperationsResult::CreateAccountForBranch(result) = output {
-            return result;
-        }
-        unreachable!("{:?}", output)
     }
 
     fn apply_on_the_model<As: ui_model::AllSignalTypes>(
@@ -225,10 +214,7 @@ fn spawn_listener<
         user_uuid:           model.user_uuid.read().clone().unwrap().clone(),
         company_branch_uuid: model.selected_company_branch.read().unwrap().clone(),
     };
-    let data = <fetches::get_all_accounts_for_branch::ViewAndCacheType as ViewAndCache<
-        Ch,
-        LongCacheForGetAllAccountsForBranch,
-    >>::wrap_input(data);
+    let data = fetches::get_all_accounts_for_branch::wrap_input(data);
 
     let listener_aborter = client_traits::spawn_listener::<Rn, Rt, Mpsc>(
         cache,
@@ -238,10 +224,7 @@ fn spawn_listener<
         >>::subs(),
         data,
         move |data| {
-            let data = <fetches::get_all_accounts_for_branch::ViewAndCacheType as ViewAndCache<
-                Ch,
-                LongCacheForGetAllAccountsForBranch,
-            >>::unwrap_output(data);
+            let data = fetches::get_all_accounts_for_branch::unwrap_output(data);
 
             apply_fetch_result::<As>(&data, model);
         },
@@ -286,7 +269,7 @@ async fn handle_submit<
         return;
     };
 
-    let data = <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::wrap_input(input);
+    let data = wrap_input(input);
 
     client_traits::handle_fall_back::<Rn, Rt, Mpsc, As>(
         cache,
@@ -295,7 +278,7 @@ async fn handle_submit<
         process_manager::ProcessName::CreateAccountForBranch,
         data,
         |data| {
-            let result = <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::unwrap_output(data);
+            let result = unwrap_output(data);
             <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::apply_on_the_model(&result, model);
 
             let is_ok = result.is_ok();
