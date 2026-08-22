@@ -1,5 +1,5 @@
 use crate::client::cache_op;
-use crate::client::utility::cache;
+use crate::client::utility::cache::Cache;
 use crate::client::utility::client_traits;
 use crate::client::utility::commander;
 use crate::client::utility::process_manager;
@@ -33,7 +33,7 @@ impl<Mpsc: traits::MultiProducerSingleConsumer> Commander<Mpsc> {
         Rn: traits::RandomNumber,
         Id: RowId,
         Ti: traits::Time,
-        Ch: cache::Cache + 'static,
+        Ch: Cache + 'static,
         Dbb: cache_op::DbBundle<Ch>,
     >(
         receiver_to_error: Mpsc::Receiver<HashimError>,
@@ -70,7 +70,7 @@ impl<Mpsc: traits::MultiProducerSingleConsumer> Commander<Mpsc> {
         Rn: traits::RandomNumber,
         Id: RowId,
         Ti: traits::Time,
-        Ch: cache::Cache + 'static,
+        Ch: Cache + 'static,
         Dbb: cache_op::DbBundle<Ch>,
     >(
         mut receiver: Mpsc::Receiver<ui_model::Message>,

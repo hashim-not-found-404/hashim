@@ -1,5 +1,5 @@
 use crate::client::fetches;
-use crate::client::utility::cache;
+use crate::client::utility::cache::Cache;
 use crate::client::utility::client_traits;
 use crate::client::utility::client_traits::ViewAndCache;
 use crate::client::utility::commander;
@@ -33,7 +33,7 @@ pub(crate) struct ViewAndCacheType<Ti: traits::Time>(Ti);
 impl<Ch, LongCache, Ti> ViewAndCache<Ch, LongCache> for ViewAndCacheType<Ti>
 where
     Ti: traits::Time,
-    Ch: cache::Cache,
+    Ch: Cache,
     LongCache: for<'a> use_cases::create_journal_entry::DatabaseRead<Db<'a> = Ch>,
 {
     type Type1 = Type1;
@@ -200,7 +200,7 @@ impl ui_model::CreateJournalEntry {
         Mpsc: traits::MultiProducerSingleConsumer,
         Ti: traits::Time,
         As: ui_model::AllSignalTypes,
-        Ch: cache::Cache + 'static,
+        Ch: Cache + 'static,
         LongCache: for<'a> use_cases::create_journal_entry::DatabaseRead<Db<'a> = Ch> + 'static,
         LongCacheForGetAllAccountsForBranch: for<'a> use_cases::get_all_accounts_for_branch::DatabaseRead<Db<'a> = Ch> + 'static,
     >(
@@ -372,7 +372,7 @@ fn spawn_listener<
     Rt: traits::Runtime,
     Mpsc: traits::MultiProducerSingleConsumer,
     As: ui_model::AllSignalTypes,
-    Ch: cache::Cache,
+    Ch: Cache,
     LongCacheForGetAllAccountsForBranch: for<'a> use_cases::get_all_accounts_for_branch::DatabaseRead<Db<'a> = Ch>,
 >(
     model: &'static ui_model::Model<As>,
@@ -418,7 +418,7 @@ async fn handle_submit<
     Mpsc: traits::MultiProducerSingleConsumer,
     Ti: traits::Time,
     As: ui_model::AllSignalTypes,
-    Ch: cache::Cache,
+    Ch: Cache,
     LongCache: for<'a> use_cases::create_journal_entry::DatabaseRead<Db<'a> = Ch>,
 >(
     model: &'static ui_model::Model<As>,

@@ -1,4 +1,4 @@
-use crate::client::utility::cache;
+use crate::client::utility::cache::Cache;
 use crate::client::utility::client_traits::ViewAndCache;
 use crate::client::utility::ui_model;
 use crate::domain::use_cases;
@@ -15,7 +15,7 @@ pub struct ViewAndCacheType;
 
 impl<Ch, LongCache> ViewAndCache<Ch, LongCache> for ViewAndCacheType
 where
-    Ch: cache::Cache,
+    Ch: Cache,
     LongCache: for<'a> use_cases::get_all_accounts_for_branch::DatabaseRead<Db<'a> = Ch>,
 {
     type Type1 = use_cases::get_all_accounts_for_branch::Input;

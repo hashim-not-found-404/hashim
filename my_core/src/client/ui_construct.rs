@@ -1,7 +1,7 @@
 use crate::client::cache_op;
 use crate::client::network_actor;
 use crate::client::ui_effect;
-use crate::client::utility::cache;
+use crate::client::utility::cache::Cache;
 use crate::client::utility::cache_actor;
 use crate::client::utility::client_traits;
 use crate::client::utility::process_manager;
@@ -30,7 +30,7 @@ pub fn new<
     Ed: traits::Coding,
     Rg: traits::Regex,
     Ti: traits::Time,
-    Ch: cache::Cache + 'static,
+    Ch: Cache + 'static,
     Ws: network_actor::WSClient,
     As: ui_model::AllSignalTypes,
     Dbb: cache_op::DbBundle<Ch>,
@@ -109,7 +109,7 @@ impl<Mpsc: traits::MultiProducerSingleConsumer> network_actor::Network for MyNet
 
 struct MyCache<
     Mpsc: traits::MultiProducerSingleConsumer,
-    Ch: cache::Cache,
+    Ch: Cache,
     Id: RowId,
     Ti: traits::Time,
     Dbb: cache_op::DbBundle<Ch>,
@@ -119,7 +119,7 @@ struct MyCache<
 
 impl<
     Mpsc: traits::MultiProducerSingleConsumer,
-    Ch: cache::Cache,
+    Ch: Cache,
     Id: RowId,
     Ti: traits::Time,
     Dbb: cache_op::DbBundle<Ch>,

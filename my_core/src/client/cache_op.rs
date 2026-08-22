@@ -1,6 +1,6 @@
 use crate::client;
 use crate::client::fetches;
-use crate::client::utility::cache;
+use crate::client::utility::cache::Cache;
 use crate::client::utility::client_traits::ReadServerOnly;
 use crate::client::utility::client_traits::ViewAndCache;
 use crate::domain::request_response;
@@ -10,7 +10,7 @@ use crate::domain::utility::types::RowId;
 use crate::domain::utility::uuid::User;
 use crate::utility::traits;
 
-pub trait DbBundle<Ch: cache::Cache>: 'static {
+pub trait DbBundle<Ch: Cache>: 'static {
     type CreateAccount: for<'a> use_cases::create_account::DatabaseRead<Db<'a> = Ch>;
     type CreateAccountForBranch: for<'a> use_cases::create_account_for_branch::DatabaseRead<Db<'a> = Ch>;
     type CreateJournalEntry: for<'a> use_cases::create_journal_entry::DatabaseRead<Db<'a> = Ch>;
@@ -23,7 +23,7 @@ pub trait DbBundle<Ch: cache::Cache>: 'static {
     type SignUp: for<'a> use_cases::sign_up::DatabaseRead<Db<'a> = Ch>;
 }
 
-pub(crate) async fn new<Id: RowId, Ti: traits::Time, Dbb: DbBundle<Ch>, Ch: cache::Cache>() -> Ch {
+pub(crate) async fn new<Id: RowId, Ti: traits::Time, Dbb: DbBundle<Ch>, Ch: Cache>() -> Ch {
     let mut cache = Ch::new().await;
     let txns = cache.get_all_txn_input().await;
 
@@ -57,7 +57,7 @@ impl request_response::OperationsInput {
     pub(crate) async fn run_operation_check<
         Id: RowId,
         Ti: traits::Time,
-        Ch: cache::Cache,
+        Ch: Cache,
         Dbb: DbBundle<Ch>,
     >(
         &self,
@@ -130,7 +130,7 @@ impl request_response::OperationsInput {
     pub(crate) async fn run_operation_check_apply<
         Id: RowId,
         Ti: traits::Time,
-        Ch: cache::Cache,
+        Ch: Cache,
         Dbb: DbBundle<Ch>,
     >(
         &self,
@@ -196,7 +196,7 @@ impl request_response::OperationsInput {
         }
     }
 
-    pub(crate) fn get_user_uuid<Ti: traits::Time, Ch: cache::Cache, Dbb: DbBundle<Ch>>(
+    pub(crate) fn get_user_uuid<Ti: traits::Time, Ch: Cache, Dbb: DbBundle<Ch>>(
         &self,
     ) -> Option<&User> {
         match self {
@@ -241,7 +241,7 @@ macro_rules! extract_resource {
 }
 
 impl request_response::OperationsResult {
-    pub(crate) fn extract_resource<Ti: traits::Time, Ch: cache::Cache, Dbb: DbBundle<Ch>>(
+    pub(crate) fn extract_resource<Ti: traits::Time, Ch: Cache, Dbb: DbBundle<Ch>>(
         &self,
     ) -> Vec<resource_utils::ResourceInfo> {
         match self {

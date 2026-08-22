@@ -1,4 +1,4 @@
-use crate::client::utility::cache;
+use crate::client::utility::cache::Cache;
 use crate::client::utility::cache_actor;
 use crate::client::utility::client_traits;
 use crate::client::utility::client_traits::ViewAndCache;
@@ -38,7 +38,7 @@ pub(crate) struct ViewAndCacheType;
 
 impl<Ch, LongCache> ViewAndCache<Ch, LongCache> for ViewAndCacheType
 where
-    Ch: cache::Cache,
+    Ch: Cache,
     LongCache: for<'a> use_cases::sign_in::DatabaseRead<Db<'a> = Ch>,
 {
     type Type1 = Type1;
@@ -150,7 +150,7 @@ impl ui_model::SignIn {
         Rt: traits::Runtime,
         Mpsc: traits::MultiProducerSingleConsumer,
         As: ui_model::AllSignalTypes,
-        Ch: cache::Cache,
+        Ch: Cache,
         LongCache: for<'a> use_cases::sign_in::DatabaseRead<Db<'a> = Ch>,
     >(
         self,
@@ -200,7 +200,7 @@ async fn handle_submit<
     Rt: traits::Runtime,
     Mpsc: traits::MultiProducerSingleConsumer,
     As: ui_model::AllSignalTypes,
-    Ch: cache::Cache,
+    Ch: Cache,
     LongCache: for<'a> use_cases::sign_in::DatabaseRead<Db<'a> = Ch>,
 >(
     model: &'static ui_model::Model<As>,
@@ -253,7 +253,7 @@ async fn handle_check<
     Rn: traits::RandomNumber,
     Mpsc: traits::MultiProducerSingleConsumer,
     As: ui_model::AllSignalTypes,
-    Ch: cache::Cache,
+    Ch: Cache,
     LongCache: for<'a> use_cases::sign_in::DatabaseRead<Db<'a> = Ch>,
 >(
     model: &'static ui_model::Model<As>,
@@ -289,7 +289,7 @@ async fn handle_check<
 
 fn handle_apply_result<
     As: ui_model::AllSignalTypes,
-    Ch: cache::Cache,
+    Ch: Cache,
     LongCache: for<'a> use_cases::sign_in::DatabaseRead<Db<'a> = Ch>,
 >(
     model: &ui_model::Model<As>,

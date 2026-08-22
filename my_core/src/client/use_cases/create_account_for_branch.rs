@@ -1,5 +1,5 @@
 use crate::client::fetches;
-use crate::client::utility::cache;
+use crate::client::utility::cache::Cache;
 use crate::client::utility::client_traits;
 use crate::client::utility::client_traits::ViewAndCache;
 use crate::client::utility::commander;
@@ -31,7 +31,7 @@ pub(crate) struct ViewAndCacheType;
 
 impl<Ch, LongCache> ViewAndCache<Ch, LongCache> for ViewAndCacheType
 where
-    Ch: cache::Cache,
+    Ch: Cache,
     LongCache: for<'a> use_cases::create_account_for_branch::DatabaseRead<Db<'a> = Ch>,
 {
     type Type1 = Type1;
@@ -112,7 +112,7 @@ impl ui_model::CreateAccountForBranch {
         Id: RowId,
         Mpsc: traits::MultiProducerSingleConsumer,
         As: ui_model::AllSignalTypes,
-        Ch: cache::Cache + 'static,
+        Ch: Cache + 'static,
         LongCache: for<'a> use_cases::create_account_for_branch::DatabaseRead<Db<'a> = Ch> + 'static,
         LongCacheForGetAllAccountsForBranch: for<'a> use_cases::get_all_accounts_for_branch::DatabaseRead<Db<'a> = Ch> + 'static,
     >(
@@ -203,7 +203,7 @@ fn spawn_listener<
     Rt: traits::Runtime,
     Mpsc: traits::MultiProducerSingleConsumer,
     As: ui_model::AllSignalTypes,
-    Ch: cache::Cache,
+    Ch: Cache,
     LongCacheForGetAllAccountsForBranch: for<'a> use_cases::get_all_accounts_for_branch::DatabaseRead<Db<'a> = Ch>,
 >(
     model: &'static ui_model::Model<As>,
@@ -252,7 +252,7 @@ async fn handle_submit<
     Id: RowId,
     Mpsc: traits::MultiProducerSingleConsumer,
     As: ui_model::AllSignalTypes,
-    Ch: cache::Cache,
+    Ch: Cache,
     LongCache: for<'a> use_cases::create_account_for_branch::DatabaseRead<Db<'a> = Ch>,
 >(
     model: &'static ui_model::Model<As>,

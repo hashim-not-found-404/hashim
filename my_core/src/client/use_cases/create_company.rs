@@ -1,4 +1,4 @@
-use crate::client::utility::cache;
+use crate::client::utility::cache::Cache;
 use crate::client::utility::cache_actor;
 use crate::client::utility::client_traits;
 use crate::client::utility::client_traits::ViewAndCache;
@@ -25,7 +25,7 @@ pub(crate) struct ViewAndCacheType;
 
 impl<Ch, LongCache> ViewAndCache<Ch, LongCache> for ViewAndCacheType
 where
-    Ch: cache::Cache,
+    Ch: Cache,
     LongCache: for<'a> use_cases::create_company::DatabaseRead<Db<'a> = Ch>,
 {
     type Type1 = Type1;
@@ -91,7 +91,7 @@ impl ui_model::CreateCompany {
         Id: RowId,
         Mpsc: traits::MultiProducerSingleConsumer,
         As: ui_model::AllSignalTypes,
-        Ch: cache::Cache,
+        Ch: Cache,
         LongCache: for<'a> use_cases::create_company::DatabaseRead<Db<'a> = Ch>,
     >(
         self,
@@ -125,7 +125,7 @@ async fn handle_submit<
     Id: RowId,
     Mpsc: traits::MultiProducerSingleConsumer,
     As: ui_model::AllSignalTypes,
-    Ch: cache::Cache,
+    Ch: Cache,
     LongCache: for<'a> use_cases::create_company::DatabaseRead<Db<'a> = Ch>,
 >(
     model: &'static ui_model::Model<As>,
