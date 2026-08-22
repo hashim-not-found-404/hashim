@@ -3,7 +3,9 @@ use crate::accounting_domain::utility::types::MarkerMyErrorTrait;
 use crate::accounting_domain::utility::types::RowId;
 use crate::accounting_domain::utility::types::RowIdError;
 use crate::accounting_domain::utility::types::UserUuidError;
-use crate::accounting_domain::utility::types::UuidType;
+use crate::accounting_domain::utility::uuid::Account;
+use crate::accounting_domain::utility::uuid::Company;
+use crate::accounting_domain::utility::uuid::User;
 use crate::utility::traits::DynamicError;
 use serde::Deserialize;
 use serde::Serialize;
@@ -12,19 +14,19 @@ pub type MyResult = Result<Ok, Error>;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Input {
-    pub(crate) user_uuid:    UuidType,
-    pub(crate) company_uuid: UuidType,
+    pub(crate) user_uuid:    User,
+    pub(crate) company_uuid: Company,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Ok {
-    pub(crate) company_uuid: UuidType,
+    pub(crate) company_uuid: Company,
     pub(crate) data:         Vec<Data>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Data {
-    pub row_uuid:                        UuidType,
+    pub row_uuid:                        Account,
     pub is_debit:                        bool,
     pub is_permanent_account:            bool,
     pub account_name:                    String,
@@ -41,8 +43,8 @@ pub struct Error {
 impl MarkerMyErrorTrait for Error {}
 
 pub struct ReadInput {
-    pub user_uuid:    UuidType,
-    pub company_uuid: UuidType,
+    pub user_uuid:    User,
+    pub company_uuid: Company,
 }
 
 pub struct ReadOutput {

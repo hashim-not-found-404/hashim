@@ -5,13 +5,13 @@ use my_core::accounting_client::client_domain::ui_model::AllSignalTypes;
 use my_core::accounting_domain::utility::types::Currency;
 use my_core::accounting_domain::utility::types::ListOfCompanies;
 use my_core::accounting_domain::utility::types::Location;
-use my_core::accounting_domain::utility::types::UuidType;
+use my_core::accounting_domain::utility::uuid::UuidType;
 
 #[derive(Debug, Clone, Default)]
 pub(crate) struct S;
 
 impl AllSignalTypes for S {
-    type AccountsSuggestionList = my_signal::S<Vec<ui_model::Accounts>>;
+    type AccountsSuggestionList = my_signal::S<Vec<ui_model::Account>>;
     type Bool = my_signal::S<bool>;
     type CompanyAndBranchList = my_signal::S<ListOfCompanies>;
     type Currency = my_signal::S<Currency>;

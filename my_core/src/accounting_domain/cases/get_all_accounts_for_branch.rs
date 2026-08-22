@@ -3,9 +3,13 @@ use crate::accounting_domain::utility::types::MarkerMyErrorTrait;
 use crate::accounting_domain::utility::types::RowId;
 use crate::accounting_domain::utility::types::RowIdError;
 use crate::accounting_domain::utility::types::UserUuidError;
-use crate::accounting_domain::utility::types::UuidType;
+use crate::accounting_domain::utility::uuid;
+use crate::accounting_domain::utility::uuid::Branch;
+use crate::accounting_domain::utility::uuid::Company;
+use crate::accounting_domain::utility::uuid::User;
 use crate::utility::traits::DynamicError;
-use accounting_engine::accounting_stuff;
+use accounting_engine::accounting_stuff::InFlowType;
+use accounting_engine::accounting_stuff::OutFlowType;
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -13,21 +17,21 @@ pub type MyResult = Result<Ok, Error>;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Input {
-    pub(crate) user_uuid:           UuidType,
-    pub(crate) company_branch_uuid: UuidType,
+    pub(crate) user_uuid:           User,
+    pub(crate) company_branch_uuid: Branch,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Ok {
-    pub(crate) company_uuid:        UuidType,
-    pub(crate) company_branch_uuid: UuidType,
+    pub(crate) company_uuid:        Company,
+    pub(crate) company_branch_uuid: Branch,
     pub(crate) accounts:            Vec<Account>,
     pub(crate) accounts_for_branch: Vec<AccountForBranch>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Account {
-    pub row_uuid:                        UuidType,
+    pub row_uuid:                        uuid::Account,
     pub is_debit:                        bool,
     pub is_permanent_account:            bool,
     pub account_name:                    String,
@@ -37,10 +41,10 @@ pub struct Account {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct AccountForBranch {
-    pub row_uuid:     UuidType,
-    pub account_uuid: UuidType,
-    pub outflow_type: accounting_stuff::OutFlowType,
-    pub inflow_type:  accounting_stuff::InFlowType,
+    pub row_uuid:     uuid::AccountForBranch,
+    pub account_uuid: uuid::Account,
+    pub outflow_type: OutFlowType,
+    pub inflow_type:  InFlowType,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
@@ -52,13 +56,13 @@ pub struct Error {
 impl MarkerMyErrorTrait for Error {}
 
 pub struct ReadInput {
-    pub user_uuid:           UuidType,
-    pub company_branch_uuid: UuidType,
+    pub user_uuid:           User,
+    pub company_branch_uuid: Branch,
 }
 
 #[derive(Debug, Default)]
 pub struct ReadOutput {
-    pub company_uuid:        UuidType,
+    pub company_uuid:        Company,
     pub accounts:            Vec<Account>,
     pub accounts_for_branch: Vec<AccountForBranch>,
 }

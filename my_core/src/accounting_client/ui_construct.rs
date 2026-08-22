@@ -11,6 +11,7 @@ use crate::accounting_domain::utility::resource_utils;
 use crate::accounting_domain::utility::types::ADDRESS;
 use crate::accounting_domain::utility::types::HashimError;
 use crate::accounting_domain::utility::types::RowId;
+use crate::accounting_domain::utility::uuid::Nonce;
 use crate::utility::traits;
 use crate::utility::traits::DynamicError;
 use crate::utility::traits::Receiver;
@@ -209,7 +210,7 @@ impl<
 
         request_response::FromClient {
             jwts,
-            nonce: Id::generate(),
+            nonce: Nonce(Id::generate()),
             operations: operations1,
         }
     }

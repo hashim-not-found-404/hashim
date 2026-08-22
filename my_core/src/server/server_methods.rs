@@ -1,6 +1,7 @@
 use crate::accounting_domain::cases;
 use crate::accounting_domain::request_response;
 use crate::accounting_domain::utility::resource_utils;
+use crate::accounting_domain::utility::resource_utils::Subscribe;
 use crate::accounting_domain::utility::types::HashedPassword;
 use crate::accounting_domain::utility::types::HashimError;
 use crate::accounting_domain::utility::types::JWT;
@@ -8,12 +9,16 @@ use crate::accounting_domain::utility::types::JWTError;
 use crate::accounting_domain::utility::types::NonceError;
 use crate::accounting_domain::utility::types::Role;
 use crate::accounting_domain::utility::types::RowId;
-use crate::accounting_domain::utility::types::UuidType;
+use crate::accounting_domain::utility::uuid::Company;
+use crate::accounting_domain::utility::uuid::User;
+use crate::accounting_domain::utility::uuid::UuidType;
 use crate::server::utility::server_traits;
 use crate::server::utility::server_traits::DBClient;
 use crate::server::utility::server_traits::DatabaseWrite;
+use crate::server::utility::server_traits::ListOfResources;
 use crate::utility::traits;
 use crate::utility::traits::DynamicError;
+use crate::utility::traits::MultiProducerSingleConsumer;
 use crate::utility::traits::Receiver;
 use crate::utility::traits::Sender;
 use crate::utility::utils::HashMapWithHashMapValue;
@@ -69,13 +74,13 @@ pub trait WSServer: 'static {
     fn close(self) -> impl Future<Output = Result<(), DynamicError>>;
 }
 
-pub struct ServerMethods<Mpsc: traits::MultiProducerSingleConsumer, Jwt: JWT, Db: Database> {
+pub struct ServerMethods<Mpsc: MultiProducerSingleConsumer, Jwt: JWT, Db: Database> {
     database:                    Db,
     jwt:                         Jwt,
     pub(crate) sender_to_broker: Mpsc::Sender<MessageToBroker<Mpsc>>,
 }
 
-impl<Mpsc: traits::MultiProducerSingleConsumer, Jwt: JWT, Db: Database<Client = Cli>, Cli: DBClient>
+impl<Mpsc: MultiProducerSingleConsumer, Jwt: JWT, Db: Database<Client = Cli>, Cli: DBClient>
     ServerMethods<Mpsc, Jwt, Db>
 {
     pub async fn new<Rt: traits::Runtime>() -> Self {
@@ -271,7 +276,7 @@ impl<Mpsc: traits::MultiProducerSingleConsumer, Jwt: JWT, Db: Database<Client = 
         mut receiver_to_broker: Mpsc::Receiver<MessageToBroker<Mpsc>>,
     ) {
         Rt::spawn_local(async move {
-            let mut pool_of_pubsub_for_company: broker_functions::UserSubscribes =
+            let mut pool_of_pubsub_for_company: broker_functions::UserSubscribesForCompany =
                 HashMap::with_capacity(1000);
             let mut pool_of_pubsub_for_branch: broker_functions::UserSubscribes =
                 HashMap::with_capacity(10000);
@@ -333,7 +338,8 @@ impl<Mpsc: traits::MultiProducerSingleConsumer, Jwt: JWT, Db: Database<Client = 
                         list_of_resources_for_company,
                         list_of_resources_for_branch,
                     } => {
-                        let mut resource_to_send: server_traits::ListOfResources = HashMap::new();
+                        let mut resource_to_send: HashMap<User, Vec<resource_utils::ResourceInfo>> =
+                            HashMap::new();
 
                         broker_functions::map_resource_to_subscribes(
                             &pool_of_pubsub_for_company,
@@ -408,7 +414,8 @@ async fn push_data<
         return Ok(the_return_result);
     }
 
-    let is_nonce_used = client.write_nonce_if_not_used(&input.nonce).await?;
+    let is_nonce_used =
+        client.write_nonce_if_not_used_and_return_is_nonce_used(&input.nonce).await?;
 
     if !check_nonce_if_valid::<Id>(&input.nonce, is_nonce_used) {
         the_return_result.nonce = Err(NonceError::Invalid);
@@ -548,7 +555,7 @@ fn check_nonce_if_valid<Id: RowId>(nonce: &UuidType, is_used: bool) -> bool {
 
 async fn get_table_of_subscribed_data<Cli: DBClient>(
     client: &mut Cli,
-    users_uuids: &HashSet<UuidType>,
+    users_uuids: &HashSet<User>,
 ) -> Result<AllSubscribes, DynamicError> {
     let roles = client.read_roles_for_user(users_uuids).await?;
 
@@ -576,7 +583,7 @@ async fn get_table_of_subscribed_data<Cli: DBClient>(
             users_subscribes.insert(user, subscribes);
         }
 
-        subs.companies.insert(branch, users_subscribes);
+        subs.branches.insert(branch, users_subscribes);
     }
 
     Ok(subs)
@@ -584,25 +591,24 @@ async fn get_table_of_subscribed_data<Cli: DBClient>(
 
 mod broker_functions {
     use crate::accounting_domain::utility::resource_utils;
-    use crate::accounting_domain::utility::types::UuidType;
-    use crate::server::utility::server_traits::ListOfResources;
+    use crate::accounting_domain::utility::resource_utils::ResourceInfo;
+    use crate::accounting_domain::utility::resource_utils::Subscribe;
+    use crate::accounting_domain::utility::uuid::Branch;
+    use crate::accounting_domain::utility::uuid::Company;
+    use crate::accounting_domain::utility::uuid::User;
     use crate::utility::utils::HashMapWithHashMapValue;
     use crate::utility::utils::HashMapWithVectorValue;
     use std::collections::HashMap;
     use std::collections::HashSet;
+    use std::hash::Hash;
 
-    pub(crate) type UserSubscribes = HashMap<
-        UuidType, // company uuid or branch
-        HashMap<
-            UuidType, // user uuid
-            HashSet<resource_utils::Subscribe>,
-        >,
-    >;
+    pub(crate) type UserSubscribes = HashMap<Branch, HashMap<User, HashSet<Subscribe>>>;
+    pub(crate) type UserSubscribesForCompany = HashMap<Company, HashMap<User, HashSet<Subscribe>>>;
 
-    pub(crate) fn map_resource_to_subscribes(
-        pool_of_pubsub: &UserSubscribes,
-        list_of_resources: ListOfResources,
-        resource_to_send: &mut ListOfResources,
+    pub(crate) fn map_resource_to_subscribes<T: Eq + Hash + Clone>(
+        pool_of_pubsub: &HashMap<T, HashMap<User, HashSet<Subscribe>>>,
+        list_of_resources: HashMap<T, Vec<resource_utils::ResourceInfo>>,
+        resource_to_send: &mut HashMap<User, Vec<ResourceInfo>>,
     ) {
         for (company, resource) in list_of_resources {
             let user_and_subscribe = pool_of_pubsub.get(&company);
@@ -619,16 +625,19 @@ mod broker_functions {
         }
     }
 
-    pub(crate) fn unsubscribe(pool_of_pubsub: &mut UserSubscribes, user_uuid: &UuidType) {
+    pub(crate) fn unsubscribe<T>(
+        pool_of_pubsub: &mut HashMap<T, HashMap<User, HashSet<Subscribe>>>,
+        user_uuid: &User,
+    ) {
         pool_of_pubsub.retain(|_, users_and_subs| {
             users_and_subs.remove(user_uuid);
             !users_and_subs.is_empty()
         });
     }
 
-    pub(crate) fn merge_subscribes(
-        pool_of_pubsub: &mut UserSubscribes,
-        list_of_subscribtion: UserSubscribes,
+    pub(crate) fn merge_subscribes<T: Clone + Eq + Hash>(
+        pool_of_pubsub: &mut HashMap<T, HashMap<User, HashSet<Subscribe>>>,
+        list_of_subscribtion: HashMap<T, HashMap<User, HashSet<Subscribe>>>,
     ) {
         for (company, users_subscribes) in list_of_subscribtion {
             for (user_uuid, subscribes) in users_subscribes {
@@ -638,7 +647,7 @@ mod broker_functions {
     }
 
     fn resource_filtering_based_on_subscribe(
-        subscribe: &HashSet<resource_utils::Subscribe>,
+        subscribe: &HashSet<Subscribe>,
         resource: &Vec<resource_utils::ResourceInfo>,
     ) -> Vec<resource_utils::ResourceInfo> {
         let mut new_resource = Vec::new();
@@ -655,19 +664,19 @@ mod broker_functions {
     }
 }
 
-fn role_to_subscribe_mapping(roles: Vec<Role>) -> HashSet<resource_utils::Subscribe> {
+fn role_to_subscribe_mapping(roles: Vec<Role>) -> HashSet<Subscribe> {
     let mut subscribes = HashSet::with_capacity(200);
 
     for _ in roles {
-        subscribes.insert(resource_utils::Subscribe::TableUserFieldName);
-        subscribes.insert(resource_utils::Subscribe::TableUserFieldId);
-        subscribes.insert(resource_utils::Subscribe::TableCompanyFieldName);
-        subscribes.insert(resource_utils::Subscribe::TableCompanyFieldCurrency);
-        subscribes.insert(resource_utils::Subscribe::TableCompanyBranchFieldName);
-        subscribes.insert(resource_utils::Subscribe::TableCompanyBranchFieldCompanyBelong);
-        subscribes.insert(resource_utils::Subscribe::TableAccessControlForCompanyFieldRole);
-        subscribes.insert(resource_utils::Subscribe::TableAccessControlForCompanyFieldUser);
-        subscribes.insert(resource_utils::Subscribe::TableAccessControlForCompanyFieldDataGroup);
+        subscribes.insert(Subscribe::TableUserFieldName);
+        subscribes.insert(Subscribe::TableUserFieldId);
+        subscribes.insert(Subscribe::TableCompanyFieldName);
+        subscribes.insert(Subscribe::TableCompanyFieldCurrency);
+        subscribes.insert(Subscribe::TableCompanyBranchFieldName);
+        subscribes.insert(Subscribe::TableCompanyBranchFieldCompanyBelong);
+        subscribes.insert(Subscribe::TableAccessControlForCompanyFieldRole);
+        subscribes.insert(Subscribe::TableAccessControlForCompanyFieldUser);
+        subscribes.insert(Subscribe::TableAccessControlForCompanyFieldDataGroup);
     }
 
     subscribes.shrink_to_fit();
@@ -675,23 +684,20 @@ fn role_to_subscribe_mapping(roles: Vec<Role>) -> HashSet<resource_utils::Subscr
 }
 
 pub(crate) struct AllSubscribes {
-    pub(crate) companies: broker_functions::UserSubscribes,
+    pub(crate) companies: broker_functions::UserSubscribesForCompany,
     pub(crate) branches:  broker_functions::UserSubscribes,
 }
 
 type UserSenders<Mpsc> = HashMap<
-    UuidType, // user uuid
-    HashMap<
-        u64,
-        <Mpsc as traits::MultiProducerSingleConsumer>::Sender<Vec<resource_utils::ResourceInfo>>,
-    >, // because user may have multiple web socket connection
+    User,
+    HashMap<u64, <Mpsc as MultiProducerSingleConsumer>::Sender<Vec<resource_utils::ResourceInfo>>>, // because user may have multiple web socket connection
 >;
 
-pub(crate) enum MessageToBroker<Mpsc: traits::MultiProducerSingleConsumer> {
+pub(crate) enum MessageToBroker<Mpsc: MultiProducerSingleConsumer> {
     Subscribe {
         connection_id:        u64,
         list_of_subscribtion: AllSubscribes,
-        users_uuids:          HashSet<UuidType>,
+        users_uuids:          HashSet<User>,
         sender_to_server:     Mpsc::Sender<Vec<resource_utils::ResourceInfo>>,
     },
     Unsubscribe {
@@ -699,7 +705,7 @@ pub(crate) enum MessageToBroker<Mpsc: traits::MultiProducerSingleConsumer> {
     },
     Publish {
         connection_id:                 u64,
-        list_of_resources_for_company: server_traits::ListOfResources,
-        list_of_resources_for_branch:  server_traits::ListOfResources,
+        list_of_resources_for_company: HashMap<Company, Vec<resource_utils::ResourceInfo>>,
+        list_of_resources_for_branch:  ListOfResources,
     },
 }

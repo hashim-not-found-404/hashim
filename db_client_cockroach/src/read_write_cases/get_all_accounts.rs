@@ -2,7 +2,7 @@ use crate::utility::db_client;
 use crate::utility::utils::MyUuidConverter;
 use my_core::accounting_domain::cases;
 use my_core::accounting_domain::utility::types::DatabaseRead;
-use my_core::accounting_domain::utility::types::UuidType;
+use my_core::accounting_domain::utility::uuid::UuidType;
 use my_core::utility::traits::DynamicError;
 use my_core::utility::utils::LogError;
 use uuid::Uuid;
@@ -40,7 +40,7 @@ impl DatabaseRead for S {
         for row in rows {
             let row_uuid_str: String = row.try_get(0).log()?;
             let row_uuid_parsed = Uuid::parse_str(&row_uuid_str).log()?;
-            let row_uuid = UuidType(row_uuid_parsed.into_bytes());
+            let row_uuid = UuidType(row_uuid_parsed.into_bytes()).into();
 
             let is_debit: bool = row.try_get(1).log()?;
             let is_permanent_account: bool = row.try_get(2).log()?;

@@ -103,7 +103,7 @@ impl DatabaseRead for S {
 
         let mut result = Vec::new();
         for (company_uuid_str, (company_name, company_currency_str, company_roles)) in company_map {
-            let company_uuid = company_uuid_str.clone().to_uuid();
+            let company_uuid = company_uuid_str.clone().to_uuid().into();
             let company_currency = Currency::from_str(&company_currency_str).unwrap();
 
             let branches: Vec<cases::list_company_and_branch::AllBranchesThatUserInWithRoles> =
@@ -111,7 +111,7 @@ impl DatabaseRead for S {
                     .iter()
                     .filter(|(_, info)| info.company_belong == company_uuid_str)
                     .map(|(_, info)| {
-                        let branch_uuid = info.branch_uuid.clone().to_uuid();
+                        let branch_uuid = info.branch_uuid.clone().to_uuid().into();
                         let branch_currency = Currency::from_str(&info.branch_currency).unwrap();
                         cases::list_company_and_branch::AllBranchesThatUserInWithRoles {
                             branch_uuid,

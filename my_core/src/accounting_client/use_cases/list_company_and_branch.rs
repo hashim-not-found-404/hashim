@@ -11,7 +11,8 @@ use crate::accounting_domain::utility::types::Branch;
 use crate::accounting_domain::utility::types::Company;
 use crate::accounting_domain::utility::types::ListOfCompanies;
 use crate::accounting_domain::utility::types::RowId;
-use crate::accounting_domain::utility::types::UuidType;
+use crate::accounting_domain::utility::uuid;
+use crate::accounting_domain::utility::uuid::User;
 use crate::utility::tools;
 use crate::utility::traits;
 use crate::utility::utils::ReadAndSet;
@@ -23,7 +24,7 @@ type Type3 = cases::list_company_and_branch::MyResult;
 type Type4 = Result<ListOfCompanies, ()>;
 
 impl tools::Sortable for Company {
-    type Key = (String, UuidType);
+    type Key = (String, uuid::Company);
 
     fn key(&self) -> Self::Key {
         (self.name.clone(), self.uuid.clone())
@@ -31,7 +32,7 @@ impl tools::Sortable for Company {
 }
 
 impl tools::Sortable for Branch {
-    type Key = (String, UuidType);
+    type Key = (String, uuid::Branch);
 
     fn key(&self) -> Self::Key {
         (self.name.clone(), self.uuid.clone())
@@ -69,7 +70,7 @@ where
         request_response::OperationsInput::ListCompanyAndBranch(data)
     }
 
-    fn user_uuid(data: &Self::Type2) -> Option<&UuidType> {
+    fn user_uuid(data: &Self::Type2) -> Option<&User> {
         Some(&data.user_uuid)
     }
 
@@ -89,13 +90,13 @@ where
                     let company_uuid = &company.company_uuid;
 
                     resources.push(resource_utils::ResourceInfo {
-                        row_uuid: company_uuid.clone(),
+                        row_uuid: company_uuid.0.clone(),
                         resource: resource_utils::Resource::TableCompanyFieldName(
                             company.company_name.clone(),
                         ),
                     });
                     resources.push(resource_utils::ResourceInfo {
-                        row_uuid: company_uuid.clone(),
+                        row_uuid: company_uuid.0.clone(),
                         resource: resource_utils::Resource::TableCompanyFieldCurrency(
                             company.company_currancy.clone(),
                         ),
@@ -103,7 +104,7 @@ where
 
                     for role in &company.user_roles {
                         resources.push(resource_utils::ResourceInfo {
-                            row_uuid: company_uuid.clone(),
+                            row_uuid: company_uuid.0.clone(),
                             resource:
                                 resource_utils::Resource::TableAccessControlForCompanyFieldRole(
                                     role.clone(),
@@ -111,13 +112,13 @@ where
                         });
                     }
                     resources.push(resource_utils::ResourceInfo {
-                        row_uuid: company_uuid.clone(),
+                        row_uuid: company_uuid.0.clone(),
                         resource: resource_utils::Resource::TableAccessControlForCompanyFieldUser(
                             user_uuid.clone(),
                         ),
                     });
                     resources.push(resource_utils::ResourceInfo {
-                        row_uuid: company_uuid.clone(),
+                        row_uuid: company_uuid.0.clone(),
                         resource:
                             resource_utils::Resource::TableAccessControlForCompanyFieldDataGroup(
                                 company_uuid.clone(),
@@ -128,19 +129,19 @@ where
                         let branch_uuid = &branch.branch_uuid;
 
                         resources.push(resource_utils::ResourceInfo {
-                            row_uuid: branch_uuid.clone(),
+                            row_uuid: branch_uuid.0.clone(),
                             resource: resource_utils::Resource::TableCompanyBranchFieldName(
                                 branch.branch_name.clone(),
                             ),
                         });
                         resources.push(resource_utils::ResourceInfo {
-                            row_uuid: branch_uuid.clone(),
+                            row_uuid: branch_uuid.0.clone(),
                             resource: resource_utils::Resource::TableCompanyBranchFieldCurrency(
                                 branch.branch_currancy.clone(),
                             ),
                         });
                         resources.push(resource_utils::ResourceInfo {
-                            row_uuid: branch_uuid.clone(),
+                            row_uuid: branch_uuid.0.clone(),
                             resource:
                                 resource_utils::Resource::TableCompanyBranchFieldCompanyBelong(
                                     company_uuid.clone(),
@@ -149,20 +150,20 @@ where
 
                         for role in &branch.user_roles {
                             resources.push(resource_utils::ResourceInfo {
-                                row_uuid: branch_uuid.clone(),
+                                row_uuid: branch_uuid.0.clone(),
                                 resource: resource_utils::Resource::TableAccessControlForCompanyBranchFieldRole(
                                     role.clone(),
                                 ),
                             });
                         }
                         resources.push(resource_utils::ResourceInfo {
-                            row_uuid: branch_uuid.clone(),
+                            row_uuid: branch_uuid.0.clone(),
                             resource: resource_utils::Resource::TableAccessControlForCompanyBranchFieldUser(
                                 user_uuid.clone(),
                             ),
                         });
                         resources.push(resource_utils::ResourceInfo {
-                            row_uuid: branch_uuid.clone(),
+                            row_uuid: branch_uuid.0.clone(),
                             resource: resource_utils::Resource::TableAccessControlForCompanyBranchFieldDataGroup(
                                 branch_uuid.clone(),
                             ),
@@ -273,12 +274,12 @@ impl ui_model::CompanyAndBranchSelection {
                 match selected_company.read() {
                     Some(old_one) => {
                         if old_one == i {
-                            selected_company.set(None)
+                            selected_company.put(None)
                         } else {
-                            selected_company.set(Some(i))
+                            selected_company.put(Some(i))
                         }
                     }
-                    None => selected_company.set(Some(i)),
+                    None => selected_company.put(Some(i)),
                 }
             }
             Self::SelectedCompanyBranch(i) => {

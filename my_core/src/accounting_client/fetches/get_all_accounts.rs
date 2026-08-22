@@ -2,11 +2,10 @@ use crate::accounting_client::client_domain::cache_actor;
 use crate::accounting_client::client_domain::client_traits;
 use crate::accounting_client::client_domain::client_traits::ReadServerOnly;
 use crate::accounting_client::client_domain::ui_model;
-use crate::accounting_client::client_domain::ui_model::HashimSignal;
 use crate::accounting_domain::cases;
 use crate::accounting_domain::request_response;
 use crate::accounting_domain::utility::resource_utils;
-use crate::accounting_domain::utility::types::UuidType;
+use crate::accounting_domain::utility::uuid::User;
 use crate::utility::traits;
 use crate::utility::utils::ReadAndSet;
 
@@ -25,7 +24,7 @@ impl ReadServerOnly for ViewAndCacheType {
         request_response::OperationsInput::GetAllAccounts(data)
     }
 
-    fn user_uuid(data: &Self::Type2) -> Option<&UuidType> {
+    fn user_uuid(data: &Self::Type2) -> Option<&User> {
         Some(&data.user_uuid)
     }
 
@@ -37,37 +36,37 @@ impl ReadServerOnly for ViewAndCacheType {
                     let row_uuid = &account.row_uuid;
 
                     resources.push(resource_utils::ResourceInfo {
-                        row_uuid: row_uuid.clone(),
+                        row_uuid: row_uuid.0.clone(),
                         resource: resource_utils::Resource::TableAccountFieldName(
                             account.account_name.clone(),
                         ),
                     });
                     resources.push(resource_utils::ResourceInfo {
-                        row_uuid: row_uuid.clone(),
+                        row_uuid: row_uuid.0.clone(),
                         resource: resource_utils::Resource::TableAccountFieldCompanyBelong(
                             ok.company_uuid.clone(),
                         ),
                     });
                     resources.push(resource_utils::ResourceInfo {
-                        row_uuid: row_uuid.clone(),
+                        row_uuid: row_uuid.0.clone(),
                         resource: resource_utils::Resource::TableAccountFieldIsDebit(
                             account.is_debit,
                         ),
                     });
                     resources.push(resource_utils::ResourceInfo {
-                        row_uuid: row_uuid.clone(),
+                        row_uuid: row_uuid.0.clone(),
                         resource: resource_utils::Resource::TableAccountFieldIsPermanentAccount(
                             account.is_permanent_account,
                         ),
                     });
                     resources.push(resource_utils::ResourceInfo {
-                        row_uuid: row_uuid.clone(),
+                        row_uuid: row_uuid.0.clone(),
                         resource: resource_utils::Resource::TableAccountFieldNotes(
                             account.notes.clone(),
                         ),
                     });
                     resources.push(resource_utils::ResourceInfo {
-                        row_uuid: row_uuid.clone(),
+                        row_uuid: row_uuid.0.clone(),
                         resource:
                             resource_utils::Resource::TableAccountFieldUnitOfMeasurementOfQuantity(
                                 account.unit_of_measurement_of_quantity.clone(),

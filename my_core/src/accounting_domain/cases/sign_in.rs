@@ -3,7 +3,7 @@ use crate::accounting_domain::utility::types::HashedPassword;
 use crate::accounting_domain::utility::types::JWT;
 use crate::accounting_domain::utility::types::JsonWebTokenType;
 use crate::accounting_domain::utility::types::MarkerMyErrorTrait;
-use crate::accounting_domain::utility::types::UuidType;
+use crate::accounting_domain::utility::uuid::User;
 use crate::utility::traits::DynamicError;
 use serde::Deserialize;
 use serde::Serialize;
@@ -18,7 +18,7 @@ pub struct Input {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Ok {
-    pub user_uuid:  UuidType,
+    pub user_uuid:  User,
     pub user_id:    String,
     pub user_name:  Option<String>,
     pub(crate) jwt: JsonWebTokenType,
@@ -37,7 +37,7 @@ pub struct ReadInput {
 }
 
 pub struct ReadOutput {
-    pub user_rowid_and_password_hash_and_name: Option<(UuidType, String, Option<String>)>,
+    pub user_rowid_and_password_hash_and_name: Option<(User, String, Option<String>)>,
 }
 
 pub trait DatabaseRead: types::DatabaseRead<Input = ReadInput, Output = ReadOutput> {}
@@ -90,7 +90,7 @@ impl Input {
     pub(crate) fn state_full_operation(
         &self,
         jwt: &JsonWebTokenType,
-        user_uuid: &UuidType,
+        user_uuid: &User,
         user_name: Option<&String>,
     ) -> Ok {
         Ok {

@@ -12,7 +12,7 @@ use crate::accounting_domain::utility::resource_utils;
 use crate::accounting_domain::utility::types::JsonWebTokenType;
 use crate::accounting_domain::utility::types::MyErrorTrait;
 use crate::accounting_domain::utility::types::RowId;
-use crate::accounting_domain::utility::types::UuidType;
+use crate::accounting_domain::utility::uuid::User;
 use crate::utility::traits;
 use crate::utility::traits::Receiver;
 use crate::utility::traits::Sender;
@@ -41,7 +41,7 @@ where
         request_response::OperationsInput::SignUp(data)
     }
 
-    fn user_uuid(data: &Self::Type2) -> Option<&UuidType> {
+    fn user_uuid(data: &Self::Type2) -> Option<&User> {
         Some(&data.new_uuid)
     }
 
@@ -67,18 +67,18 @@ where
                 let mut resource = Vec::with_capacity(3);
 
                 resource.push(resource_utils::ResourceInfo {
-                    row_uuid: ok.new_uuid.clone(),
+                    row_uuid: ok.new_uuid.0.clone(),
                     resource: resource_utils::Resource::Jwt(ok.jwt.clone()),
                 });
 
                 resource.push(resource_utils::ResourceInfo {
-                    row_uuid: ok.new_uuid.clone(),
+                    row_uuid: ok.new_uuid.0.clone(),
                     resource: resource_utils::Resource::TableUserFieldId(ok.user_id.clone()),
                 });
 
                 if let Some(user_name) = &ok.user_name {
                     resource.push(resource_utils::ResourceInfo {
-                        row_uuid: ok.new_uuid.clone(),
+                        row_uuid: ok.new_uuid.0.clone(),
                         resource: resource_utils::Resource::TableUserFieldName(user_name.clone()),
                     });
                 }
@@ -197,7 +197,7 @@ async fn handle_submit<
     local_state.user_id_error.reset();
     local_state.user_name_error.reset();
 
-    let new_uuid = Id::generate();
+    let new_uuid: User = Id::generate().into();
     let input = build_input::<As>(model, new_uuid.clone());
 
     let data = <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::wrap_input(input);
@@ -245,7 +245,7 @@ async fn handle_check<
     local_state.user_id_error.reset();
     local_state.user_name_error.reset();
 
-    let input = build_input::<As>(model, Id::generate());
+    let input = build_input::<As>(model, Id::generate().into());
     let mut receiver_to_response = cache
         .send_to_cache_actor(
             cache_actor::CachingStrategy::ReadCacheOnly,
@@ -268,10 +268,7 @@ async fn handle_check<
     }
 }
 
-fn build_input<As: ui_model::AllSignalTypes>(
-    model: &ui_model::Model<As>,
-    new_uuid: UuidType,
-) -> Type1 {
+fn build_input<As: ui_model::AllSignalTypes>(model: &ui_model::Model<As>, new_uuid: User) -> Type1 {
     cases::sign_up::Input {
         new_uuid,
         name: model.user_name.read().none_if_empty(),

@@ -2,7 +2,11 @@ use crate::accounting_domain::cases::create_journal_entry::DebitNotEqualCreditEr
 use crate::accounting_domain::utility::types::Company;
 use crate::accounting_domain::utility::types::Currency;
 use crate::accounting_domain::utility::types::Location;
-use crate::accounting_domain::utility::types::UuidType;
+use crate::accounting_domain::utility::uuid;
+use crate::accounting_domain::utility::uuid::AccountForBranch;
+use crate::accounting_domain::utility::uuid::Branch;
+use crate::accounting_domain::utility::uuid::User;
+use crate::accounting_domain::utility::uuid::UuidType;
 use crate::utility::tools::Searchable;
 use accounting_engine::accounting_stuff::InFlowType;
 use accounting_engine::accounting_stuff::OutFlowType;
@@ -32,7 +36,7 @@ pub trait AllSignalTypes: 'static + Default + Clone {
     type CompanyAndBranchList: HashimSignal<Vec<Company>>;
     type OutFlowType: HashimSignal<OutFlowType>;
     type InFlowType: HashimSignal<InFlowType>;
-    type AccountsSuggestionList: HashimSignal<Vec<Accounts>>;
+    type AccountsSuggestionList: HashimSignal<Vec<Account>>;
     type JournalEntry: HashimSignal<Vec<DoubleEntry>>;
 
     type Navigator: HashimSignal<Navigator>;
@@ -40,8 +44,8 @@ pub trait AllSignalTypes: 'static + Default + Clone {
 
 // helper types ///////////////////////////////////////////////////////////////////////////////////
 #[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
-pub struct Accounts {
-    pub row_uuid:                        UuidType,
+pub struct Account {
+    pub row_uuid:                        uuid::Account,
     pub is_debit:                        bool,
     pub is_permanent_account:            bool,
     pub account_name:                    String,
@@ -49,7 +53,7 @@ pub struct Accounts {
     pub unit_of_measurement_of_quantity: String,
 }
 
-impl Searchable for Accounts {
+impl Searchable for Account {
     fn search_key(&self) -> String {
         self.account_name.clone()
     }
@@ -67,16 +71,16 @@ pub enum Dialog {
 
 #[derive(Default)]
 pub struct Model<As: AllSignalTypes> {
-    pub(crate) user_uuid:               Mutex<Option<UuidType>>,
-    pub(crate) selected_company_branch: Mutex<Option<UuidType>>,
+    pub(crate) user_uuid:               Mutex<Option<User>>,
+    pub(crate) selected_company_branch: Mutex<Option<Branch>>,
+    pub(crate) selected_company:        Mutex<Option<uuid::Company>>,
 
     pub navigator: As::Navigator,
 
     // global states
-    pub external_errors:  As::StringVec,
-    pub user_id:          As::String,
-    pub user_name:        As::String,
-    pub selected_company: As::OptionUuid,
+    pub external_errors: As::StringVec,
+    pub user_id:         As::String,
+    pub user_name:       As::String,
 
     // feature state
     pub feature_state_auth: FeatureStateAuth<As>,
@@ -148,7 +152,7 @@ pub struct PageCreateAccount<As: AllSignalTypes> {
 
 #[derive(Debug, Default, Deserialize, Serialize)]
 pub struct PageCreateAccountForBranch<As: AllSignalTypes> {
-    pub(crate) list_of_available_account: Mutex<Vec<Accounts>>,
+    pub(crate) list_of_available_account: Mutex<Vec<Account>>,
 
     pub is_loading:    As::Bool,
     pub show_dialog:   As::Dialog,
@@ -160,7 +164,7 @@ pub struct PageCreateAccountForBranch<As: AllSignalTypes> {
 
 #[derive(Debug, Default, Deserialize, Serialize)]
 pub struct PageCreateJournalEntry<As: AllSignalTypes> {
-    pub(crate) list_of_available_account: Mutex<Vec<Accounts>>,
+    pub(crate) list_of_available_account: Mutex<Vec<Account>>,
     pub filtered_list:                    As::AccountsSuggestionList,
 
     pub is_loading:      As::Bool,
@@ -185,7 +189,7 @@ pub struct DoubleEntry {
 #[derive(Debug, Clone, Default, Deserialize, Serialize)]
 pub struct SingleEntry {
     pub user_input_account_name:    String,
-    pub(crate) inferred_account_id: Option<UuidType>,
+    pub(crate) inferred_account_id: Option<AccountForBranch>,
 
     pub user_input_is_debit:     Option<bool>,
     pub user_input_is_inflow:    Option<bool>,
@@ -263,8 +267,8 @@ pub enum CompanyAndBranchSelection {
     UnSubscribe,
     ShowCreateCompany,
     ShowCreateCompanyBranch,
-    SelectedCompany(UuidType),
-    SelectedCompanyBranch(UuidType),
+    SelectedCompany(uuid::Company),
+    SelectedCompanyBranch(Branch),
 }
 
 #[derive(Debug)]
@@ -324,7 +328,7 @@ pub enum CreateJournalEntry {
     SelectSuggestion {
         double_index: usize,
         single_index: usize,
-        account_uuid: UuidType,
+        account_uuid: AccountForBranch,
     },
     Submit,
     Consent(UserConsent),

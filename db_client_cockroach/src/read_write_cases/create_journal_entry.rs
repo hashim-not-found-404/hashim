@@ -4,7 +4,7 @@ use accounting_engine::accounting_stuff;
 use my_core::accounting_domain::cases;
 use my_core::accounting_domain::utility::types::DatabaseRead;
 use my_core::accounting_domain::utility::types::Role;
-use my_core::accounting_domain::utility::types::UuidType;
+use my_core::accounting_domain::utility::uuid::UuidType;
 use my_core::server::utility::server_traits;
 use my_core::utility::traits::DynamicError;
 use my_core::utility::utils::LogError;
@@ -144,7 +144,7 @@ impl DatabaseRead for S {
         let mut account_info = cases::create_journal_entry::AccountInfoProviderImpl(HashMap::new());
         for info in account_infos {
             let uuid_parsed = Uuid::parse_str(&info.account_uuid).log()?;
-            let uuid_type = UuidType(uuid_parsed.into_bytes());
+            let uuid_type = UuidType(uuid_parsed.into_bytes()).into();
             let in_flow = accounting_stuff::InFlowType::from_str(&info.in_flow_type).log()?;
             let out_flow = accounting_stuff::OutFlowType::from_str(&info.out_flow_type).log()?;
             let inventory = cases::create_journal_entry::InventoryWrapper(info.inventory);

@@ -12,7 +12,8 @@ use crate::accounting_domain::request_response;
 use crate::accounting_domain::utility::resource_utils;
 use crate::accounting_domain::utility::types::MyErrorTrait;
 use crate::accounting_domain::utility::types::RowId;
-use crate::accounting_domain::utility::types::UuidType;
+use crate::accounting_domain::utility::uuid::Account;
+use crate::accounting_domain::utility::uuid::User;
 use crate::utility::traits;
 use crate::utility::traits::Receiver;
 use crate::utility::traits::Sender;
@@ -41,7 +42,7 @@ where
         request_response::OperationsInput::CreateAccount(data)
     }
 
-    fn user_uuid(data: &Self::Type2) -> Option<&UuidType> {
+    fn user_uuid(data: &Self::Type2) -> Option<&User> {
         Some(&data.user_uuid)
     }
 
@@ -60,35 +61,35 @@ where
             Ok(ok) => {
                 vec![
                     resource_utils::ResourceInfo {
-                        row_uuid: ok.new_uuid.clone(),
+                        row_uuid: ok.new_uuid.0.clone(),
                         resource: resource_utils::Resource::TableAccountFieldCompanyBelong(
                             ok.belong_to_company.clone(),
                         ),
                     },
                     resource_utils::ResourceInfo {
-                        row_uuid: ok.new_uuid.clone(),
+                        row_uuid: ok.new_uuid.0.clone(),
                         resource: resource_utils::Resource::TableAccountFieldIsDebit(ok.is_debit),
                     },
                     resource_utils::ResourceInfo {
-                        row_uuid: ok.new_uuid.clone(),
+                        row_uuid: ok.new_uuid.0.clone(),
                         resource: resource_utils::Resource::TableAccountFieldIsPermanentAccount(
                             ok.is_permanent_account,
                         ),
                     },
                     resource_utils::ResourceInfo {
-                        row_uuid: ok.new_uuid.clone(),
+                        row_uuid: ok.new_uuid.0.clone(),
                         resource: resource_utils::Resource::TableAccountFieldName(
                             ok.account_name.clone(),
                         ),
                     },
                     resource_utils::ResourceInfo {
-                        row_uuid: ok.new_uuid.clone(),
+                        row_uuid: ok.new_uuid.0.clone(),
                         resource: resource_utils::Resource::TableAccountFieldNotes(
                             ok.notes.clone(),
                         ),
                     },
                     resource_utils::ResourceInfo {
-                        row_uuid: ok.new_uuid.clone(),
+                        row_uuid: ok.new_uuid.0.clone(),
                         resource:
                             resource_utils::Resource::TableAccountFieldUnitOfMeasurementOfQuantity(
                                 ok.unit_of_measurement_of_quantity.clone(),
@@ -188,7 +189,7 @@ fn build_input<Id: RowId, As: ui_model::AllSignalTypes>(model: &ui_model::Model<
 
     cases::create_account::Input {
         user_uuid:                       model.user_uuid.read().clone().unwrap(),
-        new_uuid:                        Id::generate(),
+        new_uuid:                        Account(Id::generate()),
         is_debit:                        local_state.is_debit.read(),
         is_permanent_account:            local_state.is_permanent_account.read(),
         account_name:                    local_state.account_name.read(),

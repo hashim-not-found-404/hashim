@@ -30,7 +30,7 @@ impl DatabaseRead for S {
                 let user_name: Option<String> = row.get(1).unwrap();
                 let jwt: Option<String> = row.get(2).unwrap();
 
-                Ok((user_uuid_str.to_uuid(), jwt.unwrap_or_default(), user_name))
+                Ok((user_uuid_str.to_uuid().into(), jwt.unwrap_or_default(), user_name))
             })
             .optional()
             .unwrap();

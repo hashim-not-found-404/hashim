@@ -11,7 +11,7 @@ use crate::accounting_domain::request_response;
 use crate::accounting_domain::utility::resource_utils;
 use crate::accounting_domain::utility::types::MyErrorTrait;
 use crate::accounting_domain::utility::types::RowId;
-use crate::accounting_domain::utility::types::UuidType;
+use crate::accounting_domain::utility::uuid::User;
 use crate::mbg;
 use crate::utility::traits;
 use crate::utility::traits::Receiver;
@@ -40,7 +40,7 @@ where
         request_response::OperationsInput::CreateCompanyBranch(data)
     }
 
-    fn user_uuid(data: &Self::Type2) -> Option<&UuidType> {
+    fn user_uuid(data: &Self::Type2) -> Option<&User> {
         Some(&data.user_uuid)
     }
 
@@ -61,43 +61,43 @@ where
                 let branch_uuid = this.new_uuid.clone();
                 vec![
                         resource_utils::ResourceInfo {
-                            row_uuid: branch_uuid.clone(),
+                            row_uuid: branch_uuid.0.clone(),
                             resource: resource_utils::Resource::TableCompanyBranchFieldName(
                                 this.branch_name.clone(),
                             ),
                         },
                         resource_utils::ResourceInfo {
-                            row_uuid: branch_uuid.clone(),
+                            row_uuid: branch_uuid.0.clone(),
                             resource: resource_utils::Resource::TableCompanyBranchFieldCompanyBelong(
                                 this.company_belong.clone(),
                             ),
                         },
                         resource_utils::ResourceInfo {
-                            row_uuid: branch_uuid.clone(),
+                            row_uuid: branch_uuid.0.clone(),
                             resource: resource_utils::Resource::TableCompanyBranchFieldLocation(
                                 this.location.clone(),
                             ),
                         },
                         resource_utils::ResourceInfo {
-                            row_uuid: branch_uuid.clone(),
+                            row_uuid: branch_uuid.0.clone(),
                             resource: resource_utils::Resource::TableCompanyBranchFieldCurrency(
                                 this.currency.clone(),
                             ),
                         },
                         resource_utils::ResourceInfo {
-                            row_uuid: branch_uuid.clone(),
+                            row_uuid: branch_uuid.0.clone(),
                             resource: resource_utils::Resource::TableAccessControlForCompanyBranchFieldRole(
                                 this.role.clone(),
                             ),
                         },
                         resource_utils::ResourceInfo {
-                            row_uuid: branch_uuid.clone(),
+                            row_uuid: branch_uuid.0.clone(),
                             resource: resource_utils::Resource::TableAccessControlForCompanyBranchFieldUser(
                                 this.user_uuid.clone(),
                             ),
                         },
                         resource_utils::ResourceInfo {
-                            row_uuid: branch_uuid,
+                            row_uuid: branch_uuid.0.clone(),
                             resource:
                                 resource_utils::Resource::TableAccessControlForCompanyBranchFieldDataGroup(
                                     this.new_uuid.clone(),
@@ -290,7 +290,7 @@ fn build_input<Id: RowId, As: ui_model::AllSignalTypes>(model: &ui_model::Model<
 
     cases::create_company_branch::Input {
         user_uuid:      model.user_uuid.read().clone().unwrap(),
-        new_uuid:       Id::generate(),
+        new_uuid:       Id::generate().into(),
         company_belong: model.selected_company.read().unwrap(),
         currency:       local_state.currency.read(),
         branch_name:    local_state.branch_name.read(),

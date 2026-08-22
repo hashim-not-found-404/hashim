@@ -7,7 +7,7 @@ use crate::accounting_domain::cases;
 use crate::accounting_domain::request_response;
 use crate::accounting_domain::utility::resource_utils;
 use crate::accounting_domain::utility::types::RowId;
-use crate::accounting_domain::utility::types::UuidType;
+use crate::accounting_domain::utility::uuid::User;
 use crate::utility::traits;
 
 pub trait DbBundle<Ch: cache::Cache>: 'static {
@@ -204,7 +204,7 @@ impl request_response::OperationsInput {
 
     pub(crate) fn get_user_uuid<Ti: traits::Time, Ch: cache::Cache, Dbb: DbBundle<Ch>>(
         &self,
-    ) -> Option<&UuidType> {
+    ) -> Option<&User> {
         match self {
             request_response::OperationsInput::SignUp(i) => {
                 get_user_uuid!(sign_up, Dbb::SignUp, i)

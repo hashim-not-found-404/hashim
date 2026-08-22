@@ -8,7 +8,7 @@ use crate::accounting_domain::cases;
 use crate::accounting_domain::request_response;
 use crate::accounting_domain::utility::resource_utils;
 use crate::accounting_domain::utility::types::RowId;
-use crate::accounting_domain::utility::types::UuidType;
+use crate::accounting_domain::utility::uuid::User;
 use crate::utility::traits;
 use crate::utility::utils::ReadAndSet;
 
@@ -33,7 +33,7 @@ where
         request_response::OperationsInput::CreateCompany(data)
     }
 
-    fn user_uuid(data: &Self::Type2) -> Option<&UuidType> {
+    fn user_uuid(data: &Self::Type2) -> Option<&User> {
         Some(&data.user_uuid)
     }
 
@@ -48,31 +48,31 @@ where
                 let company_uuid = this.new_uuid.clone();
                 vec![
                     resource_utils::ResourceInfo {
-                        row_uuid: company_uuid.clone(),
+                        row_uuid: company_uuid.0.clone(),
                         resource: resource_utils::Resource::TableCompanyFieldName(
                             this.company_name.clone(),
                         ),
                     },
                     resource_utils::ResourceInfo {
-                        row_uuid: company_uuid.clone(),
+                        row_uuid: company_uuid.0.clone(),
                         resource: resource_utils::Resource::TableCompanyFieldCurrency(
                             this.currency.clone(),
                         ),
                     },
                     resource_utils::ResourceInfo {
-                        row_uuid: company_uuid.clone(),
+                        row_uuid: company_uuid.0.clone(),
                         resource: resource_utils::Resource::TableAccessControlForCompanyFieldRole(
                             this.role.clone(),
                         ),
                     },
                     resource_utils::ResourceInfo {
-                        row_uuid: company_uuid.clone(),
+                        row_uuid: company_uuid.0.clone(),
                         resource: resource_utils::Resource::TableAccessControlForCompanyFieldUser(
                             this.user_uuid.clone(),
                         ),
                     },
                     resource_utils::ResourceInfo {
-                        row_uuid: company_uuid.clone(),
+                        row_uuid: company_uuid.0.clone(),
                         resource:
                             resource_utils::Resource::TableAccessControlForCompanyFieldDataGroup(
                                 company_uuid,
@@ -159,7 +159,7 @@ fn build_input<Id: RowId, As: ui_model::AllSignalTypes>(model: &ui_model::Model<
 
     cases::create_company::Input {
         user_uuid:    model.user_uuid.read().clone().unwrap(),
-        new_uuid:     Id::generate(),
+        new_uuid:     Id::generate().into(),
         company_name: local_state.company_name.read(),
         currency:     local_state.currency.read(),
     }

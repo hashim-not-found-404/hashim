@@ -5,7 +5,8 @@ use crate::accounting_domain::cases;
 use crate::accounting_domain::request_response;
 use crate::accounting_domain::utility::resource_utils;
 use crate::accounting_domain::utility::types::RowId;
-use crate::accounting_domain::utility::types::UuidType;
+use crate::accounting_domain::utility::uuid::Account;
+use crate::accounting_domain::utility::uuid::User;
 use std::collections::HashSet;
 
 pub struct ViewAndCacheType;
@@ -39,7 +40,7 @@ where
         request_response::OperationsInput::GetAllAccountsForBranch(data)
     }
 
-    fn user_uuid(data: &Self::Type2) -> Option<&UuidType> {
+    fn user_uuid(data: &Self::Type2) -> Option<&User> {
         Some(&data.user_uuid)
     }
 
@@ -66,37 +67,37 @@ where
                 let mut resources = Vec::new();
                 for account in &ok.accounts {
                     resources.push(resource_utils::ResourceInfo {
-                        row_uuid: account.row_uuid.clone(),
+                        row_uuid: account.row_uuid.0.clone(),
                         resource: resource_utils::Resource::TableAccountFieldCompanyBelong(
                             ok.company_uuid.clone(),
                         ),
                     });
                     resources.push(resource_utils::ResourceInfo {
-                        row_uuid: account.row_uuid.clone(),
+                        row_uuid: account.row_uuid.0.clone(),
                         resource: resource_utils::Resource::TableAccountFieldIsDebit(
                             account.is_debit,
                         ),
                     });
                     resources.push(resource_utils::ResourceInfo {
-                        row_uuid: account.row_uuid.clone(),
+                        row_uuid: account.row_uuid.0.clone(),
                         resource: resource_utils::Resource::TableAccountFieldIsPermanentAccount(
                             account.is_permanent_account,
                         ),
                     });
                     resources.push(resource_utils::ResourceInfo {
-                        row_uuid: account.row_uuid.clone(),
+                        row_uuid: account.row_uuid.0.clone(),
                         resource: resource_utils::Resource::TableAccountFieldName(
                             account.account_name.clone(),
                         ),
                     });
                     resources.push(resource_utils::ResourceInfo {
-                        row_uuid: account.row_uuid.clone(),
+                        row_uuid: account.row_uuid.0.clone(),
                         resource: resource_utils::Resource::TableAccountFieldNotes(
                             account.notes.clone(),
                         ),
                     });
                     resources.push(resource_utils::ResourceInfo {
-                        row_uuid: account.row_uuid.clone(),
+                        row_uuid: account.row_uuid.0.clone(),
                         resource:
                             resource_utils::Resource::TableAccountFieldUnitOfMeasurementOfQuantity(
                                 account.unit_of_measurement_of_quantity.clone(),
@@ -105,25 +106,25 @@ where
                 }
                 for acc_branch in &ok.accounts_for_branch {
                     resources.push(resource_utils::ResourceInfo {
-                        row_uuid: acc_branch.row_uuid.clone(),
+                        row_uuid: acc_branch.row_uuid.0.clone(),
                         resource: resource_utils::Resource::TableAccountFlowTypeFieldAccount(
                             acc_branch.account_uuid.clone(),
                         ),
                     });
                     resources.push(resource_utils::ResourceInfo {
-                        row_uuid: acc_branch.row_uuid.clone(),
+                        row_uuid: acc_branch.row_uuid.0.clone(),
                         resource: resource_utils::Resource::TableAccountFlowTypeFieldInflowType(
                             acc_branch.inflow_type,
                         ),
                     });
                     resources.push(resource_utils::ResourceInfo {
-                        row_uuid: acc_branch.row_uuid.clone(),
+                        row_uuid: acc_branch.row_uuid.0.clone(),
                         resource: resource_utils::Resource::TableAccountFlowTypeFieldOutflowType(
                             acc_branch.outflow_type,
                         ),
                     });
                     resources.push(resource_utils::ResourceInfo {
-                        row_uuid: acc_branch.row_uuid.clone(),
+                        row_uuid: acc_branch.row_uuid.0.clone(),
                         resource: resource_utils::Resource::TableAccountFlowTypeFieldCompanyBranch(
                             ok.company_branch_uuid.clone(),
                         ),
@@ -139,7 +140,7 @@ where
         if let request_response::OperationsResult::GetAllAccountsForBranch(result) = output {
             match result {
                 Ok(mut ok) => {
-                    let linked: HashSet<UuidType> =
+                    let linked: HashSet<Account> =
                         ok.accounts_for_branch.iter().map(|afb| afb.account_uuid.clone()).collect();
 
                     ok.accounts.retain(|acc| !linked.contains(&acc.row_uuid));

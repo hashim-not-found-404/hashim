@@ -4,7 +4,8 @@ use my_core::accounting_domain::cases;
 use my_core::accounting_domain::utility::types::Currency;
 use my_core::accounting_domain::utility::types::DatabaseRead;
 use my_core::accounting_domain::utility::types::Role;
-use my_core::accounting_domain::utility::types::UuidType;
+use my_core::accounting_domain::utility::uuid::Company;
+use my_core::accounting_domain::utility::uuid::UuidType;
 use my_core::utility::traits::DynamicError;
 use my_core::utility::utils::LogError;
 use serde::Deserialize;
@@ -77,12 +78,12 @@ impl DatabaseRead for S {
             branches: Vec<cases::list_company_and_branch::AllBranchesThatUserInWithRoles>,
         }
 
-        let mut company_map: HashMap<UuidType, CompanyAgg> = HashMap::new();
+        let mut company_map: HashMap<Company, CompanyAgg> = HashMap::new();
 
         for row in rows {
             let company_uuid_str: String = row.try_get(0).log()?;
             let company_uuid_parsed = Uuid::parse_str(&company_uuid_str).log()?;
-            let company_uuid = UuidType(company_uuid_parsed.into_bytes());
+            let company_uuid = UuidType(company_uuid_parsed.into_bytes()).into();
 
             let company_name: String = row.try_get(1).log()?;
             let company_currency_str: String = row.try_get(2).log()?;
@@ -99,7 +100,7 @@ impl DatabaseRead for S {
                 .into_iter()
                 .map(|bj| {
                     let uuid = Uuid::parse_str(&bj.uuid).log()?;
-                    let branch_uuid = UuidType(uuid.into_bytes());
+                    let branch_uuid = UuidType(uuid.into_bytes()).into();
                     let branch_currency = Currency::from_str(&bj.currency).log()?;
                     Ok(cases::list_company_and_branch::AllBranchesThatUserInWithRoles {
                         branch_uuid,

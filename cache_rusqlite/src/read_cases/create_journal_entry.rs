@@ -2,9 +2,11 @@ use crate::utility::cache_adapter;
 use crate::utility::utils::MyUuidConverter;
 use crate::utility::utils::MyUuidConverter1;
 use accounting_engine::accounting_stuff;
+use accounting_engine::accounting_stuff::InventoryRecord;
 use my_core::accounting_domain::cases;
 use my_core::accounting_domain::utility::types::DatabaseRead;
 use my_core::accounting_domain::utility::types::Role;
+use my_core::accounting_domain::utility::uuid::AccountForBranch;
 use my_core::utility::traits::DynamicError;
 use rusqlite::params;
 use serde::Deserialize;
@@ -141,7 +143,7 @@ impl DatabaseRead for S {
             is_debit:      bool,
             in_flow_type:  String,
             out_flow_type: String,
-            inventory:     Vec<accounting_stuff::InventoryRecord>,
+            inventory:     Vec<InventoryRecord>,
         }
 
         let account_infos: Vec<AccountInfoJson> =
@@ -149,7 +151,7 @@ impl DatabaseRead for S {
 
         let mut account_info = cases::create_journal_entry::AccountInfoProviderImpl(HashMap::new());
         for info in account_infos {
-            let uuid_type = info.account_uuid.to_uuid();
+            let uuid_type: AccountForBranch = info.account_uuid.to_uuid().into();
             let in_flow = accounting_stuff::InFlowType::from_str(&info.in_flow_type).unwrap();
             let out_flow = accounting_stuff::OutFlowType::from_str(&info.out_flow_type).unwrap();
             let inventory = cases::create_journal_entry::InventoryWrapper(info.inventory);

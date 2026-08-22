@@ -21,7 +21,7 @@ pub(crate) fn ListCompanyAndBranch() -> Element {
 
     let local_state = &tools::MODEL.page_company_branch_selection.list;
 
-    let selected_company = &tools::MODEL.selected_company;
+    // let selected_company = &tools::MODEL.selected_company;
 
     rsx! {
         div {
@@ -70,40 +70,40 @@ pub(crate) fn ListCompanyAndBranch() -> Element {
                                 "{company.name}"
                             }
 
-                            if selected_company.read() == Some(company.uuid.clone()) {
-                                button {
-                                    onclick: move |_| {
-                                        tools::send(
-                                            ui_model::Message::CompanyAndBranchSelection(
-                                                ui_model::CompanyAndBranchSelection::ShowCreateCompanyBranch,
-                                            ),
-                                        )
-                                    },
-                                    "Add New Branch"
-                                }
-                                div {
-                                    for branch in company.branches {
-                                        {
-                                            rsx! {
-                                                button {
-                                                    onclick: {
-                                                        move |_| {
-                                                            tools::send(
-                                                                ui_model::Message::CompanyAndBranchSelection(
-                                                                    ui_model::CompanyAndBranchSelection::SelectedCompanyBranch(
-                                                                        branch.uuid.clone(),
-                                                                    ),
-                                                                ),
-                                                            )
-                                                        }
-                                                    },
-                                                    "{branch.name}"
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
+                            // if selected_company.read() == Some(company.uuid.clone()) {
+                            //     button {
+                            //         onclick: move |_| {
+                            //             tools::send(
+                            //                 ui_model::Message::CompanyAndBranchSelection(
+                            //                     ui_model::CompanyAndBranchSelection::ShowCreateCompanyBranch,
+                            //                 ),
+                            //             )
+                            //         },
+                            //         "Add New Branch"
+                            //     }
+                            //     div {
+                            //         for branch in company.branches {
+                            //             {
+                            //                 rsx! {
+                            //                     button {
+                            //                         onclick: {
+                            //                             move |_| {
+                            //                                 tools::send(
+                            //                                     ui_model::Message::CompanyAndBranchSelection(
+                            //                                         ui_model::CompanyAndBranchSelection::SelectedCompanyBranch(
+                            //                                             branch.uuid.clone(),
+                            //                                         ),
+                            //                                     ),
+                            //                                 )
+                            //                             }
+                            //                         },
+                            //                         "{branch.name}"
+                            //                     }
+                            //                 }
+                            //             }
+                            //         }
+                            //     }
+                            // }
                         }
                     }
                 }

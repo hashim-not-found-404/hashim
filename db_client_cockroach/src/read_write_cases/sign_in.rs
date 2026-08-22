@@ -32,7 +32,7 @@ impl DatabaseRead for S {
 
                 let a = cases::sign_in::ReadOutput {
                     user_rowid_and_password_hash_and_name: Some((
-                        row_id.to_uuid(),
+                        row_id.to_uuid().into(),
                         hashed_password,
                         name,
                     )),

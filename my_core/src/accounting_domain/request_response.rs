@@ -4,14 +4,14 @@ use crate::accounting_domain::utility::types::HashimError;
 use crate::accounting_domain::utility::types::JWTError;
 use crate::accounting_domain::utility::types::JsonWebTokenType;
 use crate::accounting_domain::utility::types::NonceError;
-use crate::accounting_domain::utility::types::UuidType;
+use crate::accounting_domain::utility::uuid::Nonce;
 use serde::Deserialize;
 use serde::Serialize;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub(crate) struct Input {
     pub(crate) jwts:       Vec<JsonWebTokenType>,
-    pub(crate) nonce:      UuidType,
+    pub(crate) nonce:      Nonce,
     pub(crate) operations: Vec<Txn<OperationsInput>>,
 }
 

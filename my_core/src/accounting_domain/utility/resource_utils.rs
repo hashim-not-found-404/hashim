@@ -2,7 +2,13 @@ use crate::accounting_domain::utility::types::Currency;
 use crate::accounting_domain::utility::types::JsonWebTokenType;
 use crate::accounting_domain::utility::types::Location;
 use crate::accounting_domain::utility::types::Role;
-use crate::accounting_domain::utility::types::UuidType;
+use crate::accounting_domain::utility::uuid::Account;
+use crate::accounting_domain::utility::uuid::AccountForBranch;
+use crate::accounting_domain::utility::uuid::Branch;
+use crate::accounting_domain::utility::uuid::Company;
+use crate::accounting_domain::utility::uuid::SharedEntry;
+use crate::accounting_domain::utility::uuid::User;
+use crate::accounting_domain::utility::uuid::UuidType;
 use accounting_engine::accounting_stuff::InFlowType;
 use accounting_engine::accounting_stuff::InventoryRecord;
 use accounting_engine::accounting_stuff::OutFlowType;
@@ -54,24 +60,24 @@ pub(crate) enum Subscribe {
 pub enum Resource {
     Jwt(JsonWebTokenType),
 
-    TableAccessControlForCompanyBranchFieldDataGroup(UuidType),
+    TableAccessControlForCompanyBranchFieldDataGroup(Branch),
     TableAccessControlForCompanyBranchFieldRole(Role),
-    TableAccessControlForCompanyBranchFieldUser(UuidType),
-    TableAccessControlForCompanyFieldDataGroup(UuidType),
+    TableAccessControlForCompanyBranchFieldUser(User),
+    TableAccessControlForCompanyFieldDataGroup(Company),
     TableAccessControlForCompanyFieldRole(Role),
-    TableAccessControlForCompanyFieldUser(UuidType),
-    TableAccountFieldCompanyBelong(UuidType),
+    TableAccessControlForCompanyFieldUser(User),
+    TableAccountFieldCompanyBelong(Company),
     TableAccountFieldIsDebit(bool),
     TableAccountFieldIsPermanentAccount(bool),
     TableAccountFieldName(String),
     TableAccountFieldNotes(Option<String>),
     TableAccountFieldUnitOfMeasurementOfQuantity(String),
     TableAccountFieldInventory(Vec<InventoryRecord>),
-    TableAccountFlowTypeFieldAccount(UuidType),
-    TableAccountFlowTypeFieldCompanyBranch(UuidType),
+    TableAccountFlowTypeFieldAccount(Account),
+    TableAccountFlowTypeFieldCompanyBranch(Branch),
     TableAccountFlowTypeFieldInflowType(InFlowType),
     TableAccountFlowTypeFieldOutflowType(OutFlowType),
-    TableCompanyBranchFieldCompanyBelong(UuidType),
+    TableCompanyBranchFieldCompanyBelong(Company),
     TableCompanyBranchFieldCurrency(Currency),
     TableCompanyBranchFieldLocation(Location),
     TableCompanyBranchFieldName(String),
@@ -79,14 +85,14 @@ pub enum Resource {
     TableCompanyFieldName(String),
     TableUserFieldId(String),
     TableUserFieldName(String),
-    TableSharedEntryFieldWriter(UuidType),
+    TableSharedEntryFieldWriter(SharedEntry),
     TableSharedEntryFieldNotes(Option<String>),
-    TableEntryFieldWriter(UuidType),
+    TableEntryFieldWriter(User),
     TableEntryFieldTime(u64),
-    TableEntryFieldSharedEntryId(UuidType),
+    TableEntryFieldSharedEntryId(SharedEntry),
     TableSingleEntryFieldDoubleEntry(u32),
     TableSingleEntryFieldEntry(UuidType),
-    TableSingleEntryFieldAccount(UuidType),
+    TableSingleEntryFieldAccount(AccountForBranch),
     TableSingleEntryFieldIsDebit(bool),
     TableSingleEntryFieldCostOutFlowType(OutFlowType),
     TableSingleEntryFieldQuantity(f64),

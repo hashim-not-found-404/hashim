@@ -5,7 +5,7 @@ use crate::accounting_domain::utility::types::JsonWebTokenType;
 use crate::accounting_domain::utility::types::MarkerMyErrorTrait;
 use crate::accounting_domain::utility::types::RowId;
 use crate::accounting_domain::utility::types::RowIdError;
-use crate::accounting_domain::utility::types::UuidType;
+use crate::accounting_domain::utility::uuid::User;
 use crate::utility::traits::DynamicError;
 use serde::Deserialize;
 use serde::Serialize;
@@ -14,7 +14,7 @@ pub type MyResult = Result<Ok, Error>;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Input {
-    pub(crate) new_uuid: UuidType,
+    pub(crate) new_uuid: User,
     pub(crate) name:     Option<String>,
     pub(crate) user_id:  String,
     pub(crate) password: String,
@@ -22,7 +22,7 @@ pub struct Input {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Ok {
-    pub new_uuid:        UuidType,
+    pub new_uuid:        User,
     pub user_id:         String,
     pub user_name:       Option<String>,
     pub hashed_password: String,
@@ -39,7 +39,7 @@ pub struct Error {
 impl MarkerMyErrorTrait for Error {}
 
 pub struct ReadInput {
-    pub new_uuid: UuidType,
+    pub new_uuid: User,
     pub user_id:  String,
 }
 

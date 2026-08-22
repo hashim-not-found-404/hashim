@@ -11,7 +11,7 @@ use crate::accounting_domain::request_response;
 use crate::accounting_domain::utility::resource_utils;
 use crate::accounting_domain::utility::types::JsonWebTokenType;
 use crate::accounting_domain::utility::types::RowId;
-use crate::accounting_domain::utility::types::UuidType;
+use crate::accounting_domain::utility::uuid::User;
 use crate::utility::traits;
 use crate::utility::traits::Receiver;
 use crate::utility::traits::Sender;
@@ -24,7 +24,7 @@ type Type3 = cases::sign_in::MyResult;
 type Type4 = Result<SignInOk, cases::sign_in::Error>;
 
 pub(crate) struct SignInOk {
-    user_uuid: UuidType,
+    user_uuid: User,
     user_name: String,
 }
 
@@ -44,7 +44,7 @@ where
         request_response::OperationsInput::SignIn(data)
     }
 
-    fn user_uuid(_: &Self::Type2) -> Option<&UuidType> {
+    fn user_uuid(_: &Self::Type2) -> Option<&User> {
         None
     }
 
@@ -101,18 +101,18 @@ where
                 let user_uuid = &ok.user_uuid;
 
                 resources.push(resource_utils::ResourceInfo {
-                    row_uuid: user_uuid.clone(),
+                    row_uuid: user_uuid.0.clone(),
                     resource: resource_utils::Resource::Jwt(ok.jwt.clone()),
                 });
 
                 resources.push(resource_utils::ResourceInfo {
-                    row_uuid: user_uuid.clone(),
+                    row_uuid: user_uuid.0.clone(),
                     resource: resource_utils::Resource::TableUserFieldId(ok.user_id.clone()),
                 });
 
                 if let Some(name) = &ok.user_name {
                     resources.push(resource_utils::ResourceInfo {
-                        row_uuid: user_uuid.clone(),
+                        row_uuid: user_uuid.0.clone(),
                         resource: resource_utils::Resource::TableUserFieldName(name.clone()),
                     });
                 }

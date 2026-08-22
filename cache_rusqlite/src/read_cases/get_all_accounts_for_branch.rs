@@ -4,6 +4,7 @@ use crate::utility::utils::MyUuidConverter1;
 use accounting_engine::accounting_stuff;
 use my_core::accounting_domain::cases;
 use my_core::accounting_domain::utility::types::DatabaseRead;
+use my_core::accounting_domain::utility::uuid::Company;
 use my_core::utility::traits::DynamicError;
 use rusqlite::params;
 use std::str::FromStr;
@@ -33,8 +34,8 @@ impl DatabaseRead for S {
         let mut stmt = db.tables_db.prepare(QUERY1).unwrap();
         let company_uuid_str: Option<String> =
             stmt.query_row(params![branch_uuid_str], |row| row.get::<_, String>(0)).ok();
-        let company_uuid = match company_uuid_str {
-            Some(s) => s.to_uuid(),
+        let company_uuid: Company = match company_uuid_str {
+            Some(s) => s.to_uuid().into(),
             None => {
                 return Ok(cases::get_all_accounts_for_branch::ReadOutput::default());
             }
@@ -50,7 +51,7 @@ impl DatabaseRead for S {
                 let notes: Option<String> = row.get(4)?;
                 let unit_of_measurement: String = row.get(5)?;
                 Ok(cases::get_all_accounts_for_branch::Account {
-                    row_uuid: row_uuid_str.to_uuid(),
+                    row_uuid: row_uuid_str.to_uuid().into(),
                     is_debit,
                     is_permanent_account,
                     account_name,
@@ -74,8 +75,8 @@ impl DatabaseRead for S {
                     accounting_stuff::OutFlowType::from_str(&outflow_type_str).unwrap();
                 let inflow_type = accounting_stuff::InFlowType::from_str(&inflow_type_str).unwrap();
                 Ok(cases::get_all_accounts_for_branch::AccountForBranch {
-                    row_uuid: row_uuid_str.to_uuid(),
-                    account_uuid: account_uuid_str.to_uuid(),
+                    row_uuid: row_uuid_str.to_uuid().into(),
+                    account_uuid: account_uuid_str.to_uuid().into(),
                     outflow_type,
                     inflow_type,
                 })

@@ -4,7 +4,10 @@ use crate::accounting_domain::utility::types::Role;
 use crate::accounting_domain::utility::types::RowId;
 use crate::accounting_domain::utility::types::RowIdError;
 use crate::accounting_domain::utility::types::UserUuidError;
-use crate::accounting_domain::utility::types::UuidType;
+use crate::accounting_domain::utility::uuid::Account;
+use crate::accounting_domain::utility::uuid::AccountForBranch;
+use crate::accounting_domain::utility::uuid::Branch;
+use crate::accounting_domain::utility::uuid::User;
 use crate::utility::traits::DynamicError;
 use accounting_engine::accounting_stuff::InFlowType;
 use accounting_engine::accounting_stuff::OutFlowType;
@@ -15,19 +18,19 @@ pub type MyResult = Result<Ok, Error>;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Input {
-    pub user_uuid:                UuidType,
-    pub new_uuid:                 UuidType,
-    pub belong_to_account:        UuidType,
-    pub belong_to_company_branch: UuidType,
+    pub user_uuid:                User,
+    pub new_uuid:                 AccountForBranch,
+    pub belong_to_account:        Account,
+    pub belong_to_company_branch: Branch,
     pub outflow_type:             OutFlowType,
     pub inflow_type:              InFlowType,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Ok {
-    pub new_uuid:                 UuidType,
-    pub belong_to_account:        UuidType,
-    pub belong_to_company_branch: UuidType,
+    pub new_uuid:                 AccountForBranch,
+    pub belong_to_account:        Account,
+    pub belong_to_company_branch: Branch,
     pub outflow_type:             OutFlowType,
     pub inflow_type:              InFlowType,
 }
@@ -44,10 +47,10 @@ pub struct Error {
 impl MarkerMyErrorTrait for Error {}
 
 pub struct ReadInput {
-    pub user_uuid:                UuidType,
-    pub new_uuid:                 UuidType,
-    pub belong_to_account:        UuidType,
-    pub belong_to_company_branch: UuidType,
+    pub user_uuid:                User,
+    pub new_uuid:                 AccountForBranch,
+    pub belong_to_account:        Account,
+    pub belong_to_company_branch: Branch,
 }
 
 pub struct ReadOutput {

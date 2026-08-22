@@ -1,7 +1,9 @@
 use crate::utility::db_transaction;
 use crate::utility::utils::MyUuidConverter;
 use my_core::accounting_domain::utility::types::Role;
-use my_core::accounting_domain::utility::types::UuidType;
+use my_core::accounting_domain::utility::uuid::Nonce;
+use my_core::accounting_domain::utility::uuid::User;
+use my_core::accounting_domain::utility::uuid::UuidType;
 use my_core::server::utility::server_traits;
 use my_core::server::utility::server_traits::DBClient;
 use my_core::utility::traits::DynamicError;
@@ -51,7 +53,7 @@ impl DBClient for S {
 
     async fn read_roles_for_user(
         &mut self,
-        users_uuid: &HashSet<UuidType>,
+        users_uuid: &HashSet<User>,
     ) -> Result<server_traits::AllRoles, DynamicError> {
         let stmt = self.client.prepare_cached(READ_ROLES_FOR_USER_QUERY).await.log()?;
 
@@ -73,8 +75,8 @@ impl DBClient for S {
 
                 let role = Role::from_str(&role_str).log()?;
 
-                let data_group_id = UuidType(data_group.into_bytes());
-                let user_id_typed = UuidType(user_id.into_bytes());
+                let data_group_id = UuidType(data_group.into_bytes()).into();
+                let user_id_typed = UuidType(user_id.into_bytes()).into();
 
                 match entity_type.as_str() {
                     "company" => {
@@ -89,7 +91,7 @@ impl DBClient for S {
                     "branch" => {
                         result
                             .branches
-                            .entry(data_group_id)
+                            .entry(data_group_id.0.into())
                             .or_default()
                             .entry(user_id_typed)
                             .or_default()
@@ -103,10 +105,10 @@ impl DBClient for S {
         Ok(result)
     }
 
-    async fn write_nonce_if_not_used(
+    async fn write_nonce_if_not_used_and_return_is_nonce_used(
         &mut self,
-        nonce: &UuidType,
-    ) -> Result<bool /* is nonce used */, DynamicError> {
+        nonce: &Nonce,
+    ) -> Result<bool, DynamicError> {
         let row = self
             .client
             .query_one(WRITE_NONCE_IF_NOT_USED_QUERY, &[&nonce.to_externel_uuid()])

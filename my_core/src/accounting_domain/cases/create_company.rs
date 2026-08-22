@@ -5,7 +5,8 @@ use crate::accounting_domain::utility::types::Role;
 use crate::accounting_domain::utility::types::RowId;
 use crate::accounting_domain::utility::types::RowIdError;
 use crate::accounting_domain::utility::types::UserUuidError;
-use crate::accounting_domain::utility::types::UuidType;
+use crate::accounting_domain::utility::uuid::Company;
+use crate::accounting_domain::utility::uuid::User;
 use crate::utility::traits::DynamicError;
 use serde::Deserialize;
 use serde::Serialize;
@@ -14,18 +15,18 @@ pub type MyResult = Result<Ok, Error>;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Input {
-    pub(crate) user_uuid:    UuidType,
-    pub(crate) new_uuid:     UuidType,
+    pub(crate) user_uuid:    User,
+    pub(crate) new_uuid:     Company,
     pub(crate) company_name: String,
     pub(crate) currency:     Currency,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Ok {
-    pub new_uuid:     UuidType,
+    pub new_uuid:     Company,
     pub company_name: String,
     pub currency:     Currency,
-    pub user_uuid:    UuidType,
+    pub user_uuid:    User,
     pub role:         Role,
 }
 
@@ -38,7 +39,7 @@ pub struct Error {
 impl MarkerMyErrorTrait for Error {}
 
 pub struct ReadInput {
-    pub new_uuid: UuidType,
+    pub new_uuid: Company,
 }
 
 pub struct ReadOutput {

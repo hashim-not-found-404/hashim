@@ -4,7 +4,9 @@ use crate::accounting_domain::utility::types::Role;
 use crate::accounting_domain::utility::types::RowId;
 use crate::accounting_domain::utility::types::RowIdError;
 use crate::accounting_domain::utility::types::UserUuidError;
-use crate::accounting_domain::utility::types::UuidType;
+use crate::accounting_domain::utility::uuid::Account;
+use crate::accounting_domain::utility::uuid::Company;
+use crate::accounting_domain::utility::uuid::User;
 use crate::utility::traits::DynamicError;
 use serde::Deserialize;
 use serde::Serialize;
@@ -13,25 +15,25 @@ pub type MyResult = Result<Ok, Error>;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Input {
-    pub user_uuid:                       UuidType,
-    pub new_uuid:                        UuidType,
+    pub user_uuid:                       User,
+    pub new_uuid:                        Account,
     pub is_debit:                        bool,
     pub is_permanent_account:            bool,
     pub account_name:                    String,
     pub notes:                           Option<String>,
     pub unit_of_measurement_of_quantity: String,
-    pub belong_to_company:               UuidType,
+    pub belong_to_company:               Company,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Ok {
-    pub new_uuid:                        UuidType,
+    pub new_uuid:                        Account,
     pub is_debit:                        bool,
     pub is_permanent_account:            bool,
     pub account_name:                    String,
     pub notes:                           Option<String>,
     pub unit_of_measurement_of_quantity: String,
-    pub belong_to_company:               UuidType,
+    pub belong_to_company:               Company,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
@@ -50,9 +52,9 @@ pub(crate) enum AccountNameError {
 }
 
 pub struct ReadInput {
-    pub user_uuid:         UuidType,
-    pub new_uuid:          UuidType,
-    pub belong_to_company: UuidType,
+    pub user_uuid:         User,
+    pub new_uuid:          Account,
+    pub belong_to_company: Company,
     pub account_name:      String,
 }
 

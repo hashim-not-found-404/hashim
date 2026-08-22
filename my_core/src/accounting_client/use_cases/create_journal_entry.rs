@@ -11,7 +11,8 @@ use crate::accounting_domain::cases::create_journal_entry;
 use crate::accounting_domain::request_response;
 use crate::accounting_domain::utility::resource_utils;
 use crate::accounting_domain::utility::types::RowId;
-use crate::accounting_domain::utility::types::UuidType;
+use crate::accounting_domain::utility::uuid::SharedEntry;
+use crate::accounting_domain::utility::uuid::User;
 use crate::utility::tools;
 use crate::utility::traits;
 use crate::utility::traits::Sender;
@@ -40,7 +41,7 @@ where
         request_response::OperationsInput::CreateJournalEntry(data)
     }
 
-    fn user_uuid(data: &Self::Type2) -> Option<&UuidType> {
+    fn user_uuid(data: &Self::Type2) -> Option<&User> {
         Some(&data.user_uuid)
     }
 
@@ -117,7 +118,7 @@ where
 
                 for (account_uuid, inventory) in &ok.inventory {
                     resources.push(resource_utils::ResourceInfo {
-                        row_uuid: account_uuid.clone(),
+                        row_uuid: account_uuid.0.clone(),
                         resource: resource_utils::Resource::TableAccountFieldInventory(
                             inventory.0.clone(),
                         ),
@@ -333,22 +334,22 @@ impl ui_model::CreateJournalEntry {
                 local_state.shared_entry_id.set(uuid_type);
             }
             ui_model::CreateJournalEntry::SelectSuggestion {
-                double_index,
-                single_index,
-                account_uuid,
+                double_index: _,
+                single_index: _,
+                account_uuid: _,
             } => {
-                let mut entries = local_state.double_entries.read();
-                if let Some(double) = entries.get_mut(double_index)
-                    && let Some(single) = double.singles.get_mut(single_index)
-                {
-                    let master = local_state.list_of_available_account.lock().unwrap().clone();
-                    if let Some(account) = master.iter().find(|a| a.row_uuid == account_uuid) {
-                        single.user_input_account_name = account.account_name.clone();
-                        single.inferred_account_id = Some(account_uuid);
-                        local_state.filtered_list.set(Vec::new());
-                    }
-                    local_state.double_entries.set(entries);
-                }
+                // let mut entries = local_state.double_entries.read();
+                // if let Some(double) = entries.get_mut(double_index)
+                //     && let Some(single) = double.singles.get_mut(single_index)
+                // {
+                //     let master = local_state.list_of_available_account.lock().unwrap().clone();
+                //     if let Some(account) = master.iter().find(|a| a.row_uuid == account_uuid) {
+                //         single.user_input_account_name = account.account_name.clone();
+                //         single.inferred_account_id = Some(account_uuid);
+                //         local_state.filtered_list.set(Vec::new());
+                //     }
+                //     local_state.double_entries.set(entries);
+                // }
             }
         }
     }
@@ -359,11 +360,11 @@ fn apply_fetch_result<As: ui_model::AllSignalTypes>(
     model: &ui_model::Model<As>,
 ) {
     if let Ok(ok) = result {
-        let accounts: Vec<ui_model::Accounts> = ok
+        let accounts: Vec<ui_model::Account> = ok
             .accounts
             .iter()
             .map(|a| {
-                ui_model::Accounts {
+                ui_model::Account {
                     row_uuid:                        a.row_uuid.clone(),
                     is_debit:                        a.is_debit,
                     is_permanent_account:            a.is_permanent_account,
@@ -524,7 +525,8 @@ fn build_input<Id: RowId, As: ui_model::AllSignalTypes>(
         new_uuid:                 Id::generate(),
         belong_to_company_branch: model.selected_company_branch.read().unwrap(),
         user_uuid:                model.user_uuid.read().clone().unwrap(),
-        shared_entry_id:          Id::parse(local_state.shared_entry_id.read()),
+        shared_entry_id:          Id::parse(local_state.shared_entry_id.read())
+            .map(|v| SharedEntry(v)),
         double_entries:           double_entries_input,
     })
 }

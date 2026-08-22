@@ -11,7 +11,7 @@ use crate::accounting_domain::request_response;
 use crate::accounting_domain::utility::resource_utils;
 use crate::accounting_domain::utility::types::MyErrorTrait;
 use crate::accounting_domain::utility::types::RowId;
-use crate::accounting_domain::utility::types::UuidType;
+use crate::accounting_domain::utility::uuid::User;
 use crate::utility::tools;
 use crate::utility::traits;
 use crate::utility::traits::Sender;
@@ -39,7 +39,7 @@ where
         request_response::OperationsInput::CreateAccountForBranch(data)
     }
 
-    fn user_uuid(data: &Self::Type2) -> Option<&UuidType> {
+    fn user_uuid(data: &Self::Type2) -> Option<&User> {
         Some(&data.user_uuid)
     }
 
@@ -58,25 +58,25 @@ where
             Ok(ok) => {
                 vec![
                     resource_utils::ResourceInfo {
-                        row_uuid: ok.new_uuid.clone(),
+                        row_uuid: ok.new_uuid.0.clone(),
                         resource: resource_utils::Resource::TableAccountFlowTypeFieldAccount(
                             ok.belong_to_account.clone(),
                         ),
                     },
                     resource_utils::ResourceInfo {
-                        row_uuid: ok.new_uuid.clone(),
+                        row_uuid: ok.new_uuid.0.clone(),
                         resource: resource_utils::Resource::TableAccountFlowTypeFieldCompanyBranch(
                             ok.belong_to_company_branch.clone(),
                         ),
                     },
                     resource_utils::ResourceInfo {
-                        row_uuid: ok.new_uuid.clone(),
+                        row_uuid: ok.new_uuid.0.clone(),
                         resource: resource_utils::Resource::TableAccountFlowTypeFieldInflowType(
                             ok.inflow_type,
                         ),
                     },
                     resource_utils::ResourceInfo {
-                        row_uuid: ok.new_uuid.clone(),
+                        row_uuid: ok.new_uuid.0.clone(),
                         resource: resource_utils::Resource::TableAccountFlowTypeFieldOutflowType(
                             ok.outflow_type,
                         ),
@@ -191,11 +191,11 @@ fn apply_fetch_result<As: ui_model::AllSignalTypes>(
     model: &ui_model::Model<As>,
 ) {
     if let Ok(ok) = result {
-        let accounts: Vec<ui_model::Accounts> = ok
+        let accounts: Vec<ui_model::Account> = ok
             .accounts
             .iter()
             .map(|a| {
-                ui_model::Accounts {
+                ui_model::Account {
                     row_uuid:                        a.row_uuid.clone(),
                     is_debit:                        a.is_debit,
                     is_permanent_account:            a.is_permanent_account,
@@ -323,7 +323,7 @@ fn build_input<Id: RowId, As: ui_model::AllSignalTypes>(
 
     Some(cases::create_account_for_branch::Input {
         user_uuid:                model.user_uuid.read().clone().unwrap().clone(),
-        new_uuid:                 Id::generate().clone(),
+        new_uuid:                 Id::generate().clone().into(),
         belong_to_account:        account_uuid.clone(),
         belong_to_company_branch: model.selected_company_branch.read().unwrap().clone(),
         outflow_type:             model.page_create_account_for_branch.outflow_type.read(),
