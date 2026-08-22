@@ -2,11 +2,11 @@ use crate::use_cases::home::Home;
 use crate::use_cases::list_company_and_branch::ListCompanyAndBranch;
 use crate::use_cases::sign_in::SignIn;
 use crate::use_cases::sign_up::SignUp;
-use crate::utility::components;
-use crate::utility::tools;
+use crate::utility::components::ErrorStack;
+use crate::utility::tools::MODEL;
 use dioxus::prelude::*;
-use my_core::accounting_client::client_domain::ui_model;
 use my_core::accounting_client::client_domain::ui_model::HashimSignal;
+use my_core::accounting_client::client_domain::ui_model::Navigator;
 
 #[derive(Debug, Clone, PartialEq, Routable)]
 pub(crate) enum Route {
@@ -23,17 +23,17 @@ pub(crate) enum Route {
 
 #[component]
 fn RootLayout() -> Element {
-    match tools::MODEL.navigator.read() {
-        ui_model::Navigator::SignIn => {
+    match MODEL.navigator.read() {
+        Navigator::SignIn => {
             navigator().push(Route::SignIn {});
         }
-        ui_model::Navigator::SignUp => {
+        Navigator::SignUp => {
             navigator().push(Route::SignUp {});
         }
-        ui_model::Navigator::ListCompanyAndBranch(_) => {
+        Navigator::ListCompanyAndBranch(_) => {
             navigator().push(Route::ListCompanyAndBranch {});
         }
-        ui_model::Navigator::Home(_) => {
+        Navigator::Home(_) => {
             navigator().push(Route::Home {});
         }
     }
@@ -48,6 +48,6 @@ pub(crate) fn App() -> Element {
     rsx! {
         // document::Link { rel: "stylesheet", href: MAIN_CSS }
         Router::<Route> {}
-        components::ErrorStack {}
+        ErrorStack {}
     }
 }

@@ -1,24 +1,27 @@
-use crate::utility::components;
-use crate::utility::tools;
+use crate::utility::components::Dialog;
+use crate::utility::tools::send;
+use crate::utility::tools::MODEL;
 use dioxus::prelude::*;
 use my_core::accounting_client::client_domain::ui_model;
 use my_core::accounting_client::client_domain::ui_model::HashimSignal;
+use my_core::accounting_client::client_domain::ui_model::Message;
+use my_core::accounting_client::client_domain::ui_model::UserConsent;
 
 #[component]
 pub(crate) fn CreateAccount() -> Element {
     use_effect(move || {
-        tools::send(ui_model::Message::CreateAccount(ui_model::CreateAccount::Subscribe));
+        send(Message::CreateAccount(ui_model::CreateAccount::Subscribe));
     });
 
-    let local_state = &tools::MODEL.page_create_account;
+    let local_state = &MODEL.page_create_account;
 
-    let consent_callback = move |consent: ui_model::UserConsent| {
-        tools::send(ui_model::Message::CreateAccount(ui_model::CreateAccount::Consent(consent)));
+    let consent_callback = move |consent: UserConsent| {
+        send(Message::CreateAccount(ui_model::CreateAccount::Consent(consent)));
     };
 
     rsx! {
         div {
-            components::Dialog {
+            Dialog {
                 consent_callback,
                 operation_name: "create account",
                 show_dialog: local_state.show_dialog.clone(),
@@ -27,8 +30,7 @@ pub(crate) fn CreateAccount() -> Element {
             input {
                 placeholder: "Account Name",
                 oninput: move |event| {
-                    tools::send(
-                        ui_model::Message::CreateAccount(
+                    send(Message::CreateAccount(
                             ui_model::CreateAccount::AccountName(event.value()),
                         ),
                     );
@@ -43,8 +45,7 @@ pub(crate) fn CreateAccount() -> Element {
                     r#type: "checkbox",
                     checked: local_state.is_debit.read(),
                     onchange: move |event| {
-                        tools::send(
-                            ui_model::Message::CreateAccount(
+                        send(Message::CreateAccount(
                                 ui_model::CreateAccount::IsDebit(event.value().parse().unwrap_or(false)),
                             ),
                         );
@@ -58,8 +59,7 @@ pub(crate) fn CreateAccount() -> Element {
                     r#type: "checkbox",
                     checked: local_state.is_permanent_account.read(),
                     onchange: move |event| {
-                        tools::send(
-                            ui_model::Message::CreateAccount(
+                        send(Message::CreateAccount(
                                 ui_model::CreateAccount::IsPermanentAccount(
                                     event.value().parse().unwrap_or(false),
                                 ),
@@ -72,8 +72,7 @@ pub(crate) fn CreateAccount() -> Element {
             input {
                 placeholder: "Notes (optional)",
                 oninput: move |event| {
-                    tools::send(
-                        ui_model::Message::CreateAccount(
+                    send(Message::CreateAccount(
                             ui_model::CreateAccount::Notes(event.value()),
                         ),
                     );
@@ -84,8 +83,7 @@ pub(crate) fn CreateAccount() -> Element {
             input {
                 placeholder: "Unit of Measurement (e.g., kg, pcs)",
                 oninput: move |event| {
-                    tools::send(
-                        ui_model::Message::CreateAccount(
+                    send(Message::CreateAccount(
                             ui_model::CreateAccount::UnitOfMeasurementOfQuantity(event.value()),
                         ),
                     );
@@ -95,14 +93,14 @@ pub(crate) fn CreateAccount() -> Element {
 
             button {
                 onclick: move |_| {
-                    tools::send(ui_model::Message::CreateAccount(ui_model::CreateAccount::Submit));
+                    send(Message::CreateAccount(ui_model::CreateAccount::Submit));
                 },
                 "Create Account"
             }
 
             button {
                 onclick: move |_| {
-                    tools::send(ui_model::Message::CreateAccount(ui_model::CreateAccount::Clean));
+                    send(Message::CreateAccount(ui_model::CreateAccount::Clean));
                 },
                 "clean"
             }
