@@ -2,19 +2,19 @@
 resolver = "2"
 members = [
     "accounting_engine",
-    "accounting_ui",
     "adapters",
-    "cache_rusqlite",
-    "db_client_cockroach",
+    "cache",
+    "database",
     "my_core",
-    "server_actix",
+    "server",
+    "ui",
 ]
 
 [workspace.dependencies]
 accounting_engine = { path = "./accounting_engine" }
 adapters = { path = "./adapters" }
-cache_rusqlite = { path = "./cache_rusqlite" }
-db_client_cockroach = { path = "./db_client_cockroach" }
+cache = { path = "./cache" }
+database = { path = "./database" }
 derive_more = { version = "2.1.1", features = ["full"] }
 dioxus-logger = "0.7.9"
 futures-util = "0.3.32"

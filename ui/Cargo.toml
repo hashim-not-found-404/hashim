@@ -1,5 +1,5 @@
 [package]
-name = "accounting_ui"
+name = "ui"
 version = "0.1.0"
 authors = ["hashem"]
 edition = "2021"
@@ -15,7 +15,7 @@ mobile = ["dioxus/mobile"]
 [dependencies]
 accounting_engine = { workspace = true }
 adapters = { workspace = true }
-cache_rusqlite = { workspace = true }
+cache = { workspace = true }
 dioxus = { version = "0.7.9", features = ["router"] }
 dioxus-logger = { workspace = true }
 my_core = { workspace = true }

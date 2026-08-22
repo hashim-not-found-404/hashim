@@ -1,5 +1,5 @@
 [package]
-name = "server_actix"
+name = "server"
 version = "0.1.0"
 edition = "2024"
 
@@ -8,7 +8,7 @@ actix-cors = "0.7.1"
 actix-web = { version = "4.14.0", features = ["rustls-0_23"] }
 actix-ws = "0.4.0"
 adapters = { workspace = true }
-db_client_cockroach = { workspace = true }
+database = { workspace = true }
 futures-util = { workspace = true }
 my_core = { workspace = true }
 rustls = { workspace = true }
