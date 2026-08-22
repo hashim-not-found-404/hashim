@@ -1,10 +1,13 @@
 use crate::accounting_domain::utility::types;
 use crate::accounting_domain::utility::types::MarkerMyErrorTrait;
 use crate::accounting_domain::utility::types::MyErrorTrait;
+use crate::accounting_domain::utility::types::Role;
 use crate::accounting_domain::utility::types::RowId;
+use crate::accounting_domain::utility::types::RowIdError;
+use crate::accounting_domain::utility::types::UserUuidError;
+use crate::accounting_domain::utility::types::UuidType;
 use crate::utility::traits::DynamicError;
 use crate::utility::traits::Time;
-use accounting_engine::accounting_stuff;
 use accounting_engine::accounting_stuff::DoubleEntry;
 use accounting_engine::accounting_stuff::EntryContainer;
 use accounting_engine::accounting_stuff::InFlowType;
@@ -35,10 +38,10 @@ pub type MyResult = Result<Ok, Error>;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Input {
-    pub new_uuid:                 types::UuidType,
-    pub belong_to_company_branch: types::UuidType,
-    pub user_uuid:                types::UuidType,
-    pub shared_entry_id:          Option<types::UuidType>,
+    pub new_uuid:                 UuidType,
+    pub belong_to_company_branch: UuidType,
+    pub user_uuid:                UuidType,
+    pub shared_entry_id:          Option<UuidType>,
     pub double_entries:           Vec<DoubleEntryInput>,
 }
 
@@ -49,8 +52,8 @@ pub struct DoubleEntryInput {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct SingleEntryInput {
-    pub new_uuid:     types::UuidType,
-    pub account:      types::UuidType,
+    pub new_uuid:     UuidType,
+    pub account:      UuidType,
     pub is_debit:     Option<bool>,
     pub is_inflow:    Option<bool>,
     pub inflow_type:  Option<InFlowType>,
@@ -65,19 +68,19 @@ pub struct SingleEntryInput {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Ok {
-    pub new_uuid:        types::UuidType,
-    pub user_uuid:       types::UuidType,
+    pub new_uuid:        UuidType,
+    pub user_uuid:       UuidType,
     pub time:            u64,
-    pub shared_entry_id: Option<types::UuidType>,
+    pub shared_entry_id: Option<UuidType>,
     pub double_entry:    Vec<SingleEntryOk>,
-    pub inventory:       HashMap<types::UuidType, InventoryWrapper>,
+    pub inventory:       HashMap<UuidType, InventoryWrapper>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct SingleEntryOk {
-    pub new_uuid:            types::UuidType,
+    pub new_uuid:            UuidType,
     pub double_entry_number: u32,
-    pub account:             types::UuidType,
+    pub account:             UuidType,
     pub is_debit:            bool,
     pub out_flow_type:       OutFlowType,
     pub quantity:            f64,
@@ -90,10 +93,10 @@ pub struct SingleEntryOk {
 
 #[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
 pub struct Error {
-    pub(crate) user_uuid:                Option<types::UserUuidError>,
-    pub(crate) new_uuid:                 Option<types::RowIdError>,
-    pub(crate) belong_to_company_branch: Option<types::RowIdError>,
-    pub(crate) shared_entry_id:          Option<types::RowIdError>,
+    pub(crate) user_uuid:                Option<UserUuidError>,
+    pub(crate) new_uuid:                 Option<RowIdError>,
+    pub(crate) belong_to_company_branch: Option<RowIdError>,
+    pub(crate) shared_entry_id:          Option<RowIdError>,
     pub(crate) container_is_empty:       bool,
     pub(crate) not_all_entry_inferred:   bool,
     pub(crate) double_entries:           Vec<ErrorDoubleEntry>,
@@ -109,8 +112,8 @@ pub struct ErrorDoubleEntry {
 
 #[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
 pub struct ErrorSingleEntry {
-    pub(crate) new_uuid:                           Option<types::RowIdError>,
-    pub(crate) account:                            Option<types::RowIdError>,
+    pub(crate) new_uuid:                           Option<RowIdError>,
+    pub(crate) account:                            Option<RowIdError>,
     pub(crate) quantity_and_amount_are_zero:       bool,
     pub(crate) duplicate_account_in_entry:         bool,
     pub(crate) inventory_is_empty:                 bool,
@@ -134,19 +137,19 @@ pub struct DebitNotEqualCreditError {
 // -----------------------------------------------------------------------------
 
 pub struct ReadInput {
-    pub new_uuid:                 types::UuidType,
-    pub belong_to_company_branch: types::UuidType,
-    pub user_uuid:                types::UuidType,
-    pub shared_entry_id:          Option<types::UuidType>,
-    pub accounts_uuid:            HashSet<types::UuidType>,
-    pub new_entries_uuid:         HashSet<types::UuidType>,
+    pub new_uuid:                 UuidType,
+    pub belong_to_company_branch: UuidType,
+    pub user_uuid:                UuidType,
+    pub shared_entry_id:          Option<UuidType>,
+    pub accounts_uuid:            HashSet<UuidType>,
+    pub new_entries_uuid:         HashSet<UuidType>,
 }
 
 pub struct ReadOutput {
     pub is_new_uuid_used:      bool,
-    pub user_roles:            Vec<types::Role>,
+    pub user_roles:            Vec<Role>,
     pub is_shared_entry_exist: bool,
-    pub used_new_entries_uuid: HashSet<types::UuidType>,
+    pub used_new_entries_uuid: HashSet<UuidType>,
     pub account_info:          AccountInfoProviderImpl,
 }
 
@@ -189,16 +192,16 @@ pub struct DoubleEntryView {
 #[derive(Debug, Clone)]
 pub struct ContainerView {
     // input
-    input_new_uuid:                 types::UuidType,
-    input_belong_to_company_branch: types::UuidType,
-    input_user_uuid:                types::UuidType,
-    input_shared_entry_id:          Option<types::UuidType>,
+    input_new_uuid:                 UuidType,
+    input_belong_to_company_branch: UuidType,
+    input_user_uuid:                UuidType,
+    input_shared_entry_id:          Option<UuidType>,
 
     // error
-    error_user_uuid:                Option<types::UserUuidError>,
-    error_new_uuid:                 Option<types::RowIdError>,
-    error_belong_to_company_branch: Option<types::RowIdError>,
-    error_shared_entry_id:          Option<types::RowIdError>,
+    error_user_uuid:                Option<UserUuidError>,
+    error_new_uuid:                 Option<RowIdError>,
+    error_belong_to_company_branch: Option<RowIdError>,
+    error_shared_entry_id:          Option<RowIdError>,
     error_container_is_empty:       bool,
     error_not_all_entry_inferred:   bool,
 
@@ -228,7 +231,7 @@ impl Deref for InventoryWrapper {
 }
 
 #[derive(Debug, Clone)]
-pub struct AccountInfoProviderImpl(pub HashMap<types::UuidType, AccountInfo>);
+pub struct AccountInfoProviderImpl(pub HashMap<UuidType, AccountInfo>);
 
 impl DerefMut for AccountInfoProviderImpl {
     fn deref_mut(&mut self) -> &mut Self::Target {
@@ -237,7 +240,7 @@ impl DerefMut for AccountInfoProviderImpl {
 }
 
 impl Deref for AccountInfoProviderImpl {
-    type Target = HashMap<types::UuidType, AccountInfo>;
+    type Target = HashMap<UuidType, AccountInfo>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -277,7 +280,7 @@ impl MyErrorTrait for Error {
 }
 
 impl check_journal_input::SingleEntry for SingleEntryView {
-    type AccountId = types::UuidType;
+    type AccountId = UuidType;
 
     fn account_id(&self) -> Self::AccountId {
         self.input.account.clone()
@@ -350,7 +353,7 @@ impl check_journal_input::SingleEntryError for SingleEntryView {
     }
 }
 
-impl accounting_stuff::DoubleEntry for DoubleEntryView {
+impl DoubleEntry for DoubleEntryView {
     type Iter<'b>
         = IntoIter<Self::Single>
     where
@@ -493,7 +496,7 @@ impl check_journal_input::EntryContainerError for ContainerView {
 }
 
 impl check_journal_input::AccountInfoProvider for AccountInfoProviderImpl {
-    type AccountId = types::UuidType;
+    type AccountId = UuidType;
     type Inventory = InventoryWrapper;
 
     fn is_debit_nature(&self, id: &Self::AccountId) -> bool {
@@ -546,7 +549,7 @@ impl Inventory for InventoryWrapper {
 }
 
 impl correct_journal_input::SingleEntry for SingleEntryView {
-    type AccountId = types::UuidType;
+    type AccountId = UuidType;
 
     fn get_account_id(&self) -> Self::AccountId {
         self.input.account.clone()
@@ -650,7 +653,7 @@ impl correct_journal_input::SingleEntry for SingleEntryView {
 }
 
 impl correct_journal_input::AccountInfoProvider for AccountInfoProviderImpl {
-    type AccountId = types::UuidType;
+    type AccountId = UuidType;
     type Inventory = InventoryWrapper;
 
     fn get_info<'a>(
@@ -827,9 +830,7 @@ fn create_double_entry_from_container_view(container: &ContainerView) -> Vec<Sin
     double_entry_ok
 }
 
-fn extract_inventory(
-    account_info: AccountInfoProviderImpl,
-) -> HashMap<types::UuidType, InventoryWrapper> {
+fn extract_inventory(account_info: AccountInfoProviderImpl) -> HashMap<UuidType, InventoryWrapper> {
     let mut inventory_map = HashMap::new();
     for (account_uuid, info) in account_info.0 {
         inventory_map.insert(account_uuid, info.inventory);
@@ -846,28 +847,28 @@ impl Input {
         let mut container = create_container_view(self.clone());
 
         if !Id::validate(&self.new_uuid) {
-            container.error_new_uuid = Some(types::RowIdError::Invalid);
+            container.error_new_uuid = Some(RowIdError::Invalid);
         }
         if !Id::validate(&self.user_uuid) {
-            container.error_user_uuid = Some(types::UserUuidError::Invalid);
+            container.error_user_uuid = Some(UserUuidError::Invalid);
         }
         if !Id::validate(&self.belong_to_company_branch) {
-            container.error_belong_to_company_branch = Some(types::RowIdError::Invalid);
+            container.error_belong_to_company_branch = Some(RowIdError::Invalid);
         }
 
         if let Some(shared_id) = &self.shared_entry_id
             && !Id::validate(shared_id)
         {
-            container.error_shared_entry_id = Some(types::RowIdError::Invalid);
+            container.error_shared_entry_id = Some(RowIdError::Invalid);
         }
 
         for double_view in &mut container.view_double_entries {
             for single_view in &mut double_view.view_single_entries {
                 if !Id::validate(&single_view.input.new_uuid) {
-                    single_view.error.new_uuid = Some(types::RowIdError::Invalid);
+                    single_view.error.new_uuid = Some(RowIdError::Invalid);
                 }
                 if !Id::validate(&single_view.input.account) {
-                    single_view.error.account = Some(types::RowIdError::Invalid);
+                    single_view.error.account = Some(RowIdError::Invalid);
                 }
             }
         }
@@ -876,7 +877,7 @@ impl Input {
         for double_view in &mut container.view_double_entries {
             for single_view in &mut double_view.view_single_entries {
                 if !seen_uuids.insert(single_view.input.new_uuid.clone()) {
-                    single_view.error.new_uuid = Some(types::RowIdError::Duplicated);
+                    single_view.error.new_uuid = Some(RowIdError::Duplicated);
                 }
             }
         }
@@ -912,25 +913,22 @@ impl Input {
         let mut container = create_container_view(self.clone());
 
         if read_output.is_new_uuid_used {
-            container.error_new_uuid = Some(types::RowIdError::Duplicated);
+            container.error_new_uuid = Some(RowIdError::Duplicated);
         }
 
-        if !types::Role::has_any(&read_output.user_roles, &[
-            types::Role::Manager,
-            types::Role::CoManager,
-        ]) {
-            container.error_user_uuid = Some(types::UserUuidError::YouDontHavePermissionToDoThat);
+        if !Role::has_any(&read_output.user_roles, &[Role::Manager, Role::CoManager]) {
+            container.error_user_uuid = Some(UserUuidError::YouDontHavePermissionToDoThat);
         }
 
         if self.shared_entry_id.is_some() && !read_output.is_shared_entry_exist {
-            container.error_shared_entry_id = Some(types::RowIdError::NotExist);
+            container.error_shared_entry_id = Some(RowIdError::NotExist);
         }
 
         for uuid in read_output.used_new_entries_uuid {
             for double_view in &mut container.view_double_entries {
                 for single_view in &mut double_view.view_single_entries {
                     if single_view.input.new_uuid == uuid {
-                        single_view.error.new_uuid = Some(types::RowIdError::Duplicated);
+                        single_view.error.new_uuid = Some(RowIdError::Duplicated);
                     }
                 }
             }

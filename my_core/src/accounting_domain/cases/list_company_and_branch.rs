@@ -1,4 +1,10 @@
 use crate::accounting_domain::utility::types;
+use crate::accounting_domain::utility::types::Currency;
+use crate::accounting_domain::utility::types::MarkerMyErrorTrait;
+use crate::accounting_domain::utility::types::Role;
+use crate::accounting_domain::utility::types::RowId;
+use crate::accounting_domain::utility::types::UserUuidError;
+use crate::accounting_domain::utility::types::UuidType;
 use crate::utility::traits::DynamicError;
 use serde::Deserialize;
 use serde::Serialize;
@@ -7,41 +13,41 @@ pub type MyResult = Result<Ok, Error>;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Input {
-    pub(crate) user_uuid: types::UuidType,
+    pub(crate) user_uuid: UuidType,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Ok {
-    pub(crate) user_uuid: types::UuidType,
+    pub(crate) user_uuid: UuidType,
     pub(crate) data:      Vec<AllCompaniesThatUserInWithRoles>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct AllCompaniesThatUserInWithRoles {
-    pub company_uuid:     types::UuidType,
+    pub company_uuid:     UuidType,
     pub company_name:     String,
-    pub company_currancy: types::Currency,
-    pub user_roles:       Vec<types::Role>,
+    pub company_currancy: Currency,
+    pub user_roles:       Vec<Role>,
     pub branches:         Vec<AllBranchesThatUserInWithRoles>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct AllBranchesThatUserInWithRoles {
-    pub branch_uuid:     types::UuidType,
+    pub branch_uuid:     UuidType,
     pub branch_name:     String,
-    pub branch_currancy: types::Currency,
-    pub user_roles:      Vec<types::Role>,
+    pub branch_currancy: Currency,
+    pub user_roles:      Vec<Role>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
 pub struct Error {
-    pub(crate) user_uuid: Option<types::UserUuidError>,
+    pub(crate) user_uuid: Option<UserUuidError>,
 }
 
-impl types::MarkerMyErrorTrait for Error {}
+impl MarkerMyErrorTrait for Error {}
 
 pub struct ReadInput {
-    pub user_uuid: types::UuidType,
+    pub user_uuid: UuidType,
 }
 
 pub struct ReadOutput {
@@ -51,11 +57,11 @@ pub struct ReadOutput {
 pub trait DatabaseRead: types::DatabaseRead<Input = ReadInput, Output = ReadOutput> {}
 
 impl Input {
-    pub(crate) fn state_less_check<Id: types::RowId>(&self) -> Error {
+    pub(crate) fn state_less_check<Id: RowId>(&self) -> Error {
         let mut errr = Error::default();
 
         if !Id::validate(&self.user_uuid) {
-            errr.user_uuid = Some(types::UserUuidError::Invalid);
+            errr.user_uuid = Some(UserUuidError::Invalid);
         }
 
         errr

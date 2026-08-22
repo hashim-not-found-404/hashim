@@ -25,19 +25,22 @@ pub mod push_data {
     use super::Deserialize;
     use super::Serialize;
     use super::cases;
-    use super::types;
+    use crate::accounting_domain::utility::types::JWTError;
+    use crate::accounting_domain::utility::types::JsonWebTokenType;
+    use crate::accounting_domain::utility::types::NonceError;
+    use crate::accounting_domain::utility::types::UuidType;
 
     #[derive(Debug, Deserialize, Serialize)]
     pub(crate) struct Input {
-        pub(crate) jwts:       Vec<types::JsonWebTokenType>,
-        pub(crate) nonce:      types::UuidType,
+        pub(crate) jwts:       Vec<JsonWebTokenType>,
+        pub(crate) nonce:      UuidType,
         pub(crate) operations: Vec<Txn<OperationsInput>>,
     }
 
     #[derive(Debug, Deserialize, Serialize)]
     pub(crate) struct MyResult {
-        pub(crate) jwts:       Vec<Result<(), types::JWTError>>,
-        pub(crate) nonce:      Result<(), types::NonceError>,
+        pub(crate) jwts:       Vec<Result<(), JWTError>>,
+        pub(crate) nonce:      Result<(), NonceError>,
         pub(crate) operations: Vec<Txn<OperationsResult>>,
     }
 

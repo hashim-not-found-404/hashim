@@ -1,4 +1,12 @@
 use crate::accounting_domain::utility::types;
+use crate::accounting_domain::utility::types::Currency;
+use crate::accounting_domain::utility::types::Location;
+use crate::accounting_domain::utility::types::MarkerMyErrorTrait;
+use crate::accounting_domain::utility::types::Role;
+use crate::accounting_domain::utility::types::RowId;
+use crate::accounting_domain::utility::types::RowIdError;
+use crate::accounting_domain::utility::types::UserUuidError;
+use crate::accounting_domain::utility::types::UuidType;
 use crate::utility::traits::DynamicError;
 use serde::Deserialize;
 use serde::Serialize;
@@ -7,45 +15,45 @@ pub type MyResult = Result<Ok, Error>;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Input {
-    pub(crate) user_uuid:      types::UuidType,
-    pub(crate) new_uuid:       types::UuidType,
-    pub(crate) company_belong: types::UuidType,
+    pub(crate) user_uuid:      UuidType,
+    pub(crate) new_uuid:       UuidType,
+    pub(crate) company_belong: UuidType,
     pub(crate) branch_name:    String,
-    pub(crate) location:       types::Location,
-    pub(crate) currency:       types::Currency,
+    pub(crate) location:       Location,
+    pub(crate) currency:       Currency,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Ok {
-    pub new_uuid:       types::UuidType,
+    pub new_uuid:       UuidType,
     pub branch_name:    String,
-    pub company_belong: types::UuidType,
-    pub user_uuid:      types::UuidType,
-    pub currency:       types::Currency,
-    pub location:       types::Location,
-    pub role:           types::Role,
+    pub company_belong: UuidType,
+    pub user_uuid:      UuidType,
+    pub currency:       Currency,
+    pub location:       Location,
+    pub role:           Role,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
 pub struct Error {
-    pub(crate) user_uuid:      Option<types::UserUuidError>,
-    pub(crate) new_uuid:       Option<types::RowIdError>,
+    pub(crate) user_uuid:      Option<UserUuidError>,
+    pub(crate) new_uuid:       Option<RowIdError>,
     pub(crate) company_belong: Option<CompanyBelongError>,
     pub(crate) branch_name:    Option<BranchNameError>,
     pub(crate) location:       Option<LocationError>,
 }
 
-impl types::MarkerMyErrorTrait for Error {}
+impl MarkerMyErrorTrait for Error {}
 
 pub struct ReadInput {
-    pub user_uuid:      types::UuidType,
-    pub new_uuid:       types::UuidType,
-    pub company_belong: types::UuidType,
+    pub user_uuid:      UuidType,
+    pub new_uuid:       UuidType,
+    pub company_belong: UuidType,
     pub branch_name:    String,
 }
 
 pub struct ReadOutput {
-    pub user_roles:          Vec<types::Role>,
+    pub user_roles:          Vec<Role>,
     pub is_new_uuid_used:    bool,
     pub is_company_exist:    bool,
     pub is_branch_name_used: bool,
@@ -72,15 +80,15 @@ pub(crate) enum LocationError {
 }
 
 impl Input {
-    pub(crate) fn state_less_check<Id: types::RowId>(&self) -> Error {
+    pub(crate) fn state_less_check<Id: RowId>(&self) -> Error {
         let mut errr = Error::default();
 
         if !Id::validate(&self.new_uuid) {
-            errr.new_uuid = Some(types::RowIdError::Invalid);
+            errr.new_uuid = Some(RowIdError::Invalid);
         }
 
         if !Id::validate(&self.user_uuid) {
-            errr.user_uuid = Some(types::UserUuidError::Invalid);
+            errr.user_uuid = Some(UserUuidError::Invalid);
         }
 
         if !Id::validate(&self.company_belong) {
@@ -104,15 +112,12 @@ impl Input {
 
         let mut errr = Error::default();
 
-        if !types::Role::has_any(&read_output.user_roles, &[
-            types::Role::Manager,
-            types::Role::CoManager,
-        ]) {
-            errr.user_uuid = Some(types::UserUuidError::YouDontHavePermissionToDoThat);
+        if !Role::has_any(&read_output.user_roles, &[Role::Manager, Role::CoManager]) {
+            errr.user_uuid = Some(UserUuidError::YouDontHavePermissionToDoThat);
         }
 
         if read_output.is_new_uuid_used {
-            errr.new_uuid = Some(types::RowIdError::Duplicated);
+            errr.new_uuid = Some(RowIdError::Duplicated);
         }
 
         if !read_output.is_company_exist {
@@ -131,7 +136,7 @@ impl Input {
     }
 
     pub(crate) fn state_less_operation(&self) -> Ok {
-        const ROLE: types::Role = types::Role::CoManager;
+        const ROLE: Role = Role::CoManager;
 
         Ok {
             new_uuid:       self.new_uuid.clone(),

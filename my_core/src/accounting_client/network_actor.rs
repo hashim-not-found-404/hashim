@@ -1,6 +1,6 @@
+use crate::utility::traits;
 use crate::utility::traits::DynamicError;
 use crate::utility::traits::Either;
-use crate::utility::traits::{self};
 use std::time::Duration;
 
 pub trait WSClient: Sized {

@@ -1,5 +1,11 @@
-use crate::accounting_domain::utility::types;
-use accounting_engine::accounting_stuff;
+use crate::accounting_domain::utility::types::Currency;
+use crate::accounting_domain::utility::types::JsonWebTokenType;
+use crate::accounting_domain::utility::types::Location;
+use crate::accounting_domain::utility::types::Role;
+use crate::accounting_domain::utility::types::UuidType;
+use accounting_engine::accounting_stuff::InFlowType;
+use accounting_engine::accounting_stuff::InventoryRecord;
+use accounting_engine::accounting_stuff::OutFlowType;
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -46,43 +52,43 @@ pub(crate) enum Subscribe {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub enum Resource {
-    Jwt(types::JsonWebTokenType),
+    Jwt(JsonWebTokenType),
 
-    TableAccessControlForCompanyBranchFieldDataGroup(types::UuidType),
-    TableAccessControlForCompanyBranchFieldRole(types::Role),
-    TableAccessControlForCompanyBranchFieldUser(types::UuidType),
-    TableAccessControlForCompanyFieldDataGroup(types::UuidType),
-    TableAccessControlForCompanyFieldRole(types::Role),
-    TableAccessControlForCompanyFieldUser(types::UuidType),
-    TableAccountFieldCompanyBelong(types::UuidType),
+    TableAccessControlForCompanyBranchFieldDataGroup(UuidType),
+    TableAccessControlForCompanyBranchFieldRole(Role),
+    TableAccessControlForCompanyBranchFieldUser(UuidType),
+    TableAccessControlForCompanyFieldDataGroup(UuidType),
+    TableAccessControlForCompanyFieldRole(Role),
+    TableAccessControlForCompanyFieldUser(UuidType),
+    TableAccountFieldCompanyBelong(UuidType),
     TableAccountFieldIsDebit(bool),
     TableAccountFieldIsPermanentAccount(bool),
     TableAccountFieldName(String),
     TableAccountFieldNotes(Option<String>),
     TableAccountFieldUnitOfMeasurementOfQuantity(String),
-    TableAccountFieldInventory(Vec<accounting_stuff::InventoryRecord>),
-    TableAccountFlowTypeFieldAccount(types::UuidType),
-    TableAccountFlowTypeFieldCompanyBranch(types::UuidType),
-    TableAccountFlowTypeFieldInflowType(accounting_stuff::InFlowType),
-    TableAccountFlowTypeFieldOutflowType(accounting_stuff::OutFlowType),
-    TableCompanyBranchFieldCompanyBelong(types::UuidType),
-    TableCompanyBranchFieldCurrency(types::Currency),
-    TableCompanyBranchFieldLocation(types::Location),
+    TableAccountFieldInventory(Vec<InventoryRecord>),
+    TableAccountFlowTypeFieldAccount(UuidType),
+    TableAccountFlowTypeFieldCompanyBranch(UuidType),
+    TableAccountFlowTypeFieldInflowType(InFlowType),
+    TableAccountFlowTypeFieldOutflowType(OutFlowType),
+    TableCompanyBranchFieldCompanyBelong(UuidType),
+    TableCompanyBranchFieldCurrency(Currency),
+    TableCompanyBranchFieldLocation(Location),
     TableCompanyBranchFieldName(String),
-    TableCompanyFieldCurrency(types::Currency),
+    TableCompanyFieldCurrency(Currency),
     TableCompanyFieldName(String),
     TableUserFieldId(String),
     TableUserFieldName(String),
-    TableSharedEntryFieldWriter(types::UuidType),
+    TableSharedEntryFieldWriter(UuidType),
     TableSharedEntryFieldNotes(Option<String>),
-    TableEntryFieldWriter(types::UuidType),
+    TableEntryFieldWriter(UuidType),
     TableEntryFieldTime(u64),
-    TableEntryFieldSharedEntryId(types::UuidType),
+    TableEntryFieldSharedEntryId(UuidType),
     TableSingleEntryFieldDoubleEntry(u32),
-    TableSingleEntryFieldEntry(types::UuidType),
-    TableSingleEntryFieldAccount(types::UuidType),
+    TableSingleEntryFieldEntry(UuidType),
+    TableSingleEntryFieldAccount(UuidType),
     TableSingleEntryFieldIsDebit(bool),
-    TableSingleEntryFieldCostOutFlowType(accounting_stuff::OutFlowType),
+    TableSingleEntryFieldCostOutFlowType(OutFlowType),
     TableSingleEntryFieldQuantity(f64),
     TableSingleEntryFieldAmount(f64),
 }
@@ -185,6 +191,6 @@ impl Resource {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ResourceInfo {
-    pub row_uuid: types::UuidType,
+    pub row_uuid: UuidType,
     pub resource: Resource,
 }

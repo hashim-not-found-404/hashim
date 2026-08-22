@@ -1,4 +1,11 @@
 use crate::accounting_domain::utility::types;
+use crate::accounting_domain::utility::types::HashedPassword;
+use crate::accounting_domain::utility::types::JWT;
+use crate::accounting_domain::utility::types::JsonWebTokenType;
+use crate::accounting_domain::utility::types::MarkerMyErrorTrait;
+use crate::accounting_domain::utility::types::RowId;
+use crate::accounting_domain::utility::types::RowIdError;
+use crate::accounting_domain::utility::types::UuidType;
 use crate::utility::traits::DynamicError;
 use serde::Deserialize;
 use serde::Serialize;
@@ -7,7 +14,7 @@ pub type MyResult = Result<Ok, Error>;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Input {
-    pub(crate) new_uuid: types::UuidType,
+    pub(crate) new_uuid: UuidType,
     pub(crate) name:     Option<String>,
     pub(crate) user_id:  String,
     pub(crate) password: String,
@@ -15,24 +22,24 @@ pub struct Input {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Ok {
-    pub new_uuid:        types::UuidType,
+    pub new_uuid:        UuidType,
     pub user_id:         String,
     pub user_name:       Option<String>,
     pub hashed_password: String,
-    pub(crate) jwt:      types::JsonWebTokenType,
+    pub(crate) jwt:      JsonWebTokenType,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
 pub struct Error {
-    pub(crate) new_uuid: Option<types::RowIdError>,
+    pub(crate) new_uuid: Option<RowIdError>,
     pub(crate) user_id:  Option<UserIdError>,
     pub(crate) name:     Option<String>,
 }
 
-impl types::MarkerMyErrorTrait for Error {}
+impl MarkerMyErrorTrait for Error {}
 
 pub struct ReadInput {
-    pub new_uuid: types::UuidType,
+    pub new_uuid: UuidType,
     pub user_id:  String,
 }
 
@@ -51,11 +58,11 @@ pub(crate) enum UserIdError {
 }
 
 impl Input {
-    pub(crate) fn state_less_check<Id: types::RowId>(&self) -> Error {
+    pub(crate) fn state_less_check<Id: RowId>(&self) -> Error {
         let mut errr = Error::default();
 
         if !Id::validate(&self.new_uuid) {
-            errr.new_uuid = Some(types::RowIdError::Invalid);
+            errr.new_uuid = Some(RowIdError::Invalid);
         }
 
         errr
@@ -74,7 +81,7 @@ impl Input {
         let mut errr = Error::default();
 
         if read_output.is_new_uuid_exist {
-            errr.new_uuid = Some(types::RowIdError::Duplicated);
+            errr.new_uuid = Some(RowIdError::Duplicated);
         }
 
         if read_output.is_user_id_exist {
@@ -84,10 +91,7 @@ impl Input {
         Ok(errr)
     }
 
-    pub(crate) fn state_full_operation<Auth: types::HashedPassword, Jwt: types::JWT>(
-        &self,
-        jwt: &Jwt,
-    ) -> Ok {
+    pub(crate) fn state_full_operation<Auth: HashedPassword, Jwt: JWT>(&self, jwt: &Jwt) -> Ok {
         let hashed_password = Auth::sign_up(&self.password);
         let jwt = jwt.sign(&self.new_uuid);
 

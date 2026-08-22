@@ -1,4 +1,9 @@
 use crate::accounting_domain::utility::types;
+use crate::accounting_domain::utility::types::HashedPassword;
+use crate::accounting_domain::utility::types::JWT;
+use crate::accounting_domain::utility::types::JsonWebTokenType;
+use crate::accounting_domain::utility::types::MarkerMyErrorTrait;
+use crate::accounting_domain::utility::types::UuidType;
 use crate::utility::traits::DynamicError;
 use serde::Deserialize;
 use serde::Serialize;
@@ -13,10 +18,10 @@ pub struct Input {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Ok {
-    pub user_uuid:  types::UuidType,
+    pub user_uuid:  UuidType,
     pub user_id:    String,
     pub user_name:  Option<String>,
-    pub(crate) jwt: types::JsonWebTokenType,
+    pub(crate) jwt: JsonWebTokenType,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
@@ -25,14 +30,14 @@ pub struct Error {
     pub(crate) password: Option<PasswordError>,
 }
 
-impl types::MarkerMyErrorTrait for Error {}
+impl MarkerMyErrorTrait for Error {}
 
 pub struct ReadInput {
     pub user_id: String,
 }
 
 pub struct ReadOutput {
-    pub user_rowid_and_password_hash_and_name: Option<(types::UuidType, String, Option<String>)>,
+    pub user_rowid_and_password_hash_and_name: Option<(UuidType, String, Option<String>)>,
 }
 
 pub trait DatabaseRead: types::DatabaseRead<Input = ReadInput, Output = ReadOutput> {}
@@ -50,11 +55,7 @@ pub(crate) enum PasswordError {
 }
 
 impl Input {
-    pub(crate) async fn state_full_check<
-        Auth: types::HashedPassword,
-        Jwt: types::JWT,
-        Db: DatabaseRead,
-    >(
+    pub(crate) async fn state_full_check<Auth: HashedPassword, Jwt: JWT, Db: DatabaseRead>(
         &self,
         jwt: &Jwt,
         db: &mut Db::Db<'_>,
@@ -88,8 +89,8 @@ impl Input {
 
     pub(crate) fn state_full_operation(
         &self,
-        jwt: &types::JsonWebTokenType,
-        user_uuid: &types::UuidType,
+        jwt: &JsonWebTokenType,
+        user_uuid: &UuidType,
         user_name: Option<&String>,
     ) -> Ok {
         Ok {

@@ -1,4 +1,9 @@
 use crate::accounting_domain::utility::types;
+use crate::accounting_domain::utility::types::MarkerMyErrorTrait;
+use crate::accounting_domain::utility::types::RowId;
+use crate::accounting_domain::utility::types::RowIdError;
+use crate::accounting_domain::utility::types::UserUuidError;
+use crate::accounting_domain::utility::types::UuidType;
 use crate::utility::traits::DynamicError;
 use serde::Deserialize;
 use serde::Serialize;
@@ -7,19 +12,19 @@ pub type MyResult = Result<Ok, Error>;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Input {
-    pub(crate) user_uuid:    types::UuidType,
-    pub(crate) company_uuid: types::UuidType,
+    pub(crate) user_uuid:    UuidType,
+    pub(crate) company_uuid: UuidType,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Ok {
-    pub(crate) company_uuid: types::UuidType,
+    pub(crate) company_uuid: UuidType,
     pub(crate) data:         Vec<Data>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Data {
-    pub row_uuid:                        types::UuidType,
+    pub row_uuid:                        UuidType,
     pub is_debit:                        bool,
     pub is_permanent_account:            bool,
     pub account_name:                    String,
@@ -29,15 +34,15 @@ pub struct Data {
 
 #[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
 pub struct Error {
-    pub(crate) user_uuid:    Option<types::UserUuidError>,
-    pub(crate) company_uuid: Option<types::RowIdError>,
+    pub(crate) user_uuid:    Option<UserUuidError>,
+    pub(crate) company_uuid: Option<RowIdError>,
 }
 
-impl types::MarkerMyErrorTrait for Error {}
+impl MarkerMyErrorTrait for Error {}
 
 pub struct ReadInput {
-    pub user_uuid:    types::UuidType,
-    pub company_uuid: types::UuidType,
+    pub user_uuid:    UuidType,
+    pub company_uuid: UuidType,
 }
 
 pub struct ReadOutput {
@@ -47,15 +52,15 @@ pub struct ReadOutput {
 pub trait DatabaseRead: types::DatabaseRead<Input = ReadInput, Output = ReadOutput> {}
 
 impl Input {
-    pub(crate) fn state_less_check<Id: types::RowId>(&self) -> Error {
+    pub(crate) fn state_less_check<Id: RowId>(&self) -> Error {
         let mut errr = Error::default();
 
         if !Id::validate(&self.user_uuid) {
-            errr.user_uuid = Some(types::UserUuidError::Invalid);
+            errr.user_uuid = Some(UserUuidError::Invalid);
         }
 
         if !Id::validate(&self.company_uuid) {
-            errr.company_uuid = Some(types::RowIdError::Invalid);
+            errr.company_uuid = Some(RowIdError::Invalid);
         }
 
         errr

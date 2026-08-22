@@ -1,8 +1,8 @@
 use crate::utility::cache_adapter;
 use crate::utility::utils::MyUuidConverter;
 use my_core::accounting_domain::cases;
+use my_core::accounting_domain::utility::types;
 use my_core::accounting_domain::utility::types::DatabaseRead;
-use my_core::accounting_domain::utility::types::{self};
 use my_core::utility::traits::DynamicError;
 use rusqlite::params;
 use std::str::FromStr;
