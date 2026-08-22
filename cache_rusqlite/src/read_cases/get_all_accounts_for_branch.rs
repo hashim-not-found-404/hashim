@@ -25,11 +25,8 @@ impl DatabaseRead for S {
     type Input = cases::get_all_accounts_for_branch::ReadInput;
     type Output = cases::get_all_accounts_for_branch::ReadOutput;
 
-    async fn read(
-        db: &mut Self::Db<'_>,
-        read_input: &Self::Input,
-    ) -> Result<Self::Output, Self::Error> {
-        let branch_uuid_str = read_input.company_branch_uuid.to_string();
+    async fn read(db: &mut Self::Db<'_>, input: &Self::Input) -> Result<Self::Output, Self::Error> {
+        let branch_uuid_str = input.company_branch_uuid.to_string();
 
         let mut stmt = db.tables_db.prepare(QUERY1).unwrap();
         let company_uuid_str: Option<String> =

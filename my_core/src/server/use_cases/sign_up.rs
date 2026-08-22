@@ -14,7 +14,7 @@ impl cases::sign_up::Input {
         Jwt: types::JWT,
         Cli: DBClient,
         Db: for<'a> cases::sign_up::DatabaseRead<Db<'a> = Cli::Txn<'a>, Error = traits::DynamicError>,
-        DbWrite: for<'a> server_traits::DatabaseWrite<Txn<'a> = Cli::Txn<'a>, Input = cases::sign_up::Ok>,
+        DbWrite: for<'a> server_traits::DatabaseWrite<Db<'a> = Cli::Txn<'a>, Input = cases::sign_up::Ok>,
     >(
         &self,
         side_effects: &mut SideEffects,

@@ -16,7 +16,7 @@ impl cases::create_company::Input {
                 Error = traits::DynamicError,
             >,
         DbWrite: for<'a> server_traits::DatabaseWrite<
-                Txn<'a> = Cli::Txn<'a>,
+                Db<'a> = Cli::Txn<'a>,
                 Input = cases::create_company::Ok,
             >,
     >(

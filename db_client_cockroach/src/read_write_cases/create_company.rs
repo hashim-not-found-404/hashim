@@ -18,13 +18,9 @@ impl DatabaseRead for S {
     type Input = cases::create_company::ReadInput;
     type Output = cases::create_company::ReadOutput;
 
-    async fn read(
-        db: &mut Self::Db<'_>,
-        read_input: &Self::Input,
-    ) -> Result<Self::Output, Self::Error> {
+    async fn read(db: &mut Self::Db<'_>, input: &Self::Input) -> Result<Self::Output, Self::Error> {
         let stmt = db.txn.prepare_cached(READ_QUERY).await.log()?;
-        let row =
-            db.txn.query_one(&stmt, &[&read_input.new_uuid.to_externel_uuid()]).await.log()?;
+        let row = db.txn.query_one(&stmt, &[&input.new_uuid.to_externel_uuid()]).await.log()?;
 
         let exists: bool = row.try_get(0).log()?;
         Ok(cases::create_company::ReadOutput {
@@ -44,11 +40,11 @@ const WRITE_QUERY: &str = "
 ;";
 
 impl server_traits::DatabaseWrite for S {
+    type Db<'a> = db_transaction::S<'a>;
     type Input = cases::create_company::Ok;
-    type Txn<'a> = db_transaction::S<'a>;
 
     async fn write(
-        txn: &mut Self::Txn<'_>,
+        txn: &mut Self::Db<'_>,
         input: &Self::Input,
     ) -> Result<(), traits::DynamicError> {
         let stmt = txn.txn.prepare_cached(WRITE_QUERY).await.log()?;

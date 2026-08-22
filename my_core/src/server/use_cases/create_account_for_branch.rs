@@ -16,7 +16,7 @@ impl cases::create_account_for_branch::Input {
                 Error = DynamicError,
             >,
         DbWrite: for<'a> server_traits::DatabaseWrite<
-                Txn<'a> = Cli::Txn<'a>,
+                Db<'a> = Cli::Txn<'a>,
                 Input = cases::create_account_for_branch::Ok,
             >,
     >(

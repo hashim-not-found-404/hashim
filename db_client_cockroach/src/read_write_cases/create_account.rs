@@ -38,18 +38,15 @@ impl DatabaseRead for S {
     type Input = cases::create_account::ReadInput;
     type Output = cases::create_account::ReadOutput;
 
-    async fn read(
-        db: &mut Self::Db<'_>,
-        read_input: &Self::Input,
-    ) -> Result<Self::Output, Self::Error> {
+    async fn read(db: &mut Self::Db<'_>, input: &Self::Input) -> Result<Self::Output, Self::Error> {
         let stmt = db.txn.prepare_cached(READ_QUERY).await.log()?;
         let row = db
             .txn
             .query_one(&stmt, &[
-                &read_input.belong_to_company.to_externel_uuid(),
-                &read_input.user_uuid.to_externel_uuid(),
-                &read_input.new_uuid.to_externel_uuid(),
-                &read_input.account_name,
+                &input.belong_to_company.to_externel_uuid(),
+                &input.user_uuid.to_externel_uuid(),
+                &input.new_uuid.to_externel_uuid(),
+                &input.account_name,
             ])
             .await
             .log()?;
@@ -83,11 +80,11 @@ const WRITE_QUERY: &str = "
 ";
 
 impl server_traits::DatabaseWrite for S {
+    type Db<'a> = db_transaction::S<'a>;
     type Input = cases::create_account::Ok;
-    type Txn<'a> = db_transaction::S<'a>;
 
     async fn write(
-        txn: &mut Self::Txn<'_>,
+        txn: &mut Self::Db<'_>,
         input: &Self::Input,
     ) -> Result<(), traits::DynamicError> {
         let stmt = txn.txn.prepare_cached(WRITE_QUERY).await.log()?;

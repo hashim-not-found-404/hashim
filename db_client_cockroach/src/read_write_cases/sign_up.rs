@@ -22,14 +22,11 @@ impl DatabaseRead for S {
     type Input = cases::sign_up::ReadInput;
     type Output = cases::sign_up::ReadOutput;
 
-    async fn read(
-        db: &mut Self::Db<'_>,
-        read_input: &Self::Input,
-    ) -> Result<Self::Output, Self::Error> {
+    async fn read(db: &mut Self::Db<'_>, input: &Self::Input) -> Result<Self::Output, Self::Error> {
         let stmt = db.txn.prepare_cached(READ_QUERY).await.log()?;
         let row = db
             .txn
-            .query_one(&stmt, &[&read_input.new_uuid.to_externel_uuid(), &read_input.user_id])
+            .query_one(&stmt, &[&input.new_uuid.to_externel_uuid(), &input.user_id])
             .await
             .log()?;
 
@@ -45,11 +42,11 @@ const WRITE_QUERY: &str =
     "INSERT INTO accounting_app.user (rowid, id, pass, name) VALUES ($1, $2, $3, $4)";
 
 impl server_traits::DatabaseWrite for S {
+    type Db<'a> = db_transaction::S<'a>;
     type Input = cases::sign_up::Ok;
-    type Txn<'a> = db_transaction::S<'a>;
 
     async fn write(
-        txn: &mut Self::Txn<'_>,
+        txn: &mut Self::Db<'_>,
         input: &Self::Input,
     ) -> Result<(), traits::DynamicError> {
         let stmt = txn.txn.prepare_cached(WRITE_QUERY).await.log()?;

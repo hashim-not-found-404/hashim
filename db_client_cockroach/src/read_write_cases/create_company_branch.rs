@@ -40,17 +40,14 @@ impl DatabaseRead for S {
     type Input = cases::create_company_branch::ReadInput;
     type Output = cases::create_company_branch::ReadOutput;
 
-    async fn read(
-        db: &mut Self::Db<'_>,
-        read_input: &Self::Input,
-    ) -> Result<Self::Output, Self::Error> {
+    async fn read(db: &mut Self::Db<'_>, input: &Self::Input) -> Result<Self::Output, Self::Error> {
         let row = db
             .txn
             .query_one(READ_QUERY, &[
-                &read_input.company_belong.to_externel_uuid(),
-                &read_input.user_uuid.to_externel_uuid(),
-                &read_input.new_uuid.to_externel_uuid(),
-                &read_input.branch_name,
+                &input.company_belong.to_externel_uuid(),
+                &input.user_uuid.to_externel_uuid(),
+                &input.new_uuid.to_externel_uuid(),
+                &input.branch_name,
             ])
             .await
             .log()?;
@@ -87,11 +84,11 @@ const WRITE_QUERY: &str = "
 ";
 
 impl server_traits::DatabaseWrite for S {
+    type Db<'a> = db_transaction::S<'a>;
     type Input = cases::create_company_branch::Ok;
-    type Txn<'a> = db_transaction::S<'a>;
 
     async fn write(
-        txn: &mut Self::Txn<'_>,
+        txn: &mut Self::Db<'_>,
         input: &Self::Input,
     ) -> Result<(), traits::DynamicError> {
         let lat = Decimal::from_f64(input.location.latitude)

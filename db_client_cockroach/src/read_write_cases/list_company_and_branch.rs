@@ -55,12 +55,9 @@ impl DatabaseRead for S {
     type Input = cases::list_company_and_branch::ReadInput;
     type Output = cases::list_company_and_branch::ReadOutput;
 
-    async fn read(
-        db: &mut Self::Db<'_>,
-        read_input: &Self::Input,
-    ) -> Result<Self::Output, Self::Error> {
+    async fn read(db: &mut Self::Db<'_>, input: &Self::Input) -> Result<Self::Output, Self::Error> {
         let rows =
-            db.client.query(READ_QUERY, &[&read_input.user_uuid.to_externel_uuid()]).await.log()?;
+            db.client.query(READ_QUERY, &[&input.user_uuid.to_externel_uuid()]).await.log()?;
 
         #[derive(Debug, Deserialize)]
         struct BranchJson {

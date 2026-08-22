@@ -46,11 +46,11 @@ pub trait DBTransaction {
 }
 
 pub trait DatabaseWrite {
-    type Txn<'a>: DBTransaction;
+    type Db<'a>: DBTransaction;
     type Input;
 
     fn write(
-        txn: &mut Self::Txn<'_>,
+        txn: &mut Self::Db<'_>,
         input: &Self::Input,
     ) -> impl Future<Output = Result<(), traits::DynamicError>>;
 }

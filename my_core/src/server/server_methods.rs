@@ -20,39 +20,39 @@ use std::time::UNIX_EPOCH;
 
 pub trait DbBundle<Cli: DBClient>: 'static {
     type CreateAccount: for<'a> cases::create_account::DatabaseRead<Db<'a> = Cli::Txn<'a>, Error = DynamicError>;
-    type WriteCreateAccount: for<'a> DatabaseWrite<Txn<'a> = Cli::Txn<'a>, Input = cases::create_account::Ok>;
+    type WriteCreateAccount: for<'a> DatabaseWrite<Db<'a> = Cli::Txn<'a>, Input = cases::create_account::Ok>;
 
     type CreateAccountForBranch: for<'a> cases::create_account_for_branch::DatabaseRead<
             Db<'a> = Cli::Txn<'a>,
             Error = DynamicError,
         >;
-    type WriteCreateAccountForBranch: for<'a> DatabaseWrite<Txn<'a> = Cli::Txn<'a>, Input = cases::create_account_for_branch::Ok>;
+    type WriteCreateAccountForBranch: for<'a> DatabaseWrite<Db<'a> = Cli::Txn<'a>, Input = cases::create_account_for_branch::Ok>;
 
     type CreateJournalEntry: for<'a> cases::create_journal_entry::DatabaseRead<
             Db<'a> = Cli::Txn<'a>,
             Error = DynamicError,
         >;
-    type WriteCreateJournalEntry: for<'a> DatabaseWrite<Txn<'a> = Cli::Txn<'a>, Input = cases::create_journal_entry::Ok>;
+    type WriteCreateJournalEntry: for<'a> DatabaseWrite<Db<'a> = Cli::Txn<'a>, Input = cases::create_journal_entry::Ok>;
 
     type GetAllAccounts: for<'a> cases::get_all_accounts::DatabaseRead<Db<'a> = Cli, Error = DynamicError>;
 
     type GetAllAccountsForBranch: for<'a> cases::get_all_accounts_for_branch::DatabaseRead<Db<'a> = Cli, Error = DynamicError>;
 
     type CreateCompany: for<'a> cases::create_company::DatabaseRead<Db<'a> = Cli::Txn<'a>, Error = DynamicError>;
-    type WriteCreateCompany: for<'a> DatabaseWrite<Txn<'a> = Cli::Txn<'a>, Input = cases::create_company::Ok>;
+    type WriteCreateCompany: for<'a> DatabaseWrite<Db<'a> = Cli::Txn<'a>, Input = cases::create_company::Ok>;
 
     type CreateCompanyBranch: for<'a> cases::create_company_branch::DatabaseRead<
             Db<'a> = Cli::Txn<'a>,
             Error = DynamicError,
         >;
-    type WriteCreateCompanyBranch: for<'a> DatabaseWrite<Txn<'a> = Cli::Txn<'a>, Input = cases::create_company_branch::Ok>;
+    type WriteCreateCompanyBranch: for<'a> DatabaseWrite<Db<'a> = Cli::Txn<'a>, Input = cases::create_company_branch::Ok>;
 
     type ListCompanyAndBranch: for<'a> cases::list_company_and_branch::DatabaseRead<Db<'a> = Cli, Error = DynamicError>;
 
     type SignIn: for<'a> cases::sign_in::DatabaseRead<Db<'a> = Cli, Error = DynamicError>;
 
     type SignUp: for<'a> cases::sign_up::DatabaseRead<Db<'a> = Cli::Txn<'a>, Error = DynamicError>;
-    type WriteSignUp: for<'a> DatabaseWrite<Txn<'a> = Cli::Txn<'a>, Input = cases::sign_up::Ok>;
+    type WriteSignUp: for<'a> DatabaseWrite<Db<'a> = Cli::Txn<'a>, Input = cases::sign_up::Ok>;
 }
 
 pub trait Database: 'static {

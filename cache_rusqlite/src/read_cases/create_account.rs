@@ -22,14 +22,11 @@ impl DatabaseRead for S {
     type Input = cases::create_account::ReadInput;
     type Output = cases::create_account::ReadOutput;
 
-    async fn read(
-        db: &mut Self::Db<'_>,
-        read_input: &Self::Input,
-    ) -> Result<Self::Output, Self::Error> {
+    async fn read(db: &mut Self::Db<'_>, input: &Self::Input) -> Result<Self::Output, Self::Error> {
         let mut stmt = db.tables_db.prepare(QUERY1).unwrap();
         let roles_iter = stmt
             .query_map(
-                params![read_input.belong_to_company.to_string(), read_input.user_uuid.to_string()],
+                params![input.belong_to_company.to_string(), input.user_uuid.to_string()],
                 |row| {
                     let role_str: String = row.get(0).unwrap();
                     let role = types::Role::from_str(role_str.as_str()).unwrap();
@@ -40,13 +37,12 @@ impl DatabaseRead for S {
         let user_roles: Vec<types::Role> = roles_iter.map(|r| r.unwrap()).collect();
         let mut stmt = db.tables_db.prepare(QUERY2).unwrap();
         let is_company_uuid_exist =
-            stmt.exists(params![read_input.belong_to_company.to_string()]).unwrap();
+            stmt.exists(params![input.belong_to_company.to_string()]).unwrap();
         let mut stmt = db.tables_db.prepare(QUERY3).unwrap();
-        let is_new_uuid_used = stmt.exists(params![read_input.new_uuid.to_string()]).unwrap();
+        let is_new_uuid_used = stmt.exists(params![input.new_uuid.to_string()]).unwrap();
         let mut stmt = db.tables_db.prepare(QUERY4).unwrap();
-        let is_account_name_used = stmt
-            .exists(params![read_input.belong_to_company.to_string(), &read_input.account_name])
-            .unwrap();
+        let is_account_name_used =
+            stmt.exists(params![input.belong_to_company.to_string(), &input.account_name]).unwrap();
 
         Ok(cases::create_account::ReadOutput {
             is_company_uuid_exist,

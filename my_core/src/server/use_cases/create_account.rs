@@ -13,7 +13,7 @@ impl cases::create_account::Input {
         Cli: DBClient,
         Db: for<'a> cases::create_account::DatabaseRead<Db<'a> = Cli::Txn<'a>, Error = DynamicError>,
         DbWrite: for<'a> server_traits::DatabaseWrite<
-                Txn<'a> = Cli::Txn<'a>,
+                Db<'a> = Cli::Txn<'a>,
                 Input = cases::create_account::Ok,
             >,
     >(

@@ -65,14 +65,11 @@ impl DatabaseRead for S {
     type Input = cases::get_all_accounts_for_branch::ReadInput;
     type Output = cases::get_all_accounts_for_branch::ReadOutput;
 
-    async fn read(
-        db: &mut Self::Db<'_>,
-        read_input: &Self::Input,
-    ) -> Result<Self::Output, Self::Error> {
+    async fn read(db: &mut Self::Db<'_>, input: &Self::Input) -> Result<Self::Output, Self::Error> {
         let stmt = db.client.prepare_cached(READ_QUERY).await.log()?;
         let row = db
             .client
-            .query_one(&stmt, &[&read_input.company_branch_uuid.to_externel_uuid()])
+            .query_one(&stmt, &[&input.company_branch_uuid.to_externel_uuid()])
             .await
             .log()?;
 

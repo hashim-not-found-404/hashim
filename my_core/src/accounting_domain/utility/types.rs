@@ -33,7 +33,7 @@ pub trait DatabaseRead {
 
     fn read(
         db: &mut Self::Db<'_>,
-        read_input: &Self::Input,
+        input: &Self::Input,
     ) -> impl Future<Output = Result<Self::Output, Self::Error>>;
 }
 

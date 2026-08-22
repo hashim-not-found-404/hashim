@@ -22,15 +22,12 @@ impl DatabaseRead for S {
     type Input = cases::create_company_branch::ReadInput;
     type Output = cases::create_company_branch::ReadOutput;
 
-    async fn read(
-        db: &mut Self::Db<'_>,
-        read_input: &Self::Input,
-    ) -> Result<Self::Output, Self::Error> {
+    async fn read(db: &mut Self::Db<'_>, input: &Self::Input) -> Result<Self::Output, Self::Error> {
         let mut stmt = db.tables_db.prepare(QUERY1).unwrap();
 
         let roles_iter = stmt
             .query_map(
-                params![read_input.company_belong.to_string(), read_input.user_uuid.to_string()],
+                params![input.company_belong.to_string(), input.user_uuid.to_string()],
                 |row| {
                     let role_str: String = row.get(0).unwrap();
                     let role = types::Role::from_str(role_str.as_str()).unwrap();
@@ -45,12 +42,11 @@ impl DatabaseRead for S {
         }
 
         let mut stmt = db.tables_db.prepare(QUERY2).unwrap();
-        let company_exists = stmt.exists(params![read_input.company_belong.to_string()]).unwrap();
+        let company_exists = stmt.exists(params![input.company_belong.to_string()]).unwrap();
 
         let mut stmt = db.tables_db.prepare(QUERY3).unwrap();
-        let branch_name_used = stmt
-            .exists(params![read_input.company_belong.to_string(), read_input.branch_name])
-            .unwrap();
+        let branch_name_used =
+            stmt.exists(params![input.company_belong.to_string(), input.branch_name]).unwrap();
 
         let a = cases::create_company_branch::ReadOutput {
             user_roles:          roles,
