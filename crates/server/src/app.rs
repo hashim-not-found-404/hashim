@@ -74,8 +74,8 @@ async fn ws_handler(req: HttpRequest, stream: Payload) -> HttpResponse {
 fn get_tls_config() -> rustls::ServerConfig {
     rustls::crypto::aws_lc_rs::default_provider().install_default().unwrap();
 
-    const CERT_PEM: &[u8] = include_bytes!("../../privet/cert.pem");
-    const KEY_PEM: &[u8] = include_bytes!("../../privet/key.pem");
+    const CERT_PEM: &[u8] = include_bytes!("../../../privet/cert.pem");
+    const KEY_PEM: &[u8] = include_bytes!("../../../privet/key.pem");
 
     use std::io::BufReader;
 

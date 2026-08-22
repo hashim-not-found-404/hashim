@@ -1,24 +1,16 @@
 [workspace]
 resolver = "2"
-members = [
-    "accounting_engine",
-    "adapters",
-    "cache",
-    "database",
-    "my_core",
-    "server",
-    "ui",
-]
+members = ["crates/*"]
 
 [workspace.dependencies]
-accounting_engine = { path = "./accounting_engine" }
-adapters = { path = "./adapters" }
-cache = { path = "./cache" }
-database = { path = "./database" }
+accounting_engine = { path = "./crates/accounting_engine" }
+adapters = { path = "./crates/adapters" }
+cache = { path = "./crates/cache" }
+database = { path = "./crates/database" }
 derive_more = { version = "2.1.1", features = ["full"] }
 dioxus-logger = "0.7.9"
 futures-util = "0.3.32"
-my_core = { path = "./my_core" }
+my_core = { path = "./crates/my_core" }
 rustls = "0.23.42"
 rustls-pemfile = "2.2.0"
 serde = { version = "1.0.228", features = ["derive"] }
