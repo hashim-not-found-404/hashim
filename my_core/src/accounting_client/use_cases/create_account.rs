@@ -10,8 +10,9 @@ use crate::accounting_client::fetches;
 use crate::accounting_domain::cases;
 use crate::accounting_domain::request_response;
 use crate::accounting_domain::utility::resource_utils;
-use crate::accounting_domain::utility::types;
 use crate::accounting_domain::utility::types::MyErrorTrait;
+use crate::accounting_domain::utility::types::RowId;
+use crate::accounting_domain::utility::types::UuidType;
 use crate::utility::traits;
 use crate::utility::traits::Receiver;
 use crate::utility::traits::Sender;
@@ -40,14 +41,11 @@ where
         request_response::OperationsInput::CreateAccount(data)
     }
 
-    fn user_uuid(data: &Self::Type2) -> Option<&types::UuidType> {
+    fn user_uuid(data: &Self::Type2) -> Option<&UuidType> {
         Some(&data.user_uuid)
     }
 
-    async fn state_full_operation<Id: types::RowId>(
-        data: &Self::Type2,
-        state: &mut Ch,
-    ) -> Self::Type3 {
+    async fn state_full_operation<Id: RowId>(data: &Self::Type2, state: &mut Ch) -> Self::Type3 {
         let errr = data.state_full_check::<LongCache>(state).await.unwrap();
 
         if errr.is_there_error() {
@@ -132,7 +130,7 @@ impl ui_model::CreateAccount {
     pub(crate) async fn update<
         Rn: traits::RandomNumber,
         Rt: traits::Runtime,
-        Id: types::RowId,
+        Id: RowId,
         Mpsc: traits::MultiProducerSingleConsumer,
         As: ui_model::AllSignalTypes,
         Ch: cache::Cache,
@@ -185,9 +183,7 @@ impl ui_model::CreateAccount {
     }
 }
 
-fn build_input<Id: types::RowId, As: ui_model::AllSignalTypes>(
-    model: &ui_model::Model<As>,
-) -> Type1 {
+fn build_input<Id: RowId, As: ui_model::AllSignalTypes>(model: &ui_model::Model<As>) -> Type1 {
     let local_state = &model.page_create_account;
 
     cases::create_account::Input {
@@ -217,7 +213,7 @@ fn handle_clean<As: ui_model::AllSignalTypes>(model: &ui_model::Model<As>) {
 async fn handle_submit<
     Rn: traits::RandomNumber,
     Rt: traits::Runtime,
-    Id: types::RowId,
+    Id: RowId,
     Mpsc: traits::MultiProducerSingleConsumer,
     As: ui_model::AllSignalTypes,
     Ch: cache::Cache,
@@ -255,7 +251,7 @@ async fn handle_submit<
 
 async fn handle_check<
     Rn: traits::RandomNumber,
-    Id: types::RowId,
+    Id: RowId,
     Mpsc: traits::MultiProducerSingleConsumer,
     As: ui_model::AllSignalTypes,
     Ch: cache::Cache,

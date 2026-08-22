@@ -1,6 +1,8 @@
 use crate::accounting_domain::cases;
-use crate::accounting_domain::utility::types;
+use crate::accounting_domain::utility::types::HashedPassword;
+use crate::accounting_domain::utility::types::JWT;
 use crate::accounting_domain::utility::types::MyErrorTrait;
+use crate::accounting_domain::utility::types::RowId;
 use crate::server::utility::server_traits;
 use crate::server::utility::server_traits::DBClient;
 use crate::server::utility::server_traits::DBTransaction;
@@ -9,9 +11,9 @@ use crate::utility::traits::DynamicError;
 
 impl cases::sign_up::Input {
     pub(crate) async fn handle_operation<
-        Id: types::RowId,
-        Auth: types::HashedPassword,
-        Jwt: types::JWT,
+        Id: RowId,
+        Auth: HashedPassword,
+        Jwt: JWT,
         Cli: DBClient,
         Db: for<'a> cases::sign_up::DatabaseRead<Db<'a> = Cli::Txn<'a>>,
         DbWrite: for<'a> server_traits::DatabaseWrite<Db<'a> = Cli::Txn<'a>, Input = cases::sign_up::Ok>,

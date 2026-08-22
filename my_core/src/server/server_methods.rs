@@ -1,8 +1,14 @@
 use crate::accounting_domain::cases;
 use crate::accounting_domain::request_response;
 use crate::accounting_domain::utility::resource_utils;
-use crate::accounting_domain::utility::types;
+use crate::accounting_domain::utility::types::HashedPassword;
+use crate::accounting_domain::utility::types::HashimError;
+use crate::accounting_domain::utility::types::JWT;
+use crate::accounting_domain::utility::types::JWTError;
+use crate::accounting_domain::utility::types::NonceError;
+use crate::accounting_domain::utility::types::Role;
 use crate::accounting_domain::utility::types::RowId;
+use crate::accounting_domain::utility::types::UuidType;
 use crate::server::utility::server_traits;
 use crate::server::utility::server_traits::DBClient;
 use crate::server::utility::server_traits::DatabaseWrite;
@@ -63,18 +69,14 @@ pub trait WSServer: 'static {
     fn close(self) -> impl Future<Output = Result<(), DynamicError>>;
 }
 
-pub struct ServerMethods<Mpsc: traits::MultiProducerSingleConsumer, Jwt: types::JWT, Db: Database> {
+pub struct ServerMethods<Mpsc: traits::MultiProducerSingleConsumer, Jwt: JWT, Db: Database> {
     database:                    Db,
     jwt:                         Jwt,
     pub(crate) sender_to_broker: Mpsc::Sender<MessageToBroker<Mpsc>>,
 }
 
-impl<
-    Mpsc: traits::MultiProducerSingleConsumer,
-    Jwt: types::JWT,
-    Db: Database<Client = Cli>,
-    Cli: DBClient,
-> ServerMethods<Mpsc, Jwt, Db>
+impl<Mpsc: traits::MultiProducerSingleConsumer, Jwt: JWT, Db: Database<Client = Cli>, Cli: DBClient>
+    ServerMethods<Mpsc, Jwt, Db>
 {
     pub async fn new<Rt: traits::Runtime>() -> Self {
         let (sender_to_broker, receiver_to_broker) = Mpsc::channel();
@@ -92,10 +94,10 @@ impl<
         Ws: WSServer,
         Rn: traits::RandomNumber,
         Ed: traits::Coding,
-        Id: types::RowId,
+        Id: RowId,
         Ti: traits::Time,
         Rg: traits::Regex,
-        Auth: types::HashedPassword,
+        Auth: HashedPassword,
         Dbb: DbBundle<Cli>,
     >(
         self: Arc<Self>,
@@ -123,7 +125,7 @@ impl<
                                 else {
                                     if session
                                         .send_bin(Ed::encode(&request_response::FromServer::Error(
-                                            types::HashimError::InvalidDataFormat,
+                                            HashimError::InvalidDataFormat,
                                         )))
                                         .await
                                         .is_err()
@@ -136,7 +138,7 @@ impl<
                                 let Ok(mut client) = self.database.get_client().await else {
                                     if session
                                         .send_bin(Ed::encode(&request_response::FromServer::Error(
-                                            types::HashimError::InternalServerError,
+                                            HashimError::InternalServerError,
                                         )))
                                         .await
                                         .is_err()
@@ -173,7 +175,7 @@ impl<
                                         if session
                                             .send_bin(Ed::encode(
                                                 &request_response::FromServer::Error(
-                                                    types::HashimError::InternalServerError,
+                                                    HashimError::InternalServerError,
                                                 ),
                                             ))
                                             .await
@@ -194,7 +196,7 @@ impl<
                                         if session
                                             .send_bin(Ed::encode(
                                                 &request_response::FromServer::Error(
-                                                    types::HashimError::InternalServerError,
+                                                    HashimError::InternalServerError,
                                                 ),
                                             ))
                                             .await
@@ -372,10 +374,10 @@ impl<
 }
 
 async fn push_data<
-    Id: types::RowId,
+    Id: RowId,
     Ti: traits::Time,
-    Auth: types::HashedPassword,
-    Jwt: types::JWT,
+    Auth: HashedPassword,
+    Jwt: JWT,
     Cli: DBClient,
     Dbb: DbBundle<Cli>,
 >(
@@ -396,20 +398,20 @@ async fn push_data<
         if let Some(user_uuid) = jwt.validate(jwt_value.clone()) {
             side_effects.authenticated_users.insert(user_uuid);
         } else {
-            the_return_result.jwts.push(Err(types::JWTError::Invalid));
+            the_return_result.jwts.push(Err(JWTError::Invalid));
             is_there_error = true;
         }
     }
 
     if !Id::validate(&input.nonce) {
-        the_return_result.nonce = Err(types::NonceError::Invalid);
+        the_return_result.nonce = Err(NonceError::Invalid);
         return Ok(the_return_result);
     }
 
     let is_nonce_used = client.write_nonce_if_not_used(&input.nonce).await?;
 
     if !check_nonce_if_valid::<Id>(&input.nonce, is_nonce_used) {
-        the_return_result.nonce = Err(types::NonceError::Invalid);
+        the_return_result.nonce = Err(NonceError::Invalid);
     }
 
     if is_there_error {
@@ -518,7 +520,7 @@ async fn push_data<
     Ok(the_return_result)
 }
 
-fn check_nonce_if_valid<Id: RowId>(nonce: &types::UuidType, is_used: bool) -> bool {
+fn check_nonce_if_valid<Id: RowId>(nonce: &UuidType, is_used: bool) -> bool {
     if is_used {
         return false;
     }
@@ -546,7 +548,7 @@ fn check_nonce_if_valid<Id: RowId>(nonce: &types::UuidType, is_used: bool) -> bo
 
 async fn get_table_of_subscribed_data<Cli: DBClient>(
     client: &mut Cli,
-    users_uuids: &HashSet<types::UuidType>,
+    users_uuids: &HashSet<UuidType>,
 ) -> Result<AllSubscribes, DynamicError> {
     let roles = client.read_roles_for_user(users_uuids).await?;
 
@@ -582,7 +584,14 @@ async fn get_table_of_subscribed_data<Cli: DBClient>(
 
 mod broker_functions {
     use crate::accounting_domain::utility::resource_utils;
-    use crate::accounting_domain::utility::types;
+    use crate::accounting_domain::utility::types::HashedPassword;
+    use crate::accounting_domain::utility::types::HashimError;
+    use crate::accounting_domain::utility::types::JWT;
+    use crate::accounting_domain::utility::types::JWTError;
+    use crate::accounting_domain::utility::types::NonceError;
+    use crate::accounting_domain::utility::types::Role;
+    use crate::accounting_domain::utility::types::RowId;
+    use crate::accounting_domain::utility::types::UuidType;
     use crate::server::utility::server_traits;
     use crate::utility::utils::HashMapWithHashMapValue;
     use crate::utility::utils::HashMapWithVectorValue;
@@ -590,9 +599,9 @@ mod broker_functions {
     use std::collections::HashSet;
 
     pub(crate) type UserSubscribes = HashMap<
-        types::UuidType, // company uuid or branch
+        UuidType, // company uuid or branch
         HashMap<
-            types::UuidType, // user uuid
+            UuidType, // user uuid
             HashSet<resource_utils::Subscribe>,
         >,
     >;
@@ -617,7 +626,7 @@ mod broker_functions {
         }
     }
 
-    pub(crate) fn unsubscribe(pool_of_pubsub: &mut UserSubscribes, user_uuid: &types::UuidType) {
+    pub(crate) fn unsubscribe(pool_of_pubsub: &mut UserSubscribes, user_uuid: &UuidType) {
         pool_of_pubsub.retain(|_, users_and_subs| {
             users_and_subs.remove(user_uuid);
             !users_and_subs.is_empty()
@@ -653,7 +662,7 @@ mod broker_functions {
     }
 }
 
-fn role_to_subscribe_mapping(roles: Vec<types::Role>) -> HashSet<resource_utils::Subscribe> {
+fn role_to_subscribe_mapping(roles: Vec<Role>) -> HashSet<resource_utils::Subscribe> {
     let mut subscribes = HashSet::with_capacity(200);
 
     for _ in roles {
@@ -678,7 +687,7 @@ pub(crate) struct AllSubscribes {
 }
 
 type UserSenders<Mpsc> = HashMap<
-    types::UuidType, // user uuid
+    UuidType, // user uuid
     HashMap<
         u64,
         <Mpsc as traits::MultiProducerSingleConsumer>::Sender<Vec<resource_utils::ResourceInfo>>,
@@ -689,7 +698,7 @@ pub(crate) enum MessageToBroker<Mpsc: traits::MultiProducerSingleConsumer> {
     Subscribe {
         connection_id:        u64,
         list_of_subscribtion: AllSubscribes,
-        users_uuids:          HashSet<types::UuidType>,
+        users_uuids:          HashSet<UuidType>,
         sender_to_server:     Mpsc::Sender<Vec<resource_utils::ResourceInfo>>,
     },
     Unsubscribe {

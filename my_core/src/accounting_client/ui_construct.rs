@@ -8,7 +8,9 @@ use crate::accounting_client::network_actor;
 use crate::accounting_client::ui_effect;
 use crate::accounting_domain::request_response;
 use crate::accounting_domain::utility::resource_utils;
-use crate::accounting_domain::utility::types;
+use crate::accounting_domain::utility::types::ADDRESS;
+use crate::accounting_domain::utility::types::HashimError;
+use crate::accounting_domain::utility::types::RowId;
 use crate::utility::traits;
 use crate::utility::traits::DynamicError;
 use crate::utility::traits::Receiver;
@@ -22,7 +24,7 @@ use std::sync::RwLock;
 pub fn new<
     Rn: traits::RandomNumber,
     Rt: traits::Runtime,
-    Id: types::RowId,
+    Id: RowId,
     Mpsc: traits::MultiProducerSingleConsumer,
     Ed: traits::Coding,
     Rg: traits::Regex,
@@ -47,7 +49,7 @@ pub fn new<
             sender_to_error: sender_to_error.clone(),
             is_online: is_online.clone(),
         },
-        format!("ws://{}/ws", types::ADDRESS),
+        format!("ws://{}/ws", ADDRESS),
     );
 
     let cache = client_traits::CacheActorStruct::new::<Rt, Ed, MyCache<Mpsc, Ch, Id, Ti, Dbb>>(
@@ -78,7 +80,7 @@ struct MyNetwork<Mpsc: traits::MultiProducerSingleConsumer> {
         >,
     >,
     receiver_to_network: Mpsc::Receiver<Vec<u8>>,
-    sender_to_error:     Mpsc::Sender<types::HashimError>,
+    sender_to_error:     Mpsc::Sender<HashimError>,
     is_online:           Arc<RwLock<bool>>,
 }
 
@@ -100,14 +102,14 @@ impl<Mpsc: traits::MultiProducerSingleConsumer> network_actor::Network for MyNet
     }
 
     async fn send_error(&mut self, _: DynamicError) {
-        self.sender_to_error.send(types::HashimError::ConnectionClosed).await.unwrap();
+        self.sender_to_error.send(HashimError::ConnectionClosed).await.unwrap();
     }
 }
 
 struct MyCache<
     Mpsc: traits::MultiProducerSingleConsumer,
     Ch: cache::Cache,
-    Id: types::RowId,
+    Id: RowId,
     Ti: traits::Time,
     Dbb: cache_op::DbBundle<Ch>,
 > {
@@ -117,14 +119,14 @@ struct MyCache<
 impl<
     Mpsc: traits::MultiProducerSingleConsumer,
     Ch: cache::Cache,
-    Id: types::RowId,
+    Id: RowId,
     Ti: traits::Time,
     Dbb: cache_op::DbBundle<Ch>,
 > cache_actor::CacheActorUtils for MyCache<Mpsc, Ch, Id, Ti, Dbb>
 {
     type Cache = Ch;
-    type E = types::HashimError;
-    type ErrorSender = Mpsc::Sender<types::HashimError>;
+    type E = HashimError;
+    type ErrorSender = Mpsc::Sender<HashimError>;
     type MessageFromServer<'de> = request_response::FromServer;
     type Mpsc = Mpsc;
     type NetworkSender = Mpsc::Sender<Vec<u8>>;
@@ -150,11 +152,11 @@ impl<
     }
 
     async fn internal_server_error(sender: &mut Self::ErrorSender) {
-        sender.send(types::HashimError::InternalServerError).await.unwrap();
+        sender.send(HashimError::InternalServerError).await.unwrap();
     }
 
     async fn invalid_format_error(sender: &mut Self::ErrorSender) {
-        sender.send(types::HashimError::InvalidDataFormat).await.unwrap();
+        sender.send(HashimError::InvalidDataFormat).await.unwrap();
     }
 
     async fn is_online(network_status: &Self::NetworkStatus) -> bool {

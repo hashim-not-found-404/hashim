@@ -9,8 +9,9 @@ use crate::accounting_client::client_domain::ui_model::HashimSignal;
 use crate::accounting_domain::cases;
 use crate::accounting_domain::request_response;
 use crate::accounting_domain::utility::resource_utils;
-use crate::accounting_domain::utility::types;
 use crate::accounting_domain::utility::types::MyErrorTrait;
+use crate::accounting_domain::utility::types::RowId;
+use crate::accounting_domain::utility::types::UuidType;
 use crate::mbg;
 use crate::utility::traits;
 use crate::utility::traits::Receiver;
@@ -39,14 +40,11 @@ where
         request_response::OperationsInput::CreateCompanyBranch(data)
     }
 
-    fn user_uuid(data: &Self::Type2) -> Option<&types::UuidType> {
+    fn user_uuid(data: &Self::Type2) -> Option<&UuidType> {
         Some(&data.user_uuid)
     }
 
-    async fn state_full_operation<Id: types::RowId>(
-        data: &Self::Type2,
-        state: &mut Ch,
-    ) -> Self::Type3 {
+    async fn state_full_operation<Id: RowId>(data: &Self::Type2, state: &mut Ch) -> Self::Type3 {
         let errr = data.state_full_check::<LongCache>(state).await.unwrap();
 
         if errr.is_there_error() {
@@ -143,7 +141,7 @@ impl ui_model::CreateCompanyBranch {
     pub(crate) async fn update<
         Rn: traits::RandomNumber,
         Rt: traits::Runtime,
-        Id: types::RowId,
+        Id: RowId,
         Mpsc: traits::MultiProducerSingleConsumer,
         As: ui_model::AllSignalTypes,
         Ch: cache::Cache,
@@ -188,7 +186,7 @@ impl ui_model::CreateCompanyBranch {
 async fn handle_submit<
     Rn: traits::RandomNumber,
     Rt: traits::Runtime,
-    Id: types::RowId,
+    Id: RowId,
     Mpsc: traits::MultiProducerSingleConsumer,
     As: ui_model::AllSignalTypes,
     Ch: cache::Cache,
@@ -233,7 +231,7 @@ async fn handle_submit<
 
 async fn handle_check<
     Rn: traits::RandomNumber,
-    Id: types::RowId,
+    Id: RowId,
     Mpsc: traits::MultiProducerSingleConsumer,
     As: ui_model::AllSignalTypes,
     Ch: cache::Cache,
@@ -287,9 +285,7 @@ fn handle_close<As: ui_model::AllSignalTypes>(model: &'static ui_model::Model<As
         .set(ui_model::Navigator::ListCompanyAndBranch(ui_model::ListCompanyAndBranch::None));
 }
 
-fn build_input<Id: types::RowId, As: ui_model::AllSignalTypes>(
-    model: &ui_model::Model<As>,
-) -> Type1 {
+fn build_input<Id: RowId, As: ui_model::AllSignalTypes>(model: &ui_model::Model<As>) -> Type1 {
     let local_state = &model.page_create_company_branch;
 
     cases::create_company_branch::Input {

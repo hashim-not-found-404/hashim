@@ -9,7 +9,9 @@ use crate::accounting_client::client_domain::ui_model::HashimSignal;
 use crate::accounting_domain::cases;
 use crate::accounting_domain::request_response;
 use crate::accounting_domain::utility::resource_utils;
-use crate::accounting_domain::utility::types;
+use crate::accounting_domain::utility::types::JsonWebTokenType;
+use crate::accounting_domain::utility::types::RowId;
+use crate::accounting_domain::utility::types::UuidType;
 use crate::utility::traits;
 use crate::utility::traits::Receiver;
 use crate::utility::traits::Sender;
@@ -22,7 +24,7 @@ type Type3 = cases::sign_in::MyResult;
 type Type4 = Result<SignInOk, cases::sign_in::Error>;
 
 pub(crate) struct SignInOk {
-    user_uuid: types::UuidType,
+    user_uuid: UuidType,
     user_name: String,
 }
 
@@ -42,14 +44,11 @@ where
         request_response::OperationsInput::SignIn(data)
     }
 
-    fn user_uuid(_: &Self::Type2) -> Option<&types::UuidType> {
+    fn user_uuid(_: &Self::Type2) -> Option<&UuidType> {
         None
     }
 
-    async fn state_full_operation<Id: types::RowId>(
-        data: &Self::Type2,
-        state: &mut Ch,
-    ) -> Self::Type3 {
+    async fn state_full_operation<Id: RowId>(data: &Self::Type2, state: &mut Ch) -> Self::Type3 {
         let read_output = LongCache::read(state, &cases::sign_in::ReadInput {
             user_id: data.user_id.clone(),
         })
@@ -61,7 +60,7 @@ where
         {
             return Ok(cases::sign_in::Ok {
                 user_uuid,
-                jwt: types::JsonWebTokenType(String::new()),
+                jwt: JsonWebTokenType(String::new()),
                 user_id: data.user_id.clone(),
                 user_name,
             });
@@ -75,7 +74,7 @@ where
             Some(password) => {
                 if password == data.password {
                     Ok(data.state_full_operation(
-                        &types::JsonWebTokenType(String::new()),
+                        &JsonWebTokenType(String::new()),
                         user_uuid.unwrap(),
                         user_name.as_ref(),
                     ))

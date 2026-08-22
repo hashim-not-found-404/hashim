@@ -4,7 +4,8 @@ use crate::accounting_client::client_domain::ui_model;
 use crate::accounting_domain::cases;
 use crate::accounting_domain::request_response;
 use crate::accounting_domain::utility::resource_utils;
-use crate::accounting_domain::utility::types;
+use crate::accounting_domain::utility::types::RowId;
+use crate::accounting_domain::utility::types::UuidType;
 use std::collections::HashSet;
 
 pub struct ViewAndCacheType;
@@ -38,14 +39,11 @@ where
         request_response::OperationsInput::GetAllAccountsForBranch(data)
     }
 
-    fn user_uuid(data: &Self::Type2) -> Option<&types::UuidType> {
+    fn user_uuid(data: &Self::Type2) -> Option<&UuidType> {
         Some(&data.user_uuid)
     }
 
-    async fn state_full_operation<Id: types::RowId>(
-        data: &Self::Type2,
-        state: &mut Ch,
-    ) -> Self::Type3 {
+    async fn state_full_operation<Id: RowId>(data: &Self::Type2, state: &mut Ch) -> Self::Type3 {
         let read_output = LongCache::read(state, &cases::get_all_accounts_for_branch::ReadInput {
             user_uuid:           data.user_uuid.clone(),
             company_branch_uuid: data.company_branch_uuid.clone(),
@@ -141,7 +139,7 @@ where
         if let request_response::OperationsResult::GetAllAccountsForBranch(result) = output {
             match result {
                 Ok(mut ok) => {
-                    let linked: HashSet<types::UuidType> =
+                    let linked: HashSet<UuidType> =
                         ok.accounts_for_branch.iter().map(|afb| afb.account_uuid.clone()).collect();
 
                     ok.accounts.retain(|acc| !linked.contains(&acc.row_uuid));

@@ -6,7 +6,7 @@ use crate::accounting_client::client_domain::ui_model::HashimSignal;
 use crate::accounting_domain::cases;
 use crate::accounting_domain::request_response;
 use crate::accounting_domain::utility::resource_utils;
-use crate::accounting_domain::utility::types;
+use crate::accounting_domain::utility::types::UuidType;
 use crate::utility::traits;
 use crate::utility::utils::ReadAndSet;
 
@@ -25,7 +25,7 @@ impl ReadServerOnly for ViewAndCacheType {
         request_response::OperationsInput::GetAllAccounts(data)
     }
 
-    fn user_uuid(data: &Self::Type2) -> Option<&types::UuidType> {
+    fn user_uuid(data: &Self::Type2) -> Option<&UuidType> {
         Some(&data.user_uuid)
     }
 

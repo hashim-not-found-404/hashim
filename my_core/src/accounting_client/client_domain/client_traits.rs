@@ -6,7 +6,8 @@ use crate::accounting_client::client_domain::ui_model;
 use crate::accounting_domain::request_response;
 use crate::accounting_domain::request_response::OperationsResult;
 use crate::accounting_domain::utility::resource_utils;
-use crate::accounting_domain::utility::types;
+use crate::accounting_domain::utility::types::RowId;
+use crate::accounting_domain::utility::types::UuidType;
 use crate::utility::traits;
 use crate::utility::traits::JoinHandle;
 use crate::utility::traits::Receiver;
@@ -26,12 +27,9 @@ pub(crate) trait ViewAndCache<Ch: cache::Cache, T> {
 
     fn wrap_input(data: Self::Type1) -> request_response::OperationsInput;
 
-    fn user_uuid(data: &Self::Type2) -> Option<&types::UuidType>;
+    fn user_uuid(data: &Self::Type2) -> Option<&UuidType>;
 
-    async fn state_full_operation<Id: types::RowId>(
-        data: &Self::Type2,
-        state: &mut Ch,
-    ) -> Self::Type3;
+    async fn state_full_operation<Id: RowId>(data: &Self::Type2, state: &mut Ch) -> Self::Type3;
 
     fn extract_resource(data: &Self::Type3) -> Vec<resource_utils::ResourceInfo>;
 
@@ -49,7 +47,7 @@ pub(crate) trait ReadServerOnly {
     type Type3;
 
     fn wrap_input(data: Self::Type1) -> request_response::OperationsInput;
-    fn user_uuid(data: &Self::Type2) -> Option<&types::UuidType>;
+    fn user_uuid(data: &Self::Type2) -> Option<&UuidType>;
     fn extract_resource(data: &Self::Type3) -> Vec<resource_utils::ResourceInfo>;
 }
 

@@ -3,7 +3,8 @@ use adapters::encode_decode;
 use my_core::accounting_client::client_domain::cache::Cache;
 use my_core::accounting_domain::request_response;
 use my_core::accounting_domain::utility::resource_utils;
-use my_core::accounting_domain::utility::types;
+use my_core::accounting_domain::utility::types::JsonWebTokenType;
+use my_core::accounting_domain::utility::types::UuidType;
 use my_core::utility::traits::Coding;
 use rusqlite::Connection;
 use std::ops::Add;
@@ -111,13 +112,13 @@ impl Cache for S {
         self.tables_db.execute_batch(QUERY8).unwrap();
     }
 
-    async fn get_jwt(&self, user_uuid: &types::UuidType) -> Option<types::JsonWebTokenType> {
+    async fn get_jwt(&self, user_uuid: &UuidType) -> Option<JsonWebTokenType> {
         let mut stmt = self.tables_db.prepare(QUERY6).unwrap();
 
         let json_web_token_type = stmt.query_one([&user_uuid.to_string()], |row| row.get(0));
 
         match json_web_token_type {
-            Ok(a) => Some(types::JsonWebTokenType(a)),
+            Ok(a) => Some(JsonWebTokenType(a)),
             Err(_) => None,
         }
     }

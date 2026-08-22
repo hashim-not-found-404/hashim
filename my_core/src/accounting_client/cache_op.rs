@@ -6,7 +6,8 @@ use crate::accounting_client::use_cases;
 use crate::accounting_domain::cases;
 use crate::accounting_domain::request_response;
 use crate::accounting_domain::utility::resource_utils;
-use crate::accounting_domain::utility::types;
+use crate::accounting_domain::utility::types::RowId;
+use crate::accounting_domain::utility::types::UuidType;
 use crate::utility::traits;
 
 pub trait DbBundle<Ch: cache::Cache>: 'static {
@@ -22,8 +23,7 @@ pub trait DbBundle<Ch: cache::Cache>: 'static {
     type SignUp: for<'a> cases::sign_up::DatabaseRead<Db<'a> = Ch>;
 }
 
-pub(crate) async fn new<Id: types::RowId, Ti: traits::Time, Dbb: DbBundle<Ch>, Ch: cache::Cache>()
--> Ch {
+pub(crate) async fn new<Id: RowId, Ti: traits::Time, Dbb: DbBundle<Ch>, Ch: cache::Cache>() -> Ch {
     let mut cache = Ch::new().await;
     let txns = cache.get_all_txn_input().await;
 
@@ -61,7 +61,7 @@ macro_rules! get_user_uuid {
 
 impl request_response::OperationsInput {
     pub(crate) async fn run_operation_check<
-        Id: types::RowId,
+        Id: RowId,
         Ti: traits::Time,
         Ch: cache::Cache,
         Dbb: DbBundle<Ch>,
@@ -134,7 +134,7 @@ impl request_response::OperationsInput {
     }
 
     pub(crate) async fn run_operation_check_apply<
-        Id: types::RowId,
+        Id: RowId,
         Ti: traits::Time,
         Ch: cache::Cache,
         Dbb: DbBundle<Ch>,
@@ -204,7 +204,7 @@ impl request_response::OperationsInput {
 
     pub(crate) fn get_user_uuid<Ti: traits::Time, Ch: cache::Cache, Dbb: DbBundle<Ch>>(
         &self,
-    ) -> Option<&types::UuidType> {
+    ) -> Option<&UuidType> {
         match self {
             request_response::OperationsInput::SignUp(i) => {
                 get_user_uuid!(sign_up, Dbb::SignUp, i)

@@ -6,7 +6,8 @@ use crate::accounting_client::client_domain::process_manager;
 use crate::accounting_client::client_domain::ui_model;
 use crate::accounting_client::client_domain::ui_model::AllSignalTypes;
 use crate::accounting_client::client_domain::ui_model::HashimSignal;
-use crate::accounting_domain::utility::types;
+use crate::accounting_domain::utility::types::HashimError;
+use crate::accounting_domain::utility::types::RowId;
 use crate::mbg;
 use crate::utility::traits;
 use crate::utility::traits::Receiver;
@@ -30,12 +31,12 @@ impl<Mpsc: traits::MultiProducerSingleConsumer> Commander<Mpsc> {
         As: AllSignalTypes,
         Rt: traits::Runtime,
         Rn: traits::RandomNumber,
-        Id: types::RowId,
+        Id: RowId,
         Ti: traits::Time,
         Ch: cache::Cache + 'static,
         Dbb: cache_op::DbBundle<Ch>,
     >(
-        receiver_to_error: Mpsc::Receiver<types::HashimError>,
+        receiver_to_error: Mpsc::Receiver<HashimError>,
         sender_to_process_manager: Mpsc::Sender<process_manager::MessageToProcessManager<Mpsc, As>>,
         model: &'static ui_model::Model<As>,
         cache: client_traits::CacheActorStruct<Mpsc>,
@@ -67,7 +68,7 @@ impl<Mpsc: traits::MultiProducerSingleConsumer> Commander<Mpsc> {
         As: AllSignalTypes,
         Rt: traits::Runtime,
         Rn: traits::RandomNumber,
-        Id: types::RowId,
+        Id: RowId,
         Ti: traits::Time,
         Ch: cache::Cache + 'static,
         Dbb: cache_op::DbBundle<Ch>,
@@ -171,7 +172,7 @@ fn listen_to_error_actor<
     Mpsc: traits::MultiProducerSingleConsumer,
     As: ui_model::AllSignalTypes,
 >(
-    mut receiver_to_error: Mpsc::Receiver<types::HashimError>,
+    mut receiver_to_error: Mpsc::Receiver<HashimError>,
     external_errors_signal: &'static As::StringVec,
 ) {
     Rt::spawn_local(async move {

@@ -3,8 +3,8 @@ use crate::utility::utils::MyUuidConverter;
 use crate::utility::utils::MyUuidConverter1;
 use accounting_engine::accounting_stuff;
 use my_core::accounting_domain::cases;
-use my_core::accounting_domain::utility::types;
 use my_core::accounting_domain::utility::types::DatabaseRead;
+use my_core::accounting_domain::utility::types::Role;
 use my_core::utility::traits::DynamicError;
 use rusqlite::params;
 use serde::Deserialize;
@@ -113,12 +113,12 @@ impl DatabaseRead for S {
         let account_infos_json: String = row.get(4).unwrap();
 
         let roles_value: Value = serde_json::from_str(&roles_json).unwrap_or(Value::Array(vec![]));
-        let user_roles: Vec<types::Role> = roles_value
+        let user_roles: Vec<Role> = roles_value
             .as_array()
             .unwrap_or(&vec![])
             .iter()
             .filter_map(|v| v.as_str())
-            .map(|s| types::Role::from_str(s).unwrap())
+            .map(|s| Role::from_str(s).unwrap())
             .collect();
 
         let new_entries_value: Value = serde_json::from_str(&new_entries_map_json)

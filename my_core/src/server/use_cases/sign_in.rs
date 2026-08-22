@@ -1,13 +1,14 @@
 use crate::accounting_domain::cases;
-use crate::accounting_domain::utility::types;
+use crate::accounting_domain::utility::types::HashedPassword;
+use crate::accounting_domain::utility::types::JWT;
 use crate::server::utility::server_traits::DBClient;
 use crate::server::utility::server_traits::SideEffects;
 use crate::utility::traits::DynamicError;
 
 impl cases::sign_in::Input {
     pub(crate) async fn handle_operation<
-        Auth: types::HashedPassword,
-        Jwt: types::JWT,
+        Auth: HashedPassword,
+        Jwt: JWT,
         Cli: DBClient,
         Db: for<'a> cases::sign_in::DatabaseRead<Db<'a> = Cli>,
     >(

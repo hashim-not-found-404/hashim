@@ -1,8 +1,8 @@
 use crate::utility::cache_adapter;
 use crate::utility::utils::MyUuidConverter;
 use my_core::accounting_domain::cases;
-use my_core::accounting_domain::utility::types;
 use my_core::accounting_domain::utility::types::DatabaseRead;
+use my_core::accounting_domain::utility::types::Role;
 use my_core::utility::traits::DynamicError;
 use rusqlite::params;
 use std::str::FromStr;
@@ -31,12 +31,12 @@ impl DatabaseRead for S {
                 params![input.belong_to_company.to_string(), input.user_uuid.to_string()],
                 |row| {
                     let role_str: String = row.get(0).unwrap();
-                    let role = types::Role::from_str(role_str.as_str()).unwrap();
+                    let role = Role::from_str(role_str.as_str()).unwrap();
                     Ok(role)
                 },
             )
             .unwrap();
-        let user_roles: Vec<types::Role> = roles_iter.map(|r| r.unwrap()).collect();
+        let user_roles: Vec<Role> = roles_iter.map(|r| r.unwrap()).collect();
         let mut stmt = db.tables_db.prepare(QUERY2).unwrap();
         let is_company_uuid_exist =
             stmt.exists(params![input.belong_to_company.to_string()]).unwrap();

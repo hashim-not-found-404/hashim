@@ -10,7 +10,8 @@ use crate::accounting_domain::cases;
 use crate::accounting_domain::cases::create_journal_entry;
 use crate::accounting_domain::request_response;
 use crate::accounting_domain::utility::resource_utils;
-use crate::accounting_domain::utility::types;
+use crate::accounting_domain::utility::types::RowId;
+use crate::accounting_domain::utility::types::UuidType;
 use crate::utility::tools;
 use crate::utility::traits;
 use crate::utility::traits::Sender;
@@ -39,14 +40,11 @@ where
         request_response::OperationsInput::CreateJournalEntry(data)
     }
 
-    fn user_uuid(data: &Self::Type2) -> Option<&types::UuidType> {
+    fn user_uuid(data: &Self::Type2) -> Option<&UuidType> {
         Some(&data.user_uuid)
     }
 
-    async fn state_full_operation<Id: types::RowId>(
-        data: &Self::Type2,
-        state: &mut Ch,
-    ) -> Self::Type3 {
+    async fn state_full_operation<Id: RowId>(data: &Self::Type2, state: &mut Ch) -> Self::Type3 {
         data.state_full_check::<LongCache, Ti>(state).await.unwrap()
     }
 
@@ -208,7 +206,7 @@ impl ui_model::CreateJournalEntry {
     pub(crate) async fn update<
         Rn: traits::RandomNumber,
         Rt: traits::Runtime,
-        Id: types::RowId,
+        Id: RowId,
         Mpsc: traits::MultiProducerSingleConsumer,
         Ti: traits::Time,
         As: ui_model::AllSignalTypes,
@@ -432,7 +430,7 @@ fn handle_clean<As: ui_model::AllSignalTypes>(model: &ui_model::Model<As>) {
 async fn handle_submit<
     Rn: traits::RandomNumber,
     Rt: traits::Runtime,
-    Id: types::RowId,
+    Id: RowId,
     Mpsc: traits::MultiProducerSingleConsumer,
     Ti: traits::Time,
     As: ui_model::AllSignalTypes,
@@ -482,7 +480,7 @@ async fn handle_submit<
     local_state.is_loading.reset();
 }
 
-fn build_input<Id: types::RowId, As: ui_model::AllSignalTypes>(
+fn build_input<Id: RowId, As: ui_model::AllSignalTypes>(
     model: &ui_model::Model<As>,
 ) -> Option<Type1> {
     let local_state = &model.page_create_journal_entry;

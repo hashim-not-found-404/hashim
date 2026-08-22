@@ -9,8 +9,10 @@ use crate::accounting_client::client_domain::ui_model::HashimSignal;
 use crate::accounting_domain::cases;
 use crate::accounting_domain::request_response;
 use crate::accounting_domain::utility::resource_utils;
-use crate::accounting_domain::utility::types;
+use crate::accounting_domain::utility::types::JsonWebTokenType;
 use crate::accounting_domain::utility::types::MyErrorTrait;
+use crate::accounting_domain::utility::types::RowId;
+use crate::accounting_domain::utility::types::UuidType;
 use crate::utility::traits;
 use crate::utility::traits::Receiver;
 use crate::utility::traits::Sender;
@@ -39,14 +41,11 @@ where
         request_response::OperationsInput::SignUp(data)
     }
 
-    fn user_uuid(data: &Self::Type2) -> Option<&types::UuidType> {
+    fn user_uuid(data: &Self::Type2) -> Option<&UuidType> {
         Some(&data.new_uuid)
     }
 
-    async fn state_full_operation<Id: types::RowId>(
-        data: &Self::Type2,
-        state: &mut Ch,
-    ) -> Self::Type3 {
+    async fn state_full_operation<Id: RowId>(data: &Self::Type2, state: &mut Ch) -> Self::Type3 {
         let errr = data.state_full_check::<LongCache>(state).await.unwrap();
 
         if errr.is_there_error() {
@@ -58,7 +57,7 @@ where
             user_id:         data.user_id.clone(),
             user_name:       data.name.clone(),
             hashed_password: String::new(),
-            jwt:             types::JsonWebTokenType(String::new()),
+            jwt:             JsonWebTokenType(String::new()),
         })
     }
 
@@ -121,7 +120,7 @@ impl ui_model::SignUp {
     pub(crate) async fn update<
         Rn: traits::RandomNumber,
         Rt: traits::Runtime,
-        Id: types::RowId,
+        Id: RowId,
         Mpsc: traits::MultiProducerSingleConsumer,
         As: ui_model::AllSignalTypes,
         Ch: cache::Cache,
@@ -176,7 +175,7 @@ impl ui_model::SignUp {
 async fn handle_submit<
     Rn: traits::RandomNumber,
     Rt: traits::Runtime,
-    Id: types::RowId,
+    Id: RowId,
     Mpsc: traits::MultiProducerSingleConsumer,
     As: ui_model::AllSignalTypes,
     Ch: cache::Cache,
@@ -232,7 +231,7 @@ async fn handle_submit<
 
 async fn handle_check<
     Rn: traits::RandomNumber,
-    Id: types::RowId,
+    Id: RowId,
     Mpsc: traits::MultiProducerSingleConsumer,
     As: ui_model::AllSignalTypes,
     Ch: cache::Cache,
@@ -271,7 +270,7 @@ async fn handle_check<
 
 fn build_input<As: ui_model::AllSignalTypes>(
     model: &ui_model::Model<As>,
-    new_uuid: types::UuidType,
+    new_uuid: UuidType,
 ) -> Type1 {
     cases::sign_up::Input {
         new_uuid,

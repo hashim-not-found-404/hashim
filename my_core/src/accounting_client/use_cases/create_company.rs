@@ -7,7 +7,8 @@ use crate::accounting_client::client_domain::ui_model::HashimSignal;
 use crate::accounting_domain::cases;
 use crate::accounting_domain::request_response;
 use crate::accounting_domain::utility::resource_utils;
-use crate::accounting_domain::utility::types;
+use crate::accounting_domain::utility::types::RowId;
+use crate::accounting_domain::utility::types::UuidType;
 use crate::utility::traits;
 use crate::utility::utils::ReadAndSet;
 
@@ -32,11 +33,11 @@ where
         request_response::OperationsInput::CreateCompany(data)
     }
 
-    fn user_uuid(data: &Self::Type2) -> Option<&types::UuidType> {
+    fn user_uuid(data: &Self::Type2) -> Option<&UuidType> {
         Some(&data.user_uuid)
     }
 
-    async fn state_full_operation<Id: types::RowId>(data: &Self::Type2, _: &mut Ch) -> Self::Type3 {
+    async fn state_full_operation<Id: RowId>(data: &Self::Type2, _: &mut Ch) -> Self::Type3 {
         Ok(data.state_less_operation())
     }
 
@@ -98,7 +99,7 @@ where
 impl ui_model::CreateCompany {
     pub(crate) async fn update<
         Rn: traits::RandomNumber,
-        Id: types::RowId,
+        Id: RowId,
         Mpsc: traits::MultiProducerSingleConsumer,
         As: ui_model::AllSignalTypes,
         Ch: cache::Cache,
@@ -132,7 +133,7 @@ fn handle_close<As: ui_model::AllSignalTypes>(model: &'static ui_model::Model<As
 
 async fn handle_submit<
     Rn: traits::RandomNumber,
-    Id: types::RowId,
+    Id: RowId,
     Mpsc: traits::MultiProducerSingleConsumer,
     As: ui_model::AllSignalTypes,
     Ch: cache::Cache,
@@ -153,9 +154,7 @@ async fn handle_submit<
     handle_close::<As>(model);
 }
 
-fn build_input<Id: types::RowId, As: ui_model::AllSignalTypes>(
-    model: &ui_model::Model<As>,
-) -> Type1 {
+fn build_input<Id: RowId, As: ui_model::AllSignalTypes>(model: &ui_model::Model<As>) -> Type1 {
     let local_state = &model.page_create_company;
 
     cases::create_company::Input {

@@ -1,6 +1,7 @@
 use crate::accounting_domain::cases;
-use crate::accounting_domain::utility::types;
 use crate::accounting_domain::utility::types::MyErrorTrait;
+use crate::accounting_domain::utility::types::RowId;
+use crate::accounting_domain::utility::types::UserUuidError;
 use crate::server::utility::server_traits;
 use crate::server::utility::server_traits::DBClient;
 use crate::server::utility::server_traits::DBTransaction;
@@ -9,7 +10,7 @@ use crate::utility::traits::DynamicError;
 
 impl cases::create_company_branch::Input {
     pub(crate) async fn handle_operation<
-        Id: types::RowId,
+        Id: RowId,
         Cli: DBClient,
         Db: for<'a> cases::create_company_branch::DatabaseRead<Db<'a> = Cli::Txn<'a>>,
         DbWrite: for<'a> server_traits::DatabaseWrite<
@@ -26,7 +27,7 @@ impl cases::create_company_branch::Input {
     > {
         let mut errr = self.state_less_check::<Id>();
         if !side_effects.authenticated_users.contains(&self.user_uuid) {
-            errr.user_uuid = Some(types::UserUuidError::NotAuthenticated);
+            errr.user_uuid = Some(UserUuidError::NotAuthenticated);
         }
         if errr.is_there_error() {
             return Ok(Err(errr));

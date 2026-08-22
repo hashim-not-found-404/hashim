@@ -7,7 +7,11 @@ use crate::accounting_client::client_domain::ui_model::HashimSignal;
 use crate::accounting_domain::cases;
 use crate::accounting_domain::request_response;
 use crate::accounting_domain::utility::resource_utils;
-use crate::accounting_domain::utility::types;
+use crate::accounting_domain::utility::types::Branch;
+use crate::accounting_domain::utility::types::Company;
+use crate::accounting_domain::utility::types::ListOfCompanies;
+use crate::accounting_domain::utility::types::RowId;
+use crate::accounting_domain::utility::types::UuidType;
 use crate::utility::tools;
 use crate::utility::traits;
 use crate::utility::utils::ReadAndSet;
@@ -16,25 +20,25 @@ use std::sync::Arc;
 type Type1 = cases::list_company_and_branch::Input;
 type Type2 = cases::list_company_and_branch::Input;
 type Type3 = cases::list_company_and_branch::MyResult;
-type Type4 = Result<types::ListOfCompanies, ()>;
+type Type4 = Result<ListOfCompanies, ()>;
 
-impl tools::Sortable for types::Company {
-    type Key = (String, types::UuidType);
-
-    fn key(&self) -> Self::Key {
-        (self.name.clone(), self.uuid.clone())
-    }
-}
-
-impl tools::Sortable for types::Branch {
-    type Key = (String, types::UuidType);
+impl tools::Sortable for Company {
+    type Key = (String, UuidType);
 
     fn key(&self) -> Self::Key {
         (self.name.clone(), self.uuid.clone())
     }
 }
 
-pub fn sort_companies(companies: &mut types::ListOfCompanies) {
+impl tools::Sortable for Branch {
+    type Key = (String, UuidType);
+
+    fn key(&self) -> Self::Key {
+        (self.name.clone(), self.uuid.clone())
+    }
+}
+
+pub fn sort_companies(companies: &mut ListOfCompanies) {
     tools::sort(companies);
     for company in companies {
         tools::sort(&mut company.branches);
@@ -65,14 +69,11 @@ where
         request_response::OperationsInput::ListCompanyAndBranch(data)
     }
 
-    fn user_uuid(data: &Self::Type2) -> Option<&types::UuidType> {
+    fn user_uuid(data: &Self::Type2) -> Option<&UuidType> {
         Some(&data.user_uuid)
     }
 
-    async fn state_full_operation<Id: types::RowId>(
-        data: &Self::Type2,
-        state: &mut Ch,
-    ) -> Self::Type3 {
+    async fn state_full_operation<Id: RowId>(data: &Self::Type2, state: &mut Ch) -> Self::Type3 {
         let result = data.state_full_operation::<LongCache>(state).await.unwrap();
 
         Ok(result)
@@ -186,7 +187,7 @@ where
                             .branches
                             .into_iter()
                             .map(|branch_entry| {
-                                types::Branch {
+                                Branch {
                                     uuid: branch_entry.branch_uuid,
                                     name: branch_entry.branch_name,
                                 }
@@ -195,7 +196,7 @@ where
 
                         let role = company_entry.user_roles.first().cloned().unwrap_or_default();
 
-                        companies.push(types::Company {
+                        companies.push(Company {
                             uuid: company_entry.company_uuid,
                             name: company_entry.company_name,
                             role,

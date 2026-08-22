@@ -1,6 +1,7 @@
 use crate::utility::db_transaction;
 use crate::utility::utils::MyUuidConverter;
-use my_core::accounting_domain::utility::types;
+use my_core::accounting_domain::utility::types::Role;
+use my_core::accounting_domain::utility::types::UuidType;
 use my_core::server::utility::server_traits;
 use my_core::server::utility::server_traits::DBClient;
 use my_core::utility::traits::DynamicError;
@@ -50,7 +51,7 @@ impl DBClient for S {
 
     async fn read_roles_for_user(
         &mut self,
-        users_uuid: &HashSet<types::UuidType>,
+        users_uuid: &HashSet<UuidType>,
     ) -> Result<server_traits::AllRoles, DynamicError> {
         let stmt = self.client.prepare_cached(READ_ROLES_FOR_USER_QUERY).await.log()?;
 
@@ -70,10 +71,10 @@ impl DBClient for S {
                 let role_str: String = row.try_get("role").log()?;
                 let user_id: Uuid = row.try_get("user_").log()?;
 
-                let role = types::Role::from_str(&role_str).log()?;
+                let role = Role::from_str(&role_str).log()?;
 
-                let data_group_id = types::UuidType(data_group.into_bytes());
-                let user_id_typed = types::UuidType(user_id.into_bytes());
+                let data_group_id = UuidType(data_group.into_bytes());
+                let user_id_typed = UuidType(user_id.into_bytes());
 
                 match entity_type.as_str() {
                     "company" => {
@@ -104,7 +105,7 @@ impl DBClient for S {
 
     async fn write_nonce_if_not_used(
         &mut self,
-        nonce: &types::UuidType,
+        nonce: &UuidType,
     ) -> Result<bool /* is nonce used */, DynamicError> {
         let row = self
             .client

@@ -1,8 +1,10 @@
 use crate::utility::db_client;
 use crate::utility::utils::MyUuidConverter;
 use my_core::accounting_domain::cases;
-use my_core::accounting_domain::utility::types;
+use my_core::accounting_domain::utility::types::Currency;
 use my_core::accounting_domain::utility::types::DatabaseRead;
+use my_core::accounting_domain::utility::types::Role;
+use my_core::accounting_domain::utility::types::UuidType;
 use my_core::utility::traits::DynamicError;
 use my_core::utility::utils::LogError;
 use serde::Deserialize;
@@ -70,25 +72,25 @@ impl DatabaseRead for S {
 
         struct CompanyAgg {
             name:     String,
-            currency: types::Currency,
-            roles:    Vec<types::Role>,
+            currency: Currency,
+            roles:    Vec<Role>,
             branches: Vec<cases::list_company_and_branch::AllBranchesThatUserInWithRoles>,
         }
 
-        let mut company_map: HashMap<types::UuidType, CompanyAgg> = HashMap::new();
+        let mut company_map: HashMap<UuidType, CompanyAgg> = HashMap::new();
 
         for row in rows {
             let company_uuid_str: String = row.try_get(0).log()?;
             let company_uuid_parsed = Uuid::parse_str(&company_uuid_str).log()?;
-            let company_uuid = types::UuidType(company_uuid_parsed.into_bytes());
+            let company_uuid = UuidType(company_uuid_parsed.into_bytes());
 
             let company_name: String = row.try_get(1).log()?;
             let company_currency_str: String = row.try_get(2).log()?;
             let user_role_str: String = row.try_get(3).log()?;
             let branches_json: serde_json::Value = row.try_get(4).log()?;
 
-            let company_currency = types::Currency::from_str(&company_currency_str).log()?;
-            let role = types::Role::from_str(&user_role_str).log()?;
+            let company_currency = Currency::from_str(&company_currency_str).log()?;
+            let role = Role::from_str(&user_role_str).log()?;
 
             let branches: Vec<BranchJson> = serde_json::from_value(branches_json).log()?;
             let branch_entries: Vec<
@@ -97,8 +99,8 @@ impl DatabaseRead for S {
                 .into_iter()
                 .map(|bj| {
                     let uuid = Uuid::parse_str(&bj.uuid).log()?;
-                    let branch_uuid = types::UuidType(uuid.into_bytes());
-                    let branch_currency = types::Currency::from_str(&bj.currency).log()?;
+                    let branch_uuid = UuidType(uuid.into_bytes());
+                    let branch_currency = Currency::from_str(&bj.currency).log()?;
                     Ok(cases::list_company_and_branch::AllBranchesThatUserInWithRoles {
                         branch_uuid,
                         branch_name: bj.name,

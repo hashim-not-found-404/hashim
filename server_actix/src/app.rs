@@ -17,7 +17,8 @@ use adapters::runtime;
 use adapters::time;
 use db_client_cockroach::db_bundle;
 use db_client_cockroach::utility::db;
-use my_core::accounting_domain::utility::types;
+use my_core::accounting_domain::utility::types::HOST;
+use my_core::accounting_domain::utility::types::PORT;
 use my_core::server::server_methods;
 
 type ServerMethodsType = server_methods::ServerMethods<actors::target::S, jwt::target::S, db::S>;
@@ -39,7 +40,7 @@ pub(crate) async fn main() {
             .route("/ws", web::get().to(ws_handler))
     })
     // .bind_rustls_0_23((HOST, PORT), get_tls_config())
-    .bind((types::HOST, types::PORT))
+    .bind((HOST, PORT))
     .unwrap()
     .run()
     .await

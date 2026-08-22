@@ -2,8 +2,9 @@ use crate::utility::cache_adapter;
 use crate::utility::utils::MyUuidConverter;
 use crate::utility::utils::MyUuidConverter1;
 use my_core::accounting_domain::cases;
-use my_core::accounting_domain::utility::types;
+use my_core::accounting_domain::utility::types::Currency;
 use my_core::accounting_domain::utility::types::DatabaseRead;
+use my_core::accounting_domain::utility::types::Role;
 use my_core::utility::traits::DynamicError;
 use rusqlite::params;
 use std::str::FromStr;
@@ -33,8 +34,8 @@ impl DatabaseRead for S {
         db: &mut Self::Db<'_>,
         input: &Self::Input,
     ) -> Result<Self::Output, DynamicError> {
+        use Role;
         use std::collections::HashMap;
-        use types::Role;
 
         let company_query = QUERY1;
         let mut stmt = db.tables_db.prepare(company_query).unwrap();
@@ -103,7 +104,7 @@ impl DatabaseRead for S {
         let mut result = Vec::new();
         for (company_uuid_str, (company_name, company_currency_str, company_roles)) in company_map {
             let company_uuid = company_uuid_str.clone().to_uuid();
-            let company_currency = types::Currency::from_str(&company_currency_str).unwrap();
+            let company_currency = Currency::from_str(&company_currency_str).unwrap();
 
             let branches: Vec<cases::list_company_and_branch::AllBranchesThatUserInWithRoles> =
                 branch_map
@@ -111,8 +112,7 @@ impl DatabaseRead for S {
                     .filter(|(_, info)| info.company_belong == company_uuid_str)
                     .map(|(_, info)| {
                         let branch_uuid = info.branch_uuid.clone().to_uuid();
-                        let branch_currency =
-                            types::Currency::from_str(&info.branch_currency).unwrap();
+                        let branch_currency = Currency::from_str(&info.branch_currency).unwrap();
                         cases::list_company_and_branch::AllBranchesThatUserInWithRoles {
                             branch_uuid,
                             branch_name: info.branch_name.clone(),

@@ -2,8 +2,9 @@ use crate::utility::db_transaction;
 use crate::utility::utils::MyUuidConverter;
 use accounting_engine::accounting_stuff;
 use my_core::accounting_domain::cases;
-use my_core::accounting_domain::utility::types;
 use my_core::accounting_domain::utility::types::DatabaseRead;
+use my_core::accounting_domain::utility::types::Role;
+use my_core::accounting_domain::utility::types::UuidType;
 use my_core::server::utility::server_traits;
 use my_core::utility::traits::DynamicError;
 use my_core::utility::utils::LogError;
@@ -107,12 +108,12 @@ impl DatabaseRead for S {
         let new_entries_map_json: Value = row.try_get(3).log()?;
         let account_infos_json: Value = row.try_get(4).log()?;
 
-        let user_roles: Vec<types::Role> = roles_json
+        let user_roles: Vec<Role> = roles_json
             .as_array()
             .unwrap_or(&vec![])
             .iter()
             .filter_map(|v| v.as_str())
-            .map(|s| types::Role::from_str(s).unwrap())
+            .map(|s| Role::from_str(s).unwrap())
             .collect();
 
         let mut used_new_entries_uuid = HashSet::new();
@@ -121,7 +122,7 @@ impl DatabaseRead for S {
                 let uuid_str = key.clone();
                 let used = value.as_bool().unwrap_or(false);
                 let uuid_parsed = Uuid::parse_str(&uuid_str).log()?;
-                let uuid_type = types::UuidType(uuid_parsed.into_bytes());
+                let uuid_type = UuidType(uuid_parsed.into_bytes());
                 if used {
                     used_new_entries_uuid.insert(uuid_type);
                 }
@@ -143,7 +144,7 @@ impl DatabaseRead for S {
         let mut account_info = cases::create_journal_entry::AccountInfoProviderImpl(HashMap::new());
         for info in account_infos {
             let uuid_parsed = Uuid::parse_str(&info.account_uuid).log()?;
-            let uuid_type = types::UuidType(uuid_parsed.into_bytes());
+            let uuid_type = UuidType(uuid_parsed.into_bytes());
             let in_flow = accounting_stuff::InFlowType::from_str(&info.in_flow_type).log()?;
             let out_flow = accounting_stuff::OutFlowType::from_str(&info.out_flow_type).log()?;
             let inventory = cases::create_journal_entry::InventoryWrapper(info.inventory);

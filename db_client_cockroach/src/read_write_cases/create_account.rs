@@ -1,8 +1,8 @@
 use crate::utility::db_transaction;
 use crate::utility::utils::MyUuidConverter;
 use my_core::accounting_domain::cases;
-use my_core::accounting_domain::utility::types;
 use my_core::accounting_domain::utility::types::DatabaseRead;
+use my_core::accounting_domain::utility::types::Role;
 use my_core::server::utility::server_traits;
 use my_core::utility::traits::DynamicError;
 use my_core::utility::utils::LogError;
@@ -56,7 +56,7 @@ impl DatabaseRead for S {
         let role_strings: Vec<String> = row.try_get(0).log()?;
         let user_roles = role_strings
             .into_iter()
-            .map(|s| types::Role::from_str(&s))
+            .map(|s| Role::from_str(&s))
             .collect::<Result<Vec<_>, _>>()
             .log()?;
 
