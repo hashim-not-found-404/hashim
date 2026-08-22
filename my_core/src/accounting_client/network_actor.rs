@@ -1,7 +1,9 @@
-use crate::utility::traits;
 use crate::utility::traits::DynamicError;
 use crate::utility::traits::Either;
+use crate::utility::traits::Runtime;
 use std::time::Duration;
+
+const SLEEP_DURATION: Duration = Duration::from_millis(100);
 
 pub trait WSClient: Sized {
     fn connect(url: &str) -> impl Future<Output = Result<Self, DynamicError>>;
@@ -23,7 +25,7 @@ async fn network_radar<Ws: WSClient>(ws: Option<&mut Ws>) -> Result<Vec<u8>, Dyn
     }
 }
 
-async fn connect<Rt: traits::Runtime, Ws: WSClient, Nw: Network>(
+async fn connect<Rt: Runtime, Ws: WSClient, Nw: Network>(
     network_utils: &mut Nw,
     url: &str,
     ws: &mut Option<Ws>,
@@ -35,10 +37,10 @@ async fn connect<Rt: traits::Runtime, Ws: WSClient, Nw: Network>(
         network_utils.network_state(true).await;
         return;
     }
-    Rt::sleep(Duration::from_secs(5)).await;
+    Rt::sleep(SLEEP_DURATION).await;
 }
 
-pub(crate) fn network_actor<Rt: traits::Runtime, Ws: WSClient, Nw: Network + 'static>(
+pub(crate) fn network_actor<Rt: Runtime, Ws: WSClient, Nw: Network + 'static>(
     mut network_utils: Nw,
     url: String,
 ) {
@@ -57,7 +59,7 @@ pub(crate) fn network_actor<Rt: traits::Runtime, Ws: WSClient, Nw: Network + 'st
                                 connect::<Rt, Ws, Nw>(&mut network_utils, &url, &mut ws).await;
                             }
                         }
-                        None => Rt::sleep(Duration::from_secs(5)).await,
+                        None => Rt::sleep(SLEEP_DURATION).await,
                     }
                 }
 
