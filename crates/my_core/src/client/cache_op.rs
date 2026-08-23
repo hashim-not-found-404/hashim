@@ -1,7 +1,6 @@
 use crate::client;
 use crate::client::fetches;
 use crate::client::utility::cache::Cache;
-use crate::client::utility::client_traits::ReadServerOnly;
 use crate::client::utility::client_traits::ViewAndCache;
 use crate::domain::request_response;
 use crate::domain::use_cases;
@@ -264,7 +263,7 @@ impl request_response::OperationsResult {
                 extract_resource!(create_account, Dbb::CreateAccount, i)
             }
             request_response::OperationsResult::GetAllAccounts(i) => {
-                fetches::get_all_accounts::ViewAndCacheType::extract_resource(i)
+                fetches::get_all_accounts::extract_resource(i)
             }
             request_response::OperationsResult::GetAllAccountsForBranch(i) => {
                 <fetches::get_all_accounts_for_branch::ViewAndCacheType as ViewAndCache<

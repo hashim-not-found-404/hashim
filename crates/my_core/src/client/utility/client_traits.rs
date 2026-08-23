@@ -38,14 +38,6 @@ pub(crate) trait ViewAndCache<Ch: Cache, T> {
     fn apply_on_the_model<As: AllSignalTypes>(output: &Self::Type4, model: &Model<As>);
 }
 
-pub(crate) trait ReadServerOnly {
-    type Type1;
-    type Type2;
-    type Type3;
-
-    fn extract_resource(data: &Self::Type3) -> Vec<resource_utils::ResourceInfo>;
-}
-
 #[macro_export]
 macro_rules! make_wrap_unwrap {
     ($case_name:ident, $variant:ident) => {
