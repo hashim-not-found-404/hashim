@@ -56,33 +56,33 @@ where
             jwt:             JsonWebTokenType(String::new()),
         })
     }
+}
 
-    fn extract_resource(data: &Self::Type3) -> Vec<resource_utils::ResourceInfo> {
-        match data {
-            Ok(ok) => {
-                let mut resource = Vec::with_capacity(3);
+pub(crate) fn extract_resource(data: &Type3) -> Vec<resource_utils::ResourceInfo> {
+    match data {
+        Ok(ok) => {
+            let mut resource = Vec::with_capacity(3);
 
+            resource.push(resource_utils::ResourceInfo {
+                row_uuid: ok.new_uuid.0.clone(),
+                resource: resource_utils::Resource::Jwt(ok.jwt.clone()),
+            });
+
+            resource.push(resource_utils::ResourceInfo {
+                row_uuid: ok.new_uuid.0.clone(),
+                resource: resource_utils::Resource::TableUserFieldId(ok.user_id.clone()),
+            });
+
+            if let Some(user_name) = &ok.user_name {
                 resource.push(resource_utils::ResourceInfo {
                     row_uuid: ok.new_uuid.0.clone(),
-                    resource: resource_utils::Resource::Jwt(ok.jwt.clone()),
+                    resource: resource_utils::Resource::TableUserFieldName(user_name.clone()),
                 });
-
-                resource.push(resource_utils::ResourceInfo {
-                    row_uuid: ok.new_uuid.0.clone(),
-                    resource: resource_utils::Resource::TableUserFieldId(ok.user_id.clone()),
-                });
-
-                if let Some(user_name) = &ok.user_name {
-                    resource.push(resource_utils::ResourceInfo {
-                        row_uuid: ok.new_uuid.0.clone(),
-                        resource: resource_utils::Resource::TableUserFieldName(user_name.clone()),
-                    });
-                }
-
-                resource
             }
-            Err(_) => Vec::new(),
+
+            resource
         }
+        Err(_) => Vec::new(),
     }
 }
 

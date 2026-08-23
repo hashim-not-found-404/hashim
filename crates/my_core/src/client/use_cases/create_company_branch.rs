@@ -49,60 +49,60 @@ where
 
         Ok(data.state_less_operation())
     }
+}
 
-    fn extract_resource(data: &Self::Type3) -> Vec<resource_utils::ResourceInfo> {
-        match data {
-            Ok(ok) => {
-                let this = ok;
-                let branch_uuid = this.new_uuid.clone();
-                vec![
-                        resource_utils::ResourceInfo {
-                            row_uuid: branch_uuid.0.clone(),
-                            resource: resource_utils::Resource::TableCompanyBranchFieldName(
-                                this.branch_name.clone(),
-                            ),
-                        },
-                        resource_utils::ResourceInfo {
-                            row_uuid: branch_uuid.0.clone(),
-                            resource: resource_utils::Resource::TableCompanyBranchFieldCompanyBelong(
-                                this.company_belong.clone(),
-                            ),
-                        },
-                        resource_utils::ResourceInfo {
-                            row_uuid: branch_uuid.0.clone(),
-                            resource: resource_utils::Resource::TableCompanyBranchFieldLocation(
-                                this.location.clone(),
-                            ),
-                        },
-                        resource_utils::ResourceInfo {
-                            row_uuid: branch_uuid.0.clone(),
-                            resource: resource_utils::Resource::TableCompanyBranchFieldCurrency(
-                                this.currency.clone(),
-                            ),
-                        },
-                        resource_utils::ResourceInfo {
-                            row_uuid: branch_uuid.0.clone(),
-                            resource: resource_utils::Resource::TableAccessControlForCompanyBranchFieldRole(
-                                this.role.clone(),
-                            ),
-                        },
-                        resource_utils::ResourceInfo {
-                            row_uuid: branch_uuid.0.clone(),
-                            resource: resource_utils::Resource::TableAccessControlForCompanyBranchFieldUser(
-                                this.user_uuid.clone(),
-                            ),
-                        },
-                        resource_utils::ResourceInfo {
-                            row_uuid: branch_uuid.0.clone(),
-                            resource:
-                                resource_utils::Resource::TableAccessControlForCompanyBranchFieldDataGroup(
-                                    this.new_uuid.clone(),
-                                ),
-                        },
-                    ]
-            }
-            Err(_) => Vec::new(),
+pub(crate) fn extract_resource(data: &Type3) -> Vec<resource_utils::ResourceInfo> {
+    match data {
+        Ok(ok) => {
+            let this = ok;
+            let branch_uuid = this.new_uuid.clone();
+            vec![
+                resource_utils::ResourceInfo {
+                    row_uuid: branch_uuid.0.clone(),
+                    resource: resource_utils::Resource::TableCompanyBranchFieldName(
+                        this.branch_name.clone(),
+                    ),
+                },
+                resource_utils::ResourceInfo {
+                    row_uuid: branch_uuid.0.clone(),
+                    resource: resource_utils::Resource::TableCompanyBranchFieldCompanyBelong(
+                        this.company_belong.clone(),
+                    ),
+                },
+                resource_utils::ResourceInfo {
+                    row_uuid: branch_uuid.0.clone(),
+                    resource: resource_utils::Resource::TableCompanyBranchFieldLocation(
+                        this.location.clone(),
+                    ),
+                },
+                resource_utils::ResourceInfo {
+                    row_uuid: branch_uuid.0.clone(),
+                    resource: resource_utils::Resource::TableCompanyBranchFieldCurrency(
+                        this.currency.clone(),
+                    ),
+                },
+                resource_utils::ResourceInfo {
+                    row_uuid: branch_uuid.0.clone(),
+                    resource: resource_utils::Resource::TableAccessControlForCompanyBranchFieldRole(
+                        this.role.clone(),
+                    ),
+                },
+                resource_utils::ResourceInfo {
+                    row_uuid: branch_uuid.0.clone(),
+                    resource: resource_utils::Resource::TableAccessControlForCompanyBranchFieldUser(
+                        this.user_uuid.clone(),
+                    ),
+                },
+                resource_utils::ResourceInfo {
+                    row_uuid: branch_uuid.0.clone(),
+                    resource:
+                        resource_utils::Resource::TableAccessControlForCompanyBranchFieldDataGroup(
+                            this.new_uuid.clone(),
+                        ),
+                },
+            ]
         }
+        Err(_) => Vec::new(),
     }
 }
 

@@ -51,50 +51,48 @@ where
 
         Ok(data.state_less_operation())
     }
+}
 
-    fn extract_resource(data: &Self::Type3) -> Vec<resource_utils::ResourceInfo> {
-        match data {
-            Ok(ok) => {
-                vec![
-                    resource_utils::ResourceInfo {
-                        row_uuid: ok.new_uuid.0.clone(),
-                        resource: resource_utils::Resource::TableAccountFieldCompanyBelong(
-                            ok.belong_to_company.clone(),
+pub(crate) fn extract_resource(data: &Type3) -> Vec<resource_utils::ResourceInfo> {
+    match data {
+        Ok(ok) => {
+            vec![
+                resource_utils::ResourceInfo {
+                    row_uuid: ok.new_uuid.0.clone(),
+                    resource: resource_utils::Resource::TableAccountFieldCompanyBelong(
+                        ok.belong_to_company.clone(),
+                    ),
+                },
+                resource_utils::ResourceInfo {
+                    row_uuid: ok.new_uuid.0.clone(),
+                    resource: resource_utils::Resource::TableAccountFieldIsDebit(ok.is_debit),
+                },
+                resource_utils::ResourceInfo {
+                    row_uuid: ok.new_uuid.0.clone(),
+                    resource: resource_utils::Resource::TableAccountFieldIsPermanentAccount(
+                        ok.is_permanent_account,
+                    ),
+                },
+                resource_utils::ResourceInfo {
+                    row_uuid: ok.new_uuid.0.clone(),
+                    resource: resource_utils::Resource::TableAccountFieldName(
+                        ok.account_name.clone(),
+                    ),
+                },
+                resource_utils::ResourceInfo {
+                    row_uuid: ok.new_uuid.0.clone(),
+                    resource: resource_utils::Resource::TableAccountFieldNotes(ok.notes.clone()),
+                },
+                resource_utils::ResourceInfo {
+                    row_uuid: ok.new_uuid.0.clone(),
+                    resource:
+                        resource_utils::Resource::TableAccountFieldUnitOfMeasurementOfQuantity(
+                            ok.unit_of_measurement_of_quantity.clone(),
                         ),
-                    },
-                    resource_utils::ResourceInfo {
-                        row_uuid: ok.new_uuid.0.clone(),
-                        resource: resource_utils::Resource::TableAccountFieldIsDebit(ok.is_debit),
-                    },
-                    resource_utils::ResourceInfo {
-                        row_uuid: ok.new_uuid.0.clone(),
-                        resource: resource_utils::Resource::TableAccountFieldIsPermanentAccount(
-                            ok.is_permanent_account,
-                        ),
-                    },
-                    resource_utils::ResourceInfo {
-                        row_uuid: ok.new_uuid.0.clone(),
-                        resource: resource_utils::Resource::TableAccountFieldName(
-                            ok.account_name.clone(),
-                        ),
-                    },
-                    resource_utils::ResourceInfo {
-                        row_uuid: ok.new_uuid.0.clone(),
-                        resource: resource_utils::Resource::TableAccountFieldNotes(
-                            ok.notes.clone(),
-                        ),
-                    },
-                    resource_utils::ResourceInfo {
-                        row_uuid: ok.new_uuid.0.clone(),
-                        resource:
-                            resource_utils::Resource::TableAccountFieldUnitOfMeasurementOfQuantity(
-                                ok.unit_of_measurement_of_quantity.clone(),
-                            ),
-                    },
-                ]
-            }
-            Err(_) => Vec::new(),
+                },
+            ]
         }
+        Err(_) => Vec::new(),
     }
 }
 

@@ -24,6 +24,8 @@ pub(crate) const SUBS: &'static [resource_utils::Subscribe] = &[
     resource_utils::Subscribe::TableAccountFlowTypeFieldOutflowType,
 ];
 
+type Type3 = use_cases::get_all_accounts_for_branch::MyResult;
+
 pub struct ViewAndCacheType;
 
 impl<Ch, LongCache> ViewAndCache<Ch, LongCache> for ViewAndCacheType
@@ -53,79 +55,77 @@ where
         };
         Ok(ok)
     }
+}
 
-    fn extract_resource(data: &Self::Type3) -> Vec<resource_utils::ResourceInfo> {
-        match data {
-            Ok(ok) => {
-                let mut resources = Vec::new();
-                for account in &ok.accounts {
-                    resources.push(resource_utils::ResourceInfo {
-                        row_uuid: account.row_uuid.0.clone(),
-                        resource: resource_utils::Resource::TableAccountFieldCompanyBelong(
-                            ok.company_uuid.clone(),
+pub(crate) fn extract_resource(data: &Type3) -> Vec<resource_utils::ResourceInfo> {
+    match data {
+        Ok(ok) => {
+            let mut resources = Vec::new();
+            for account in &ok.accounts {
+                resources.push(resource_utils::ResourceInfo {
+                    row_uuid: account.row_uuid.0.clone(),
+                    resource: resource_utils::Resource::TableAccountFieldCompanyBelong(
+                        ok.company_uuid.clone(),
+                    ),
+                });
+                resources.push(resource_utils::ResourceInfo {
+                    row_uuid: account.row_uuid.0.clone(),
+                    resource: resource_utils::Resource::TableAccountFieldIsDebit(account.is_debit),
+                });
+                resources.push(resource_utils::ResourceInfo {
+                    row_uuid: account.row_uuid.0.clone(),
+                    resource: resource_utils::Resource::TableAccountFieldIsPermanentAccount(
+                        account.is_permanent_account,
+                    ),
+                });
+                resources.push(resource_utils::ResourceInfo {
+                    row_uuid: account.row_uuid.0.clone(),
+                    resource: resource_utils::Resource::TableAccountFieldName(
+                        account.account_name.clone(),
+                    ),
+                });
+                resources.push(resource_utils::ResourceInfo {
+                    row_uuid: account.row_uuid.0.clone(),
+                    resource: resource_utils::Resource::TableAccountFieldNotes(
+                        account.notes.clone(),
+                    ),
+                });
+                resources.push(resource_utils::ResourceInfo {
+                    row_uuid: account.row_uuid.0.clone(),
+                    resource:
+                        resource_utils::Resource::TableAccountFieldUnitOfMeasurementOfQuantity(
+                            account.unit_of_measurement_of_quantity.clone(),
                         ),
-                    });
-                    resources.push(resource_utils::ResourceInfo {
-                        row_uuid: account.row_uuid.0.clone(),
-                        resource: resource_utils::Resource::TableAccountFieldIsDebit(
-                            account.is_debit,
-                        ),
-                    });
-                    resources.push(resource_utils::ResourceInfo {
-                        row_uuid: account.row_uuid.0.clone(),
-                        resource: resource_utils::Resource::TableAccountFieldIsPermanentAccount(
-                            account.is_permanent_account,
-                        ),
-                    });
-                    resources.push(resource_utils::ResourceInfo {
-                        row_uuid: account.row_uuid.0.clone(),
-                        resource: resource_utils::Resource::TableAccountFieldName(
-                            account.account_name.clone(),
-                        ),
-                    });
-                    resources.push(resource_utils::ResourceInfo {
-                        row_uuid: account.row_uuid.0.clone(),
-                        resource: resource_utils::Resource::TableAccountFieldNotes(
-                            account.notes.clone(),
-                        ),
-                    });
-                    resources.push(resource_utils::ResourceInfo {
-                        row_uuid: account.row_uuid.0.clone(),
-                        resource:
-                            resource_utils::Resource::TableAccountFieldUnitOfMeasurementOfQuantity(
-                                account.unit_of_measurement_of_quantity.clone(),
-                            ),
-                    });
-                }
-                for acc_branch in &ok.accounts_for_branch {
-                    resources.push(resource_utils::ResourceInfo {
-                        row_uuid: acc_branch.row_uuid.0.clone(),
-                        resource: resource_utils::Resource::TableAccountFlowTypeFieldAccount(
-                            acc_branch.account_uuid.clone(),
-                        ),
-                    });
-                    resources.push(resource_utils::ResourceInfo {
-                        row_uuid: acc_branch.row_uuid.0.clone(),
-                        resource: resource_utils::Resource::TableAccountFlowTypeFieldInflowType(
-                            acc_branch.inflow_type,
-                        ),
-                    });
-                    resources.push(resource_utils::ResourceInfo {
-                        row_uuid: acc_branch.row_uuid.0.clone(),
-                        resource: resource_utils::Resource::TableAccountFlowTypeFieldOutflowType(
-                            acc_branch.outflow_type,
-                        ),
-                    });
-                    resources.push(resource_utils::ResourceInfo {
-                        row_uuid: acc_branch.row_uuid.0.clone(),
-                        resource: resource_utils::Resource::TableAccountFlowTypeFieldCompanyBranch(
-                            ok.company_branch_uuid.clone(),
-                        ),
-                    });
-                }
-                resources
+                });
             }
-            Err(_) => Vec::new(),
+            for acc_branch in &ok.accounts_for_branch {
+                resources.push(resource_utils::ResourceInfo {
+                    row_uuid: acc_branch.row_uuid.0.clone(),
+                    resource: resource_utils::Resource::TableAccountFlowTypeFieldAccount(
+                        acc_branch.account_uuid.clone(),
+                    ),
+                });
+                resources.push(resource_utils::ResourceInfo {
+                    row_uuid: acc_branch.row_uuid.0.clone(),
+                    resource: resource_utils::Resource::TableAccountFlowTypeFieldInflowType(
+                        acc_branch.inflow_type,
+                    ),
+                });
+                resources.push(resource_utils::ResourceInfo {
+                    row_uuid: acc_branch.row_uuid.0.clone(),
+                    resource: resource_utils::Resource::TableAccountFlowTypeFieldOutflowType(
+                        acc_branch.outflow_type,
+                    ),
+                });
+                resources.push(resource_utils::ResourceInfo {
+                    row_uuid: acc_branch.row_uuid.0.clone(),
+                    resource: resource_utils::Resource::TableAccountFlowTypeFieldCompanyBranch(
+                        ok.company_branch_uuid.clone(),
+                    ),
+                });
+            }
+            resources
         }
+        Err(_) => Vec::new(),
     }
 }

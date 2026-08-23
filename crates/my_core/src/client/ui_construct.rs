@@ -226,7 +226,7 @@ impl<
     }
 
     fn extract_resource(resp: &Self::Response) -> Vec<Self::Resource> {
-        resp.operations.iter().flat_map(|a| a.operation.extract_resource::<Ti, Ch, Dbb>()).collect()
+        resp.operations.iter().flat_map(|a| a.operation.extract_resource()).collect()
     }
 
     async fn write_resource(cache: &Self::Cache, resource: &[Self::Resource]) {
@@ -277,7 +277,7 @@ impl<
     }
 
     fn extract_resource1(data: &Self::OpResult) -> Vec<Self::Resource> {
-        data.extract_resource::<Ti, Ch, Dbb>()
+        data.extract_resource()
     }
 
     async fn apply_input(cache: &mut Self::Cache, resource: &[Self::Resource]) {

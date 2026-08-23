@@ -44,87 +44,85 @@ where
     async fn state_full_operation<Id: RowId>(data: &Self::Type2, state: &mut Ch) -> Self::Type3 {
         data.state_full_check::<LongCache, Ti>(state).await.unwrap()
     }
+}
 
-    fn extract_resource(data: &Self::Type3) -> Vec<resource_utils::ResourceInfo> {
-        match data {
-            Ok(ok) => {
-                let mut resources = Vec::new();
+pub(crate) fn extract_resource(data: &Type3) -> Vec<resource_utils::ResourceInfo> {
+    match data {
+        Ok(ok) => {
+            let mut resources = Vec::new();
 
+            resources.push(resource_utils::ResourceInfo {
+                row_uuid: ok.new_uuid.clone(),
+                resource: resource_utils::Resource::TableEntryFieldWriter(ok.user_uuid.clone()),
+            });
+            resources.push(resource_utils::ResourceInfo {
+                row_uuid: ok.new_uuid.clone(),
+                resource: resource_utils::Resource::TableEntryFieldTime(ok.time),
+            });
+            if let Some(shared_id) = &ok.shared_entry_id {
                 resources.push(resource_utils::ResourceInfo {
                     row_uuid: ok.new_uuid.clone(),
-                    resource: resource_utils::Resource::TableEntryFieldWriter(ok.user_uuid.clone()),
+                    resource: resource_utils::Resource::TableEntryFieldSharedEntryId(
+                        shared_id.clone(),
+                    ),
                 });
-                resources.push(resource_utils::ResourceInfo {
-                    row_uuid: ok.new_uuid.clone(),
-                    resource: resource_utils::Resource::TableEntryFieldTime(ok.time),
-                });
-                if let Some(shared_id) = &ok.shared_entry_id {
-                    resources.push(resource_utils::ResourceInfo {
-                        row_uuid: ok.new_uuid.clone(),
-                        resource: resource_utils::Resource::TableEntryFieldSharedEntryId(
-                            shared_id.clone(),
-                        ),
-                    });
-                }
-
-                for single in &ok.double_entry {
-                    resources.push(resource_utils::ResourceInfo {
-                        row_uuid: single.new_uuid.clone(),
-                        resource: resource_utils::Resource::TableSingleEntryFieldDoubleEntry(
-                            single.double_entry_number,
-                        ),
-                    });
-                    resources.push(resource_utils::ResourceInfo {
-                        row_uuid: single.new_uuid.clone(),
-                        resource: resource_utils::Resource::TableSingleEntryFieldEntry(
-                            ok.new_uuid.clone(),
-                        ),
-                    });
-                    resources.push(resource_utils::ResourceInfo {
-                        row_uuid: single.new_uuid.clone(),
-                        resource: resource_utils::Resource::TableSingleEntryFieldAccount(
-                            single.account.clone(),
-                        ),
-                    });
-                    resources.push(resource_utils::ResourceInfo {
-                        row_uuid: single.new_uuid.clone(),
-                        resource: resource_utils::Resource::TableSingleEntryFieldIsDebit(
-                            single.is_debit,
-                        ),
-                    });
-                    resources.push(resource_utils::ResourceInfo {
-                        row_uuid: single.new_uuid.clone(),
-                        resource: resource_utils::Resource::TableSingleEntryFieldCostOutFlowType(
-                            single.out_flow_type,
-                        ),
-                    });
-                    resources.push(resource_utils::ResourceInfo {
-                        row_uuid: single.new_uuid.clone(),
-                        resource: resource_utils::Resource::TableSingleEntryFieldQuantity(
-                            single.quantity,
-                        ),
-                    });
-                    resources.push(resource_utils::ResourceInfo {
-                        row_uuid: single.new_uuid.clone(),
-                        resource: resource_utils::Resource::TableSingleEntryFieldAmount(
-                            single.amount,
-                        ),
-                    });
-                }
-
-                for (account_uuid, inventory) in &ok.inventory {
-                    resources.push(resource_utils::ResourceInfo {
-                        row_uuid: account_uuid.0.clone(),
-                        resource: resource_utils::Resource::TableAccountFieldInventory(
-                            inventory.0.clone(),
-                        ),
-                    });
-                }
-
-                resources
             }
-            Err(_) => Vec::new(),
+
+            for single in &ok.double_entry {
+                resources.push(resource_utils::ResourceInfo {
+                    row_uuid: single.new_uuid.clone(),
+                    resource: resource_utils::Resource::TableSingleEntryFieldDoubleEntry(
+                        single.double_entry_number,
+                    ),
+                });
+                resources.push(resource_utils::ResourceInfo {
+                    row_uuid: single.new_uuid.clone(),
+                    resource: resource_utils::Resource::TableSingleEntryFieldEntry(
+                        ok.new_uuid.clone(),
+                    ),
+                });
+                resources.push(resource_utils::ResourceInfo {
+                    row_uuid: single.new_uuid.clone(),
+                    resource: resource_utils::Resource::TableSingleEntryFieldAccount(
+                        single.account.clone(),
+                    ),
+                });
+                resources.push(resource_utils::ResourceInfo {
+                    row_uuid: single.new_uuid.clone(),
+                    resource: resource_utils::Resource::TableSingleEntryFieldIsDebit(
+                        single.is_debit,
+                    ),
+                });
+                resources.push(resource_utils::ResourceInfo {
+                    row_uuid: single.new_uuid.clone(),
+                    resource: resource_utils::Resource::TableSingleEntryFieldCostOutFlowType(
+                        single.out_flow_type,
+                    ),
+                });
+                resources.push(resource_utils::ResourceInfo {
+                    row_uuid: single.new_uuid.clone(),
+                    resource: resource_utils::Resource::TableSingleEntryFieldQuantity(
+                        single.quantity,
+                    ),
+                });
+                resources.push(resource_utils::ResourceInfo {
+                    row_uuid: single.new_uuid.clone(),
+                    resource: resource_utils::Resource::TableSingleEntryFieldAmount(single.amount),
+                });
+            }
+
+            for (account_uuid, inventory) in &ok.inventory {
+                resources.push(resource_utils::ResourceInfo {
+                    row_uuid: account_uuid.0.clone(),
+                    resource: resource_utils::Resource::TableAccountFieldInventory(
+                        inventory.0.clone(),
+                    ),
+                });
+            }
+
+            resources
         }
+        Err(_) => Vec::new(),
     }
 }
 

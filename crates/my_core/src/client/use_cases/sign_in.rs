@@ -91,34 +91,34 @@ where
             }
         }
     }
+}
 
-    fn extract_resource(data: &Self::Type3) -> Vec<resource_utils::ResourceInfo> {
-        match data {
-            Ok(ok) => {
-                let mut resources = Vec::with_capacity(3);
-                let user_uuid = &ok.user_uuid;
+pub(crate) fn extract_resource(data: &Type3) -> Vec<resource_utils::ResourceInfo> {
+    match data {
+        Ok(ok) => {
+            let mut resources = Vec::with_capacity(3);
+            let user_uuid = &ok.user_uuid;
 
+            resources.push(resource_utils::ResourceInfo {
+                row_uuid: user_uuid.0.clone(),
+                resource: resource_utils::Resource::Jwt(ok.jwt.clone()),
+            });
+
+            resources.push(resource_utils::ResourceInfo {
+                row_uuid: user_uuid.0.clone(),
+                resource: resource_utils::Resource::TableUserFieldId(ok.user_id.clone()),
+            });
+
+            if let Some(name) = &ok.user_name {
                 resources.push(resource_utils::ResourceInfo {
                     row_uuid: user_uuid.0.clone(),
-                    resource: resource_utils::Resource::Jwt(ok.jwt.clone()),
+                    resource: resource_utils::Resource::TableUserFieldName(name.clone()),
                 });
-
-                resources.push(resource_utils::ResourceInfo {
-                    row_uuid: user_uuid.0.clone(),
-                    resource: resource_utils::Resource::TableUserFieldId(ok.user_id.clone()),
-                });
-
-                if let Some(name) = &ok.user_name {
-                    resources.push(resource_utils::ResourceInfo {
-                        row_uuid: user_uuid.0.clone(),
-                        resource: resource_utils::Resource::TableUserFieldName(name.clone()),
-                    });
-                }
-
-                resources
             }
-            Err(_) => Vec::new(),
+
+            resources
         }
+        Err(_) => Vec::new(),
     }
 }
 

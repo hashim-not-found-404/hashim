@@ -48,39 +48,39 @@ where
 
         Ok(data.state_less_operation())
     }
+}
 
-    fn extract_resource(data: &Self::Type3) -> Vec<resource_utils::ResourceInfo> {
-        match data {
-            Ok(ok) => {
-                vec![
-                    resource_utils::ResourceInfo {
-                        row_uuid: ok.new_uuid.0.clone(),
-                        resource: resource_utils::Resource::TableAccountFlowTypeFieldAccount(
-                            ok.belong_to_account.clone(),
-                        ),
-                    },
-                    resource_utils::ResourceInfo {
-                        row_uuid: ok.new_uuid.0.clone(),
-                        resource: resource_utils::Resource::TableAccountFlowTypeFieldCompanyBranch(
-                            ok.belong_to_company_branch.clone(),
-                        ),
-                    },
-                    resource_utils::ResourceInfo {
-                        row_uuid: ok.new_uuid.0.clone(),
-                        resource: resource_utils::Resource::TableAccountFlowTypeFieldInflowType(
-                            ok.inflow_type,
-                        ),
-                    },
-                    resource_utils::ResourceInfo {
-                        row_uuid: ok.new_uuid.0.clone(),
-                        resource: resource_utils::Resource::TableAccountFlowTypeFieldOutflowType(
-                            ok.outflow_type,
-                        ),
-                    },
-                ]
-            }
-            Err(_) => Vec::new(),
+pub(crate) fn extract_resource(data: &Type3) -> Vec<resource_utils::ResourceInfo> {
+    match data {
+        Ok(ok) => {
+            vec![
+                resource_utils::ResourceInfo {
+                    row_uuid: ok.new_uuid.0.clone(),
+                    resource: resource_utils::Resource::TableAccountFlowTypeFieldAccount(
+                        ok.belong_to_account.clone(),
+                    ),
+                },
+                resource_utils::ResourceInfo {
+                    row_uuid: ok.new_uuid.0.clone(),
+                    resource: resource_utils::Resource::TableAccountFlowTypeFieldCompanyBranch(
+                        ok.belong_to_company_branch.clone(),
+                    ),
+                },
+                resource_utils::ResourceInfo {
+                    row_uuid: ok.new_uuid.0.clone(),
+                    resource: resource_utils::Resource::TableAccountFlowTypeFieldInflowType(
+                        ok.inflow_type,
+                    ),
+                },
+                resource_utils::ResourceInfo {
+                    row_uuid: ok.new_uuid.0.clone(),
+                    resource: resource_utils::Resource::TableAccountFlowTypeFieldOutflowType(
+                        ok.outflow_type,
+                    ),
+                },
+            ]
         }
+        Err(_) => Vec::new(),
     }
 }
 
