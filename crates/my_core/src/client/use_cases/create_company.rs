@@ -79,10 +79,6 @@ where
             Err(_) => Vec::new(),
         }
     }
-
-    fn apply_on_the_model<As: ui_model::AllSignalTypes>(_: &Self::Type4, _: &ui_model::Model<As>) {
-        todo!()
-    }
 }
 
 impl ui_model::CreateCompany {

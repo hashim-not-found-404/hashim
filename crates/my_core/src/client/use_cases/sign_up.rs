@@ -84,23 +84,20 @@ where
             Err(_) => Vec::new(),
         }
     }
+}
 
-    fn apply_on_the_model<As: ui_model::AllSignalTypes>(
-        output: &Self::Type4,
-        model: &ui_model::Model<As>,
-    ) {
-        let local_state = &model.page_sign_up;
-        match output {
-            Ok(_) => {
-                local_state.user_id_error.reset();
-                local_state.user_name_error.reset();
-            }
-            Err(business_error) => {
-                local_state
-                    .user_id_error
-                    .set(business_error.user_id.as_ref().map(|_| String::from("duplicated user")));
-                local_state.user_name_error.set(business_error.name.clone());
-            }
+fn apply_on_the_model<As: ui_model::AllSignalTypes>(output: &Type4, model: &ui_model::Model<As>) {
+    let local_state = &model.page_sign_up;
+    match output {
+        Ok(_) => {
+            local_state.user_id_error.reset();
+            local_state.user_name_error.reset();
+        }
+        Err(business_error) => {
+            local_state
+                .user_id_error
+                .set(business_error.user_id.as_ref().map(|_| String::from("duplicated user")));
+            local_state.user_name_error.set(business_error.name.clone());
         }
     }
 }
@@ -199,7 +196,7 @@ async fn handle_submit<
         data,
         move |data| {
             let result = unwrap_output(data);
-            <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::apply_on_the_model(&result, model);
+            apply_on_the_model(&result, model);
 
             let is_ok = result.is_ok();
             if is_ok {
@@ -251,7 +248,7 @@ async fn handle_check<
             data,
         } => {
             let result: Type4 = unwrap_output(data);
-            <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::apply_on_the_model(&result, model);
+            apply_on_the_model(&result, model);
         }
     }
 }

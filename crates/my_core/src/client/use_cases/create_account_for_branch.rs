@@ -82,25 +82,22 @@ where
             Err(_) => Vec::new(),
         }
     }
+}
 
-    fn apply_on_the_model<As: ui_model::AllSignalTypes>(
-        output: &Self::Type4,
-        model: &ui_model::Model<As>,
-    ) {
-        let local_state = &model.page_create_account_for_branch;
+fn apply_on_the_model<As: ui_model::AllSignalTypes>(output: &Type4, model: &ui_model::Model<As>) {
+    let local_state = &model.page_create_account_for_branch;
 
-        match output {
-            Ok(_) => {
-                local_state.is_loading.reset();
-                local_state.show_dialog.reset();
-                local_state.account_name.reset();
-                local_state.outflow_type.reset();
-                local_state.inflow_type.reset();
-                local_state.filtered_list.reset();
-            }
-            Err(_) => {
-                local_state.is_loading.reset();
-            }
+    match output {
+        Ok(_) => {
+            local_state.is_loading.reset();
+            local_state.show_dialog.reset();
+            local_state.account_name.reset();
+            local_state.outflow_type.reset();
+            local_state.inflow_type.reset();
+            local_state.filtered_list.reset();
+        }
+        Err(_) => {
+            local_state.is_loading.reset();
         }
     }
 }
@@ -276,7 +273,7 @@ async fn handle_submit<
         data,
         |data| {
             let result = unwrap_output(data);
-            <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::apply_on_the_model(&result, model);
+            apply_on_the_model(&result, model);
 
             let is_ok = result.is_ok();
             if is_ok {

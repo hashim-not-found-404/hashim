@@ -126,68 +126,64 @@ where
             Err(_) => Vec::new(),
         }
     }
+}
 
-    fn apply_on_the_model<As: ui_model::AllSignalTypes>(
-        output: &Self::Type4,
-        model: &ui_model::Model<As>,
-    ) {
-        let local_state = &model.page_create_journal_entry;
+fn apply_on_the_model<As: ui_model::AllSignalTypes>(output: &Type4, model: &ui_model::Model<As>) {
+    let local_state = &model.page_create_journal_entry;
 
-        match output {
-            Ok(_) => {}
-            Err(business_error) => {
-                local_state.error_container_is_empty.set(business_error.container_is_empty);
-                local_state.not_all_entry_inferred.set(business_error.not_all_entry_inferred);
+    match output {
+        Ok(_) => {}
+        Err(business_error) => {
+            local_state.error_container_is_empty.set(business_error.container_is_empty);
+            local_state.not_all_entry_inferred.set(business_error.not_all_entry_inferred);
 
-                let mut ui_double_entries = local_state.double_entries.read();
+            let mut ui_double_entries = local_state.double_entries.read();
 
-                if ui_double_entries.len() == business_error.double_entries.len() {
-                    for (ui_double, domain_double_error) in
-                        ui_double_entries.iter_mut().zip(business_error.double_entries.iter())
-                    {
-                        ui_double.entry_is_empty = domain_double_error.entry_is_empty;
-                        ui_double.you_need_to_split_the_entry =
-                            domain_double_error.you_need_to_split_the_entry;
-                        ui_double.debit_not_equal_credit =
-                            domain_double_error.debit_not_equal_credit.as_ref().map(|e| {
-                                create_journal_entry::DebitNotEqualCreditError {
-                                    total_debit:  e.total_debit,
-                                    total_credit: e.total_credit,
-                                }
-                            });
-
-                        if ui_double.singles.len() == domain_double_error.single_entries.len() {
-                            for (ui_single, domain_single_error) in ui_double
-                                .singles
-                                .iter_mut()
-                                .zip(domain_double_error.single_entries.iter())
-                            {
-                                ui_single.quantity_and_amount_are_zero =
-                                    domain_single_error.quantity_and_amount_are_zero;
-                                ui_single.duplicate_account_in_entry =
-                                    domain_single_error.duplicate_account_in_entry;
-                                ui_single.inventory_is_empty =
-                                    domain_single_error.inventory_is_empty;
-                                ui_single.the_amount_should_be_positive =
-                                    domain_single_error.the_amount_should_be_positive;
-                                ui_single.the_quantity_should_be_positive =
-                                    domain_single_error.the_quantity_should_be_positive;
-                                ui_single.quantity_not_equal_amount =
-                                    domain_single_error.quantity_not_equal_amount;
-                                ui_single.quantity_not_equal_zero =
-                                    domain_single_error.quantity_not_equal_zero;
-                                ui_single.insufficient_quantity_in_inventory =
-                                    domain_single_error.insufficient_quantity_in_inventory;
-                                ui_single.amount_mismatch = domain_single_error.amount_mismatch;
-                                ui_single.insufficient_amount_in_inventory =
-                                    domain_single_error.insufficient_amount_in_inventory;
+            if ui_double_entries.len() == business_error.double_entries.len() {
+                for (ui_double, domain_double_error) in
+                    ui_double_entries.iter_mut().zip(business_error.double_entries.iter())
+                {
+                    ui_double.entry_is_empty = domain_double_error.entry_is_empty;
+                    ui_double.you_need_to_split_the_entry =
+                        domain_double_error.you_need_to_split_the_entry;
+                    ui_double.debit_not_equal_credit =
+                        domain_double_error.debit_not_equal_credit.as_ref().map(|e| {
+                            create_journal_entry::DebitNotEqualCreditError {
+                                total_debit:  e.total_debit,
+                                total_credit: e.total_credit,
                             }
+                        });
+
+                    if ui_double.singles.len() == domain_double_error.single_entries.len() {
+                        for (ui_single, domain_single_error) in ui_double
+                            .singles
+                            .iter_mut()
+                            .zip(domain_double_error.single_entries.iter())
+                        {
+                            ui_single.quantity_and_amount_are_zero =
+                                domain_single_error.quantity_and_amount_are_zero;
+                            ui_single.duplicate_account_in_entry =
+                                domain_single_error.duplicate_account_in_entry;
+                            ui_single.inventory_is_empty = domain_single_error.inventory_is_empty;
+                            ui_single.the_amount_should_be_positive =
+                                domain_single_error.the_amount_should_be_positive;
+                            ui_single.the_quantity_should_be_positive =
+                                domain_single_error.the_quantity_should_be_positive;
+                            ui_single.quantity_not_equal_amount =
+                                domain_single_error.quantity_not_equal_amount;
+                            ui_single.quantity_not_equal_zero =
+                                domain_single_error.quantity_not_equal_zero;
+                            ui_single.insufficient_quantity_in_inventory =
+                                domain_single_error.insufficient_quantity_in_inventory;
+                            ui_single.amount_mismatch = domain_single_error.amount_mismatch;
+                            ui_single.insufficient_amount_in_inventory =
+                                domain_single_error.insufficient_amount_in_inventory;
                         }
                     }
                 }
-
-                local_state.double_entries.set(ui_double_entries);
             }
+
+            local_state.double_entries.set(ui_double_entries);
         }
     }
 }
@@ -444,9 +440,7 @@ async fn handle_submit<
         data,
         move |data| {
             let result = unwrap_output(data);
-            <ViewAndCacheType<Ti> as ViewAndCache<Ch, LongCache>>::apply_on_the_model(
-                &result, model,
-            );
+            apply_on_the_model(&result, model);
 
             let is_ok = result.is_ok();
             if is_ok {

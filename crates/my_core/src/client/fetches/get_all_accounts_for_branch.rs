@@ -128,10 +128,4 @@ where
             Err(_) => Vec::new(),
         }
     }
-
-    fn apply_on_the_model<As: ui_model::AllSignalTypes>(
-        _output: &Self::Type4,
-        _model: &ui_model::Model<As>,
-    ) {
-    }
 }

@@ -170,18 +170,10 @@ where
             Err(_) => Vec::new(),
         }
     }
+}
 
-    fn apply_on_the_model<As: ui_model::AllSignalTypes>(
-        output: &Self::Type4,
-        model: &ui_model::Model<As>,
-    ) {
-        // match &output {
-        //     Ok(ok) => model.page_company_branch_selection.list.set(ok.clone()),
-        //     Err(_) => {
-        //         model.navigator.set(ui_model::Navigator::SignIn);
-        //     }
-        // }
-    }
+fn apply_on_the_model<As: ui_model::AllSignalTypes>(output: &Type4, model: &ui_model::Model<As>) {
+    todo!()
 }
 
 impl ui_model::CompanyAndBranchSelection {
@@ -267,7 +259,7 @@ fn spawn_listener<
     let listener_aborter =
         client_traits::spawn_listener::<Rn, Rt, Mpsc>(cache, SUBS, data, move |data| {
             let data = unwrap_output(data);
-            <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::apply_on_the_model(&data, model);
+            apply_on_the_model(&data, model);
         });
 
     commander_local_state.aborter_to_company_and_branch_listener.set(Box::new(listener_aborter));

@@ -120,26 +120,23 @@ where
             Err(_) => Vec::new(),
         }
     }
+}
 
-    fn apply_on_the_model<As: ui_model::AllSignalTypes>(
-        output: &Self::Type4,
-        model: &ui_model::Model<As>,
-    ) {
-        match output {
-            Ok(ok) => {
-                // model.user_name.set(ok.user_name.clone());
-            }
-            Err(business_error) => {
-                model
-                    .page_sign_in
-                    .user_id_error
-                    .set(business_error.user_id.as_ref().map(|_| String::from("user not exist")));
+fn apply_on_the_model<As: ui_model::AllSignalTypes>(output: &Type4, model: &ui_model::Model<As>) {
+    match output {
+        Ok(ok) => {
+            // model.user_name.set(ok.user_name.clone());
+        }
+        Err(business_error) => {
+            model
+                .page_sign_in
+                .user_id_error
+                .set(business_error.user_id.as_ref().map(|_| String::from("user not exist")));
 
-                model
-                    .page_sign_in
-                    .user_password_error
-                    .set(business_error.password.as_ref().map(|_| String::from("wrong password")));
-            }
+            model
+                .page_sign_in
+                .user_password_error
+                .set(business_error.password.as_ref().map(|_| String::from("wrong password")));
         }
     }
 }
@@ -230,7 +227,7 @@ async fn handle_submit<
         data,
         move |data| {
             let result = unwrap_output(data);
-            <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::apply_on_the_model(&result, model);
+            apply_on_the_model(&result, model);
 
             let is_ok = result.is_ok();
             if let Ok(ok) = result {
@@ -295,7 +292,7 @@ fn handle_apply_result<
     model: &ui_model::Model<As>,
     result: Type4,
 ) {
-    <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::apply_on_the_model(&result, model);
+    apply_on_the_model(&result, model);
     if let Ok(ok) = result {
         model.user_uuid.put(Some(ok.user_uuid));
     }

@@ -104,24 +104,21 @@ where
             Err(_) => Vec::new(),
         }
     }
+}
 
-    fn apply_on_the_model<As: ui_model::AllSignalTypes>(
-        output: &Self::Type4,
-        model: &ui_model::Model<As>,
-    ) {
-        let local_state = &model.page_create_company_branch;
+fn apply_on_the_model<As: ui_model::AllSignalTypes>(output: &Type4, model: &ui_model::Model<As>) {
+    let local_state = &model.page_create_company_branch;
 
-        match output {
-            Ok(_) => {
-                local_state.branch_name_error.reset();
-                local_state.location_error.reset();
-            }
-            Err(business_error) => {
-                mbg!(business_error);
-                todo!();
-                // local_state.branch_name_error.set(todo!());
-                // local_state.location_error.set(todo!());
-            }
+    match output {
+        Ok(_) => {
+            local_state.branch_name_error.reset();
+            local_state.location_error.reset();
+        }
+        Err(business_error) => {
+            mbg!(business_error);
+            todo!();
+            // local_state.branch_name_error.set(todo!());
+            // local_state.location_error.set(todo!());
         }
     }
 }
@@ -203,7 +200,7 @@ async fn handle_submit<
         data,
         move |data| {
             let result = unwrap_output(data);
-            <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::apply_on_the_model(&result, model);
+            apply_on_the_model(&result, model);
 
             let is_ok = result.is_ok();
             if is_ok {
@@ -248,7 +245,7 @@ async fn handle_check<
         } => {
             let result: Type4 = unwrap_output(data);
 
-            <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::apply_on_the_model(&result, model);
+            apply_on_the_model(&result, model);
         }
     }
 }
