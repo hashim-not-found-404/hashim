@@ -1,5 +1,4 @@
-use crate::domain::utility::resource_utils;
-use crate::domain::utility::types::Role;
+use crate::domain::request_response::ResourceDTO;
 use crate::domain::utility::uuid::Branch;
 use crate::domain::utility::uuid::Company;
 use crate::domain::utility::uuid::Nonce;
@@ -8,20 +7,19 @@ use crate::utility::traits::DynamicError;
 use std::collections::HashMap;
 use std::collections::HashSet;
 
-pub(crate) type ListOfResources = HashMap<Branch, Vec<resource_utils::ResourceInfo>>;
+pub(crate) type ListOfResources = HashMap<Branch, Vec<ResourceDTO>>;
 
 #[derive(Debug, Default)]
 pub(crate) struct SideEffects {
-    pub(crate) authenticated_users:               HashSet<User>,
-    pub(crate) users_to_resubscribe:              HashSet<User>,
-    pub(crate) resource_to_broadcast_for_company:
-        HashMap<Company, Vec<resource_utils::ResourceInfo>>,
-    pub(crate) resource_to_broadcast_for_branch:  ListOfResources,
+    pub(crate) authenticated_users:              HashSet<User>,
+    pub(crate) users_to_resubscribe:             HashSet<User>,
+    pub(crate) resource_to_broadcast_for_branch: ListOfResources,
 }
 
-pub struct AllRoles {
-    pub companies: HashMap<Company, HashMap<User, Vec<Role>>>,
-    pub branches:  HashMap<Branch, HashMap<User, Vec<Role>>>,
+pub struct TheCompaniesAndBranchesHeIn {
+    pub branches_of_each_company: HashMap<Company, HashSet<Branch>>,
+    pub companies:                HashMap<User, HashSet<Company>>,
+    pub branches:                 HashMap<User, HashSet<Branch>>,
 }
 
 pub mod domain_errors {
@@ -65,5 +63,5 @@ pub trait DBClient {
     fn read_roles_for_user(
         &mut self,
         users_uuids: &HashSet<User>,
-    ) -> impl Future<Output = Result<AllRoles, DynamicError>>;
+    ) -> impl Future<Output = Result<TheCompaniesAndBranchesHeIn, DynamicError>>;
 }

@@ -4,7 +4,6 @@ use crate::client::utility::client_traits;
 use crate::client::utility::ui_model;
 use crate::client::utility::ui_model::HashimSignal;
 use crate::domain::use_cases;
-use crate::domain::utility::resource_utils;
 use crate::domain::utility::types::RowId;
 use crate::domain::utility::uuid::User;
 use crate::make_user_uuid;

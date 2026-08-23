@@ -4,7 +4,6 @@ use crate::domain::use_cases::get_all_accounts_for_branch::Input;
 use crate::domain::use_cases::get_all_accounts_for_branch::MyResult;
 use crate::domain::use_cases::get_all_accounts_for_branch::Ok;
 use crate::domain::use_cases::get_all_accounts_for_branch::ReadInput;
-use crate::domain::utility::resource_utils;
 use crate::domain::utility::uuid::User;
 use crate::make_user_uuid;
 use crate::make_wrap_unwrap;

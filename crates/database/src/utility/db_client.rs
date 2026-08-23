@@ -54,10 +54,10 @@ impl DBClient for S {
     async fn read_roles_for_user(
         &mut self,
         users_uuid: &HashSet<User>,
-    ) -> Result<server_traits::AllRoles, DynamicError> {
+    ) -> Result<server_traits::TheCompaniesAndBranchesHeIn, DynamicError> {
         let stmt = self.client.prepare_cached(READ_ROLES_FOR_USER_QUERY).await.log()?;
 
-        let mut result = server_traits::AllRoles {
+        let mut result = server_traits::TheCompaniesAndBranchesHeIn {
             companies: HashMap::new(),
             branches:  HashMap::new(),
         };

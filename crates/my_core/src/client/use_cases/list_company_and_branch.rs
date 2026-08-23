@@ -4,7 +4,6 @@ use crate::client::utility::commander;
 use crate::client::utility::ui_model;
 use crate::client::utility::ui_model::HashimSignal;
 use crate::domain::use_cases;
-use crate::domain::utility::resource_utils;
 use crate::domain::utility::types::Branch;
 use crate::domain::utility::types::Company;
 use crate::domain::utility::types::ListOfCompanies;

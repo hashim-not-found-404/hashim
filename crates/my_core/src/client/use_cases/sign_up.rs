@@ -6,7 +6,6 @@ use crate::client::utility::process_manager;
 use crate::client::utility::ui_model;
 use crate::client::utility::ui_model::HashimSignal;
 use crate::domain::use_cases;
-use crate::domain::utility::resource_utils;
 use crate::domain::utility::types::JsonWebTokenType;
 use crate::domain::utility::types::MyErrorTrait;
 use crate::domain::utility::types::RowId;

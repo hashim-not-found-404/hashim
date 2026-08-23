@@ -1,5 +1,4 @@
 use crate::domain::use_cases;
-use crate::domain::utility::resource_utils;
 use crate::domain::utility::types::HashimError;
 use crate::domain::utility::types::JWTError;
 use crate::domain::utility::types::JsonWebTokenType;
@@ -22,7 +21,6 @@ pub(crate) struct MyResult {
     pub(crate) operations: Vec<Txn<OperationsResult>>,
 }
 
-// utility types
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Txn<T> {
     pub txn_number: u64,
@@ -63,11 +61,20 @@ pub enum OperationsResult {
     GetAllAccountsForBranch(use_cases::get_all_accounts_for_branch::MyResult),
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub(crate) enum ResourceDTO {
+    CreateCompany(use_cases::create_company::MyResult),
+    CreateCompanyBranch(use_cases::create_company_branch::MyResult),
+    CreateAccount(use_cases::create_account::MyResult),
+    CreateAccountForBranch(use_cases::create_account_for_branch::MyResult),
+    CreateJournalEntry(use_cases::create_journal_entry::MyResult),
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 pub(crate) enum FromServer {
     Error(HashimError),
     PushData(MyResult),
-    Resources(Vec<resource_utils::ResourceInfo>),
+    Resources(Vec<ResourceDTO>),
 }
 
 pub(crate) type FromClient = Input;

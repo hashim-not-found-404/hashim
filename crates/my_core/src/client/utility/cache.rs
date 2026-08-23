@@ -1,5 +1,4 @@
 use crate::domain::request_response;
-use crate::domain::utility::resource_utils;
 use crate::domain::utility::types::JsonWebTokenType;
 use crate::domain::utility::uuid::User;
 

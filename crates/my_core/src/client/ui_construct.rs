@@ -7,7 +7,6 @@ use crate::client::utility::client_traits;
 use crate::client::utility::process_manager;
 use crate::client::utility::ui_model;
 use crate::domain::request_response;
-use crate::domain::utility::resource_utils;
 use crate::domain::utility::types::ADDRESS;
 use crate::domain::utility::types::HashimError;
 use crate::domain::utility::types::RowId;

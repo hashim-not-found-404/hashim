@@ -9,7 +9,6 @@ use crate::client::utility::process_manager::ProcessName;
 use crate::client::utility::ui_model::AllSignalTypes;
 use crate::domain::request_response::OperationsInput;
 use crate::domain::request_response::OperationsResult;
-use crate::domain::utility::resource_utils::Subscribe;
 use crate::utility::traits::JoinHandle;
 use crate::utility::traits::MultiProducerSingleConsumer;
 use crate::utility::traits::RandomNumber;
@@ -18,6 +17,47 @@ use crate::utility::traits::Runtime;
 use crate::utility::traits::Sender;
 use crate::utility::utils::ReadAndSet;
 use std::sync::Arc;
+
+#[derive(Debug, Clone, Eq, Hash, PartialEq)]
+pub(crate) enum Subscribe {
+    TableAccessControlForCompanyBranchFieldDataGroup,
+    TableAccessControlForCompanyBranchFieldRole,
+    TableAccessControlForCompanyBranchFieldUser,
+    TableAccessControlForCompanyFieldDataGroup,
+    TableAccessControlForCompanyFieldRole,
+    TableAccessControlForCompanyFieldUser,
+    TableAccountFieldCompanyBelong,
+    TableAccountFieldIsDebit,
+    TableAccountFieldIsPermanentAccount,
+    TableAccountFieldName,
+    TableAccountFieldNotes,
+    TableAccountFieldUnitOfMeasurementOfQuantity,
+    TableAccountFieldInventory,
+    TableAccountFlowTypeFieldAccount,
+    TableAccountFlowTypeFieldCompanyBranch,
+    TableAccountFlowTypeFieldInflowType,
+    TableAccountFlowTypeFieldOutflowType,
+    TableCompanyBranchFieldCompanyBelong,
+    TableCompanyBranchFieldCurrency,
+    TableCompanyBranchFieldLocation,
+    TableCompanyBranchFieldName,
+    TableCompanyFieldCurrency,
+    TableCompanyFieldName,
+    TableUserFieldId,
+    TableUserFieldName,
+    TableSharedEntryFieldWriter,
+    TableSharedEntryFieldNotes,
+    TableEntryFieldWriter,
+    TableEntryFieldTime,
+    TableEntryFieldSharedEntryId,
+    TableSingleEntryFieldDoubleEntry,
+    TableSingleEntryFieldEntry,
+    TableSingleEntryFieldAccount,
+    TableSingleEntryFieldIsDebit,
+    TableSingleEntryFieldCostOutFlowType,
+    TableSingleEntryFieldQuantity,
+    TableSingleEntryFieldAmount,
+}
 
 #[macro_export]
 macro_rules! make_wrap_unwrap {

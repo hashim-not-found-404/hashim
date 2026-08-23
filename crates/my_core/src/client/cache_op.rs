@@ -1,11 +1,10 @@
 use crate::client;
 use crate::client::fetches;
 use crate::client::utility::cache::Cache;
+use crate::domain::request_response;
 use crate::domain::request_response::OperationsInput;
 use crate::domain::request_response::OperationsResult;
-use crate::domain::request_response::{self};
 use crate::domain::use_cases;
-use crate::domain::utility::resource_utils;
 use crate::domain::utility::types::RowId;
 use crate::domain::utility::uuid::User;
 use crate::utility::traits;

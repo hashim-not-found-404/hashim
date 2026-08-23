@@ -1,26 +1,33 @@
-use crate::domain::request_response;
+use crate::domain::request_response::FromServer;
+use crate::domain::request_response::Input;
+use crate::domain::request_response::MyResult;
+use crate::domain::request_response::OperationsInput;
+use crate::domain::request_response::OperationsResult;
+use crate::domain::request_response::ResourceDTO;
+use crate::domain::request_response::Txn;
 use crate::domain::use_cases;
-use crate::domain::utility::resource_utils;
-use crate::domain::utility::resource_utils::Subscribe;
 use crate::domain::utility::types::HashedPassword;
 use crate::domain::utility::types::HashimError;
 use crate::domain::utility::types::JWT;
 use crate::domain::utility::types::JWTError;
 use crate::domain::utility::types::NonceError;
-use crate::domain::utility::types::Role;
 use crate::domain::utility::types::RowId;
-use crate::domain::utility::uuid::Company;
 use crate::domain::utility::uuid::User;
 use crate::domain::utility::uuid::UuidType;
-use crate::server::utility::server_traits;
 use crate::server::utility::server_traits::DBClient;
 use crate::server::utility::server_traits::DatabaseWrite;
 use crate::server::utility::server_traits::ListOfResources;
-use crate::utility::traits;
+use crate::server::utility::server_traits::SideEffects;
+use crate::utility::traits::Coding;
 use crate::utility::traits::DynamicError;
+use crate::utility::traits::Either;
 use crate::utility::traits::MultiProducerSingleConsumer;
+use crate::utility::traits::RandomNumber;
 use crate::utility::traits::Receiver;
+use crate::utility::traits::Regex;
+use crate::utility::traits::Runtime;
 use crate::utility::traits::Sender;
+use crate::utility::traits::Time;
 use crate::utility::utils::HashMapWithHashMapValue;
 use crate::utility::utils::LogError;
 use std::collections::HashMap;
@@ -86,7 +93,7 @@ pub struct ServerMethods<Mpsc: MultiProducerSingleConsumer, Jwt: JWT, Db: Databa
 impl<Mpsc: MultiProducerSingleConsumer, Jwt: JWT, Db: Database<Client = Cli>, Cli: DBClient>
     ServerMethods<Mpsc, Jwt, Db>
 {
-    pub async fn new<Rt: traits::Runtime>() -> Self {
+    pub async fn new<Rt: Runtime>() -> Self {
         let (sender_to_broker, receiver_to_broker) = Mpsc::channel();
         Self::broker_actor::<Rt>(receiver_to_broker);
 
@@ -98,13 +105,13 @@ impl<Mpsc: MultiProducerSingleConsumer, Jwt: JWT, Db: Database<Client = Cli>, Cl
     }
 
     pub fn server_actor<
-        Rt: traits::Runtime,
+        Rt: Runtime,
         Ws: WSServer,
-        Rn: traits::RandomNumber,
-        Ed: traits::Coding,
+        Rn: RandomNumber,
+        Ed: Coding,
         Id: RowId,
-        Ti: traits::Time,
-        Rg: traits::Regex,
+        Ti: Time,
+        Rg: Regex,
         Auth: HashedPassword,
         Dbb: DbBundle<Cli>,
     >(
@@ -113,14 +120,13 @@ impl<Mpsc: MultiProducerSingleConsumer, Jwt: JWT, Db: Database<Client = Cli>, Cl
     ) {
         Rt::spawn_local(async move {
             let mut sender_to_broker = self.sender_to_broker.clone();
-            let (sender_to_server, mut receiver_to_server) =
-                Mpsc::channel::<Vec<resource_utils::ResourceInfo>>();
+            let (sender_to_server, mut receiver_to_server) = Mpsc::channel::<Vec<ResourceDTO>>();
             let connection_id = Rn::generate();
 
             loop {
                 let result = Rt::select(session.receive(), receiver_to_server.recv()).await;
                 match result {
-                    traits::Either::One(msg) => {
+                    Either::One(msg) => {
                         let Ok(msg) = msg else {
                             break;
                         };
@@ -128,11 +134,9 @@ impl<Mpsc: MultiProducerSingleConsumer, Jwt: JWT, Db: Database<Client = Cli>, Cl
                         match msg {
                             WSMessage::Close => break,
                             WSMessage::Binary(received_data) => {
-                                let Ok(input) =
-                                    Ed::decode::<request_response::FromClient>(&received_data)
-                                else {
+                                let Ok(input) = Ed::decode::<Input>(&received_data) else {
                                     if session
-                                        .send_bin(Ed::encode(&request_response::FromServer::Error(
+                                        .send_bin(Ed::encode(&FromServer::Error(
                                             HashimError::InvalidDataFormat,
                                         )))
                                         .await
@@ -145,7 +149,7 @@ impl<Mpsc: MultiProducerSingleConsumer, Jwt: JWT, Db: Database<Client = Cli>, Cl
 
                                 let Ok(mut client) = self.database.get_client().await else {
                                     if session
-                                        .send_bin(Ed::encode(&request_response::FromServer::Error(
+                                        .send_bin(Ed::encode(&FromServer::Error(
                                             HashimError::InternalServerError,
                                         )))
                                         .await
@@ -157,7 +161,7 @@ impl<Mpsc: MultiProducerSingleConsumer, Jwt: JWT, Db: Database<Client = Cli>, Cl
                                 };
 
                                 dbg!(&input);
-                                let mut side_effects = server_traits::SideEffects::default();
+                                let mut side_effects = SideEffects::default();
                                 let output = push_data::<Id, Ti, Auth, Jwt, Cli, Dbb>(
                                     &input,
                                     &mut side_effects,
@@ -170,9 +174,7 @@ impl<Mpsc: MultiProducerSingleConsumer, Jwt: JWT, Db: Database<Client = Cli>, Cl
                                 match output {
                                     Ok(ok) => {
                                         if session
-                                            .send_bin(Ed::encode(
-                                                &request_response::FromServer::PushData(ok),
-                                            ))
+                                            .send_bin(Ed::encode(&FromServer::PushData(ok)))
                                             .await
                                             .is_err()
                                         {
@@ -181,11 +183,9 @@ impl<Mpsc: MultiProducerSingleConsumer, Jwt: JWT, Db: Database<Client = Cli>, Cl
                                     }
                                     Err(_) => {
                                         if session
-                                            .send_bin(Ed::encode(
-                                                &request_response::FromServer::Error(
-                                                    HashimError::InternalServerError,
-                                                ),
-                                            ))
+                                            .send_bin(Ed::encode(&FromServer::Error(
+                                                HashimError::InternalServerError,
+                                            )))
                                             .await
                                             .is_err()
                                         {
@@ -202,11 +202,9 @@ impl<Mpsc: MultiProducerSingleConsumer, Jwt: JWT, Db: Database<Client = Cli>, Cl
                                     .await
                                     else {
                                         if session
-                                            .send_bin(Ed::encode(
-                                                &request_response::FromServer::Error(
-                                                    HashimError::InternalServerError,
-                                                ),
-                                            ))
+                                            .send_bin(Ed::encode(&FromServer::Error(
+                                                HashimError::InternalServerError,
+                                            )))
                                             .await
                                             .is_err()
                                         {
@@ -230,13 +228,10 @@ impl<Mpsc: MultiProducerSingleConsumer, Jwt: JWT, Db: Database<Client = Cli>, Cl
                                     }
                                 }
 
-                                if (!side_effects.resource_to_broadcast_for_company.is_empty()
-                                    || !side_effects.resource_to_broadcast_for_branch.is_empty())
+                                if !side_effects.resource_to_broadcast_for_branch.is_empty()
                                     && sender_to_broker
                                         .send(MessageToBroker::Publish {
                                             connection_id,
-                                            list_of_resources_for_company: side_effects
-                                                .resource_to_broadcast_for_company,
                                             list_of_resources_for_branch: side_effects
                                                 .resource_to_broadcast_for_branch,
                                         })
@@ -249,12 +244,10 @@ impl<Mpsc: MultiProducerSingleConsumer, Jwt: JWT, Db: Database<Client = Cli>, Cl
                             }
                         }
                     }
-                    traits::Either::Two(wraped_resource) => {
+                    Either::Two(wraped_resource) => {
                         let resource = wraped_resource.unwrap();
                         if session
-                            .send_bin(Ed::encode(&request_response::FromServer::Resources(
-                                resource,
-                            )))
+                            .send_bin(Ed::encode(&FromServer::Resources(resource)))
                             .await
                             .is_err()
                         {
@@ -275,12 +268,10 @@ impl<Mpsc: MultiProducerSingleConsumer, Jwt: JWT, Db: Database<Client = Cli>, Cl
         });
     }
 
-    pub(crate) fn broker_actor<Rt: traits::Runtime>(
+    pub(crate) fn broker_actor<Rt: Runtime>(
         mut receiver_to_broker: Mpsc::Receiver<MessageToBroker<Mpsc>>,
     ) {
         Rt::spawn_local(async move {
-            let mut pool_of_pubsub_for_company: broker_functions::UserSubscribesForCompany =
-                HashMap::with_capacity(1000);
             let mut pool_of_pubsub_for_branch: broker_functions::UserSubscribes =
                 HashMap::with_capacity(10000);
             let mut pool_of_server_facad_channels: UserSenders<Mpsc> =
@@ -304,11 +295,6 @@ impl<Mpsc: MultiProducerSingleConsumer, Jwt: JWT, Db: Database<Client = Cli>, Cl
                         }
 
                         broker_functions::merge_subscribes(
-                            &mut pool_of_pubsub_for_company,
-                            list_of_subscribtion.companies,
-                        );
-
-                        broker_functions::merge_subscribes(
                             &mut pool_of_pubsub_for_branch,
                             list_of_subscribtion.branches,
                         );
@@ -327,10 +313,6 @@ impl<Mpsc: MultiProducerSingleConsumer, Jwt: JWT, Db: Database<Client = Cli>, Cl
                         for user_uuid in user_to_remove {
                             pool_of_server_facad_channels.remove(&user_uuid);
                             broker_functions::unsubscribe(
-                                &mut pool_of_pubsub_for_company,
-                                &user_uuid,
-                            );
-                            broker_functions::unsubscribe(
                                 &mut pool_of_pubsub_for_branch,
                                 &user_uuid,
                             );
@@ -338,21 +320,13 @@ impl<Mpsc: MultiProducerSingleConsumer, Jwt: JWT, Db: Database<Client = Cli>, Cl
                     }
                     MessageToBroker::Publish {
                         connection_id,
-                        list_of_resources_for_company,
                         list_of_resources_for_branch,
                     } => {
-                        let mut resource_to_send: HashMap<User, Vec<resource_utils::ResourceInfo>> =
-                            HashMap::new();
-
-                        broker_functions::map_resource_to_subscribes(
-                            &pool_of_pubsub_for_company,
-                            list_of_resources_for_company,
-                            &mut resource_to_send,
-                        );
+                        let mut resource_to_send: HashMap<User, Vec<ResourceDTO>> = HashMap::new();
 
                         broker_functions::map_resource_to_subscribes(
                             &pool_of_pubsub_for_branch,
-                            list_of_resources_for_branch,
+                            &list_of_resources_for_branch,
                             &mut resource_to_send,
                         );
 
@@ -384,18 +358,18 @@ impl<Mpsc: MultiProducerSingleConsumer, Jwt: JWT, Db: Database<Client = Cli>, Cl
 
 async fn push_data<
     Id: RowId,
-    Ti: traits::Time,
+    Ti: Time,
     Auth: HashedPassword,
     Jwt: JWT,
     Cli: DBClient,
     Dbb: DbBundle<Cli>,
 >(
-    input: &request_response::Input,
-    side_effects: &mut server_traits::SideEffects,
+    input: &Input,
+    side_effects: &mut SideEffects,
     client: &mut Cli,
     jwt: &Jwt,
-) -> Result<request_response::MyResult, DynamicError> {
-    let mut the_return_result = request_response::MyResult {
+) -> Result<MyResult, DynamicError> {
+    let mut the_return_result = MyResult {
         jwts:       Vec::with_capacity(input.jwts.len()),
         nonce:      Ok(()),
         operations: Vec::with_capacity(input.operations.len()),
@@ -430,8 +404,8 @@ async fn push_data<
 
     for transaction in &input.operations {
         let result = match &transaction.operation {
-            request_response::OperationsInput::SignUp(input) => {
-                request_response::OperationsResult::SignUp(
+            OperationsInput::SignUp(input) => {
+                OperationsResult::SignUp(
                     input
                         .handle_operation::<Id, Auth, Jwt, Cli, Dbb::SignUp, Dbb::WriteSignUp>(
                             side_effects,
@@ -441,15 +415,15 @@ async fn push_data<
                         .await?,
                 )
             }
-            request_response::OperationsInput::SignIn(input) => {
-                request_response::OperationsResult::SignIn(
+            OperationsInput::SignIn(input) => {
+                OperationsResult::SignIn(
                     input
                         .handle_operation::<Auth, Jwt, Cli, Dbb::SignIn>(side_effects, client, jwt)
                         .await?,
                 )
             }
-            request_response::OperationsInput::CreateCompany(input) => {
-                request_response::OperationsResult::CreateCompany(
+            OperationsInput::CreateCompany(input) => {
+                OperationsResult::CreateCompany(
                     input
                         .handle_operation::<Id, Cli, Dbb::CreateCompany, Dbb::WriteCreateCompany>(
                             side_effects,
@@ -458,15 +432,15 @@ async fn push_data<
                         .await?,
                 )
             }
-            request_response::OperationsInput::CreateCompanyBranch(input) => {
-                request_response::OperationsResult::CreateCompanyBranch(
+            OperationsInput::CreateCompanyBranch(input) => {
+                OperationsResult::CreateCompanyBranch(
                     input
                         .handle_operation::<Id, Cli, Dbb::CreateCompanyBranch,Dbb::WriteCreateCompanyBranch>(side_effects, client)
                         .await?,
                 )
             }
-            request_response::OperationsInput::ListCompanyAndBranch(input) => {
-                request_response::OperationsResult::ListCompanyAndBranch(
+            OperationsInput::ListCompanyAndBranch(input) => {
+                OperationsResult::ListCompanyAndBranch(
                     input
                         .handle_operation::<Id, Cli, Dbb::ListCompanyAndBranch>(
                             side_effects,
@@ -475,22 +449,22 @@ async fn push_data<
                         .await?,
                 )
             }
-            request_response::OperationsInput::CreateAccount(input) => {
-                request_response::OperationsResult::CreateAccount(
+            OperationsInput::CreateAccount(input) => {
+                OperationsResult::CreateAccount(
                     input
                         .handle_operation::<Id, Cli, Dbb::CreateAccount,Dbb::WriteCreateAccount>(side_effects, client)
                         .await?,
                 )
             }
-            request_response::OperationsInput::GetAllAccounts(input) => {
-                request_response::OperationsResult::GetAllAccounts(
+            OperationsInput::GetAllAccounts(input) => {
+                OperationsResult::GetAllAccounts(
                     input
                         .handle_operation::<Id, Cli, Dbb::GetAllAccounts>(side_effects, client)
                         .await?,
                 )
             }
-            request_response::OperationsInput::CreateAccountForBranch(input) => {
-                request_response::OperationsResult::CreateAccountForBranch(
+            OperationsInput::CreateAccountForBranch(input) => {
+                OperationsResult::CreateAccountForBranch(
                     input
                         .handle_operation::<Id, Cli, Dbb::CreateAccountForBranch,Dbb::WriteCreateAccountForBranch>(
                             side_effects,
@@ -499,8 +473,8 @@ async fn push_data<
                         .await?,
                 )
             }
-            request_response::OperationsInput::GetAllAccountsForBranch(input) => {
-                request_response::OperationsResult::GetAllAccountsForBranch(
+            OperationsInput::GetAllAccountsForBranch(input) => {
+                OperationsResult::GetAllAccountsForBranch(
                     input
                         .handle_operation::<Id, Cli, Dbb::GetAllAccountsForBranch>(
                             side_effects,
@@ -509,8 +483,8 @@ async fn push_data<
                         .await?,
                 )
             }
-            request_response::OperationsInput::CreateJournalEntry(input) => {
-                request_response::OperationsResult::CreateJournalEntry(
+            OperationsInput::CreateJournalEntry(input) => {
+                OperationsResult::CreateJournalEntry(
                     input
                         .handle_operation::<Id, Ti, Cli, Dbb::CreateJournalEntry,Dbb::WriteCreateJournalEntry>(
                             side_effects,
@@ -521,7 +495,7 @@ async fn push_data<
             }
         };
 
-        the_return_result.operations.push(request_response::Txn {
+        the_return_result.operations.push(Txn {
             txn_number: transaction.txn_number,
             operation:  result,
         });
@@ -560,140 +534,93 @@ async fn get_table_of_subscribed_data<Cli: DBClient>(
     client: &mut Cli,
     users_uuids: &HashSet<User>,
 ) -> Result<AllSubscribes, DynamicError> {
-    let roles = client.read_roles_for_user(users_uuids).await?;
+    let the_companies_and_branches_he_in = client.read_roles_for_user(users_uuids).await?;
 
     let mut subs = AllSubscribes {
-        companies: HashMap::new(),
-        branches:  HashMap::new(),
+        branches: HashMap::new(),
     };
 
-    for (company, users_roles) in roles.companies {
-        let mut users_subscribes = HashMap::new();
+    for (user, companies) in the_companies_and_branches_he_in.companies {
+        for company in companies {
+            let Some(branches) =
+                the_companies_and_branches_he_in.branches_of_each_company.get(&company)
+            else {
+                continue;
+            };
 
-        for (user, roles) in users_roles {
-            let subscribes = role_to_subscribe_mapping(roles);
-            users_subscribes.insert(user, subscribes);
+            for branch in branches {
+                subs.branches.entry(branch.clone()).or_default().insert(user.clone());
+            }
         }
-
-        subs.companies.insert(company, users_subscribes);
     }
 
-    for (branch, users_roles) in roles.branches {
-        let mut users_subscribes = HashMap::new();
-
-        for (user, roles) in users_roles {
-            let subscribes = role_to_subscribe_mapping(roles);
-            users_subscribes.insert(user, subscribes);
+    for (user, branches) in the_companies_and_branches_he_in.branches {
+        for branch in branches {
+            subs.branches.entry(branch.clone()).or_default().insert(user.clone());
         }
-
-        subs.branches.insert(branch, users_subscribes);
     }
 
     Ok(subs)
 }
 
 mod broker_functions {
-    use crate::domain::utility::resource_utils;
-    use crate::domain::utility::resource_utils::ResourceInfo;
-    use crate::domain::utility::resource_utils::Subscribe;
+    use crate::domain::request_response::ResourceDTO;
     use crate::domain::utility::uuid::Branch;
-    use crate::domain::utility::uuid::Company;
     use crate::domain::utility::uuid::User;
-    use crate::utility::utils::HashMapWithHashMapValue;
-    use crate::utility::utils::HashMapWithVectorValue;
+    use crate::server::utility::server_traits::ListOfResources;
     use std::collections::HashMap;
     use std::collections::HashSet;
     use std::hash::Hash;
 
-    pub(crate) type UserSubscribes = HashMap<Branch, HashMap<User, HashSet<Subscribe>>>;
-    pub(crate) type UserSubscribesForCompany = HashMap<Company, HashMap<User, HashSet<Subscribe>>>;
+    pub(crate) type UserSubscribes = HashMap<Branch, HashSet<User>>;
 
-    pub(crate) fn map_resource_to_subscribes<T: Eq + Hash + Clone>(
-        pool_of_pubsub: &HashMap<T, HashMap<User, HashSet<Subscribe>>>,
-        list_of_resources: HashMap<T, Vec<resource_utils::ResourceInfo>>,
-        resource_to_send: &mut HashMap<User, Vec<ResourceInfo>>,
+    pub(crate) fn map_resource_to_subscribes(
+        pool_of_pubsub: &UserSubscribes,
+        list_of_resources: &ListOfResources,
+        resource_to_send: &mut HashMap<User, Vec<ResourceDTO>>,
     ) {
-        for (company, resource) in list_of_resources {
-            let user_and_subscribe = pool_of_pubsub.get(&company);
-            if let Some(user_and_subscribe) = user_and_subscribe {
-                for (user_uuid, subscribe) in user_and_subscribe {
-                    let resource_for_user =
-                        resource_filtering_based_on_subscribe(subscribe, &resource);
-
-                    resource_to_send.insert_append(user_uuid.clone(), resource_for_user);
-                }
-            } else {
+        for (branch, resources_for_branch) in list_of_resources {
+            let Some(users) = pool_of_pubsub.get(&branch) else {
                 dbg!("there is some problem here this should not happen");
+                continue;
+            };
+
+            for user_uuid in users {
+                let user_resource = resource_to_send.entry(user_uuid.clone()).or_default();
+
+                for resource in resources_for_branch {
+                    user_resource.push(resource.clone());
+                }
             }
         }
     }
 
-    pub(crate) fn unsubscribe<T>(
-        pool_of_pubsub: &mut HashMap<T, HashMap<User, HashSet<Subscribe>>>,
-        user_uuid: &User,
-    ) {
+    pub(crate) fn unsubscribe(pool_of_pubsub: &mut UserSubscribes, user_uuid: &User) {
         pool_of_pubsub.retain(|_, users_and_subs| {
             users_and_subs.remove(user_uuid);
             !users_and_subs.is_empty()
         });
     }
 
-    pub(crate) fn merge_subscribes<T: Clone + Eq + Hash>(
-        pool_of_pubsub: &mut HashMap<T, HashMap<User, HashSet<Subscribe>>>,
-        list_of_subscribtion: HashMap<T, HashMap<User, HashSet<Subscribe>>>,
+    pub(crate) fn merge_subscribes(
+        pool_of_pubsub: &mut UserSubscribes,
+        list_of_subscribtion: UserSubscribes,
     ) {
-        for (company, users_subscribes) in list_of_subscribtion {
-            for (user_uuid, subscribes) in users_subscribes {
-                pool_of_pubsub.nested_insert(company.clone(), user_uuid, subscribes);
+        for (branch, users_subscribes) in list_of_subscribtion {
+            for user_uuid in users_subscribes {
+                pool_of_pubsub.entry(branch.clone()).or_default().insert(user_uuid);
             }
         }
     }
-
-    fn resource_filtering_based_on_subscribe(
-        subscribe: &HashSet<Subscribe>,
-        resource: &Vec<resource_utils::ResourceInfo>,
-    ) -> Vec<resource_utils::ResourceInfo> {
-        let mut new_resource = Vec::new();
-
-        for one_resource in resource {
-            if let Some(sub) = one_resource.resource.map_to_subs()
-                && subscribe.contains(&sub)
-            {
-                new_resource.push(one_resource.clone());
-            }
-        }
-
-        new_resource
-    }
-}
-
-fn role_to_subscribe_mapping(roles: Vec<Role>) -> HashSet<Subscribe> {
-    let mut subscribes = HashSet::with_capacity(200);
-
-    for _ in roles {
-        subscribes.insert(Subscribe::TableUserFieldName);
-        subscribes.insert(Subscribe::TableUserFieldId);
-        subscribes.insert(Subscribe::TableCompanyFieldName);
-        subscribes.insert(Subscribe::TableCompanyFieldCurrency);
-        subscribes.insert(Subscribe::TableCompanyBranchFieldName);
-        subscribes.insert(Subscribe::TableCompanyBranchFieldCompanyBelong);
-        subscribes.insert(Subscribe::TableAccessControlForCompanyFieldRole);
-        subscribes.insert(Subscribe::TableAccessControlForCompanyFieldUser);
-        subscribes.insert(Subscribe::TableAccessControlForCompanyFieldDataGroup);
-    }
-
-    subscribes.shrink_to_fit();
-    subscribes
 }
 
 pub(crate) struct AllSubscribes {
-    pub(crate) companies: broker_functions::UserSubscribesForCompany,
-    pub(crate) branches:  broker_functions::UserSubscribes,
+    pub(crate) branches: broker_functions::UserSubscribes,
 }
 
 type UserSenders<Mpsc> = HashMap<
     User,
-    HashMap<u64, <Mpsc as MultiProducerSingleConsumer>::Sender<Vec<resource_utils::ResourceInfo>>>, // because user may have multiple web socket connection
+    HashMap<u64, <Mpsc as MultiProducerSingleConsumer>::Sender<Vec<ResourceDTO>>>, // because user may have multiple web socket connection
 >;
 
 pub(crate) enum MessageToBroker<Mpsc: MultiProducerSingleConsumer> {
@@ -701,14 +628,13 @@ pub(crate) enum MessageToBroker<Mpsc: MultiProducerSingleConsumer> {
         connection_id:        u64,
         list_of_subscribtion: AllSubscribes,
         users_uuids:          HashSet<User>,
-        sender_to_server:     Mpsc::Sender<Vec<resource_utils::ResourceInfo>>,
+        sender_to_server:     Mpsc::Sender<Vec<ResourceDTO>>,
     },
     Unsubscribe {
         connection_id: u64,
     },
     Publish {
-        connection_id:                 u64,
-        list_of_resources_for_company: HashMap<Company, Vec<resource_utils::ResourceInfo>>,
-        list_of_resources_for_branch:  ListOfResources,
+        connection_id:                u64,
+        list_of_resources_for_branch: ListOfResources,
     },
 }

@@ -4,7 +4,6 @@ use crate::client::utility::ui_model::AllSignalTypes;
 use crate::client::utility::ui_model::Model;
 use crate::domain::use_cases::get_all_accounts::Input;
 use crate::domain::use_cases::get_all_accounts::MyResult;
-use crate::domain::utility::resource_utils;
 use crate::domain::utility::uuid::User;
 use crate::make_user_uuid;
 use crate::make_wrap_unwrap;
