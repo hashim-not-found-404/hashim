@@ -5,8 +5,13 @@ use std::ops::Deref;
 #[derive(Debug, Clone, Default, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
 pub struct UuidType(pub [u8; 16]);
 
-macro_rules! make_impl {
-    ($Ty:ty) => {
+macro_rules! make_type {
+    ($Ty:ident) => {
+        #[derive(
+            Debug, Clone, Default, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize,
+        )]
+        pub struct $Ty(pub UuidType);
+
         impl Deref for $Ty {
             type Target = UuidType;
 
@@ -22,30 +27,10 @@ macro_rules! make_impl {
     };
 }
 
-#[derive(Debug, Clone, Default, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
-pub struct Nonce(pub UuidType);
-make_impl!(Nonce);
-
-#[derive(Debug, Clone, Default, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
-pub struct User(pub UuidType);
-make_impl!(User);
-
-#[derive(Debug, Clone, Default, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
-pub struct Company(pub UuidType);
-make_impl!(Company);
-
-#[derive(Debug, Clone, Default, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
-pub struct Branch(pub UuidType);
-make_impl!(Branch);
-
-#[derive(Debug, Clone, Default, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
-pub struct Account(pub UuidType);
-make_impl!(Account);
-
-#[derive(Debug, Clone, Default, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
-pub struct AccountForBranch(pub UuidType);
-make_impl!(AccountForBranch);
-
-#[derive(Debug, Clone, Default, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
-pub struct SharedEntry(pub UuidType);
-make_impl!(SharedEntry);
+make_type!(Nonce);
+make_type!(User);
+make_type!(Company);
+make_type!(Branch);
+make_type!(Account);
+make_type!(AccountForBranch);
+make_type!(SharedEntry);
