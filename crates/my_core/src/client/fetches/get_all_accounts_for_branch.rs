@@ -11,6 +11,19 @@ use crate::make_wrap_unwrap;
 make_wrap_unwrap!(get_all_accounts_for_branch, GetAllAccountsForBranch);
 make_user_uuid!(get_all_accounts_for_branch);
 
+pub(crate) const SUBS: &'static [resource_utils::Subscribe] = &[
+    resource_utils::Subscribe::TableAccountFieldCompanyBelong,
+    resource_utils::Subscribe::TableAccountFieldIsDebit,
+    resource_utils::Subscribe::TableAccountFieldIsPermanentAccount,
+    resource_utils::Subscribe::TableAccountFieldName,
+    resource_utils::Subscribe::TableAccountFieldNotes,
+    resource_utils::Subscribe::TableAccountFieldUnitOfMeasurementOfQuantity,
+    resource_utils::Subscribe::TableAccountFlowTypeFieldAccount,
+    resource_utils::Subscribe::TableAccountFlowTypeFieldCompanyBranch,
+    resource_utils::Subscribe::TableAccountFlowTypeFieldInflowType,
+    resource_utils::Subscribe::TableAccountFlowTypeFieldOutflowType,
+];
+
 pub struct ViewAndCacheType;
 
 impl<Ch, LongCache> ViewAndCache<Ch, LongCache> for ViewAndCacheType
@@ -22,21 +35,6 @@ where
     type Type2 = use_cases::get_all_accounts_for_branch::Input;
     type Type3 = use_cases::get_all_accounts_for_branch::MyResult;
     type Type4 = use_cases::get_all_accounts_for_branch::MyResult;
-
-    fn subs() -> &'static [resource_utils::Subscribe] {
-        &[
-            resource_utils::Subscribe::TableAccountFieldCompanyBelong,
-            resource_utils::Subscribe::TableAccountFieldIsDebit,
-            resource_utils::Subscribe::TableAccountFieldIsPermanentAccount,
-            resource_utils::Subscribe::TableAccountFieldName,
-            resource_utils::Subscribe::TableAccountFieldNotes,
-            resource_utils::Subscribe::TableAccountFieldUnitOfMeasurementOfQuantity,
-            resource_utils::Subscribe::TableAccountFlowTypeFieldAccount,
-            resource_utils::Subscribe::TableAccountFlowTypeFieldCompanyBranch,
-            resource_utils::Subscribe::TableAccountFlowTypeFieldInflowType,
-            resource_utils::Subscribe::TableAccountFlowTypeFieldOutflowType,
-        ]
-    }
 
     async fn state_full_operation<Id: RowId>(data: &Self::Type2, state: &mut Ch) -> Self::Type3 {
         let read_output =

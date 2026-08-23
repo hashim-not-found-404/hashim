@@ -29,10 +29,6 @@ pub(crate) trait ViewAndCache<Ch: Cache, T> {
     type Type3;
     type Type4;
 
-    fn subs() -> &'static [Subscribe] {
-        unreachable!("we dont need it here")
-    }
-
     async fn state_full_operation<Id: RowId>(data: &Self::Type2, state: &mut Ch) -> Self::Type3;
     fn extract_resource(data: &Self::Type3) -> Vec<resource_utils::ResourceInfo>;
     fn apply_on_the_model<As: AllSignalTypes>(output: &Self::Type4, model: &Model<As>);

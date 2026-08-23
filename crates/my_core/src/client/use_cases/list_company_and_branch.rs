@@ -24,6 +24,12 @@ type Type2 = use_cases::list_company_and_branch::Input;
 type Type3 = use_cases::list_company_and_branch::MyResult;
 type Type4 = use_cases::list_company_and_branch::MyResult;
 
+pub(crate) const SUBS: &'static [resource_utils::Subscribe] = &[
+    resource_utils::Subscribe::TableCompanyBranchFieldName,
+    resource_utils::Subscribe::TableCompanyFieldName,
+    resource_utils::Subscribe::TableAccessControlForCompanyFieldRole,
+];
+
 make_wrap_unwrap!(list_company_and_branch, ListCompanyAndBranch);
 make_user_uuid!(list_company_and_branch);
 
@@ -61,14 +67,6 @@ where
     type Type2 = Type2;
     type Type3 = Type3;
     type Type4 = Type4;
-
-    fn subs() -> &'static [resource_utils::Subscribe] {
-        &[
-            resource_utils::Subscribe::TableCompanyBranchFieldName,
-            resource_utils::Subscribe::TableCompanyFieldName,
-            resource_utils::Subscribe::TableAccessControlForCompanyFieldRole,
-        ]
-    }
 
     async fn state_full_operation<Id: RowId>(data: &Self::Type2, state: &mut Ch) -> Self::Type3 {
         let result = data.state_full_operation::<LongCache>(state).await.unwrap();
@@ -266,15 +264,11 @@ fn spawn_listener<
         user_uuid: model.user_uuid.read().clone().unwrap(),
     });
 
-    let listener_aborter = client_traits::spawn_listener::<Rn, Rt, Mpsc>(
-        cache,
-        <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::subs(),
-        data,
-        move |data| {
+    let listener_aborter =
+        client_traits::spawn_listener::<Rn, Rt, Mpsc>(cache, SUBS, data, move |data| {
             let data = unwrap_output(data);
             <ViewAndCacheType as ViewAndCache<Ch, LongCache>>::apply_on_the_model(&data, model);
-        },
-    );
+        });
 
     commander_local_state.aborter_to_company_and_branch_listener.set(Box::new(listener_aborter));
 }

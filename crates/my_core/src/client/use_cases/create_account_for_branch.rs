@@ -218,10 +218,7 @@ fn spawn_listener<
 
     let listener_aborter = client_traits::spawn_listener::<Rn, Rt, Mpsc>(
         cache,
-        <fetches::get_all_accounts_for_branch::ViewAndCacheType as ViewAndCache<
-            Ch,
-            LongCacheForGetAllAccountsForBranch,
-        >>::subs(),
+        fetches::get_all_accounts_for_branch::SUBS,
         data,
         move |data| {
             let data = fetches::get_all_accounts_for_branch::unwrap_output(data);
