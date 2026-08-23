@@ -1,7 +1,6 @@
 use crate::client::utility::cache::Cache;
 use crate::client::utility::cache_actor;
 use crate::client::utility::client_traits;
-use crate::client::utility::client_traits::ViewAndCache;
 use crate::client::utility::commander;
 use crate::client::utility::process_manager;
 use crate::client::utility::ui_model;
@@ -29,33 +28,26 @@ type Type4 = use_cases::sign_up::MyResult;
 make_wrap_unwrap!(sign_up, SignUp);
 make_user_uuid!(sign_up);
 
-pub(crate) struct ViewAndCacheType;
-
-impl<Ch, LongCache> ViewAndCache<Ch, LongCache> for ViewAndCacheType
-where
+pub(crate) async fn state_full_operation<
     Ch: Cache,
     LongCache: for<'a> use_cases::sign_up::DatabaseRead<Db<'a> = Ch>,
-{
-    type Type1 = Type1;
-    type Type2 = Type2;
-    type Type3 = Type3;
-    type Type4 = Type4;
+>(
+    data: &Type2,
+    state: &mut Ch,
+) -> Type3 {
+    let errr = data.state_full_check::<LongCache>(state).await.unwrap();
 
-    async fn state_full_operation<Id: RowId>(data: &Self::Type2, state: &mut Ch) -> Self::Type3 {
-        let errr = data.state_full_check::<LongCache>(state).await.unwrap();
-
-        if errr.is_there_error() {
-            return Err(errr);
-        }
-
-        Ok(use_cases::sign_up::Ok {
-            new_uuid:        data.user_uuid.clone(),
-            user_id:         data.user_id.clone(),
-            user_name:       data.name.clone(),
-            hashed_password: String::new(),
-            jwt:             JsonWebTokenType(String::new()),
-        })
+    if errr.is_there_error() {
+        return Err(errr);
     }
+
+    Ok(use_cases::sign_up::Ok {
+        new_uuid:        data.user_uuid.clone(),
+        user_id:         data.user_id.clone(),
+        user_name:       data.name.clone(),
+        hashed_password: String::new(),
+        jwt:             JsonWebTokenType(String::new()),
+    })
 }
 
 pub(crate) fn extract_resource(data: &Type3) -> Vec<resource_utils::ResourceInfo> {

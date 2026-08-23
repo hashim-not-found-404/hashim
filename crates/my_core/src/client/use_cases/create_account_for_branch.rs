@@ -1,12 +1,12 @@
 use crate::client::fetches;
 use crate::client::utility::cache::Cache;
 use crate::client::utility::client_traits;
-use crate::client::utility::client_traits::ViewAndCache;
 use crate::client::utility::commander;
 use crate::client::utility::process_manager;
 use crate::client::utility::ui_model;
 use crate::client::utility::ui_model::HashimSignal;
 use crate::domain::use_cases;
+use crate::domain::use_cases::create_account_for_branch::DatabaseRead;
 use crate::domain::utility::resource_utils;
 use crate::domain::utility::types::MyErrorTrait;
 use crate::domain::utility::types::RowId;
@@ -27,27 +27,20 @@ type Type4 = use_cases::create_account_for_branch::MyResult;
 make_wrap_unwrap!(create_account_for_branch, CreateAccountForBranch);
 make_user_uuid!(create_account_for_branch);
 
-pub(crate) struct ViewAndCacheType;
-
-impl<Ch, LongCache> ViewAndCache<Ch, LongCache> for ViewAndCacheType
-where
+pub(crate) async fn state_full_operation<
     Ch: Cache,
-    LongCache: for<'a> use_cases::create_account_for_branch::DatabaseRead<Db<'a> = Ch>,
-{
-    type Type1 = Type1;
-    type Type2 = Type2;
-    type Type3 = Type3;
-    type Type4 = Type4;
+    LongCache: for<'a> DatabaseRead<Db<'a> = Ch>,
+>(
+    data: &Type2,
+    state: &mut Ch,
+) -> Type3 {
+    let errr = data.state_full_check::<LongCache>(state).await.unwrap();
 
-    async fn state_full_operation<Id: RowId>(data: &Self::Type2, state: &mut Ch) -> Self::Type3 {
-        let errr = data.state_full_check::<LongCache>(state).await.unwrap();
-
-        if errr.is_there_error() {
-            return Err(errr);
-        }
-
-        Ok(data.state_less_operation())
+    if errr.is_there_error() {
+        return Err(errr);
     }
+
+    Ok(data.state_less_operation())
 }
 
 pub(crate) fn extract_resource(data: &Type3) -> Vec<resource_utils::ResourceInfo> {
@@ -110,7 +103,7 @@ impl ui_model::CreateAccountForBranch {
         Mpsc: traits::MultiProducerSingleConsumer,
         As: ui_model::AllSignalTypes,
         Ch: Cache + 'static,
-        LongCache: for<'a> use_cases::create_account_for_branch::DatabaseRead<Db<'a> = Ch> + 'static,
+        LongCache: for<'a> DatabaseRead<Db<'a> = Ch> + 'static,
         LongCacheForGetAllAccountsForBranch: for<'a> use_cases::get_all_accounts_for_branch::DatabaseRead<Db<'a> = Ch> + 'static,
     >(
         self,
@@ -247,7 +240,7 @@ async fn handle_submit<
     Mpsc: traits::MultiProducerSingleConsumer,
     As: ui_model::AllSignalTypes,
     Ch: Cache,
-    LongCache: for<'a> use_cases::create_account_for_branch::DatabaseRead<Db<'a> = Ch>,
+    LongCache: for<'a> DatabaseRead<Db<'a> = Ch>,
 >(
     model: &'static ui_model::Model<As>,
     cache: client_traits::CacheActorStruct<Mpsc>,

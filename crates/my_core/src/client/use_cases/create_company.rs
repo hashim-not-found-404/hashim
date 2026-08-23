@@ -1,7 +1,6 @@
 use crate::client::utility::cache::Cache;
 use crate::client::utility::cache_actor;
 use crate::client::utility::client_traits;
-use crate::client::utility::client_traits::ViewAndCache;
 use crate::client::utility::ui_model;
 use crate::client::utility::ui_model::HashimSignal;
 use crate::domain::use_cases;
@@ -21,21 +20,8 @@ type Type4 = use_cases::create_company::MyResult;
 make_wrap_unwrap!(create_company, CreateCompany);
 make_user_uuid!(create_company);
 
-pub(crate) struct ViewAndCacheType;
-
-impl<Ch, LongCache> ViewAndCache<Ch, LongCache> for ViewAndCacheType
-where
-    Ch: Cache,
-    LongCache: for<'a> use_cases::create_company::DatabaseRead<Db<'a> = Ch>,
-{
-    type Type1 = Type1;
-    type Type2 = Type2;
-    type Type3 = Type3;
-    type Type4 = Type4;
-
-    async fn state_full_operation<Id: RowId>(data: &Self::Type2, _: &mut Ch) -> Self::Type3 {
-        Ok(data.state_less_operation())
-    }
+pub(crate) async fn state_full_operation(data: &Type2) -> Type3 {
+    Ok(data.state_less_operation())
 }
 
 pub(crate) fn extract_resource(data: &Type3) -> Vec<resource_utils::ResourceInfo> {

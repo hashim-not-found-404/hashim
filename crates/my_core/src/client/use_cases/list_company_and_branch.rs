@@ -1,6 +1,5 @@
 use crate::client::utility::cache::Cache;
 use crate::client::utility::client_traits;
-use crate::client::utility::client_traits::ViewAndCache;
 use crate::client::utility::commander;
 use crate::client::utility::ui_model;
 use crate::client::utility::ui_model::HashimSignal;
@@ -9,7 +8,6 @@ use crate::domain::utility::resource_utils;
 use crate::domain::utility::types::Branch;
 use crate::domain::utility::types::Company;
 use crate::domain::utility::types::ListOfCompanies;
-use crate::domain::utility::types::RowId;
 use crate::domain::utility::uuid;
 use crate::domain::utility::uuid::User;
 use crate::make_user_uuid;
@@ -56,23 +54,16 @@ pub fn sort_companies(companies: &mut ListOfCompanies) {
     }
 }
 
-pub(crate) struct ViewAndCacheType;
-
-impl<Ch, LongCache> ViewAndCache<Ch, LongCache> for ViewAndCacheType
-where
+pub(crate) async fn state_full_operation<
     Ch: Cache,
     LongCache: for<'a> use_cases::list_company_and_branch::DatabaseRead<Db<'a> = Ch>,
-{
-    type Type1 = Type1;
-    type Type2 = Type2;
-    type Type3 = Type3;
-    type Type4 = Type4;
+>(
+    data: &Type2,
+    state: &mut Ch,
+) -> Type3 {
+    let result = data.state_full_operation::<LongCache>(state).await.unwrap();
 
-    async fn state_full_operation<Id: RowId>(data: &Self::Type2, state: &mut Ch) -> Self::Type3 {
-        let result = data.state_full_operation::<LongCache>(state).await.unwrap();
-
-        Ok(result)
-    }
+    Ok(result)
 }
 
 pub(crate) fn extract_resource(data: &Type3) -> Vec<resource_utils::ResourceInfo> {

@@ -1,7 +1,6 @@
 use crate::client::utility::cache::Cache;
 use crate::client::utility::cache_actor;
 use crate::client::utility::client_traits;
-use crate::client::utility::client_traits::ViewAndCache;
 use crate::client::utility::commander;
 use crate::client::utility::process_manager;
 use crate::client::utility::ui_model;
@@ -28,27 +27,20 @@ type Type4 = use_cases::create_company_branch::MyResult;
 make_wrap_unwrap!(create_company_branch, CreateCompanyBranch);
 make_user_uuid!(create_company_branch);
 
-pub(crate) struct ViewAndCacheType;
-
-impl<Ch, LongCache> ViewAndCache<Ch, LongCache> for ViewAndCacheType
-where
+pub(crate) async fn state_full_operation<
     Ch: Cache,
     LongCache: for<'a> use_cases::create_company_branch::DatabaseRead<Db<'a> = Ch>,
-{
-    type Type1 = Type1;
-    type Type2 = Type2;
-    type Type3 = Type3;
-    type Type4 = Type4;
+>(
+    data: &Type2,
+    state: &mut Ch,
+) -> Type3 {
+    let errr = data.state_full_check::<LongCache>(state).await.unwrap();
 
-    async fn state_full_operation<Id: RowId>(data: &Self::Type2, state: &mut Ch) -> Self::Type3 {
-        let errr = data.state_full_check::<LongCache>(state).await.unwrap();
-
-        if errr.is_there_error() {
-            return Err(errr);
-        }
-
-        Ok(data.state_less_operation())
+    if errr.is_there_error() {
+        return Err(errr);
     }
+
+    Ok(data.state_less_operation())
 }
 
 pub(crate) fn extract_resource(data: &Type3) -> Vec<resource_utils::ResourceInfo> {

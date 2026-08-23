@@ -1,7 +1,6 @@
 use crate::client::fetches;
 use crate::client::utility::cache::Cache;
 use crate::client::utility::client_traits;
-use crate::client::utility::client_traits::ViewAndCache;
 use crate::client::utility::commander;
 use crate::client::utility::process_manager;
 use crate::client::utility::ui_model;
@@ -28,22 +27,15 @@ type Type4 = use_cases::create_journal_entry::MyResult;
 make_wrap_unwrap!(create_journal_entry, CreateJournalEntry);
 make_user_uuid!(create_journal_entry);
 
-pub(crate) struct ViewAndCacheType<Ti: traits::Time>(Ti);
-
-impl<Ch, LongCache, Ti> ViewAndCache<Ch, LongCache> for ViewAndCacheType<Ti>
-where
+pub(crate) async fn state_full_operation<
     Ti: traits::Time,
     Ch: Cache,
     LongCache: for<'a> use_cases::create_journal_entry::DatabaseRead<Db<'a> = Ch>,
-{
-    type Type1 = Type1;
-    type Type2 = Type2;
-    type Type3 = Type3;
-    type Type4 = Type4;
-
-    async fn state_full_operation<Id: RowId>(data: &Self::Type2, state: &mut Ch) -> Self::Type3 {
-        data.state_full_check::<LongCache, Ti>(state).await.unwrap()
-    }
+>(
+    data: &Type2,
+    state: &mut Ch,
+) -> Type3 {
+    data.state_full_check::<LongCache, Ti>(state).await.unwrap()
 }
 
 pub(crate) fn extract_resource(data: &Type3) -> Vec<resource_utils::ResourceInfo> {

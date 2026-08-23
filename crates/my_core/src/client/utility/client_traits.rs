@@ -1,4 +1,3 @@
-use crate::client::utility::cache::Cache;
 use crate::client::utility::cache_actor::CacheStruct;
 use crate::client::utility::cache_actor::CachingStrategy;
 use crate::client::utility::cache_actor::Response;
@@ -8,12 +7,9 @@ use crate::client::utility::process_manager::MessageToProcess;
 use crate::client::utility::process_manager::MessageToProcessManager;
 use crate::client::utility::process_manager::ProcessName;
 use crate::client::utility::ui_model::AllSignalTypes;
-use crate::client::utility::ui_model::Model;
 use crate::domain::request_response::OperationsInput;
 use crate::domain::request_response::OperationsResult;
-use crate::domain::utility::resource_utils;
 use crate::domain::utility::resource_utils::Subscribe;
-use crate::domain::utility::types::RowId;
 use crate::utility::traits::JoinHandle;
 use crate::utility::traits::MultiProducerSingleConsumer;
 use crate::utility::traits::RandomNumber;
@@ -22,16 +18,6 @@ use crate::utility::traits::Runtime;
 use crate::utility::traits::Sender;
 use crate::utility::utils::ReadAndSet;
 use std::sync::Arc;
-
-pub(crate) trait ViewAndCache<Ch: Cache, T> {
-    type Type1;
-    type Type2;
-    type Type3;
-    type Type4;
-
-    async fn state_full_operation<Id: RowId>(data: &Self::Type2, state: &mut Ch) -> Self::Type3;
-    // fn extract_resource(data: &Self::Type3) -> Vec<resource_utils::ResourceInfo>;
-}
 
 #[macro_export]
 macro_rules! make_wrap_unwrap {

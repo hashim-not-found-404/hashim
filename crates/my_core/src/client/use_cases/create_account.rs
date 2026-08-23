@@ -1,56 +1,61 @@
 use crate::client::fetches;
 use crate::client::utility::cache::Cache;
-use crate::client::utility::cache_actor;
+use crate::client::utility::cache_actor::CacheStruct;
+use crate::client::utility::cache_actor::CachingStrategy;
+use crate::client::utility::cache_actor::Response;
 use crate::client::utility::client_traits;
-use crate::client::utility::client_traits::ViewAndCache;
-use crate::client::utility::commander;
-use crate::client::utility::process_manager;
-use crate::client::utility::ui_model;
+use crate::client::utility::client_traits::CacheActorStruct;
+use crate::client::utility::commander::CommanderLocalState;
+use crate::client::utility::process_manager::MessageToProcessManager;
+use crate::client::utility::process_manager::ProcessName;
+use crate::client::utility::ui_model::AllSignalTypes;
+use crate::client::utility::ui_model::CreateAccount;
 use crate::client::utility::ui_model::HashimSignal;
-use crate::domain::use_cases;
+use crate::client::utility::ui_model::Model;
+use crate::domain::request_response::OperationsInput;
+use crate::domain::request_response::OperationsResult;
+use crate::domain::use_cases::create_account::DatabaseRead;
+use crate::domain::use_cases::create_account::Input;
+use crate::domain::use_cases::create_account::MyResult;
 use crate::domain::utility::resource_utils;
+use crate::domain::utility::resource_utils::Subscribe;
 use crate::domain::utility::types::MyErrorTrait;
 use crate::domain::utility::types::RowId;
 use crate::domain::utility::uuid::Account;
 use crate::domain::utility::uuid::User;
 use crate::make_user_uuid;
 use crate::make_wrap_unwrap;
-use crate::utility::traits;
+use crate::utility::traits::MultiProducerSingleConsumer;
+use crate::utility::traits::RandomNumber;
 use crate::utility::traits::Receiver;
+use crate::utility::traits::Runtime;
 use crate::utility::traits::Sender;
 use crate::utility::utils::MakeOptionIfEmpty;
 use crate::utility::utils::ReadAndSet;
 use std::sync::Arc;
 
-type Type1 = use_cases::create_account::Input;
-type Type2 = use_cases::create_account::Input;
-type Type3 = use_cases::create_account::MyResult;
-type Type4 = use_cases::create_account::MyResult;
+type Type1 = Input;
+type Type2 = Input;
+type Type3 = MyResult;
+type Type4 = MyResult;
 
 make_wrap_unwrap!(create_account, CreateAccount);
 make_user_uuid!(create_account);
 
-pub(crate) struct ViewAndCacheType;
-
-impl<Ch, LongCache> ViewAndCache<Ch, LongCache> for ViewAndCacheType
-where
+pub(crate) async fn state_full_operation<
     Ch: Cache,
-    LongCache: for<'a> use_cases::create_account::DatabaseRead<Db<'a> = Ch>,
-{
-    type Type1 = Type1;
-    type Type2 = Type2;
-    type Type3 = Type3;
-    type Type4 = Type4;
+    LongCache: for<'a> DatabaseRead<Db<'a> = Ch>,
+>(
+    data: &Type2,
+    state: &mut Ch,
+) -> Type3 {
+    let errr = data.state_full_check::<LongCache>(state).await.unwrap();
 
-    async fn state_full_operation<Id: RowId>(data: &Self::Type2, state: &mut Ch) -> Self::Type3 {
-        let errr = data.state_full_check::<LongCache>(state).await.unwrap();
-
-        if errr.is_there_error() {
-            return Err(errr);
-        }
-
-        Ok(data.state_less_operation())
+    if errr.is_there_error() {
+        return Err(errr);
     }
+
+    Ok(data.state_less_operation())
 }
 
 pub(crate) fn extract_resource(data: &Type3) -> Vec<resource_utils::ResourceInfo> {
@@ -96,7 +101,7 @@ pub(crate) fn extract_resource(data: &Type3) -> Vec<resource_utils::ResourceInfo
     }
 }
 
-fn apply_on_the_model<As: ui_model::AllSignalTypes>(output: &Type4, model: &ui_model::Model<As>) {
+fn apply_on_the_model<As: AllSignalTypes>(output: &Type4, model: &Model<As>) {
     let local_state = &model.page_create_account;
 
     match output {
@@ -111,25 +116,25 @@ fn apply_on_the_model<As: ui_model::AllSignalTypes>(output: &Type4, model: &ui_m
     }
 }
 
-impl ui_model::CreateAccount {
+impl CreateAccount {
     pub(crate) async fn update<
-        Rn: traits::RandomNumber,
-        Rt: traits::Runtime,
+        Rn: RandomNumber,
+        Rt: Runtime,
         Id: RowId,
-        Mpsc: traits::MultiProducerSingleConsumer,
-        As: ui_model::AllSignalTypes,
+        Mpsc: MultiProducerSingleConsumer,
+        As: AllSignalTypes,
         Ch: Cache,
-        LongCache: for<'a> use_cases::create_account::DatabaseRead<Db<'a> = Ch>,
+        LongCache: for<'a> DatabaseRead<Db<'a> = Ch>,
     >(
         self,
-        model: &'static ui_model::Model<As>,
-        cache: client_traits::CacheActorStruct<Mpsc>,
-        commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
+        model: &'static Model<As>,
+        cache: CacheStruct<Mpsc, Subscribe, OperationsInput, OperationsResult>,
+        commander_local_state: Arc<CommanderLocalState<Mpsc, As>>,
     ) {
         let local_state = &model.page_create_account;
 
         match self {
-            ui_model::CreateAccount::Submit => {
+            CreateAccount::Submit => {
                 handle_submit::<Rn, Rt, Id, Mpsc, As, Ch, LongCache>(
                     model,
                     cache,
@@ -137,41 +142,39 @@ impl ui_model::CreateAccount {
                 )
                 .await
             }
-            ui_model::CreateAccount::Consent(i) => {
+            CreateAccount::Consent(i) => {
                 commander_local_state
                     .sender_to_process_manager
                     .read()
-                    .send(process_manager::MessageToProcessManager::FromUser {
-                        process_name: process_manager::ProcessName::CreateAccount,
+                    .send(MessageToProcessManager::FromUser {
+                        process_name: ProcessName::CreateAccount,
                         consent:      i,
                     })
                     .await
                     .unwrap();
             }
-            ui_model::CreateAccount::Clean => handle_clean::<As>(model),
-            ui_model::CreateAccount::IsDebit(v) => local_state.is_debit.set(v),
-            ui_model::CreateAccount::IsPermanentAccount(v) => {
-                local_state.is_permanent_account.set(v)
-            }
-            ui_model::CreateAccount::AccountName(v) => {
+            CreateAccount::Clean => handle_clean::<As>(model),
+            CreateAccount::IsDebit(v) => local_state.is_debit.set(v),
+            CreateAccount::IsPermanentAccount(v) => local_state.is_permanent_account.set(v),
+            CreateAccount::AccountName(v) => {
                 local_state.account_name.set(v);
                 handle_check::<Rn, Id, Mpsc, As, Ch, LongCache>(model, cache).await;
             }
-            ui_model::CreateAccount::Notes(v) => local_state.notes.set(v),
-            ui_model::CreateAccount::UnitOfMeasurementOfQuantity(v) => {
+            CreateAccount::Notes(v) => local_state.notes.set(v),
+            CreateAccount::UnitOfMeasurementOfQuantity(v) => {
                 local_state.unit_of_measurement_of_quantity.set(v)
             }
-            ui_model::CreateAccount::Subscribe => {
+            CreateAccount::Subscribe => {
                 fetches::get_all_accounts::fetch::<Rn, Mpsc, As>(model, cache).await
             }
         }
     }
 }
 
-fn build_input<Id: RowId, As: ui_model::AllSignalTypes>(model: &ui_model::Model<As>) -> Type1 {
+fn build_input<Id: RowId, As: AllSignalTypes>(model: &Model<As>) -> Type1 {
     let local_state = &model.page_create_account;
 
-    use_cases::create_account::Input {
+    Input {
         user_uuid:                       model.user_uuid.read().clone().unwrap(),
         new_uuid:                        Account(Id::generate()),
         is_debit:                        local_state.is_debit.read(),
@@ -183,7 +186,7 @@ fn build_input<Id: RowId, As: ui_model::AllSignalTypes>(model: &ui_model::Model<
     }
 }
 
-fn handle_clean<As: ui_model::AllSignalTypes>(model: &ui_model::Model<As>) {
+fn handle_clean<As: AllSignalTypes>(model: &Model<As>) {
     let local_state = &model.page_create_account;
 
     local_state.account_name.reset();
@@ -196,17 +199,17 @@ fn handle_clean<As: ui_model::AllSignalTypes>(model: &ui_model::Model<As>) {
 }
 
 async fn handle_submit<
-    Rn: traits::RandomNumber,
-    Rt: traits::Runtime,
+    Rn: RandomNumber,
+    Rt: Runtime,
     Id: RowId,
-    Mpsc: traits::MultiProducerSingleConsumer,
-    As: ui_model::AllSignalTypes,
+    Mpsc: MultiProducerSingleConsumer,
+    As: AllSignalTypes,
     Ch: Cache,
-    LongCache: for<'a> use_cases::create_account::DatabaseRead<Db<'a> = Ch>,
+    LongCache: for<'a> DatabaseRead<Db<'a> = Ch>,
 >(
-    model: &'static ui_model::Model<As>,
-    cache: client_traits::CacheActorStruct<Mpsc>,
-    commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
+    model: &'static Model<As>,
+    cache: CacheActorStruct<Mpsc>,
+    commander_local_state: Arc<CommanderLocalState<Mpsc, As>>,
 ) {
     let input = build_input::<Id, As>(model);
     let data = wrap_input(input);
@@ -215,7 +218,7 @@ async fn handle_submit<
         cache,
         commander_local_state,
         &model.page_create_account.show_dialog,
-        process_manager::ProcessName::CreateAccount,
+        ProcessName::CreateAccount,
         data,
         move |data| {
             let result = unwrap_output(data);
@@ -235,27 +238,26 @@ async fn handle_submit<
 }
 
 async fn handle_check<
-    Rn: traits::RandomNumber,
+    Rn: RandomNumber,
     Id: RowId,
-    Mpsc: traits::MultiProducerSingleConsumer,
-    As: ui_model::AllSignalTypes,
+    Mpsc: MultiProducerSingleConsumer,
+    As: AllSignalTypes,
     Ch: Cache,
-    LongCache: for<'a> use_cases::create_account::DatabaseRead<Db<'a> = Ch>,
+    LongCache: for<'a> DatabaseRead<Db<'a> = Ch>,
 >(
-    model: &'static ui_model::Model<As>,
-    mut cache: client_traits::CacheActorStruct<Mpsc>,
+    model: &'static Model<As>,
+    mut cache: CacheActorStruct<Mpsc>,
 ) {
     let input = build_input::<Id, As>(model);
     let data = wrap_input(input);
 
-    let mut receiver_to_response = cache
-        .send_to_cache_actor(cache_actor::CachingStrategy::ReadCacheOnly, Rn::generate(), data)
-        .await;
+    let mut receiver_to_response =
+        cache.send_to_cache_actor(CachingStrategy::ReadCacheOnly, Rn::generate(), data).await;
 
     match receiver_to_response.recv().await.unwrap() {
-        cache_actor::Response::CloseTheChannel => {}
-        cache_actor::Response::ServerCannotBeReached => {}
-        cache_actor::Response::Data {
+        Response::CloseTheChannel => {}
+        Response::ServerCannotBeReached => {}
+        Response::Data {
             is_response_from_server: _,
             data,
         } => {

@@ -1,7 +1,6 @@
 use crate::client::utility::cache::Cache;
 use crate::client::utility::cache_actor;
 use crate::client::utility::client_traits;
-use crate::client::utility::client_traits::ViewAndCache;
 use crate::client::utility::commander;
 use crate::client::utility::process_manager;
 use crate::client::utility::ui_model;
@@ -9,7 +8,6 @@ use crate::client::utility::ui_model::HashimSignal;
 use crate::domain::use_cases;
 use crate::domain::utility::resource_utils;
 use crate::domain::utility::types::JsonWebTokenType;
-use crate::domain::utility::types::RowId;
 use crate::domain::utility::uuid::User;
 use crate::make_wrap_unwrap;
 use crate::utility::traits;
@@ -34,61 +32,54 @@ pub(crate) struct SignInOk {
     user_name: String,
 }
 
-pub(crate) struct ViewAndCacheType;
-
-impl<Ch, LongCache> ViewAndCache<Ch, LongCache> for ViewAndCacheType
-where
+pub(crate) async fn state_full_operation<
     Ch: Cache,
     LongCache: for<'a> use_cases::sign_in::DatabaseRead<Db<'a> = Ch>,
-{
-    type Type1 = Type1;
-    type Type2 = Type2;
-    type Type3 = Type3;
-    type Type4 = Type4;
+>(
+    data: &Type2,
+    state: &mut Ch,
+) -> Type3 {
+    let read_output = LongCache::read(state, &use_cases::sign_in::ReadInput {
+        user_id: data.user_id.clone(),
+    })
+    .await
+    .unwrap();
 
-    async fn state_full_operation<Id: RowId>(data: &Self::Type2, state: &mut Ch) -> Self::Type3 {
-        let read_output = LongCache::read(state, &use_cases::sign_in::ReadInput {
+    if let Some((user_uuid, jwt, user_name)) = read_output.user_rowid_and_password_hash_and_name
+        && !jwt.is_empty()
+    {
+        return Ok(use_cases::sign_in::Ok {
+            user_uuid,
+            jwt: JsonWebTokenType(String::new()),
             user_id: data.user_id.clone(),
-        })
-        .await
-        .unwrap();
+            user_name,
+        });
+    }
 
-        if let Some((user_uuid, jwt, user_name)) = read_output.user_rowid_and_password_hash_and_name
-            && !jwt.is_empty()
-        {
-            return Ok(use_cases::sign_in::Ok {
-                user_uuid,
-                jwt: JsonWebTokenType(String::new()),
-                user_id: data.user_id.clone(),
-                user_name,
-            });
-        }
+    let password: Option<String> = None;
+    let user_uuid = None;
+    let user_name = None;
 
-        let password: Option<String> = None;
-        let user_uuid = None;
-        let user_name = None;
-
-        match password {
-            Some(password) => {
-                if password == data.password {
-                    Ok(data.state_full_operation(
-                        &JsonWebTokenType(String::new()),
-                        user_uuid.unwrap(),
-                        user_name.as_ref(),
-                    ))
-                } else {
-                    Err(use_cases::sign_in::Error {
-                        user_id:  None,
-                        password: Some(use_cases::sign_in::PasswordError::WrongPassword),
-                    })
-                }
-            }
-            None => {
+    match password {
+        Some(password) => {
+            if password == data.password {
+                Ok(data.state_full_operation(
+                    &JsonWebTokenType(String::new()),
+                    user_uuid.unwrap(),
+                    user_name.as_ref(),
+                ))
+            } else {
                 Err(use_cases::sign_in::Error {
-                    user_id:  Some(use_cases::sign_in::UserIdError::NotExist),
-                    password: None,
+                    user_id:  None,
+                    password: Some(use_cases::sign_in::PasswordError::WrongPassword),
                 })
             }
+        }
+        None => {
+            Err(use_cases::sign_in::Error {
+                user_id:  Some(use_cases::sign_in::UserIdError::NotExist),
+                password: None,
+            })
         }
     }
 }

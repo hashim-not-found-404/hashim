@@ -1,9 +1,10 @@
 use crate::client::utility::cache::Cache;
-use crate::client::utility::client_traits::ViewAndCache;
-use crate::client::utility::ui_model;
-use crate::domain::use_cases;
+use crate::domain::use_cases::get_all_accounts_for_branch::DatabaseRead;
+use crate::domain::use_cases::get_all_accounts_for_branch::Input;
+use crate::domain::use_cases::get_all_accounts_for_branch::MyResult;
+use crate::domain::use_cases::get_all_accounts_for_branch::Ok;
+use crate::domain::use_cases::get_all_accounts_for_branch::ReadInput;
 use crate::domain::utility::resource_utils;
-use crate::domain::utility::types::RowId;
 use crate::domain::utility::uuid::User;
 use crate::make_user_uuid;
 use crate::make_wrap_unwrap;
@@ -24,37 +25,30 @@ pub(crate) const SUBS: &'static [resource_utils::Subscribe] = &[
     resource_utils::Subscribe::TableAccountFlowTypeFieldOutflowType,
 ];
 
-type Type3 = use_cases::get_all_accounts_for_branch::MyResult;
+type Type2 = Input;
+type Type3 = MyResult;
 
-pub struct ViewAndCacheType;
-
-impl<Ch, LongCache> ViewAndCache<Ch, LongCache> for ViewAndCacheType
-where
+pub(crate) async fn state_full_operation<
     Ch: Cache,
-    LongCache: for<'a> use_cases::get_all_accounts_for_branch::DatabaseRead<Db<'a> = Ch>,
-{
-    type Type1 = use_cases::get_all_accounts_for_branch::Input;
-    type Type2 = use_cases::get_all_accounts_for_branch::Input;
-    type Type3 = use_cases::get_all_accounts_for_branch::MyResult;
-    type Type4 = use_cases::get_all_accounts_for_branch::MyResult;
+    LongCache: for<'a> DatabaseRead<Db<'a> = Ch>,
+>(
+    data: &Type2,
+    state: &mut Ch,
+) -> Type3 {
+    let read_output = LongCache::read(state, &ReadInput {
+        user_uuid:           data.user_uuid.clone(),
+        company_branch_uuid: data.company_branch_uuid.clone(),
+    })
+    .await
+    .unwrap();
 
-    async fn state_full_operation<Id: RowId>(data: &Self::Type2, state: &mut Ch) -> Self::Type3 {
-        let read_output =
-            LongCache::read(state, &use_cases::get_all_accounts_for_branch::ReadInput {
-                user_uuid:           data.user_uuid.clone(),
-                company_branch_uuid: data.company_branch_uuid.clone(),
-            })
-            .await
-            .unwrap();
-
-        let ok = use_cases::get_all_accounts_for_branch::Ok {
-            company_uuid:        read_output.company_uuid,
-            company_branch_uuid: data.company_branch_uuid.clone(),
-            accounts:            read_output.accounts,
-            accounts_for_branch: read_output.accounts_for_branch,
-        };
-        Ok(ok)
-    }
+    let ok = Ok {
+        company_uuid:        read_output.company_uuid,
+        company_branch_uuid: data.company_branch_uuid.clone(),
+        accounts:            read_output.accounts,
+        accounts_for_branch: read_output.accounts_for_branch,
+    };
+    Ok(ok)
 }
 
 pub(crate) fn extract_resource(data: &Type3) -> Vec<resource_utils::ResourceInfo> {
