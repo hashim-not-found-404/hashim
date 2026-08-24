@@ -1,4 +1,5 @@
 use crate::domain::use_cases;
+use crate::domain::utility::types::DatabaseWrite;
 use crate::domain::utility::types::HashedPassword;
 use crate::domain::utility::types::JWT;
 use crate::domain::utility::types::MyErrorTrait;
@@ -16,7 +17,7 @@ impl use_cases::sign_up::Input {
         Jwt: JWT,
         Cli: DBClient,
         Db: for<'a> use_cases::sign_up::DatabaseRead<Db<'a> = Cli::Txn<'a>>,
-        DbWrite: for<'a> server_traits::DatabaseWrite<Db<'a> = Cli::Txn<'a>, Input = use_cases::sign_up::Ok>,
+        DbWrite: for<'a> DatabaseWrite<Db<'a> = Cli::Txn<'a>, Input = use_cases::sign_up::Ok>,
     >(
         &self,
         side_effects: &mut SideEffects,

@@ -42,61 +42,6 @@ pub(crate) async fn state_full_operation<
     Ok(data.state_less_operation())
 }
 
-pub(crate) fn extract_resource(data: &Type3) -> Vec<resource_utils::ResourceInfo> {
-    match data {
-        Ok(ok) => {
-            let this = ok;
-            let branch_uuid = this.new_uuid.clone();
-            vec![
-                resource_utils::ResourceInfo {
-                    row_uuid: branch_uuid.0.clone(),
-                    resource: resource_utils::Resource::TableCompanyBranchFieldName(
-                        this.branch_name.clone(),
-                    ),
-                },
-                resource_utils::ResourceInfo {
-                    row_uuid: branch_uuid.0.clone(),
-                    resource: resource_utils::Resource::TableCompanyBranchFieldCompanyBelong(
-                        this.company_belong.clone(),
-                    ),
-                },
-                resource_utils::ResourceInfo {
-                    row_uuid: branch_uuid.0.clone(),
-                    resource: resource_utils::Resource::TableCompanyBranchFieldLocation(
-                        this.location.clone(),
-                    ),
-                },
-                resource_utils::ResourceInfo {
-                    row_uuid: branch_uuid.0.clone(),
-                    resource: resource_utils::Resource::TableCompanyBranchFieldCurrency(
-                        this.currency.clone(),
-                    ),
-                },
-                resource_utils::ResourceInfo {
-                    row_uuid: branch_uuid.0.clone(),
-                    resource: resource_utils::Resource::TableAccessControlForCompanyBranchFieldRole(
-                        this.role.clone(),
-                    ),
-                },
-                resource_utils::ResourceInfo {
-                    row_uuid: branch_uuid.0.clone(),
-                    resource: resource_utils::Resource::TableAccessControlForCompanyBranchFieldUser(
-                        this.user_uuid.clone(),
-                    ),
-                },
-                resource_utils::ResourceInfo {
-                    row_uuid: branch_uuid.0.clone(),
-                    resource:
-                        resource_utils::Resource::TableAccessControlForCompanyBranchFieldDataGroup(
-                            this.new_uuid.clone(),
-                        ),
-                },
-            ]
-        }
-        Err(_) => Vec::new(),
-    }
-}
-
 fn apply_on_the_model<As: ui_model::AllSignalTypes>(output: &Type4, model: &ui_model::Model<As>) {
     let local_state = &model.page_create_company_branch;
 

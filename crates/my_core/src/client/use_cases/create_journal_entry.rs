@@ -37,86 +37,6 @@ pub(crate) async fn state_full_operation<
     data.state_full_check::<LongCache, Ti>(state).await.unwrap()
 }
 
-pub(crate) fn extract_resource(data: &Type3) -> Vec<resource_utils::ResourceInfo> {
-    match data {
-        Ok(ok) => {
-            let mut resources = Vec::new();
-
-            resources.push(resource_utils::ResourceInfo {
-                row_uuid: ok.new_uuid.clone(),
-                resource: resource_utils::Resource::TableEntryFieldWriter(ok.user_uuid.clone()),
-            });
-            resources.push(resource_utils::ResourceInfo {
-                row_uuid: ok.new_uuid.clone(),
-                resource: resource_utils::Resource::TableEntryFieldTime(ok.time),
-            });
-            if let Some(shared_id) = &ok.shared_entry_id {
-                resources.push(resource_utils::ResourceInfo {
-                    row_uuid: ok.new_uuid.clone(),
-                    resource: resource_utils::Resource::TableEntryFieldSharedEntryId(
-                        shared_id.clone(),
-                    ),
-                });
-            }
-
-            for single in &ok.double_entry {
-                resources.push(resource_utils::ResourceInfo {
-                    row_uuid: single.new_uuid.clone(),
-                    resource: resource_utils::Resource::TableSingleEntryFieldDoubleEntry(
-                        single.double_entry_number,
-                    ),
-                });
-                resources.push(resource_utils::ResourceInfo {
-                    row_uuid: single.new_uuid.clone(),
-                    resource: resource_utils::Resource::TableSingleEntryFieldEntry(
-                        ok.new_uuid.clone(),
-                    ),
-                });
-                resources.push(resource_utils::ResourceInfo {
-                    row_uuid: single.new_uuid.clone(),
-                    resource: resource_utils::Resource::TableSingleEntryFieldAccount(
-                        single.account.clone(),
-                    ),
-                });
-                resources.push(resource_utils::ResourceInfo {
-                    row_uuid: single.new_uuid.clone(),
-                    resource: resource_utils::Resource::TableSingleEntryFieldIsDebit(
-                        single.is_debit,
-                    ),
-                });
-                resources.push(resource_utils::ResourceInfo {
-                    row_uuid: single.new_uuid.clone(),
-                    resource: resource_utils::Resource::TableSingleEntryFieldCostOutFlowType(
-                        single.out_flow_type,
-                    ),
-                });
-                resources.push(resource_utils::ResourceInfo {
-                    row_uuid: single.new_uuid.clone(),
-                    resource: resource_utils::Resource::TableSingleEntryFieldQuantity(
-                        single.quantity,
-                    ),
-                });
-                resources.push(resource_utils::ResourceInfo {
-                    row_uuid: single.new_uuid.clone(),
-                    resource: resource_utils::Resource::TableSingleEntryFieldAmount(single.amount),
-                });
-            }
-
-            for (account_uuid, inventory) in &ok.inventory {
-                resources.push(resource_utils::ResourceInfo {
-                    row_uuid: account_uuid.0.clone(),
-                    resource: resource_utils::Resource::TableAccountFieldInventory(
-                        inventory.0.clone(),
-                    ),
-                });
-            }
-
-            resources
-        }
-        Err(_) => Vec::new(),
-    }
-}
-
 fn apply_on_the_model<As: ui_model::AllSignalTypes>(output: &Type4, model: &ui_model::Model<As>) {
     let local_state = &model.page_create_journal_entry;
 
@@ -372,7 +292,7 @@ fn spawn_listener<
 
     let listener_aborter = client_traits::spawn_listener::<Rn, Rt, Mpsc>(
         cache,
-        fetches::get_all_accounts_for_branch::SUBS,
+        fetches::get_all_accounts_for_branch::SUBSCRIBES_TO_LISTEN,
         data,
         move |data| {
             let data = fetches::get_all_accounts_for_branch::unwrap_output(data);

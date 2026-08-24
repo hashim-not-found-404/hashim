@@ -1,4 +1,5 @@
 use crate::domain::use_cases;
+use crate::domain::utility::types::DatabaseWrite;
 use crate::domain::utility::types::MyErrorTrait;
 use crate::domain::utility::types::RowId;
 use crate::domain::utility::types::UserUuidError;
@@ -13,7 +14,7 @@ impl use_cases::create_account_for_branch::Input {
         Id: RowId,
         Cli: DBClient,
         Db: for<'a> use_cases::create_account_for_branch::DatabaseRead<Db<'a> = Cli::Txn<'a>>,
-        DbWrite: for<'a> server_traits::DatabaseWrite<
+        DbWrite: for<'a> DatabaseWrite<
                 Db<'a> = Cli::Txn<'a>,
                 Input = use_cases::create_account_for_branch::Ok,
             >,

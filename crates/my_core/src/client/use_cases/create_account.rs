@@ -5,6 +5,7 @@ use crate::client::utility::cache_actor::CachingStrategy;
 use crate::client::utility::cache_actor::Response;
 use crate::client::utility::client_traits;
 use crate::client::utility::client_traits::CacheActorStruct;
+use crate::client::utility::client_traits::Subscribe;
 use crate::client::utility::commander::CommanderLocalState;
 use crate::client::utility::process_manager::MessageToProcessManager;
 use crate::client::utility::process_manager::ProcessName;
@@ -17,7 +18,6 @@ use crate::domain::request_response::OperationsResult;
 use crate::domain::use_cases::create_account::DatabaseRead;
 use crate::domain::use_cases::create_account::Input;
 use crate::domain::use_cases::create_account::MyResult;
-use crate::domain::utility::resource_utils::Subscribe;
 use crate::domain::utility::types::MyErrorTrait;
 use crate::domain::utility::types::RowId;
 use crate::domain::utility::uuid::Account;
@@ -55,49 +55,6 @@ pub(crate) async fn state_full_operation<
     }
 
     Ok(data.state_less_operation())
-}
-
-pub(crate) fn extract_resource(data: &Type3) -> Vec<resource_utils::ResourceInfo> {
-    match data {
-        Ok(ok) => {
-            vec![
-                resource_utils::ResourceInfo {
-                    row_uuid: ok.new_uuid.0.clone(),
-                    resource: resource_utils::Resource::TableAccountFieldCompanyBelong(
-                        ok.belong_to_company.clone(),
-                    ),
-                },
-                resource_utils::ResourceInfo {
-                    row_uuid: ok.new_uuid.0.clone(),
-                    resource: resource_utils::Resource::TableAccountFieldIsDebit(ok.is_debit),
-                },
-                resource_utils::ResourceInfo {
-                    row_uuid: ok.new_uuid.0.clone(),
-                    resource: resource_utils::Resource::TableAccountFieldIsPermanentAccount(
-                        ok.is_permanent_account,
-                    ),
-                },
-                resource_utils::ResourceInfo {
-                    row_uuid: ok.new_uuid.0.clone(),
-                    resource: resource_utils::Resource::TableAccountFieldName(
-                        ok.account_name.clone(),
-                    ),
-                },
-                resource_utils::ResourceInfo {
-                    row_uuid: ok.new_uuid.0.clone(),
-                    resource: resource_utils::Resource::TableAccountFieldNotes(ok.notes.clone()),
-                },
-                resource_utils::ResourceInfo {
-                    row_uuid: ok.new_uuid.0.clone(),
-                    resource:
-                        resource_utils::Resource::TableAccountFieldUnitOfMeasurementOfQuantity(
-                            ok.unit_of_measurement_of_quantity.clone(),
-                        ),
-                },
-            ]
-        }
-        Err(_) => Vec::new(),
-    }
 }
 
 fn apply_on_the_model<As: AllSignalTypes>(output: &Type4, model: &Model<As>) {

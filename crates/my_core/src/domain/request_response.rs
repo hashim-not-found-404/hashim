@@ -45,6 +45,23 @@ pub enum OperationsInput {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
+pub enum OperationsOk {
+    // auth
+    SignUp(use_cases::sign_up::Ok),
+    SignIn(use_cases::sign_in::Ok),
+    // write
+    CreateCompany(use_cases::create_company::Ok),
+    CreateCompanyBranch(use_cases::create_company_branch::Ok),
+    CreateAccount(use_cases::create_account::Ok),
+    CreateAccountForBranch(use_cases::create_account_for_branch::Ok),
+    CreateJournalEntry(use_cases::create_journal_entry::Ok),
+    // read
+    ListCompanyAndBranch(use_cases::list_company_and_branch::Ok),
+    GetAllAccounts(use_cases::get_all_accounts::Ok),
+    GetAllAccountsForBranch(use_cases::get_all_accounts_for_branch::Ok),
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub enum OperationsResult {
     // auth
     SignUp(use_cases::sign_up::MyResult),
@@ -63,11 +80,11 @@ pub enum OperationsResult {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub(crate) enum ResourceDTO {
-    CreateCompany(use_cases::create_company::MyResult),
-    CreateCompanyBranch(use_cases::create_company_branch::MyResult),
-    CreateAccount(use_cases::create_account::MyResult),
-    CreateAccountForBranch(use_cases::create_account_for_branch::MyResult),
-    CreateJournalEntry(use_cases::create_journal_entry::MyResult),
+    CreateCompany(use_cases::create_company::Ok),
+    CreateCompanyBranch(use_cases::create_company_branch::Ok),
+    CreateAccount(use_cases::create_account::Ok),
+    CreateAccountForBranch(use_cases::create_account_for_branch::Ok),
+    CreateJournalEntry(use_cases::create_journal_entry::Ok),
 }
 
 #[derive(Debug, Deserialize, Serialize)]

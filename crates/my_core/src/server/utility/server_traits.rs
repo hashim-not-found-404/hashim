@@ -36,16 +36,6 @@ pub trait DBTransaction {
     fn rollback_transaction(self) -> impl Future<Output = Result<(), DynamicError>>;
 }
 
-pub trait DatabaseWrite {
-    type Db<'a>: DBTransaction;
-    type Input;
-
-    fn write(
-        txn: &mut Self::Db<'_>,
-        input: &Self::Input,
-    ) -> impl Future<Output = Result<(), DynamicError>>;
-}
-
 pub trait DBClient {
     type Txn<'a>: DBTransaction
     where

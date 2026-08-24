@@ -23,48 +23,6 @@ pub(crate) async fn state_full_operation(data: &Type2) -> Type3 {
     Ok(data.state_less_operation())
 }
 
-pub(crate) fn extract_resource(data: &Type3) -> Vec<resource_utils::ResourceInfo> {
-    match data {
-        Ok(ok) => {
-            let this = ok;
-            let company_uuid = this.new_uuid.clone();
-            vec![
-                resource_utils::ResourceInfo {
-                    row_uuid: company_uuid.0.clone(),
-                    resource: resource_utils::Resource::TableCompanyFieldName(
-                        this.company_name.clone(),
-                    ),
-                },
-                resource_utils::ResourceInfo {
-                    row_uuid: company_uuid.0.clone(),
-                    resource: resource_utils::Resource::TableCompanyFieldCurrency(
-                        this.currency.clone(),
-                    ),
-                },
-                resource_utils::ResourceInfo {
-                    row_uuid: company_uuid.0.clone(),
-                    resource: resource_utils::Resource::TableAccessControlForCompanyFieldRole(
-                        this.role.clone(),
-                    ),
-                },
-                resource_utils::ResourceInfo {
-                    row_uuid: company_uuid.0.clone(),
-                    resource: resource_utils::Resource::TableAccessControlForCompanyFieldUser(
-                        this.user_uuid.clone(),
-                    ),
-                },
-                resource_utils::ResourceInfo {
-                    row_uuid: company_uuid.0.clone(),
-                    resource: resource_utils::Resource::TableAccessControlForCompanyFieldDataGroup(
-                        company_uuid,
-                    ),
-                },
-            ]
-        }
-        Err(_) => Vec::new(),
-    }
-}
-
 impl ui_model::CreateCompany {
     pub(crate) async fn update<
         Rn: traits::RandomNumber,

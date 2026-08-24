@@ -49,34 +49,6 @@ pub(crate) async fn state_full_operation<
     })
 }
 
-pub(crate) fn extract_resource(data: &Type3) -> Vec<resource_utils::ResourceInfo> {
-    match data {
-        Ok(ok) => {
-            let mut resource = Vec::with_capacity(3);
-
-            resource.push(resource_utils::ResourceInfo {
-                row_uuid: ok.new_uuid.0.clone(),
-                resource: resource_utils::Resource::Jwt(ok.jwt.clone()),
-            });
-
-            resource.push(resource_utils::ResourceInfo {
-                row_uuid: ok.new_uuid.0.clone(),
-                resource: resource_utils::Resource::TableUserFieldId(ok.user_id.clone()),
-            });
-
-            if let Some(user_name) = &ok.user_name {
-                resource.push(resource_utils::ResourceInfo {
-                    row_uuid: ok.new_uuid.0.clone(),
-                    resource: resource_utils::Resource::TableUserFieldName(user_name.clone()),
-                });
-            }
-
-            resource
-        }
-        Err(_) => Vec::new(),
-    }
-}
-
 fn apply_on_the_model<As: ui_model::AllSignalTypes>(output: &Type4, model: &ui_model::Model<As>) {
     let local_state = &model.page_sign_up;
     match output {

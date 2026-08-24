@@ -1,8 +1,8 @@
 use crate::domain::use_cases;
+use crate::domain::utility::types::DatabaseWrite;
 use crate::domain::utility::types::MyErrorTrait;
 use crate::domain::utility::types::RowId;
 use crate::domain::utility::types::UserUuidError;
-use crate::server::utility::server_traits;
 use crate::server::utility::server_traits::DBClient;
 use crate::server::utility::server_traits::DBTransaction;
 use crate::server::utility::server_traits::SideEffects;
@@ -13,10 +13,7 @@ impl use_cases::create_company_branch::Input {
         Id: RowId,
         Cli: DBClient,
         Db: for<'a> use_cases::create_company_branch::DatabaseRead<Db<'a> = Cli::Txn<'a>>,
-        DbWrite: for<'a> server_traits::DatabaseWrite<
-                Db<'a> = Cli::Txn<'a>,
-                Input = use_cases::create_company_branch::Ok,
-            >,
+        DbWrite: for<'a> DatabaseWrite<Db<'a> = Cli::Txn<'a>, Input = use_cases::create_company_branch::Ok>,
     >(
         &self,
         side_effects: &mut SideEffects,

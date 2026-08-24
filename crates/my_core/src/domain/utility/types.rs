@@ -39,6 +39,16 @@ pub trait DatabaseRead {
     ) -> impl Future<Output = Result<Self::Output, DynamicError>>;
 }
 
+pub trait DatabaseWrite {
+    type Db<'a>;
+    type Input;
+
+    fn write(
+        txn: &mut Self::Db<'_>,
+        input: &Self::Input,
+    ) -> impl Future<Output = Result<(), DynamicError>>;
+}
+
 pub(crate) trait MyErrorTrait {
     fn is_there_error(&self) -> bool;
 }

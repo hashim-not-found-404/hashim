@@ -1,14 +1,17 @@
-use crate::utility::traits;
+use crate::utility::traits::Coding;
 use crate::utility::traits::MultiProducerSingleConsumer;
+use crate::utility::traits::Runtime;
 use crate::utility::traits::Sender;
+use serde::Deserialize;
+use serde::Serialize;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::hash::Hash;
 
-pub(crate) enum FromServer<E, Resp, Reso> {
+pub(crate) enum MessageFromServer<E, Resp, Reso> {
     Error(E),
     Response(Resp),
-    Resources(Vec<Reso>),
+    Resources(Reso),
 }
 
 #[derive(Debug, Clone)]
@@ -22,7 +25,7 @@ pub(crate) enum Response<OpResult: 'static> {
 }
 
 pub(crate) enum MessageToCache<
-    Mpsc: traits::MultiProducerSingleConsumer,
+    Mpsc: MultiProducerSingleConsumer,
     Subscribe: 'static + Hash + Eq + Clone,
     OpInput: 'static,
     OpResult: 'static,
@@ -46,7 +49,7 @@ pub(crate) enum MessageToCache<
 }
 
 pub(crate) trait CacheActorUtils {
-    type Mpsc: traits::MultiProducerSingleConsumer;
+    type Mpsc: MultiProducerSingleConsumer;
     type Subscribe: 'static + Hash + Eq + Clone;
     type OpInput;
     type OpResult;
@@ -74,36 +77,52 @@ pub(crate) trait CacheActorUtils {
     async fn clear_state_pending_txn(cache: &mut Self::Cache);
     async fn start_state_pending_txn(cache: &mut Self::Cache);
 
-    type SendingTxns: serde::Serialize;
+    type SendingTxns: Serialize;
     async fn prepare_txn_for_send(
         cache: &Self::Cache,
         txns: Vec<(u64, Self::OpInput)>,
     ) -> Self::SendingTxns;
 
-    type E;
+    type ErrorFromServer;
     type Response;
-    type Resource;
-    type MessageFromServer<'de>: serde::Deserialize<'de>;
+    type ResourceToStore;
+    type ResourceFromServer;
+    type MessageFromServer<'de>: Deserialize<'de>;
 
-    fn to(msg: Self::MessageFromServer<'_>) -> FromServer<Self::E, Self::Response, Self::Resource>;
-    fn extract_resource(resp: &Self::Response) -> Vec<Self::Resource>;
-    async fn write_resource(cache: &Self::Cache, resource: &[Self::Resource]);
+    fn to(
+        msg: Self::MessageFromServer<'_>,
+    ) -> MessageFromServer<Self::ErrorFromServer, Self::Response, Self::ResourceFromServer>;
+
+    fn convert_resource_from_server_to_resource_to_store(
+        resource: &Self::ResourceFromServer,
+    ) -> Vec<Self::ResourceToStore>;
+
+    fn extract_resource_from_response(resp: &Self::Response) -> Vec<Self::ResourceToStore>;
+    fn extract_resource_from_result(data: &Self::OpResult) -> Option<Self::ResourceToStore>;
+
+    async fn write_resource_to_cache_from_server(
+        cache: &mut Self::Cache,
+        resource: &Self::ResourceToStore,
+    );
+    async fn write_resource_to_cache_from_client(
+        cache: &mut Self::Cache,
+        resource: &Self::ResourceToStore,
+    );
 
     async fn delete_successful_txn_input(cache: &Self::Cache, resp: &Self::Response);
     async fn mark_txn_input_as_faild(cache: &Self::Cache, resp: &Self::Response);
     async fn write_faild_txn_result(cache: &Self::Cache, resp: &Self::Response);
     async fn get_all_response_txn_numbers(resp: &Self::Response) -> Vec<(u64, Self::OpResult)>;
+    async fn check_input(cache: &mut Self::Cache, data: &Self::OpInput) -> Self::OpResult;
+    async fn write_input(cache: &Self::Cache, txn_number: u64, data: &Self::OpInput);
+
     fn create_pending_txn(txn_number: u64, data: Self::OpInput) -> (u64, Self::OpInput) {
         (txn_number, data)
     }
     fn collect_subs_to_poke(
         subs_to_poke: &mut HashSet<Self::Subscribe>,
-        resource: &[Self::Resource],
+        resource: &Self::ResourceToStore,
     );
-    async fn check_input(cache: &mut Self::Cache, data: &Self::OpInput) -> Self::OpResult;
-    fn extract_resource1(data: &Self::OpResult) -> Vec<Self::Resource>;
-    async fn apply_input(cache: &mut Self::Cache, resource: &[Self::Resource]);
-    async fn write_input(cache: &Self::Cache, txn_number: u64, data: &Self::OpInput);
 }
 
 #[allow(dead_code)]
@@ -122,7 +141,7 @@ pub(crate) enum CachingStrategy {
 
 pub(crate) struct CacheStruct<Mpsc, Subscribe, OpInput, OpResult>
 where
-    Mpsc: traits::MultiProducerSingleConsumer,
+    Mpsc: MultiProducerSingleConsumer,
     Subscribe: 'static + Hash + Eq + Clone,
     OpInput: 'static,
     OpResult: 'static,
@@ -132,7 +151,7 @@ where
 
 impl<Mpsc, Subscribe, OpInput, OpResult> Clone for CacheStruct<Mpsc, Subscribe, OpInput, OpResult>
 where
-    Mpsc: traits::MultiProducerSingleConsumer,
+    Mpsc: MultiProducerSingleConsumer,
     Subscribe: 'static + Hash + Eq + Clone,
 {
     fn clone(&self) -> Self {
@@ -144,12 +163,12 @@ where
 
 impl<Mpsc, Subscribe, OpInput, OpResult> CacheStruct<Mpsc, Subscribe, OpInput, OpResult>
 where
-    Mpsc: traits::MultiProducerSingleConsumer,
+    Mpsc: MultiProducerSingleConsumer,
     Subscribe: 'static + Hash + Eq + Clone,
 {
     pub(crate) fn new<
-        Rt: traits::Runtime,
-        Ed: traits::Coding,
+        Rt: Runtime,
+        Ed: Coding,
         Cu: CacheActorUtils<OpResult = OpResult, Subscribe = Subscribe, Mpsc = Mpsc> + 'static,
     >(
         receiver_to_cache: <Cu::Mpsc as MultiProducerSingleConsumer>::Receiver<
@@ -222,8 +241,8 @@ where
     }
 
     fn cache_actor<
-        Rt: traits::Runtime,
-        Ed: traits::Coding,
+        Rt: Runtime,
+        Ed: Coding,
         Cu: CacheActorUtils<OpResult = OpResult, Subscribe = Subscribe, Mpsc = Mpsc> + 'static,
     >(
         mut receiver_to_cache: <Cu::Mpsc as MultiProducerSingleConsumer>::Receiver<
@@ -263,19 +282,23 @@ where
                         };
 
                         match message_type {
-                            FromServer::Error(_) => {
+                            MessageFromServer::Error(_) => {
                                 Cu::internal_server_error(&mut sender_to_error).await;
                             }
-                            FromServer::Response(response) => {
+                            MessageFromServer::Response(response) => {
                                 let mut subs_to_poke = HashSet::new();
 
                                 Cu::clear_state_pending_txn(&mut cache).await;
-                                let resource = Cu::extract_resource(&response);
-                                Cu::write_resource(&cache, &resource).await;
                                 Cu::delete_successful_txn_input(&cache, &response).await;
                                 Cu::mark_txn_input_as_faild(&cache, &response).await;
                                 Cu::write_faild_txn_result(&cache, &response).await;
-                                Cu::collect_subs_to_poke(&mut subs_to_poke, &resource);
+
+                                let resource = Cu::extract_resource_from_response(&response);
+                                for resource in resource {
+                                    Cu::write_resource_to_cache_from_server(&mut cache, &resource)
+                                        .await;
+                                    Cu::collect_subs_to_poke(&mut subs_to_poke, &resource);
+                                }
 
                                 let txn_numbers = Cu::get_all_response_txn_numbers(&response).await;
                                 for (number, data) in txn_numbers {
@@ -296,8 +319,14 @@ where
 
                                 for (_, txn) in txns {
                                     let result = Cu::check_input(&mut cache, &txn).await;
-                                    let resource = Cu::extract_resource1(&result);
-                                    Cu::apply_input(&mut cache, &resource).await;
+                                    let resource = Cu::extract_resource_from_result(&result);
+
+                                    if let Some(resource) = resource {
+                                        Cu::write_resource_to_cache_from_client(
+                                            &mut cache, &resource,
+                                        )
+                                        .await;
+                                    }
                                 }
 
                                 poke_the_subs::<Mpsc, Subscribe>(
@@ -307,17 +336,42 @@ where
                                 )
                                 .await;
                             }
-                            FromServer::Resources(resource) => {
-                                Cu::write_resource(&cache, &resource).await;
-
+                            MessageFromServer::Resources(resources) => {
+                                Cu::clear_state_pending_txn(&mut cache).await;
                                 let mut subs_to_poke = HashSet::new();
-                                Cu::collect_subs_to_poke(&mut subs_to_poke, &resource);
+
+                                let resources =
+                                    Cu::convert_resource_from_server_to_resource_to_store(
+                                        &resources,
+                                    );
+
+                                for resources in resources {
+                                    Cu::write_resource_to_cache_from_server(&mut cache, &resources)
+                                        .await;
+                                    Cu::collect_subs_to_poke(&mut subs_to_poke, &resources);
+                                }
+
                                 poke_the_subs::<Mpsc, Subscribe>(
                                     &mut pool_of_pokers,
                                     &pool_of_subscribes,
                                     &subs_to_poke,
                                 )
                                 .await;
+
+                                Cu::start_state_pending_txn(&mut cache).await;
+                                let txns = Cu::get_all_pending_txn(&cache).await;
+
+                                for (_, txn) in txns {
+                                    let result = Cu::check_input(&mut cache, &txn).await;
+                                    let resource = Cu::extract_resource_from_result(&result);
+
+                                    if let Some(resource) = resource {
+                                        Cu::write_resource_to_cache_from_client(
+                                            &mut cache, &resource,
+                                        )
+                                        .await;
+                                    }
+                                }
                             }
                         }
                     }
@@ -407,14 +461,15 @@ where
                             }
                             CachingStrategy::WriteCacheOnly => {
                                 let result = Cu::check_input(&mut cache, &data).await;
-                                let resource = Cu::extract_resource1(&result);
-
-                                Cu::apply_input(&mut cache, &resource).await;
-                                Cu::write_input(&cache, txn_number, &data).await;
+                                let resource = Cu::extract_resource_from_result(&result);
 
                                 let mut subs_to_poke = HashSet::new();
-
-                                Cu::collect_subs_to_poke(&mut subs_to_poke, &resource);
+                                if let Some(resource) = resource {
+                                    Cu::write_resource_to_cache_from_client(&mut cache, &resource)
+                                        .await;
+                                    Cu::collect_subs_to_poke(&mut subs_to_poke, &resource);
+                                }
+                                Cu::write_input(&cache, txn_number, &data).await;
 
                                 poke_the_subs::<Mpsc, Subscribe>(
                                     &mut pool_of_pokers,
@@ -435,14 +490,15 @@ where
                             CachingStrategy::WriteCacheFirst => todo!(),
                             CachingStrategy::WriteCacheAndServer => {
                                 let result = Cu::check_input(&mut cache, &data).await;
-                                let resource = Cu::extract_resource1(&result);
-
-                                Cu::apply_input(&mut cache, &resource).await;
-                                Cu::write_input(&cache, txn_number, &data).await;
+                                let resource = Cu::extract_resource_from_result(&result);
 
                                 let mut subs_to_poke = HashSet::new();
-
-                                Cu::collect_subs_to_poke(&mut subs_to_poke, &resource);
+                                if let Some(resource) = resource {
+                                    Cu::write_resource_to_cache_from_client(&mut cache, &resource)
+                                        .await;
+                                    Cu::collect_subs_to_poke(&mut subs_to_poke, &resource);
+                                }
+                                Cu::write_input(&cache, txn_number, &data).await;
 
                                 poke_the_subs::<Mpsc, Subscribe>(
                                     &mut pool_of_pokers,
@@ -498,10 +554,7 @@ where
     }
 }
 
-async fn poke_the_subs<
-    Mpsc: traits::MultiProducerSingleConsumer,
-    Subscribe: 'static + Hash + Eq,
->(
+async fn poke_the_subs<Mpsc: MultiProducerSingleConsumer, Subscribe: 'static + Hash + Eq>(
     pool_of_pokers: &mut HashMap<u16, Mpsc::Sender<()>>,
     pool_of_subscribes: &HashMap<Subscribe, HashSet<u16>>,
     subs_to_poke: &HashSet<Subscribe>,

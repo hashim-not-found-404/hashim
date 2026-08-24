@@ -1,20 +1,39 @@
 use crate::client::cache_op;
-use crate::client::network_actor;
-use crate::client::ui_effect;
+use crate::client::cache_op::DbBundle;
+use crate::client::network_actor::Network;
+use crate::client::network_actor::WSClient;
+use crate::client::network_actor::network_actor;
+use crate::client::ui_effect::Commander;
 use crate::client::utility::cache::Cache;
-use crate::client::utility::cache_actor;
-use crate::client::utility::client_traits;
-use crate::client::utility::process_manager;
-use crate::client::utility::ui_model;
-use crate::domain::request_response;
+use crate::client::utility::cache_actor::CacheActorUtils;
+use crate::client::utility::cache_actor::MessageFromServer;
+use crate::client::utility::cache_actor::MessageToCache;
+use crate::client::utility::client_traits::CacheActorStruct;
+use crate::client::utility::client_traits::Subscribe;
+use crate::client::utility::process_manager::process_manager_actor;
+use crate::client::utility::ui_model::AllSignalTypes;
+use crate::client::utility::ui_model::Model;
+use crate::domain::request_response::FromClient;
+use crate::domain::request_response::FromServer;
+use crate::domain::request_response::MyResult;
+use crate::domain::request_response::OperationsInput;
+use crate::domain::request_response::OperationsOk;
+use crate::domain::request_response::OperationsResult;
+use crate::domain::request_response::ResourceDTO;
+use crate::domain::request_response::Txn;
 use crate::domain::utility::types::ADDRESS;
 use crate::domain::utility::types::HashimError;
 use crate::domain::utility::types::RowId;
 use crate::domain::utility::uuid::Nonce;
-use crate::utility::traits;
+use crate::utility::traits::Coding;
 use crate::utility::traits::DynamicError;
+use crate::utility::traits::MultiProducerSingleConsumer;
+use crate::utility::traits::RandomNumber;
 use crate::utility::traits::Receiver;
+use crate::utility::traits::Regex;
+use crate::utility::traits::Runtime;
 use crate::utility::traits::Sender;
+use crate::utility::traits::Time;
 use crate::utility::utils::ReadAndSet;
 use std::collections::HashSet;
 use std::marker::PhantomData;
@@ -22,27 +41,27 @@ use std::sync::Arc;
 use std::sync::RwLock;
 
 pub fn new<
-    Rn: traits::RandomNumber,
-    Rt: traits::Runtime,
+    Rn: RandomNumber,
+    Rt: Runtime,
     Id: RowId,
-    Mpsc: traits::MultiProducerSingleConsumer,
-    Ed: traits::Coding,
-    Rg: traits::Regex,
-    Ti: traits::Time,
+    Mpsc: MultiProducerSingleConsumer,
+    Ed: Coding,
+    Rg: Regex,
+    Ti: Time,
     Ch: Cache + 'static,
-    Ws: network_actor::WSClient,
-    As: ui_model::AllSignalTypes,
-    Dbb: cache_op::DbBundle<Ch>,
+    Ws: WSClient,
+    As: AllSignalTypes,
+    Dbb: DbBundle<Ch>,
 >(
-    model: &'static ui_model::Model<As>,
-) -> ui_effect::Commander<Mpsc> {
+    model: &'static Model<As>,
+) -> Commander<Mpsc> {
     let (sender_to_network, receiver_to_network) = Mpsc::channel();
     let (sender_to_cache, receiver_to_cache) = Mpsc::channel();
     let (sender_to_error, receiver_to_error) = Mpsc::channel();
 
     let is_online = Arc::new(RwLock::new(false));
 
-    network_actor::network_actor::<Rt, Ws, _>(
+    network_actor::<Rt, Ws, _>(
         MyNetwork::<Mpsc> {
             sender_to_cache: sender_to_cache.clone(),
             receiver_to_network,
@@ -52,7 +71,7 @@ pub fn new<
         format!("ws://{}/ws", ADDRESS),
     );
 
-    let cache = client_traits::CacheActorStruct::new::<Rt, Ed, MyCache<Mpsc, Ch, Id, Ti, Dbb>>(
+    let cache = CacheActorStruct::new::<Rt, Ed, MyCache<Mpsc, Ch, Id, Ti, Dbb>>(
         receiver_to_cache,
         sender_to_cache,
         sender_to_network,
@@ -60,9 +79,9 @@ pub fn new<
         is_online,
     );
 
-    let sender_to_process_manager = process_manager::process_manager_actor::<Mpsc, As, Rt>();
+    let sender_to_process_manager = process_manager_actor::<Mpsc, As, Rt>();
 
-    ui_effect::Commander::new::<As, Rt, Rn, Id, Ti, Ch, Dbb>(
+    Commander::new::<As, Rt, Rn, Id, Ti, Ch, Dbb>(
         receiver_to_error,
         sender_to_process_manager,
         model,
@@ -70,31 +89,25 @@ pub fn new<
     )
 }
 
-struct MyNetwork<Mpsc: traits::MultiProducerSingleConsumer> {
-    sender_to_cache: Mpsc::Sender<
-        cache_actor::MessageToCache<
-            Mpsc,
-            resource_utils::Subscribe,
-            request_response::OperationsInput,
-            request_response::OperationsResult,
-        >,
-    >,
+struct MyNetwork<Mpsc: MultiProducerSingleConsumer> {
+    sender_to_cache:
+        Mpsc::Sender<MessageToCache<Mpsc, Subscribe, OperationsInput, OperationsResult>>,
     receiver_to_network: Mpsc::Receiver<Vec<u8>>,
     sender_to_error:     Mpsc::Sender<HashimError>,
     is_online:           Arc<RwLock<bool>>,
 }
 
-impl<Mpsc: traits::MultiProducerSingleConsumer> network_actor::Network for MyNetwork<Mpsc> {
+impl<Mpsc: MultiProducerSingleConsumer> Network for MyNetwork<Mpsc> {
     async fn network_state(&mut self, is_online: bool) {
         self.is_online.put(is_online);
 
         if is_online {
-            self.sender_to_cache.send(cache_actor::MessageToCache::WeAreBackOnline).await.unwrap();
+            self.sender_to_cache.send(MessageToCache::WeAreBackOnline).await.unwrap();
         }
     }
 
     async fn network_sender(&mut self, data: Vec<u8>) {
-        self.sender_to_cache.send(cache_actor::MessageToCache::DataFromServer(data)).await.unwrap();
+        self.sender_to_cache.send(MessageToCache::DataFromServer(data)).await.unwrap();
     }
 
     async fn network_reciever(&mut self) -> Vec<u8> {
@@ -106,44 +119,34 @@ impl<Mpsc: traits::MultiProducerSingleConsumer> network_actor::Network for MyNet
     }
 }
 
-struct MyCache<
-    Mpsc: traits::MultiProducerSingleConsumer,
-    Ch: Cache,
-    Id: RowId,
-    Ti: traits::Time,
-    Dbb: cache_op::DbBundle<Ch>,
-> {
+struct MyCache<Mpsc: MultiProducerSingleConsumer, Ch: Cache, Id: RowId, Ti: Time, Dbb: DbBundle<Ch>>
+{
     _ph: PhantomData<(Mpsc, Ch, Id, Ti, Dbb)>,
 }
 
-impl<
-    Mpsc: traits::MultiProducerSingleConsumer,
-    Ch: Cache,
-    Id: RowId,
-    Ti: traits::Time,
-    Dbb: cache_op::DbBundle<Ch>,
-> cache_actor::CacheActorUtils for MyCache<Mpsc, Ch, Id, Ti, Dbb>
+impl<Mpsc: MultiProducerSingleConsumer, Ch: Cache, Id: RowId, Ti: Time, Dbb: DbBundle<Ch>>
+    CacheActorUtils for MyCache<Mpsc, Ch, Id, Ti, Dbb>
 {
     type Cache = Ch;
-    type E = HashimError;
+    type ErrorFromServer = HashimError;
     type ErrorSender = Mpsc::Sender<HashimError>;
-    type MessageFromServer<'de> = request_response::FromServer;
+    type MessageFromServer<'de> = FromServer;
     type Mpsc = Mpsc;
     type NetworkSender = Mpsc::Sender<Vec<u8>>;
     type NetworkStatus = Arc<RwLock<bool>>;
-    type OpInput = request_response::OperationsInput;
-    type OpResult = request_response::OperationsResult;
-    type Resource = resource_utils::ResourceInfo;
-    type Response = request_response::MyResult;
-    type SendingTxns = request_response::FromClient;
-    type Subscribe = resource_utils::Subscribe;
+    type OpInput = OperationsInput;
+    type OpResult = OperationsResult;
+    type ResourceFromServer = Vec<ResourceDTO>;
+    type ResourceToStore = OperationsOk;
+    type Response = MyResult;
+    type SendingTxns = FromClient;
+    type Subscribe = Subscribe;
 
     async fn cache_receiver(
-        receiver: &mut <Self::Mpsc as traits::MultiProducerSingleConsumer>::Receiver<
-            cache_actor::MessageToCache<Self::Mpsc, Self::Subscribe, Self::OpInput, Self::OpResult>,
+        receiver: &mut <Self::Mpsc as MultiProducerSingleConsumer>::Receiver<
+            MessageToCache<Self::Mpsc, Self::Subscribe, Self::OpInput, Self::OpResult>,
         >,
-    ) -> cache_actor::MessageToCache<Self::Mpsc, Self::Subscribe, Self::OpInput, Self::OpResult>
-    {
+    ) -> MessageToCache<Self::Mpsc, Self::Subscribe, Self::OpInput, Self::OpResult> {
         receiver.recv().await.unwrap()
     }
 
@@ -201,13 +204,13 @@ impl<
         let mut operations1 = Vec::with_capacity(txns.len());
 
         for i in txns {
-            operations1.push(request_response::Txn {
+            operations1.push(Txn {
                 txn_number: i.0,
                 operation:  i.1,
             });
         }
 
-        request_response::FromClient {
+        FromClient {
             jwts,
             nonce: Nonce(Id::generate()),
             operations: operations1,
@@ -216,20 +219,34 @@ impl<
 
     fn to(
         msg: Self::MessageFromServer<'_>,
-    ) -> cache_actor::FromServer<Self::E, Self::Response, Self::Resource> {
+    ) -> MessageFromServer<Self::ErrorFromServer, Self::Response, Self::ResourceFromServer> {
         match msg {
-            request_response::FromServer::Error(a) => cache_actor::FromServer::Error(a),
-            request_response::FromServer::PushData(a) => cache_actor::FromServer::Response(a),
-            request_response::FromServer::Resources(a) => cache_actor::FromServer::Resources(a),
+            FromServer::Error(a) => MessageFromServer::Error(a),
+            FromServer::PushData(a) => MessageFromServer::Response(a),
+            FromServer::Resources(a) => MessageFromServer::Resources(a),
         }
     }
 
-    fn extract_resource(resp: &Self::Response) -> Vec<Self::Resource> {
+    fn extract_resource_from_response(resp: &Self::Response) -> Vec<Self::ResourceToStore> {
         resp.operations.iter().flat_map(|a| a.operation.extract_resource()).collect()
     }
 
-    async fn write_resource(cache: &Self::Cache, resource: &[Self::Resource]) {
-        cache.write_resource_from_server(resource).await;
+    fn extract_resource_from_result(data: &Self::OpResult) -> Option<Self::ResourceToStore> {
+        data.extract_resource()
+    }
+
+    async fn write_resource_to_cache_from_server(
+        cache: &mut Self::Cache,
+        resource: &Self::ResourceToStore,
+    ) {
+        todo!()
+    }
+
+    async fn write_resource_to_cache_from_client(
+        cache: &mut Self::Cache,
+        resource: &Self::ResourceToStore,
+    ) {
+        todo!()
     }
 
     async fn delete_successful_txn_input(cache: &Self::Cache, resp: &Self::Response) {
@@ -260,35 +277,25 @@ impl<
         resp.operations.iter().map(|a| (a.txn_number, a.operation.clone())).collect()
     }
 
-    fn collect_subs_to_poke(
-        subs_to_poke: &mut HashSet<Self::Subscribe>,
-        resource: &[Self::Resource],
-    ) {
-        for i in resource {
-            if let Some(value) = i.resource.map_to_subs() {
-                subs_to_poke.insert(value);
-            }
-        }
-    }
-
     async fn check_input(cache: &mut Self::Cache, data: &Self::OpInput) -> Self::OpResult {
         data.run_operation_check::<Id, Ti, Ch, Dbb>(cache).await
     }
 
-    fn extract_resource1(data: &Self::OpResult) -> Vec<Self::Resource> {
-        data.extract_resource()
-    }
-
-    async fn apply_input(cache: &mut Self::Cache, resource: &[Self::Resource]) {
-        cache.write_resource_of_pending_txn(resource).await;
-    }
-
     async fn write_input(cache: &Self::Cache, txn_number: u64, data: &Self::OpInput) {
         cache
-            .write_txn_input(&request_response::Txn {
+            .write_txn_input(&Txn {
                 txn_number,
                 operation: data.clone(),
             })
             .await;
+    }
+
+    fn collect_subs_to_poke(
+        subs_to_poke: &mut HashSet<Self::Subscribe>,
+        resource: &Self::ResourceToStore,
+    ) {
+        if let Some(value) = resource {
+            subs_to_poke.insert(value);
+        }
     }
 }

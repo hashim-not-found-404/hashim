@@ -1,5 +1,6 @@
 use crate::client::utility::cache::Cache;
 use crate::client::utility::client_traits;
+use crate::client::utility::client_traits::Subscribe;
 use crate::client::utility::commander;
 use crate::client::utility::ui_model;
 use crate::client::utility::ui_model::HashimSignal;
@@ -21,10 +22,10 @@ type Type2 = use_cases::list_company_and_branch::Input;
 type Type3 = use_cases::list_company_and_branch::MyResult;
 type Type4 = use_cases::list_company_and_branch::MyResult;
 
-pub(crate) const SUBS: &'static [resource_utils::Subscribe] = &[
-    resource_utils::Subscribe::TableCompanyBranchFieldName,
-    resource_utils::Subscribe::TableCompanyFieldName,
-    resource_utils::Subscribe::TableAccessControlForCompanyFieldRole,
+pub(crate) const SUBSCRIBES_TO_LISTEN: &'static [Subscribe] = &[
+    Subscribe::TableCompanyBranchFieldName,
+    Subscribe::TableCompanyFieldName,
+    Subscribe::TableAccessControlForCompanyFieldRole,
 ];
 
 make_wrap_unwrap!(list_company_and_branch, ListCompanyAndBranch);
@@ -63,101 +64,6 @@ pub(crate) async fn state_full_operation<
     let result = data.state_full_operation::<LongCache>(state).await.unwrap();
 
     Ok(result)
-}
-
-pub(crate) fn extract_resource(data: &Type3) -> Vec<resource_utils::ResourceInfo> {
-    match data {
-        Ok(ok) => {
-            let mut resources = Vec::new();
-            let user_uuid = &ok.user_uuid;
-
-            for company in &ok.data {
-                let company_uuid = &company.company_uuid;
-
-                resources.push(resource_utils::ResourceInfo {
-                    row_uuid: company_uuid.0.clone(),
-                    resource: resource_utils::Resource::TableCompanyFieldName(
-                        company.company_name.clone(),
-                    ),
-                });
-                resources.push(resource_utils::ResourceInfo {
-                    row_uuid: company_uuid.0.clone(),
-                    resource: resource_utils::Resource::TableCompanyFieldCurrency(
-                        company.company_currancy.clone(),
-                    ),
-                });
-
-                for role in &company.user_roles {
-                    resources.push(resource_utils::ResourceInfo {
-                        row_uuid: company_uuid.0.clone(),
-                        resource: resource_utils::Resource::TableAccessControlForCompanyFieldRole(
-                            role.clone(),
-                        ),
-                    });
-                }
-                resources.push(resource_utils::ResourceInfo {
-                    row_uuid: company_uuid.0.clone(),
-                    resource: resource_utils::Resource::TableAccessControlForCompanyFieldUser(
-                        user_uuid.clone(),
-                    ),
-                });
-                resources.push(resource_utils::ResourceInfo {
-                    row_uuid: company_uuid.0.clone(),
-                    resource: resource_utils::Resource::TableAccessControlForCompanyFieldDataGroup(
-                        company_uuid.clone(),
-                    ),
-                });
-
-                for branch in &company.branches {
-                    let branch_uuid = &branch.branch_uuid;
-
-                    resources.push(resource_utils::ResourceInfo {
-                        row_uuid: branch_uuid.0.clone(),
-                        resource: resource_utils::Resource::TableCompanyBranchFieldName(
-                            branch.branch_name.clone(),
-                        ),
-                    });
-                    resources.push(resource_utils::ResourceInfo {
-                        row_uuid: branch_uuid.0.clone(),
-                        resource: resource_utils::Resource::TableCompanyBranchFieldCurrency(
-                            branch.branch_currancy.clone(),
-                        ),
-                    });
-                    resources.push(resource_utils::ResourceInfo {
-                        row_uuid: branch_uuid.0.clone(),
-                        resource: resource_utils::Resource::TableCompanyBranchFieldCompanyBelong(
-                            company_uuid.clone(),
-                        ),
-                    });
-
-                    for role in &branch.user_roles {
-                        resources.push(resource_utils::ResourceInfo {
-                                row_uuid: branch_uuid.0.clone(),
-                                resource: resource_utils::Resource::TableAccessControlForCompanyBranchFieldRole(
-                                    role.clone(),
-                                ),
-                            });
-                    }
-                    resources.push(resource_utils::ResourceInfo {
-                        row_uuid: branch_uuid.0.clone(),
-                        resource:
-                            resource_utils::Resource::TableAccessControlForCompanyBranchFieldUser(
-                                user_uuid.clone(),
-                            ),
-                    });
-                    resources.push(resource_utils::ResourceInfo {
-                            row_uuid: branch_uuid.0.clone(),
-                            resource: resource_utils::Resource::TableAccessControlForCompanyBranchFieldDataGroup(
-                                branch_uuid.clone(),
-                            ),
-                        });
-                }
-            }
-
-            resources
-        }
-        Err(_) => Vec::new(),
-    }
 }
 
 fn apply_on_the_model<As: ui_model::AllSignalTypes>(output: &Type4, model: &ui_model::Model<As>) {
@@ -244,11 +150,15 @@ fn spawn_listener<
         user_uuid: model.user_uuid.read().clone().unwrap(),
     });
 
-    let listener_aborter =
-        client_traits::spawn_listener::<Rn, Rt, Mpsc>(cache, SUBS, data, move |data| {
+    let listener_aborter = client_traits::spawn_listener::<Rn, Rt, Mpsc>(
+        cache,
+        SUBSCRIBES_TO_LISTEN,
+        data,
+        move |data| {
             let data = unwrap_output(data);
             apply_on_the_model(&data, model);
-        });
+        },
+    );
 
     commander_local_state.aborter_to_company_and_branch_listener.set(Box::new(listener_aborter));
 }

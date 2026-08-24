@@ -42,40 +42,6 @@ pub(crate) async fn state_full_operation<
     Ok(data.state_less_operation())
 }
 
-pub(crate) fn extract_resource(data: &Type3) -> Vec<resource_utils::ResourceInfo> {
-    match data {
-        Ok(ok) => {
-            vec![
-                resource_utils::ResourceInfo {
-                    row_uuid: ok.new_uuid.0.clone(),
-                    resource: resource_utils::Resource::TableAccountFlowTypeFieldAccount(
-                        ok.belong_to_account.clone(),
-                    ),
-                },
-                resource_utils::ResourceInfo {
-                    row_uuid: ok.new_uuid.0.clone(),
-                    resource: resource_utils::Resource::TableAccountFlowTypeFieldCompanyBranch(
-                        ok.belong_to_company_branch.clone(),
-                    ),
-                },
-                resource_utils::ResourceInfo {
-                    row_uuid: ok.new_uuid.0.clone(),
-                    resource: resource_utils::Resource::TableAccountFlowTypeFieldInflowType(
-                        ok.inflow_type,
-                    ),
-                },
-                resource_utils::ResourceInfo {
-                    row_uuid: ok.new_uuid.0.clone(),
-                    resource: resource_utils::Resource::TableAccountFlowTypeFieldOutflowType(
-                        ok.outflow_type,
-                    ),
-                },
-            ]
-        }
-        Err(_) => Vec::new(),
-    }
-}
-
 fn apply_on_the_model<As: ui_model::AllSignalTypes>(output: &Type4, model: &ui_model::Model<As>) {
     let local_state = &model.page_create_account_for_branch;
 
@@ -207,7 +173,7 @@ fn spawn_listener<
 
     let listener_aborter = client_traits::spawn_listener::<Rn, Rt, Mpsc>(
         cache,
-        fetches::get_all_accounts_for_branch::SUBS,
+        fetches::get_all_accounts_for_branch::SUBSCRIBES_TO_LISTEN,
         data,
         move |data| {
             let data = fetches::get_all_accounts_for_branch::unwrap_output(data);
