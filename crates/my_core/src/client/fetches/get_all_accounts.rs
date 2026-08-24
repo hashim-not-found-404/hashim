@@ -1,6 +1,6 @@
 use crate::client::utility::cache_actor::CachingStrategy;
 use crate::client::utility::client_traits::CacheActorStruct;
-use crate::client::utility::client_traits::Subscribe;
+use crate::client::utility::client_traits::OperationName;
 use crate::client::utility::ui_model::AllSignalTypes;
 use crate::client::utility::ui_model::Model;
 use crate::domain::use_cases::get_all_accounts::Input;
@@ -13,8 +13,6 @@ use crate::utility::traits::RandomNumber;
 use crate::utility::utils::ReadAndSet;
 
 type Type3 = MyResult;
-
-const SUBS_TO_POKE: &'static [Subscribe] = &[];
 
 make_wrap_unwrap!(get_all_accounts, GetAllAccounts);
 make_user_uuid!(get_all_accounts);

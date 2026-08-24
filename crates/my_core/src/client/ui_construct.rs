@@ -9,7 +9,7 @@ use crate::client::utility::cache_actor::CacheActorUtils;
 use crate::client::utility::cache_actor::MessageFromServer;
 use crate::client::utility::cache_actor::MessageToCache;
 use crate::client::utility::client_traits::CacheActorStruct;
-use crate::client::utility::client_traits::Subscribe;
+use crate::client::utility::client_traits::OperationName;
 use crate::client::utility::process_manager::process_manager_actor;
 use crate::client::utility::ui_model::AllSignalTypes;
 use crate::client::utility::ui_model::Model;
@@ -91,7 +91,7 @@ pub fn new<
 
 struct MyNetwork<Mpsc: MultiProducerSingleConsumer> {
     sender_to_cache:
-        Mpsc::Sender<MessageToCache<Mpsc, Subscribe, OperationsInput, OperationsResult>>,
+        Mpsc::Sender<MessageToCache<Mpsc, OperationName, OperationsInput, OperationsResult>>,
     receiver_to_network: Mpsc::Receiver<Vec<u8>>,
     sender_to_error:     Mpsc::Sender<HashimError>,
     is_online:           Arc<RwLock<bool>>,
@@ -140,7 +140,7 @@ impl<Mpsc: MultiProducerSingleConsumer, Ch: Cache, Id: RowId, Ti: Time, Dbb: DbB
     type ResourceToStore = OperationsOk;
     type Response = MyResult;
     type SendingTxns = FromClient;
-    type Subscribe = Subscribe;
+    type Subscribe = OperationName;
 
     async fn cache_receiver(
         receiver: &mut <Self::Mpsc as MultiProducerSingleConsumer>::Receiver<
@@ -294,8 +294,41 @@ impl<Mpsc: MultiProducerSingleConsumer, Ch: Cache, Id: RowId, Ti: Time, Dbb: DbB
         subs_to_poke: &mut HashSet<Self::Subscribe>,
         resource: &Self::ResourceToStore,
     ) {
-        if let Some(value) = resource {
-            subs_to_poke.insert(value);
+        let operation_name = match resource {
+            OperationsOk::SignUp(_) => OperationName::SignUp,
+            OperationsOk::SignIn(_) => OperationName::SignIn,
+            OperationsOk::CreateCompany(_) => OperationName::CreateCompany,
+            OperationsOk::CreateCompanyBranch(_) => OperationName::CreateCompanyBranch,
+            OperationsOk::CreateAccount(_) => OperationName::CreateAccount,
+            OperationsOk::CreateAccountForBranch(_) => OperationName::CreateAccountForBranch,
+            OperationsOk::CreateJournalEntry(_) => OperationName::CreateJournalEntry,
+            OperationsOk::ListCompanyAndBranch(_) => OperationName::ListCompanyAndBranch,
+            OperationsOk::GetAllAccounts(_) => OperationName::GetAllAccounts,
+            OperationsOk::GetAllAccountsForBranch(_) => OperationName::GetAllAccountsForBranch,
+        };
+
+        subs_to_poke.insert(operation_name);
+    }
+
+    fn convert_resource_from_server_to_resource_to_store(
+        resource: &Self::ResourceFromServer,
+    ) -> Vec<Self::ResourceToStore> {
+        let mut a = Vec::new();
+
+        for resource in resource {
+            let b = match resource {
+                ResourceDTO::CreateCompany(i) => OperationsOk::CreateCompany(i.clone()),
+                ResourceDTO::CreateCompanyBranch(i) => OperationsOk::CreateCompanyBranch(i.clone()),
+                ResourceDTO::CreateAccount(i) => OperationsOk::CreateAccount(i.clone()),
+                ResourceDTO::CreateAccountForBranch(i) => {
+                    OperationsOk::CreateAccountForBranch(i.clone())
+                }
+                ResourceDTO::CreateJournalEntry(i) => OperationsOk::CreateJournalEntry(i.clone()),
+            };
+
+            a.push(b);
         }
+
+        a
     }
 }

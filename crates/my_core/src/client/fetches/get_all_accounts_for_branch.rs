@@ -1,5 +1,5 @@
 use crate::client::utility::cache::Cache;
-use crate::client::utility::client_traits::Subscribe;
+use crate::client::utility::client_traits::OperationName;
 use crate::domain::use_cases::get_all_accounts_for_branch::DatabaseRead;
 use crate::domain::use_cases::get_all_accounts_for_branch::Input;
 use crate::domain::use_cases::get_all_accounts_for_branch::MyResult;
@@ -12,18 +12,6 @@ use crate::make_wrap_unwrap;
 make_wrap_unwrap!(get_all_accounts_for_branch, GetAllAccountsForBranch);
 make_user_uuid!(get_all_accounts_for_branch);
 
-pub(crate) const SUBSCRIBES_TO_LISTEN: &'static [Subscribe] = &[
-    Subscribe::TableAccountFieldCompanyBelong,
-    Subscribe::TableAccountFieldIsDebit,
-    Subscribe::TableAccountFieldIsPermanentAccount,
-    Subscribe::TableAccountFieldName,
-    Subscribe::TableAccountFieldNotes,
-    Subscribe::TableAccountFieldUnitOfMeasurementOfQuantity,
-    Subscribe::TableAccountFlowTypeFieldAccount,
-    Subscribe::TableAccountFlowTypeFieldCompanyBranch,
-    Subscribe::TableAccountFlowTypeFieldInflowType,
-    Subscribe::TableAccountFlowTypeFieldOutflowType,
-];
 
 type Type2 = Input;
 type Type3 = MyResult;
@@ -35,17 +23,20 @@ pub(crate) async fn state_full_operation<
     data: &Type2,
     state: &mut Ch,
 ) -> Type3 {
-    let read_output = LongCache::read(state, &ReadInput {
-        user_uuid:           data.user_uuid.clone(),
-        company_branch_uuid: data.company_branch_uuid.clone(),
-    })
+    let read_output = LongCache::read(
+        state,
+        &ReadInput {
+            user_uuid: data.user_uuid.clone(),
+            company_branch_uuid: data.company_branch_uuid.clone(),
+        },
+    )
     .await
     .unwrap();
 
     let ok = Ok {
-        company_uuid:        read_output.company_uuid,
+        company_uuid: read_output.company_uuid,
         company_branch_uuid: data.company_branch_uuid.clone(),
-        accounts:            read_output.accounts,
+        accounts: read_output.accounts,
         accounts_for_branch: read_output.accounts_for_branch,
     };
     Ok(ok)

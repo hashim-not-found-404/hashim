@@ -1,6 +1,6 @@
 use crate::client::utility::cache::Cache;
 use crate::client::utility::client_traits;
-use crate::client::utility::client_traits::Subscribe;
+use crate::client::utility::client_traits::OperationName;
 use crate::client::utility::commander;
 use crate::client::utility::ui_model;
 use crate::client::utility::ui_model::HashimSignal;
@@ -22,11 +22,8 @@ type Type2 = use_cases::list_company_and_branch::Input;
 type Type3 = use_cases::list_company_and_branch::MyResult;
 type Type4 = use_cases::list_company_and_branch::MyResult;
 
-pub(crate) const SUBSCRIBES_TO_LISTEN: &'static [Subscribe] = &[
-    Subscribe::TableCompanyBranchFieldName,
-    Subscribe::TableCompanyFieldName,
-    Subscribe::TableAccessControlForCompanyFieldRole,
-];
+const LISTEN_TO_OPERATIONS: &'static [OperationName] =
+    &[OperationName::CreateCompany, OperationName::CreateCompanyBranch];
 
 make_wrap_unwrap!(list_company_and_branch, ListCompanyAndBranch);
 make_user_uuid!(list_company_and_branch);
@@ -152,7 +149,7 @@ fn spawn_listener<
 
     let listener_aborter = client_traits::spawn_listener::<Rn, Rt, Mpsc>(
         cache,
-        SUBSCRIBES_TO_LISTEN,
+        LISTEN_TO_OPERATIONS,
         data,
         move |data| {
             let data = unwrap_output(data);

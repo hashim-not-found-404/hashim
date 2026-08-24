@@ -5,7 +5,7 @@ use crate::client::utility::cache_actor::CachingStrategy;
 use crate::client::utility::cache_actor::Response;
 use crate::client::utility::client_traits;
 use crate::client::utility::client_traits::CacheActorStruct;
-use crate::client::utility::client_traits::Subscribe;
+use crate::client::utility::client_traits::OperationName;
 use crate::client::utility::commander::CommanderLocalState;
 use crate::client::utility::process_manager::MessageToProcessManager;
 use crate::client::utility::process_manager::ProcessName;
@@ -84,7 +84,7 @@ impl CreateAccount {
     >(
         self,
         model: &'static Model<As>,
-        cache: CacheStruct<Mpsc, Subscribe, OperationsInput, OperationsResult>,
+        cache: CacheStruct<Mpsc, OperationName, OperationsInput, OperationsResult>,
         commander_local_state: Arc<CommanderLocalState<Mpsc, As>>,
     ) {
         let local_state = &model.page_create_account;

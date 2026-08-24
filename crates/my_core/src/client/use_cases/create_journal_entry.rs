@@ -1,6 +1,7 @@
 use crate::client::fetches;
 use crate::client::utility::cache::Cache;
 use crate::client::utility::client_traits;
+use crate::client::utility::client_traits::OperationName;
 use crate::client::utility::commander;
 use crate::client::utility::process_manager;
 use crate::client::utility::ui_model;
@@ -17,6 +18,8 @@ use crate::utility::traits;
 use crate::utility::traits::Sender;
 use crate::utility::utils::ReadAndSet;
 use std::sync::Arc;
+
+const LISTEN_TO_OPERATIONS: &'static [OperationName] = &[OperationName::GetAllAccountsForBranch];
 
 type Type1 = use_cases::create_journal_entry::Input;
 type Type2 = use_cases::create_journal_entry::Input;
@@ -292,7 +295,7 @@ fn spawn_listener<
 
     let listener_aborter = client_traits::spawn_listener::<Rn, Rt, Mpsc>(
         cache,
-        fetches::get_all_accounts_for_branch::SUBSCRIBES_TO_LISTEN,
+        LISTEN_TO_OPERATIONS,
         data,
         move |data| {
             let data = fetches::get_all_accounts_for_branch::unwrap_output(data);

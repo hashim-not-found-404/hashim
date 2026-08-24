@@ -19,44 +19,17 @@ use crate::utility::utils::ReadAndSet;
 use std::sync::Arc;
 
 #[derive(Debug, Clone, Eq, Hash, PartialEq)]
-pub(crate) enum Subscribe {
-    TableAccessControlForCompanyBranchFieldDataGroup,
-    TableAccessControlForCompanyBranchFieldRole,
-    TableAccessControlForCompanyBranchFieldUser,
-    TableAccessControlForCompanyFieldDataGroup,
-    TableAccessControlForCompanyFieldRole,
-    TableAccessControlForCompanyFieldUser,
-    TableAccountFieldCompanyBelong,
-    TableAccountFieldIsDebit,
-    TableAccountFieldIsPermanentAccount,
-    TableAccountFieldName,
-    TableAccountFieldNotes,
-    TableAccountFieldUnitOfMeasurementOfQuantity,
-    TableAccountFieldInventory,
-    TableAccountFlowTypeFieldAccount,
-    TableAccountFlowTypeFieldCompanyBranch,
-    TableAccountFlowTypeFieldInflowType,
-    TableAccountFlowTypeFieldOutflowType,
-    TableCompanyBranchFieldCompanyBelong,
-    TableCompanyBranchFieldCurrency,
-    TableCompanyBranchFieldLocation,
-    TableCompanyBranchFieldName,
-    TableCompanyFieldCurrency,
-    TableCompanyFieldName,
-    TableUserFieldId,
-    TableUserFieldName,
-    TableSharedEntryFieldWriter,
-    TableSharedEntryFieldNotes,
-    TableEntryFieldWriter,
-    TableEntryFieldTime,
-    TableEntryFieldSharedEntryId,
-    TableSingleEntryFieldDoubleEntry,
-    TableSingleEntryFieldEntry,
-    TableSingleEntryFieldAccount,
-    TableSingleEntryFieldIsDebit,
-    TableSingleEntryFieldCostOutFlowType,
-    TableSingleEntryFieldQuantity,
-    TableSingleEntryFieldAmount,
+pub(crate) enum OperationName {
+    CreateAccount,
+    CreateAccountForBranch,
+    CreateCompany,
+    CreateCompanyBranch,
+    CreateJournalEntry,
+    GetAllAccounts,
+    GetAllAccountsForBranch,
+    ListCompanyAndBranch,
+    SignIn,
+    SignUp,
 }
 
 #[macro_export]
@@ -90,7 +63,7 @@ macro_rules! make_user_uuid {
 }
 
 pub(crate) type CacheActorStruct<Mpsc> =
-    CacheStruct<Mpsc, Subscribe, OperationsInput, OperationsResult>;
+    CacheStruct<Mpsc, OperationName, OperationsInput, OperationsResult>;
 
 pub(crate) async fn handle_fall_back<
     Rn: RandomNumber,
@@ -176,7 +149,7 @@ pub(crate) async fn handle_fall_back<
 
 pub(crate) fn spawn_listener<Rn: RandomNumber, Rt: Runtime, Mpsc: MultiProducerSingleConsumer>(
     mut cache: CacheActorStruct<Mpsc>,
-    list_of_subscribtion: &'static [Subscribe],
+    list_of_subscribtion: &'static [OperationName],
     data: OperationsInput,
     is_error: impl Fn(OperationsResult) + 'static,
 ) -> impl FnOnce() {
