@@ -306,3 +306,33 @@ impl OperationsResult {
         }
     }
 }
+
+pub(crate) async fn write_resource_to_cache<Ch: Cache, Dbb: DbBundle<Ch>>(
+    cache: &mut Ch,
+    resource: &OperationsOk,
+) {
+    match resource {
+        OperationsOk::SignUp(i) => Dbb::WriteSignUp::write(cache, &i).await.unwrap(),
+        OperationsOk::SignIn(i) => Dbb::WriteSignIn::write(cache, &i).await.unwrap(),
+        OperationsOk::CreateCompany(i) => Dbb::WriteCreateCompany::write(cache, &i).await.unwrap(),
+        OperationsOk::CreateCompanyBranch(i) => {
+            Dbb::WriteCreateCompanyBranch::write(cache, &i).await.unwrap()
+        }
+        OperationsOk::CreateAccount(i) => Dbb::WriteCreateAccount::write(cache, &i).await.unwrap(),
+        OperationsOk::CreateAccountForBranch(i) => {
+            Dbb::WriteCreateAccountForBranch::write(cache, &i).await.unwrap()
+        }
+        OperationsOk::CreateJournalEntry(i) => {
+            Dbb::WriteCreateJournalEntry::write(cache, &i).await.unwrap()
+        }
+        OperationsOk::ListCompanyAndBranch(i) => {
+            Dbb::WriteListCompanyAndBranch::write(cache, &i).await.unwrap()
+        }
+        OperationsOk::GetAllAccounts(i) => {
+            Dbb::WriteGetAllAccounts::write(cache, &i).await.unwrap()
+        }
+        OperationsOk::GetAllAccountsForBranch(i) => {
+            Dbb::WriteGetAllAccountsForBranch::write(cache, &i).await.unwrap()
+        }
+    }
+}
