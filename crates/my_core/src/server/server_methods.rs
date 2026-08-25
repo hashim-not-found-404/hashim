@@ -570,7 +570,6 @@ mod broker_functions {
     use crate::server::utility::server_traits::ListOfResources;
     use std::collections::HashMap;
     use std::collections::HashSet;
-    use std::hash::Hash;
 
     pub(crate) type UserSubscribes = HashMap<Branch, HashSet<User>>;
 

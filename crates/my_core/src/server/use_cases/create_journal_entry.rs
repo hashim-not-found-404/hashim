@@ -4,7 +4,6 @@ use crate::domain::utility::types::MyErrorTrait;
 use crate::domain::utility::types::RowId;
 use crate::domain::utility::types::UserUuidError;
 use crate::make_auth_check;
-use crate::server::utility::server_traits;
 use crate::server::utility::server_traits::DBClient;
 use crate::server::utility::server_traits::DBTransaction;
 use crate::server::utility::server_traits::SideEffects;

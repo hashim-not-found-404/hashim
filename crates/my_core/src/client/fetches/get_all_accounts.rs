@@ -1,6 +1,5 @@
 use crate::client::utility::cache_actor::CachingStrategy;
 use crate::client::utility::client_traits::CacheActorStruct;
-use crate::client::utility::client_traits::OperationName;
 use crate::client::utility::ui_model::AllSignalTypes;
 use crate::client::utility::ui_model::Model;
 use crate::domain::use_cases::get_all_accounts::Input;

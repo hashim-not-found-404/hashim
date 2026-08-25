@@ -5,7 +5,6 @@ use crate::client::utility::commander;
 use crate::client::utility::ui_model;
 use crate::client::utility::ui_model::HashimSignal;
 use crate::domain::use_cases;
-use crate::domain::use_cases::list_company_and_branch::Input;
 use crate::domain::utility::types::Branch;
 use crate::domain::utility::types::Company;
 use crate::domain::utility::types::ListOfCompanies;
@@ -61,7 +60,7 @@ pub(crate) async fn state_full_operation<
     Ok(result)
 }
 
-fn apply_on_the_model<As: ui_model::AllSignalTypes>(output: &Type4, model: &ui_model::Model<As>) {
+fn apply_on_the_model<As: ui_model::AllSignalTypes>(_output: &Type4, _model: &ui_model::Model<As>) {
     todo!()
 }
 

@@ -6,7 +6,6 @@ use crate::client::utility::process_manager;
 use crate::client::utility::ui_model;
 use crate::client::utility::ui_model::HashimSignal;
 use crate::domain::use_cases;
-use crate::domain::use_cases::create_company_branch::Input;
 use crate::domain::utility::types::MyErrorTrait;
 use crate::domain::utility::types::RowId;
 use crate::make_wrap_unwrap;

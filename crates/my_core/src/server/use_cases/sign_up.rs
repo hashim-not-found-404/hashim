@@ -4,7 +4,6 @@ use crate::domain::utility::types::HashedPassword;
 use crate::domain::utility::types::JWT;
 use crate::domain::utility::types::MyErrorTrait;
 use crate::domain::utility::types::RowId;
-use crate::server::utility::server_traits;
 use crate::server::utility::server_traits::DBClient;
 use crate::server::utility::server_traits::DBTransaction;
 use crate::server::utility::server_traits::SideEffects;

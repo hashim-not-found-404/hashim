@@ -8,7 +8,6 @@ use crate::client::utility::ui_model;
 use crate::client::utility::ui_model::HashimSignal;
 use crate::domain::use_cases;
 use crate::domain::use_cases::create_account_for_branch::DatabaseRead;
-use crate::domain::use_cases::create_account_for_branch::Input;
 use crate::domain::utility::types::MyErrorTrait;
 use crate::domain::utility::types::RowId;
 use crate::make_wrap_unwrap;
