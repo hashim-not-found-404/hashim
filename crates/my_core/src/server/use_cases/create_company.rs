@@ -3,6 +3,7 @@ use crate::domain::utility::types::DatabaseWrite;
 use crate::domain::utility::types::MyErrorTrait;
 use crate::domain::utility::types::RowId;
 use crate::domain::utility::types::UserUuidError;
+use crate::make_auth_check;
 use crate::server::utility::server_traits;
 use crate::server::utility::server_traits::DBClient;
 use crate::server::utility::server_traits::DBTransaction;
@@ -21,9 +22,7 @@ impl use_cases::create_company::Input {
         client: &mut Cli,
     ) -> Result<use_cases::create_company::MyResult, DynamicError> {
         let mut errr = self.state_less_check::<Id>();
-        if !side_effects.authenticated_users.contains(&self.user_uuid) {
-            errr.user_uuid = Some(UserUuidError::NotAuthenticated);
-        }
+        make_auth_check!(side_effects, self, errr);
         if errr.is_there_error() {
             return Ok(Err(errr));
         }

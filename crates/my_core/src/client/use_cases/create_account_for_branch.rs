@@ -8,10 +8,9 @@ use crate::client::utility::ui_model;
 use crate::client::utility::ui_model::HashimSignal;
 use crate::domain::use_cases;
 use crate::domain::use_cases::create_account_for_branch::DatabaseRead;
+use crate::domain::use_cases::create_account_for_branch::Input;
 use crate::domain::utility::types::MyErrorTrait;
 use crate::domain::utility::types::RowId;
-use crate::domain::utility::uuid::User;
-use crate::make_user_uuid;
 use crate::make_wrap_unwrap;
 use crate::utility::tools;
 use crate::utility::traits;
@@ -27,7 +26,6 @@ type Type3 = use_cases::create_account_for_branch::MyResult;
 type Type4 = use_cases::create_account_for_branch::MyResult;
 
 make_wrap_unwrap!(create_account_for_branch, CreateAccountForBranch);
-make_user_uuid!(create_account_for_branch);
 
 pub(crate) async fn state_full_operation<
     Ch: Cache,

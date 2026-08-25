@@ -21,8 +21,6 @@ use crate::domain::use_cases::create_account::MyResult;
 use crate::domain::utility::types::MyErrorTrait;
 use crate::domain::utility::types::RowId;
 use crate::domain::utility::uuid::Account;
-use crate::domain::utility::uuid::User;
-use crate::make_user_uuid;
 use crate::make_wrap_unwrap;
 use crate::utility::traits::MultiProducerSingleConsumer;
 use crate::utility::traits::RandomNumber;
@@ -39,7 +37,6 @@ type Type3 = MyResult;
 type Type4 = MyResult;
 
 make_wrap_unwrap!(create_account, CreateAccount);
-make_user_uuid!(create_account);
 
 pub(crate) async fn state_full_operation<
     Ch: Cache,

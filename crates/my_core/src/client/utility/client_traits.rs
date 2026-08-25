@@ -51,17 +51,6 @@ macro_rules! make_wrap_unwrap {
     };
 }
 
-#[macro_export]
-macro_rules! make_user_uuid {
-    ($case_name:ident) => {
-        pub(crate) fn user_uuid(
-            data: &crate::domain::use_cases::$case_name::Input,
-        ) -> Option<&User> {
-            Some(&data.user_uuid)
-        }
-    };
-}
-
 pub(crate) type CacheActorStruct<Mpsc> =
     CacheStruct<Mpsc, OperationName, OperationsInput, OperationsResult>;
 

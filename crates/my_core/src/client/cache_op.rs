@@ -14,22 +14,33 @@ use crate::utility::traits::Time;
 pub trait DbBundle<Ch: Cache>: 'static {
     type CreateAccount: for<'a> use_cases::create_account::DatabaseRead<Db<'a> = Ch>;
     type WriteCreateAccount: for<'a> DatabaseWrite<Db<'a> = Ch, Input = use_cases::create_account::Ok>;
+
     type CreateAccountForBranch: for<'a> use_cases::create_account_for_branch::DatabaseRead<Db<'a> = Ch>;
     type WriteCreateAccountForBranch: for<'a> DatabaseWrite<Db<'a> = Ch, Input = use_cases::create_account_for_branch::Ok>;
+
     type CreateJournalEntry: for<'a> use_cases::create_journal_entry::DatabaseRead<Db<'a> = Ch>;
     type WriteCreateJournalEntry: for<'a> DatabaseWrite<Db<'a> = Ch, Input = use_cases::create_journal_entry::Ok>;
+
+    type GetAllAccounts: for<'a> use_cases::get_all_accounts::DatabaseRead<Db<'a> = Ch>;
+    type WriteGetAllAccounts: for<'a> DatabaseWrite<Db<'a> = Ch, Input = use_cases::get_all_accounts::Ok>;
+
     type GetAllAccountsForBranch: for<'a> use_cases::get_all_accounts_for_branch::DatabaseRead<Db<'a> = Ch>;
     type WriteGetAllAccountsForBranch: for<'a> DatabaseWrite<Db<'a> = Ch, Input = use_cases::get_all_accounts_for_branch::Ok>;
+
     type CreateCompany: for<'a> use_cases::create_company::DatabaseRead<Db<'a> = Ch>;
     type WriteCreateCompany: for<'a> DatabaseWrite<Db<'a> = Ch, Input = use_cases::create_company::Ok>;
+
     type CreateCompanyBranch: for<'a> use_cases::create_company_branch::DatabaseRead<Db<'a> = Ch>;
     type WriteCreateCompanyBranch: for<'a> DatabaseWrite<Db<'a> = Ch, Input = use_cases::create_company_branch::Ok>;
+
     type ListCompanyAndBranch: for<'a> use_cases::list_company_and_branch::DatabaseRead<Db<'a> = Ch>
         + 'static;
     type WriteListCompanyAndBranch: for<'a> DatabaseWrite<Db<'a> = Ch, Input = use_cases::list_company_and_branch::Ok>
         + 'static;
+
     type SignIn: for<'a> use_cases::sign_in::DatabaseRead<Db<'a> = Ch>;
     type WriteSignIn: for<'a> DatabaseWrite<Db<'a> = Ch, Input = use_cases::sign_in::Ok>;
+
     type SignUp: for<'a> use_cases::sign_up::DatabaseRead<Db<'a> = Ch>;
     type WriteSignUp: for<'a> DatabaseWrite<Db<'a> = Ch, Input = use_cases::sign_up::Ok>;
 }
@@ -50,15 +61,6 @@ macro_rules! run_operation_check {
         request_response::OperationsResult::$name(
             client::use_cases::$path::state_full_operation::<Ch, $db>($i, $state).await,
         )
-    };
-}
-
-macro_rules! run_operation_check_apply {
-    ($path:ident, $db:ty, $i:expr, $state:expr, $DbWrite:ty) => {
-        let a = client::use_cases::$path::state_full_operation::<Ch, $db>($i, $state).await;
-        if let Ok(resources) = a {
-            $DbWrite::write($state, &resources).await.unwrap();
-        }
     };
 }
 
@@ -241,28 +243,19 @@ impl OperationsInput {
     }
 
     pub(crate) fn get_user_uuid<Ti: Time, Ch: Cache, Dbb: DbBundle<Ch>>(&self) -> Option<&User> {
-        match self {
-            OperationsInput::SignUp(i) => client::use_cases::sign_up::user_uuid(i),
-            OperationsInput::SignIn(i) => client::use_cases::sign_in::user_uuid(i),
-            OperationsInput::CreateCompany(i) => client::use_cases::create_company::user_uuid(i),
-            OperationsInput::CreateCompanyBranch(i) => {
-                client::use_cases::create_company_branch::user_uuid(i)
-            }
-            OperationsInput::ListCompanyAndBranch(i) => {
-                client::use_cases::list_company_and_branch::user_uuid(i)
-            }
-            OperationsInput::CreateAccount(i) => client::use_cases::create_account::user_uuid(i),
-            OperationsInput::GetAllAccounts(i) => client::fetches::get_all_accounts::user_uuid(i),
-            OperationsInput::GetAllAccountsForBranch(i) => {
-                client::fetches::get_all_accounts_for_branch::user_uuid(i)
-            }
-            OperationsInput::CreateAccountForBranch(i) => {
-                client::use_cases::create_account_for_branch::user_uuid(i)
-            }
-            OperationsInput::CreateJournalEntry(i) => {
-                client::use_cases::create_journal_entry::user_uuid(i)
-            }
-        }
+        let user_uuid = match self {
+            OperationsInput::SignUp(i) => &i.user_uuid,
+            OperationsInput::SignIn(_) => return None,
+            OperationsInput::CreateCompany(i) => &i.user_uuid,
+            OperationsInput::CreateCompanyBranch(i) => &i.user_uuid,
+            OperationsInput::ListCompanyAndBranch(i) => &i.user_uuid,
+            OperationsInput::CreateAccount(i) => &i.user_uuid,
+            OperationsInput::GetAllAccounts(i) => &i.user_uuid,
+            OperationsInput::GetAllAccountsForBranch(i) => &i.user_uuid,
+            OperationsInput::CreateAccountForBranch(i) => &i.user_uuid,
+            OperationsInput::CreateJournalEntry(i) => &i.user_uuid,
+        };
+        Some(user_uuid)
     }
 }
 

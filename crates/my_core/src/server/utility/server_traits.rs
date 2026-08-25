@@ -55,3 +55,12 @@ pub trait DBClient {
         users_uuids: &HashSet<User>,
     ) -> impl Future<Output = Result<TheCompaniesAndBranchesHeIn, DynamicError>>;
 }
+
+#[macro_export]
+macro_rules! make_auth_check {
+    ($side_effects:expr, $self:expr, $errr:expr) => {
+        if !$side_effects.authenticated_users.contains(&$self.user_uuid) {
+            $errr.user_uuid = Some(UserUuidError::NotAuthenticated);
+        }
+    };
+}

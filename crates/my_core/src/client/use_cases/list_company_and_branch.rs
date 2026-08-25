@@ -5,12 +5,11 @@ use crate::client::utility::commander;
 use crate::client::utility::ui_model;
 use crate::client::utility::ui_model::HashimSignal;
 use crate::domain::use_cases;
+use crate::domain::use_cases::list_company_and_branch::Input;
 use crate::domain::utility::types::Branch;
 use crate::domain::utility::types::Company;
 use crate::domain::utility::types::ListOfCompanies;
 use crate::domain::utility::uuid;
-use crate::domain::utility::uuid::User;
-use crate::make_user_uuid;
 use crate::make_wrap_unwrap;
 use crate::utility::tools;
 use crate::utility::traits;
@@ -26,7 +25,6 @@ const LISTEN_TO_OPERATIONS: &'static [OperationName] =
     &[OperationName::CreateCompany, OperationName::CreateCompanyBranch];
 
 make_wrap_unwrap!(list_company_and_branch, ListCompanyAndBranch);
-make_user_uuid!(list_company_and_branch);
 
 impl tools::Sortable for Company {
     type Key = (String, uuid::Company);

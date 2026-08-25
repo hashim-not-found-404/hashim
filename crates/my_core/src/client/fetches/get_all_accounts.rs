@@ -5,8 +5,6 @@ use crate::client::utility::ui_model::AllSignalTypes;
 use crate::client::utility::ui_model::Model;
 use crate::domain::use_cases::get_all_accounts::Input;
 use crate::domain::use_cases::get_all_accounts::MyResult;
-use crate::domain::utility::uuid::User;
-use crate::make_user_uuid;
 use crate::make_wrap_unwrap;
 use crate::utility::traits::MultiProducerSingleConsumer;
 use crate::utility::traits::RandomNumber;
@@ -15,7 +13,6 @@ use crate::utility::utils::ReadAndSet;
 type Type3 = MyResult;
 
 make_wrap_unwrap!(get_all_accounts, GetAllAccounts);
-make_user_uuid!(get_all_accounts);
 
 pub(crate) async fn fetch<
     Rn: RandomNumber,

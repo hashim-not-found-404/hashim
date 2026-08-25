@@ -4,9 +4,9 @@ use crate::client::utility::client_traits;
 use crate::client::utility::ui_model;
 use crate::client::utility::ui_model::HashimSignal;
 use crate::domain::use_cases;
+use crate::domain::use_cases::create_company::Input;
 use crate::domain::utility::types::RowId;
 use crate::domain::utility::uuid::User;
-use crate::make_user_uuid;
 use crate::make_wrap_unwrap;
 use crate::utility::traits;
 use crate::utility::utils::ReadAndSet;
@@ -17,7 +17,6 @@ type Type3 = use_cases::create_company::MyResult;
 type Type4 = use_cases::create_company::MyResult;
 
 make_wrap_unwrap!(create_company, CreateCompany);
-make_user_uuid!(create_company);
 
 pub(crate) async fn state_full_operation(data: &Type2) -> Type3 {
     Ok(data.state_less_operation())

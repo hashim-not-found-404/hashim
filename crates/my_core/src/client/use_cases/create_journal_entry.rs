@@ -8,10 +8,9 @@ use crate::client::utility::ui_model;
 use crate::client::utility::ui_model::HashimSignal;
 use crate::domain::use_cases;
 use crate::domain::use_cases::create_journal_entry;
+use crate::domain::use_cases::create_journal_entry::Input;
 use crate::domain::utility::types::RowId;
 use crate::domain::utility::uuid::SharedEntry;
-use crate::domain::utility::uuid::User;
-use crate::make_user_uuid;
 use crate::make_wrap_unwrap;
 use crate::utility::tools;
 use crate::utility::traits;
@@ -27,7 +26,6 @@ type Type3 = use_cases::create_journal_entry::MyResult;
 type Type4 = use_cases::create_journal_entry::MyResult;
 
 make_wrap_unwrap!(create_journal_entry, CreateJournalEntry);
-make_user_uuid!(create_journal_entry);
 
 pub(crate) async fn state_full_operation<
     Ti: traits::Time,

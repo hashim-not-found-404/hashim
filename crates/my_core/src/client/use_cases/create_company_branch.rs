@@ -6,10 +6,9 @@ use crate::client::utility::process_manager;
 use crate::client::utility::ui_model;
 use crate::client::utility::ui_model::HashimSignal;
 use crate::domain::use_cases;
+use crate::domain::use_cases::create_company_branch::Input;
 use crate::domain::utility::types::MyErrorTrait;
 use crate::domain::utility::types::RowId;
-use crate::domain::utility::uuid::User;
-use crate::make_user_uuid;
 use crate::make_wrap_unwrap;
 use crate::mbg;
 use crate::utility::traits;
@@ -24,7 +23,6 @@ type Type3 = use_cases::create_company_branch::MyResult;
 type Type4 = use_cases::create_company_branch::MyResult;
 
 make_wrap_unwrap!(create_company_branch, CreateCompanyBranch);
-make_user_uuid!(create_company_branch);
 
 pub(crate) async fn state_full_operation<
     Ch: Cache,

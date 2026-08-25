@@ -22,6 +22,7 @@ use crate::domain::request_response::OperationsResult;
 use crate::domain::request_response::ResourceDTO;
 use crate::domain::request_response::Txn;
 use crate::domain::utility::types::ADDRESS;
+use crate::domain::utility::types::DatabaseWrite;
 use crate::domain::utility::types::HashimError;
 use crate::domain::utility::types::RowId;
 use crate::domain::utility::uuid::Nonce;
@@ -239,7 +240,34 @@ impl<Mpsc: MultiProducerSingleConsumer, Ch: Cache, Id: RowId, Ti: Time, Dbb: DbB
         cache: &mut Self::Cache,
         resource: &Self::ResourceToStore,
     ) {
-        todo!()
+        match resource {
+            OperationsOk::SignUp(i) => Dbb::WriteSignUp::write(cache, &i).await.unwrap(),
+            OperationsOk::SignIn(i) => Dbb::WriteSignIn::write(cache, &i).await.unwrap(),
+            OperationsOk::CreateCompany(i) => {
+                Dbb::WriteCreateCompany::write(cache, &i).await.unwrap()
+            }
+            OperationsOk::CreateCompanyBranch(i) => {
+                Dbb::WriteCreateCompanyBranch::write(cache, &i).await.unwrap()
+            }
+            OperationsOk::CreateAccount(i) => {
+                Dbb::WriteCreateAccount::write(cache, &i).await.unwrap()
+            }
+            OperationsOk::CreateAccountForBranch(i) => {
+                Dbb::WriteCreateAccountForBranch::write(cache, &i).await.unwrap()
+            }
+            OperationsOk::CreateJournalEntry(i) => {
+                Dbb::WriteCreateJournalEntry::write(cache, &i).await.unwrap()
+            }
+            OperationsOk::ListCompanyAndBranch(i) => {
+                Dbb::WriteListCompanyAndBranch::write(cache, &i).await.unwrap()
+            }
+            OperationsOk::GetAllAccounts(i) => {
+                Dbb::WriteGetAllAccounts::write(cache, &i).await.unwrap()
+            }
+            OperationsOk::GetAllAccountsForBranch(i) => {
+                Dbb::WriteGetAllAccountsForBranch::write(cache, &i).await.unwrap()
+            }
+        }
     }
 
     async fn write_resource_to_cache_from_client(

@@ -6,11 +6,11 @@ use crate::client::utility::process_manager;
 use crate::client::utility::ui_model;
 use crate::client::utility::ui_model::HashimSignal;
 use crate::domain::use_cases;
+use crate::domain::use_cases::sign_up::Input;
 use crate::domain::utility::types::JsonWebTokenType;
 use crate::domain::utility::types::MyErrorTrait;
 use crate::domain::utility::types::RowId;
 use crate::domain::utility::uuid::User;
-use crate::make_user_uuid;
 use crate::make_wrap_unwrap;
 use crate::utility::traits;
 use crate::utility::traits::Receiver;
@@ -25,7 +25,6 @@ type Type3 = use_cases::sign_up::MyResult;
 type Type4 = use_cases::sign_up::MyResult;
 
 make_wrap_unwrap!(sign_up, SignUp);
-make_user_uuid!(sign_up);
 
 pub(crate) async fn state_full_operation<
     Ch: Cache,
