@@ -1,11 +1,11 @@
 use crate::utility::db_client;
 use crate::utility::utils::MyUuidConverter;
 use my_core::domain::use_cases;
+use my_core::domain::utility::new_types::CompanyUuid;
+use my_core::domain::utility::new_types::UuidType;
 use my_core::domain::utility::types::Currency;
 use my_core::domain::utility::types::DatabaseRead;
 use my_core::domain::utility::types::Role;
-use my_core::domain::utility::uuid::Company;
-use my_core::domain::utility::uuid::UuidType;
 use my_core::utility::traits::DynamicError;
 use my_core::utility::utils::LogError;
 use serde::Deserialize;
@@ -50,12 +50,12 @@ const READ_QUERY: &str = "
 
 pub struct S;
 
-impl use_cases::list_company_and_branch::DatabaseRead for S {}
+impl use_cases::get_companies_and_branches::DatabaseRead for S {}
 
 impl DatabaseRead for S {
     type Db<'a> = db_client::S;
-    type Input = use_cases::list_company_and_branch::ReadInput;
-    type Output = use_cases::list_company_and_branch::ReadOutput;
+    type Input = use_cases::get_companies_and_branches::ReadInput;
+    type Output = use_cases::get_companies_and_branches::ReadOutput;
 
     async fn read(
         db: &mut Self::Db<'_>,
@@ -75,10 +75,10 @@ impl DatabaseRead for S {
             name:     String,
             currency: Currency,
             roles:    Vec<Role>,
-            branches: Vec<use_cases::list_company_and_branch::AllBranchesThatUserInWithRoles>,
+            branches: Vec<use_cases::get_companies_and_branches::AllBranchesThatUserInWithRoles>,
         }
 
-        let mut company_map: HashMap<Company, CompanyAgg> = HashMap::new();
+        let mut company_map: HashMap<CompanyUuid, CompanyAgg> = HashMap::new();
 
         for row in rows {
             let company_uuid_str: String = row.try_get(0).log()?;
@@ -95,14 +95,14 @@ impl DatabaseRead for S {
 
             let branches: Vec<BranchJson> = serde_json::from_value(branches_json).log()?;
             let branch_entries: Vec<
-                use_cases::list_company_and_branch::AllBranchesThatUserInWithRoles,
+                use_cases::get_companies_and_branches::AllBranchesThatUserInWithRoles,
             > = branches
                 .into_iter()
                 .map(|bj| {
                     let uuid = Uuid::parse_str(&bj.uuid).log()?;
                     let branch_uuid = UuidType(uuid.into_bytes()).into();
                     let branch_currency = Currency::from_str(&bj.currency).log()?;
-                    Ok(use_cases::list_company_and_branch::AllBranchesThatUserInWithRoles {
+                    Ok(use_cases::get_companies_and_branches::AllBranchesThatUserInWithRoles {
                         branch_uuid,
                         branch_name: bj.name,
                         branch_currancy: branch_currency,
@@ -132,7 +132,7 @@ impl DatabaseRead for S {
         let data = company_map
             .into_iter()
             .map(|(company_uuid, agg)| {
-                use_cases::list_company_and_branch::AllCompaniesThatUserInWithRoles {
+                use_cases::get_companies_and_branches::AllCompaniesThatUserInWithRoles {
                     company_uuid,
                     company_name: agg.name,
                     company_currancy: agg.currency,
@@ -142,7 +142,7 @@ impl DatabaseRead for S {
             })
             .collect();
 
-        Ok(use_cases::list_company_and_branch::ReadOutput {
+        Ok(use_cases::get_companies_and_branches::ReadOutput {
             data,
         })
     }

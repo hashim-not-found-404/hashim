@@ -95,7 +95,7 @@ impl<Mpsc: traits::MultiProducerSingleConsumer> Commander<Mpsc> {
                             model.external_errors.reset();
                         }
                         ui_model::Message::SignIn(msg) => {
-                            msg.update::<Rn, Rt, Mpsc, As, Ch, Dbb::SignIn>(
+                            msg.update::<Rn, Rt, Mpsc, As, Ch, Dbb::ReadSignIn>(
                                 model,
                                 cache,
                                 commander_local_state,
@@ -103,7 +103,7 @@ impl<Mpsc: traits::MultiProducerSingleConsumer> Commander<Mpsc> {
                             .await
                         }
                         ui_model::Message::SignUp(msg) => {
-                            msg.update::<Rn, Rt, Id, Mpsc, As, Ch, Dbb::SignUp>(
+                            msg.update::<Rn, Rt, Id, Mpsc, As, Ch, Dbb::ReadSignUp>(
                                 model,
                                 cache,
                                 commander_local_state,
@@ -111,7 +111,7 @@ impl<Mpsc: traits::MultiProducerSingleConsumer> Commander<Mpsc> {
                             .await
                         }
                         ui_model::Message::CompanyAndBranchSelection(msg) => {
-                            msg.update::<Rn, Rt, Mpsc, As, Ch, Dbb::ListCompanyAndBranch>(
+                            msg.update::<Rn, Rt, Mpsc, As, Ch, Dbb::ReadGetCompaniesAndBranches>(
                                 model,
                                 cache,
                                 commander_local_state,
@@ -119,14 +119,14 @@ impl<Mpsc: traits::MultiProducerSingleConsumer> Commander<Mpsc> {
 
                         }
                         ui_model::Message::CreateCompany(msg) => {
-                            msg.update::<Rn, Id, Mpsc, As, Ch, Dbb::CreateCompany>(
+                            msg.update::<Rn, Id, Mpsc, As, Ch, Dbb::ReadCreateCompany>(
                                 model,
                                 cache,
                             )
                             .await
                         }
                         ui_model::Message::CreateCompanyBranch(msg) => {
-                            msg.update::<Rn, Rt, Id, Mpsc,  As, Ch, Dbb::CreateCompanyBranch>(
+                            msg.update::<Rn, Rt, Id, Mpsc,  As, Ch, Dbb::ReadCreateCompanyBranch>(
                                 model,
                                 cache,
                                 commander_local_state,
@@ -139,7 +139,7 @@ impl<Mpsc: traits::MultiProducerSingleConsumer> Commander<Mpsc> {
                             )
                         }
                         ui_model::Message::CreateAccount(msg) => {
-                            msg.update::<Rn, Rt, Id, Mpsc, As, Ch, Dbb::CreateAccount>(
+                            msg.update::<Rn, Rt, Id, Mpsc, As, Ch, Dbb::ReadCreateAccount>(
                                 model,
                                 cache,
                                 commander_local_state,
@@ -147,7 +147,7 @@ impl<Mpsc: traits::MultiProducerSingleConsumer> Commander<Mpsc> {
                             .await
                         }
                         ui_model::Message::CreateAccountForBranch(msg) => {
-                            msg.update::<Rn, Rt, Id, Mpsc, As, Ch, Dbb::CreateAccountForBranch,Dbb::GetAllAccountsForBranch>(
+                            msg.update::<Rn, Rt, Id, Mpsc, As, Ch, Dbb::ReadCreateAccountForBranch,Dbb::ReadGetAllAccountsForBranch>(
                                 model,
                                 cache,
                                 commander_local_state,
@@ -155,7 +155,7 @@ impl<Mpsc: traits::MultiProducerSingleConsumer> Commander<Mpsc> {
                             .await
                         }
                         ui_model::Message::CreateJournalEntry(msg) => {
-                            msg.update::<Rn, Rt, Id, Mpsc,  Ti, As, Ch, Dbb::CreateJournalEntry,Dbb::GetAllAccountsForBranch>(
+                            msg.update::<Rn, Rt, Id, Mpsc,  Ti, As, Ch, Dbb::ReadCreateJournalEntry,Dbb::ReadGetAllAccountsForBranch>(
                                 model,
                                 cache,
                                 commander_local_state,

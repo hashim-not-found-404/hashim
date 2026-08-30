@@ -1,12 +1,12 @@
+use crate::domain::utility::new_types::AccountUuid;
+use crate::domain::utility::new_types::CompanyUuid;
+use crate::domain::utility::new_types::UserUuid;
 use crate::domain::utility::types;
 use crate::domain::utility::types::MarkerMyErrorTrait;
 use crate::domain::utility::types::Role;
 use crate::domain::utility::types::RowId;
 use crate::domain::utility::types::RowIdError;
 use crate::domain::utility::types::UserUuidError;
-use crate::domain::utility::uuid::Account;
-use crate::domain::utility::uuid::Company;
-use crate::domain::utility::uuid::User;
 use crate::utility::traits::DynamicError;
 use serde::Deserialize;
 use serde::Serialize;
@@ -15,25 +15,25 @@ pub type MyResult = Result<Ok, Error>;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Input {
-    pub user_uuid:                       User,
-    pub new_uuid:                        Account,
+    pub user_uuid:                       UserUuid,
+    pub new_uuid:                        AccountUuid,
     pub is_debit:                        bool,
     pub is_permanent_account:            bool,
     pub account_name:                    String,
     pub notes:                           Option<String>,
     pub unit_of_measurement_of_quantity: String,
-    pub belong_to_company:               Company,
+    pub belong_to_company:               CompanyUuid,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Ok {
-    pub new_uuid:                        Account,
+    pub new_uuid:                        AccountUuid,
     pub is_debit:                        bool,
     pub is_permanent_account:            bool,
     pub account_name:                    String,
     pub notes:                           Option<String>,
     pub unit_of_measurement_of_quantity: String,
-    pub belong_to_company:               Company,
+    pub belong_to_company:               CompanyUuid,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
@@ -52,9 +52,9 @@ pub(crate) enum AccountNameError {
 }
 
 pub struct ReadInput {
-    pub user_uuid:         User,
-    pub new_uuid:          Account,
-    pub belong_to_company: Company,
+    pub user_uuid:         UserUuid,
+    pub new_uuid:          AccountUuid,
+    pub belong_to_company: CompanyUuid,
     pub account_name:      String,
 }
 

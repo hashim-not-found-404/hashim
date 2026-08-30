@@ -1,3 +1,6 @@
+use crate::domain::utility::new_types::BranchUuid;
+use crate::domain::utility::new_types::CompanyUuid;
+use crate::domain::utility::new_types::UserUuid;
 use crate::domain::utility::types;
 use crate::domain::utility::types::Currency;
 use crate::domain::utility::types::Location;
@@ -6,9 +9,6 @@ use crate::domain::utility::types::Role;
 use crate::domain::utility::types::RowId;
 use crate::domain::utility::types::RowIdError;
 use crate::domain::utility::types::UserUuidError;
-use crate::domain::utility::uuid::Branch;
-use crate::domain::utility::uuid::Company;
-use crate::domain::utility::uuid::User;
 use crate::utility::traits::DynamicError;
 use serde::Deserialize;
 use serde::Serialize;
@@ -17,9 +17,9 @@ pub type MyResult = Result<Ok, Error>;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Input {
-    pub(crate) user_uuid:      User,
-    pub(crate) new_uuid:       Branch,
-    pub(crate) company_belong: Company,
+    pub(crate) user_uuid:      UserUuid,
+    pub(crate) new_uuid:       BranchUuid,
+    pub(crate) company_belong: CompanyUuid,
     pub(crate) branch_name:    String,
     pub(crate) location:       Location,
     pub(crate) currency:       Currency,
@@ -27,10 +27,10 @@ pub struct Input {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Ok {
-    pub new_uuid:       Branch,
+    pub new_uuid:       BranchUuid,
     pub branch_name:    String,
-    pub company_belong: Company,
-    pub user_uuid:      User,
+    pub company_belong: CompanyUuid,
+    pub user_uuid:      UserUuid,
     pub currency:       Currency,
     pub location:       Location,
     pub role:           Role,
@@ -48,9 +48,9 @@ pub struct Error {
 impl MarkerMyErrorTrait for Error {}
 
 pub struct ReadInput {
-    pub user_uuid:      User,
-    pub new_uuid:       Branch,
-    pub company_belong: Company,
+    pub user_uuid:      UserUuid,
+    pub new_uuid:       BranchUuid,
+    pub company_belong: CompanyUuid,
     pub branch_name:    String,
 }
 

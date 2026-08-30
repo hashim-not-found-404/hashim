@@ -1,2 +1,2 @@
+pub mod new_types;
 pub mod types;
-pub mod uuid;

@@ -1,11 +1,11 @@
+use crate::domain::utility::new_types::AccountUuid;
+use crate::domain::utility::new_types::CompanyUuid;
+use crate::domain::utility::new_types::UserUuid;
 use crate::domain::utility::types;
 use crate::domain::utility::types::MarkerMyErrorTrait;
 use crate::domain::utility::types::RowId;
 use crate::domain::utility::types::RowIdError;
 use crate::domain::utility::types::UserUuidError;
-use crate::domain::utility::uuid::Account;
-use crate::domain::utility::uuid::Company;
-use crate::domain::utility::uuid::User;
 use crate::utility::traits::DynamicError;
 use serde::Deserialize;
 use serde::Serialize;
@@ -14,19 +14,19 @@ pub type MyResult = Result<Ok, Error>;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Input {
-    pub(crate) user_uuid:    User,
-    pub(crate) company_uuid: Company,
+    pub(crate) user_uuid:    UserUuid,
+    pub(crate) company_uuid: CompanyUuid,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Ok {
-    pub(crate) company_uuid: Company,
+    pub(crate) company_uuid: CompanyUuid,
     pub(crate) data:         Vec<Data>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Data {
-    pub row_uuid:                        Account,
+    pub row_uuid:                        AccountUuid,
     pub is_debit:                        bool,
     pub is_permanent_account:            bool,
     pub account_name:                    String,
@@ -43,8 +43,8 @@ pub struct Error {
 impl MarkerMyErrorTrait for Error {}
 
 pub struct ReadInput {
-    pub user_uuid:    User,
-    pub company_uuid: Company,
+    pub user_uuid:    UserUuid,
+    pub company_uuid: CompanyUuid,
 }
 
 pub struct ReadOutput {

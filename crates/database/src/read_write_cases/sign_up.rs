@@ -2,6 +2,8 @@ use crate::utility::db_transaction;
 use crate::utility::utils::MyUuidConverter;
 use my_core::domain::use_cases;
 use my_core::domain::utility::types::DatabaseRead;
+use my_core::domain::utility::types::DatabaseWrite;
+use my_core::domain::utility::types::{self};
 use my_core::server::utility::server_traits;
 use my_core::utility::traits::DynamicError;
 use my_core::utility::utils::LogError;
@@ -43,7 +45,7 @@ impl DatabaseRead for S {
 const WRITE_QUERY: &str =
     "INSERT INTO accounting_app.user (rowid, id, pass, name) VALUES ($1, $2, $3, $4)";
 
-impl server_traits::DatabaseWrite for S {
+impl DatabaseWrite for S {
     type Db<'a> = db_transaction::S<'a>;
     type Input = use_cases::sign_up::Ok;
 

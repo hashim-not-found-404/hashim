@@ -1,8 +1,8 @@
 use crate::domain::request_response::OperationsInput;
 use crate::domain::request_response::OperationsResult;
 use crate::domain::request_response::Txn;
-use crate::domain::utility::types::JsonWebTokenType;
-use crate::domain::utility::uuid::User;
+use crate::domain::utility::new_types::JsonWebTokenType;
+use crate::domain::utility::new_types::UserUuid;
 
 pub trait Cache: Sized {
     fn new() -> impl Future<Output = Self>;
@@ -15,5 +15,5 @@ pub trait Cache: Sized {
     fn clear_pending_txn_state(&self) -> impl Future<Output = ()>;
     fn start_pending_txn_state(&self) -> impl Future<Output = ()>;
 
-    fn get_jwt(&self, user_uuid: &User) -> impl Future<Output = Option<JsonWebTokenType>>;
+    fn get_jwt(&self, user_uuid: &UserUuid) -> impl Future<Output = Option<JsonWebTokenType>>;
 }

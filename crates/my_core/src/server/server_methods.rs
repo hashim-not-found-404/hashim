@@ -6,6 +6,8 @@ use crate::domain::request_response::OperationsResult;
 use crate::domain::request_response::ResourceDTO;
 use crate::domain::request_response::Txn;
 use crate::domain::use_cases;
+use crate::domain::utility::new_types::UserUuid;
+use crate::domain::utility::new_types::UuidType;
 use crate::domain::utility::types::DatabaseWrite;
 use crate::domain::utility::types::HashedPassword;
 use crate::domain::utility::types::HashimError;
@@ -13,8 +15,6 @@ use crate::domain::utility::types::JWT;
 use crate::domain::utility::types::JWTError;
 use crate::domain::utility::types::NonceError;
 use crate::domain::utility::types::RowId;
-use crate::domain::utility::uuid::User;
-use crate::domain::utility::uuid::UuidType;
 use crate::server::utility::server_traits::DBClient;
 use crate::server::utility::server_traits::ListOfResources;
 use crate::server::utility::server_traits::SideEffects;
@@ -37,33 +37,33 @@ use std::time::SystemTime;
 use std::time::UNIX_EPOCH;
 
 pub trait DbBundle<Cli: DBClient>: 'static {
-    type CreateAccount: for<'a> use_cases::create_account::DatabaseRead<Db<'a> = Cli::Txn<'a>>;
+    type ReadCreateAccount: for<'a> use_cases::create_account::DatabaseRead<Db<'a> = Cli::Txn<'a>>;
     type WriteCreateAccount: for<'a> DatabaseWrite<Db<'a> = Cli::Txn<'a>, Input = use_cases::create_account::Ok>;
 
-    type CreateAccountForBranch: for<'a> use_cases::create_account_for_branch::DatabaseRead<Db<'a> = Cli::Txn<'a>>;
+    type ReadCreateAccountForBranch: for<'a> use_cases::create_account_for_branch::DatabaseRead<Db<'a> = Cli::Txn<'a>>;
     type WriteCreateAccountForBranch: for<'a> DatabaseWrite<
             Db<'a> = Cli::Txn<'a>,
             Input = use_cases::create_account_for_branch::Ok,
         >;
 
-    type CreateJournalEntry: for<'a> use_cases::create_journal_entry::DatabaseRead<Db<'a> = Cli::Txn<'a>>;
+    type ReadCreateJournalEntry: for<'a> use_cases::create_journal_entry::DatabaseRead<Db<'a> = Cli::Txn<'a>>;
     type WriteCreateJournalEntry: for<'a> DatabaseWrite<Db<'a> = Cli::Txn<'a>, Input = use_cases::create_journal_entry::Ok>;
 
-    type GetAllAccounts: for<'a> use_cases::get_all_accounts::DatabaseRead<Db<'a> = Cli>;
+    type ReadGetAllAccounts: for<'a> use_cases::get_all_accounts::DatabaseRead<Db<'a> = Cli>;
 
-    type GetAllAccountsForBranch: for<'a> use_cases::get_all_accounts_for_branch::DatabaseRead<Db<'a> = Cli>;
+    type ReadGetAllAccountsForBranch: for<'a> use_cases::get_all_accounts_for_branch::DatabaseRead<Db<'a> = Cli>;
 
-    type CreateCompany: for<'a> use_cases::create_company::DatabaseRead<Db<'a> = Cli::Txn<'a>>;
+    type ReadCreateCompany: for<'a> use_cases::create_company::DatabaseRead<Db<'a> = Cli::Txn<'a>>;
     type WriteCreateCompany: for<'a> DatabaseWrite<Db<'a> = Cli::Txn<'a>, Input = use_cases::create_company::Ok>;
 
-    type CreateCompanyBranch: for<'a> use_cases::create_company_branch::DatabaseRead<Db<'a> = Cli::Txn<'a>>;
+    type ReadCreateCompanyBranch: for<'a> use_cases::create_company_branch::DatabaseRead<Db<'a> = Cli::Txn<'a>>;
     type WriteCreateCompanyBranch: for<'a> DatabaseWrite<Db<'a> = Cli::Txn<'a>, Input = use_cases::create_company_branch::Ok>;
 
-    type ListCompanyAndBranch: for<'a> use_cases::list_company_and_branch::DatabaseRead<Db<'a> = Cli>;
+    type ReadGetCompaniesAndBranches: for<'a> use_cases::get_companies_and_branches::DatabaseRead<Db<'a> = Cli>;
 
-    type SignIn: for<'a> use_cases::sign_in::DatabaseRead<Db<'a> = Cli>;
+    type ReadSignIn: for<'a> use_cases::sign_in::DatabaseRead<Db<'a> = Cli>;
 
-    type SignUp: for<'a> use_cases::sign_up::DatabaseRead<Db<'a> = Cli::Txn<'a>>;
+    type ReadSignUp: for<'a> use_cases::sign_up::DatabaseRead<Db<'a> = Cli::Txn<'a>>;
     type WriteSignUp: for<'a> DatabaseWrite<Db<'a> = Cli::Txn<'a>, Input = use_cases::sign_up::Ok>;
 }
 
@@ -322,7 +322,8 @@ impl<Mpsc: MultiProducerSingleConsumer, Jwt: JWT, Db: Database<Client = Cli>, Cl
                         connection_id,
                         list_of_resources_for_branch,
                     } => {
-                        let mut resource_to_send: HashMap<User, Vec<ResourceDTO>> = HashMap::new();
+                        let mut resource_to_send: HashMap<UserUuid, Vec<ResourceDTO>> =
+                            HashMap::new();
 
                         broker_functions::map_resource_to_subscribes(
                             &pool_of_pubsub_for_branch,
@@ -407,7 +408,7 @@ async fn push_data<
             OperationsInput::SignUp(input) => {
                 OperationsResult::SignUp(
                     input
-                        .handle_operation::<Id, Auth, Jwt, Cli, Dbb::SignUp, Dbb::WriteSignUp>(
+                        .handle_operation::<Id, Auth, Jwt, Cli, Dbb::ReadSignUp, Dbb::WriteSignUp>(
                             side_effects,
                             client,
                             jwt,
@@ -418,14 +419,14 @@ async fn push_data<
             OperationsInput::SignIn(input) => {
                 OperationsResult::SignIn(
                     input
-                        .handle_operation::<Auth, Jwt, Cli, Dbb::SignIn>(side_effects, client, jwt)
+                        .handle_operation::<Auth, Jwt, Cli, Dbb::ReadSignIn>(side_effects, client, jwt)
                         .await?,
                 )
             }
             OperationsInput::CreateCompany(input) => {
                 OperationsResult::CreateCompany(
                     input
-                        .handle_operation::<Id, Cli, Dbb::CreateCompany, Dbb::WriteCreateCompany>(
+                        .handle_operation::<Id, Cli, Dbb::ReadCreateCompany, Dbb::WriteCreateCompany>(
                             side_effects,
                             client,
                         )
@@ -435,14 +436,14 @@ async fn push_data<
             OperationsInput::CreateCompanyBranch(input) => {
                 OperationsResult::CreateCompanyBranch(
                     input
-                        .handle_operation::<Id, Cli, Dbb::CreateCompanyBranch,Dbb::WriteCreateCompanyBranch>(side_effects, client)
+                        .handle_operation::<Id, Cli, Dbb::ReadCreateCompanyBranch,Dbb::WriteCreateCompanyBranch>(side_effects, client)
                         .await?,
                 )
             }
-            OperationsInput::ListCompanyAndBranch(input) => {
-                OperationsResult::ListCompanyAndBranch(
+            OperationsInput::GetCompaniesAndBranches(input) => {
+                OperationsResult::GetCompaniesAndBranches(
                     input
-                        .handle_operation::<Id, Cli, Dbb::ListCompanyAndBranch>(
+                        .handle_operation::<Id, Cli, Dbb::ReadGetCompaniesAndBranches>(
                             side_effects,
                             client,
                         )
@@ -452,21 +453,21 @@ async fn push_data<
             OperationsInput::CreateAccount(input) => {
                 OperationsResult::CreateAccount(
                     input
-                        .handle_operation::<Id, Cli, Dbb::CreateAccount,Dbb::WriteCreateAccount>(side_effects, client)
+                        .handle_operation::<Id, Cli, Dbb::ReadCreateAccount,Dbb::WriteCreateAccount>(side_effects, client)
                         .await?,
                 )
             }
             OperationsInput::GetAllAccounts(input) => {
                 OperationsResult::GetAllAccounts(
                     input
-                        .handle_operation::<Id, Cli, Dbb::GetAllAccounts>(side_effects, client)
+                        .handle_operation::<Id, Cli, Dbb::ReadGetAllAccounts>(side_effects, client)
                         .await?,
                 )
             }
             OperationsInput::CreateAccountForBranch(input) => {
                 OperationsResult::CreateAccountForBranch(
                     input
-                        .handle_operation::<Id, Cli, Dbb::CreateAccountForBranch,Dbb::WriteCreateAccountForBranch>(
+                        .handle_operation::<Id, Cli, Dbb::ReadCreateAccountForBranch,Dbb::WriteCreateAccountForBranch>(
                             side_effects,
                             client,
                         )
@@ -476,7 +477,7 @@ async fn push_data<
             OperationsInput::GetAllAccountsForBranch(input) => {
                 OperationsResult::GetAllAccountsForBranch(
                     input
-                        .handle_operation::<Id, Cli, Dbb::GetAllAccountsForBranch>(
+                        .handle_operation::<Id, Cli, Dbb::ReadGetAllAccountsForBranch>(
                             side_effects,
                             client,
                         )
@@ -486,7 +487,7 @@ async fn push_data<
             OperationsInput::CreateJournalEntry(input) => {
                 OperationsResult::CreateJournalEntry(
                     input
-                        .handle_operation::<Id, Ti, Cli, Dbb::CreateJournalEntry,Dbb::WriteCreateJournalEntry>(
+                        .handle_operation::<Id, Ti, Cli, Dbb::ReadCreateJournalEntry,Dbb::WriteCreateJournalEntry>(
                             side_effects,
                             client,
                         )
@@ -532,7 +533,7 @@ fn check_nonce_if_valid<Id: RowId>(nonce: &UuidType, is_used: bool) -> bool {
 
 async fn get_table_of_subscribed_data<Cli: DBClient>(
     client: &mut Cli,
-    users_uuids: &HashSet<User>,
+    users_uuids: &HashSet<UserUuid>,
 ) -> Result<AllSubscribes, DynamicError> {
     let the_companies_and_branches_he_in = client.read_roles_for_user(users_uuids).await?;
 
@@ -565,18 +566,18 @@ async fn get_table_of_subscribed_data<Cli: DBClient>(
 
 mod broker_functions {
     use crate::domain::request_response::ResourceDTO;
-    use crate::domain::utility::uuid::Branch;
-    use crate::domain::utility::uuid::User;
+    use crate::domain::utility::new_types::BranchUuid;
+    use crate::domain::utility::new_types::UserUuid;
     use crate::server::utility::server_traits::ListOfResources;
     use std::collections::HashMap;
     use std::collections::HashSet;
 
-    pub(crate) type UserSubscribes = HashMap<Branch, HashSet<User>>;
+    pub(crate) type UserSubscribes = HashMap<BranchUuid, HashSet<UserUuid>>;
 
     pub(crate) fn map_resource_to_subscribes(
         pool_of_pubsub: &UserSubscribes,
         list_of_resources: &ListOfResources,
-        resource_to_send: &mut HashMap<User, Vec<ResourceDTO>>,
+        resource_to_send: &mut HashMap<UserUuid, Vec<ResourceDTO>>,
     ) {
         for (branch, resources_for_branch) in list_of_resources {
             let Some(users) = pool_of_pubsub.get(&branch) else {
@@ -594,7 +595,7 @@ mod broker_functions {
         }
     }
 
-    pub(crate) fn unsubscribe(pool_of_pubsub: &mut UserSubscribes, user_uuid: &User) {
+    pub(crate) fn unsubscribe(pool_of_pubsub: &mut UserSubscribes, user_uuid: &UserUuid) {
         pool_of_pubsub.retain(|_, users_and_subs| {
             users_and_subs.remove(user_uuid);
             !users_and_subs.is_empty()
@@ -618,7 +619,7 @@ pub(crate) struct AllSubscribes {
 }
 
 type UserSenders<Mpsc> = HashMap<
-    User,
+    UserUuid,
     HashMap<u64, <Mpsc as MultiProducerSingleConsumer>::Sender<Vec<ResourceDTO>>>, // because user may have multiple web socket connection
 >;
 
@@ -626,7 +627,7 @@ pub(crate) enum MessageToBroker<Mpsc: MultiProducerSingleConsumer> {
     Subscribe {
         connection_id:        u64,
         list_of_subscribtion: AllSubscribes,
-        users_uuids:          HashSet<User>,
+        users_uuids:          HashSet<UserUuid>,
         sender_to_server:     Mpsc::Sender<Vec<ResourceDTO>>,
     },
     Unsubscribe {

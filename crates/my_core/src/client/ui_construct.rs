@@ -22,10 +22,10 @@ use crate::domain::request_response::OperationsOk;
 use crate::domain::request_response::OperationsResult;
 use crate::domain::request_response::ResourceDTO;
 use crate::domain::request_response::Txn;
+use crate::domain::utility::new_types::NonceUuid;
 use crate::domain::utility::types::ADDRESS;
 use crate::domain::utility::types::HashimError;
 use crate::domain::utility::types::RowId;
-use crate::domain::utility::uuid::Nonce;
 use crate::utility::traits::Coding;
 use crate::utility::traits::DynamicError;
 use crate::utility::traits::MultiProducerSingleConsumer;
@@ -213,7 +213,7 @@ impl<Mpsc: MultiProducerSingleConsumer, Ch: Cache, Id: RowId, Ti: Time, Dbb: DbB
 
         FromClient {
             jwts,
-            nonce: Nonce(Id::generate()),
+            nonce: NonceUuid(Id::generate()),
             operations: operations1,
         }
     }
@@ -303,7 +303,7 @@ impl<Mpsc: MultiProducerSingleConsumer, Ch: Cache, Id: RowId, Ti: Time, Dbb: DbB
             OperationsOk::CreateAccount(_) => OperationName::CreateAccount,
             OperationsOk::CreateAccountForBranch(_) => OperationName::CreateAccountForBranch,
             OperationsOk::CreateJournalEntry(_) => OperationName::CreateJournalEntry,
-            OperationsOk::ListCompanyAndBranch(_) => OperationName::ListCompanyAndBranch,
+            OperationsOk::GetCompaniesAndBranches(_) => OperationName::GetCompaniesAndBranches,
             OperationsOk::GetAllAccounts(_) => OperationName::GetAllAccounts,
             OperationsOk::GetAllAccountsForBranch(_) => OperationName::GetAllAccountsForBranch,
         };

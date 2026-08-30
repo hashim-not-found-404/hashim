@@ -9,9 +9,9 @@ pub mod target {
     use jsonwebtoken::Validation;
     use jsonwebtoken::decode;
     use jsonwebtoken::encode;
+    use my_core::domain::utility::new_types::JsonWebTokenType;
+    use my_core::domain::utility::new_types::UserUuid;
     use my_core::domain::utility::types::JWT;
-    use my_core::domain::utility::types::JsonWebTokenType;
-    use my_core::domain::utility::uuid::User;
     use serde::Deserialize;
     use serde::Serialize;
     use std::sync::Arc;
@@ -27,7 +27,7 @@ pub mod target {
 
     #[derive(Debug, Deserialize, Serialize)]
     struct Claims {
-        id:  User,
+        id:  UserUuid,
         exp: u64,
     }
 
@@ -38,7 +38,7 @@ pub mod target {
             }
         }
 
-        fn sign(&self, id: &User) -> JsonWebTokenType {
+        fn sign(&self, id: &UserUuid) -> JsonWebTokenType {
             let claims = Claims {
                 id:  id.clone(),
                 exp: exp_time(),
@@ -49,7 +49,7 @@ pub mod target {
             )
         }
 
-        fn validate(&self, token: JsonWebTokenType) -> Option<User> {
+        fn validate(&self, token: JsonWebTokenType) -> Option<UserUuid> {
             let result = decode::<Claims>(
                 &token.0,
                 &DecodingKey::from_secret(&self.key),

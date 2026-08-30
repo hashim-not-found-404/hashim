@@ -1,11 +1,11 @@
+use crate::domain::utility::new_types::JsonWebTokenType;
+use crate::domain::utility::new_types::UserUuid;
 use crate::domain::utility::types;
 use crate::domain::utility::types::HashedPassword;
 use crate::domain::utility::types::JWT;
-use crate::domain::utility::types::JsonWebTokenType;
 use crate::domain::utility::types::MarkerMyErrorTrait;
 use crate::domain::utility::types::RowId;
 use crate::domain::utility::types::RowIdError;
-use crate::domain::utility::uuid::User;
 use crate::utility::traits::DynamicError;
 use serde::Deserialize;
 use serde::Serialize;
@@ -14,7 +14,7 @@ pub type MyResult = Result<Ok, Error>;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Input {
-    pub(crate) user_uuid: User,
+    pub(crate) user_uuid: UserUuid,
     pub(crate) name:      Option<String>,
     pub(crate) user_id:   String,
     pub(crate) password:  String,
@@ -22,7 +22,7 @@ pub struct Input {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Ok {
-    pub new_uuid:        User,
+    pub new_uuid:        UserUuid,
     pub user_id:         String,
     pub user_name:       Option<String>,
     pub hashed_password: String,
@@ -39,7 +39,7 @@ pub struct Error {
 impl MarkerMyErrorTrait for Error {}
 
 pub struct ReadInput {
-    pub new_uuid: User,
+    pub new_uuid: UserUuid,
     pub user_id:  String,
 }
 

@@ -1,14 +1,15 @@
 use crate::utility::db_transaction;
 use crate::utility::utils::MyUuidConverter;
+use my_core::domain::utility::new_types::BranchUuid;
+use my_core::domain::utility::new_types::CompanyUuid;
+use my_core::domain::utility::new_types::NonceUuid;
+use my_core::domain::utility::new_types::UserUuid;
+use my_core::domain::utility::new_types::UuidType;
 use my_core::domain::utility::types::Role;
-use my_core::domain::utility::uuid::Nonce;
-use my_core::domain::utility::uuid::User;
-use my_core::domain::utility::uuid::UuidType;
 use my_core::server::utility::server_traits;
 use my_core::server::utility::server_traits::DBClient;
 use my_core::utility::traits::DynamicError;
 use my_core::utility::utils::LogError;
-use std::collections::HashMap;
 use std::collections::HashSet;
 use std::str::FromStr;
 use uuid::Uuid;
@@ -53,13 +54,14 @@ impl DBClient for S {
 
     async fn read_roles_for_user(
         &mut self,
-        users_uuid: &HashSet<User>,
+        users_uuid: &HashSet<UserUuid>,
     ) -> Result<server_traits::TheCompaniesAndBranchesHeIn, DynamicError> {
         let stmt = self.client.prepare_cached(READ_ROLES_FOR_USER_QUERY).await.log()?;
 
         let mut result = server_traits::TheCompaniesAndBranchesHeIn {
-            companies: HashMap::new(),
-            branches:  HashMap::new(),
+            companies:                Default::default(),
+            branches:                 Default::default(),
+            branches_of_each_company: Default::default(),
         };
 
         for user_uuid in users_uuid {
@@ -82,20 +84,16 @@ impl DBClient for S {
                     "company" => {
                         result
                             .companies
-                            .entry(data_group_id)
-                            .or_default()
                             .entry(user_id_typed)
                             .or_default()
-                            .push(role);
+                            .insert(CompanyUuid(data_group_id));
                     }
                     "branch" => {
                         result
                             .branches
-                            .entry(data_group_id.0.into())
-                            .or_default()
                             .entry(user_id_typed)
                             .or_default()
-                            .push(role);
+                            .insert(BranchUuid(data_group_id));
                     }
                     _ => {}
                 }
@@ -107,7 +105,7 @@ impl DBClient for S {
 
     async fn write_nonce_if_not_used_and_return_is_nonce_used(
         &mut self,
-        nonce: &Nonce,
+        nonce: &NonceUuid,
     ) -> Result<bool, DynamicError> {
         let row = self
             .client

@@ -1,3 +1,8 @@
+use crate::domain::utility::new_types::AccountForBranchUuid;
+use crate::domain::utility::new_types::BranchUuid;
+use crate::domain::utility::new_types::SharedEntryUuid;
+use crate::domain::utility::new_types::UserUuid;
+use crate::domain::utility::new_types::UuidType;
 use crate::domain::utility::types;
 use crate::domain::utility::types::MarkerMyErrorTrait;
 use crate::domain::utility::types::MyErrorTrait;
@@ -5,11 +10,6 @@ use crate::domain::utility::types::Role;
 use crate::domain::utility::types::RowId;
 use crate::domain::utility::types::RowIdError;
 use crate::domain::utility::types::UserUuidError;
-use crate::domain::utility::uuid::AccountForBranch;
-use crate::domain::utility::uuid::Branch;
-use crate::domain::utility::uuid::SharedEntry;
-use crate::domain::utility::uuid::User;
-use crate::domain::utility::uuid::UuidType;
 use crate::utility::traits::DynamicError;
 use crate::utility::traits::Time;
 use accounting_engine::accounting_stuff::DoubleEntry;
@@ -43,9 +43,9 @@ pub type MyResult = Result<Ok, Error>;
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Input {
     pub new_uuid:                 UuidType,
-    pub belong_to_company_branch: Branch,
-    pub user_uuid:                User,
-    pub shared_entry_id:          Option<SharedEntry>,
+    pub belong_to_company_branch: BranchUuid,
+    pub user_uuid:                UserUuid,
+    pub shared_entry_id:          Option<SharedEntryUuid>,
     pub double_entries:           Vec<DoubleEntryInput>,
 }
 
@@ -57,7 +57,7 @@ pub struct DoubleEntryInput {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct SingleEntryInput {
     pub new_uuid:     UuidType,
-    pub account:      AccountForBranch,
+    pub account:      AccountForBranchUuid,
     pub is_debit:     Option<bool>,
     pub is_inflow:    Option<bool>,
     pub inflow_type:  Option<InFlowType>,
@@ -73,18 +73,18 @@ pub struct SingleEntryInput {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Ok {
     pub new_uuid:        UuidType,
-    pub user_uuid:       User,
+    pub user_uuid:       UserUuid,
     pub time:            u64,
-    pub shared_entry_id: Option<SharedEntry>,
+    pub shared_entry_id: Option<SharedEntryUuid>,
     pub double_entry:    Vec<SingleEntryOk>,
-    pub inventory:       HashMap<AccountForBranch, InventoryWrapper>,
+    pub inventory:       HashMap<AccountForBranchUuid, InventoryWrapper>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct SingleEntryOk {
     pub new_uuid:            UuidType,
     pub double_entry_number: u32,
-    pub account:             AccountForBranch,
+    pub account:             AccountForBranchUuid,
     pub is_debit:            bool,
     pub out_flow_type:       OutFlowType,
     pub quantity:            f64,
@@ -142,10 +142,10 @@ pub struct DebitNotEqualCreditError {
 
 pub struct ReadInput {
     pub new_uuid:                 UuidType,
-    pub belong_to_company_branch: Branch,
-    pub user_uuid:                User,
-    pub shared_entry_id:          Option<SharedEntry>,
-    pub accounts_uuid:            HashSet<AccountForBranch>,
+    pub belong_to_company_branch: BranchUuid,
+    pub user_uuid:                UserUuid,
+    pub shared_entry_id:          Option<SharedEntryUuid>,
+    pub accounts_uuid:            HashSet<AccountForBranchUuid>,
     pub new_entries_uuid:         HashSet<UuidType>,
 }
 
@@ -197,9 +197,9 @@ pub struct DoubleEntryView {
 pub struct ContainerView {
     // input
     input_new_uuid:                 UuidType,
-    input_belong_to_company_branch: Branch,
-    input_user_uuid:                User,
-    input_shared_entry_id:          Option<SharedEntry>,
+    input_belong_to_company_branch: BranchUuid,
+    input_user_uuid:                UserUuid,
+    input_shared_entry_id:          Option<SharedEntryUuid>,
 
     // error
     error_user_uuid:                Option<UserUuidError>,
@@ -235,7 +235,7 @@ impl Deref for InventoryWrapper {
 }
 
 #[derive(Debug, Clone)]
-pub struct AccountInfoProviderImpl(pub HashMap<AccountForBranch, AccountInfo>);
+pub struct AccountInfoProviderImpl(pub HashMap<AccountForBranchUuid, AccountInfo>);
 
 impl DerefMut for AccountInfoProviderImpl {
     fn deref_mut(&mut self) -> &mut Self::Target {
@@ -244,7 +244,7 @@ impl DerefMut for AccountInfoProviderImpl {
 }
 
 impl Deref for AccountInfoProviderImpl {
-    type Target = HashMap<AccountForBranch, AccountInfo>;
+    type Target = HashMap<AccountForBranchUuid, AccountInfo>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -284,7 +284,7 @@ impl MyErrorTrait for Error {
 }
 
 impl check_journal_input::SingleEntry for SingleEntryView {
-    type AccountId = AccountForBranch;
+    type AccountId = AccountForBranchUuid;
 
     fn account_id(&self) -> Self::AccountId {
         self.input.account.clone()
@@ -500,7 +500,7 @@ impl check_journal_input::EntryContainerError for ContainerView {
 }
 
 impl check_journal_input::AccountInfoProvider for AccountInfoProviderImpl {
-    type AccountId = AccountForBranch;
+    type AccountId = AccountForBranchUuid;
     type Inventory = InventoryWrapper;
 
     fn is_debit_nature(&self, id: &Self::AccountId) -> bool {
@@ -553,7 +553,7 @@ impl Inventory for InventoryWrapper {
 }
 
 impl correct_journal_input::SingleEntry for SingleEntryView {
-    type AccountId = AccountForBranch;
+    type AccountId = AccountForBranchUuid;
 
     fn get_account_id(&self) -> Self::AccountId {
         self.input.account.clone()
@@ -657,7 +657,7 @@ impl correct_journal_input::SingleEntry for SingleEntryView {
 }
 
 impl correct_journal_input::AccountInfoProvider for AccountInfoProviderImpl {
-    type AccountId = AccountForBranch;
+    type AccountId = AccountForBranchUuid;
     type Inventory = InventoryWrapper;
 
     fn get_info<'a>(
@@ -836,7 +836,7 @@ fn create_double_entry_from_container_view(container: &ContainerView) -> Vec<Sin
 
 fn extract_inventory(
     account_info: AccountInfoProviderImpl,
-) -> HashMap<AccountForBranch, InventoryWrapper> {
+) -> HashMap<AccountForBranchUuid, InventoryWrapper> {
     let mut inventory_map = HashMap::new();
     for (account_uuid, info) in account_info.0 {
         inventory_map.insert(account_uuid, info.inventory);

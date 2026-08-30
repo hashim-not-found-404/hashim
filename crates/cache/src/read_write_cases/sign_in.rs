@@ -2,6 +2,7 @@ use crate::utility::cache_adapter;
 use crate::utility::utils::MyUuidConverter1;
 use my_core::domain::use_cases;
 use my_core::domain::utility::types::DatabaseRead;
+use my_core::domain::utility::types::DatabaseWrite;
 use my_core::utility::traits::DynamicError;
 use rusqlite::OptionalExtension;
 use rusqlite::params;
@@ -38,6 +39,15 @@ impl DatabaseRead for S {
         Ok(use_cases::sign_in::ReadOutput {
             user_rowid_and_password_hash_and_name: a,
         })
+    }
+}
+
+impl DatabaseWrite for S {
+    type Db<'a> = cache_adapter::S;
+    type Input = use_cases::sign_in::Ok;
+
+    async fn write(txn: &mut Self::Db<'_>, input: &Self::Input) -> Result<(), DynamicError> {
+        todo!()
     }
 }
 

@@ -4,6 +4,7 @@ use crate::utility::utils::MyUuidConverter1;
 use my_core::domain::use_cases;
 use my_core::domain::utility::types::Currency;
 use my_core::domain::utility::types::DatabaseRead;
+use my_core::domain::utility::types::DatabaseWrite;
 use my_core::domain::utility::types::Role;
 use my_core::utility::traits::DynamicError;
 use rusqlite::params;
@@ -23,12 +24,12 @@ const QUERY2: &str = "
 
 pub struct S;
 
-impl use_cases::list_company_and_branch::DatabaseRead for S {}
+impl use_cases::get_companies_and_branches::DatabaseRead for S {}
 
 impl DatabaseRead for S {
     type Db<'a> = cache_adapter::S;
-    type Input = use_cases::list_company_and_branch::ReadInput;
-    type Output = use_cases::list_company_and_branch::ReadOutput;
+    type Input = use_cases::get_companies_and_branches::ReadInput;
+    type Output = use_cases::get_companies_and_branches::ReadOutput;
 
     async fn read(
         db: &mut Self::Db<'_>,
@@ -106,23 +107,24 @@ impl DatabaseRead for S {
             let company_uuid = company_uuid_str.clone().to_uuid().into();
             let company_currency = Currency::from_str(&company_currency_str).unwrap();
 
-            let branches: Vec<use_cases::list_company_and_branch::AllBranchesThatUserInWithRoles> =
-                branch_map
-                    .iter()
-                    .filter(|(_, info)| info.company_belong == company_uuid_str)
-                    .map(|(_, info)| {
-                        let branch_uuid = info.branch_uuid.clone().to_uuid().into();
-                        let branch_currency = Currency::from_str(&info.branch_currency).unwrap();
-                        use_cases::list_company_and_branch::AllBranchesThatUserInWithRoles {
-                            branch_uuid,
-                            branch_name: info.branch_name.clone(),
-                            branch_currancy: branch_currency,
-                            user_roles: info.roles.clone(),
-                        }
-                    })
-                    .collect::<Vec<_>>();
+            let branches: Vec<
+                use_cases::get_companies_and_branches::AllBranchesThatUserInWithRoles,
+            > = branch_map
+                .iter()
+                .filter(|(_, info)| info.company_belong == company_uuid_str)
+                .map(|(_, info)| {
+                    let branch_uuid = info.branch_uuid.clone().to_uuid().into();
+                    let branch_currency = Currency::from_str(&info.branch_currency).unwrap();
+                    use_cases::get_companies_and_branches::AllBranchesThatUserInWithRoles {
+                        branch_uuid,
+                        branch_name: info.branch_name.clone(),
+                        branch_currancy: branch_currency,
+                        user_roles: info.roles.clone(),
+                    }
+                })
+                .collect::<Vec<_>>();
 
-            result.push(use_cases::list_company_and_branch::AllCompaniesThatUserInWithRoles {
+            result.push(use_cases::get_companies_and_branches::AllCompaniesThatUserInWithRoles {
                 company_uuid,
                 company_name,
                 company_currancy: company_currency,
@@ -131,9 +133,18 @@ impl DatabaseRead for S {
             });
         }
 
-        Ok(use_cases::list_company_and_branch::ReadOutput {
+        Ok(use_cases::get_companies_and_branches::ReadOutput {
             data: result,
         })
+    }
+}
+
+impl DatabaseWrite for S {
+    type Db<'a> = cache_adapter::S;
+    type Input = use_cases::get_companies_and_branches::Ok;
+
+    async fn write(txn: &mut Self::Db<'_>, input: &Self::Input) -> Result<(), DynamicError> {
+        todo!()
     }
 }
 

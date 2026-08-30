@@ -6,10 +6,10 @@ use crate::client::utility::process_manager;
 use crate::client::utility::ui_model;
 use crate::client::utility::ui_model::HashimSignal;
 use crate::domain::use_cases;
-use crate::domain::utility::types::JsonWebTokenType;
+use crate::domain::utility::new_types::JsonWebTokenType;
+use crate::domain::utility::new_types::UserUuid;
 use crate::domain::utility::types::MyErrorTrait;
 use crate::domain::utility::types::RowId;
-use crate::domain::utility::uuid::User;
 use crate::make_wrap_unwrap;
 use crate::utility::traits;
 use crate::utility::traits::Receiver;
@@ -144,7 +144,7 @@ async fn handle_submit<
     local_state.user_id_error.reset();
     local_state.user_name_error.reset();
 
-    let new_uuid: User = Id::generate().into();
+    let new_uuid: UserUuid = Id::generate().into();
     let input = build_input::<As>(model, new_uuid.clone());
 
     let data = wrap_input(input);
@@ -163,8 +163,8 @@ async fn handle_submit<
             if is_ok {
                 model.user_uuid.put(Some(new_uuid.clone()));
 
-                model.navigator.set(ui_model::Navigator::ListCompanyAndBranch(
-                    ui_model::ListCompanyAndBranch::None,
+                model.navigator.set(ui_model::Navigator::GetCompaniesAndBranches(
+                    ui_model::GetCompaniesAndBranches::None,
                 ));
             }
 
@@ -214,7 +214,10 @@ async fn handle_check<
     }
 }
 
-fn build_input<As: ui_model::AllSignalTypes>(model: &ui_model::Model<As>, new_uuid: User) -> Type1 {
+fn build_input<As: ui_model::AllSignalTypes>(
+    model: &ui_model::Model<As>,
+    new_uuid: UserUuid,
+) -> Type1 {
     use_cases::sign_up::Input {
         user_uuid: new_uuid,
         name:      model.user_name.read().none_if_empty(),

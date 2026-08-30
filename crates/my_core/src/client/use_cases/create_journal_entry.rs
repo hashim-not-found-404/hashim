@@ -8,8 +8,8 @@ use crate::client::utility::ui_model;
 use crate::client::utility::ui_model::HashimSignal;
 use crate::domain::use_cases;
 use crate::domain::use_cases::create_journal_entry;
+use crate::domain::utility::new_types::SharedEntryUuid;
 use crate::domain::utility::types::RowId;
-use crate::domain::utility::uuid::SharedEntry;
 use crate::make_wrap_unwrap;
 use crate::utility::tools;
 use crate::utility::traits;
@@ -409,7 +409,7 @@ fn build_input<Id: RowId, As: ui_model::AllSignalTypes>(
         belong_to_company_branch: model.selected_company_branch.read().unwrap(),
         user_uuid:                model.user_uuid.read().clone().unwrap(),
         shared_entry_id:          Id::parse(local_state.shared_entry_id.read())
-            .map(|v| SharedEntry(v)),
+            .map(|v| SharedEntryUuid(v)),
         double_entries:           double_entries_input,
     })
 }

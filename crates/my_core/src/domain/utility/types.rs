@@ -1,6 +1,7 @@
-use crate::domain::utility::uuid;
-use crate::domain::utility::uuid::User;
-use crate::domain::utility::uuid::UuidType;
+use crate::domain::utility::new_types;
+use crate::domain::utility::new_types::JsonWebTokenType;
+use crate::domain::utility::new_types::UserUuid;
+use crate::domain::utility::new_types::UuidType;
 use crate::utility::traits::DynamicError;
 use serde::Deserialize;
 use serde::Serialize;
@@ -24,8 +25,8 @@ pub trait HashedPassword {
 
 pub trait JWT: 'static {
     fn new() -> Self;
-    fn sign(&self, user_uuid: &User) -> JsonWebTokenType;
-    fn validate(&self, token: JsonWebTokenType) -> Option<User>;
+    fn sign(&self, user_uuid: &UserUuid) -> JsonWebTokenType;
+    fn validate(&self, token: JsonWebTokenType) -> Option<UserUuid>;
 }
 
 pub trait DatabaseRead {
@@ -61,14 +62,11 @@ impl<T: MarkerMyErrorTrait + Default + PartialEq> MyErrorTrait for T {
     }
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct JsonWebTokenType(pub String);
-
 pub type ListOfCompanies = Vec<Company>;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Company {
-    pub uuid:        uuid::Company,
+    pub uuid:        new_types::CompanyUuid,
     pub name:        String,
     pub(crate) role: Role,
     pub branches:    Vec<Branch>,
@@ -76,7 +74,7 @@ pub struct Company {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Branch {
-    pub uuid: uuid::Branch,
+    pub uuid: new_types::BranchUuid,
     pub name: String,
 }
 

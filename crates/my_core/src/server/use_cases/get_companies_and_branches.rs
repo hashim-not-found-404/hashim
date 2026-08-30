@@ -7,17 +7,20 @@ use crate::server::utility::server_traits::DBClient;
 use crate::server::utility::server_traits::SideEffects;
 use crate::utility::traits::DynamicError;
 
-impl use_cases::list_company_and_branch::Input {
+impl use_cases::get_companies_and_branches::Input {
     pub(crate) async fn handle_operation<
         Id: RowId,
         Cli: DBClient,
-        Db: for<'a> use_cases::list_company_and_branch::DatabaseRead<Db<'a> = Cli>,
+        Db: for<'a> use_cases::get_companies_and_branches::DatabaseRead<Db<'a> = Cli>,
     >(
         &self,
         side_effects: &mut SideEffects,
         client: &mut Cli,
     ) -> Result<
-        Result<use_cases::list_company_and_branch::Ok, use_cases::list_company_and_branch::Error>,
+        Result<
+            use_cases::get_companies_and_branches::Ok,
+            use_cases::get_companies_and_branches::Error,
+        >,
         DynamicError,
     > {
         let mut errr = self.state_less_check::<Id>();

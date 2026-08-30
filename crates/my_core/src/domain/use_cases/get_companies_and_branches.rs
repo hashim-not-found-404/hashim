@@ -1,12 +1,12 @@
+use crate::domain::utility::new_types::BranchUuid;
+use crate::domain::utility::new_types::CompanyUuid;
+use crate::domain::utility::new_types::UserUuid;
 use crate::domain::utility::types;
 use crate::domain::utility::types::Currency;
 use crate::domain::utility::types::MarkerMyErrorTrait;
 use crate::domain::utility::types::Role;
 use crate::domain::utility::types::RowId;
 use crate::domain::utility::types::UserUuidError;
-use crate::domain::utility::uuid::Branch;
-use crate::domain::utility::uuid::Company;
-use crate::domain::utility::uuid::User;
 use crate::utility::traits::DynamicError;
 use serde::Deserialize;
 use serde::Serialize;
@@ -15,18 +15,18 @@ pub type MyResult = Result<Ok, Error>;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Input {
-    pub(crate) user_uuid: User,
+    pub(crate) user_uuid: UserUuid,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Ok {
-    pub(crate) user_uuid: User,
+    pub(crate) user_uuid: UserUuid,
     pub(crate) data:      Vec<AllCompaniesThatUserInWithRoles>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct AllCompaniesThatUserInWithRoles {
-    pub company_uuid:     Company,
+    pub company_uuid:     CompanyUuid,
     pub company_name:     String,
     pub company_currancy: Currency,
     pub user_roles:       Vec<Role>,
@@ -35,7 +35,7 @@ pub struct AllCompaniesThatUserInWithRoles {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct AllBranchesThatUserInWithRoles {
-    pub branch_uuid:     Branch,
+    pub branch_uuid:     BranchUuid,
     pub branch_name:     String,
     pub branch_currancy: Currency,
     pub user_roles:      Vec<Role>,
@@ -49,7 +49,7 @@ pub struct Error {
 impl MarkerMyErrorTrait for Error {}
 
 pub struct ReadInput {
-    pub user_uuid: User,
+    pub user_uuid: UserUuid,
 }
 
 pub struct ReadOutput {
