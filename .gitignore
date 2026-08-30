@@ -4,7 +4,6 @@ trush/
 graph.dot
 graph.png
 .code-ranker
-commands.txt
 codebase.txt
 lcov.info
 tarpaulin-report.html
