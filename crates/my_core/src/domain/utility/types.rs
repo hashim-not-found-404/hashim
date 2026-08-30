@@ -1,4 +1,5 @@
 use crate::domain::utility::new_types;
+use crate::domain::utility::new_types::JsonWebTokenType;
 use crate::domain::utility::new_types::UserUuid;
 use crate::domain::utility::new_types::UuidType;
 use crate::utility::traits::DynamicError;
@@ -60,9 +61,6 @@ impl<T: MarkerMyErrorTrait + Default + PartialEq> MyErrorTrait for T {
         *self != Self::default()
     }
 }
-
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct JsonWebTokenType(pub String);
 
 pub type ListOfCompanies = Vec<Company>;
 

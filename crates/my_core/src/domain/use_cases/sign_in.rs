@@ -1,8 +1,8 @@
+use crate::domain::utility::new_types::JsonWebTokenType;
 use crate::domain::utility::new_types::UserUuid;
 use crate::domain::utility::types;
 use crate::domain::utility::types::HashedPassword;
 use crate::domain::utility::types::JWT;
-use crate::domain::utility::types::JsonWebTokenType;
 use crate::domain::utility::types::MarkerMyErrorTrait;
 use crate::utility::traits::DynamicError;
 use serde::Deserialize;

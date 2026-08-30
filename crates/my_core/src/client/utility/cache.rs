@@ -1,8 +1,8 @@
 use crate::domain::request_response::OperationsInput;
 use crate::domain::request_response::OperationsResult;
 use crate::domain::request_response::Txn;
+use crate::domain::utility::new_types::JsonWebTokenType;
 use crate::domain::utility::new_types::UserUuid;
-use crate::domain::utility::types::JsonWebTokenType;
 
 pub trait Cache: Sized {
     fn new() -> impl Future<Output = Self>;

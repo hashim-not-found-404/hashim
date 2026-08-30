@@ -1,8 +1,8 @@
 use crate::domain::use_cases;
+use crate::domain::utility::new_types::JsonWebTokenType;
 use crate::domain::utility::new_types::NonceUuid;
 use crate::domain::utility::types::HashimError;
 use crate::domain::utility::types::JWTError;
-use crate::domain::utility::types::JsonWebTokenType;
 use crate::domain::utility::types::NonceError;
 use serde::Deserialize;
 use serde::Serialize;
