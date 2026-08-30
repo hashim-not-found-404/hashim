@@ -27,7 +27,7 @@ pub(crate) enum OperationName {
     CreateJournalEntry,
     GetAllAccounts,
     GetAllAccountsForBranch,
-    ListCompanyAndBranch,
+    GetCompaniesAndBranches,
     SignIn,
     SignUp,
 }

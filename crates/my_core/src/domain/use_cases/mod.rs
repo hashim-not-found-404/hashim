@@ -5,6 +5,6 @@ pub mod create_company_branch;
 pub mod create_journal_entry;
 pub mod get_all_accounts;
 pub mod get_all_accounts_for_branch;
-pub mod list_company_and_branch;
+pub mod get_companies_and_branches;
 pub mod sign_in;
 pub mod sign_up;

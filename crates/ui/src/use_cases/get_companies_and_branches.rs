@@ -6,7 +6,7 @@ use my_core::client::utility::ui_model;
 use my_core::client::utility::ui_model::HashimSignal;
 
 #[component]
-pub(crate) fn ListCompanyAndBranch() -> Element {
+pub(crate) fn GetCompaniesAndBranches() -> Element {
     use_effect(move || {
         tools::send(ui_model::Message::CompanyAndBranchSelection(
             ui_model::CompanyAndBranchSelection::Subscribe,
@@ -26,13 +26,13 @@ pub(crate) fn ListCompanyAndBranch() -> Element {
     rsx! {
         div {
             match tools::MODEL.navigator.read() {
-                ui_model::Navigator::ListCompanyAndBranch(n) => {
+                ui_model::Navigator::GetCompaniesAndBranches(n) => {
                     match n {
-                        ui_model::ListCompanyAndBranch::None => rsx! {},
-                        ui_model::ListCompanyAndBranch::CreateCompany => rsx! {
+                        ui_model::GetCompaniesAndBranches::None => rsx! {},
+                        ui_model::GetCompaniesAndBranches::CreateCompany => rsx! {
                             create_company::CreateCompany {}
                         },
-                        ui_model::ListCompanyAndBranch::CreateCompanyBranch => {
+                        ui_model::GetCompaniesAndBranches::CreateCompanyBranch => {
                             rsx! {
                                 create_company_branch::CreateCompanyBranch {}
                             }

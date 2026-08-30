@@ -15,7 +15,7 @@ impl cache_op::DbBundle<cache_adapter::S> for S {
     type CreateJournalEntry = create_journal_entry::S;
     type GetAllAccounts = read_write_cases::get_all_accounts::S;
     type GetAllAccountsForBranch = get_all_accounts_for_branch::S;
-    type ListCompanyAndBranch = read_write_cases::list_company_and_branch::S;
+    type GetCompaniesAndBranches = read_write_cases::get_companies_and_branches::S;
     type SignIn = read_write_cases::sign_in::S;
     type SignUp = read_write_cases::sign_up::S;
     type WriteCreateAccount = read_write_cases::create_account::S;
@@ -25,7 +25,7 @@ impl cache_op::DbBundle<cache_adapter::S> for S {
     type WriteCreateJournalEntry = read_write_cases::create_journal_entry::S;
     type WriteGetAllAccounts = read_write_cases::get_all_accounts::S;
     type WriteGetAllAccountsForBranch = read_write_cases::get_all_accounts_for_branch::S;
-    type WriteListCompanyAndBranch = read_write_cases::list_company_and_branch::S;
+    type WriteGetCompaniesAndBranches = read_write_cases::get_companies_and_branches::S;
     type WriteSignIn = read_write_cases::sign_in::S;
     type WriteSignUp = read_write_cases::sign_up::S;
 }

@@ -163,8 +163,8 @@ async fn handle_submit<
             if is_ok {
                 model.user_uuid.put(Some(new_uuid.clone()));
 
-                model.navigator.set(ui_model::Navigator::ListCompanyAndBranch(
-                    ui_model::ListCompanyAndBranch::None,
+                model.navigator.set(ui_model::Navigator::GetCompaniesAndBranches(
+                    ui_model::GetCompaniesAndBranches::None,
                 ));
             }
 

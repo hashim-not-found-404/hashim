@@ -59,7 +59,7 @@ pub trait DbBundle<Cli: DBClient>: 'static {
     type CreateCompanyBranch: for<'a> use_cases::create_company_branch::DatabaseRead<Db<'a> = Cli::Txn<'a>>;
     type WriteCreateCompanyBranch: for<'a> DatabaseWrite<Db<'a> = Cli::Txn<'a>, Input = use_cases::create_company_branch::Ok>;
 
-    type ListCompanyAndBranch: for<'a> use_cases::list_company_and_branch::DatabaseRead<Db<'a> = Cli>;
+    type GetCompaniesAndBranches: for<'a> use_cases::get_companies_and_branches::DatabaseRead<Db<'a> = Cli>;
 
     type SignIn: for<'a> use_cases::sign_in::DatabaseRead<Db<'a> = Cli>;
 
@@ -439,10 +439,10 @@ async fn push_data<
                         .await?,
                 )
             }
-            OperationsInput::ListCompanyAndBranch(input) => {
-                OperationsResult::ListCompanyAndBranch(
+            OperationsInput::GetCompaniesAndBranches(input) => {
+                OperationsResult::GetCompaniesAndBranches(
                     input
-                        .handle_operation::<Id, Cli, Dbb::ListCompanyAndBranch>(
+                        .handle_operation::<Id, Cli, Dbb::GetCompaniesAndBranches>(
                             side_effects,
                             client,
                         )

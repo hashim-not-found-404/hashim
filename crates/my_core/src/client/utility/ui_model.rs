@@ -370,12 +370,12 @@ pub enum Navigator {
     #[default]
     SignIn,
     SignUp,
-    ListCompanyAndBranch(ListCompanyAndBranch),
+    GetCompaniesAndBranches(GetCompaniesAndBranches),
     Home(HomeNav),
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize)]
-pub enum ListCompanyAndBranch {
+pub enum GetCompaniesAndBranches {
     None,
     CreateCompany,
     CreateCompanyBranch,

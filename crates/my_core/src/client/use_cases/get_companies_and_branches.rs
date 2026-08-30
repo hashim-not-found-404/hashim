@@ -15,15 +15,15 @@ use crate::utility::traits;
 use crate::utility::utils::ReadAndSet;
 use std::sync::Arc;
 
-type Type1 = use_cases::list_company_and_branch::Input;
-type Type2 = use_cases::list_company_and_branch::Input;
-type Type3 = use_cases::list_company_and_branch::MyResult;
-type Type4 = use_cases::list_company_and_branch::MyResult;
+type Type1 = use_cases::get_companies_and_branches::Input;
+type Type2 = use_cases::get_companies_and_branches::Input;
+type Type3 = use_cases::get_companies_and_branches::MyResult;
+type Type4 = use_cases::get_companies_and_branches::MyResult;
 
 const LISTEN_TO_OPERATIONS: &'static [OperationName] =
     &[OperationName::CreateCompany, OperationName::CreateCompanyBranch];
 
-make_wrap_unwrap!(list_company_and_branch, ListCompanyAndBranch);
+make_wrap_unwrap!(get_companies_and_branches, GetCompaniesAndBranches);
 
 impl tools::Sortable for Company {
     type Key = (String, uuid::Company);
@@ -50,7 +50,7 @@ pub fn sort_companies(companies: &mut ListOfCompanies) {
 
 pub(crate) async fn state_full_operation<
     Ch: Cache,
-    LongCache: for<'a> use_cases::list_company_and_branch::DatabaseRead<Db<'a> = Ch>,
+    LongCache: for<'a> use_cases::get_companies_and_branches::DatabaseRead<Db<'a> = Ch>,
 >(
     data: &Type2,
     state: &mut Ch,
@@ -71,7 +71,7 @@ impl ui_model::CompanyAndBranchSelection {
         Mpsc: traits::MultiProducerSingleConsumer,
         As: ui_model::AllSignalTypes,
         Ch: Cache + 'static,
-        LongCache: for<'a> use_cases::list_company_and_branch::DatabaseRead<Db<'a> = Ch> + 'static,
+        LongCache: for<'a> use_cases::get_companies_and_branches::DatabaseRead<Db<'a> = Ch> + 'static,
     >(
         self,
         model: &'static ui_model::Model<As>,
@@ -80,8 +80,8 @@ impl ui_model::CompanyAndBranchSelection {
     ) {
         match self {
             Self::Subscribe => {
-                model.navigator.set(ui_model::Navigator::ListCompanyAndBranch(
-                    ui_model::ListCompanyAndBranch::None,
+                model.navigator.set(ui_model::Navigator::GetCompaniesAndBranches(
+                    ui_model::GetCompaniesAndBranches::None,
                 ));
 
                 spawn_listener::<Rn, Rt, Mpsc, As, Ch, LongCache>(
@@ -94,13 +94,13 @@ impl ui_model::CompanyAndBranchSelection {
                 commander_local_state.aborter_to_company_and_branch_listener.abort();
             }
             Self::ShowCreateCompany => {
-                model.navigator.set(ui_model::Navigator::ListCompanyAndBranch(
-                    ui_model::ListCompanyAndBranch::CreateCompany,
+                model.navigator.set(ui_model::Navigator::GetCompaniesAndBranches(
+                    ui_model::GetCompaniesAndBranches::CreateCompany,
                 ));
             }
             Self::ShowCreateCompanyBranch => {
-                model.navigator.set(ui_model::Navigator::ListCompanyAndBranch(
-                    ui_model::ListCompanyAndBranch::CreateCompanyBranch,
+                model.navigator.set(ui_model::Navigator::GetCompaniesAndBranches(
+                    ui_model::GetCompaniesAndBranches::CreateCompanyBranch,
                 ));
             }
             Self::SelectedCompany(i) => {
@@ -134,7 +134,7 @@ fn spawn_listener<
     Mpsc: traits::MultiProducerSingleConsumer,
     As: ui_model::AllSignalTypes,
     Ch: Cache,
-    LongCache: for<'a> use_cases::list_company_and_branch::DatabaseRead<Db<'a> = Ch>,
+    LongCache: for<'a> use_cases::get_companies_and_branches::DatabaseRead<Db<'a> = Ch>,
 >(
     model: &'static ui_model::Model<As>,
     cache: client_traits::CacheActorStruct<Mpsc>,

@@ -200,7 +200,7 @@ fn handle_close<As: ui_model::AllSignalTypes>(model: &'static ui_model::Model<As
 
     model
         .navigator
-        .set(ui_model::Navigator::ListCompanyAndBranch(ui_model::ListCompanyAndBranch::None));
+        .set(ui_model::Navigator::GetCompaniesAndBranches(ui_model::GetCompaniesAndBranches::None));
 }
 
 fn build_input<Id: RowId, As: ui_model::AllSignalTypes>(model: &ui_model::Model<As>) -> Type1 {

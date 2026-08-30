@@ -303,7 +303,7 @@ impl<Mpsc: MultiProducerSingleConsumer, Ch: Cache, Id: RowId, Ti: Time, Dbb: DbB
             OperationsOk::CreateAccount(_) => OperationName::CreateAccount,
             OperationsOk::CreateAccountForBranch(_) => OperationName::CreateAccountForBranch,
             OperationsOk::CreateJournalEntry(_) => OperationName::CreateJournalEntry,
-            OperationsOk::ListCompanyAndBranch(_) => OperationName::ListCompanyAndBranch,
+            OperationsOk::GetCompaniesAndBranches(_) => OperationName::GetCompaniesAndBranches,
             OperationsOk::GetAllAccounts(_) => OperationName::GetAllAccounts,
             OperationsOk::GetAllAccountsForBranch(_) => OperationName::GetAllAccountsForBranch,
         };

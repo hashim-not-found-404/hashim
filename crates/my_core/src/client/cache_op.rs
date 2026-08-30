@@ -33,9 +33,9 @@ pub trait DbBundle<Ch: Cache>: 'static {
     type CreateCompanyBranch: for<'a> use_cases::create_company_branch::DatabaseRead<Db<'a> = Ch>;
     type WriteCreateCompanyBranch: for<'a> DatabaseWrite<Db<'a> = Ch, Input = use_cases::create_company_branch::Ok>;
 
-    type ListCompanyAndBranch: for<'a> use_cases::list_company_and_branch::DatabaseRead<Db<'a> = Ch>
+    type GetCompaniesAndBranches: for<'a> use_cases::get_companies_and_branches::DatabaseRead<Db<'a> = Ch>
         + 'static;
-    type WriteListCompanyAndBranch: for<'a> DatabaseWrite<Db<'a> = Ch, Input = use_cases::list_company_and_branch::Ok>
+    type WriteGetCompaniesAndBranches: for<'a> DatabaseWrite<Db<'a> = Ch, Input = use_cases::get_companies_and_branches::Ok>
         + 'static;
 
     type SignIn: for<'a> use_cases::sign_in::DatabaseRead<Db<'a> = Ch>;
@@ -96,11 +96,11 @@ impl OperationsInput {
                     .await,
                 )
             }
-            OperationsInput::ListCompanyAndBranch(i) => {
-                OperationsResult::ListCompanyAndBranch(
-                    client::use_cases::list_company_and_branch::state_full_operation::<
+            OperationsInput::GetCompaniesAndBranches(i) => {
+                OperationsResult::GetCompaniesAndBranches(
+                    client::use_cases::get_companies_and_branches::state_full_operation::<
                         Ch,
-                        Dbb::ListCompanyAndBranch,
+                        Dbb::GetCompaniesAndBranches,
                     >(i, state)
                     .await,
                 )
@@ -189,15 +189,15 @@ impl OperationsInput {
                     Dbb::WriteCreateCompanyBranch::write(state, &resources).await.unwrap();
                 };
             }
-            OperationsInput::ListCompanyAndBranch(i) => {
+            OperationsInput::GetCompaniesAndBranches(i) => {
                 if let Ok(resources) =
-                    client::use_cases::list_company_and_branch::state_full_operation::<
+                    client::use_cases::get_companies_and_branches::state_full_operation::<
                         Ch,
-                        Dbb::ListCompanyAndBranch,
+                        Dbb::GetCompaniesAndBranches,
                     >(i, state)
                     .await
                 {
-                    Dbb::WriteListCompanyAndBranch::write(state, &resources).await.unwrap();
+                    Dbb::WriteGetCompaniesAndBranches::write(state, &resources).await.unwrap();
                 };
             }
             OperationsInput::CreateAccount(i) => {
@@ -248,7 +248,7 @@ impl OperationsInput {
             OperationsInput::SignIn(_) => return None,
             OperationsInput::CreateCompany(i) => &i.user_uuid,
             OperationsInput::CreateCompanyBranch(i) => &i.user_uuid,
-            OperationsInput::ListCompanyAndBranch(i) => &i.user_uuid,
+            OperationsInput::GetCompaniesAndBranches(i) => &i.user_uuid,
             OperationsInput::CreateAccount(i) => &i.user_uuid,
             OperationsInput::GetAllAccounts(i) => &i.user_uuid,
             OperationsInput::GetAllAccountsForBranch(i) => &i.user_uuid,
@@ -279,8 +279,8 @@ impl OperationsResult {
             OperationsResult::CreateJournalEntry(i) => {
                 Some(OperationsOk::CreateJournalEntry(i.clone().ok()?))
             }
-            OperationsResult::ListCompanyAndBranch(i) => {
-                Some(OperationsOk::ListCompanyAndBranch(i.clone().ok()?))
+            OperationsResult::GetCompaniesAndBranches(i) => {
+                Some(OperationsOk::GetCompaniesAndBranches(i.clone().ok()?))
             }
             OperationsResult::GetAllAccounts(i) => {
                 Some(OperationsOk::GetAllAccounts(i.clone().ok()?))
@@ -297,7 +297,7 @@ impl OperationsResult {
             OperationsResult::SignIn(i) => i.is_ok(),
             OperationsResult::CreateCompany(i) => i.is_ok(),
             OperationsResult::CreateCompanyBranch(i) => i.is_ok(),
-            OperationsResult::ListCompanyAndBranch(i) => i.is_ok(),
+            OperationsResult::GetCompaniesAndBranches(i) => i.is_ok(),
             OperationsResult::CreateAccount(i) => i.is_ok(),
             OperationsResult::GetAllAccounts(i) => i.is_ok(),
             OperationsResult::CreateAccountForBranch(i) => i.is_ok(),
@@ -325,8 +325,8 @@ pub(crate) async fn write_resource_to_cache<Ch: Cache, Dbb: DbBundle<Ch>>(
         OperationsOk::CreateJournalEntry(i) => {
             Dbb::WriteCreateJournalEntry::write(cache, &i).await.unwrap()
         }
-        OperationsOk::ListCompanyAndBranch(i) => {
-            Dbb::WriteListCompanyAndBranch::write(cache, &i).await.unwrap()
+        OperationsOk::GetCompaniesAndBranches(i) => {
+            Dbb::WriteGetCompaniesAndBranches::write(cache, &i).await.unwrap()
         }
         OperationsOk::GetAllAccounts(i) => {
             Dbb::WriteGetAllAccounts::write(cache, &i).await.unwrap()

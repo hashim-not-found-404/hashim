@@ -5,6 +5,6 @@ mod create_company_branch;
 mod create_journal_entry;
 mod get_all_accounts;
 mod get_all_accounts_for_branch;
-mod list_company_and_branch;
+mod get_companies_and_branches;
 mod sign_in;
 mod sign_up;

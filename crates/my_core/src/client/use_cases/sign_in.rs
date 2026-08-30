@@ -194,8 +194,8 @@ async fn handle_submit<
             if let Ok(ok) = result {
                 model.user_uuid.put(Some(ok.user_uuid));
 
-                model.navigator.set(ui_model::Navigator::ListCompanyAndBranch(
-                    ui_model::ListCompanyAndBranch::None,
+                model.navigator.set(ui_model::Navigator::GetCompaniesAndBranches(
+                    ui_model::GetCompaniesAndBranches::None,
                 ));
             }
 

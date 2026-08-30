@@ -39,7 +39,7 @@ pub enum OperationsInput {
     CreateAccountForBranch(use_cases::create_account_for_branch::Input),
     CreateJournalEntry(use_cases::create_journal_entry::Input),
     // read
-    ListCompanyAndBranch(use_cases::list_company_and_branch::Input),
+    GetCompaniesAndBranches(use_cases::get_companies_and_branches::Input),
     GetAllAccounts(use_cases::get_all_accounts::Input),
     GetAllAccountsForBranch(use_cases::get_all_accounts_for_branch::Input),
 }
@@ -56,7 +56,7 @@ pub enum OperationsOk {
     CreateAccountForBranch(use_cases::create_account_for_branch::Ok),
     CreateJournalEntry(use_cases::create_journal_entry::Ok),
     // read
-    ListCompanyAndBranch(use_cases::list_company_and_branch::Ok),
+    GetCompaniesAndBranches(use_cases::get_companies_and_branches::Ok),
     GetAllAccounts(use_cases::get_all_accounts::Ok),
     GetAllAccountsForBranch(use_cases::get_all_accounts_for_branch::Ok),
 }
@@ -73,7 +73,7 @@ pub enum OperationsResult {
     CreateAccountForBranch(use_cases::create_account_for_branch::MyResult),
     CreateJournalEntry(use_cases::create_journal_entry::MyResult),
     // read
-    ListCompanyAndBranch(use_cases::list_company_and_branch::MyResult),
+    GetCompaniesAndBranches(use_cases::get_companies_and_branches::MyResult),
     GetAllAccounts(use_cases::get_all_accounts::MyResult),
     GetAllAccountsForBranch(use_cases::get_all_accounts_for_branch::MyResult),
 }

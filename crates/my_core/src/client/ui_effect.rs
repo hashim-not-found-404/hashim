@@ -111,7 +111,7 @@ impl<Mpsc: traits::MultiProducerSingleConsumer> Commander<Mpsc> {
                             .await
                         }
                         ui_model::Message::CompanyAndBranchSelection(msg) => {
-                            msg.update::<Rn, Rt, Mpsc, As, Ch, Dbb::ListCompanyAndBranch>(
+                            msg.update::<Rn, Rt, Mpsc, As, Ch, Dbb::GetCompaniesAndBranches>(
                                 model,
                                 cache,
                                 commander_local_state,
