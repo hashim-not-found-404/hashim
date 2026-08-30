@@ -1,32 +1,27 @@
-use crate::client::utility::process_manager;
-use crate::client::utility::ui_model;
-use crate::utility::traits;
+use crate::client::utility::process_manager::MessageToProcessManager;
+use crate::client::utility::ui_model::AllSignalTypes;
+use crate::utility::traits::MultiProducerSingleConsumer;
+use std::sync::Arc;
 use std::sync::Mutex;
 
-pub(crate) struct CommanderLocalState<
-    Mpsc: traits::MultiProducerSingleConsumer,
-    As: ui_model::AllSignalTypes,
-> {
-    pub(crate) sender_to_process_manager:
-        Mutex<Mpsc::Sender<process_manager::MessageToProcessManager<Mpsc, As>>>,
+pub(crate) type CommanderLocalState<Mpsc, As> = Arc<State<Mpsc, As>>;
+
+pub(crate) struct State<Mpsc: MultiProducerSingleConsumer, As: AllSignalTypes> {
+    pub(crate) sender_to_process_manager: Mutex<Mpsc::Sender<MessageToProcessManager<Mpsc, As>>>,
     pub(crate) aborter_to_company_and_branch_listener:        Aborter,
     pub(crate) aborter_to_create_account_for_branch_listener: Aborter,
     pub(crate) aborter_to_create_journal_entry_listener:      Aborter,
 }
 
-impl<Mpsc: traits::MultiProducerSingleConsumer, As: ui_model::AllSignalTypes>
-    CommanderLocalState<Mpsc, As>
-{
-    pub(crate) fn new(
-        sender_to_process_manager: Mpsc::Sender<process_manager::MessageToProcessManager<Mpsc, As>>,
-    ) -> Self {
-        CommanderLocalState {
-            sender_to_process_manager:                     Mutex::new(sender_to_process_manager),
-            aborter_to_company_and_branch_listener:        Aborter::default(),
-            aborter_to_create_account_for_branch_listener: Aborter::default(),
-            aborter_to_create_journal_entry_listener:      Aborter::default(),
-        }
-    }
+pub(crate) fn new<Mpsc: MultiProducerSingleConsumer, As: AllSignalTypes>(
+    sender_to_process_manager: Mpsc::Sender<MessageToProcessManager<Mpsc, As>>,
+) -> CommanderLocalState<Mpsc, As> {
+    Arc::new(State {
+        sender_to_process_manager:                     Mutex::new(sender_to_process_manager),
+        aborter_to_company_and_branch_listener:        Aborter::default(),
+        aborter_to_create_account_for_branch_listener: Aborter::default(),
+        aborter_to_create_journal_entry_listener:      Aborter::default(),
+    })
 }
 
 #[derive(Default)]

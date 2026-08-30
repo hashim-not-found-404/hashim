@@ -16,7 +16,6 @@ use crate::utility::traits::Receiver;
 use crate::utility::traits::Runtime;
 use crate::utility::traits::Sender;
 use crate::utility::utils::ReadAndSet;
-use std::sync::Arc;
 
 #[derive(Debug, Clone, Eq, Hash, PartialEq)]
 pub(crate) enum OperationName {
@@ -61,7 +60,7 @@ pub(crate) async fn handle_fall_back<
     As: AllSignalTypes,
 >(
     mut cache: CacheActorStruct<Mpsc>,
-    commander_local_state: Arc<CommanderLocalState<Mpsc, As>>,
+    commander_local_state: CommanderLocalState<Mpsc, As>,
     dialog: &'static As::Dialog,
     process_name: ProcessName,
     data: OperationsInput,

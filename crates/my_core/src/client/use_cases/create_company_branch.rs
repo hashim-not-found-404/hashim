@@ -1,7 +1,7 @@
 use crate::client::utility::cache::Cache;
 use crate::client::utility::cache_actor;
 use crate::client::utility::client_traits;
-use crate::client::utility::commander;
+use crate::client::utility::commander::CommanderLocalState;
 use crate::client::utility::process_manager;
 use crate::client::utility::ui_model;
 use crate::client::utility::ui_model::HashimSignal;
@@ -14,7 +14,6 @@ use crate::utility::traits;
 use crate::utility::traits::Receiver;
 use crate::utility::traits::Sender;
 use crate::utility::utils::ReadAndSet;
-use std::sync::Arc;
 
 type Type1 = use_cases::create_company_branch::Input;
 type Type2 = use_cases::create_company_branch::Input;
@@ -69,7 +68,7 @@ impl ui_model::CreateCompanyBranch {
         self,
         model: &'static ui_model::Model<As>,
         cache: client_traits::CacheActorStruct<Mpsc>,
-        commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
+        commander_local_state: CommanderLocalState<Mpsc, As>,
     ) {
         match self {
             Self::Submit => {
@@ -113,7 +112,7 @@ async fn handle_submit<
 >(
     model: &'static ui_model::Model<As>,
     cache: client_traits::CacheActorStruct<Mpsc>,
-    commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
+    commander_local_state: CommanderLocalState<Mpsc, As>,
 ) {
     let local_state = &model.page_create_company_branch;
 

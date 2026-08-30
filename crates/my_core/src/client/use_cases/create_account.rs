@@ -29,7 +29,6 @@ use crate::utility::traits::Runtime;
 use crate::utility::traits::Sender;
 use crate::utility::utils::MakeOptionIfEmpty;
 use crate::utility::utils::ReadAndSet;
-use std::sync::Arc;
 
 type Type1 = Input;
 type Type2 = Input;
@@ -82,7 +81,7 @@ impl CreateAccount {
         self,
         model: &'static Model<As>,
         cache: CacheStruct<Mpsc, OperationName, OperationsInput, OperationsResult>,
-        commander_local_state: Arc<CommanderLocalState<Mpsc, As>>,
+        commander_local_state: CommanderLocalState<Mpsc, As>,
     ) {
         let local_state = &model.page_create_account;
 
@@ -162,7 +161,7 @@ async fn handle_submit<
 >(
     model: &'static Model<As>,
     cache: CacheActorStruct<Mpsc>,
-    commander_local_state: Arc<CommanderLocalState<Mpsc, As>>,
+    commander_local_state: CommanderLocalState<Mpsc, As>,
 ) {
     let input = build_input::<Id, As>(model);
     let data = wrap_input(input);

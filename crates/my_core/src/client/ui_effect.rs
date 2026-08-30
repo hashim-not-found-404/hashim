@@ -12,7 +12,6 @@ use crate::mbg;
 use crate::utility::traits;
 use crate::utility::traits::Receiver;
 use crate::utility::traits::Sender;
-use std::sync::Arc;
 
 pub struct Commander<Mpsc: traits::MultiProducerSingleConsumer> {
     sender: Mpsc::Sender<ui_model::Message>,
@@ -79,8 +78,7 @@ impl<Mpsc: traits::MultiProducerSingleConsumer> Commander<Mpsc> {
         cache: client_traits::CacheActorStruct<Mpsc>,
     ) {
         Rt::spawn_local(async move {
-            let commander_local_state =
-                Arc::new(commander::CommanderLocalState::new(sender_to_process_manager));
+            let commander_local_state = commander::new(sender_to_process_manager);
 
             loop {
                 let message = receiver.recv().await.unwrap();

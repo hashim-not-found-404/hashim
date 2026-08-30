@@ -1,7 +1,7 @@
 use crate::client::utility::cache::Cache;
 use crate::client::utility::client_traits;
 use crate::client::utility::client_traits::OperationName;
-use crate::client::utility::commander;
+use crate::client::utility::commander::CommanderLocalState;
 use crate::client::utility::ui_model;
 use crate::client::utility::ui_model::HashimSignal;
 use crate::domain::use_cases;
@@ -13,7 +13,6 @@ use crate::make_wrap_unwrap;
 use crate::utility::tools;
 use crate::utility::traits;
 use crate::utility::utils::ReadAndSet;
-use std::sync::Arc;
 
 type Type1 = use_cases::get_companies_and_branches::Input;
 type Type2 = use_cases::get_companies_and_branches::Input;
@@ -76,7 +75,7 @@ impl ui_model::CompanyAndBranchSelection {
         self,
         model: &'static ui_model::Model<As>,
         cache: client_traits::CacheActorStruct<Mpsc>,
-        commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
+        commander_local_state: CommanderLocalState<Mpsc, As>,
     ) {
         match self {
             Self::Subscribe => {
@@ -138,7 +137,7 @@ fn spawn_listener<
 >(
     model: &'static ui_model::Model<As>,
     cache: client_traits::CacheActorStruct<Mpsc>,
-    commander_local_state: Arc<commander::CommanderLocalState<Mpsc, As>>,
+    commander_local_state: CommanderLocalState<Mpsc, As>,
 ) {
     let data = wrap_input(Type1 {
         user_uuid: model.user_uuid.read().clone().unwrap(),
