@@ -4,7 +4,6 @@ use my_core::domain::use_cases;
 use my_core::domain::utility::types::DatabaseRead;
 use my_core::domain::utility::types::DatabaseWrite;
 use my_core::domain::utility::types::Role;
-use my_core::server::utility::server_traits;
 use my_core::utility::traits::DynamicError;
 use my_core::utility::utils::LogError;
 use std::str::FromStr;

@@ -115,59 +115,6 @@ impl Cache for S {
     }
 }
 
-fn make_sql_statment_for_string(
-    table_name: &str,
-    field_name: &str,
-    uuid: &String,
-    value: &String,
-) -> String {
-    format!(
-        "INSERT OR IGNORE INTO {table_name} (rowid) VALUES ('{uuid}');
-         UPDATE {table_name} SET {field_name} = '{value}' WHERE rowid = '{uuid}';"
-    )
-}
-
-fn make_sql_statment_for_number(
-    table_name: &str,
-    field_name: &str,
-    uuid: &String,
-    value: &f64,
-) -> String {
-    format!(
-        "INSERT OR IGNORE INTO {table_name} (rowid) VALUES ('{uuid}');
-         UPDATE {table_name} SET {field_name} = {value} WHERE rowid = '{uuid}';"
-    )
-}
-
-fn make_sql_statment_for_bool(
-    table_name: &str,
-    field_name: &str,
-    uuid: &String,
-    value: bool,
-) -> String {
-    format!(
-        "INSERT OR IGNORE INTO {table_name} (rowid) VALUES ('{uuid}');
-         UPDATE {table_name} SET {field_name} = {value} WHERE rowid = '{uuid}';"
-    )
-}
-
-fn make_sql_statement_for_option_string(
-    table_name: &str,
-    field_name: &str,
-    uuid: &String,
-    value: &Option<String>,
-) -> String {
-    match value {
-        Some(v) => make_sql_statment_for_string(table_name, field_name, uuid, v),
-        None => {
-            format!(
-                "INSERT OR IGNORE INTO {table_name} (rowid) VALUES ('{uuid}');
-             UPDATE {table_name} SET {field_name} = NULL WHERE rowid = '{uuid}';"
-            )
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
