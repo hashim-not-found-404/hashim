@@ -12,36 +12,36 @@ use crate::domain::utility::uuid::User;
 use crate::utility::traits::Time;
 
 pub trait DbBundle<Ch: Cache>: 'static {
-    type CreateAccount: for<'a> use_cases::create_account::DatabaseRead<Db<'a> = Ch>;
+    type ReadCreateAccount: for<'a> use_cases::create_account::DatabaseRead<Db<'a> = Ch>;
     type WriteCreateAccount: for<'a> DatabaseWrite<Db<'a> = Ch, Input = use_cases::create_account::Ok>;
 
-    type CreateAccountForBranch: for<'a> use_cases::create_account_for_branch::DatabaseRead<Db<'a> = Ch>;
+    type ReadCreateAccountForBranch: for<'a> use_cases::create_account_for_branch::DatabaseRead<Db<'a> = Ch>;
     type WriteCreateAccountForBranch: for<'a> DatabaseWrite<Db<'a> = Ch, Input = use_cases::create_account_for_branch::Ok>;
 
-    type CreateJournalEntry: for<'a> use_cases::create_journal_entry::DatabaseRead<Db<'a> = Ch>;
+    type ReadCreateJournalEntry: for<'a> use_cases::create_journal_entry::DatabaseRead<Db<'a> = Ch>;
     type WriteCreateJournalEntry: for<'a> DatabaseWrite<Db<'a> = Ch, Input = use_cases::create_journal_entry::Ok>;
 
-    type GetAllAccounts: for<'a> use_cases::get_all_accounts::DatabaseRead<Db<'a> = Ch>;
+    type ReadGetAllAccounts: for<'a> use_cases::get_all_accounts::DatabaseRead<Db<'a> = Ch>;
     type WriteGetAllAccounts: for<'a> DatabaseWrite<Db<'a> = Ch, Input = use_cases::get_all_accounts::Ok>;
 
-    type GetAllAccountsForBranch: for<'a> use_cases::get_all_accounts_for_branch::DatabaseRead<Db<'a> = Ch>;
+    type ReadGetAllAccountsForBranch: for<'a> use_cases::get_all_accounts_for_branch::DatabaseRead<Db<'a> = Ch>;
     type WriteGetAllAccountsForBranch: for<'a> DatabaseWrite<Db<'a> = Ch, Input = use_cases::get_all_accounts_for_branch::Ok>;
 
-    type CreateCompany: for<'a> use_cases::create_company::DatabaseRead<Db<'a> = Ch>;
+    type ReadCreateCompany: for<'a> use_cases::create_company::DatabaseRead<Db<'a> = Ch>;
     type WriteCreateCompany: for<'a> DatabaseWrite<Db<'a> = Ch, Input = use_cases::create_company::Ok>;
 
-    type CreateCompanyBranch: for<'a> use_cases::create_company_branch::DatabaseRead<Db<'a> = Ch>;
+    type ReadCreateCompanyBranch: for<'a> use_cases::create_company_branch::DatabaseRead<Db<'a> = Ch>;
     type WriteCreateCompanyBranch: for<'a> DatabaseWrite<Db<'a> = Ch, Input = use_cases::create_company_branch::Ok>;
 
-    type GetCompaniesAndBranches: for<'a> use_cases::get_companies_and_branches::DatabaseRead<Db<'a> = Ch>
+    type ReadGetCompaniesAndBranches: for<'a> use_cases::get_companies_and_branches::DatabaseRead<Db<'a> = Ch>
         + 'static;
     type WriteGetCompaniesAndBranches: for<'a> DatabaseWrite<Db<'a> = Ch, Input = use_cases::get_companies_and_branches::Ok>
         + 'static;
 
-    type SignIn: for<'a> use_cases::sign_in::DatabaseRead<Db<'a> = Ch>;
+    type ReadSignIn: for<'a> use_cases::sign_in::DatabaseRead<Db<'a> = Ch>;
     type WriteSignIn: for<'a> DatabaseWrite<Db<'a> = Ch, Input = use_cases::sign_in::Ok>;
 
-    type SignUp: for<'a> use_cases::sign_up::DatabaseRead<Db<'a> = Ch>;
+    type ReadSignUp: for<'a> use_cases::sign_up::DatabaseRead<Db<'a> = Ch>;
     type WriteSignUp: for<'a> DatabaseWrite<Db<'a> = Ch, Input = use_cases::sign_up::Ok>;
 }
 
@@ -72,14 +72,18 @@ impl OperationsInput {
         match self {
             OperationsInput::SignUp(i) => {
                 OperationsResult::SignUp(
-                    client::use_cases::sign_up::state_full_operation::<Ch, Dbb::SignUp>(i, state)
-                        .await,
+                    client::use_cases::sign_up::state_full_operation::<Ch, Dbb::ReadSignUp>(
+                        i, state,
+                    )
+                    .await,
                 )
             }
             OperationsInput::SignIn(i) => {
                 OperationsResult::SignIn(
-                    client::use_cases::sign_in::state_full_operation::<Ch, Dbb::SignIn>(i, state)
-                        .await,
+                    client::use_cases::sign_in::state_full_operation::<Ch, Dbb::ReadSignIn>(
+                        i, state,
+                    )
+                    .await,
                 )
             }
             OperationsInput::CreateCompany(i) => {
@@ -91,7 +95,7 @@ impl OperationsInput {
                 OperationsResult::CreateCompanyBranch(
                     client::use_cases::create_company_branch::state_full_operation::<
                         Ch,
-                        Dbb::CreateCompanyBranch,
+                        Dbb::ReadCreateCompanyBranch,
                     >(i, state)
                     .await,
                 )
@@ -100,17 +104,20 @@ impl OperationsInput {
                 OperationsResult::GetCompaniesAndBranches(
                     client::use_cases::get_companies_and_branches::state_full_operation::<
                         Ch,
-                        Dbb::GetCompaniesAndBranches,
+                        Dbb::ReadGetCompaniesAndBranches,
                     >(i, state)
                     .await,
                 )
             }
-            OperationsInput::CreateAccount(i) => OperationsResult::CreateAccount(
-                client::use_cases::create_account::state_full_operation::<Ch, Dbb::CreateAccount>(
-                    i, state,
+            OperationsInput::CreateAccount(i) => {
+                OperationsResult::CreateAccount(
+                    client::use_cases::create_account::state_full_operation::<
+                        Ch,
+                        Dbb::ReadCreateAccount,
+                    >(i, state)
+                    .await,
                 )
-                .await,
-            ),
+            }
             OperationsInput::GetAllAccounts(_) => {
                 unreachable!()
             }
@@ -118,7 +125,7 @@ impl OperationsInput {
                 OperationsResult::GetAllAccountsForBranch(
                     fetches::get_all_accounts_for_branch::state_full_operation::<
                         Ch,
-                        Dbb::GetAllAccountsForBranch,
+                        Dbb::ReadGetAllAccountsForBranch,
                     >(i, state)
                     .await,
                 )
@@ -127,7 +134,7 @@ impl OperationsInput {
                 run_operation_check!(
                     create_account_for_branch,
                     CreateAccountForBranch,
-                    Dbb::CreateAccountForBranch,
+                    Dbb::ReadCreateAccountForBranch,
                     i,
                     state
                 )
@@ -137,7 +144,7 @@ impl OperationsInput {
                     client::use_cases::create_journal_entry::state_full_operation::<
                         Ti,
                         Ch,
-                        Dbb::CreateJournalEntry,
+                        Dbb::ReadCreateJournalEntry,
                     >(i, state)
                     .await,
                 )
@@ -156,17 +163,21 @@ impl OperationsInput {
     ) {
         match self {
             OperationsInput::SignUp(i) => {
-                if let Ok(resources) =
-                    client::use_cases::sign_up::state_full_operation::<Ch, Dbb::SignUp>(i, state)
-                        .await
+                if let Ok(resources) = client::use_cases::sign_up::state_full_operation::<
+                    Ch,
+                    Dbb::ReadSignUp,
+                >(i, state)
+                .await
                 {
                     Dbb::WriteSignUp::write(state, &resources).await.unwrap();
                 };
             }
             OperationsInput::SignIn(i) => {
-                if let Ok(resources) =
-                    client::use_cases::sign_in::state_full_operation::<Ch, Dbb::SignIn>(i, state)
-                        .await
+                if let Ok(resources) = client::use_cases::sign_in::state_full_operation::<
+                    Ch,
+                    Dbb::ReadSignIn,
+                >(i, state)
+                .await
                 {
                     Dbb::WriteSignIn::write(state, &resources).await.unwrap();
                 };
@@ -182,7 +193,7 @@ impl OperationsInput {
                 if let Ok(resources) =
                     client::use_cases::create_company_branch::state_full_operation::<
                         Ch,
-                        Dbb::CreateCompanyBranch,
+                        Dbb::ReadCreateCompanyBranch,
                     >(i, state)
                     .await
                 {
@@ -193,7 +204,7 @@ impl OperationsInput {
                 if let Ok(resources) =
                     client::use_cases::get_companies_and_branches::state_full_operation::<
                         Ch,
-                        Dbb::GetCompaniesAndBranches,
+                        Dbb::ReadGetCompaniesAndBranches,
                     >(i, state)
                     .await
                 {
@@ -203,7 +214,7 @@ impl OperationsInput {
             OperationsInput::CreateAccount(i) => {
                 if let Ok(resources) = client::use_cases::create_account::state_full_operation::<
                     Ch,
-                    Dbb::CreateAccount,
+                    Dbb::ReadCreateAccount,
                 >(i, state)
                 .await
                 {
@@ -220,7 +231,7 @@ impl OperationsInput {
                 if let Ok(resources) =
                     client::use_cases::create_account_for_branch::state_full_operation::<
                         Ch,
-                        Dbb::CreateAccountForBranch,
+                        Dbb::ReadCreateAccountForBranch,
                     >(i, state)
                     .await
                 {
@@ -232,7 +243,7 @@ impl OperationsInput {
                     client::use_cases::create_journal_entry::state_full_operation::<
                         Ti,
                         Ch,
-                        Dbb::CreateJournalEntry,
+                        Dbb::ReadCreateJournalEntry,
                     >(i, state)
                     .await
                 {

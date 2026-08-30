@@ -1,31 +1,37 @@
-use crate::read_write_cases;
+use crate::read_write_cases::create_account;
 use crate::read_write_cases::create_account_for_branch;
+use crate::read_write_cases::create_company;
+use crate::read_write_cases::create_company_branch;
 use crate::read_write_cases::create_journal_entry;
+use crate::read_write_cases::get_all_accounts;
 use crate::read_write_cases::get_all_accounts_for_branch;
+use crate::read_write_cases::get_companies_and_branches;
+use crate::read_write_cases::sign_in;
+use crate::read_write_cases::sign_up;
 use crate::utility::cache_adapter;
-use my_core::client::cache_op;
+use my_core::client::cache_op::DbBundle;
 
 pub struct S;
 
-impl cache_op::DbBundle<cache_adapter::S> for S {
-    type CreateAccount = read_write_cases::create_account::S;
-    type CreateAccountForBranch = create_account_for_branch::S;
-    type CreateCompany = read_write_cases::create_company::S;
-    type CreateCompanyBranch = read_write_cases::create_company_branch::S;
-    type CreateJournalEntry = create_journal_entry::S;
-    type GetAllAccounts = read_write_cases::get_all_accounts::S;
-    type GetAllAccountsForBranch = get_all_accounts_for_branch::S;
-    type GetCompaniesAndBranches = read_write_cases::get_companies_and_branches::S;
-    type SignIn = read_write_cases::sign_in::S;
-    type SignUp = read_write_cases::sign_up::S;
-    type WriteCreateAccount = read_write_cases::create_account::S;
-    type WriteCreateAccountForBranch = read_write_cases::create_account_for_branch::S;
-    type WriteCreateCompany = read_write_cases::create_company::S;
-    type WriteCreateCompanyBranch = read_write_cases::create_company_branch::S;
-    type WriteCreateJournalEntry = read_write_cases::create_journal_entry::S;
-    type WriteGetAllAccounts = read_write_cases::get_all_accounts::S;
-    type WriteGetAllAccountsForBranch = read_write_cases::get_all_accounts_for_branch::S;
-    type WriteGetCompaniesAndBranches = read_write_cases::get_companies_and_branches::S;
-    type WriteSignIn = read_write_cases::sign_in::S;
-    type WriteSignUp = read_write_cases::sign_up::S;
+impl DbBundle<cache_adapter::S> for S {
+    type ReadCreateAccount = create_account::S;
+    type ReadCreateAccountForBranch = create_account_for_branch::S;
+    type ReadCreateCompany = create_company::S;
+    type ReadCreateCompanyBranch = create_company_branch::S;
+    type ReadCreateJournalEntry = create_journal_entry::S;
+    type ReadGetAllAccounts = get_all_accounts::S;
+    type ReadGetAllAccountsForBranch = get_all_accounts_for_branch::S;
+    type ReadGetCompaniesAndBranches = get_companies_and_branches::S;
+    type ReadSignIn = sign_in::S;
+    type ReadSignUp = sign_up::S;
+    type WriteCreateAccount = create_account::S;
+    type WriteCreateAccountForBranch = create_account_for_branch::S;
+    type WriteCreateCompany = create_company::S;
+    type WriteCreateCompanyBranch = create_company_branch::S;
+    type WriteCreateJournalEntry = create_journal_entry::S;
+    type WriteGetAllAccounts = get_all_accounts::S;
+    type WriteGetAllAccountsForBranch = get_all_accounts_for_branch::S;
+    type WriteGetCompaniesAndBranches = get_companies_and_branches::S;
+    type WriteSignIn = sign_in::S;
+    type WriteSignUp = sign_up::S;
 }
