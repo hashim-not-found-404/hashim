@@ -18,9 +18,9 @@ use crate::domain::request_response::OperationsResult;
 use crate::domain::use_cases::create_account::DatabaseRead;
 use crate::domain::use_cases::create_account::Input;
 use crate::domain::use_cases::create_account::MyResult;
+use crate::domain::utility::new_types::AccountUuid;
 use crate::domain::utility::types::MyErrorTrait;
 use crate::domain::utility::types::RowId;
-use crate::domain::utility::uuid::Account;
 use crate::make_wrap_unwrap;
 use crate::utility::traits::MultiProducerSingleConsumer;
 use crate::utility::traits::RandomNumber;
@@ -129,7 +129,7 @@ fn build_input<Id: RowId, As: AllSignalTypes>(model: &Model<As>) -> Type1 {
 
     Input {
         user_uuid:                       model.user_uuid.read().clone().unwrap(),
-        new_uuid:                        Account(Id::generate()),
+        new_uuid:                        AccountUuid(Id::generate()),
         is_debit:                        local_state.is_debit.read(),
         is_permanent_account:            local_state.is_permanent_account.read(),
         account_name:                    local_state.account_name.read(),

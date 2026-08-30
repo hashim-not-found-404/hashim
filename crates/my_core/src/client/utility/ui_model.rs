@@ -1,12 +1,12 @@
 use crate::domain::use_cases::create_journal_entry::DebitNotEqualCreditError;
+use crate::domain::utility::new_types;
+use crate::domain::utility::new_types::AccountForBranchUuid;
+use crate::domain::utility::new_types::BranchUuid;
+use crate::domain::utility::new_types::UserUuid;
+use crate::domain::utility::new_types::UuidType;
 use crate::domain::utility::types::Company;
 use crate::domain::utility::types::Currency;
 use crate::domain::utility::types::Location;
-use crate::domain::utility::uuid;
-use crate::domain::utility::uuid::AccountForBranch;
-use crate::domain::utility::uuid::Branch;
-use crate::domain::utility::uuid::User;
-use crate::domain::utility::uuid::UuidType;
 use crate::utility::tools::Searchable;
 use accounting_engine::accounting_stuff::InFlowType;
 use accounting_engine::accounting_stuff::OutFlowType;
@@ -45,7 +45,7 @@ pub trait AllSignalTypes: 'static + Default + Clone {
 // helper types ///////////////////////////////////////////////////////////////////////////////////
 #[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
 pub struct Account {
-    pub row_uuid:                        uuid::Account,
+    pub row_uuid:                        new_types::AccountUuid,
     pub is_debit:                        bool,
     pub is_permanent_account:            bool,
     pub account_name:                    String,
@@ -71,9 +71,9 @@ pub enum Dialog {
 
 #[derive(Default)]
 pub struct Model<As: AllSignalTypes> {
-    pub(crate) user_uuid:               Mutex<Option<User>>,
-    pub(crate) selected_company_branch: Mutex<Option<Branch>>,
-    pub(crate) selected_company:        Mutex<Option<uuid::Company>>,
+    pub(crate) user_uuid:               Mutex<Option<UserUuid>>,
+    pub(crate) selected_company_branch: Mutex<Option<BranchUuid>>,
+    pub(crate) selected_company:        Mutex<Option<new_types::CompanyUuid>>,
 
     pub navigator: As::Navigator,
 
@@ -189,7 +189,7 @@ pub struct DoubleEntry {
 #[derive(Debug, Clone, Default, Deserialize, Serialize)]
 pub struct SingleEntry {
     pub user_input_account_name:    String,
-    pub(crate) inferred_account_id: Option<AccountForBranch>,
+    pub(crate) inferred_account_id: Option<AccountForBranchUuid>,
 
     pub user_input_is_debit:     Option<bool>,
     pub user_input_is_inflow:    Option<bool>,
@@ -267,8 +267,8 @@ pub enum CompanyAndBranchSelection {
     UnSubscribe,
     ShowCreateCompany,
     ShowCreateCompanyBranch,
-    SelectedCompany(uuid::Company),
-    SelectedCompanyBranch(Branch),
+    SelectedCompany(new_types::CompanyUuid),
+    SelectedCompanyBranch(BranchUuid),
 }
 
 #[derive(Debug)]
@@ -328,7 +328,7 @@ pub enum CreateJournalEntry {
     SelectSuggestion {
         double_index: usize,
         single_index: usize,
-        account_uuid: AccountForBranch,
+        account_uuid: AccountForBranchUuid,
     },
     Submit,
     Consent(UserConsent),

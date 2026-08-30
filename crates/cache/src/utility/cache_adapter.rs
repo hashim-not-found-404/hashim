@@ -2,8 +2,8 @@ use crate::utility::utils::MyUuidConverter;
 use adapters::encode_decode;
 use my_core::client::utility::cache::Cache;
 use my_core::domain::request_response;
+use my_core::domain::utility::new_types::UserUuid;
 use my_core::domain::utility::types::JsonWebTokenType;
-use my_core::domain::utility::uuid::User;
 use my_core::utility::traits::Coding;
 use rusqlite::Connection;
 use std::ops::Add;
@@ -103,7 +103,7 @@ impl Cache for S {
         self.tables_db.execute_batch(QUERY8).unwrap();
     }
 
-    async fn get_jwt(&self, user_uuid: &User) -> Option<JsonWebTokenType> {
+    async fn get_jwt(&self, user_uuid: &UserUuid) -> Option<JsonWebTokenType> {
         let mut stmt = self.tables_db.prepare(QUERY6).unwrap();
 
         let json_web_token_type = stmt.query_one([&user_uuid.to_string()], |row| row.get(0));

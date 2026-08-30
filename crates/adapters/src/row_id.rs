@@ -1,6 +1,6 @@
 pub mod target {
+    use my_core::domain::utility::new_types::UuidType;
     use my_core::domain::utility::types::RowId;
-    use my_core::domain::utility::uuid::UuidType;
     use uuid::Uuid;
 
     pub struct S;

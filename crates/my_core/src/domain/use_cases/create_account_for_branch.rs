@@ -1,13 +1,13 @@
+use crate::domain::utility::new_types::AccountForBranchUuid;
+use crate::domain::utility::new_types::AccountUuid;
+use crate::domain::utility::new_types::BranchUuid;
+use crate::domain::utility::new_types::UserUuid;
 use crate::domain::utility::types;
 use crate::domain::utility::types::MarkerMyErrorTrait;
 use crate::domain::utility::types::Role;
 use crate::domain::utility::types::RowId;
 use crate::domain::utility::types::RowIdError;
 use crate::domain::utility::types::UserUuidError;
-use crate::domain::utility::uuid::Account;
-use crate::domain::utility::uuid::AccountForBranch;
-use crate::domain::utility::uuid::Branch;
-use crate::domain::utility::uuid::User;
 use crate::utility::traits::DynamicError;
 use accounting_engine::accounting_stuff::InFlowType;
 use accounting_engine::accounting_stuff::OutFlowType;
@@ -18,19 +18,19 @@ pub type MyResult = Result<Ok, Error>;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Input {
-    pub user_uuid:                User,
-    pub new_uuid:                 AccountForBranch,
-    pub belong_to_account:        Account,
-    pub belong_to_company_branch: Branch,
+    pub user_uuid:                UserUuid,
+    pub new_uuid:                 AccountForBranchUuid,
+    pub belong_to_account:        AccountUuid,
+    pub belong_to_company_branch: BranchUuid,
     pub outflow_type:             OutFlowType,
     pub inflow_type:              InFlowType,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Ok {
-    pub new_uuid:                 AccountForBranch,
-    pub belong_to_account:        Account,
-    pub belong_to_company_branch: Branch,
+    pub new_uuid:                 AccountForBranchUuid,
+    pub belong_to_account:        AccountUuid,
+    pub belong_to_company_branch: BranchUuid,
     pub outflow_type:             OutFlowType,
     pub inflow_type:              InFlowType,
 }
@@ -47,10 +47,10 @@ pub struct Error {
 impl MarkerMyErrorTrait for Error {}
 
 pub struct ReadInput {
-    pub user_uuid:                User,
-    pub new_uuid:                 AccountForBranch,
-    pub belong_to_account:        Account,
-    pub belong_to_company_branch: Branch,
+    pub user_uuid:                UserUuid,
+    pub new_uuid:                 AccountForBranchUuid,
+    pub belong_to_account:        AccountUuid,
+    pub belong_to_company_branch: BranchUuid,
 }
 
 pub struct ReadOutput {

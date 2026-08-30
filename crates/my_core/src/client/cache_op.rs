@@ -6,9 +6,9 @@ use crate::domain::request_response::OperationsInput;
 use crate::domain::request_response::OperationsOk;
 use crate::domain::request_response::OperationsResult;
 use crate::domain::use_cases;
+use crate::domain::utility::new_types::UserUuid;
 use crate::domain::utility::types::DatabaseWrite;
 use crate::domain::utility::types::RowId;
-use crate::domain::utility::uuid::User;
 use crate::utility::traits::Time;
 
 pub trait DbBundle<Ch: Cache>: 'static {
@@ -253,7 +253,9 @@ impl OperationsInput {
         }
     }
 
-    pub(crate) fn get_user_uuid<Ti: Time, Ch: Cache, Dbb: DbBundle<Ch>>(&self) -> Option<&User> {
+    pub(crate) fn get_user_uuid<Ti: Time, Ch: Cache, Dbb: DbBundle<Ch>>(
+        &self,
+    ) -> Option<&UserUuid> {
         let user_uuid = match self {
             OperationsInput::SignUp(i) => &i.user_uuid,
             OperationsInput::SignIn(_) => return None,

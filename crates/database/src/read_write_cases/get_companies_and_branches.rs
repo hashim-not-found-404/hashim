@@ -1,11 +1,11 @@
 use crate::utility::db_client;
 use crate::utility::utils::MyUuidConverter;
 use my_core::domain::use_cases;
+use my_core::domain::utility::new_types::CompanyUuid;
+use my_core::domain::utility::new_types::UuidType;
 use my_core::domain::utility::types::Currency;
 use my_core::domain::utility::types::DatabaseRead;
 use my_core::domain::utility::types::Role;
-use my_core::domain::utility::uuid::Company;
-use my_core::domain::utility::uuid::UuidType;
 use my_core::utility::traits::DynamicError;
 use my_core::utility::utils::LogError;
 use serde::Deserialize;
@@ -78,7 +78,7 @@ impl DatabaseRead for S {
             branches: Vec<use_cases::get_companies_and_branches::AllBranchesThatUserInWithRoles>,
         }
 
-        let mut company_map: HashMap<Company, CompanyAgg> = HashMap::new();
+        let mut company_map: HashMap<CompanyUuid, CompanyAgg> = HashMap::new();
 
         for row in rows {
             let company_uuid_str: String = row.try_get(0).log()?;

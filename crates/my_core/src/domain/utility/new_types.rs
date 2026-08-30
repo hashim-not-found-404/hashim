@@ -6,31 +6,31 @@ use std::ops::Deref;
 pub struct UuidType(pub [u8; 16]);
 
 macro_rules! make_type {
-    ($Ty:ident) => {
+    ($inner_type:ty, $type_name:ident) => {
         #[derive(
             Debug, Clone, Default, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize,
         )]
-        pub struct $Ty(pub UuidType);
+        pub struct $type_name(pub UuidType);
 
-        impl Deref for $Ty {
+        impl Deref for $type_name {
             type Target = UuidType;
 
             fn deref(&self) -> &Self::Target {
                 &self.0
             }
         }
-        impl From<UuidType> for $Ty {
-            fn from(value: UuidType) -> Self {
+        impl From<$inner_type> for $type_name {
+            fn from(value: $inner_type) -> Self {
                 Self(value)
             }
         }
     };
 }
 
-make_type!(Nonce);
-make_type!(User);
-make_type!(Company);
-make_type!(Branch);
-make_type!(Account);
-make_type!(AccountForBranch);
-make_type!(SharedEntry);
+make_type!(UuidType, NonceUuid);
+make_type!(UuidType, UserUuid);
+make_type!(UuidType, CompanyUuid);
+make_type!(UuidType, BranchUuid);
+make_type!(UuidType, AccountUuid);
+make_type!(UuidType, AccountForBranchUuid);
+make_type!(UuidType, SharedEntryUuid);

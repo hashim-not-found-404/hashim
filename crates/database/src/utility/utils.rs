@@ -1,4 +1,4 @@
-use my_core::domain::utility::uuid::UuidType;
+use my_core::domain::utility::new_types::UuidType;
 use uuid::Uuid;
 
 pub(crate) trait MyUuidConverter {

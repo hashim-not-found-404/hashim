@@ -1,11 +1,11 @@
 use crate::utility::db_transaction;
 use crate::utility::utils::MyUuidConverter;
+use my_core::domain::utility::new_types::BranchUuid;
+use my_core::domain::utility::new_types::CompanyUuid;
+use my_core::domain::utility::new_types::NonceUuid;
+use my_core::domain::utility::new_types::UserUuid;
+use my_core::domain::utility::new_types::UuidType;
 use my_core::domain::utility::types::Role;
-use my_core::domain::utility::uuid::Branch;
-use my_core::domain::utility::uuid::Company;
-use my_core::domain::utility::uuid::Nonce;
-use my_core::domain::utility::uuid::User;
-use my_core::domain::utility::uuid::UuidType;
 use my_core::server::utility::server_traits;
 use my_core::server::utility::server_traits::DBClient;
 use my_core::utility::traits::DynamicError;
@@ -54,7 +54,7 @@ impl DBClient for S {
 
     async fn read_roles_for_user(
         &mut self,
-        users_uuid: &HashSet<User>,
+        users_uuid: &HashSet<UserUuid>,
     ) -> Result<server_traits::TheCompaniesAndBranchesHeIn, DynamicError> {
         let stmt = self.client.prepare_cached(READ_ROLES_FOR_USER_QUERY).await.log()?;
 
@@ -86,14 +86,14 @@ impl DBClient for S {
                             .companies
                             .entry(user_id_typed)
                             .or_default()
-                            .insert(Company(data_group_id));
+                            .insert(CompanyUuid(data_group_id));
                     }
                     "branch" => {
                         result
                             .branches
                             .entry(user_id_typed)
                             .or_default()
-                            .insert(Branch(data_group_id));
+                            .insert(BranchUuid(data_group_id));
                     }
                     _ => {}
                 }
@@ -105,7 +105,7 @@ impl DBClient for S {
 
     async fn write_nonce_if_not_used_and_return_is_nonce_used(
         &mut self,
-        nonce: &Nonce,
+        nonce: &NonceUuid,
     ) -> Result<bool, DynamicError> {
         let row = self
             .client

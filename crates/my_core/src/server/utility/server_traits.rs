@@ -1,25 +1,25 @@
 use crate::domain::request_response::ResourceDTO;
-use crate::domain::utility::uuid::Branch;
-use crate::domain::utility::uuid::Company;
-use crate::domain::utility::uuid::Nonce;
-use crate::domain::utility::uuid::User;
+use crate::domain::utility::new_types::BranchUuid;
+use crate::domain::utility::new_types::CompanyUuid;
+use crate::domain::utility::new_types::NonceUuid;
+use crate::domain::utility::new_types::UserUuid;
 use crate::utility::traits::DynamicError;
 use std::collections::HashMap;
 use std::collections::HashSet;
 
-pub(crate) type ListOfResources = HashMap<Branch, Vec<ResourceDTO>>;
+pub(crate) type ListOfResources = HashMap<BranchUuid, Vec<ResourceDTO>>;
 
 #[derive(Debug, Default)]
 pub(crate) struct SideEffects {
-    pub(crate) authenticated_users:              HashSet<User>,
-    pub(crate) users_to_resubscribe:             HashSet<User>,
+    pub(crate) authenticated_users:              HashSet<UserUuid>,
+    pub(crate) users_to_resubscribe:             HashSet<UserUuid>,
     pub(crate) resource_to_broadcast_for_branch: ListOfResources,
 }
 
 pub struct TheCompaniesAndBranchesHeIn {
-    pub branches_of_each_company: HashMap<Company, HashSet<Branch>>,
-    pub companies:                HashMap<User, HashSet<Company>>,
-    pub branches:                 HashMap<User, HashSet<Branch>>,
+    pub branches_of_each_company: HashMap<CompanyUuid, HashSet<BranchUuid>>,
+    pub companies:                HashMap<UserUuid, HashSet<CompanyUuid>>,
+    pub branches:                 HashMap<UserUuid, HashSet<BranchUuid>>,
 }
 
 pub mod domain_errors {
@@ -45,14 +45,14 @@ pub trait DBClient {
 
     fn write_nonce_if_not_used_and_return_is_nonce_used(
         &mut self,
-        nonce: &Nonce,
+        nonce: &NonceUuid,
     ) -> impl Future<Output = Result<bool, DynamicError>>;
 
     // here we just do read we dont do here any set or check
 
     fn read_roles_for_user(
         &mut self,
-        users_uuids: &HashSet<User>,
+        users_uuids: &HashSet<UserUuid>,
     ) -> impl Future<Output = Result<TheCompaniesAndBranchesHeIn, DynamicError>>;
 }
 

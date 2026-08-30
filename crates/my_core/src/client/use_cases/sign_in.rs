@@ -6,8 +6,8 @@ use crate::client::utility::process_manager;
 use crate::client::utility::ui_model;
 use crate::client::utility::ui_model::HashimSignal;
 use crate::domain::use_cases;
+use crate::domain::utility::new_types::UserUuid;
 use crate::domain::utility::types::JsonWebTokenType;
-use crate::domain::utility::uuid::User;
 use crate::make_wrap_unwrap;
 use crate::utility::traits;
 use crate::utility::traits::Receiver;
@@ -22,12 +22,12 @@ type Type4 = use_cases::sign_in::MyResult;
 
 make_wrap_unwrap!(sign_in, SignIn);
 
-pub(crate) fn user_uuid(_: &Type1) -> Option<&User> {
+pub(crate) fn user_uuid(_: &Type1) -> Option<&UserUuid> {
     None
 }
 
 pub(crate) struct SignInOk {
-    user_uuid: User,
+    user_uuid: UserUuid,
     user_name: String,
 }
 

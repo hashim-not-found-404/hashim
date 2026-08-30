@@ -4,10 +4,10 @@ use crate::utility::utils::MyUuidConverter1;
 use accounting_engine::accounting_stuff;
 use accounting_engine::accounting_stuff::InventoryRecord;
 use my_core::domain::use_cases;
+use my_core::domain::utility::new_types::AccountForBranchUuid;
 use my_core::domain::utility::types::DatabaseRead;
 use my_core::domain::utility::types::DatabaseWrite;
 use my_core::domain::utility::types::Role;
-use my_core::domain::utility::uuid::AccountForBranch;
 use my_core::utility::traits::DynamicError;
 use rusqlite::params;
 use serde::Deserialize;
@@ -153,7 +153,7 @@ impl DatabaseRead for S {
         let mut account_info =
             use_cases::create_journal_entry::AccountInfoProviderImpl(HashMap::new());
         for info in account_infos {
-            let uuid_type: AccountForBranch = info.account_uuid.to_uuid().into();
+            let uuid_type: AccountForBranchUuid = info.account_uuid.to_uuid().into();
             let in_flow = accounting_stuff::InFlowType::from_str(&info.in_flow_type).unwrap();
             let out_flow = accounting_stuff::OutFlowType::from_str(&info.out_flow_type).unwrap();
             let inventory = use_cases::create_journal_entry::InventoryWrapper(info.inventory);
