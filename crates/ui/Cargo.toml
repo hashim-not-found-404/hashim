@@ -16,6 +16,7 @@ mobile = ["dioxus/mobile"]
 accounting_engine = { workspace = true }
 adapters = { workspace = true }
 cache = { workspace = true }
-dioxus = { version = "0.7.9", features = ["router"] }
-dioxus-logger = { workspace = true }
 my_core = { workspace = true }
+
+dioxus = { workspace = true }
+dioxus-logger = { workspace = true }

@@ -5,14 +5,15 @@ edition = "2024"
 
 [dependencies]
 accounting_engine = { workspace = true }
-deadpool-postgres = "0.14.1"
 my_core = { workspace = true }
-rust_decimal = { version = "1.42.1", features = ["db-tokio-postgres"] }
+
+deadpool-postgres = { workspace = true }
+rust_decimal = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 tokio = { workspace = true }
-tokio-postgres = { version = "0.7.18", features = ["with-uuid-1", "with-serde_json-1"] }
+tokio-postgres = { workspace = true }
 uuid = { workspace = true }
 
 [dev-dependencies]
-tokio = { workspace = true, features = ["macros", "rt"] }
+tokio = { workspace = true }

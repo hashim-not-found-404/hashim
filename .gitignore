@@ -1,7 +1,6 @@
 privet/
 target/
 trush/
-Cargo.lock
 graph.dot
 graph.png
 .code-ranker
