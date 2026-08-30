@@ -2,6 +2,7 @@ use crate::utility::db_transaction;
 use crate::utility::utils::MyUuidConverter;
 use my_core::domain::use_cases;
 use my_core::domain::utility::types::DatabaseRead;
+use my_core::domain::utility::types::DatabaseWrite;
 use my_core::domain::utility::types::HashimError;
 use my_core::domain::utility::types::Role;
 use my_core::server::utility::server_traits;
@@ -86,7 +87,7 @@ const WRITE_QUERY: &str = "
     SELECT rowid, rowid, $7, $8 FROM inserted_branch
 ";
 
-impl server_traits::DatabaseWrite for S {
+impl DatabaseWrite for S {
     type Db<'a> = db_transaction::S<'a>;
     type Input = use_cases::create_company_branch::Ok;
 

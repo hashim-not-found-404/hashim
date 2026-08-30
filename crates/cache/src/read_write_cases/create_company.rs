@@ -1,6 +1,7 @@
 use crate::utility::cache_adapter;
 use my_core::domain::use_cases;
 use my_core::domain::utility::types::DatabaseRead;
+use my_core::domain::utility::types::DatabaseWrite;
 use my_core::utility::traits::DynamicError;
 
 pub struct S;
@@ -17,5 +18,14 @@ impl DatabaseRead for S {
         _read_input: &Self::Input,
     ) -> Result<Self::Output, DynamicError> {
         unreachable!()
+    }
+}
+
+impl DatabaseWrite for S {
+    type Db<'a> = cache_adapter::S;
+    type Input = use_cases::create_company::Ok;
+
+    async fn write(txn: &mut Self::Db<'_>, input: &Self::Input) -> Result<(), DynamicError> {
+        todo!()
     }
 }

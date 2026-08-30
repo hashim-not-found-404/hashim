@@ -5,6 +5,7 @@ use accounting_engine::accounting_stuff;
 use accounting_engine::accounting_stuff::InventoryRecord;
 use my_core::domain::use_cases;
 use my_core::domain::utility::types::DatabaseRead;
+use my_core::domain::utility::types::DatabaseWrite;
 use my_core::domain::utility::types::Role;
 use my_core::domain::utility::uuid::AccountForBranch;
 use my_core::utility::traits::DynamicError;
@@ -172,6 +173,15 @@ impl DatabaseRead for S {
             used_new_entries_uuid,
             account_info,
         })
+    }
+}
+
+impl DatabaseWrite for S {
+    type Db<'a> = cache_adapter::S;
+    type Input = use_cases::create_journal_entry::Ok;
+
+    async fn write(txn: &mut Self::Db<'_>, input: &Self::Input) -> Result<(), DynamicError> {
+        todo!()
     }
 }
 

@@ -1,6 +1,8 @@
 use crate::utility::db_transaction;
 use crate::utility::utils::MyUuidConverter;
 use my_core::domain::utility::types::Role;
+use my_core::domain::utility::uuid::Branch;
+use my_core::domain::utility::uuid::Company;
 use my_core::domain::utility::uuid::Nonce;
 use my_core::domain::utility::uuid::User;
 use my_core::domain::utility::uuid::UuidType;
@@ -8,7 +10,6 @@ use my_core::server::utility::server_traits;
 use my_core::server::utility::server_traits::DBClient;
 use my_core::utility::traits::DynamicError;
 use my_core::utility::utils::LogError;
-use std::collections::HashMap;
 use std::collections::HashSet;
 use std::str::FromStr;
 use uuid::Uuid;
@@ -58,8 +59,9 @@ impl DBClient for S {
         let stmt = self.client.prepare_cached(READ_ROLES_FOR_USER_QUERY).await.log()?;
 
         let mut result = server_traits::TheCompaniesAndBranchesHeIn {
-            companies: HashMap::new(),
-            branches:  HashMap::new(),
+            companies:                Default::default(),
+            branches:                 Default::default(),
+            branches_of_each_company: Default::default(),
         };
 
         for user_uuid in users_uuid {
@@ -82,20 +84,16 @@ impl DBClient for S {
                     "company" => {
                         result
                             .companies
-                            .entry(data_group_id)
-                            .or_default()
                             .entry(user_id_typed)
                             .or_default()
-                            .push(role);
+                            .insert(Company(data_group_id));
                     }
                     "branch" => {
                         result
                             .branches
-                            .entry(data_group_id.0.into())
-                            .or_default()
                             .entry(user_id_typed)
                             .or_default()
-                            .push(role);
+                            .insert(Branch(data_group_id));
                     }
                     _ => {}
                 }

@@ -2,6 +2,7 @@ use crate::utility::db_transaction;
 use crate::utility::utils::MyUuidConverter;
 use my_core::domain::use_cases;
 use my_core::domain::utility::types::DatabaseRead;
+use my_core::domain::utility::types::DatabaseWrite;
 use my_core::server::utility::server_traits;
 use my_core::utility::traits::DynamicError;
 use my_core::utility::utils::LogError;
@@ -41,7 +42,7 @@ const WRITE_QUERY: &str = "
     VALUES ($1, $1, $4, $5)
 ;";
 
-impl server_traits::DatabaseWrite for S {
+impl DatabaseWrite for S {
     type Db<'a> = db_transaction::S<'a>;
     type Input = use_cases::create_company::Ok;
 
