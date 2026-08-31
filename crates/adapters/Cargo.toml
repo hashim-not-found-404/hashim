@@ -16,8 +16,6 @@ infrastructure = [
     "argon2",
     "jsonwebtoken",
     "tokio",
-    "tokio-tungstenite",
-    "gloo-net",
     "gloo-timers",
     "wasm-bindgen-futures",
 ]

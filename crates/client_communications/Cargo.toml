@@ -4,10 +4,14 @@ version = "0.1.0"
 edition = "2024"
 
 [features]
-infrastructure = ["tokio"]
+infrastructure = ["tokio", "tokio-tungstenite", "futures"]
 
 [dependencies]
 adapters = { workspace = true }
 utility = { workspace = true }
 
+serde = { workspace = true }
+
+futures = { workspace = true, optional = true }
 tokio = { workspace = true, optional = true }
+tokio-tungstenite = { workspace = true, optional = true }

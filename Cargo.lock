@@ -970,7 +970,10 @@ name = "client_communications"
 version = "0.1.0"
 dependencies = [
  "adapters",
+ "futures",
+ "serde",
  "tokio",
+ "tokio-tungstenite",
  "utility",
 ]
 

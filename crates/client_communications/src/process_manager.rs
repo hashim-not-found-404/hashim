@@ -1,30 +1,29 @@
-use crate::client::utility::ui_model::AllSignalTypes;
-use crate::client::utility::ui_model::Dialog;
-use crate::client::utility::ui_model::HashimSignal;
-use crate::client::utility::ui_model::UserConsent;
-use crate::utility::traits::JoinHandle;
-use crate::utility::traits::MultiProducerSingleConsumer;
-use crate::utility::traits::Receiver;
-use crate::utility::traits::Runtime;
-use crate::utility::traits::Sender;
+use adapters::actors::MultiProducerSingleConsumer;
+use adapters::actors::Receiver;
+use adapters::actors::Sender;
+use adapters::runtime::JoinHandle;
+use adapters::runtime::Runtime;
 use std::collections::HashMap;
+use std::fmt::Debug;
 use std::hash::Hash;
 use std::time::Duration;
 
-#[derive(Debug, Clone, Copy, Eq, Hash, PartialEq)]
-pub(crate) enum ProcessName {
-    SignIn,
-    SignUp,
-    CreateCompanyBranch,
-    CreateAccount,
-    CreateAccountForBranch,
-    CreateJournalEntry,
+pub trait Dialog: 'static {
+    fn show(&self);
+    fn hide(&self);
 }
 
-pub(crate) enum MessageFromProcess<Mpsc: MultiProducerSingleConsumer, As: AllSignalTypes> {
+#[derive(Debug, Clone, Copy)]
+pub enum UserConsent {
+    WaitForServerResponse,
+    DontWaitForServerResponse,
+    CancelOperation,
+}
+
+pub enum MessageFromProcess<Mpsc: MultiProducerSingleConsumer, Di: Dialog> {
     Subscribe {
         sender: Mpsc::Sender<MessageToProcess>,
-        dialog: &'static As::Dialog,
+        dialog: &'static Di,
     },
     Response {
         is_response_from_server: bool,
@@ -32,41 +31,46 @@ pub(crate) enum MessageFromProcess<Mpsc: MultiProducerSingleConsumer, As: AllSig
     },
 }
 
-pub(crate) enum MessageToProcessManager<Mpsc: MultiProducerSingleConsumer, As: AllSignalTypes> {
+pub enum MessageToProcessManager<
+    Mpsc: MultiProducerSingleConsumer,
+    Di: Dialog,
+    ProcessName: Clone + Copy + Eq + Hash + PartialEq + 'static,
+> {
     FromUser {
         process_name: ProcessName,
         consent:      UserConsent,
     },
     FromProcess {
         process_name: ProcessName,
-        message:      MessageFromProcess<Mpsc, As>,
+        message:      MessageFromProcess<Mpsc, Di>,
     },
 }
 
 #[derive(Debug, Clone, Copy)]
-pub(crate) enum MessageToProcess {
+pub enum MessageToProcess {
     FallBackToCache,
     CancelOperation,
 }
 
-pub(crate) fn process_manager_actor<
+pub fn process_manager_actor<
     Mpsc: MultiProducerSingleConsumer,
-    As: AllSignalTypes,
+    Di: Dialog,
     Rt: Runtime,
->() -> Mpsc::Sender<MessageToProcessManager<Mpsc, As>> {
+    ProcessName: Clone + Copy + Eq + Hash + PartialEq + 'static,
+>() -> Mpsc::Sender<MessageToProcessManager<Mpsc, Di, ProcessName>> {
     let (sender, mut receiver) = Mpsc::channel();
 
     Rt::spawn_local(async move {
-        struct ProcessInfo<Rt: Runtime, Mpsc: MultiProducerSingleConsumer, As: AllSignalTypes> {
+        struct ProcessInfo<Rt: Runtime, Mpsc: MultiProducerSingleConsumer, Di: Dialog> {
             sender:                  Mpsc::Sender<MessageToProcess>,
-            dialog:                  &'static As::Dialog,
+            dialog:                  &'static Di,
             timer_handle:            Rt::JoinHandle<()>,
             is_response_from_server: Option<bool>,
             is_ok:                   Option<bool>,
             is_user_want_to_proceed: UserConsent,
         }
 
-        let mut process_states = HashMap::<ProcessName, ProcessInfo<Rt, Mpsc, As>>::new();
+        let mut process_states = HashMap::<ProcessName, ProcessInfo<Rt, Mpsc, Di>>::new();
 
         loop {
             let msg = receiver.recv().await.unwrap();
@@ -78,13 +82,13 @@ pub(crate) fn process_manager_actor<
                 } => {
                     let table = process_states.get_mut(&process_name).unwrap();
 
-                    table.dialog.set(Dialog::Hide);
+                    table.dialog.hide();
                     table.is_user_want_to_proceed = consent;
                     table.timer_handle.abort().await;
 
                     match consent {
                         UserConsent::WaitForServerResponse => {
-                            table.timer_handle = timer_handle::<Rt, As>(table.dialog);
+                            table.timer_handle = timer_handle::<Rt, Di>(table.dialog);
                         }
                         UserConsent::DontWaitForServerResponse => {
                             table.sender.send(MessageToProcess::FallBackToCache).await.unwrap();
@@ -103,7 +107,7 @@ pub(crate) fn process_manager_actor<
                             sender,
                             dialog,
                         } => {
-                            let timer_handle = timer_handle::<Rt, As>(dialog);
+                            let timer_handle = timer_handle::<Rt, Di>(dialog);
 
                             process_states.insert(process_name, ProcessInfo {
                                 sender,
@@ -138,11 +142,9 @@ pub(crate) fn process_manager_actor<
     sender
 }
 
-fn timer_handle<Rt: Runtime, As: AllSignalTypes>(
-    dialog_clone: &'static As::Dialog,
-) -> Rt::JoinHandle<()> {
+fn timer_handle<Rt: Runtime, Di: Dialog>(dialog_clone: &'static Di) -> Rt::JoinHandle<()> {
     Rt::abortable_spawn_local(async move {
         Rt::sleep(Duration::from_secs(5)).await;
-        dialog_clone.set(Dialog::Show);
+        dialog_clone.show();
     })
 }
