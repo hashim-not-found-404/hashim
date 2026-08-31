@@ -1,10 +1,20 @@
+use serde::Deserialize;
+use serde::Serialize;
+use utility::types::DynamicError;
+
+pub trait Coding {
+    fn encode<T: Serialize>(data: &T) -> Vec<u8>;
+    fn decode<'de, T: Deserialize<'de>>(data: &'de [u8]) -> Result<T, DynamicError>;
+}
+
+#[cfg(feature = "infrastructure")]
 pub mod target {
-    use my_core::utility::traits::Coding;
-    use my_core::utility::traits::DynamicError;
+    use super::Coding;
     use postcard::from_bytes;
     use postcard::to_allocvec;
     use serde::Deserialize;
     use serde::Serialize;
+    use utility::types::DynamicError;
 
     pub struct S;
 

@@ -257,12 +257,12 @@ dependencies = [
  "gloo-net 0.7.0",
  "gloo-timers 0.4.0",
  "jsonwebtoken",
- "my_core",
  "postcard",
  "regex",
  "serde",
  "tokio",
  "tokio-tungstenite",
+ "utility",
  "uuid",
  "wasm-bindgen-futures",
 ]
@@ -963,6 +963,15 @@ checksum = "57663b653d948a338bfb3eeba9bb2fd5fcfaecb9e199e87e1eda4d9e8b240fd9"
 dependencies = [
  "ciborium-io",
  "half",
+]
+
+[[package]]
+name = "client_communications"
+version = "0.1.0"
+dependencies = [
+ "adapters",
+ "tokio",
+ "utility",
 ]
 
 [[package]]
@@ -7157,6 +7166,10 @@ name = "utf8_iter"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b6c140620e7ffbb22c2dee59cafe6084a59b5ffc27a8859a5f0d494b5d52b6be"
+
+[[package]]
+name = "utility"
+version = "0.1.0"
 
 [[package]]
 name = "uuid"

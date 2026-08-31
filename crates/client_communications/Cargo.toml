@@ -1,0 +1,13 @@
+[package]
+name = "client_communications"
+version = "0.1.0"
+edition = "2024"
+
+[features]
+infrastructure = ["tokio"]
+
+[dependencies]
+adapters = { workspace = true }
+utility = { workspace = true }
+
+tokio = { workspace = true, optional = true }
