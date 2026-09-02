@@ -1,5 +1,11 @@
 default: fmt stat
 
+fmt:
+    @cargo sort -w --grouped
+    @cargo sort-derives --order "Debug,...,Deserialize,Serialize"
+    @cargo +nightly fmt
+    @clear
+
 stat:
     @clear
     git ls-files "crates/accounting_engine/*.rs" | xargs wc -l | tail -1
@@ -7,9 +13,6 @@ stat:
     git ls-files "*.rs" | xargs wc -l | tail -1
     git ls-files | xargs wc -l | tail -1
     git rev-list --count HEAD
-
-fmt:
-    @cargo sort -w --grouped && cargo sort-derives --order "Debug,...,Deserialize,Serialize" && cargo +nightly fmt && clear
 
 dump: fmt stat
     @find . -type f \( -name "*.rs" -o -name "*.sql" -o -name "*.toml" \) -not -path "*/target/*" -not -path "*/.git/*" -exec echo "=== {} ===" \; -exec cat {} \; > codebase.txt
