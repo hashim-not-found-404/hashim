@@ -8,6 +8,9 @@ use std::fmt::Debug;
 use std::hash::Hash;
 use std::time::Duration;
 
+#[derive(Debug, Clone, Copy, Eq, Hash, PartialEq)]
+pub struct ProcessId(pub u16);
+
 pub trait Dialog: 'static {
     fn show(&self);
     fn hide(&self);
@@ -31,18 +34,14 @@ pub enum MessageFromProcess<Mpsc: MultiProducerSingleConsumer, Di: Dialog> {
     },
 }
 
-pub enum MessageToProcessManager<
-    Mpsc: MultiProducerSingleConsumer,
-    Di: Dialog,
-    ProcessName: Clone + Copy + Eq + Hash + PartialEq + 'static,
-> {
+pub enum MessageToProcessManager<Mpsc: MultiProducerSingleConsumer, Di: Dialog> {
     FromUser {
-        process_name: ProcessName,
-        consent:      UserConsent,
+        process_id: ProcessId,
+        consent:    UserConsent,
     },
     FromProcess {
-        process_name: ProcessName,
-        message:      MessageFromProcess<Mpsc, Di>,
+        process_id: ProcessId,
+        message:    MessageFromProcess<Mpsc, Di>,
     },
 }
 
@@ -52,12 +51,8 @@ pub enum MessageToProcess {
     CancelOperation,
 }
 
-pub fn process_manager_actor<
-    Mpsc: MultiProducerSingleConsumer,
-    Di: Dialog,
-    Rt: Runtime,
-    ProcessName: Clone + Copy + Eq + Hash + PartialEq + 'static,
->() -> Mpsc::Sender<MessageToProcessManager<Mpsc, Di, ProcessName>> {
+pub fn process_manager_actor<Mpsc: MultiProducerSingleConsumer, Di: Dialog, Rt: Runtime>()
+-> Mpsc::Sender<MessageToProcessManager<Mpsc, Di>> {
     let (sender, mut receiver) = Mpsc::channel();
 
     Rt::spawn_local(async move {
@@ -70,17 +65,17 @@ pub fn process_manager_actor<
             is_user_want_to_proceed: UserConsent,
         }
 
-        let mut process_states = HashMap::<ProcessName, ProcessInfo<Rt, Mpsc, Di>>::new();
+        let mut process_states = HashMap::<ProcessId, ProcessInfo<Rt, Mpsc, Di>>::new();
 
         loop {
             let msg = receiver.recv().await.unwrap();
 
             match msg {
                 MessageToProcessManager::FromUser {
-                    process_name,
+                    process_id,
                     consent,
                 } => {
-                    let table = process_states.get_mut(&process_name).unwrap();
+                    let table = process_states.get_mut(&process_id).unwrap();
 
                     table.dialog.hide();
                     table.is_user_want_to_proceed = consent;
@@ -99,7 +94,7 @@ pub fn process_manager_actor<
                     };
                 }
                 MessageToProcessManager::FromProcess {
-                    process_name,
+                    process_id,
                     message,
                 } => {
                     match message {
@@ -109,7 +104,7 @@ pub fn process_manager_actor<
                         } => {
                             let timer_handle = timer_handle::<Rt, Di>(dialog);
 
-                            process_states.insert(process_name, ProcessInfo {
+                            process_states.insert(process_id, ProcessInfo {
                                 sender,
                                 dialog,
                                 timer_handle,
@@ -122,7 +117,7 @@ pub fn process_manager_actor<
                             is_response_from_server,
                             is_response_ok,
                         } => {
-                            let table = process_states.get_mut(&process_name).unwrap();
+                            let table = process_states.get_mut(&process_id).unwrap();
 
                             table.is_ok = Some(is_response_ok);
                             table.is_response_from_server = Some(is_response_from_server);
@@ -130,7 +125,7 @@ pub fn process_manager_actor<
                             if is_response_from_server {
                                 table.sender.send(MessageToProcess::CancelOperation).await.unwrap();
 
-                                process_states.remove(&process_name);
+                                process_states.remove(&process_id);
                             }
                         }
                     };

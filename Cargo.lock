@@ -3784,6 +3784,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "kernel"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "utility",
+]
+
+[[package]]
 name = "keyboard-types"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7156,6 +7164,21 @@ dependencies = [
  "idna",
  "percent-encoding",
  "serde",
+]
+
+[[package]]
+name = "use_case_"
+version = "0.1.0"
+
+[[package]]
+name = "use_case_create_account"
+version = "0.1.0"
+dependencies = [
+ "adapters",
+ "client_communications",
+ "kernel",
+ "serde",
+ "utility",
 ]
 
 [[package]]

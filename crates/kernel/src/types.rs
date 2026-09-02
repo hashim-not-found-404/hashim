@@ -1,9 +1,5 @@
-use crate::domain::utility::new_types::BranchUuid;
-use crate::domain::utility::new_types::CompanyUuid;
-use crate::domain::utility::new_types::JsonWebTokenType;
-use crate::domain::utility::new_types::UserUuid;
-use crate::domain::utility::new_types::UuidType;
-use crate::utility::traits::DynamicError;
+use crate::new_types::BranchUuid;
+use crate::new_types::CompanyUuid;
 use serde::Deserialize;
 use serde::Serialize;
 use std::error::Error;
@@ -11,24 +7,7 @@ use std::fmt::Debug;
 use std::fmt::Display;
 use std::fmt::Formatter;
 use std::str::FromStr;
-
-pub trait RowId: 'static {
-    fn parse(s: impl AsRef<str>) -> Option<UuidType>;
-    fn generate() -> UuidType;
-    fn get_time_as_seconds(uuid: &UuidType) -> Option<u64>;
-    fn validate(uuid: &UuidType) -> bool;
-}
-
-pub trait HashedPassword {
-    fn sign_up(password: &str) -> String;
-    fn sign_in(password: &str, password_hash: &str) -> bool;
-}
-
-pub trait JWT: 'static {
-    fn new() -> Self;
-    fn sign(&self, user_uuid: &UserUuid) -> JsonWebTokenType;
-    fn validate(&self, token: JsonWebTokenType) -> Option<UserUuid>;
-}
+use utility::types::DynamicError;
 
 pub trait DatabaseRead {
     type Db<'a>;
@@ -51,11 +30,11 @@ pub trait DatabaseWrite {
     ) -> impl Future<Output = Result<(), DynamicError>>;
 }
 
-pub(crate) trait MyErrorTrait {
+pub trait MyErrorTrait {
     fn is_there_error(&self) -> bool;
 }
 
-pub(crate) trait MarkerMyErrorTrait {}
+pub trait MarkerMyErrorTrait {}
 
 impl<T: MarkerMyErrorTrait + Default + PartialEq> MyErrorTrait for T {
     fn is_there_error(&self) -> bool {
@@ -67,10 +46,10 @@ pub type ListOfCompanies = Vec<Company>;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Company {
-    pub uuid:        CompanyUuid,
-    pub name:        String,
-    pub(crate) role: Role,
-    pub branches:    Vec<Branch>,
+    pub uuid:     CompanyUuid,
+    pub name:     String,
+    pub role:     Role,
+    pub branches: Vec<Branch>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -86,7 +65,7 @@ pub struct Location {
 }
 
 impl Location {
-    pub(crate) fn is_valid(&self) -> bool {
+    pub fn is_valid(&self) -> bool {
         self.latitude >= -90.0
             && self.latitude <= 90.0
             && self.longitude >= -180.0
@@ -151,7 +130,7 @@ impl Role {
         }
     }
 
-    pub(crate) fn has_any(user_roles: &[Self], roles: &[Role]) -> bool {
+    pub fn has_any(user_roles: &[Self], roles: &[Role]) -> bool {
         for role in roles {
             if user_roles.contains(role) {
                 return true;
@@ -168,26 +147,26 @@ pub const ADDRESS: &str = "127.0.0.1:8081";
 // there should be no generic in all the below types
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
-pub(crate) enum UserUuidError {
+pub enum UserUuidError {
     Invalid,
     NotAuthenticated,
     YouDontHavePermissionToDoThat,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
-pub(crate) enum RowIdError {
+pub enum RowIdError {
     Invalid,
     Duplicated,
     NotExist,
 }
 
 #[derive(Debug, PartialEq, Deserialize, Serialize)]
-pub(crate) enum NonceError {
+pub enum NonceError {
     Invalid,
 }
 
 #[derive(Debug, PartialEq, Deserialize, Serialize)]
-pub(crate) enum JWTError {
+pub enum JWTError {
     Invalid,
 }
 

@@ -1,0 +1,17 @@
+[package]
+name = "kernel"
+version = "0.1.0"
+edition = "2024"
+
+[features]
+infrastructure = []
+ui = []
+cache = []
+client = []
+server = []
+database = []
+
+[dependencies]
+utility = { workspace = true }
+
+serde = { workspace = true }

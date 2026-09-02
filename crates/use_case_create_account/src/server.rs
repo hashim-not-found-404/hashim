@@ -1,16 +1,14 @@
-use crate::domain::use_cases::create_account::DatabaseRead;
-use crate::domain::use_cases::create_account::Input;
-use crate::domain::use_cases::create_account::MyResult;
-use crate::domain::use_cases::create_account::Ok;
-use crate::domain::utility::types::DatabaseWrite;
-use crate::domain::utility::types::MyErrorTrait;
-use crate::domain::utility::types::RowId;
-use crate::domain::utility::types::UserUuidError;
-use crate::make_auth_check;
-use crate::server::utility::server_traits::DBClient;
-use crate::server::utility::server_traits::DBTransaction;
-use crate::server::utility::server_traits::SideEffects;
-use crate::utility::traits::DynamicError;
+use crate::domain::DatabaseRead;
+use crate::domain::Input;
+use crate::domain::MyResult;
+use crate::domain::Ok;
+use adapters::row_id::RowId;
+use kernel::server::DBClient;
+use kernel::server::DBTransaction;
+use kernel::server::SideEffects;
+use kernel::types::DatabaseWrite;
+use kernel::types::MyErrorTrait;
+use utility::types::DynamicError;
 
 impl Input {
     pub(crate) async fn handle_operation<
@@ -18,14 +16,14 @@ impl Input {
         Cli: DBClient,
         Db: for<'a> DatabaseRead<Db<'a> = Cli::Txn<'a>>,
         DbWrite: for<'a> DatabaseWrite<Db<'a> = Cli::Txn<'a>, Input = Ok>,
+        SEff: SideEffects,
     >(
         &self,
-        side_effects: &mut SideEffects,
+        side_effects: &mut SEff,
         client: &mut Cli,
     ) -> Result<MyResult, DynamicError> {
         let mut errr = self.state_less_check::<Id>();
-
-        make_auth_check!(side_effects, self, errr);
+        errr.user_uuid = side_effects.check_is_user_authenticated(&self.user_uuid);
 
         if errr.is_there_error() {
             return Ok(Err(errr));

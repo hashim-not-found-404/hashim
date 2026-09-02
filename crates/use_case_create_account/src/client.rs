@@ -1,34 +1,45 @@
 use crate::client::fetches;
 use crate::client::utility::cache::Cache;
-use crate::client::utility::cache_actor::CacheStruct;
-use crate::client::utility::cache_actor::CachingStrategy;
-use crate::client::utility::cache_actor::Response;
-use crate::client::utility::client_traits::CacheActorStruct;
-use crate::client::utility::client_traits::OperationName;
-use crate::client::utility::client_traits::handle_fall_back;
-use crate::client::utility::commander::CommanderLocalState;
-use crate::client::utility::process_manager::MessageToProcessManager;
-use crate::client::utility::process_manager::ProcessName;
-use crate::client::utility::ui_model::AllSignalTypes;
-use crate::client::utility::ui_model::CreateAccount;
-use crate::client::utility::ui_model::HashimSignal;
-use crate::client::utility::ui_model::Model;
-use crate::domain::request_response::OperationsInput;
-use crate::domain::request_response::OperationsResult;
-use crate::domain::use_cases::create_account::DatabaseRead;
-use crate::domain::use_cases::create_account::Input;
-use crate::domain::use_cases::create_account::MyResult;
-use crate::domain::utility::new_types::AccountUuid;
-use crate::domain::utility::types::MyErrorTrait;
-use crate::domain::utility::types::RowId;
+use crate::domain::DatabaseRead;
+use crate::domain::Input;
+use crate::domain::MyResult;
 use crate::make_wrap_unwrap;
-use crate::utility::traits::MultiProducerSingleConsumer;
-use crate::utility::traits::RandomNumber;
-use crate::utility::traits::Receiver;
-use crate::utility::traits::Runtime;
-use crate::utility::traits::Sender;
-use crate::utility::utils::MakeOptionIfEmpty;
-use crate::utility::utils::ReadAndSet;
+use adapters::actors::MultiProducerSingleConsumer;
+use adapters::actors::Receiver;
+use adapters::actors::Sender;
+use adapters::random_number::RandomNumber;
+use adapters::row_id::RowId;
+use adapters::runtime::Runtime;
+use client_communications::cache::CacheStruct;
+use client_communications::cache::CachingStrategy;
+use client_communications::cache::Response;
+use client_communications::process_manager::MessageToProcessManager;
+use client_communications::process_manager::ProcessId as ProcessName;
+use client_communications::process_manager::UserConsent;
+use client_communications::ui_orchestration::OperationName;
+use client_communications::ui_orchestration::handle_fall_back;
+use kernel::new_types::AccountUuid;
+use kernel::types::MyErrorTrait;
+use serde::Deserialize;
+use serde::Serialize;
+use utility::types::MakeOptionIfEmpty;
+use utility::types::ReadAndSet;
+
+pub trait HashimSignal<T: Clone + Default>: Default {
+    fn reset(&self) {
+        self.set(T::default());
+    }
+    fn read(&self) -> T;
+    fn set(&self, v: T);
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
+pub enum Dialog {
+    #[default]
+    Hide,
+    Show,
+    Error,
+}
 
 type Type1 = Input;
 type Type2 = Input;
@@ -36,6 +47,30 @@ type Type3 = MyResult;
 type Type4 = MyResult;
 
 make_wrap_unwrap!(create_account, CreateAccount);
+
+pub trait Model {
+    fn is_loading(&self) -> impl HashimSignal<bool>;
+    fn show_dialog(&self) -> impl HashimSignal<Dialog>;
+    fn is_debit(&self) -> impl HashimSignal<bool>;
+    fn is_permanent_account(&self) -> impl HashimSignal<bool>;
+    fn account_name(&self) -> impl HashimSignal<String>;
+    fn notes(&self) -> impl HashimSignal<String>;
+    fn unit_of_measurement_of_quantity(&self) -> impl HashimSignal<String>;
+    fn account_name_error(&self) -> impl HashimSignal<Option<String>>;
+}
+
+#[derive(Debug)]
+pub enum CreateAccount {
+    Subscribe,
+    Submit,
+    Consent(UserConsent),
+    Clean,
+    IsDebit(bool),
+    IsPermanentAccount(bool),
+    AccountName(String),
+    Notes(String),
+    UnitOfMeasurementOfQuantity(String),
+}
 
 pub(crate) async fn state_full_operation<
     Ch: Cache,
@@ -53,7 +88,7 @@ pub(crate) async fn state_full_operation<
     Ok(data.state_less_operation())
 }
 
-fn apply_on_the_model<As: AllSignalTypes>(output: &Type4, model: &Model<As>) {
+fn apply_on_the_model<As: Model>(output: &Type4, model: &As) {
     let local_state = &model.page_create_account;
 
     match output {
@@ -74,12 +109,14 @@ impl CreateAccount {
         Rt: Runtime,
         Id: RowId,
         Mpsc: MultiProducerSingleConsumer,
-        As: AllSignalTypes,
+        As: Model,
+        OperationsInput,
+        OperationsResult,
         Ch: Cache,
         LongCache: for<'a> DatabaseRead<Db<'a> = Ch>,
     >(
         self,
-        model: &'static Model<As>,
+        model: &'static As,
         cache: CacheStruct<Mpsc, OperationName, OperationsInput, OperationsResult>,
         commander_local_state: CommanderLocalState<Mpsc, As>,
     ) {
@@ -99,8 +136,8 @@ impl CreateAccount {
                     .sender_to_process_manager
                     .read()
                     .send(MessageToProcessManager::FromUser {
-                        process_name: ProcessName::CreateAccount,
-                        consent:      i,
+                        process_id: ProcessName::CreateAccount,
+                        consent:    i,
                     })
                     .await
                     .unwrap();
@@ -123,12 +160,12 @@ impl CreateAccount {
     }
 }
 
-fn build_input<Id: RowId, As: AllSignalTypes>(model: &Model<As>) -> Type1 {
+fn build_input<Id: RowId, As: Model>(model: &As) -> Type1 {
     let local_state = &model.page_create_account;
 
     Input {
         user_uuid:                       model.user_uuid.read().clone().unwrap(),
-        new_uuid:                        AccountUuid(Id::generate()),
+        new_uuid:                        AccountUuid(Id::generate().into()),
         is_debit:                        local_state.is_debit.read(),
         is_permanent_account:            local_state.is_permanent_account.read(),
         account_name:                    local_state.account_name.read(),
@@ -138,7 +175,7 @@ fn build_input<Id: RowId, As: AllSignalTypes>(model: &Model<As>) -> Type1 {
     }
 }
 
-fn handle_clean<As: AllSignalTypes>(model: &Model<As>) {
+fn handle_clean<As: Model>(model: &As) {
     let local_state = &model.page_create_account;
 
     local_state.account_name.reset();
@@ -155,11 +192,11 @@ async fn handle_submit<
     Rt: Runtime,
     Id: RowId,
     Mpsc: MultiProducerSingleConsumer,
-    As: AllSignalTypes,
+    As: Model,
     Ch: Cache,
     LongCache: for<'a> DatabaseRead<Db<'a> = Ch>,
 >(
-    model: &'static Model<As>,
+    model: &'static As,
     cache: CacheActorStruct<Mpsc>,
     commander_local_state: CommanderLocalState<Mpsc, As>,
 ) {
@@ -193,11 +230,11 @@ async fn handle_check<
     Rn: RandomNumber,
     Id: RowId,
     Mpsc: MultiProducerSingleConsumer,
-    As: AllSignalTypes,
+    As: Model,
     Ch: Cache,
     LongCache: for<'a> DatabaseRead<Db<'a> = Ch>,
 >(
-    model: &'static Model<As>,
+    model: &'static As,
     mut cache: CacheActorStruct<Mpsc>,
 ) {
     let input = build_input::<Id, As>(model);

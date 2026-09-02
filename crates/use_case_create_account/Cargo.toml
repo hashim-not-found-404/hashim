@@ -1,0 +1,20 @@
+[package]
+name = "use_case_create_account"
+version = "0.1.0"
+edition = "2024"
+
+[features]
+infrastructure = []
+ui = []
+cache = []
+client = []
+server = []
+database = []
+
+[dependencies]
+adapters = { workspace = true }
+client_communications = { workspace = true }
+kernel = { workspace = true }
+utility = { workspace = true }
+
+serde = { workspace = true }

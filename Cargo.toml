@@ -6,7 +6,9 @@ members = ["crates/*"]
 accounting_engine = { path = "./crates/accounting_engine" }
 adapters = { path = "./crates/adapters" }
 cache = { path = "./crates/cache" }
+client_communications = { path = "./crates/client_communications" }
 database = { path = "./crates/database" }
+kernel = { path = "./crates/kernel" }
 my_core = { path = "./crates/my_core" }
 utility = { path = "./crates/utility" }
 
@@ -39,5 +41,8 @@ tokio-tungstenite = { version = "0.29.0" }
 uuid = { version = "1.24.0", features = ["v7", "serde", "js"] }
 wasm-bindgen-futures = { version = "0.4.76" }
 
-[profile.dev]
+[profile.dev.package."*"]
+opt-level = 0
+
+[profile.test.package."*"]
 opt-level = 0
