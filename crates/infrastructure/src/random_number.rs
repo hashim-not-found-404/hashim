@@ -1,6 +1,11 @@
+pub trait RandomNumber: 'static {
+    fn generate() -> u64;
+}
+
+#[cfg(feature = "infrastructure")]
 pub mod target {
+    use super::RandomNumber;
     use getrandom::fill;
-    use my_core::utility::traits::RandomNumber;
 
     pub struct S;
 

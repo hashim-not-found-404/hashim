@@ -8,6 +8,7 @@ adapters = { path = "./crates/adapters" }
 cache = { path = "./crates/cache" }
 client_communications = { path = "./crates/client_communications" }
 database = { path = "./crates/database" }
+infrastructure = { path = "./crates/infrastructure" }
 kernel = { path = "./crates/kernel" }
 my_core = { path = "./crates/my_core" }
 utility = { path = "./crates/utility" }

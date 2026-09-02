@@ -2,7 +2,7 @@ use crate::domain::DatabaseRead;
 use crate::domain::Input;
 use crate::domain::MyResult;
 use crate::domain::Ok;
-use adapters::row_id::RowId;
+use infrastructure::row_id::RowId;
 use kernel::server::DBClient;
 use kernel::server::DBTransaction;
 use kernel::server::SideEffects;

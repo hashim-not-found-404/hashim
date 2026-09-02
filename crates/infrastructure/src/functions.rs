@@ -1,5 +1,10 @@
+pub trait Regex: 'static {
+    fn is_regex(s: &str) -> Result<(), String>;
+}
+
+#[cfg(feature = "infrastructure")]
 pub mod target {
-    use my_core::utility::traits::Regex as MyRegex;
+    use super::Regex as MyRegex;
     use regex::Regex;
     use std::sync::LazyLock;
 

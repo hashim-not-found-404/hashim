@@ -7,7 +7,7 @@ edition = "2024"
 infrastructure = ["tokio", "tokio-tungstenite", "futures"]
 
 [dependencies]
-adapters = { workspace = true }
+infrastructure = { workspace = true }
 utility = { workspace = true }
 
 serde = { workspace = true }

@@ -1,5 +1,5 @@
-use adapters::runtime::Either;
-use adapters::runtime::Runtime;
+use infrastructure::runtime::Either;
+use infrastructure::runtime::Runtime;
 use std::time::Duration;
 use utility::types::DynamicError;
 

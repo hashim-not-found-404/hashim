@@ -1,4 +1,4 @@
-use adapters::row_id::RowId;
+use infrastructure::row_id::RowId;
 use kernel::new_types::AccountUuid;
 use kernel::new_types::CompanyUuid;
 use kernel::new_types::UserUuid;

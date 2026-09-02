@@ -1,16 +1,53 @@
+use std::time::Duration;
+use utility::types::DynamicError;
+
+pub enum Either<L, R> {
+    One(L),
+    Two(R),
+}
+
+pub trait JoinHandle {
+    fn abort(&mut self) -> impl Future<Output = ()>;
+}
+
+pub trait Runtime: 'static {
+    type JoinHandle<T>: JoinHandle;
+
+    #[must_use = "this `output` you may want to abort"]
+    fn abortable_spawn_local<F>(fut: F) -> Self::JoinHandle<F::Output>
+    where
+        F: Future + 'static;
+
+    fn spawn_local<F>(fut: F)
+    where
+        F: Future + 'static;
+
+    fn timeout<T, F>(duration: Duration, fut: F) -> impl Future<Output = Result<T, DynamicError>>
+    where
+        F: Future<Output = T>;
+
+    fn sleep(duration: Duration) -> impl Future<Output = ()>;
+
+    fn select<R1, R2, F1, F2>(fut1: F1, fut2: F2) -> impl Future<Output = Either<R1, R2>>
+    where
+        F1: Future<Output = R1>,
+        F2: Future<Output = R2>;
+}
+
 #[cfg(not(target_arch = "wasm32"))]
+#[cfg(feature = "infrastructure")]
 pub mod target {
-    use my_core::utility::traits::DynamicError;
-    use my_core::utility::traits::Either;
-    use my_core::utility::traits::Runtime;
+    use super::Either;
+    use super::Runtime;
     use std::time::Duration;
     use tokio;
     use tokio::task::spawn_local;
+    use utility::types::DynamicError;
 
     pub struct S;
 
     impl Runtime for S {
-        type JoinHandle<F> = super::join_handle::target::S<F>;
+        type JoinHandle<F> = super::join_handle::S<F>;
 
         fn abortable_spawn_local<F: Future + 'static>(fut: F) -> Self::JoinHandle<F::Output> {
             Self::JoinHandle::new(spawn_local(fut))
@@ -51,23 +88,24 @@ pub mod target {
 }
 
 #[cfg(target_arch = "wasm32")]
+#[cfg(feature = "infrastructure")]
 pub mod target {
+    use super::Either;
+    use super::Runtime;
     use super::*;
     use futures::channel::oneshot;
     use futures::future::Either as Eth;
     use futures::future::select;
     use gloo_timers::future::TimeoutFuture;
-    use my_core::utility::traits::DynamicError;
-    use my_core::utility::traits::Either;
-    use my_core::utility::traits::Runtime;
     use std::pin::pin;
     use std::time::Duration;
+    use utility::types::DynamicError;
     use wasm_bindgen_futures::spawn_local;
 
     pub struct S;
 
     impl Runtime for S {
-        type JoinHandle<T> = join_handle::target::S<T>;
+        type JoinHandle<T> = join_handle::S<T>;
 
         fn abortable_spawn_local<F: Future + 'static>(fut: F) -> Self::JoinHandle<F::Output> {
             let (sender_to_abort, receiver_to_abort) = oneshot::channel();
@@ -121,55 +159,55 @@ pub mod target {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
+#[cfg(feature = "infrastructure")]
 mod join_handle {
-    #[cfg(not(target_arch = "wasm32"))]
-    pub mod target {
-        use my_core::utility::traits::JoinHandle;
+    use super::JoinHandle;
 
-        pub struct S<T>(pub tokio::task::JoinHandle<T>);
+    pub struct S<T>(pub tokio::task::JoinHandle<T>);
 
-        impl<T> JoinHandle for S<T> {
-            async fn abort(&mut self) {
-                self.0.abort();
-            }
+    impl<T> JoinHandle for S<T> {
+        async fn abort(&mut self) {
+            self.0.abort();
         }
+    }
 
-        impl<T> S<T> {
-            pub fn new(t: tokio::task::JoinHandle<T>) -> Self {
-                Self(t)
+    impl<T> S<T> {
+        pub fn new(t: tokio::task::JoinHandle<T>) -> Self {
+            Self(t)
+        }
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+#[cfg(feature = "infrastructure")]
+mod join_handle {
+    use super::JoinHandle;
+    use futures::channel::oneshot;
+    use futures::lock::Mutex;
+    use std::sync::Arc;
+
+    pub struct S<T> {
+        pub output: Arc<Mutex<Option<T>>>,
+        aborter:    Option<oneshot::Sender<()>>,
+    }
+
+    impl<T> JoinHandle for S<T> {
+        async fn abort(&mut self) {
+            match self.aborter.take() {
+                Some(s) => {
+                    let _ = s.send(());
+                }
+                None => return,
             }
         }
     }
 
-    #[cfg(target_arch = "wasm32")]
-    pub mod target {
-        use futures::channel::oneshot;
-        use futures::lock::Mutex;
-        use my_core::utility::traits::JoinHandle;
-        use std::sync::Arc;
-
-        pub struct S<T> {
-            pub output: Arc<Mutex<Option<T>>>,
-            aborter:    Option<oneshot::Sender<()>>,
-        }
-
-        impl<T> JoinHandle for S<T> {
-            async fn abort(&mut self) {
-                match self.aborter.take() {
-                    Some(s) => {
-                        let _ = s.send(());
-                    }
-                    None => return,
-                }
-            }
-        }
-
-        impl<T> S<T> {
-            pub fn new(aborter: oneshot::Sender<()>) -> Self {
-                Self {
-                    output:  Arc::default(),
-                    aborter: Some(aborter),
-                }
+    impl<T> S<T> {
+        pub fn new(aborter: oneshot::Sender<()>) -> Self {
+            Self {
+                output:  Arc::default(),
+                aborter: Some(aborter),
             }
         }
     }

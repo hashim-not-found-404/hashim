@@ -1,5 +1,12 @@
+pub trait HashedPassword {
+    fn sign_up(password: &str) -> String;
+    fn sign_in(password: &str, password_hash: &str) -> bool;
+}
+
 #[cfg(not(target_arch = "wasm32"))]
+#[cfg(feature = "infrastructure")]
 pub mod target {
+    use super::HashedPassword;
     use argon2::Argon2;
     use argon2::PasswordHash;
     use argon2::PasswordHasher;
@@ -7,7 +14,6 @@ pub mod target {
     use argon2::password_hash::SaltString;
     use argon2::password_hash::rand_core::OsRng;
     use derive_more::From;
-    use my_core::domain::utility::types::HashedPassword;
 
     #[derive(Debug, Clone, From)]
     pub struct S;

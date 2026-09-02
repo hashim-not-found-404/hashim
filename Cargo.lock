@@ -257,12 +257,12 @@ dependencies = [
  "gloo-net 0.7.0",
  "gloo-timers 0.4.0",
  "jsonwebtoken",
+ "my_core",
  "postcard",
  "regex",
  "serde",
  "tokio",
  "tokio-tungstenite",
- "utility",
  "uuid",
  "wasm-bindgen-futures",
 ]
@@ -969,8 +969,8 @@ dependencies = [
 name = "client_communications"
 version = "0.1.0"
 dependencies = [
- "adapters",
  "futures",
+ "infrastructure",
  "serde",
  "tokio",
  "tokio-tungstenite",
@@ -3598,6 +3598,29 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a588916bfdfd92e71cacef98a63d9b1f0d74d6599980d11894290e7ddefffcf7"
 dependencies = [
  "cfb",
+]
+
+[[package]]
+name = "infrastructure"
+version = "0.1.0"
+dependencies = [
+ "argon2",
+ "chrono",
+ "derive_more 2.1.1",
+ "futures",
+ "futures-util",
+ "getrandom 0.4.3",
+ "gloo-net 0.7.0",
+ "gloo-timers 0.4.0",
+ "jsonwebtoken",
+ "postcard",
+ "regex",
+ "serde",
+ "tokio",
+ "tokio-tungstenite",
+ "utility",
+ "uuid",
+ "wasm-bindgen-futures",
 ]
 
 [[package]]
@@ -7167,15 +7190,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "use_case_"
-version = "0.1.0"
-
-[[package]]
 name = "use_case_create_account"
 version = "0.1.0"
 dependencies = [
- "adapters",
  "client_communications",
+ "infrastructure",
  "kernel",
  "serde",
  "utility",

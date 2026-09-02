@@ -7,4 +7,3 @@ pub mod random_number;
 pub mod row_id;
 pub mod runtime;
 pub mod time;
-pub mod web_socket_adapter;

@@ -12,8 +12,8 @@ server = []
 database = []
 
 [dependencies]
-adapters = { workspace = true }
 client_communications = { workspace = true }
+infrastructure = { workspace = true }
 kernel = { workspace = true }
 utility = { workspace = true }
 

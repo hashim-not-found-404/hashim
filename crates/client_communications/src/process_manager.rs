@@ -1,8 +1,8 @@
-use adapters::actors::MultiProducerSingleConsumer;
-use adapters::actors::Receiver;
-use adapters::actors::Sender;
-use adapters::runtime::JoinHandle;
-use adapters::runtime::Runtime;
+use infrastructure::actors::MultiProducerSingleConsumer;
+use infrastructure::actors::Receiver;
+use infrastructure::actors::Sender;
+use infrastructure::runtime::JoinHandle;
+use infrastructure::runtime::Runtime;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::hash::Hash;

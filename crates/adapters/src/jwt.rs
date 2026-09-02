@@ -1,40 +1,5 @@
-use serde::Deserialize;
-use serde::Serialize;
-use std::ops::Deref;
-
-#[derive(Debug, Clone, Default, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
-pub struct JsonWebTokenType(pub String);
-
-impl Deref for JsonWebTokenType {
-    type Target = String;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-impl From<String> for JsonWebTokenType {
-    fn from(value: String) -> Self {
-        Self(value)
-    }
-}
-
-pub trait JWT: 'static {
-    fn new() -> Self;
-    fn sign<Subject: Serialize + for<'de> Deserialize<'de> + Clone>(
-        &self,
-        subject: &Subject,
-    ) -> JsonWebTokenType;
-    fn validate<Subject: Serialize + for<'de> Deserialize<'de> + Clone>(
-        &self,
-        token: JsonWebTokenType,
-    ) -> Option<Subject>;
-}
-
 #[cfg(not(target_arch = "wasm32"))]
-#[cfg(feature = "infrastructure")]
 pub mod target {
-    use super::JWT;
-    use super::JsonWebTokenType;
     use chrono::Duration;
     use chrono::Utc;
     use jsonwebtoken::Algorithm;
@@ -44,6 +9,9 @@ pub mod target {
     use jsonwebtoken::Validation;
     use jsonwebtoken::decode;
     use jsonwebtoken::encode;
+    use my_core::domain::utility::new_types::JsonWebTokenType;
+    use my_core::domain::utility::new_types::UserUuid;
+    use my_core::domain::utility::types::JWT;
     use serde::Deserialize;
     use serde::Serialize;
     use std::sync::Arc;
@@ -58,8 +26,8 @@ pub mod target {
     }
 
     #[derive(Debug, Deserialize, Serialize)]
-    struct Claims<Subject> {
-        sub: Subject,
+    struct Claims {
+        id:  UserUuid,
         exp: u64,
     }
 
@@ -70,12 +38,9 @@ pub mod target {
             }
         }
 
-        fn sign<Subject: Serialize + for<'de> Deserialize<'de> + Clone>(
-            &self,
-            subject: &Subject,
-        ) -> JsonWebTokenType {
+        fn sign(&self, id: &UserUuid) -> JsonWebTokenType {
             let claims = Claims {
-                sub: subject.clone(),
+                id:  id.clone(),
                 exp: exp_time(),
             };
 
@@ -84,16 +49,17 @@ pub mod target {
             )
         }
 
-        fn validate<Subject: Serialize + for<'de> Deserialize<'de> + Clone>(
-            &self,
-            token: JsonWebTokenType,
-        ) -> Option<Subject> {
-            let result = decode::<Claims<Subject>>(
+        fn validate(&self, token: JsonWebTokenType) -> Option<UserUuid> {
+            let result = decode::<Claims>(
                 &token.0,
                 &DecodingKey::from_secret(&self.key),
                 &Validation::new(Algorithm::HS256),
             );
-            result.ok().map(|data| data.claims.sub)
+
+            match result {
+                Ok(token) => Some(token.claims.id),
+                Err(_) => None,
+            }
         }
     }
 }

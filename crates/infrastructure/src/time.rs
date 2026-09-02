@@ -1,5 +1,10 @@
+pub trait Time: 'static {
+    fn now_as_unix_milliseconds() -> u64;
+}
+
+#[cfg(feature = "infrastructure")]
 pub mod target {
-    use my_core::utility::traits::Time;
+    use super::Time;
 
     pub struct S;
 

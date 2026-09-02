@@ -6,12 +6,12 @@ use crate::process_manager::MessageFromProcess;
 use crate::process_manager::MessageToProcess;
 use crate::process_manager::MessageToProcessManager;
 use crate::process_manager::ProcessId;
-use adapters::actors::MultiProducerSingleConsumer;
-use adapters::actors::Receiver;
-use adapters::actors::Sender;
-use adapters::random_number::RandomNumber;
-use adapters::runtime::JoinHandle;
-use adapters::runtime::Runtime;
+use infrastructure::actors::MultiProducerSingleConsumer;
+use infrastructure::actors::Receiver;
+use infrastructure::actors::Sender;
+use infrastructure::random_number::RandomNumber;
+use infrastructure::runtime::JoinHandle;
+use infrastructure::runtime::Runtime;
 
 #[macro_export]
 macro_rules! make_wrap_unwrap {
