@@ -1,0 +1,49 @@
+/*
+1- the background is black
+2- all the botton and label and input text have the same text color
+3- the input place holder have text color less degree than the label
+4- all the border same size and same color
+5- the hover have higher degry color for the border
+6- the focus have higher degree of color than hover
+7- label and input and secondary botton all have transperent bg color
+8- primary botton have the same color of the border
+*/
+
+:root {
+    /* Dark theme colors */
+    --color-1: #000000;
+    --color-2: #333333;
+    --color-3: #888888;
+    --color-4: #ffffff;
+    --color-5: #880000;
+    --color-6: none;
+
+    /* font size */
+    --font-size-1: 16px;
+    --font-size-2: 8px;
+
+    /* fonts */
+    --font-1: sans-serif;
+
+    /* Spacing */
+    --padding: 12px;
+    --margin: 6px;
+    --radius: 8px;
+    --border-thick: 2px;
+}
+
+body {
+    margin: 0;
+    background-color: var(--color-1);
+    font-family: var(--font-1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+}
+
+/*1 block-name__element-name_modifier-name_modifiers-value */
+/*2 block_name--element_name-modifier_name-modifiers_value */
+/*3 block_name-element_name--modifier_name---modifiers_value */
+/*4 BlockName-ElementName--ModifierName---ModifiersValue */
+/*5 BlockName-ElementName--ModifierName--ModifiersValue */
