@@ -2817,6 +2817,7 @@ dependencies = [
  "kernel",
  "serde",
  "utility",
+ "utility_ui",
 ]
 
 [[package]]

@@ -15,6 +15,7 @@ members = [
 accounting_engine = { path = "./crates/accounting_engine" }
 kernel = { path = "./crates/kernel" }
 utility = { path = "./crates/utility" }
+utility_ui = { path = "./crates/utility_ui" }
 
 actix-cors = { version = "0.7.1" }
 actix-web = { version = "4.14.0", features = ["rustls-0_23"] }

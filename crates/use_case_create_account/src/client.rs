@@ -6,8 +6,6 @@ use crate::domain::MyResult;
 use crate::make_wrap_unwrap;
 use kernel::new_types::AccountUuid;
 use kernel::types::MyErrorTrait;
-use serde::Deserialize;
-use serde::Serialize;
 use utility::actors::MultiProducerSingleConsumer;
 use utility::actors::Receiver;
 use utility::actors::Sender;
@@ -24,22 +22,8 @@ use utility::types::MakeOptionIfEmpty;
 use utility::types::ReadAndSet;
 use utility::ui_orchestration::OperationName;
 use utility::ui_orchestration::handle_fall_back;
-
-pub trait HashimSignal<T: Clone + Default>: Default {
-    fn reset(&self) {
-        self.set(T::default());
-    }
-    fn read(&self) -> T;
-    fn set(&self, v: T);
-}
-
-#[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
-pub enum Dialog {
-    #[default]
-    Hide,
-    Show,
-    Error,
-}
+use utility_ui::domain::Dialog;
+use utility_ui::domain::HashimSignal;
 
 type Type1 = Input;
 type Type2 = Input;
