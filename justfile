@@ -23,6 +23,12 @@ check: fmt
     RUSTFLAGS="-A warnings" cargo check --all-targets --features="server"
     RUSTFLAGS="-A warnings" cargo check --all-targets --features="server,infrastructure,database"
 
+test: fmt
+    RUSTFLAGS="-A warnings" cargo test -- --show-output
+
+warn: fmt
+    cargo clippy --all-targets --all-features -- -W clippy::pedantic
+
 checkp crate_name: fmt
     RUSTFLAGS="-A warnings" cargo check -p {{crate_name}} --all-targets
     RUSTFLAGS="-A warnings" cargo check -p {{crate_name}} --all-targets --features="infrastructure"
@@ -32,14 +38,16 @@ checkp crate_name: fmt
     RUSTFLAGS="-A warnings" cargo check -p {{crate_name}} --all-targets --features="server"
     RUSTFLAGS="-A warnings" cargo check -p {{crate_name}} --all-targets --features="server,infrastructure,database"
 
-warn: fmt
-    cargo clippy --all-targets --all-features -- -W clippy::pedantic
+testp crate_name: fmt
+    RUSTFLAGS="-A warnings" cargo test -p {{crate_name}} -- --show-output
 
 warnp crate_name: fmt
     cargo clippy -p {{crate_name}} --all-targets --all-features -- -W clippy::pedantic
 
-test: fmt
-    RUSTFLAGS="-A warnings" cargo test -- --show-output
+all: fmt check test warn
 
-testp crate_name: fmt
-    RUSTFLAGS="-A warnings" cargo test -p {{crate_name}} -- --show-output
+allp crate_name:
+    @just fmt
+    @just checkp {{crate_name}}
+    @just testp {{crate_name}}
+    @just warnp {{crate_name}}
