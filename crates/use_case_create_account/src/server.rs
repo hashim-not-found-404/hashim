@@ -2,12 +2,12 @@ use crate::domain::DatabaseRead;
 use crate::domain::Input;
 use crate::domain::MyResult;
 use crate::domain::Ok;
-use infrastructure::row_id::RowId;
 use kernel::server::DBClient;
 use kernel::server::DBTransaction;
 use kernel::server::SideEffects;
 use kernel::types::DatabaseWrite;
 use kernel::types::MyErrorTrait;
+use utility::row_id::RowId;
 use utility::types::DynamicError;
 
 impl Input {

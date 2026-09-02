@@ -1,6 +1,6 @@
+use crate::types::DynamicError;
 use serde::Deserialize;
 use serde::Serialize;
-use utility::types::DynamicError;
 
 pub trait Coding {
     fn encode<T: Serialize>(data: &T) -> Vec<u8>;
@@ -10,11 +10,11 @@ pub trait Coding {
 #[cfg(feature = "infrastructure")]
 pub mod target {
     use super::Coding;
+    use crate::types::DynamicError;
     use postcard::from_bytes;
     use postcard::to_allocvec;
     use serde::Deserialize;
     use serde::Serialize;
-    use utility::types::DynamicError;
 
     pub struct S;
 

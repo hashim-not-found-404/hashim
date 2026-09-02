@@ -1,7 +1,7 @@
-use infrastructure::runtime::Either;
-use infrastructure::runtime::Runtime;
+use crate::runtime::Either;
+use crate::runtime::Runtime;
+use crate::types::DynamicError;
 use std::time::Duration;
-use utility::types::DynamicError;
 
 pub trait WSClient: Sized {
     fn connect(url: &str) -> impl Future<Output = Result<Self, DynamicError>>;
@@ -82,6 +82,7 @@ pub fn network_actor<Rt: Runtime, Ws: WSClient, Nw: Network + 'static>(
 #[cfg(feature = "infrastructure")]
 pub mod target {
     use super::WSClient;
+    use crate::types::DynamicError;
     use futures::SinkExt;
     use futures::StreamExt;
     use futures::stream::SplitSink;
@@ -91,7 +92,6 @@ pub mod target {
     use tokio_tungstenite::WebSocketStream;
     use tokio_tungstenite::connect_async;
     use tokio_tungstenite::tungstenite::Message;
-    use utility::types::DynamicError;
 
     pub struct S {
         write: SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>,
@@ -135,6 +135,7 @@ pub mod target {
 #[cfg(target_arch = "wasm32")]
 #[cfg(feature = "infrastructure")]
 pub mod target {
+    use crate::types::DynamicError;
     use futures_util::SinkExt;
     use futures_util::StreamExt;
     use futures_util::stream::SplitSink;
@@ -143,7 +144,6 @@ pub mod target {
     use gloo_net::websocket::futures::WebSocket;
     use my_core::client::network_actor::WSClient;
     use std::sync::Mutex;
-    use utility::types::DynamicError;
 
     pub struct S {
         write: SplitSink<WebSocket, Message>,

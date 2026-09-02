@@ -1,8 +1,8 @@
-use infrastructure::actors::MultiProducerSingleConsumer;
-use infrastructure::actors::Receiver;
-use infrastructure::actors::Sender;
-use infrastructure::runtime::JoinHandle;
-use infrastructure::runtime::Runtime;
+use crate::actors::MultiProducerSingleConsumer;
+use crate::actors::Receiver;
+use crate::actors::Sender;
+use crate::runtime::JoinHandle;
+use crate::runtime::Runtime;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::hash::Hash;

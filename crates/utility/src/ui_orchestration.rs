@@ -1,3 +1,6 @@
+use crate::actors::MultiProducerSingleConsumer;
+use crate::actors::Receiver;
+use crate::actors::Sender;
 use crate::cache::CacheStruct;
 use crate::cache::CachingStrategy;
 use crate::cache::Response;
@@ -6,12 +9,9 @@ use crate::process_manager::MessageFromProcess;
 use crate::process_manager::MessageToProcess;
 use crate::process_manager::MessageToProcessManager;
 use crate::process_manager::ProcessId;
-use infrastructure::actors::MultiProducerSingleConsumer;
-use infrastructure::actors::Receiver;
-use infrastructure::actors::Sender;
-use infrastructure::random_number::RandomNumber;
-use infrastructure::runtime::JoinHandle;
-use infrastructure::runtime::Runtime;
+use crate::random_number::RandomNumber;
+use crate::runtime::JoinHandle;
+use crate::runtime::Runtime;
 
 #[macro_export]
 macro_rules! make_wrap_unwrap {

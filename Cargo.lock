@@ -138,18 +138,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "client_communications"
-version = "0.1.0"
-dependencies = [
- "futures",
- "infrastructure",
- "serde",
- "tokio",
- "tokio-tungstenite",
- "utility",
-]
-
-[[package]]
 name = "cobs"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -665,29 +653,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f31827a206f56af32e590ba56d5d2d085f558508192593743f16b2306495269f"
 dependencies = [
  "cc",
-]
-
-[[package]]
-name = "infrastructure"
-version = "0.1.0"
-dependencies = [
- "argon2",
- "chrono",
- "derive_more",
- "futures",
- "futures-util",
- "getrandom 0.4.3",
- "gloo-net",
- "gloo-timers",
- "jsonwebtoken",
- "postcard",
- "regex",
- "serde",
- "tokio",
- "tokio-tungstenite",
- "utility",
- "uuid",
- "wasm-bindgen-futures",
 ]
 
 [[package]]
@@ -1486,8 +1451,6 @@ checksum = "ebc1c04c71510c7f702b52b7c350734c9ff1295c464a03335b00bb84fc54f853"
 name = "use_case_create_account"
 version = "0.1.0"
 dependencies = [
- "client_communications",
- "infrastructure",
  "kernel",
  "serde",
  "utility",
@@ -1496,6 +1459,24 @@ dependencies = [
 [[package]]
 name = "utility"
 version = "0.1.0"
+dependencies = [
+ "argon2",
+ "chrono",
+ "derive_more",
+ "futures",
+ "futures-util",
+ "getrandom 0.4.3",
+ "gloo-net",
+ "gloo-timers",
+ "jsonwebtoken",
+ "postcard",
+ "regex",
+ "serde",
+ "tokio",
+ "tokio-tungstenite",
+ "uuid",
+ "wasm-bindgen-futures",
+]
 
 [[package]]
 name = "uuid"

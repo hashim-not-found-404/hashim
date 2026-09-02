@@ -1,4 +1,4 @@
-use utility::types::DynamicError;
+use crate::types::DynamicError;
 
 pub trait Sender<T>: Clone {
     fn send(&mut self, t: T) -> impl Future<Output = Result<(), DynamicError>>;
@@ -37,8 +37,8 @@ pub mod target {
 #[cfg(feature = "infrastructure")]
 mod mpsc_receiver {
     use super::Receiver;
+    use crate::types::DynamicError;
     use futures::channel::mpsc::UnboundedReceiver;
-    use utility::types::DynamicError;
 
     pub struct S<T>(pub UnboundedReceiver<T>);
     impl<T> Receiver<T> for S<T> {
@@ -57,9 +57,9 @@ mod mpsc_receiver {
 #[cfg(feature = "infrastructure")]
 mod mpsc_sender {
     use super::Sender;
+    use crate::types::DynamicError;
     use futures::SinkExt;
     use futures::channel::mpsc::UnboundedSender;
-    use utility::types::DynamicError;
 
     pub struct S<T>(pub UnboundedSender<T>);
     impl<T> Sender<T> for S<T> {

@@ -1,4 +1,3 @@
-use infrastructure::row_id::RowId;
 use kernel::new_types::AccountUuid;
 use kernel::new_types::CompanyUuid;
 use kernel::new_types::UserUuid;
@@ -9,6 +8,7 @@ use kernel::types::RowIdError;
 use kernel::types::UserUuidError;
 use serde::Deserialize;
 use serde::Serialize;
+use utility::row_id::RowId;
 use utility::types::DynamicError;
 
 pub type MyResult = Result<Ok, Error>;

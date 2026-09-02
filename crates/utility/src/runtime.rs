@@ -1,5 +1,5 @@
+use crate::types::DynamicError;
 use std::time::Duration;
-use utility::types::DynamicError;
 
 pub enum Either<L, R> {
     One(L),
@@ -39,10 +39,10 @@ pub trait Runtime: 'static {
 pub mod target {
     use super::Either;
     use super::Runtime;
+    use crate::types::DynamicError;
     use std::time::Duration;
     use tokio;
     use tokio::task::spawn_local;
-    use utility::types::DynamicError;
 
     pub struct S;
 
@@ -93,13 +93,13 @@ pub mod target {
     use super::Either;
     use super::Runtime;
     use super::*;
+    use crate::types::DynamicError;
     use futures::channel::oneshot;
     use futures::future::Either as Eth;
     use futures::future::select;
     use gloo_timers::future::TimeoutFuture;
     use std::pin::pin;
     use std::time::Duration;
-    use utility::types::DynamicError;
     use wasm_bindgen_futures::spawn_local;
 
     pub struct S;

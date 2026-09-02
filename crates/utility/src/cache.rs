@@ -1,7 +1,7 @@
-use infrastructure::actors::MultiProducerSingleConsumer;
-use infrastructure::actors::Sender;
-use infrastructure::encode_decode::Coding;
-use infrastructure::runtime::Runtime;
+use crate::actors::MultiProducerSingleConsumer;
+use crate::actors::Sender;
+use crate::encode_decode::Coding;
+use crate::runtime::Runtime;
 use serde::Deserialize;
 use serde::Serialize;
 use std::collections::HashMap;
