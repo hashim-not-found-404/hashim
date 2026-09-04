@@ -1,9 +1,9 @@
 use crate::client::fetches;
-use crate::client::utility::cache::Cache;
 use crate::domain::DatabaseRead;
 use crate::domain::Input;
 use crate::domain::MyResult;
 use crate::make_wrap_unwrap;
+use kernel::cache::Cache;
 use kernel::new_types::AccountUuid;
 use kernel::types::MyErrorTrait;
 use utility::actors::MultiProducerSingleConsumer;

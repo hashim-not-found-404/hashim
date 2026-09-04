@@ -4,6 +4,7 @@ pub mod types;
 pub mod actors;
 pub mod encode_decode;
 pub mod functions;
+pub mod jwt;
 pub mod random_number;
 pub mod row_id;
 pub mod runtime;
@@ -20,5 +21,3 @@ pub mod ui_orchestration;
 
 #[cfg(feature = "server")]
 pub mod authentication;
-#[cfg(feature = "server")]
-pub mod jwt;

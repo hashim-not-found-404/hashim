@@ -17,14 +17,16 @@ stat:
 dump: fmt stat
     @find . -type f \( -name "*.rs" -o -name "*.sql" -o -name "*.toml" \) -not -path "*/target/*" -not -path "*/.git/*" -exec echo "=== {} ===" \; -exec cat {} \; > codebase.txt
 
+
 check: fmt
     RUSTFLAGS="-A warnings" cargo check --all-targets
-    RUSTFLAGS="-A warnings" cargo check --all-targets --features="infrastructure"
-    RUSTFLAGS="-A warnings" cargo check --all-targets --features="client"
-    RUSTFLAGS="-A warnings" cargo check --all-targets --features="client,infrastructure,cache"
-    RUSTFLAGS="-A warnings" cargo check --all-targets --features="client,infrastructure,ui"
     RUSTFLAGS="-A warnings" cargo check --all-targets --features="server"
-    RUSTFLAGS="-A warnings" cargo check --all-targets --features="server,infrastructure,database"
+    RUSTFLAGS="-A warnings" cargo check --all-targets --features="client"
+    RUSTFLAGS="-A warnings" cargo check --all-targets --features="server,database"
+    RUSTFLAGS="-A warnings" cargo check --all-targets --features="client,cache"
+    RUSTFLAGS="-A warnings" cargo check --all-targets --features="client,ui"
+    RUSTFLAGS="-A warnings" cargo check --all-targets --features="client,server,infrastructure"
+    cargo-cycles
 
 test: fmt
     RUSTFLAGS="-A warnings" cargo test -- --show-output
@@ -32,25 +34,40 @@ test: fmt
 warn: fmt
     cargo clippy --all-targets --all-features -- -W clippy::pedantic
 
-checkp crate_name: fmt
-    RUSTFLAGS="-A warnings" cargo check -p {{crate_name}} --all-targets
-    RUSTFLAGS="-A warnings" cargo check -p {{crate_name}} --all-targets --features="infrastructure"
-    RUSTFLAGS="-A warnings" cargo check -p {{crate_name}} --all-targets --features="client"
-    RUSTFLAGS="-A warnings" cargo check -p {{crate_name}} --all-targets --features="client,infrastructure,cache"
-    RUSTFLAGS="-A warnings" cargo check -p {{crate_name}} --all-targets --features="client,infrastructure,ui"
-    RUSTFLAGS="-A warnings" cargo check -p {{crate_name}} --all-targets --features="server"
-    RUSTFLAGS="-A warnings" cargo check -p {{crate_name}} --all-targets --features="server,infrastructure,database"
+test_cover: fmt
+    @cargo tarpaulin --out HTML
+    @xdg-open /home/hashem/Documents/backup_folder_for_hashem/accounting_app/tarpaulin-report.html
 
-testp crate_name: fmt
+all: fmt check test warn test_cover
+
+
+check_p crate_name: fmt
+    RUSTFLAGS="-A warnings" cargo check -p {{crate_name}} --all-targets
+    RUSTFLAGS="-A warnings" cargo check -p {{crate_name}} --all-targets --features="server"
+    RUSTFLAGS="-A warnings" cargo check -p {{crate_name}} --all-targets --features="client"
+    RUSTFLAGS="-A warnings" cargo check -p {{crate_name}} --all-targets --features="server,database"
+    RUSTFLAGS="-A warnings" cargo check -p {{crate_name}} --all-targets --features="client,cache"
+    RUSTFLAGS="-A warnings" cargo check -p {{crate_name}} --all-targets --features="client,ui"
+    RUSTFLAGS="-A warnings" cargo check -p {{crate_name}} --all-targets --features="client,server,infrastructure"
+    cargo-cycles
+
+test_p crate_name: fmt
     RUSTFLAGS="-A warnings" cargo test -p {{crate_name}} -- --show-output
 
-warnp crate_name: fmt
+warn_p crate_name: fmt
     cargo clippy -p {{crate_name}} --all-targets --all-features -- -W clippy::pedantic
 
-all: fmt check test warn
+test_cover_p crate_name: fmt
+    @cargo tarpaulin -p {{crate_name}} --out HTML
+    @xdg-open /home/hashem/Documents/backup_folder_for_hashem/accounting_app/tarpaulin-report.html
 
-allp crate_name:
+all_p crate_name:
     @just fmt
-    @just checkp {{crate_name}}
-    @just testp {{crate_name}}
-    @just warnp {{crate_name}}
+    @just check_p {{crate_name}}
+    @just test_p {{crate_name}}
+    @just warn_p {{crate_name}}
+    @just test_cover_p {{crate_name}}
+
+
+new crate_name:
+    cargo new crates/{{crate_name}} --lib --vcs none

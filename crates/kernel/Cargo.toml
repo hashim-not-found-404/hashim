@@ -15,3 +15,4 @@ database = []
 utility = { workspace = true }
 
 serde = { workspace = true }
+typetag = { workspace = true }
