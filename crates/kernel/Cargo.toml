@@ -14,5 +14,6 @@ database = []
 [dependencies]
 utility = { workspace = true }
 
+dyn-clone = { workspace = true }
 serde = { workspace = true }
 typetag = { workspace = true }

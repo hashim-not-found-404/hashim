@@ -1,6 +1,10 @@
 use kernel::new_types::AccountUuid;
 use kernel::new_types::CompanyUuid;
 use kernel::new_types::UserUuid;
+use kernel::request_response::OperationsInput;
+use kernel::request_response::OperationsOk;
+use kernel::request_response::OperationsResult;
+use kernel::request_response::ResourceDTO;
 use kernel::types;
 use kernel::types::MarkerMyErrorTrait;
 use kernel::types::Role;
@@ -8,10 +12,21 @@ use kernel::types::RowIdError;
 use kernel::types::UserUuidError;
 use serde::Deserialize;
 use serde::Serialize;
+use typetag::serde;
 use utility::row_id::RowId;
 use utility::types::DynamicError;
 
-pub type MyResult = Result<Ok, Error>;
+#[serde]
+impl OperationsInput for Input {}
+#[serde]
+impl OperationsOk for Ok {}
+#[serde]
+impl OperationsResult for MyResult {}
+#[serde]
+impl ResourceDTO for Ok {}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct MyResult(Result<Ok, Error>);
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Input {

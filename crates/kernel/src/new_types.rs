@@ -7,7 +7,7 @@ macro_rules! make_type {
         #[derive(
             Debug, Clone, Default, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize,
         )]
-        pub struct $new_type(pub $inner_type);
+        pub struct $new_type($inner_type);
 
         impl Deref for $new_type {
             type Target = $inner_type;

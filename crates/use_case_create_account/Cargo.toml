@@ -17,3 +17,4 @@ utility = { workspace = true }
 utility_ui = { workspace = true }
 
 serde = { workspace = true }
+typetag = { workspace = true }

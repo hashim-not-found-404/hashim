@@ -1,6 +1,7 @@
 use crate::actors::MultiProducerSingleConsumer;
 use crate::actors::Receiver;
 use crate::actors::Sender;
+use crate::random_number::RandomNumber;
 use crate::runtime::JoinHandle;
 use crate::runtime::Runtime;
 use std::collections::HashMap;
@@ -9,7 +10,13 @@ use std::hash::Hash;
 use std::time::Duration;
 
 #[derive(Debug, Clone, Copy, Eq, Hash, PartialEq)]
-pub struct ProcessId(pub u16);
+pub struct ProcessId(u16);
+
+impl ProcessId {
+    pub fn new<Rn: RandomNumber>() -> Self {
+        ProcessId(Rn::generate() as u16)
+    }
+}
 
 pub trait Dialog: 'static {
     fn show(&self);

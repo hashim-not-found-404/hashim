@@ -13,27 +13,8 @@ use crate::random_number::RandomNumber;
 use crate::runtime::JoinHandle;
 use crate::runtime::Runtime;
 
-#[macro_export]
-macro_rules! make_wrap_unwrap {
-    ($case_name:ident, $variant:ident) => {
-        pub(crate) fn wrap_input(
-            data: crate::domain::use_cases::$case_name::Input,
-        ) -> crate::domain::request_response::OperationsInput {
-            crate::domain::request_response::OperationsInput::$variant(data)
-        }
-        pub(crate) fn unwrap_output(
-            output: crate::domain::request_response::OperationsResult,
-        ) -> crate::domain::use_cases::$case_name::MyResult {
-            if let crate::domain::request_response::OperationsResult::$variant(result) = output {
-                return result;
-            }
-            unreachable!("{:?}", output)
-        }
-    };
-}
-
 #[derive(Debug, Clone, Copy, Eq, Hash, PartialEq)]
-pub struct OperationName(pub &'static str);
+pub struct Subscribe(pub &'static str);
 
 pub async fn handle_fall_back<
     Rn: RandomNumber,
@@ -43,7 +24,7 @@ pub async fn handle_fall_back<
     OperationsInput: Clone,
     OperationsResult,
 >(
-    mut cache: CacheStruct<Mpsc, OperationName, OperationsInput, OperationsResult>,
+    mut cache: CacheStruct<Mpsc, Subscribe, OperationsInput, OperationsResult>,
     mut sender_to_process_manager: Mpsc::Sender<MessageToProcessManager<Mpsc, Di>>,
     dialog: &'static Di,
     process_id: ProcessId,
@@ -122,8 +103,8 @@ pub fn spawn_listener<
     OperationsInput: Clone,
     OperationsResult,
 >(
-    mut cache: CacheStruct<Mpsc, OperationName, OperationsInput, OperationsResult>,
-    list_of_subscribtion: &'static [OperationName],
+    mut cache: CacheStruct<Mpsc, Subscribe, OperationsInput, OperationsResult>,
+    list_of_subscribtion: &'static [Subscribe],
     data: OperationsInput,
     is_error: impl Fn(OperationsResult) + 'static,
 ) -> impl FnOnce() {

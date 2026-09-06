@@ -15,8 +15,7 @@ stat:
     git rev-list --count HEAD
 
 dump: fmt stat
-    @find . -type f \( -name "*.rs" -o -name "*.sql" -o -name "*.toml" \) -not -path "*/target/*" -not -path "*/.git/*" -exec echo "=== {} ===" \; -exec cat {} \; > codebase.txt
-
+    @git ls-files | while read -r f; do file -b --mime-type "$f" | grep -q "^text/" && { echo "=== $f ==="; cat "$f"; } done > codebase.txt
 
 check: fmt
     RUSTFLAGS="-A warnings" cargo check --all-targets
@@ -42,13 +41,13 @@ all: fmt check test warn test_cover
 
 
 check_p crate_name: fmt
-    RUSTFLAGS="-A warnings" cargo check -p {{crate_name}} --all-targets
-    RUSTFLAGS="-A warnings" cargo check -p {{crate_name}} --all-targets --features="server"
-    RUSTFLAGS="-A warnings" cargo check -p {{crate_name}} --all-targets --features="client"
-    RUSTFLAGS="-A warnings" cargo check -p {{crate_name}} --all-targets --features="server,database"
-    RUSTFLAGS="-A warnings" cargo check -p {{crate_name}} --all-targets --features="client,cache"
-    RUSTFLAGS="-A warnings" cargo check -p {{crate_name}} --all-targets --features="client,ui"
-    RUSTFLAGS="-A warnings" cargo check -p {{crate_name}} --all-targets --features="client,server,infrastructure"
+    RUSTFLAGS="-A warnings" cargo check --workspace -p {{crate_name}} --all-targets
+    RUSTFLAGS="-A warnings" cargo check --workspace -p {{crate_name}} --all-targets --features="server"
+    RUSTFLAGS="-A warnings" cargo check --workspace -p {{crate_name}} --all-targets --features="client"
+    RUSTFLAGS="-A warnings" cargo check --workspace -p {{crate_name}} --all-targets --features="server,database"
+    RUSTFLAGS="-A warnings" cargo check --workspace -p {{crate_name}} --all-targets --features="client,cache"
+    RUSTFLAGS="-A warnings" cargo check --workspace -p {{crate_name}} --all-targets --features="client,ui"
+    RUSTFLAGS="-A warnings" cargo check --workspace -p {{crate_name}} --all-targets --features="client,server,infrastructure"
     cargo-cycles
 
 test_p crate_name: fmt

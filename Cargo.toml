@@ -26,6 +26,7 @@ deadpool-postgres = { version = "0.14.1" }
 derive_more = { version = "2.1.1", features = ["full"] }
 dioxus = { version = "0.7.9", features = ["router"] }
 dioxus-logger = { version = "0.7.9" }
+dyn-clone = { version = "1.0.20" }
 futures = { version = "0.3.32" }
 futures-util = { version = "0.3.32" }
 getrandom = { version = "0.4.3", features = ["wasm_js"] }
