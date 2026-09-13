@@ -1,6 +1,3 @@
-use std::sync::Arc;
-
-use crate::client::Cache;
 use crate::types::HashimError;
 use infrastructure::actors::Mpsc;
 use infrastructure::actors::MpscReceiver;
@@ -10,18 +7,27 @@ use infrastructure::actors::Receiver;
 use infrastructure::actors::Sender;
 use infrastructure::runtime::Rt;
 use infrastructure::runtime::Runtime;
+use std::collections::HashMap;
+use std::sync::Arc;
+use std::sync::Mutex;
 use utility::cache::CacheStruct;
 use utility::process_manager::MessageToProcessManager;
 use utility_ui::domain::HashimSignal;
 
-trait Model: 'static {}
+pub trait Model: 'static {}
 
-trait Message {
+pub trait Message {
     type Mdl: Model;
-    fn update(self: Arc<Self>, model: Self::Mdl);
+    fn update(
+        self: Arc<Self>,
+        model: Arc<Self::Mdl>,
+        cache: CacheStruct,
+        sender_to_process_manager: MpscSender<MessageToProcessManager>,
+        aborters: Aborters,
+    );
 }
 
-type MessageType<Mdl: Model> = Arc<dyn Message<Mdl = Mdl> + 'static>;
+type MessageType<Mdl> = Arc<dyn Message<Mdl = Mdl>>;
 
 pub struct Commander<Mdl: Model> {
     sender: MpscSender<MessageType<Mdl>>,
@@ -36,17 +42,14 @@ impl<Mdl: Model> Clone for Commander<Mdl> {
 }
 
 impl<Mdl: Model> Commander<Mdl> {
-    pub(crate) fn new<Ch: Cache + 'static>(
-        receiver_to_error: MpscReceiver<HashimError>,
+    pub(crate) fn new(
         sender_to_process_manager: MpscSender<MessageToProcessManager>,
-        model: Mdl,
+        model: Arc<Mdl>,
         cache: CacheStruct,
     ) -> Self {
         let (sender_to_commander, receiver_to_commander) = Mpsc::channel();
 
-        // listen_to_error_actor(receiver_to_error, &model.external_errors);
-
-        Self::commander_actor::<Ch>(receiver_to_commander, sender_to_process_manager, model, cache);
+        Self::commander_actor(receiver_to_commander, sender_to_process_manager, model, cache);
 
         Self {
             sender: sender_to_commander,
@@ -60,26 +63,50 @@ impl<Mdl: Model> Commander<Mdl> {
         });
     }
 
-    fn commander_actor<Ch: Cache + 'static>(
+    fn commander_actor(
         mut receiver: MpscReceiver<MessageType<Mdl>>,
         sender_to_process_manager: MpscSender<MessageToProcessManager>,
-        model: Mdl,
+        model: Arc<Mdl>,
         cache: CacheStruct,
     ) {
         Rt::spawn_local(async move {
-            // let commander_local_state = commander::new(sender_to_process_manager);
+            let aborters = Aborters::default();
 
             loop {
                 let message = receiver.recv().await.unwrap();
 
+                let model = model.clone();
                 let cache = cache.clone();
-                // let commander_local_state = commander_local_state.clone();
+                let sender_to_process_manager = sender_to_process_manager.clone();
+                let aborters = aborters.clone();
 
                 Rt::spawn_local(async move {
-                    message.update(model);
+                    message.update(model, cache, sender_to_process_manager, aborters);
                 });
             }
         });
+    }
+}
+
+#[derive(Debug, Clone, Copy, Eq, Hash, PartialEq)]
+pub struct PageId(i32);
+
+pub struct Aborter(Box<dyn FnOnce()>);
+
+#[derive(Clone, Default)]
+pub struct Aborters(Arc<Mutex<HashMap<PageId, Aborter>>>);
+
+impl Aborters {
+    pub fn register(&self, page: PageId, aborter: Aborter) {
+        let mut mutex_guard = self.0.lock().unwrap();
+        mutex_guard.insert(page, aborter);
+    }
+
+    pub fn abort(&self, page: PageId) {
+        let mut mutex_guard = self.0.lock().unwrap();
+        if let Some(a) = mutex_guard.remove(&page) {
+            a.0();
+        }
     }
 }
 

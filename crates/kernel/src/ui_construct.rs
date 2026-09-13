@@ -8,10 +8,16 @@ use crate::request_response::TypeOperationsOk;
 use crate::request_response::TypeResourceDTO;
 use crate::types::ADDRESS;
 use crate::types::HashimError;
+use crate::ui_effect::Commander;
+use crate::ui_effect::Model;
 use infrastructure::actors::Mpsc;
 use infrastructure::actors::MpscReceiver;
 use infrastructure::actors::MpscSender;
+use infrastructure::actors::MultiProducerSingleConsumer;
+use infrastructure::actors::Receiver;
+use infrastructure::actors::Sender;
 use infrastructure::row_id::Id;
+use infrastructure::row_id::RowId;
 use std::collections::HashSet;
 use std::marker::PhantomData;
 use std::sync::Arc;
@@ -28,7 +34,7 @@ use utility::network::network_actor;
 use utility::process_manager::process_manager_actor;
 use utility::types::ReadAndSet;
 
-pub fn new<Ch: Cache + 'static, As: AllSignalTypes>(model: &'static Model<As>) -> Commander {
+pub fn new<Ch: Cache + 'static, Mdl: Model>(model: Arc<Mdl>) -> Commander<Mdl> {
     let (sender_to_network, receiver_to_network) = Mpsc::channel();
     let (sender_to_cache, receiver_to_cache) = Mpsc::channel();
     let (sender_to_error, receiver_to_error) = Mpsc::channel();
@@ -55,14 +61,14 @@ pub fn new<Ch: Cache + 'static, As: AllSignalTypes>(model: &'static Model<As>) -
 
     let sender_to_process_manager = process_manager_actor();
 
-    Commander::new::<As, Ch>(receiver_to_error, sender_to_process_manager, model, cache)
+    Commander::new(sender_to_process_manager, model, cache)
 }
 
 struct MyNetwork {
-    sender_to_cache:     MpscSender<MessageToCache>,
+    sender_to_cache: MpscSender<MessageToCache>,
     receiver_to_network: MpscReceiver<Vec<u8>>,
-    sender_to_error:     MpscSender<HashimError>,
-    is_online:           Arc<RwLock<bool>>,
+    sender_to_error: MpscSender<HashimError>,
+    is_online: Arc<RwLock<bool>>,
 }
 
 impl Network for MyNetwork {
@@ -88,7 +94,7 @@ impl Network for MyNetwork {
 }
 
 struct MyCache<Ch: Cache> {
-    _ph: PhantomData<(Ch)>,
+    _ph: PhantomData<Ch>,
 }
 
 impl<Ch: Cache> CacheActorUtils for MyCache<Ch> {
@@ -163,13 +169,13 @@ impl<Ch: Cache> CacheActorUtils for MyCache<Ch> {
         for i in txns {
             operations1.push(Txn {
                 txn_number: i.0,
-                operation:  i.1,
+                operation: i.1,
             });
         }
 
         FromClient {
             jwts,
-            nonce: NonceUuid::from(Id::generate()),
+            nonce: NonceUuid::from(Id::generate().into()),
             operations: operations1,
         }
     }
