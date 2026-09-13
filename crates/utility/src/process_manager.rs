@@ -13,6 +13,7 @@ use infrastructure::runtime::Runtime;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::hash::Hash;
+use std::sync::Arc;
 use std::time::Duration;
 
 #[derive(Debug, Clone, Copy, Eq, Hash, PartialEq)]
@@ -24,10 +25,12 @@ impl ProcessId {
     }
 }
 
-pub trait Dialog: Clone + 'static {
+pub trait Dialog {
     fn show(&self);
     fn hide(&self);
 }
+
+pub type DialogType = Arc<dyn Dialog>;
 
 #[derive(Debug, Clone, Copy)]
 pub enum UserConsent {
@@ -36,10 +39,10 @@ pub enum UserConsent {
     CancelOperation,
 }
 
-pub enum MessageFromProcess<Di: Dialog> {
+pub enum MessageFromProcess {
     Subscribe {
         sender: MpscSender<MessageToProcess>,
-        dialog: Di,
+        dialog: DialogType,
     },
     Response {
         is_response_from_server: bool,
@@ -47,14 +50,14 @@ pub enum MessageFromProcess<Di: Dialog> {
     },
 }
 
-pub enum MessageToProcessManager<Di: Dialog> {
+pub enum MessageToProcessManager {
     FromUser {
         process_id: ProcessId,
         consent:    UserConsent,
     },
     FromProcess {
         process_id: ProcessId,
-        message:    MessageFromProcess<Di>,
+        message:    MessageFromProcess,
     },
 }
 
@@ -64,26 +67,26 @@ pub enum MessageToProcess {
     CancelOperation,
 }
 
-pub fn process_manager_actor<Di: Dialog>() -> MpscSender<MessageToProcessManager<Di>> {
+pub fn process_manager_actor() -> MpscSender<MessageToProcessManager> {
     let (sender, mut receiver): (
-        MpscSender<MessageToProcessManager<Di>>,
-        MpscReceiver<MessageToProcessManager<Di>>,
+        MpscSender<MessageToProcessManager>,
+        MpscReceiver<MessageToProcessManager>,
     ) = Mpsc::channel();
 
     Rt::spawn_local(async move {
-        struct ProcessInfo<Di: Dialog> {
+        struct ProcessInfo {
             sender:                  MpscSender<MessageToProcess>,
-            dialog:                  Di,
+            dialog:                  DialogType,
             timer_handle:            Jh<()>,
             is_response_from_server: Option<bool>,
             is_ok:                   Option<bool>,
             is_user_want_to_proceed: UserConsent,
         }
 
-        let mut process_states = HashMap::<ProcessId, ProcessInfo<Di>>::new();
+        let mut process_states = HashMap::<ProcessId, ProcessInfo>::new();
 
         loop {
-            let msg: MessageToProcessManager<Di> = receiver.recv().await.unwrap();
+            let msg: MessageToProcessManager = receiver.recv().await.unwrap();
 
             match msg {
                 MessageToProcessManager::FromUser {
@@ -98,7 +101,7 @@ pub fn process_manager_actor<Di: Dialog>() -> MpscSender<MessageToProcessManager
 
                     match consent {
                         UserConsent::WaitForServerResponse => {
-                            table.timer_handle = timer_handle::<Di>(table.dialog.clone());
+                            table.timer_handle = timer_handle(table.dialog.clone());
                         }
                         UserConsent::DontWaitForServerResponse => {
                             table.sender.send(MessageToProcess::FallBackToCache).await.unwrap();
@@ -117,7 +120,7 @@ pub fn process_manager_actor<Di: Dialog>() -> MpscSender<MessageToProcessManager
                             sender,
                             dialog,
                         } => {
-                            let timer_handle = timer_handle::<Di>(dialog.clone());
+                            let timer_handle = timer_handle(dialog.clone());
 
                             process_states.insert(process_id, ProcessInfo {
                                 sender,
@@ -152,9 +155,9 @@ pub fn process_manager_actor<Di: Dialog>() -> MpscSender<MessageToProcessManager
     sender
 }
 
-fn timer_handle<Di: Dialog>(dialog_clone: Di) -> Jh<()> {
+fn timer_handle(dialog: DialogType) -> Jh<()> {
     Rt::abortable_spawn_local(async move {
         Rt::sleep(Duration::from_secs(5)).await;
-        dialog_clone.show();
+        dialog.show();
     })
 }

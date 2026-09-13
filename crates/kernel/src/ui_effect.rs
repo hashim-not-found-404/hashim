@@ -38,7 +38,7 @@ impl<Mdl: Model> Clone for Commander<Mdl> {
 impl<Mdl: Model> Commander<Mdl> {
     pub(crate) fn new<Ch: Cache + 'static>(
         receiver_to_error: MpscReceiver<HashimError>,
-        sender_to_process_manager: MpscSender<MessageToProcessManager<Di>>,
+        sender_to_process_manager: MpscSender<MessageToProcessManager>,
         model: Mdl,
         cache: CacheStruct,
     ) -> Self {
@@ -62,7 +62,7 @@ impl<Mdl: Model> Commander<Mdl> {
 
     fn commander_actor<Ch: Cache + 'static>(
         mut receiver: MpscReceiver<MessageType<Mdl>>,
-        sender_to_process_manager: MpscSender<MessageToProcessManager<Di>>,
+        sender_to_process_manager: MpscSender<MessageToProcessManager>,
         model: Mdl,
         cache: CacheStruct,
     ) {

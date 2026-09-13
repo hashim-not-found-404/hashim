@@ -4,7 +4,7 @@ use crate::cache::OpInput;
 use crate::cache::OpResult;
 use crate::cache::Response;
 use crate::cache::Subscribe;
-use crate::process_manager::Dialog;
+use crate::process_manager::DialogType;
 use crate::process_manager::MessageFromProcess;
 use crate::process_manager::MessageToProcess;
 use crate::process_manager::MessageToProcessManager;
@@ -20,10 +20,10 @@ use infrastructure::runtime::JoinHandle;
 use infrastructure::runtime::Rt;
 use infrastructure::runtime::Runtime;
 
-pub async fn handle_fall_back<Di: Dialog>(
+pub async fn handle_fall_back(
     mut cache: CacheStruct,
-    mut sender_to_process_manager: MpscSender<MessageToProcessManager<Di>>,
-    dialog: Di,
+    mut sender_to_process_manager: MpscSender<MessageToProcessManager>,
+    dialog: DialogType,
     process_id: ProcessId,
     data: OpInput,
     f: impl Fn(OpResult) -> bool + Clone + 'static,

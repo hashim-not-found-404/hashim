@@ -17,6 +17,7 @@ use kernel::new_types::UserUuid;
 use kernel::new_types::UuidType;
 use kernel::types::DatabaseRead;
 use kernel::types::MyErrorTrait;
+use std::sync::Arc;
 use use_case_get_all_accounts::client::fetch;
 use utility::cache::CacheStruct;
 use utility::cache::CachingStrategy;
@@ -100,21 +101,20 @@ fn apply_on_the_model(output: &Type4, local_model: &impl LocalModel) {
 }
 
 impl CreateAccount {
-    pub(crate) async fn update<Di, Ch, LongCache, LM>(
+    pub(crate) async fn update<Ch, LongCache, LM>(
         self,
         global_model: &impl GlobalModel,
         local_model: &'static LM,
         cache: CacheStruct,
-        mut sender_to_process_manager: MpscSender<MessageToProcessManager<DialogSignalAdapter<Di>>>,
+        mut sender_to_process_manager: MpscSender<MessageToProcessManager>,
     ) where
-        LM: LocalModel<Sig<Dialog> = Di>,
-        Di: HashimSignal<Dialog> + Clone + 'static,
+        LM: LocalModel,
         Ch: Cache,
         LongCache: for<'a> DatabaseRead<Db<'a> = Ch>,
     {
         match self {
             CreateAccount::Submit => {
-                handle_submit::<Di, Ch, LongCache, LM>(
+                handle_submit::<Ch, LongCache, LM>(
                     global_model,
                     local_model,
                     cache,
@@ -178,23 +178,22 @@ fn handle_clean<As: LocalModel>(local_model: &As) {
     local_model.account_name_error().reset();
 }
 
-async fn handle_submit<Di, Ch, LongCache, LM>(
+async fn handle_submit<Ch, LongCache, LM>(
     global_model: &impl GlobalModel,
     local_model: &'static LM,
     cache: CacheStruct,
-    sender_to_process_manager: MpscSender<MessageToProcessManager<DialogSignalAdapter<Di>>>,
+    sender_to_process_manager: MpscSender<MessageToProcessManager>,
 ) where
-    LM: LocalModel<Sig<Dialog> = Di>,
-    Di: HashimSignal<Dialog> + Clone + 'static,
+    LM: LocalModel,
     Ch: Cache,
     LongCache: for<'a> DatabaseRead<Db<'a> = Ch>,
 {
     let process_id = ProcessId::new();
     local_model.process_id().put(Some(process_id));
 
-    let dialog_signal_adapter = DialogSignalAdapter(local_model.show_dialog());
+    let dialog_signal_adapter = Arc::new(DialogSignalAdapter(local_model.show_dialog()));
 
-    handle_fall_back::<DialogSignalAdapter<Di>>(
+    handle_fall_back(
         cache,
         sender_to_process_manager,
         dialog_signal_adapter,

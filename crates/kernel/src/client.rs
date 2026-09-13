@@ -22,9 +22,9 @@ pub trait Cache {
 }
 
 #[derive(Clone)]
-pub struct DialogSignalAdapter<S: HashimSignal<UiDialog> + Clone + 'static>(pub S);
+pub struct DialogSignalAdapter<S: HashimSignal<UiDialog>>(pub S);
 
-impl<S: HashimSignal<UiDialog> + Clone + 'static> ProcessDialog for DialogSignalAdapter<S> {
+impl<S: HashimSignal<UiDialog>> ProcessDialog for DialogSignalAdapter<S> {
     fn show(&self) {
         self.0.set(UiDialog::Show);
     }
