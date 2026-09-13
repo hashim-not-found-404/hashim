@@ -1,7 +1,7 @@
 use serde::Deserialize;
 use serde::Serialize;
 
-pub trait HashimSignal<T: Clone + Default>: Default {
+pub trait HashimSignal<T: Clone + Default>: Default + 'static {
     fn reset(&self) {
         self.set(T::default());
     }
