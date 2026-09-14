@@ -50,7 +50,7 @@ pub trait CacheUtility: Sized + 'static {
     fn write_error_to_cache(
         &mut self,
         txn_number: TxnNumber,
-        input: OpErr,
+        error: OpError,
     ) -> impl Future<Output = ()>;
 }
 
@@ -81,14 +81,16 @@ pub trait OpOkTrait: Debug {
     fn subs_to_poke(&self) -> &'static [Subscribe];
 }
 
-pub trait OpErrTrait: Debug {}
-
-pub trait OpResultTrait: Debug {
-    type CacheUtility: CacheUtility;
-    fn into_any(self: Arc<Self>) -> Box<dyn Any>;
+pub trait OpErrorTrait: Debug {
     fn subs_to_poke(&self) -> &'static [Subscribe];
-    fn extract_resource(&self) -> Result<OpOk<Self::CacheUtility>, OpErr>;
 }
+
+// pub trait OpResultTrait: Debug {
+//     type CacheUtility: CacheUtility;
+//     fn into_any(self: Arc<Self>) -> Box<dyn Any>;
+//     fn subs_to_poke(&self) -> &'static [Subscribe];
+//     fn extract_resource(&self) -> Result<OpOk<Self::CacheUtility>, OpError>;
+// }
 
 pub trait TxnResultFromServer {
     type CacheUtility: CacheUtility;
@@ -103,9 +105,9 @@ pub struct OpInput<Cu: CacheUtility>(Arc<dyn OpInputTrait<CacheUtility = Cu>>);
 #[derive(Debug, Clone)]
 pub struct OpOk<Cu: CacheUtility>(Arc<dyn OpOkTrait<CacheUtility = Cu>>);
 #[derive(Debug, Clone)]
-pub struct OpErr(Arc<dyn OpErrTrait>);
+pub struct OpError(Arc<dyn OpErrorTrait>);
 #[derive(Debug, Clone)]
-pub struct OpResult<Cu: CacheUtility>(Arc<dyn OpResultTrait<CacheUtility = Cu>>);
+pub struct OpResult<Cu: CacheUtility>(Result<OpOk<Cu>, OpError>);
 
 impl<Cu: CacheUtility, T: OpInputTrait<CacheUtility = Cu> + 'static> From<T> for OpInput<Cu> {
     fn from(value: T) -> Self {
@@ -116,12 +118,6 @@ impl<Cu: CacheUtility, T: OpInputTrait<CacheUtility = Cu> + 'static> From<T> for
 impl<Cu: CacheUtility> Clone for OpInput<Cu> {
     fn clone(&self) -> Self {
         Self(self.0.clone())
-    }
-}
-
-impl<Cu: CacheUtility> OpResult<Cu> {
-    pub fn downcast<T: 'static>(self) -> T {
-        *self.0.into_any().downcast::<T>().unwrap()
     }
 }
 
@@ -295,17 +291,18 @@ impl<Cu: CacheUtility> CacheStruct<Cu> {
                                 for (txn_number, result) in response {
                                     cache.delete_successful_txn_input(txn_number).await;
 
-                                    add_subs(&mut subs_to_poke, result.0.subs_to_poke());
-
-                                    let resource = result.0.extract_resource();
-                                    match resource {
+                                    match &result.0 {
                                         Ok(ok) => {
+                                            add_subs(&mut subs_to_poke, ok.0.subs_to_poke());
                                             ok.0.apply_to_cache(&mut cache).await;
                                             cache.delete_successful_txn_input(txn_number).await;
                                         }
                                         Err(err) => {
+                                            add_subs(&mut subs_to_poke, err.0.subs_to_poke());
                                             cache.mark_txn_input_as_faild(txn_number).await;
-                                            cache.write_error_to_cache(txn_number, err).await;
+                                            cache
+                                                .write_error_to_cache(txn_number, err.clone())
+                                                .await;
                                         }
                                     }
 
@@ -326,9 +323,8 @@ impl<Cu: CacheUtility> CacheStruct<Cu> {
 
                                 for (_, txn) in txns {
                                     let result = txn.0.check_input(&mut cache).await;
-                                    let resource = result.0.extract_resource();
 
-                                    if let Ok(resource) = resource {
+                                    if let Ok(resource) = result.0 {
                                         resource.0.apply_to_cache(&mut cache).await;
                                     }
                                 }
@@ -361,9 +357,8 @@ impl<Cu: CacheUtility> CacheStruct<Cu> {
 
                                 for (_, txn) in txns {
                                     let result = txn.0.check_input(&mut cache).await;
-                                    let resource = result.0.extract_resource();
 
-                                    if let Ok(resource) = resource {
+                                    if let Ok(resource) = result.0 {
                                         resource.0.apply_to_cache(&mut cache).await;
                                     }
                                 }
@@ -456,12 +451,15 @@ impl<Cu: CacheUtility> CacheStruct<Cu> {
                                 let result = data.0.check_input(&mut cache).await;
 
                                 let mut subs_to_poke = HashSet::new();
-                                add_subs(&mut subs_to_poke, result.0.subs_to_poke());
 
-                                let resource = result.0.extract_resource();
-
-                                if let Ok(resource) = resource {
-                                    resource.0.apply_to_cache(&mut cache).await;
+                                match &result.0 {
+                                    Ok(ok) => {
+                                        add_subs(&mut subs_to_poke, ok.0.subs_to_poke());
+                                        ok.0.apply_to_cache(&mut cache).await;
+                                    }
+                                    Err(err) => {
+                                        add_subs(&mut subs_to_poke, err.0.subs_to_poke());
+                                    }
                                 }
                                 cache.write_input_to_cache(txn_number, data).await;
 
@@ -486,12 +484,15 @@ impl<Cu: CacheUtility> CacheStruct<Cu> {
                                 let result = data.0.check_input(&mut cache).await;
 
                                 let mut subs_to_poke = HashSet::new();
-                                add_subs(&mut subs_to_poke, result.0.subs_to_poke());
 
-                                let resource = result.0.extract_resource();
-
-                                if let Ok(resource) = resource {
-                                    resource.0.apply_to_cache(&mut cache).await;
+                                match &result.0 {
+                                    Ok(ok) => {
+                                        add_subs(&mut subs_to_poke, ok.0.subs_to_poke());
+                                        ok.0.apply_to_cache(&mut cache).await;
+                                    }
+                                    Err(err) => {
+                                        add_subs(&mut subs_to_poke, err.0.subs_to_poke());
+                                    }
                                 }
                                 cache.write_input_to_cache(txn_number, data.clone()).await;
 

@@ -2,7 +2,9 @@ use crate::new_types::BranchUuid;
 use crate::new_types::CompanyUuid;
 use crate::new_types::NonceUuid;
 use crate::new_types::UserUuid;
-use crate::request_response::OperationsResult;
+use crate::request_response::OperationsError;
+use crate::request_response::TypeOperationsError;
+use crate::request_response::TypeOperationsOk;
 use crate::request_response::TypeResourceDTO;
 use anyhow::Result;
 use std::any::Any;
@@ -74,7 +76,7 @@ pub trait ServerOperationsInput {
         self: Box<Self>,
         side_effects: &'a mut SideEffects,
         client: &'a mut dyn DBClient,
-    ) -> Pin<Box<dyn Future<Output = Result<Box<dyn OperationsResult>>> + 'a>>;
+    ) -> Pin<Box<dyn Future<Output = Result<Result<TypeOperationsOk, TypeOperationsError>>> + 'a>>;
 }
 
 pub trait Database: 'static {

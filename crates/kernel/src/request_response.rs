@@ -31,7 +31,7 @@ pub(crate) struct Input {
 pub(crate) struct MyResult {
     pub(crate) jwts:       Vec<Result<(), JWTError>>,
     pub(crate) nonce:      Result<(), NonceError>,
-    pub(crate) operations: Vec<Txn<TypeOperationsResult>>,
+    pub(crate) operations: Vec<Txn<Result<TypeOperationsOk, TypeOperationsError>>>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -64,18 +64,18 @@ pub type TypeOperationsOk = Box<dyn OperationsOk>;
 
 //////////////////////////////////////////////////////////////////////
 #[serde]
-pub trait OperationsResult: Debug {
+pub trait OperationsError: Debug {
     fn into_any(self: Box<Self>) -> Box<dyn Any>;
     fn is_ok(&self) -> bool;
 }
-pub type TypeOperationsResult = Box<dyn OperationsResult>;
+pub type TypeOperationsError = Box<dyn OperationsError>;
 
-pub fn downcast_trait<T: Any>(obj: Box<dyn OperationsResult>) -> T {
+pub fn downcast_trait<T: Any>(obj: Box<dyn OperationsError>) -> T {
     let any = obj.into_any();
     *any.downcast::<T>().unwrap()
 }
 
-impl<T: OperationsResult + 'static> From<T> for TypeOperationsResult {
+impl<T: OperationsError + 'static> From<T> for TypeOperationsError {
     fn from(input: T) -> Self {
         Box::new(input)
     }
@@ -83,7 +83,7 @@ impl<T: OperationsResult + 'static> From<T> for TypeOperationsResult {
 
 //////////////////////////////////////////////////////////////////////
 #[serde]
-pub trait ResourceDTO: Debug + DynClone + Send {}
+pub trait ResourceDTO: OperationsOk + Debug + DynClone + Send {}
 pub type TypeResourceDTO = Box<dyn ResourceDTO>;
 
 impl Clone for TypeResourceDTO {
