@@ -1,7 +1,6 @@
 use crate::client::Cache;
 use crate::types::ADDRESS;
 use crate::types::HashimError;
-use anyhow::Result;
 use infrastructure::actors::Mpsc;
 use infrastructure::actors::MpscReceiver;
 use infrastructure::actors::MpscSender;
@@ -10,17 +9,12 @@ use infrastructure::actors::Receiver;
 use infrastructure::actors::Sender;
 use infrastructure::runtime::Rt;
 use infrastructure::runtime::Runtime;
-use std::marker::PhantomData;
 use std::sync::Arc;
 use std::sync::RwLock;
 use utility::cache::CacheStruct;
 use utility::cache::CacheUtility;
 use utility::cache::EncodeDecodeForRequestAndResponse;
-use utility::cache::MessageFromServer;
 use utility::cache::MessageToCache;
-use utility::cache::OpErr;
-use utility::cache::OpInput;
-use utility::cache::TxnNumber;
 use utility::network::Network;
 use utility::network::network_actor;
 use utility::process_manager::process_manager_actor;
@@ -81,25 +75,6 @@ impl<Cu: CacheUtility> Network for MyNetwork<Cu> {
 
     async fn network_sender(&mut self, data: Vec<u8>) {
         self.sender_to_cache.send(MessageToCache::DataFromServer(data)).await.unwrap();
-    }
-}
-
-pub struct MyCacheUtility<Ch: Cache> {
-    _ph: PhantomData<Ch>,
-}
-
-impl<Ch: CacheUtility + Cache> EncodeDecodeForRequestAndResponse for MyCacheUtility<Ch> {
-    type CacheUtility = Ch;
-
-    async fn encode_the_inputs(
-        cache: &mut Self::CacheUtility,
-        inputs: Vec<(TxnNumber, OpInput<Self::CacheUtility>)>,
-    ) -> Vec<u8> {
-        todo!()
-    }
-
-    fn decode_the_response(resp: Vec<u8>) -> Result<MessageFromServer<Self::CacheUtility>> {
-        todo!()
     }
 }
 
