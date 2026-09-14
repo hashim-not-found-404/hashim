@@ -1,9 +1,11 @@
+use crate::cache::Cache;
 use crate::cache::CacheStruct;
 use crate::cache::CachingStrategy;
 use crate::cache::OpInput;
 use crate::cache::OpResult;
 use crate::cache::Response;
 use crate::cache::Subscribe;
+use crate::cache::TxnNumber;
 use crate::process_manager::DialogType;
 use crate::process_manager::MessageFromProcess;
 use crate::process_manager::MessageToProcess;
@@ -20,15 +22,15 @@ use infrastructure::runtime::JoinHandle;
 use infrastructure::runtime::Rt;
 use infrastructure::runtime::Runtime;
 
-pub async fn handle_fall_back(
-    mut cache: CacheStruct,
+pub async fn handle_fall_back<Ch: Cache>(
+    mut cache: CacheStruct<Ch>,
     mut sender_to_process_manager: MpscSender<MessageToProcessManager>,
     dialog: DialogType,
     process_id: ProcessId,
-    data: OpInput,
-    f: impl Fn(OpResult) -> bool + Clone + 'static,
+    data: OpInput<Ch>,
+    f: impl Fn(OpResult<Ch>) -> bool + Clone + 'static,
 ) {
-    let txn_number = Rn::generate();
+    let txn_number = TxnNumber(Rn::generate());
 
     let f1 = f.clone();
     let data1 = data.clone();
@@ -93,11 +95,11 @@ pub async fn handle_fall_back(
     handle.abort().await;
 }
 
-pub fn spawn_listener(
-    mut cache: CacheStruct,
+pub fn spawn_listener<Ch: Cache>(
+    mut cache: CacheStruct<Ch>,
     list_of_subscribtion: &'static [Subscribe],
-    data: OpInput,
-    is_error: impl Fn(OpResult) + 'static,
+    data: OpInput<Ch>,
+    is_error: impl Fn(OpResult<Ch>) + 'static,
 ) -> impl FnOnce() {
     let component_id = Rn::generate() as u16;
     let mut cache1 = cache.clone();
@@ -107,12 +109,20 @@ pub fn spawn_listener(
             cache.send_subs_to_cache_actor(component_id, list_of_subscribtion).await;
 
         cache
-            .send_to_cache_actor(CachingStrategy::ReadServerOnly, Rn::generate(), data.clone())
+            .send_to_cache_actor(
+                CachingStrategy::ReadServerOnly,
+                TxnNumber(Rn::generate()),
+                data.clone(),
+            )
             .await;
 
         loop {
             let value = cache
-                .send_to_cache_actor(CachingStrategy::ReadCacheOnly, Rn::generate(), data.clone())
+                .send_to_cache_actor(
+                    CachingStrategy::ReadCacheOnly,
+                    TxnNumber(Rn::generate()),
+                    data.clone(),
+                )
                 .await
                 .recv()
                 .await
