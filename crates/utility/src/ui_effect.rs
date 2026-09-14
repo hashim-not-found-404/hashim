@@ -1,4 +1,6 @@
-use crate::types::HashimError;
+use crate::cache::CacheStruct;
+use crate::cache::CacheUtility;
+use crate::process_manager::MessageToProcessManager;
 use infrastructure::actors::Mpsc;
 use infrastructure::actors::MpscReceiver;
 use infrastructure::actors::MpscSender;
@@ -8,32 +10,32 @@ use infrastructure::actors::Sender;
 use infrastructure::runtime::Rt;
 use infrastructure::runtime::Runtime;
 use std::collections::HashMap;
+use std::fmt::Debug;
 use std::sync::Arc;
 use std::sync::Mutex;
-use utility::cache::CacheStruct;
-use utility::process_manager::MessageToProcessManager;
-use utility_ui::domain::HashimSignal;
 
 pub trait Model: 'static {}
 
-pub trait Message {
+pub trait Message: Debug {
     type Mdl: Model;
+    type Cache: CacheUtility;
+
     fn update(
         self: Arc<Self>,
         model: Arc<Self::Mdl>,
-        cache: CacheStruct,
+        cache: CacheStruct<Self::Cache>,
         sender_to_process_manager: MpscSender<MessageToProcessManager>,
         aborters: Aborters,
     );
 }
 
-type MessageType<Mdl> = Arc<dyn Message<Mdl = Mdl>>;
+type MessageType<Mdl, Cu> = Arc<dyn Message<Mdl = Mdl, Cache = Cu>>;
 
-pub struct Commander<Mdl: Model> {
-    sender: MpscSender<MessageType<Mdl>>,
+pub struct Commander<Mdl: Model, Cu: CacheUtility> {
+    sender: MpscSender<MessageType<Mdl, Cu>>,
 }
 
-impl<Mdl: Model> Clone for Commander<Mdl> {
+impl<Mdl: Model, Cu: CacheUtility> Clone for Commander<Mdl, Cu> {
     fn clone(&self) -> Self {
         Self {
             sender: self.sender.clone(),
@@ -41,11 +43,11 @@ impl<Mdl: Model> Clone for Commander<Mdl> {
     }
 }
 
-impl<Mdl: Model> Commander<Mdl> {
-    pub(crate) fn new(
+impl<Mdl: Model, Cu: CacheUtility> Commander<Mdl, Cu> {
+    pub fn new(
         sender_to_process_manager: MpscSender<MessageToProcessManager>,
         model: Arc<Mdl>,
-        cache: CacheStruct,
+        cache: CacheStruct<Cu>,
     ) -> Self {
         let (sender_to_commander, receiver_to_commander) = Mpsc::channel();
 
@@ -56,7 +58,7 @@ impl<Mdl: Model> Commander<Mdl> {
         }
     }
 
-    pub fn send(&self, msg: MessageType<Mdl>) {
+    pub fn send(&self, msg: MessageType<Mdl, Cu>) {
         let mut sender = self.sender.clone();
         Rt::spawn_local(async move {
             sender.send(msg).await.unwrap();
@@ -64,10 +66,10 @@ impl<Mdl: Model> Commander<Mdl> {
     }
 
     fn commander_actor(
-        mut receiver: MpscReceiver<MessageType<Mdl>>,
+        mut receiver: MpscReceiver<MessageType<Mdl, Cu>>,
         sender_to_process_manager: MpscSender<MessageToProcessManager>,
         model: Arc<Mdl>,
-        cache: CacheStruct,
+        cache: CacheStruct<Cu>,
     ) {
         Rt::spawn_local(async move {
             let aborters = Aborters::default();
@@ -108,16 +110,4 @@ impl Aborters {
             a.0();
         }
     }
-}
-
-fn listen_to_error_actor(
-    mut receiver_to_error: MpscReceiver<HashimError>,
-    external_errors_signal: impl HashimSignal<String>,
-) {
-    Rt::spawn_local(async move {
-        loop {
-            let err = receiver_to_error.recv().await.unwrap();
-            external_errors_signal.set(err.to_string());
-        }
-    });
 }

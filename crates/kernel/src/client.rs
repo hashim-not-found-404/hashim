@@ -7,7 +7,7 @@ use utility::process_manager::Dialog as ProcessDialog;
 use utility_ui::domain::Dialog as UiDialog;
 use utility_ui::domain::HashimSignal;
 
-pub trait Cache {
+pub trait Cache: 'static {
     fn new() -> impl Future<Output = Self>;
 
     fn get_all_txn_input(&self) -> impl Future<Output = Vec<Txn<TypeOperationsInput>>>;
