@@ -10,10 +10,12 @@ use infrastructure::actors::Receiver;
 use infrastructure::actors::Sender;
 use infrastructure::runtime::Rt;
 use infrastructure::runtime::Runtime;
+use std::marker::PhantomData;
 use std::sync::Arc;
 use std::sync::RwLock;
 use utility::cache::CacheStruct;
 use utility::cache::CacheUtility;
+use utility::cache::EncodeDecodeForRequestAndResponse;
 use utility::cache::MessageFromServer;
 use utility::cache::MessageToCache;
 use utility::cache::OpErr;
@@ -27,7 +29,13 @@ use utility::ui_effect::Commander;
 use utility::ui_effect::Model;
 use utility_ui::domain::HashimSignal;
 
-pub fn new<Ch: Cache + 'static, Mdl: Model>(model: Arc<Mdl>) -> Commander<Mdl, MyCacheUtility<Ch>> {
+pub fn new<
+    Ch: Cache + CacheUtility + 'static,
+    Edrr: EncodeDecodeForRequestAndResponse<CacheUtility = Ch>,
+    Mdl: Model,
+>(
+    model: Arc<Mdl>,
+) -> Commander<Mdl, Ch> {
     let (sender_to_network, receiver_to_network) = Mpsc::channel();
     let (sender_to_cache, receiver_to_cache) = Mpsc::channel();
     let (sender_to_error, receiver_to_error) = Mpsc::channel();
@@ -44,7 +52,7 @@ pub fn new<Ch: Cache + 'static, Mdl: Model>(model: Arc<Mdl>) -> Commander<Mdl, M
         format!("ws://{}/ws", ADDRESS),
     );
 
-    let cache = CacheStruct::new(
+    let cache = CacheStruct::new::<Edrr>(
         receiver_to_cache,
         sender_to_cache,
         sender_to_network,
@@ -77,49 +85,20 @@ impl<Cu: CacheUtility> Network for MyNetwork<Cu> {
 }
 
 pub struct MyCacheUtility<Ch: Cache> {
-    cache: Ch,
+    _ph: PhantomData<Ch>,
 }
 
-impl<Ch: Cache> CacheUtility for MyCacheUtility<Ch> {
-    async fn new_cache() -> Self {
-        Self {
-            cache: Ch::new().await,
-        }
-    }
+impl<Ch: CacheUtility + Cache> EncodeDecodeForRequestAndResponse for MyCacheUtility<Ch> {
+    type CacheUtility = Ch;
 
-    async fn get_all_pending_txn(&mut self) -> Vec<(TxnNumber, OpInput<Self>)> {
-        let a = self.cache.get_all_txn_input().await.iter().map(|a| (a.txn_number, a.operation));
-    }
-
-    async fn clear_state_pending_txn(&mut self) {
+    async fn encode_the_inputs(
+        cache: &mut Self::CacheUtility,
+        inputs: Vec<(TxnNumber, OpInput<Self::CacheUtility>)>,
+    ) -> Vec<u8> {
         todo!()
     }
 
-    async fn start_state_pending_txn(&mut self) {
-        todo!()
-    }
-
-    async fn delete_successful_txn_input(&mut self, txn_number: TxnNumber) {
-        todo!()
-    }
-
-    async fn mark_txn_input_as_faild(&mut self, txn_number: TxnNumber) {
-        todo!()
-    }
-
-    async fn write_input_to_cache(&mut self, txn_number: TxnNumber, input: OpInput<Self>) {
-        todo!()
-    }
-
-    async fn write_error_to_cache(&mut self, txn_number: TxnNumber, input: OpErr) {
-        todo!()
-    }
-
-    async fn encode_the_inputs(&mut self, inputs: Vec<(TxnNumber, OpInput<Self>)>) -> Vec<u8> {
-        todo!()
-    }
-
-    fn decode_the_response(resp: Vec<u8>) -> Result<MessageFromServer<Self>> {
+    fn decode_the_response(resp: Vec<u8>) -> Result<MessageFromServer<Self::CacheUtility>> {
         todo!()
     }
 }

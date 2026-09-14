@@ -6,6 +6,8 @@ use infrastructure::actors::MpscSender;
 use infrastructure::actors::MultiProducerSingleConsumer;
 use infrastructure::actors::Receiver;
 use infrastructure::actors::Sender;
+use infrastructure::random_number::RandomNumber;
+use infrastructure::random_number::Rn;
 use infrastructure::runtime::Rt;
 use infrastructure::runtime::Runtime;
 use std::any::Any;
@@ -21,10 +23,16 @@ use std::sync::RwLock;
 pub struct Subscribe(u32);
 
 #[derive(Debug, Clone, Copy, Eq, Hash, PartialEq)]
-pub struct TxnNumber(pub u64);
+pub struct TxnNumber(u64);
+
+impl Default for TxnNumber {
+    fn default() -> Self {
+        Self(Rn::generate())
+    }
+}
 
 pub trait CacheUtility: Sized + 'static {
-    fn new_cache() -> impl Future<Output = Self>;
+    fn new() -> impl Future<Output = Self>;
 
     fn get_all_pending_txn(&mut self) -> impl Future<Output = Vec<(TxnNumber, OpInput<Self>)>>;
     fn clear_state_pending_txn(&mut self) -> impl Future<Output = ()>;
@@ -44,13 +52,17 @@ pub trait CacheUtility: Sized + 'static {
         txn_number: TxnNumber,
         input: OpErr,
     ) -> impl Future<Output = ()>;
+}
+
+pub trait EncodeDecodeForRequestAndResponse {
+    type CacheUtility: CacheUtility;
 
     fn encode_the_inputs(
-        &mut self,
-        inputs: Vec<(TxnNumber, OpInput<Self>)>,
+        cache: &mut Self::CacheUtility,
+        inputs: Vec<(TxnNumber, OpInput<Self::CacheUtility>)>,
     ) -> impl Future<Output = Vec<u8>>;
 
-    fn decode_the_response(resp: Vec<u8>) -> Result<MessageFromServer<Self>>;
+    fn decode_the_response(resp: Vec<u8>) -> Result<MessageFromServer<Self::CacheUtility>>;
 }
 
 pub trait OpInputTrait: Debug {
@@ -175,14 +187,14 @@ impl<Cu: CacheUtility> Clone for CacheStruct<Cu> {
 }
 
 impl<Cu: CacheUtility> CacheStruct<Cu> {
-    pub fn new(
+    pub fn new<Edrr: EncodeDecodeForRequestAndResponse<CacheUtility = Cu>>(
         receiver_to_cache: MpscReceiver<MessageToCache<Cu>>,
         sender_to_cache: MpscSender<MessageToCache<Cu>>,
         sender_to_network: MpscSender<Vec<u8>>,
         sender_to_error: MpscSender<anyhow::Error>,
         is_online: Arc<RwLock<bool>>,
     ) -> Self {
-        Self::cache_actor(receiver_to_cache, sender_to_network, sender_to_error, is_online);
+        Self::cache_actor::<Edrr>(receiver_to_cache, sender_to_network, sender_to_error, is_online);
 
         Self {
             sender: sender_to_cache,
@@ -238,7 +250,7 @@ impl<Cu: CacheUtility> CacheStruct<Cu> {
             .unwrap();
     }
 
-    fn cache_actor(
+    fn cache_actor<Edrr: EncodeDecodeForRequestAndResponse<CacheUtility = Cu>>(
         mut receiver_to_cache: MpscReceiver<MessageToCache<Cu>>,
         mut sender_to_network: MpscSender<Vec<u8>>,
         mut sender_to_error: MpscSender<anyhow::Error>,
@@ -250,7 +262,7 @@ impl<Cu: CacheUtility> CacheStruct<Cu> {
             let mut pool_of_pokers = HashMap::<u16, MpscSender<()>>::with_capacity(10);
             let mut pool_of_subscribes = HashMap::<Subscribe, HashSet<u16>>::with_capacity(100);
 
-            let mut cache = Cu::new_cache().await;
+            let mut cache = Cu::new().await;
 
             loop {
                 match receiver_to_cache.recv().await.unwrap() {
@@ -259,11 +271,11 @@ impl<Cu: CacheUtility> CacheStruct<Cu> {
                         if txns.is_empty() {
                             continue;
                         }
-                        let txns = cache.encode_the_inputs(txns).await;
+                        let txns = Edrr::encode_the_inputs(&mut cache, txns).await;
                         sender_to_network.send(txns).await.unwrap();
                     }
                     MessageToCache::DataFromServer(raw_data) => {
-                        let message_type = match Cu::decode_the_response(raw_data) {
+                        let message_type = match Edrr::decode_the_response(raw_data) {
                             Ok(ok) => ok,
                             Err(err) => {
                                 sender_to_error.send(err).await.unwrap();
@@ -411,8 +423,10 @@ impl<Cu: CacheUtility> CacheStruct<Cu> {
                                     .await;
 
                                 if is_online.read() {
-                                    let data =
-                                        cache.encode_the_inputs(vec![(txn_number, data)]).await;
+                                    let data = Edrr::encode_the_inputs(&mut cache, vec![(
+                                        txn_number, data,
+                                    )])
+                                    .await;
 
                                     sender_to_network.send(data).await.unwrap();
 
@@ -425,8 +439,10 @@ impl<Cu: CacheUtility> CacheStruct<Cu> {
                             CachingStrategy::ReadServerFirst => todo!(),
                             CachingStrategy::ReadServerOnly => {
                                 if is_online.read() {
-                                    let data =
-                                        cache.encode_the_inputs(vec![(txn_number, data)]).await;
+                                    let data = Edrr::encode_the_inputs(&mut cache, vec![(
+                                        txn_number, data,
+                                    )])
+                                    .await;
 
                                     sender_to_network.send(data).await.unwrap();
 
@@ -494,8 +510,10 @@ impl<Cu: CacheUtility> CacheStruct<Cu> {
                                     .await;
 
                                 if is_online.read() {
-                                    let data =
-                                        cache.encode_the_inputs(vec![(txn_number, data)]).await;
+                                    let data = Edrr::encode_the_inputs(&mut cache, vec![(
+                                        txn_number, data,
+                                    )])
+                                    .await;
 
                                     sender_to_network.send(data).await.unwrap();
 
@@ -508,8 +526,10 @@ impl<Cu: CacheUtility> CacheStruct<Cu> {
                             CachingStrategy::WriteServerFirst => todo!(),
                             CachingStrategy::WriteServerOnly => {
                                 if is_online.read() {
-                                    let data =
-                                        cache.encode_the_inputs(vec![(txn_number, data)]).await;
+                                    let data = Edrr::encode_the_inputs(&mut cache, vec![(
+                                        txn_number, data,
+                                    )])
+                                    .await;
 
                                     sender_to_network.send(data).await.unwrap();
 

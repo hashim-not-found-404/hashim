@@ -30,7 +30,7 @@ pub async fn handle_fall_back<Ch: CacheUtility>(
     data: OpInput<Ch>,
     f: impl Fn(OpResult<Ch>) -> bool + Clone + 'static,
 ) {
-    let txn_number = TxnNumber(Rn::generate());
+    let txn_number = TxnNumber::default();
 
     let f1 = f.clone();
     let data1 = data.clone();
@@ -109,7 +109,7 @@ pub fn spawn_listener<Ch: CacheUtility>(
         cache
             .send_to_cache_actor(
                 CachingStrategy::ReadServerOnly,
-                TxnNumber(Rn::generate()),
+                TxnNumber::default(),
                 data.clone(),
             )
             .await;
@@ -118,7 +118,7 @@ pub fn spawn_listener<Ch: CacheUtility>(
             let value = cache
                 .send_to_cache_actor(
                     CachingStrategy::ReadCacheOnly,
-                    TxnNumber(Rn::generate()),
+                    TxnNumber::default(),
                     data.clone(),
                 )
                 .await
