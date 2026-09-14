@@ -19,8 +19,8 @@ use std::time::Duration;
 #[derive(Debug, Clone, Copy, Eq, Hash, PartialEq)]
 pub struct ProcessId(u16);
 
-impl ProcessId {
-    pub fn new() -> Self {
+impl Default for ProcessId {
+    fn default() -> Self {
         ProcessId(Rn::generate() as u16)
     }
 }
@@ -109,7 +109,7 @@ pub fn process_manager_actor() -> MpscSender<MessageToProcessManager> {
                         UserConsent::CancelOperation => {
                             table.sender.send(MessageToProcess::CancelOperation).await.unwrap();
                         }
-                    };
+                    }
                 }
                 MessageToProcessManager::FromProcess {
                     process_id,
@@ -146,9 +146,9 @@ pub fn process_manager_actor() -> MpscSender<MessageToProcessManager> {
                                 process_states.remove(&process_id);
                             }
                         }
-                    };
+                    }
                 }
-            };
+            }
         }
     });
 

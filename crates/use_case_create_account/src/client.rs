@@ -188,7 +188,7 @@ async fn handle_submit<Ch, LongCache, LM>(
     Ch: Cache,
     LongCache: for<'a> DatabaseRead<Db<'a> = Ch>,
 {
-    let process_id = ProcessId::new();
+    let process_id = ProcessId::default();
     local_model.process_id().put(Some(process_id));
 
     let dialog_signal_adapter = Arc::new(DialogSignalAdapter(local_model.show_dialog()));

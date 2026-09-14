@@ -17,10 +17,10 @@ mod target {
 
     impl MyRegex for S {
         fn is_regex(s: &str) -> Result<(), String> {
-            match RE.is_match(s) {
-                true => Ok(()),
-                false => Err("not match".to_string()),
+            if !RE.is_match(s) {
+                return Err("not match".to_string());
             }
+            Ok(())
         }
     }
 }

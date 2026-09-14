@@ -31,86 +31,86 @@ fn is_subsequence(needle: &str, haystack: &str) -> bool {
 mod tests_select_strings {
     use super::*;
 
-    impl Searchable for String {
+    impl Searchable for &str {
         fn search_key(&self) -> String {
-            self.clone()
+            self.to_string()
         }
     }
     #[test]
     fn fuzzy_search() {
-        let list = vec!["apple".to_string(), "banana".to_string()];
-        let result = select_strings(list.clone(), "apl".to_string());
-        assert_eq!(result, vec!["apple".to_string()]);
+        let list = vec!["apple", "banana"];
+        let result = select_strings(list.clone(), "apl");
+        assert_eq!(result, vec!["apple"]);
 
-        let result = select_strings(list.clone(), "bnn".to_string());
-        assert_eq!(result, vec!["banana".to_string()]);
+        let result = select_strings(list.clone(), "bnn");
+        assert_eq!(result, vec!["banana"]);
 
-        let result = select_strings(list.clone(), "aa".to_string());
-        assert_eq!(result, vec!["banana".to_string()]);
+        let result = select_strings(list.clone(), "aa");
+        assert_eq!(result, vec!["banana"]);
 
-        let result = select_strings(list.clone(), "ab".to_string());
+        let result = select_strings(list.clone(), "ab");
         assert_eq!(result, Vec::<String>::new());
     }
 
     #[test]
     fn empty_search_returns_all() {
-        let list = vec!["apple".to_string(), "banana".to_string()];
-        let result = select_strings(list.clone(), "".to_string());
+        let list = vec!["apple", "banana"];
+        let result = select_strings(list.clone(), "");
         assert_eq!(result, list);
     }
 
     #[test]
     fn empty_list_returns_empty() {
-        let list: Vec<String> = vec![];
-        let result = select_strings(list, "a".to_string());
+        let list: Vec<&str> = vec![];
+        let result = select_strings(list, "a");
         assert!(result.is_empty());
     }
 
     #[test]
     fn exact_match_returns_one() {
-        let list = vec!["apple".to_string(), "banana".to_string()];
-        let result = select_strings(list, "apple".to_string());
-        assert_eq!(result, vec!["apple".to_string()]);
+        let list = vec!["apple", "banana"];
+        let result = select_strings(list, "apple");
+        assert_eq!(result, vec!["apple"]);
     }
 
     #[test]
     fn substring_match() {
-        let list = vec!["apple".to_string(), "pineapple".to_string(), "banana".to_string()];
-        let result = select_strings(list, "app".to_string());
-        assert_eq!(result, vec!["apple".to_string(), "pineapple".to_string()]);
+        let list = vec!["apple", "pineapple", "banana"];
+        let result = select_strings(list, "app");
+        assert_eq!(result, vec!["apple", "pineapple"]);
     }
 
     #[test]
     fn case_insensitive() {
-        let list = vec!["Apple".to_string(), "BANANA".to_string(), "Grape".to_string()];
-        let result = select_strings(list, "ap".to_string());
-        assert_eq!(result, vec!["Apple".to_string(), "Grape".to_string()]);
+        let list = vec!["Apple", "BANANA", "Grape"];
+        let result = select_strings(list, "ap");
+        assert_eq!(result, vec!["Apple", "Grape"]);
 
-        let list2 = vec!["Apple".to_string(), "BANANA".to_string(), "Grape".to_string()];
-        let result2 = select_strings(list2, "ban".to_string());
-        assert_eq!(result2, vec!["BANANA".to_string()]);
+        let list2 = vec!["Apple", "BANANA", "Grape"];
+        let result2 = select_strings(list2, "ban");
+        assert_eq!(result2, vec!["BANANA"]);
     }
 
     #[test]
     fn no_match_returns_empty() {
-        let list = vec!["apple".to_string(), "banana".to_string()];
-        let result = select_strings(list, "xyz".to_string());
+        let list = vec!["apple", "banana"];
+        let result = select_strings(list, "xyz");
         assert!(result.is_empty());
     }
 
     #[test]
     fn handles_unicode_characters() {
-        let list = vec!["café".to_string(), "coffee".to_string(), "tea".to_string()];
-        let result = select_strings(list, "é".to_string());
-        assert_eq!(result, vec!["café".to_string()]);
+        let list = vec!["café", "coffee", "tea"];
+        let result = select_strings(list, "é");
+        assert_eq!(result, vec!["café"]);
     }
 
     #[test]
     fn does_not_modify_original_list() {
-        let original = vec!["one".to_string(), "two".to_string()];
-        let result = select_strings(original.clone(), "o".to_string());
-        assert_eq!(result, vec!["one".to_string(), "two".to_string()]);
-        assert_eq!(original, vec!["one".to_string(), "two".to_string()]);
+        let original = vec!["one", "two"];
+        let result = select_strings(original.clone(), "o");
+        assert_eq!(result, vec!["one", "two"]);
+        assert_eq!(original, vec!["one", "two"]);
     }
 }
 

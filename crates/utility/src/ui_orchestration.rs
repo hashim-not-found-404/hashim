@@ -1,5 +1,5 @@
-use crate::cache::Cache;
 use crate::cache::CacheStruct;
+use crate::cache::CacheUtility;
 use crate::cache::CachingStrategy;
 use crate::cache::OpInput;
 use crate::cache::OpResult;
@@ -22,7 +22,7 @@ use infrastructure::runtime::JoinHandle;
 use infrastructure::runtime::Rt;
 use infrastructure::runtime::Runtime;
 
-pub async fn handle_fall_back<Ch: Cache>(
+pub async fn handle_fall_back<Ch: CacheUtility>(
     mut cache: CacheStruct<Ch>,
     mut sender_to_process_manager: MpscSender<MessageToProcessManager>,
     dialog: DialogType,
@@ -42,8 +42,7 @@ pub async fn handle_fall_back<Ch: Cache>(
             cache1.send_to_cache_actor(CachingStrategy::WriteServerOnly, txn_number, data1).await;
 
         match receiver_to_response.recv().await.unwrap() {
-            Response::CloseTheChannel => {}
-            Response::ServerCannotBeReached => {}
+            Response::CloseTheChannel | Response::ServerCannotBeReached => {}
             Response::Data {
                 is_response_from_server,
                 data,
@@ -81,8 +80,7 @@ pub async fn handle_fall_back<Ch: Cache>(
                 cache.send_to_cache_actor(CachingStrategy::WriteCacheOnly, txn_number, data).await;
 
             match receiver_to_response.recv().await.unwrap() {
-                Response::CloseTheChannel => {}
-                Response::ServerCannotBeReached => {}
+                Response::CloseTheChannel | Response::ServerCannotBeReached => {}
                 Response::Data {
                     is_response_from_server: _,
                     data,
@@ -95,7 +93,7 @@ pub async fn handle_fall_back<Ch: Cache>(
     handle.abort().await;
 }
 
-pub fn spawn_listener<Ch: Cache>(
+pub fn spawn_listener<Ch: CacheUtility>(
     mut cache: CacheStruct<Ch>,
     list_of_subscribtion: &'static [Subscribe],
     data: OpInput<Ch>,
@@ -134,7 +132,7 @@ pub fn spawn_listener<Ch: Cache>(
             } = value
             {
                 is_error(data);
-            };
+            }
 
             if receiver_to_poke.recv().await.is_err() {
                 break;

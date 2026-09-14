@@ -1,8 +1,10 @@
+use crate::types::ReadAndSet;
 use anyhow::Result;
 use infrastructure::actors::Mpsc;
 use infrastructure::actors::MpscReceiver;
 use infrastructure::actors::MpscSender;
 use infrastructure::actors::MultiProducerSingleConsumer;
+use infrastructure::actors::Receiver;
 use infrastructure::actors::Sender;
 use infrastructure::runtime::Rt;
 use infrastructure::runtime::Runtime;
@@ -13,6 +15,7 @@ use std::fmt::Debug;
 use std::hash::Hash;
 use std::pin::Pin;
 use std::sync::Arc;
+use std::sync::RwLock;
 
 #[derive(Debug, Clone, Copy, Eq, Hash, PartialEq)]
 pub struct Subscribe(u32);
@@ -20,25 +23,7 @@ pub struct Subscribe(u32);
 #[derive(Debug, Clone, Copy, Eq, Hash, PartialEq)]
 pub struct TxnNumber(pub u64);
 
-pub trait ActorIO {
-    type Cache: Cache;
-
-    fn cache_receiver(
-        receiver: &mut MpscReceiver<MessageToCache<Self::Cache>>,
-    ) -> impl Future<Output = MessageToCache<Self::Cache>>;
-
-    type NetworkSender;
-    fn send_to_network(sender: &mut Self::NetworkSender, data: Vec<u8>)
-    -> impl Future<Output = ()>;
-
-    type ErrorSender;
-    fn send_error(sender: &mut Self::ErrorSender, err: anyhow::Error) -> impl Future<Output = ()>;
-
-    type NetworkStatus;
-    fn is_online(network_status: &Self::NetworkStatus) -> impl Future<Output = bool>;
-}
-
-pub trait Cache: Sized + 'static {
+pub trait CacheUtility: Sized + 'static {
     fn new_cache() -> impl Future<Output = Self>;
 
     fn get_all_pending_txn(&mut self) -> impl Future<Output = Vec<(TxnNumber, OpInput<Self>)>>;
@@ -69,82 +54,82 @@ pub trait Cache: Sized + 'static {
 }
 
 pub trait OpInputTrait: Debug {
-    type Cache: Cache;
+    type CacheUtility: CacheUtility;
 
     fn check_input(
         &self,
-        cache: &mut Self::Cache,
-    ) -> Pin<Box<dyn Future<Output = OpResult<Self::Cache>>>>;
+        cache: &mut Self::CacheUtility,
+    ) -> Pin<Box<dyn Future<Output = OpResult<Self::CacheUtility>>>>;
 }
 
 pub trait OpOkTrait: Debug {
-    type Cache: Cache;
+    type CacheUtility: CacheUtility;
 
-    fn apply_to_cache(&self, cache: &mut Self::Cache) -> Pin<Box<dyn Future<Output = ()>>>;
+    fn apply_to_cache(&self, cache: &mut Self::CacheUtility) -> Pin<Box<dyn Future<Output = ()>>>;
     fn subs_to_poke(&self) -> &'static [Subscribe];
 }
 
 pub trait OpErrTrait: Debug {}
 
 pub trait OpResultTrait: Debug {
-    type Cache: Cache;
+    type CacheUtility: CacheUtility;
     fn into_any(self: Arc<Self>) -> Box<dyn Any>;
     fn subs_to_poke(&self) -> &'static [Subscribe];
-    fn extract_resource(&self) -> Result<OpOk<Self::Cache>, OpErr>;
+    fn extract_resource(&self) -> Result<OpOk<Self::CacheUtility>, OpErr>;
 }
 
 pub trait TxnResultFromServer {
-    type Cache: Cache;
+    type CacheUtility: CacheUtility;
 
     fn get_all_response_txn_numbers(
         &self,
-    ) -> impl Future<Output = Vec<(TxnNumber, OpResult<Self::Cache>)>>;
+    ) -> impl Future<Output = Vec<(TxnNumber, OpResult<Self::CacheUtility>)>>;
 }
 
 #[derive(Debug)]
-pub struct OpInput<Ch: Cache>(Arc<dyn OpInputTrait<Cache = Ch>>);
+pub struct OpInput<Cu: CacheUtility>(Arc<dyn OpInputTrait<CacheUtility = Cu>>);
 #[derive(Debug, Clone)]
-pub struct OpOk<Ch: Cache>(Arc<dyn OpOkTrait<Cache = Ch>>);
+pub struct OpOk<Cu: CacheUtility>(Arc<dyn OpOkTrait<CacheUtility = Cu>>);
 #[derive(Debug, Clone)]
 pub struct OpErr(Arc<dyn OpErrTrait>);
 #[derive(Debug, Clone)]
-pub struct OpResult<Ch: Cache>(Arc<dyn OpResultTrait<Cache = Ch>>);
+pub struct OpResult<Cu: CacheUtility>(Arc<dyn OpResultTrait<CacheUtility = Cu>>);
 
-impl<Ch: Cache, T: OpInputTrait<Cache = Ch> + 'static> From<T> for OpInput<Ch> {
+impl<Cu: CacheUtility, T: OpInputTrait<CacheUtility = Cu> + 'static> From<T> for OpInput<Cu> {
     fn from(value: T) -> Self {
         Self(Arc::new(value))
     }
 }
 
-impl<Ch: Cache> Clone for OpInput<Ch> {
+impl<Cu: CacheUtility> Clone for OpInput<Cu> {
     fn clone(&self) -> Self {
         Self(self.0.clone())
     }
 }
 
-impl<Ch: Cache> OpResult<Ch> {
+impl<Cu: CacheUtility> OpResult<Cu> {
     pub fn downcast<T: 'static>(self) -> T {
         *self.0.into_any().downcast::<T>().unwrap()
     }
 }
 
-pub enum MessageFromServer<Ch: Cache> {
+pub enum MessageFromServer<Cu: CacheUtility> {
     Error(anyhow::Error),
-    Response(Vec<(TxnNumber, OpResult<Ch>)>),
-    Resources(Vec<OpOk<Ch>>),
+    Response(Vec<(TxnNumber, OpResult<Cu>)>),
+    Resources(Vec<OpOk<Cu>>),
 }
 
 #[derive(Debug, Clone)]
-pub enum Response<Ch: Cache> {
+pub enum Response<Cu: CacheUtility> {
     CloseTheChannel,
     ServerCannotBeReached,
     Data {
         is_response_from_server: bool,
-        data:                    OpResult<Ch>,
+        data:                    OpResult<Cu>,
     },
 }
 
-pub enum MessageToCache<Ch: Cache> {
+pub enum MessageToCache<Cu: CacheUtility> {
     WeAreBackOnline,
     DataFromServer(Vec<u8>),
     Subscribe {
@@ -157,9 +142,9 @@ pub enum MessageToCache<Ch: Cache> {
     },
     Query {
         strategy:   CachingStrategy,
-        sender:     MpscSender<Response<Ch>>,
+        sender:     MpscSender<Response<Cu>>,
         txn_number: TxnNumber,
-        data:       OpInput<Ch>,
+        data:       OpInput<Cu>,
     },
 }
 
@@ -177,11 +162,11 @@ pub enum CachingStrategy {
     WriteServerOnly,
 }
 
-pub struct CacheStruct<Ch: Cache> {
-    sender: MpscSender<MessageToCache<Ch>>,
+pub struct CacheStruct<Cu: CacheUtility> {
+    sender: MpscSender<MessageToCache<Cu>>,
 }
 
-impl<Ch: Cache> Clone for CacheStruct<Ch> {
+impl<Cu: CacheUtility> Clone for CacheStruct<Cu> {
     fn clone(&self) -> Self {
         Self {
             sender: self.sender.clone(),
@@ -189,15 +174,15 @@ impl<Ch: Cache> Clone for CacheStruct<Ch> {
     }
 }
 
-impl<Ch: Cache> CacheStruct<Ch> {
-    pub fn new<Aio: ActorIO<Cache = Ch> + 'static>(
-        receiver_to_cache: MpscReceiver<MessageToCache<Ch>>,
-        sender_to_cache: MpscSender<MessageToCache<Ch>>,
-        sender_to_network: Aio::NetworkSender,
-        sender_to_error: Aio::ErrorSender,
-        is_online: Aio::NetworkStatus,
+impl<Cu: CacheUtility> CacheStruct<Cu> {
+    pub fn new(
+        receiver_to_cache: MpscReceiver<MessageToCache<Cu>>,
+        sender_to_cache: MpscSender<MessageToCache<Cu>>,
+        sender_to_network: MpscSender<Vec<u8>>,
+        sender_to_error: MpscSender<anyhow::Error>,
+        is_online: Arc<RwLock<bool>>,
     ) -> Self {
-        Self::cache_actor::<Aio>(receiver_to_cache, sender_to_network, sender_to_error, is_online);
+        Self::cache_actor(receiver_to_cache, sender_to_network, sender_to_error, is_online);
 
         Self {
             sender: sender_to_cache,
@@ -208,8 +193,8 @@ impl<Ch: Cache> CacheStruct<Ch> {
         &mut self,
         strategy: CachingStrategy,
         txn_number: TxnNumber,
-        data: OpInput<Ch>,
-    ) -> MpscReceiver<Response<Ch>> {
+        data: OpInput<Cu>,
+    ) -> MpscReceiver<Response<Cu>> {
         let (sender, receiver) = Mpsc::channel();
 
         self.sender
@@ -253,42 +238,42 @@ impl<Ch: Cache> CacheStruct<Ch> {
             .unwrap();
     }
 
-    fn cache_actor<Aio: ActorIO<Cache = Ch> + 'static>(
-        mut receiver_to_cache: MpscReceiver<MessageToCache<Ch>>,
-        mut sender_to_network: Aio::NetworkSender,
-        mut sender_to_error: Aio::ErrorSender,
-        is_online: Aio::NetworkStatus,
+    fn cache_actor(
+        mut receiver_to_cache: MpscReceiver<MessageToCache<Cu>>,
+        mut sender_to_network: MpscSender<Vec<u8>>,
+        mut sender_to_error: MpscSender<anyhow::Error>,
+        is_online: Arc<RwLock<bool>>,
     ) {
         Rt::spawn_local(async move {
             let mut pool_of_senders =
-                HashMap::<TxnNumber, MpscSender<Response<Ch>>>::with_capacity(100);
+                HashMap::<TxnNumber, MpscSender<Response<Cu>>>::with_capacity(100);
             let mut pool_of_pokers = HashMap::<u16, MpscSender<()>>::with_capacity(10);
             let mut pool_of_subscribes = HashMap::<Subscribe, HashSet<u16>>::with_capacity(100);
 
-            let mut cache = Ch::new_cache().await;
+            let mut cache = Cu::new_cache().await;
 
             loop {
-                match Aio::cache_receiver(&mut receiver_to_cache).await {
+                match receiver_to_cache.recv().await.unwrap() {
                     MessageToCache::WeAreBackOnline => {
                         let txns = cache.get_all_pending_txn().await;
                         if txns.is_empty() {
                             continue;
                         }
                         let txns = cache.encode_the_inputs(txns).await;
-                        Aio::send_to_network(&mut sender_to_network, txns).await;
+                        sender_to_network.send(txns).await.unwrap();
                     }
                     MessageToCache::DataFromServer(raw_data) => {
-                        let message_type = match Ch::decode_the_response(raw_data) {
+                        let message_type = match Cu::decode_the_response(raw_data) {
                             Ok(ok) => ok,
                             Err(err) => {
-                                Aio::send_error(&mut sender_to_error, err).await;
+                                sender_to_error.send(err).await.unwrap();
                                 continue;
                             }
                         };
 
                         match message_type {
                             MessageFromServer::Error(err) => {
-                                Aio::send_error(&mut sender_to_error, err).await;
+                                sender_to_error.send(err).await.unwrap();
                             }
                             MessageFromServer::Response(response) => {
                                 let mut subs_to_poke = HashSet::new();
@@ -425,31 +410,31 @@ impl<Ch: Cache> CacheStruct<Ch> {
                                     })
                                     .await;
 
-                                if Aio::is_online(&is_online).await {
+                                if is_online.read() {
                                     let data =
                                         cache.encode_the_inputs(vec![(txn_number, data)]).await;
 
-                                    Aio::send_to_network(&mut sender_to_network, data).await;
+                                    sender_to_network.send(data).await.unwrap();
 
                                     pool_of_senders.insert(txn_number, sender);
                                 } else {
                                     let _ = sender.send(Response::ServerCannotBeReached).await;
                                     let _ = sender.send(Response::CloseTheChannel).await;
-                                };
+                                }
                             }
                             CachingStrategy::ReadServerFirst => todo!(),
                             CachingStrategy::ReadServerOnly => {
-                                if Aio::is_online(&is_online).await {
+                                if is_online.read() {
                                     let data =
                                         cache.encode_the_inputs(vec![(txn_number, data)]).await;
 
-                                    Aio::send_to_network(&mut sender_to_network, data).await;
+                                    sender_to_network.send(data).await.unwrap();
 
                                     pool_of_senders.insert(txn_number, sender);
                                 } else {
                                     let _ = sender.send(Response::ServerCannotBeReached).await;
                                     let _ = sender.send(Response::CloseTheChannel).await;
-                                };
+                                }
                             }
                             CachingStrategy::WriteCacheOnly => {
                                 let result = data.0.check_input(&mut cache).await;
@@ -508,31 +493,31 @@ impl<Ch: Cache> CacheStruct<Ch> {
                                     })
                                     .await;
 
-                                if Aio::is_online(&is_online).await {
+                                if is_online.read() {
                                     let data =
                                         cache.encode_the_inputs(vec![(txn_number, data)]).await;
 
-                                    Aio::send_to_network(&mut sender_to_network, data).await;
+                                    sender_to_network.send(data).await.unwrap();
 
                                     pool_of_senders.insert(txn_number, sender);
                                 } else {
                                     let _ = sender.send(Response::ServerCannotBeReached).await;
                                     let _ = sender.send(Response::CloseTheChannel).await;
-                                };
+                                }
                             }
                             CachingStrategy::WriteServerFirst => todo!(),
                             CachingStrategy::WriteServerOnly => {
-                                if Aio::is_online(&is_online).await {
+                                if is_online.read() {
                                     let data =
                                         cache.encode_the_inputs(vec![(txn_number, data)]).await;
 
-                                    Aio::send_to_network(&mut sender_to_network, data).await;
+                                    sender_to_network.send(data).await.unwrap();
 
                                     pool_of_senders.insert(txn_number, sender);
                                 } else {
                                     let _ = sender.send(Response::ServerCannotBeReached).await;
                                     let _ = sender.send(Response::CloseTheChannel).await;
-                                };
+                                }
                             }
                         }
                     }

@@ -21,7 +21,7 @@ mod target {
 
     impl Coding for S {
         fn encode<T: Serialize>(data: &T) -> Vec<u8> {
-            to_allocvec(&data).unwrap().to_vec()
+            to_allocvec(&data).unwrap().clone()
         }
 
         fn decode<'de, T: Deserialize<'de>>(data: &'de [u8]) -> Result<T> {
