@@ -58,10 +58,10 @@ impl<Mdl: Model, Cu: CacheUtility> Commander<Mdl, Cu> {
         }
     }
 
-    pub fn send(&self, msg: MessageType<Mdl, Cu>) {
+    pub fn send<Msg: Message<Mdl = Mdl, Cache = Cu> + 'static>(&self, msg: Msg) {
         let mut sender = self.sender.clone();
         Rt::spawn_local(async move {
-            sender.send(msg).await.unwrap();
+            sender.send(Arc::new(msg)).await.unwrap();
         });
     }
 

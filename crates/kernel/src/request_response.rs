@@ -64,16 +64,8 @@ pub type TypeOperationsOk = Box<dyn OperationsOk>;
 
 //////////////////////////////////////////////////////////////////////
 #[serde]
-pub trait OperationsError: Debug {
-    fn into_any(self: Box<Self>) -> Box<dyn Any>;
-    fn is_ok(&self) -> bool;
-}
+pub trait OperationsError: Debug {}
 pub type TypeOperationsError = Box<dyn OperationsError>;
-
-pub fn downcast_trait<T: Any>(obj: Box<dyn OperationsError>) -> T {
-    let any = obj.into_any();
-    *any.downcast::<T>().unwrap()
-}
 
 impl<T: OperationsError + 'static> From<T> for TypeOperationsError {
     fn from(input: T) -> Self {
