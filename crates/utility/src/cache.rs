@@ -71,6 +71,7 @@ pub trait OpInputTrait: Debug {
         &self,
         cache: &mut Self::CacheUtility,
     ) -> Pin<Box<dyn Future<Output = OpResult<Self::CacheUtility>>>>;
+    fn serialize(&self) -> Vec<u8>;
 }
 
 pub trait OpOkTrait: Debug {
@@ -82,6 +83,7 @@ pub trait OpOkTrait: Debug {
 
 pub trait OpErrorTrait: Debug {
     fn subs_to_poke(&self) -> &'static [Subscribe];
+    fn serialize(&self) -> Vec<u8>;
 }
 
 pub trait TxnResultFromServer {
