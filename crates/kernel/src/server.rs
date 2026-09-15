@@ -2,8 +2,8 @@ use crate::new_types::BranchUuid;
 use crate::new_types::CompanyUuid;
 use crate::new_types::NonceUuid;
 use crate::new_types::UserUuid;
-use crate::request_response::OperationsError;
 use crate::request_response::TypeOperationsError;
+use crate::request_response::TypeOperationsInput;
 use crate::request_response::TypeOperationsOk;
 use crate::request_response::TypeResourceDTO;
 use anyhow::Result;
@@ -71,14 +71,6 @@ macro_rules! make_auth_check {
     };
 }
 
-pub trait ServerOperationsInput {
-    fn handle_operation<'a>(
-        self: Box<Self>,
-        side_effects: &'a mut SideEffects,
-        client: &'a mut dyn DBClient,
-    ) -> Pin<Box<dyn Future<Output = Result<Result<TypeOperationsOk, TypeOperationsError>>> + 'a>>;
-}
-
 pub trait Database: 'static {
     type Client: DBClient;
     fn new() -> impl Future<Output = Self>;
@@ -94,4 +86,20 @@ pub trait WSServer: 'static {
     fn send_bin(&mut self, bin: Vec<u8>) -> impl Future<Output = Result<()>>;
     fn receive(&mut self) -> impl Future<Output = Result<WSMessage>>;
     fn close(self) -> impl Future<Output = Result<()>>;
+}
+
+pub trait OperationsInputServer {
+    type Cli: DBClient;
+
+    fn handle_operation<'a>(
+        self: Box<Self>,
+        side_effects: &'a mut SideEffects,
+        client: &'a mut Self::Cli,
+    ) -> Pin<Box<dyn Future<Output = Result<Result<TypeOperationsOk, TypeOperationsError>>> + 'a>>;
+}
+
+pub trait Casting {
+    fn cast_input<Cli: DBClient>(
+        input: TypeOperationsInput,
+    ) -> Box<dyn OperationsInputServer<Cli = Cli>>;
 }

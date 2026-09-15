@@ -1,5 +1,4 @@
 use crate::new_types::NonceUuid;
-use crate::server::ServerOperationsInput;
 use crate::types::HashimError;
 use crate::types::JWTError;
 use crate::types::NonceError;
@@ -7,7 +6,6 @@ use dyn_clone::DynClone;
 use infrastructure::jwt::JsonWebTokenType;
 use serde::Deserialize;
 use serde::Serialize;
-use std::any::Any;
 use std::fmt::Debug;
 use typetag::serde;
 
@@ -42,7 +40,7 @@ pub struct Txn<T> {
 
 //////////////////////////////////////////////////////////////////////
 #[serde]
-pub trait OperationsInput: Debug + DynClone + ServerOperationsInput {}
+pub trait OperationsInput: Debug + DynClone {}
 pub type TypeOperationsInput = Box<dyn OperationsInput>;
 
 impl Clone for TypeOperationsInput {

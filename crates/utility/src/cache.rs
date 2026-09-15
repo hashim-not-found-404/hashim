@@ -10,7 +10,6 @@ use infrastructure::random_number::RandomNumber;
 use infrastructure::random_number::Rn;
 use infrastructure::runtime::Rt;
 use infrastructure::runtime::Runtime;
-use std::any::Any;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fmt::Debug;
@@ -44,13 +43,13 @@ pub trait CacheUtility: Sized + 'static {
     fn write_input_to_cache(
         &mut self,
         txn_number: TxnNumber,
-        input: OpInput<Self>,
+        input: &OpInput<Self>,
     ) -> impl Future<Output = ()>;
 
     fn write_error_to_cache(
         &mut self,
         txn_number: TxnNumber,
-        error: OpError,
+        error: &OpError,
     ) -> impl Future<Output = ()>;
 }
 
@@ -85,13 +84,6 @@ pub trait OpErrorTrait: Debug {
     fn subs_to_poke(&self) -> &'static [Subscribe];
 }
 
-// pub trait OpResultTrait: Debug {
-//     type CacheUtility: CacheUtility;
-//     fn into_any(self: Arc<Self>) -> Box<dyn Any>;
-//     fn subs_to_poke(&self) -> &'static [Subscribe];
-//     fn extract_resource(&self) -> Result<OpOk<Self::CacheUtility>, OpError>;
-// }
-
 pub trait TxnResultFromServer {
     type CacheUtility: CacheUtility;
 
@@ -102,11 +94,11 @@ pub trait TxnResultFromServer {
 
 #[derive(Debug)]
 pub struct OpInput<Cu: CacheUtility>(Arc<dyn OpInputTrait<CacheUtility = Cu>>);
-#[derive(Debug, Clone)]
-pub struct OpOk<Cu: CacheUtility>(Arc<dyn OpOkTrait<CacheUtility = Cu>>);
-#[derive(Debug, Clone)]
-pub struct OpError(Arc<dyn OpErrorTrait>);
-#[derive(Debug, Clone)]
+#[derive(Debug)]
+pub struct OpOk<Cu: CacheUtility>(Box<dyn OpOkTrait<CacheUtility = Cu>>);
+#[derive(Debug)]
+pub struct OpError(Box<dyn OpErrorTrait>);
+#[derive(Debug)]
 pub struct OpResult<Cu: CacheUtility>(Result<OpOk<Cu>, OpError>);
 
 impl<Cu: CacheUtility, T: OpInputTrait<CacheUtility = Cu> + 'static> From<T> for OpInput<Cu> {
@@ -127,7 +119,7 @@ pub enum MessageFromServer<Cu: CacheUtility> {
     Resources(Vec<OpOk<Cu>>),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum Response<Cu: CacheUtility> {
     CloseTheChannel,
     ServerCannotBeReached,
@@ -300,9 +292,7 @@ impl<Cu: CacheUtility> CacheStruct<Cu> {
                                         Err(err) => {
                                             add_subs(&mut subs_to_poke, err.0.subs_to_poke());
                                             cache.mark_txn_input_as_faild(txn_number).await;
-                                            cache
-                                                .write_error_to_cache(txn_number, err.clone())
-                                                .await;
+                                            cache.write_error_to_cache(txn_number, err).await;
                                         }
                                     }
 
@@ -461,7 +451,7 @@ impl<Cu: CacheUtility> CacheStruct<Cu> {
                                         add_subs(&mut subs_to_poke, err.0.subs_to_poke());
                                     }
                                 }
-                                cache.write_input_to_cache(txn_number, data).await;
+                                cache.write_input_to_cache(txn_number, &data).await;
 
                                 poke_the_subs::<Subscribe>(
                                     &mut pool_of_pokers,
@@ -494,7 +484,7 @@ impl<Cu: CacheUtility> CacheStruct<Cu> {
                                         add_subs(&mut subs_to_poke, err.0.subs_to_poke());
                                     }
                                 }
-                                cache.write_input_to_cache(txn_number, data.clone()).await;
+                                cache.write_input_to_cache(txn_number, &data).await;
 
                                 poke_the_subs::<Subscribe>(
                                     &mut pool_of_pokers,

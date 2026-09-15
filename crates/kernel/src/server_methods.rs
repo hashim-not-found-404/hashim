@@ -5,6 +5,7 @@ use crate::request_response::Input;
 use crate::request_response::MyResult;
 use crate::request_response::Txn;
 use crate::request_response::TypeResourceDTO;
+use crate::server::Casting;
 use crate::server::DBClient;
 use crate::server::Database;
 use crate::server::ListOfResources;
@@ -57,7 +58,7 @@ impl<Jwt: JWT, Db: Database<Client = Cli>, Cli: DBClient> ServerMethods<Jwt, Db>
         }
     }
 
-    pub fn server_actor<Ws: WSServer>(self: Arc<Self>, mut session: Ws) {
+    pub fn server_actor<Ws: WSServer, Cas: Casting>(self: Arc<Self>, mut session: Ws) {
         Rt::spawn_local(async move {
             let mut sender_to_broker = self.sender_to_broker.clone();
             let (sender_to_server, mut receiver_to_server) =
@@ -103,7 +104,7 @@ impl<Jwt: JWT, Db: Database<Client = Cli>, Cli: DBClient> ServerMethods<Jwt, Db>
 
                                 dbg!(&input);
                                 let mut side_effects = SideEffects::default();
-                                let output = push_data::<Jwt, Cli>(
+                                let output = push_data::<Jwt, Cli, Cas>(
                                     input,
                                     &mut side_effects,
                                     &mut client,
@@ -295,7 +296,7 @@ impl<Jwt: JWT, Db: Database<Client = Cli>, Cli: DBClient> ServerMethods<Jwt, Db>
     }
 }
 
-async fn push_data<Jwt: JWT, Cli: DBClient>(
+async fn push_data<Jwt: JWT, Cli: DBClient, Cas: Casting>(
     input: Input,
     side_effects: &mut SideEffects,
     client: &mut Cli,
@@ -335,7 +336,8 @@ async fn push_data<Jwt: JWT, Cli: DBClient>(
     }
 
     for transaction in input.operations {
-        let result = transaction.operation.handle_operation(side_effects, client).await?;
+        let input = Cas::cast_input(transaction.operation);
+        let result = input.handle_operation(side_effects, client).await?;
 
         the_return_result.operations.push(Txn {
             txn_number: transaction.txn_number,

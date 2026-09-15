@@ -15,6 +15,7 @@ use anyhow::bail;
 use database::db;
 use futures_util::StreamExt;
 use infrastructure::jwt::Jwt;
+use kernel::server::Casting;
 use kernel::server::WSMessage;
 use kernel::server::WSServer;
 use kernel::server_methods::ServerMethods;
@@ -24,7 +25,7 @@ use utility::types::LogError;
 
 type ServerMethodsType = ServerMethods<Jwt, db::S>;
 
-pub async fn main() {
+pub async fn main<Cas: Casting + 'static>() {
     println!("started server");
     let actions = Data::new(ServerMethodsType::new().await);
 
@@ -38,7 +39,7 @@ pub async fn main() {
         App::new()
             .wrap(cors)
             .app_data(actions.clone())
-            .route("/ws", web::get().to(ws_handler))
+            .route("/ws", web::get().to(ws_handler::<Cas>))
     })
     // .bind_rustls_0_23((HOST, PORT), get_tls_config())
     .bind((HOST, PORT))
@@ -48,7 +49,7 @@ pub async fn main() {
     .unwrap()
 }
 
-async fn ws_handler(req: HttpRequest, stream: Payload) -> HttpResponse {
+async fn ws_handler<Cas: Casting>(req: HttpRequest, stream: Payload) -> HttpResponse {
     let (response, session, stream) = match handle(&req, stream) {
         Ok(result) => result,
         Err(e) => {
@@ -61,7 +62,7 @@ async fn ws_handler(req: HttpRequest, stream: Payload) -> HttpResponse {
 
     let session = WsType::new(session, stream);
     let state = req.app_data::<Data<ServerMethodsType>>().unwrap();
-    state.clone().into_inner().server_actor::<WsType>(session);
+    state.clone().into_inner().server_actor::<WsType, Cas>(session);
 
     response
 }
