@@ -23,34 +23,34 @@ pub enum AtCommit {
 }
 
 pub trait DBTransaction {
-    fn commit_transaction<'a>(
-        self: Box<Self>,
-    ) -> Pin<Box<dyn Future<Output = Result<Option<AtCommit>>> + 'a>>
-    where
-        Self: 'a;
-    fn rollback_transaction<'a>(self: Box<Self>) -> Pin<Box<dyn Future<Output = Result<()>> + 'a>>
-    where
-        Self: 'a;
+    fn commit_transaction(self) -> impl Future<Output = Result<Result<(), AtCommit>>>;
+    fn rollback_transaction(self) -> impl Future<Output = Result<()>>;
 }
 
 pub trait DBClient {
-    fn as_any(&mut self) -> &mut dyn Any;
+    type Txn<'a>: DBTransaction
+    where
+        Self: 'a;
 
-    fn begin_transaction<'a>(
-        &'a mut self,
-    ) -> Pin<Box<dyn Future<Output = Result<Box<dyn DBTransaction + 'a>>> + 'a>>;
+    fn begin_transaction(&mut self) -> impl Future<Output = Result<Self::Txn<'_>>>;
 
-    fn write_nonce_if_not_used_and_return_is_nonce_used<'a>(
-        &'a mut self,
-        nonce: &'a NonceUuid,
-    ) -> Pin<Box<dyn Future<Output = Result<bool>> + 'a>>;
+    fn write_nonce_if_not_used_and_return_is_nonce_used(
+        &mut self,
+        nonce: &NonceUuid,
+    ) -> impl Future<Output = Result<bool>>;
 
     // here we just do read we dont do here any set or check
 
-    fn read_roles_for_user<'a>(
-        &'a mut self,
-        users_uuids: &'a HashSet<UserUuid>,
-    ) -> Pin<Box<dyn Future<Output = Result<TheCompaniesAndBranchesHeIn>> + 'a>>;
+    fn read_roles_for_user(
+        &mut self,
+        users_uuids: &HashSet<UserUuid>,
+    ) -> impl Future<Output = Result<TheCompaniesAndBranchesHeIn>>;
+}
+
+pub trait Database: 'static {
+    type Client: DBClient;
+    fn new() -> impl Future<Output = Self>;
+    fn get_client(&self) -> impl Future<Output = Result<Self::Client>>;
 }
 
 pub(crate) type ListOfResources = HashMap<BranchUuid, Vec<TypeResourceDTO>>;
@@ -69,12 +69,6 @@ macro_rules! make_auth_check {
             $errr.user_uuid = Some(UserUuidError::NotAuthenticated);
         }
     };
-}
-
-pub trait Database: 'static {
-    type Client: DBClient;
-    fn new() -> impl Future<Output = Self>;
-    fn get_client(&self) -> impl Future<Output = Result<Self::Client>>;
 }
 
 pub enum WSMessage {

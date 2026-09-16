@@ -2,7 +2,6 @@ use anyhow::Result;
 use deadpool_postgres::Transaction;
 use kernel::server::AtCommit;
 use kernel::server::DBTransaction;
-use std::pin::Pin;
 use tokio_postgres::error::SqlState;
 use utility::types::LogError;
 
@@ -11,33 +10,21 @@ pub struct S<'a> {
 }
 
 impl DBTransaction for S<'_> {
-    fn commit_transaction<'a>(
-        self: Box<Self>,
-    ) -> Pin<Box<dyn Future<Output = Result<Option<AtCommit>>> + 'a>>
-    where
-        Self: 'a,
-    {
-        Box::pin(async move {
-            match self.txn.commit().await {
-                Ok(_) => Ok(None),
-                Err(e) => {
-                    if get_sql_state(&e) == SqlState::T_R_SERIALIZATION_FAILURE {
-                        return Ok(Some(AtCommit::DataIsChanged));
-                    }
-                    Err(e.into())
+    async fn commit_transaction(self) -> Result<Result<(), AtCommit>> {
+        match self.txn.commit().await {
+            Ok(_) => Ok(Ok(())),
+            Err(e) => {
+                if get_sql_state(&e) == SqlState::T_R_SERIALIZATION_FAILURE {
+                    return Ok(Err(AtCommit::DataIsChanged));
                 }
+                Err(e.into())
             }
-        })
+        }
     }
 
-    fn rollback_transaction<'a>(self: Box<Self>) -> Pin<Box<dyn Future<Output = Result<()>> + 'a>>
-    where
-        Self: 'a,
-    {
-        Box::pin(async {
-            self.txn.rollback().await.log()?;
-            Ok(())
-        })
+    async fn rollback_transaction(self) -> Result<()> {
+        self.txn.rollback().await.log()?;
+        Ok(())
     }
 }
 
