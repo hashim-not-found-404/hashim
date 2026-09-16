@@ -13,6 +13,7 @@ members = [
 # my_core = { path = "./old_crates/my_core" }
 
 accounting_engine = { path = "./crates/accounting_engine" }
+cache = { path = "./crates/cache" }
 database = { path = "./crates/database" }
 infrastructure = { path = "./crates/infrastructure" }
 kernel = { path = "./crates/kernel" }

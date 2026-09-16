@@ -8,7 +8,7 @@ use std::fmt::Debug;
 use typetag::serde;
 
 #[derive(Debug, Clone, Copy, Eq, Hash, PartialEq, Deserialize, Serialize)]
-pub struct TxnNumber(u64);
+pub struct TxnNumber(pub u64);
 
 impl Default for TxnNumber {
     fn default() -> Self {
