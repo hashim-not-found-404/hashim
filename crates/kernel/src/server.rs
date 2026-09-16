@@ -2,15 +2,14 @@ use crate::new_types::BranchUuid;
 use crate::new_types::CompanyUuid;
 use crate::new_types::NonceUuid;
 use crate::new_types::UserUuid;
-use crate::request_response::TypeOperationsError;
-use crate::request_response::TypeOperationsInput;
-use crate::request_response::TypeOperationsOk;
-use crate::request_response::TypeResourceDTO;
 use anyhow::Result;
-use std::any::Any;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::pin::Pin;
+use utility::dtos::TypeOperationsError;
+use utility::dtos::TypeOperationsInput;
+use utility::dtos::TypeOperationsOk;
+use utility::dtos::TypeResourceDTO;
 
 pub struct TheCompaniesAndBranchesHeIn {
     pub branches_of_each_company: HashMap<CompanyUuid, HashSet<BranchUuid>>,

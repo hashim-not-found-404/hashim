@@ -5,7 +5,7 @@ use crate::cache::OpInput;
 use crate::cache::OpResult;
 use crate::cache::Response;
 use crate::cache::Subscribe;
-use crate::cache::TxnNumber;
+use crate::dtos::TxnNumber;
 use crate::process_manager::DialogType;
 use crate::process_manager::MessageFromProcess;
 use crate::process_manager::MessageToProcess;

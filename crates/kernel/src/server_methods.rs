@@ -3,8 +3,6 @@ use crate::new_types::UuidType;
 use crate::request_response::FromServer;
 use crate::request_response::Input;
 use crate::request_response::MyResult;
-use crate::request_response::Txn;
-use crate::request_response::TypeResourceDTO;
 use crate::server::Casting;
 use crate::server::DBClient;
 use crate::server::Database;
@@ -37,6 +35,8 @@ use std::collections::HashSet;
 use std::sync::Arc;
 use std::time::SystemTime;
 use std::time::UNIX_EPOCH;
+use utility::dtos::Txn;
+use utility::dtos::TypeResourceDTO;
 use utility::types::HashMapWithHashMapValue;
 use utility::types::LogError;
 
@@ -410,10 +410,10 @@ async fn get_table_of_subscribed_data<Cli: DBClient>(
 mod broker_functions {
     use crate::new_types::BranchUuid;
     use crate::new_types::UserUuid;
-    use crate::request_response::TypeResourceDTO;
     use crate::server::ListOfResources;
     use std::collections::HashMap;
     use std::collections::HashSet;
+    use utility::dtos::TypeResourceDTO;
 
     pub(crate) type UserSubscribes = HashMap<BranchUuid, HashSet<UserUuid>>;
 
