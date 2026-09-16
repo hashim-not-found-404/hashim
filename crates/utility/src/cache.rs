@@ -78,14 +78,6 @@ pub trait OpErrorTrait: OperationsError + Debug {
     fn subs_to_poke(&self) -> &'static [Subscribe];
 }
 
-pub trait TxnResultFromServer {
-    type CacheUtility: CacheUtility;
-
-    fn get_all_response_txn_numbers(
-        &self,
-    ) -> impl Future<Output = Vec<Txn<OpResult<Self::CacheUtility>>>>;
-}
-
 #[derive(Debug)]
 pub struct OpInput<Cu: CacheUtility>(Arc<dyn OpInputTrait<CacheUtility = Cu>>);
 #[derive(Debug)]
