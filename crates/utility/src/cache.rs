@@ -83,8 +83,7 @@ pub struct OpInput<Cu: CacheUtility>(pub Arc<dyn OpInputTrait<CacheUtility = Cu>
 pub struct OpOk<Cu: CacheUtility>(pub Box<dyn OpOkTrait<CacheUtility = Cu>>);
 #[derive(Debug)]
 pub struct OpError(pub Box<dyn OpErrorTrait>);
-#[derive(Debug)]
-pub struct OpResult<Cu: CacheUtility>(pub Result<OpOk<Cu>, OpError>);
+pub type OpResult<Cu: CacheUtility> = Result<OpOk<Cu>, OpError>;
 
 impl<Cu: CacheUtility, T: OpInputTrait<CacheUtility = Cu> + 'static> From<T> for OpInput<Cu> {
     fn from(value: T) -> Self {
@@ -279,7 +278,7 @@ impl<Cu: CacheUtility> CacheStruct<Cu> {
                                 {
                                     cache.delete_input_txn(txn_number).await;
 
-                                    match &operation.0 {
+                                    match &operation {
                                         Ok(ok) => {
                                             add_subs(&mut subs_to_poke, ok.0.subs_to_poke());
                                             ok.0.apply_to_cache(&mut cache).await;
@@ -312,7 +311,7 @@ impl<Cu: CacheUtility> CacheStruct<Cu> {
                                 for txn in txns {
                                     let result = txn.operation.0.check_input(&mut cache).await;
 
-                                    if let Ok(resource) = result.0 {
+                                    if let Ok(resource) = result {
                                         resource.0.apply_to_cache(&mut cache).await;
                                     }
                                 }
@@ -350,7 +349,7 @@ impl<Cu: CacheUtility> CacheStruct<Cu> {
                                 {
                                     let result = operation.0.check_input(&mut cache).await;
 
-                                    if let Ok(resource) = result.0 {
+                                    if let Ok(resource) = result {
                                         resource.0.apply_to_cache(&mut cache).await;
                                     }
                                 }
@@ -448,7 +447,7 @@ impl<Cu: CacheUtility> CacheStruct<Cu> {
 
                                 let mut subs_to_poke = HashSet::new();
 
-                                match &result.0 {
+                                match &result {
                                     Ok(ok) => {
                                         add_subs(&mut subs_to_poke, ok.0.subs_to_poke());
                                         ok.0.apply_to_cache(&mut cache).await;
@@ -481,7 +480,7 @@ impl<Cu: CacheUtility> CacheStruct<Cu> {
 
                                 let mut subs_to_poke = HashSet::new();
 
-                                match &result.0 {
+                                match &result {
                                     Ok(ok) => {
                                         add_subs(&mut subs_to_poke, ok.0.subs_to_poke());
                                         ok.0.apply_to_cache(&mut cache).await;

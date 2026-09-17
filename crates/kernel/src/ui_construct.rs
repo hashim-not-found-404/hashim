@@ -4,7 +4,6 @@ use crate::new_types::UserUuid;
 use crate::new_types::UuidType;
 use crate::request_response::FromClient;
 use crate::request_response::FromServer;
-use crate::request_response::MyResult;
 use crate::types::ADDRESS;
 use crate::types::HashimError;
 use anyhow::Result;
@@ -248,7 +247,7 @@ impl<Ch: Cache, Cas: Casting> CacheUtility for MyCache<Ch, Cas> {
 
                     operations.push(Txn {
                         txn_number: i.txn_number,
-                        operation:  OpResult(r),
+                        operation:  r,
                     });
                 }
 
