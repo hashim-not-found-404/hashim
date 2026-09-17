@@ -88,7 +88,7 @@ impl Input {
         Db: DatabaseRead<Input = ReadInput, Output = ReadOutput>,
     >(
         &self,
-        db: &mut Db::Db<'_>,
+        db: &mut Db::Db,
     ) -> Result<Error> {
         let read_output = Db::read(db, &ReadInput {
             user_uuid:         self.user_uuid.clone(),

@@ -37,4 +37,3 @@ make_type!(UuidType, BranchUuid);
 make_type!(UuidType, AccountUuid);
 make_type!(UuidType, AccountForBranchUuid);
 make_type!(UuidType, SharedEntryUuid);
-make_type!(String, JsonWebTokenType);

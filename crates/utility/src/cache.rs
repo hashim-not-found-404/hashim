@@ -5,6 +5,7 @@ use crate::dtos::Txn;
 use crate::dtos::TxnNumber;
 use crate::types::ReadAndSet;
 use anyhow::Result;
+use dyn_clone::DynClone;
 use infrastructure::actors::Mpsc;
 use infrastructure::actors::MpscReceiver;
 use infrastructure::actors::MpscSender;
@@ -28,43 +29,41 @@ pub trait CacheUtility: Sized + 'static {
     fn new() -> impl Future<Output = Self>;
 
     fn get_all_pending_txn(&mut self) -> impl Future<Output = Vec<Txn<OpInput<Self>>>>;
-    fn clear_state_pending_txn(&mut self) -> impl Future<Output = ()>;
-    fn start_state_pending_txn(&mut self) -> impl Future<Output = ()>;
+    fn clear_pending_txn_state(&mut self) -> impl Future<Output = ()>;
+    fn start_pending_txn_state(&mut self) -> impl Future<Output = ()>;
 
-    fn delete_successful_txn_input(&mut self, txn_number: TxnNumber) -> impl Future<Output = ()>;
-    fn mark_txn_input_as_faild(&mut self, txn_number: TxnNumber) -> impl Future<Output = ()>;
+    fn delete_input_txn(&mut self, txn_number: TxnNumber) -> impl Future<Output = ()>;
+    fn mark_input_txn_as_faild(&mut self, txn_number: TxnNumber) -> impl Future<Output = ()>;
 
     fn write_input_to_cache(
         &mut self,
         txn_number: TxnNumber,
-        input: &OpInput<Self>,
+        input: OpInput<Self>,
     ) -> impl Future<Output = ()>;
 
     fn write_error_to_cache(
         &mut self,
         txn_number: TxnNumber,
-        error: &OpError,
+        error: OpError,
     ) -> impl Future<Output = ()>;
-}
-
-pub trait EncodeDecodeForRequestAndResponse {
-    type CacheUtility: CacheUtility;
 
     fn encode_the_inputs(
-        cache: &mut Self::CacheUtility,
-        inputs: Vec<Txn<OpInput<Self::CacheUtility>>>,
+        &mut self,
+        inputs: Vec<Txn<OpInput<Self>>>,
     ) -> impl Future<Output = Vec<u8>>;
 
-    fn decode_the_response(resp: Vec<u8>) -> Result<MessageFromServer<Self::CacheUtility>>;
+    fn decode_the_response(resp: Vec<u8>) -> Result<MessageFromServer<Self>>;
 }
 
-pub trait OpInputTrait: OperationsInput + Debug {
+pub trait OpInputTrait: OperationsInput + Debug + DynClone {
     type CacheUtility: CacheUtility;
 
     fn check_input(
         &self,
         cache: &mut Self::CacheUtility,
     ) -> Pin<Box<dyn Future<Output = OpResult<Self::CacheUtility>>>>;
+
+    fn user_uuid(&self) -> Option<[u8; 16]>;
 }
 
 pub trait OpOkTrait: OperationsOk + Debug {
@@ -74,18 +73,18 @@ pub trait OpOkTrait: OperationsOk + Debug {
     fn subs_to_poke(&self) -> &'static [Subscribe];
 }
 
-pub trait OpErrorTrait: OperationsError + Debug {
+pub trait OpErrorTrait: OperationsError + Debug + DynClone {
     fn subs_to_poke(&self) -> &'static [Subscribe];
 }
 
 #[derive(Debug)]
-pub struct OpInput<Cu: CacheUtility>(Arc<dyn OpInputTrait<CacheUtility = Cu>>);
+pub struct OpInput<Cu: CacheUtility>(pub Arc<dyn OpInputTrait<CacheUtility = Cu>>);
 #[derive(Debug)]
-pub struct OpOk<Cu: CacheUtility>(Box<dyn OpOkTrait<CacheUtility = Cu>>);
+pub struct OpOk<Cu: CacheUtility>(pub Box<dyn OpOkTrait<CacheUtility = Cu>>);
 #[derive(Debug)]
-pub struct OpError(Box<dyn OpErrorTrait>);
+pub struct OpError(pub Box<dyn OpErrorTrait>);
 #[derive(Debug)]
-pub struct OpResult<Cu: CacheUtility>(Result<OpOk<Cu>, OpError>);
+pub struct OpResult<Cu: CacheUtility>(pub Result<OpOk<Cu>, OpError>);
 
 impl<Cu: CacheUtility, T: OpInputTrait<CacheUtility = Cu> + 'static> From<T> for OpInput<Cu> {
     fn from(value: T) -> Self {
@@ -96,6 +95,13 @@ impl<Cu: CacheUtility, T: OpInputTrait<CacheUtility = Cu> + 'static> From<T> for
 impl<Cu: CacheUtility> Clone for OpInput<Cu> {
     fn clone(&self) -> Self {
         Self(self.0.clone())
+    }
+}
+
+impl Clone for OpError {
+    fn clone(&self) -> Self {
+        let clone_box = dyn_clone::clone_box(&*self.0);
+        Self(clone_box)
     }
 }
 
@@ -161,14 +167,14 @@ impl<Cu: CacheUtility> Clone for CacheStruct<Cu> {
 }
 
 impl<Cu: CacheUtility> CacheStruct<Cu> {
-    pub fn new<Edrr: EncodeDecodeForRequestAndResponse<CacheUtility = Cu>>(
+    pub fn new(
         receiver_to_cache: MpscReceiver<MessageToCache<Cu>>,
         sender_to_cache: MpscSender<MessageToCache<Cu>>,
         sender_to_network: MpscSender<Vec<u8>>,
         sender_to_error: MpscSender<anyhow::Error>,
         is_online: Arc<RwLock<bool>>,
     ) -> Self {
-        Self::cache_actor::<Edrr>(receiver_to_cache, sender_to_network, sender_to_error, is_online);
+        Self::cache_actor(receiver_to_cache, sender_to_network, sender_to_error, is_online);
 
         Self {
             sender: sender_to_cache,
@@ -224,7 +230,7 @@ impl<Cu: CacheUtility> CacheStruct<Cu> {
             .unwrap();
     }
 
-    fn cache_actor<Edrr: EncodeDecodeForRequestAndResponse<CacheUtility = Cu>>(
+    fn cache_actor(
         mut receiver_to_cache: MpscReceiver<MessageToCache<Cu>>,
         mut sender_to_network: MpscSender<Vec<u8>>,
         mut sender_to_error: MpscSender<anyhow::Error>,
@@ -245,11 +251,11 @@ impl<Cu: CacheUtility> CacheStruct<Cu> {
                         if txns.is_empty() {
                             continue;
                         }
-                        let txns = Edrr::encode_the_inputs(&mut cache, txns).await;
+                        let txns = cache.encode_the_inputs(txns).await;
                         sender_to_network.send(txns).await.unwrap();
                     }
                     MessageToCache::DataFromServer(raw_data) => {
-                        let message_type = match Edrr::decode_the_response(raw_data) {
+                        let message_type = match Cu::decode_the_response(raw_data) {
                             Ok(ok) => ok,
                             Err(err) => {
                                 sender_to_error.send(err).await.unwrap();
@@ -264,25 +270,27 @@ impl<Cu: CacheUtility> CacheStruct<Cu> {
                             MessageFromServer::Response(response) => {
                                 let mut subs_to_poke = HashSet::new();
 
-                                cache.clear_state_pending_txn().await;
+                                cache.clear_pending_txn_state().await;
 
                                 for Txn {
                                     txn_number,
                                     operation,
                                 } in response
                                 {
-                                    cache.delete_successful_txn_input(txn_number).await;
+                                    cache.delete_input_txn(txn_number).await;
 
                                     match &operation.0 {
                                         Ok(ok) => {
                                             add_subs(&mut subs_to_poke, ok.0.subs_to_poke());
                                             ok.0.apply_to_cache(&mut cache).await;
-                                            cache.delete_successful_txn_input(txn_number).await;
+                                            cache.delete_input_txn(txn_number).await;
                                         }
                                         Err(err) => {
                                             add_subs(&mut subs_to_poke, err.0.subs_to_poke());
-                                            cache.mark_txn_input_as_faild(txn_number).await;
-                                            cache.write_error_to_cache(txn_number, err).await;
+                                            cache.mark_input_txn_as_faild(txn_number).await;
+                                            cache
+                                                .write_error_to_cache(txn_number, err.clone())
+                                                .await;
                                         }
                                     }
 
@@ -298,7 +306,7 @@ impl<Cu: CacheUtility> CacheStruct<Cu> {
                                     }
                                 }
 
-                                cache.start_state_pending_txn().await;
+                                cache.start_pending_txn_state().await;
                                 let txns = cache.get_all_pending_txn().await;
 
                                 for txn in txns {
@@ -317,7 +325,7 @@ impl<Cu: CacheUtility> CacheStruct<Cu> {
                                 .await;
                             }
                             MessageFromServer::Resources(resources) => {
-                                cache.clear_state_pending_txn().await;
+                                cache.clear_pending_txn_state().await;
                                 let mut subs_to_poke = HashSet::new();
 
                                 for resource in resources {
@@ -332,7 +340,7 @@ impl<Cu: CacheUtility> CacheStruct<Cu> {
                                 )
                                 .await;
 
-                                cache.start_state_pending_txn().await;
+                                cache.start_pending_txn_state().await;
                                 let txns = cache.get_all_pending_txn().await;
 
                                 for Txn {
@@ -402,11 +410,12 @@ impl<Cu: CacheUtility> CacheStruct<Cu> {
                                     .await;
 
                                 if is_online.read() {
-                                    let data = Edrr::encode_the_inputs(&mut cache, vec![Txn {
-                                        txn_number,
-                                        operation: data,
-                                    }])
-                                    .await;
+                                    let data = cache
+                                        .encode_the_inputs(vec![Txn {
+                                            txn_number,
+                                            operation: data,
+                                        }])
+                                        .await;
 
                                     sender_to_network.send(data).await.unwrap();
 
@@ -419,11 +428,12 @@ impl<Cu: CacheUtility> CacheStruct<Cu> {
                             CachingStrategy::ReadServerFirst => todo!(),
                             CachingStrategy::ReadServerOnly => {
                                 if is_online.read() {
-                                    let data = Edrr::encode_the_inputs(&mut cache, vec![Txn {
-                                        txn_number,
-                                        operation: data,
-                                    }])
-                                    .await;
+                                    let data = cache
+                                        .encode_the_inputs(vec![Txn {
+                                            txn_number,
+                                            operation: data,
+                                        }])
+                                        .await;
 
                                     sender_to_network.send(data).await.unwrap();
 
@@ -447,7 +457,7 @@ impl<Cu: CacheUtility> CacheStruct<Cu> {
                                         add_subs(&mut subs_to_poke, err.0.subs_to_poke());
                                     }
                                 }
-                                cache.write_input_to_cache(txn_number, &data).await;
+                                cache.write_input_to_cache(txn_number, data.clone()).await;
 
                                 poke_the_subs::<Subscribe>(
                                     &mut pool_of_pokers,
@@ -480,7 +490,7 @@ impl<Cu: CacheUtility> CacheStruct<Cu> {
                                         add_subs(&mut subs_to_poke, err.0.subs_to_poke());
                                     }
                                 }
-                                cache.write_input_to_cache(txn_number, &data).await;
+                                cache.write_input_to_cache(txn_number, data.clone()).await;
 
                                 poke_the_subs::<Subscribe>(
                                     &mut pool_of_pokers,
@@ -497,11 +507,12 @@ impl<Cu: CacheUtility> CacheStruct<Cu> {
                                     .await;
 
                                 if is_online.read() {
-                                    let data = Edrr::encode_the_inputs(&mut cache, vec![Txn {
-                                        txn_number,
-                                        operation: data,
-                                    }])
-                                    .await;
+                                    let data = cache
+                                        .encode_the_inputs(vec![Txn {
+                                            txn_number,
+                                            operation: data,
+                                        }])
+                                        .await;
 
                                     sender_to_network.send(data).await.unwrap();
 
@@ -514,11 +525,12 @@ impl<Cu: CacheUtility> CacheStruct<Cu> {
                             CachingStrategy::WriteServerFirst => todo!(),
                             CachingStrategy::WriteServerOnly => {
                                 if is_online.read() {
-                                    let data = Edrr::encode_the_inputs(&mut cache, vec![Txn {
-                                        txn_number,
-                                        operation: data,
-                                    }])
-                                    .await;
+                                    let data = cache
+                                        .encode_the_inputs(vec![Txn {
+                                            txn_number,
+                                            operation: data,
+                                        }])
+                                        .await;
 
                                     sender_to_network.send(data).await.unwrap();
 

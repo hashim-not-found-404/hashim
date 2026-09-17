@@ -15,17 +15,15 @@ use kernel::types::UserUuidError;
 
 impl Input {
     pub async fn handle_operation_generic<
-        Cli: DBClient,
-        DBReader: for<'a> DatabaseRead<
-                Db<'a> = dyn DBTransaction + 'a,
-                Input = ReadInput,
-                Output = ReadOutput,
-            >,
-        DBWrite: for<'a> DatabaseWrite<Db<'a> = dyn DBTransaction + 'a, Input = Ok>,
+        'a,
+        Txn: DBTransaction,
+        Cli: DBClient<Txn<'a> = Txn> + 'a,
+        DBReader: DatabaseRead<Db = Txn, Input = ReadInput, Output = ReadOutput>,
+        DBWrite: DatabaseWrite<Db = Txn, Input = Ok>,
     >(
         &self,
         side_effects: &mut SideEffects,
-        client: &mut Cli,
+        client: &'a mut Cli,
     ) -> Result<MyResult> {
         let mut errr = self.state_less_check();
         make_auth_check!(side_effects, self, errr);
@@ -37,14 +35,14 @@ impl Input {
         let mut txn = client.begin_transaction().await?;
 
         let result: Result<MyResult> = async {
-            let errr = self.state_full_check::<DBReader>(&mut *txn).await?;
+            let errr = self.state_full_check::<DBReader>(&mut txn).await?;
 
             if errr.is_there_error() {
                 return Ok(Err(errr).into());
             }
 
             let result = self.state_less_operation();
-            DBWrite::write(&mut *txn, &result).await?;
+            DBWrite::write(&mut txn, &result).await?;
             Ok(Ok(result).into())
         }
         .await;

@@ -1,6 +1,6 @@
 use crate::utils::MyUuidConverter;
+use infrastructure::jwt::JsonWebTokenType;
 use kernel::client::Cache;
-use kernel::new_types::JsonWebTokenType;
 use kernel::new_types::UserUuid;
 use rusqlite::Connection;
 use utility::dtos::Txn;
@@ -41,7 +41,7 @@ impl Cache for S {
         }
     }
 
-    async fn get_all_txn_input(&self) -> Vec<Txn<Vec<u8>>> {
+    async fn get_all_pending_txn(&self) -> Vec<Txn<Vec<u8>>> {
         let mut stmt = self.transactions_db.prepare(QUERY1).unwrap();
 
         let rows = stmt
@@ -77,11 +77,11 @@ impl Cache for S {
             .unwrap();
     }
 
-    async fn mark_txn_input_as_faild(&self, txn_number: TxnNumber) {
+    async fn mark_input_txn_as_faild(&self, txn_number: TxnNumber) {
         self.transactions_db.execute(QUERY4, rusqlite::params![txn_number.0 as i64]).unwrap();
     }
 
-    async fn delete_txn_input(&self, txn_number: TxnNumber) {
+    async fn delete_input_txn(&self, txn_number: TxnNumber) {
         self.transactions_db.execute(QUERY5, rusqlite::params![txn_number.0 as i64]).unwrap();
     }
 

@@ -11,21 +11,18 @@ use std::fmt::Formatter;
 use std::str::FromStr;
 
 pub trait DatabaseRead {
-    type Db<'a>;
+    type Db;
     type Input;
     type Output;
 
-    fn read(
-        db: &mut Self::Db<'_>,
-        input: &Self::Input,
-    ) -> impl Future<Output = Result<Self::Output>>;
+    fn read(db: &mut Self::Db, input: &Self::Input) -> impl Future<Output = Result<Self::Output>>;
 }
 
 pub trait DatabaseWrite {
-    type Db<'a>;
+    type Db;
     type Input;
 
-    fn write(txn: &mut Self::Db<'_>, input: &Self::Input) -> impl Future<Output = Result<()>>;
+    fn write(txn: &mut Self::Db, input: &Self::Input) -> impl Future<Output = Result<()>>;
 }
 
 pub trait MyErrorTrait {
