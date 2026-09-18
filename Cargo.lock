@@ -4084,12 +4084,16 @@ name = "use_case_get_all_accounts"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "cache",
+ "database",
  "dyn-clone",
  "infrastructure",
  "kernel",
  "serde",
+ "tokio",
  "typetag",
  "utility",
+ "uuid",
 ]
 
 [[package]]

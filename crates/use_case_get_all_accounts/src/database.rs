@@ -1,1 +1,73 @@
+use crate::domain::Data;
+use crate::domain::ReadInput;
+use crate::domain::ReadOutput;
+use anyhow::Result;
+use database::db_client;
+use database::utils::MyUuidConverter;
+use kernel::new_types::UuidType;
+use kernel::types::DatabaseRead;
+use utility::types::LogError;
+use uuid::Uuid;
 
+const READ_QUERY: &str = "
+    SELECT
+        rowid::text,
+        is_debit,
+        is_permanent_account,
+        name as account_name,
+        notes,
+        unit_of_measurement_of_quantity
+    FROM accounting_app.account
+    WHERE belong_to_company = $1
+    ORDER BY name
+";
+
+pub struct S;
+
+impl DatabaseRead for S {
+    type Db = db_client::S;
+    type Input = ReadInput;
+    type Output = ReadOutput;
+
+    async fn read(db: &mut Self::Db, input: &Self::Input) -> Result<Self::Output> {
+        let rows =
+            db.client.query(READ_QUERY, &[&input.company_uuid.to_externel_uuid()]).await.log()?;
+
+        let mut data = Vec::with_capacity(rows.len());
+        for row in rows {
+            let row_uuid_str: String = row.try_get(0).log()?;
+            let row_uuid_parsed = Uuid::parse_str(&row_uuid_str).log()?;
+            let row_uuid = UuidType::from(row_uuid_parsed.into_bytes()).into();
+
+            let is_debit: bool = row.try_get(1).log()?;
+            let is_permanent_account: bool = row.try_get(2).log()?;
+            let account_name: String = row.try_get(3).log()?;
+            let notes: Option<String> = row.try_get(4).log()?;
+            let unit_of_measurement_of_quantity: String = row.try_get(5).log()?;
+
+            data.push(Data {
+                row_uuid,
+                is_debit,
+                is_permanent_account,
+                account_name,
+                notes,
+                unit_of_measurement_of_quantity,
+            });
+        }
+
+        Ok(ReadOutput {
+            data,
+        })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use database::test_helper::test_query_helper;
+
+    #[tokio::test]
+    async fn test_query_string_directly() {
+        test_query_helper(READ_QUERY).await.unwrap();
+    }
+}

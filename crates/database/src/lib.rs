@@ -1,6 +1,6 @@
 pub mod db;
 pub mod db_client;
-pub(crate) mod db_transaction;
-#[cfg(test)]
-pub(crate) mod test_helper;
-pub(crate) mod utils;
+pub mod db_transaction;
+pub mod utils;
+
+pub mod test_helper;

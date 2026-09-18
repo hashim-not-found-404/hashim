@@ -1,7 +1,7 @@
 use anyhow::Result;
 use tokio_postgres::NoTls;
 
-pub(crate) async fn test_query_helper(sql_query: &str) -> Result<()> {
+pub async fn test_query_helper(sql_query: &str) -> Result<()> {
     let host = "localhost".to_string();
     let port = "26257".to_string();
     let user = "root".to_string();

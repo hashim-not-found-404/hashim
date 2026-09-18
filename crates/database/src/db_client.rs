@@ -41,7 +41,7 @@ const WRITE_NONCE_IF_NOT_USED_QUERY: &str = "
     RETURNING true";
 
 pub struct S {
-    pub(crate) client: Object,
+    pub client: Object,
 }
 
 impl DBClient for S {

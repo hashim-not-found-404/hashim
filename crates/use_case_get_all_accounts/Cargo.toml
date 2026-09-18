@@ -7,8 +7,8 @@ edition = "2024"
 infrastructure = []
 ui = []
 cache = []
-database = []
-client = []
+database = ["uuid", "dep:database"]
+client = ["dep:cache"]
 server = []
 
 [dependencies]
@@ -16,7 +16,15 @@ infrastructure = { workspace = true }
 kernel = { workspace = true }
 utility = { workspace = true }
 
+cache = { workspace = true, optional = true }
+database = { workspace = true, optional = true }
+
 anyhow = { workspace = true }
 dyn-clone = { workspace = true }
 serde = { workspace = true }
 typetag = { workspace = true }
+
+uuid = { workspace = true, optional = true }
+
+[dev-dependencies]
+tokio = { workspace = true }
