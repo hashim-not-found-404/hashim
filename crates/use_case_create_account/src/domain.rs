@@ -11,6 +11,17 @@ use kernel::types::RowIdError;
 use kernel::types::UserUuidError;
 use serde::Deserialize;
 use serde::Serialize;
+use typetag::serde;
+use utility::dtos::OperationsError;
+use utility::dtos::OperationsInput;
+use utility::dtos::OperationsOk;
+
+#[serde]
+impl OperationsInput for Input {}
+#[serde]
+impl OperationsOk for Ok {}
+#[serde]
+impl OperationsError for Error {}
 
 pub type MyResult = Result<Ok, Error>;
 

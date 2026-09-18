@@ -66,7 +66,8 @@ where
 impl<Ch, DBReader> OpInputTrait<Ch> for WrapperInput<Ch, DBReader>
 where
     Ch: Cache + Debug + Clone,
-    DBReader: DatabaseRead<Db = Ch, Input = ReadInput, Output = ReadOutput> + Debug + Clone,
+    DBReader:
+        DatabaseRead<Db = Ch, Input = ReadInput, Output = ReadOutput> + Debug + Clone + 'static,
 {
     fn into_serde(self: Box<Self>) -> Box<dyn OperationsInput> {
         Box::new(self.inner)
@@ -77,7 +78,7 @@ where
         cache: &'a mut Ch,
     ) -> Pin<Box<dyn Future<Output = OpResult<Ch>> + 'a>> {
         Box::pin(async {
-            let mut errr = self.inner.state_less_check();
+            let errr = self.inner.state_less_check();
 
             if errr.is_there_error() {
                 return Err(OpError(Box::new(errr)));

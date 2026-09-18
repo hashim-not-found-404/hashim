@@ -14,6 +14,7 @@ use infrastructure::actors::Receiver;
 use infrastructure::actors::Sender;
 use infrastructure::runtime::Rt;
 use infrastructure::runtime::Runtime;
+use std::any::Any;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fmt::Debug;
@@ -59,7 +60,7 @@ pub trait CacheUtility: Sized + 'static {
     fn decode_the_response(resp: Vec<u8>) -> Result<MessageFromServer<Self::Cache>>;
 }
 
-pub trait OpInputTrait<Ch>: Debug + DynClone {
+pub trait OpInputTrait<Ch>: Any + Debug + DynClone {
     fn into_serde(self: Box<Self>) -> Box<dyn OperationsInput>;
     fn check_input<'a>(
         &'a self,
@@ -68,13 +69,13 @@ pub trait OpInputTrait<Ch>: Debug + DynClone {
     fn user_uuid(&self) -> Option<[u8; 16]>;
 }
 
-pub trait OpOkTrait<Ch>: Debug {
+pub trait OpOkTrait<Ch>: Any + Debug {
     fn into_serde(self: Box<Self>) -> Box<dyn OperationsOk>;
     fn apply_to_cache(&self, cache: &mut Ch) -> Pin<Box<dyn Future<Output = ()>>>;
     fn subs_to_poke(&self) -> &'static [Subscribe];
 }
 
-pub trait OpErrorTrait: Debug + DynClone {
+pub trait OpErrorTrait: Any + Debug + DynClone {
     fn into_serde(self: Box<Self>) -> Box<dyn OperationsError>;
     fn subs_to_poke(&self) -> &'static [Subscribe];
 }

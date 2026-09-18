@@ -1,12 +1,12 @@
+use crate::domain::Error;
 use crate::domain::Input;
 use crate::domain::MyResult;
+use crate::domain::Ok;
 use crate::domain::ReadInput;
 use crate::domain::ReadOutput;
 use infrastructure::actors::MpscSender;
 use infrastructure::actors::Receiver;
 use infrastructure::actors::Sender;
-use infrastructure::random_number::RandomNumber;
-use infrastructure::random_number::Rn;
 use infrastructure::row_id::Id;
 use infrastructure::row_id::RowId;
 use kernel::client::Cache;
@@ -17,12 +17,28 @@ use kernel::new_types::UserUuid;
 use kernel::new_types::UuidType;
 use kernel::types::DatabaseRead;
 use kernel::types::MyErrorTrait;
+use std::any::Any;
+use std::fmt::Debug;
+use std::marker::PhantomData;
+use std::ops::Deref;
+use std::pin::Pin;
 use std::sync::Arc;
 use use_case_get_all_accounts::client::fetch;
 use utility::cache::CacheStruct;
 use utility::cache::CachingStrategy;
+use utility::cache::OpError;
+use utility::cache::OpErrorTrait;
+use utility::cache::OpInput;
 use utility::cache::OpInputTrait;
+use utility::cache::OpOk;
+use utility::cache::OpOkTrait;
+use utility::cache::OpResult;
 use utility::cache::Response;
+use utility::cache::Subscribe;
+use utility::dtos::OperationsError;
+use utility::dtos::OperationsInput;
+use utility::dtos::OperationsOk;
+use utility::dtos::TxnNumber;
 use utility::process_manager::MessageToProcessManager;
 use utility::process_manager::ProcessId;
 use utility::process_manager::UserConsent;
@@ -32,7 +48,70 @@ use utility::ui_orchestration::handle_fall_back;
 use utility_ui::domain::Dialog;
 use utility_ui::domain::HashimSignal;
 
-impl OpInputTrait for Input {}
+impl<Ch: Cache> OpOkTrait<Ch> for Ok {
+    fn into_serde(self: Box<Self>) -> Box<dyn OperationsOk> {
+        todo!()
+    }
+
+    fn apply_to_cache(&self, cache: &mut Ch) -> Pin<Box<dyn Future<Output = ()>>> {
+        todo!()
+    }
+
+    fn subs_to_poke(&self) -> &'static [Subscribe] {
+        todo!()
+    }
+}
+
+impl OpErrorTrait for Error {
+    fn into_serde(self: Box<Self>) -> Box<dyn OperationsError> {
+        todo!()
+    }
+
+    fn subs_to_poke(&self) -> &'static [Subscribe] {
+        todo!()
+    }
+}
+
+#[derive(Debug, Clone)]
+struct WrapperInput<Ch, DBReader>
+where
+    Ch: Cache + Debug + Clone,
+    DBReader: DatabaseRead<Db = Ch, Input = ReadInput, Output = ReadOutput> + Debug + Clone,
+{
+    inner: Input,
+    _ph:   PhantomData<(Ch, DBReader)>,
+}
+
+impl<Ch, DBReader> OpInputTrait<Ch> for WrapperInput<Ch, DBReader>
+where
+    Ch: Cache + Debug + Clone,
+    DBReader:
+        DatabaseRead<Db = Ch, Input = ReadInput, Output = ReadOutput> + Debug + Clone + 'static,
+{
+    fn into_serde(self: Box<Self>) -> Box<dyn OperationsInput> {
+        Box::new(self.inner)
+    }
+
+    fn check_input<'a>(
+        &'a self,
+        cache: &'a mut Ch,
+    ) -> Pin<Box<dyn Future<Output = OpResult<Ch>> + 'a>> {
+        Box::pin(async {
+            let errr = self.inner.state_full_check::<DBReader>(cache).await.unwrap();
+
+            if errr.is_there_error() {
+                return Err(OpError(Box::new(errr)));
+            }
+
+            let state_less_operation = self.inner.state_less_operation();
+            Ok(OpOk(Box::new(state_less_operation)))
+        })
+    }
+
+    fn user_uuid(&self) -> Option<[u8; 16]> {
+        Some(*self.inner.user_uuid.deref().deref())
+    }
+}
 
 type Type1 = Input;
 type Type2 = Input;
@@ -71,14 +150,12 @@ pub enum CreateAccount {
     UnitOfMeasurementOfQuantity(String),
 }
 
-pub(crate) async fn state_full_operation<
+pub(crate) async fn state_full_operation<Ch, DBReader>(data: &Type2, state: &mut Ch) -> Type3
+where
     Ch: Cache,
-    LongCache: for<'a> DatabaseRead<Db<'a> = Ch, Input = ReadInput, Output = ReadOutput>,
->(
-    data: &Type2,
-    state: &mut Ch,
-) -> Type3 {
-    let errr = data.state_full_check::<LongCache>(state).await.unwrap();
+    DBReader: DatabaseRead<Db = Ch, Input = ReadInput, Output = ReadOutput>,
+{
+    let errr = data.state_full_check::<DBReader>(state).await.unwrap();
 
     if errr.is_there_error() {
         return Err(errr).into();
@@ -101,20 +178,28 @@ fn apply_on_the_model(output: &Type4, local_model: &impl LocalModel) {
 }
 
 impl CreateAccount {
-    pub(crate) async fn update<Ch, LongCache, LM>(
+    pub(crate) async fn update<Ch, DBReader, LM, DBReaderForFetch>(
         self,
         global_model: &impl GlobalModel,
         local_model: &'static LM,
-        cache: CacheStruct,
+        cache: CacheStruct<Ch>,
         mut sender_to_process_manager: MpscSender<MessageToProcessManager>,
     ) where
         LM: LocalModel,
-        Ch: Cache,
-        LongCache: for<'a> DatabaseRead<Db<'a> = Ch>,
+        Ch: Cache + Debug + Clone,
+        DBReader:
+            DatabaseRead<Db = Ch, Input = ReadInput, Output = ReadOutput> + Debug + Clone + 'static,
+        DBReaderForFetch: DatabaseRead<
+                Db = Ch,
+                Input = use_case_get_all_accounts::domain::ReadInput,
+                Output = use_case_get_all_accounts::domain::ReadOutput,
+            > + Debug
+            + Clone
+            + 'static,
     {
         match self {
             CreateAccount::Submit => {
-                handle_submit::<Ch, LongCache, LM>(
+                handle_submit::<Ch, DBReader, LM>(
                     global_model,
                     local_model,
                     cache,
@@ -136,14 +221,14 @@ impl CreateAccount {
             CreateAccount::IsPermanentAccount(v) => local_model.is_permanent_account().set(v),
             CreateAccount::AccountName(v) => {
                 local_model.account_name().set(v);
-                handle_check::<Ch, LongCache>(global_model, local_model, cache).await;
+                handle_check::<Ch, DBReader>(global_model, local_model, cache).await;
             }
             CreateAccount::Notes(v) => local_model.notes().set(v),
             CreateAccount::UnitOfMeasurementOfQuantity(v) => {
                 local_model.unit_of_measurement_of_quantity().set(v)
             }
             CreateAccount::Subscribe => {
-                fetch(
+                fetch::<Ch, DBReaderForFetch>(
                     global_model.selected_company().read(),
                     global_model.user_uuid().read(),
                     cache,
@@ -178,29 +263,54 @@ fn handle_clean<As: LocalModel>(local_model: &As) {
     local_model.account_name_error().reset();
 }
 
-async fn handle_submit<Ch, LongCache, LM>(
+async fn handle_submit<Ch, DBReader, LM>(
     global_model: &impl GlobalModel,
     local_model: &'static LM,
-    cache: CacheStruct,
+    cache: CacheStruct<Ch>,
     sender_to_process_manager: MpscSender<MessageToProcessManager>,
 ) where
     LM: LocalModel,
-    Ch: Cache,
-    LongCache: for<'a> DatabaseRead<Db<'a> = Ch>,
+    Ch: Cache + Debug + Clone,
+    DBReader:
+        DatabaseRead<Db = Ch, Input = ReadInput, Output = ReadOutput> + Debug + Clone + 'static,
 {
     let process_id = ProcessId::default();
     local_model.process_id().put(Some(process_id));
 
     let dialog_signal_adapter = Arc::new(DialogSignalAdapter(local_model.show_dialog()));
 
+    let data = build_input(global_model, local_model);
+
+    let data = WrapperInput {
+        inner: data,
+        _ph:   PhantomData::<(Ch, DBReader)>,
+    };
+
+    let data: OpInput<Ch> = OpInput(Arc::new(data));
+
     handle_fall_back(
         cache,
         sender_to_process_manager,
         dialog_signal_adapter,
         process_id,
-        build_input(global_model, local_model).into(),
+        data,
         move |data| {
-            let result = data.downcast();
+            let result = match data {
+                Ok(ok) => {
+                    let a = ok.0;
+                    let a: Box<dyn Any> = a;
+                    let a: Box<Ok> = a.downcast().unwrap();
+                    let a: Ok = a.as_ref().clone();
+                    Ok(a)
+                }
+                Err(err) => {
+                    let a = err.0;
+                    let a: Box<dyn Any> = a;
+                    let a: Box<Error> = a.downcast().unwrap();
+                    let a: Error = a.as_ref().clone();
+                    Err(a)
+                }
+            };
             apply_on_the_model(&result, local_model);
 
             let is_ok = result.is_ok();
@@ -216,18 +326,26 @@ async fn handle_submit<Ch, LongCache, LM>(
     local_model.is_loading().reset();
 }
 
-async fn handle_check<Ch: Cache, LongCache: for<'a> DatabaseRead<Db<'a> = Ch>>(
+async fn handle_check<Ch, DBReader>(
     global_model: &impl GlobalModel,
     local_model: &impl LocalModel,
-    mut cache: CacheStruct,
-) {
-    let mut receiver_to_response = cache
-        .send_to_cache_actor(
-            CachingStrategy::ReadCacheOnly,
-            Rn::generate(),
-            build_input(global_model, local_model).into(),
-        )
-        .await;
+    mut cache: CacheStruct<Ch>,
+) where
+    Ch: Cache + Debug + Clone,
+    DBReader:
+        DatabaseRead<Db = Ch, Input = ReadInput, Output = ReadOutput> + Debug + Clone + 'static,
+{
+    let data = build_input(global_model, local_model);
+
+    let data = WrapperInput {
+        inner: data,
+        _ph:   PhantomData::<(Ch, DBReader)>,
+    };
+
+    let data: OpInput<Ch> = OpInput(Arc::new(data));
+
+    let mut receiver_to_response =
+        cache.send_to_cache_actor(CachingStrategy::ReadCacheOnly, TxnNumber::default(), data).await;
 
     match receiver_to_response.recv().await.unwrap() {
         Response::CloseTheChannel => {}
@@ -236,7 +354,22 @@ async fn handle_check<Ch: Cache, LongCache: for<'a> DatabaseRead<Db<'a> = Ch>>(
             is_response_from_server: _,
             data,
         } => {
-            let result = data.downcast();
+            let result = match data {
+                Ok(ok) => {
+                    let a = ok.0;
+                    let a: Box<dyn Any> = a;
+                    let a: Box<Ok> = a.downcast().unwrap();
+                    let a: Ok = a.as_ref().clone();
+                    Ok(a)
+                }
+                Err(err) => {
+                    let a = err.0;
+                    let a: Box<dyn Any> = a;
+                    let a: Box<Error> = a.downcast().unwrap();
+                    let a: Error = a.as_ref().clone();
+                    Err(a)
+                }
+            };
             apply_on_the_model(&result, local_model);
         }
     }
