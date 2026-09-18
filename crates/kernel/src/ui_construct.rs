@@ -46,7 +46,12 @@ use utility::ui_effect::Commander;
 use utility::ui_effect::Model;
 use utility_ui::domain::HashimSignal;
 
-pub fn new<Cu: CacheUtility + 'static, Mdl: Model>(model: Arc<Mdl>) -> Commander<Mdl, Cu> {
+pub fn new<Ch, Cu, Mdl>(model: Arc<Mdl>) -> Commander<Mdl, Ch>
+where
+    Ch: Cache + 'static,
+    Cu: CacheUtility<Cache = Ch> + 'static,
+    Mdl: Model,
+{
     let (sender_to_network, receiver_to_network) = Mpsc::channel();
     let (sender_to_cache, receiver_to_cache) = Mpsc::channel();
     let (sender_to_error, receiver_to_error) = Mpsc::channel();
@@ -63,7 +68,7 @@ pub fn new<Cu: CacheUtility + 'static, Mdl: Model>(model: Arc<Mdl>) -> Commander
         format!("ws://{}/ws", ADDRESS),
     );
 
-    let cache = CacheStruct::new(
+    let cache = CacheStruct::<Ch>::new::<Cu>(
         receiver_to_cache,
         sender_to_cache,
         sender_to_network,
@@ -73,15 +78,15 @@ pub fn new<Cu: CacheUtility + 'static, Mdl: Model>(model: Arc<Mdl>) -> Commander
 
     let sender_to_process_manager = process_manager_actor();
 
-    Commander::new(sender_to_process_manager, model, cache)
+    Commander::<Mdl, Ch>::new(sender_to_process_manager, model, cache)
 }
 
-struct MyNetwork<Cu: CacheUtility> {
-    sender_to_cache: MpscSender<MessageToCache<Cu>>,
+struct MyNetwork<Ch: Cache> {
+    sender_to_cache: MpscSender<MessageToCache<Ch>>,
     is_online:       Arc<RwLock<bool>>,
 }
 
-impl<Cu: CacheUtility> Network for MyNetwork<Cu> {
+impl<Ch: Cache> Network for MyNetwork<Ch> {
     async fn network_state(&mut self, is_online: bool) {
         self.is_online.put(is_online);
 
@@ -96,12 +101,8 @@ impl<Cu: CacheUtility> Network for MyNetwork<Cu> {
 }
 
 pub trait Casting: 'static {
-    fn cast_input<Cu: CacheUtility>(
-        v: TypeOperationsInput,
-    ) -> Box<dyn OpInputTrait<CacheUtility = Cu>>;
-
-    fn cast_ok<Cu: CacheUtility>(v: TypeOperationsOk) -> Box<dyn OpOkTrait<CacheUtility = Cu>>;
-
+    fn cast_input<Ch: Cache>(v: TypeOperationsInput) -> Box<dyn OpInputTrait<Ch>>;
+    fn cast_ok<Ch: Cache>(v: TypeOperationsOk) -> Box<dyn OpOkTrait<Ch>>;
     fn cast_error(v: TypeOperationsError) -> Box<dyn OpErrorTrait>;
 }
 
@@ -110,7 +111,13 @@ struct MyCache<Ch: Cache, Cas: Casting> {
     _ph:   PhantomData<Cas>,
 }
 
-impl<Ch: Cache, Cas: Casting> CacheUtility for MyCache<Ch, Cas> {
+impl<Ch, Cas> CacheUtility for MyCache<Ch, Cas>
+where
+    Ch: Cache,
+    Cas: Casting,
+{
+    type Cache = Ch;
+
     async fn new() -> Self {
         Self {
             cache: Ch::new().await,
@@ -118,7 +125,11 @@ impl<Ch: Cache, Cas: Casting> CacheUtility for MyCache<Ch, Cas> {
         }
     }
 
-    async fn get_all_pending_txn(&mut self) -> Vec<Txn<OpInput<Self>>> {
+    fn get_inner_cache(&mut self) -> &mut Self::Cache {
+        &mut self.cache
+    }
+
+    async fn get_all_pending_txn(&mut self) -> Vec<Txn<OpInput<Self::Cache>>> {
         let all_txns = self.cache.get_all_pending_txn().await;
         let mut vec_to_return = Vec::new();
 
@@ -128,7 +139,7 @@ impl<Ch: Cache, Cas: Casting> CacheUtility for MyCache<Ch, Cas> {
         } in all_txns
         {
             let operation: TypeOperationsInput = Ed::decode(&operation).unwrap();
-            let operation = Cas::cast_input::<Self>(operation);
+            let operation = Cas::cast_input::<Self::Cache>(operation);
             let operation = Arc::from(operation);
             let operation = OpInput(operation);
 
@@ -159,10 +170,10 @@ impl<Ch: Cache, Cas: Casting> CacheUtility for MyCache<Ch, Cas> {
         self.cache.mark_input_txn_as_faild(txn_number).await
     }
 
-    async fn write_input_to_cache(&mut self, txn_number: TxnNumber, input: OpInput<Self>) {
+    async fn write_input_to_cache(&mut self, txn_number: TxnNumber, input: OpInput<Self::Cache>) {
         let operation = input.0.clone();
         let operation = dyn_clone::clone_box(&*operation);
-        let operation: TypeOperationsInput = operation;
+        let operation: TypeOperationsInput = operation.into_serde();
         let operation = Ed::encode(&operation);
 
         self.cache
@@ -176,7 +187,7 @@ impl<Ch: Cache, Cas: Casting> CacheUtility for MyCache<Ch, Cas> {
     async fn write_error_to_cache(&mut self, txn_number: TxnNumber, error: OpError) {
         let operation = error.0;
         let operation = dyn_clone::clone_box(&*operation);
-        let operation: TypeOperationsError = operation;
+        let operation: TypeOperationsError = operation.into_serde();
         let operation = Ed::encode(&operation);
 
         self.cache
@@ -187,7 +198,7 @@ impl<Ch: Cache, Cas: Casting> CacheUtility for MyCache<Ch, Cas> {
             .await
     }
 
-    async fn encode_the_inputs(&mut self, inputs: Vec<Txn<OpInput<Self>>>) -> Vec<u8> {
+    async fn encode_the_inputs(&mut self, inputs: Vec<Txn<OpInput<Self::Cache>>>) -> Vec<u8> {
         let mut jwts = Vec::new();
 
         for i in &inputs {
@@ -205,7 +216,7 @@ impl<Ch: Cache, Cas: Casting> CacheUtility for MyCache<Ch, Cas> {
         for i in inputs {
             let operation = i.operation.0;
             let operation = dyn_clone::clone_box(&*operation);
-            let operation: TypeOperationsInput = operation;
+            let operation: TypeOperationsInput = operation.into_serde();
 
             let value = Txn {
                 txn_number: i.txn_number,
@@ -224,7 +235,7 @@ impl<Ch: Cache, Cas: Casting> CacheUtility for MyCache<Ch, Cas> {
         Ed::encode(&data)
     }
 
-    fn decode_the_response(resp: Vec<u8>) -> Result<MessageFromServer<Self>> {
+    fn decode_the_response(resp: Vec<u8>) -> Result<MessageFromServer<Self::Cache>> {
         let resp: FromServer = Ed::decode(&resp).unwrap();
 
         let resp = match resp {

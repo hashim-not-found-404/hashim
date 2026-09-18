@@ -26,9 +26,13 @@ use std::sync::RwLock;
 pub struct Subscribe(u32);
 
 pub trait CacheUtility: Sized + 'static {
+    type Cache;
+
     fn new() -> impl Future<Output = Self>;
 
-    fn get_all_pending_txn(&mut self) -> impl Future<Output = Vec<Txn<OpInput<Self>>>>;
+    fn get_inner_cache(&mut self) -> &mut Self::Cache;
+
+    fn get_all_pending_txn(&mut self) -> impl Future<Output = Vec<Txn<OpInput<Self::Cache>>>>;
     fn clear_pending_txn_state(&mut self) -> impl Future<Output = ()>;
     fn start_pending_txn_state(&mut self) -> impl Future<Output = ()>;
 
@@ -38,7 +42,7 @@ pub trait CacheUtility: Sized + 'static {
     fn write_input_to_cache(
         &mut self,
         txn_number: TxnNumber,
-        input: OpInput<Self>,
+        input: OpInput<Self::Cache>,
     ) -> impl Future<Output = ()>;
 
     fn write_error_to_cache(
@@ -49,49 +53,47 @@ pub trait CacheUtility: Sized + 'static {
 
     fn encode_the_inputs(
         &mut self,
-        inputs: Vec<Txn<OpInput<Self>>>,
+        inputs: Vec<Txn<OpInput<Self::Cache>>>,
     ) -> impl Future<Output = Vec<u8>>;
 
-    fn decode_the_response(resp: Vec<u8>) -> Result<MessageFromServer<Self>>;
+    fn decode_the_response(resp: Vec<u8>) -> Result<MessageFromServer<Self::Cache>>;
 }
 
-pub trait OpInputTrait: OperationsInput + Debug + DynClone {
-    type CacheUtility: CacheUtility;
-
-    fn check_input(
-        &self,
-        cache: &mut Self::CacheUtility,
-    ) -> Pin<Box<dyn Future<Output = OpResult<Self::CacheUtility>>>>;
-
+pub trait OpInputTrait<Ch>: Debug + DynClone {
+    fn into_serde(self: Box<Self>) -> Box<dyn OperationsInput>;
+    fn check_input<'a>(
+        &'a self,
+        cache: &'a mut Ch,
+    ) -> Pin<Box<dyn Future<Output = OpResult<Ch>> + 'a>>;
     fn user_uuid(&self) -> Option<[u8; 16]>;
 }
 
-pub trait OpOkTrait: OperationsOk + Debug {
-    type CacheUtility: CacheUtility;
-
-    fn apply_to_cache(&self, cache: &mut Self::CacheUtility) -> Pin<Box<dyn Future<Output = ()>>>;
+pub trait OpOkTrait<Ch>: Debug {
+    fn into_serde(self: Box<Self>) -> Box<dyn OperationsOk>;
+    fn apply_to_cache(&self, cache: &mut Ch) -> Pin<Box<dyn Future<Output = ()>>>;
     fn subs_to_poke(&self) -> &'static [Subscribe];
 }
 
-pub trait OpErrorTrait: OperationsError + Debug + DynClone {
+pub trait OpErrorTrait: Debug + DynClone {
+    fn into_serde(self: Box<Self>) -> Box<dyn OperationsError>;
     fn subs_to_poke(&self) -> &'static [Subscribe];
 }
 
 #[derive(Debug)]
-pub struct OpInput<Cu: CacheUtility>(pub Arc<dyn OpInputTrait<CacheUtility = Cu>>);
+pub struct OpInput<Ch>(pub Arc<dyn OpInputTrait<Ch>>);
 #[derive(Debug)]
-pub struct OpOk<Cu: CacheUtility>(pub Box<dyn OpOkTrait<CacheUtility = Cu>>);
+pub struct OpOk<Ch>(pub Box<dyn OpOkTrait<Ch>>);
 #[derive(Debug)]
 pub struct OpError(pub Box<dyn OpErrorTrait>);
-pub type OpResult<Cu: CacheUtility> = Result<OpOk<Cu>, OpError>;
+pub type OpResult<Ch> = Result<OpOk<Ch>, OpError>;
 
-impl<Cu: CacheUtility, T: OpInputTrait<CacheUtility = Cu> + 'static> From<T> for OpInput<Cu> {
-    fn from(value: T) -> Self {
-        Self(Arc::new(value))
-    }
-}
+// impl<Ch, T: OpInputTrait<Ch> + 'static> From<T> for OpInput<Ch> {
+//     fn from(value: T) -> Self {
+//         Self(Arc::new(value))
+//     }
+// }
 
-impl<Cu: CacheUtility> Clone for OpInput<Cu> {
+impl<Ch> Clone for OpInput<Ch> {
     fn clone(&self) -> Self {
         Self(self.0.clone())
     }
@@ -104,23 +106,23 @@ impl Clone for OpError {
     }
 }
 
-pub enum MessageFromServer<Cu: CacheUtility> {
+pub enum MessageFromServer<Ch> {
     Error(anyhow::Error),
-    Response(Vec<Txn<OpResult<Cu>>>),
-    Resources(Vec<OpOk<Cu>>),
+    Response(Vec<Txn<OpResult<Ch>>>),
+    Resources(Vec<OpOk<Ch>>),
 }
 
 #[derive(Debug)]
-pub enum Response<Cu: CacheUtility> {
+pub enum Response<Ch> {
     CloseTheChannel,
     ServerCannotBeReached,
     Data {
         is_response_from_server: bool,
-        data:                    OpResult<Cu>,
+        data:                    OpResult<Ch>,
     },
 }
 
-pub enum MessageToCache<Cu: CacheUtility> {
+pub enum MessageToCache<Ch> {
     WeAreBackOnline,
     DataFromServer(Vec<u8>),
     Subscribe {
@@ -133,9 +135,9 @@ pub enum MessageToCache<Cu: CacheUtility> {
     },
     Query {
         strategy:   CachingStrategy,
-        sender:     MpscSender<Response<Cu>>,
+        sender:     MpscSender<Response<Ch>>,
         txn_number: TxnNumber,
-        data:       OpInput<Cu>,
+        data:       OpInput<Ch>,
     },
 }
 
@@ -153,11 +155,11 @@ pub enum CachingStrategy {
     WriteServerOnly,
 }
 
-pub struct CacheStruct<Cu: CacheUtility> {
-    sender: MpscSender<MessageToCache<Cu>>,
+pub struct CacheStruct<Ch> {
+    sender: MpscSender<MessageToCache<Ch>>,
 }
 
-impl<Cu: CacheUtility> Clone for CacheStruct<Cu> {
+impl<Ch> Clone for CacheStruct<Ch> {
     fn clone(&self) -> Self {
         Self {
             sender: self.sender.clone(),
@@ -165,15 +167,15 @@ impl<Cu: CacheUtility> Clone for CacheStruct<Cu> {
     }
 }
 
-impl<Cu: CacheUtility> CacheStruct<Cu> {
-    pub fn new(
-        receiver_to_cache: MpscReceiver<MessageToCache<Cu>>,
-        sender_to_cache: MpscSender<MessageToCache<Cu>>,
+impl<Ch: 'static> CacheStruct<Ch> {
+    pub fn new<Cu: CacheUtility<Cache = Ch>>(
+        receiver_to_cache: MpscReceiver<MessageToCache<Ch>>,
+        sender_to_cache: MpscSender<MessageToCache<Ch>>,
         sender_to_network: MpscSender<Vec<u8>>,
         sender_to_error: MpscSender<anyhow::Error>,
         is_online: Arc<RwLock<bool>>,
     ) -> Self {
-        Self::cache_actor(receiver_to_cache, sender_to_network, sender_to_error, is_online);
+        Self::cache_actor::<Cu>(receiver_to_cache, sender_to_network, sender_to_error, is_online);
 
         Self {
             sender: sender_to_cache,
@@ -184,8 +186,8 @@ impl<Cu: CacheUtility> CacheStruct<Cu> {
         &mut self,
         strategy: CachingStrategy,
         txn_number: TxnNumber,
-        data: OpInput<Cu>,
-    ) -> MpscReceiver<Response<Cu>> {
+        data: OpInput<Ch>,
+    ) -> MpscReceiver<Response<Ch>> {
         let (sender, receiver) = Mpsc::channel();
 
         self.sender
@@ -229,15 +231,15 @@ impl<Cu: CacheUtility> CacheStruct<Cu> {
             .unwrap();
     }
 
-    fn cache_actor(
-        mut receiver_to_cache: MpscReceiver<MessageToCache<Cu>>,
+    fn cache_actor<Cu: CacheUtility<Cache = Ch>>(
+        mut receiver_to_cache: MpscReceiver<MessageToCache<Ch>>,
         mut sender_to_network: MpscSender<Vec<u8>>,
         mut sender_to_error: MpscSender<anyhow::Error>,
         is_online: Arc<RwLock<bool>>,
     ) {
         Rt::spawn_local(async move {
             let mut pool_of_senders =
-                HashMap::<TxnNumber, MpscSender<Response<Cu>>>::with_capacity(100);
+                HashMap::<TxnNumber, MpscSender<Response<Ch>>>::with_capacity(100);
             let mut pool_of_pokers = HashMap::<u16, MpscSender<()>>::with_capacity(10);
             let mut pool_of_subscribes = HashMap::<Subscribe, HashSet<u16>>::with_capacity(100);
 
@@ -281,7 +283,7 @@ impl<Cu: CacheUtility> CacheStruct<Cu> {
                                     match &operation {
                                         Ok(ok) => {
                                             add_subs(&mut subs_to_poke, ok.0.subs_to_poke());
-                                            ok.0.apply_to_cache(&mut cache).await;
+                                            ok.0.apply_to_cache(cache.get_inner_cache()).await;
                                             cache.delete_input_txn(txn_number).await;
                                         }
                                         Err(err) => {
@@ -309,10 +311,11 @@ impl<Cu: CacheUtility> CacheStruct<Cu> {
                                 let txns = cache.get_all_pending_txn().await;
 
                                 for txn in txns {
-                                    let result = txn.operation.0.check_input(&mut cache).await;
+                                    let result =
+                                        txn.operation.0.check_input(cache.get_inner_cache()).await;
 
                                     if let Ok(resource) = result {
-                                        resource.0.apply_to_cache(&mut cache).await;
+                                        resource.0.apply_to_cache(cache.get_inner_cache()).await;
                                     }
                                 }
 
@@ -328,7 +331,7 @@ impl<Cu: CacheUtility> CacheStruct<Cu> {
                                 let mut subs_to_poke = HashSet::new();
 
                                 for resource in resources {
-                                    resource.0.apply_to_cache(&mut cache).await;
+                                    resource.0.apply_to_cache(cache.get_inner_cache()).await;
                                     add_subs(&mut subs_to_poke, resource.0.subs_to_poke());
                                 }
 
@@ -347,10 +350,11 @@ impl<Cu: CacheUtility> CacheStruct<Cu> {
                                     ..
                                 } in txns
                                 {
-                                    let result = operation.0.check_input(&mut cache).await;
+                                    let result =
+                                        operation.0.check_input(cache.get_inner_cache()).await;
 
                                     if let Ok(resource) = result {
-                                        resource.0.apply_to_cache(&mut cache).await;
+                                        resource.0.apply_to_cache(cache.get_inner_cache()).await;
                                     }
                                 }
                             }
@@ -388,7 +392,7 @@ impl<Cu: CacheUtility> CacheStruct<Cu> {
                     } => {
                         match strategy {
                             CachingStrategy::ReadCacheOnly => {
-                                let result = data.0.check_input(&mut cache).await;
+                                let result = data.0.check_input(cache.get_inner_cache()).await;
                                 let _ = sender
                                     .send(Response::Data {
                                         is_response_from_server: false,
@@ -399,7 +403,7 @@ impl<Cu: CacheUtility> CacheStruct<Cu> {
                             }
                             CachingStrategy::ReadCacheFirst => todo!(),
                             CachingStrategy::ReadCacheAndServer => {
-                                let result = data.0.check_input(&mut cache).await;
+                                let result = data.0.check_input(cache.get_inner_cache()).await;
 
                                 let _ = sender
                                     .send(Response::Data {
@@ -443,14 +447,14 @@ impl<Cu: CacheUtility> CacheStruct<Cu> {
                                 }
                             }
                             CachingStrategy::WriteCacheOnly => {
-                                let result = data.0.check_input(&mut cache).await;
+                                let result = data.0.check_input(cache.get_inner_cache()).await;
 
                                 let mut subs_to_poke = HashSet::new();
 
                                 match &result {
                                     Ok(ok) => {
                                         add_subs(&mut subs_to_poke, ok.0.subs_to_poke());
-                                        ok.0.apply_to_cache(&mut cache).await;
+                                        ok.0.apply_to_cache(cache.get_inner_cache()).await;
                                     }
                                     Err(err) => {
                                         add_subs(&mut subs_to_poke, err.0.subs_to_poke());
@@ -476,14 +480,14 @@ impl<Cu: CacheUtility> CacheStruct<Cu> {
                             }
                             CachingStrategy::WriteCacheFirst => todo!(),
                             CachingStrategy::WriteCacheAndServer => {
-                                let result = data.0.check_input(&mut cache).await;
+                                let result = data.0.check_input(cache.get_inner_cache()).await;
 
                                 let mut subs_to_poke = HashSet::new();
 
                                 match &result {
                                     Ok(ok) => {
                                         add_subs(&mut subs_to_poke, ok.0.subs_to_poke());
-                                        ok.0.apply_to_cache(&mut cache).await;
+                                        ok.0.apply_to_cache(cache.get_inner_cache()).await;
                                     }
                                     Err(err) => {
                                         add_subs(&mut subs_to_poke, err.0.subs_to_poke());

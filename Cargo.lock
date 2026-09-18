@@ -4084,6 +4084,7 @@ name = "use_case_get_all_accounts"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "dyn-clone",
  "infrastructure",
  "kernel",
  "serde",

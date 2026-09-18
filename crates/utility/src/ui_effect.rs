@@ -1,5 +1,4 @@
 use crate::cache::CacheStruct;
-use crate::cache::CacheUtility;
 use crate::process_manager::MessageToProcessManager;
 use infrastructure::actors::Mpsc;
 use infrastructure::actors::MpscReceiver;
@@ -18,7 +17,7 @@ pub trait Model: 'static {}
 
 pub trait Message: Debug {
     type Mdl: Model;
-    type Cache: CacheUtility;
+    type Cache;
 
     fn update(
         self: Arc<Self>,
@@ -29,13 +28,13 @@ pub trait Message: Debug {
     );
 }
 
-type MessageType<Mdl, Cu> = Arc<dyn Message<Mdl = Mdl, Cache = Cu>>;
+type MessageType<Mdl, Ch> = Arc<dyn Message<Mdl = Mdl, Cache = Ch>>;
 
-pub struct Commander<Mdl: Model, Cu: CacheUtility> {
-    sender: MpscSender<MessageType<Mdl, Cu>>,
+pub struct Commander<Mdl: Model, Ch> {
+    sender: MpscSender<MessageType<Mdl, Ch>>,
 }
 
-impl<Mdl: Model, Cu: CacheUtility> Clone for Commander<Mdl, Cu> {
+impl<Mdl: Model, Ch> Clone for Commander<Mdl, Ch> {
     fn clone(&self) -> Self {
         Self {
             sender: self.sender.clone(),
@@ -43,11 +42,15 @@ impl<Mdl: Model, Cu: CacheUtility> Clone for Commander<Mdl, Cu> {
     }
 }
 
-impl<Mdl: Model, Cu: CacheUtility> Commander<Mdl, Cu> {
+impl<Mdl, Ch> Commander<Mdl, Ch>
+where
+    Mdl: Model,
+    Ch: 'static,
+{
     pub fn new(
         sender_to_process_manager: MpscSender<MessageToProcessManager>,
         model: Arc<Mdl>,
-        cache: CacheStruct<Cu>,
+        cache: CacheStruct<Ch>,
     ) -> Self {
         let (sender_to_commander, receiver_to_commander) = Mpsc::channel();
 
@@ -58,7 +61,10 @@ impl<Mdl: Model, Cu: CacheUtility> Commander<Mdl, Cu> {
         }
     }
 
-    pub fn send<Msg: Message<Mdl = Mdl, Cache = Cu> + 'static>(&self, msg: Msg) {
+    pub fn send<Msg>(&self, msg: Msg)
+    where
+        Msg: Message<Mdl = Mdl, Cache = Ch> + 'static,
+    {
         let mut sender = self.sender.clone();
         Rt::spawn_local(async move {
             sender.send(Arc::new(msg)).await.unwrap();
@@ -66,10 +72,10 @@ impl<Mdl: Model, Cu: CacheUtility> Commander<Mdl, Cu> {
     }
 
     fn commander_actor(
-        mut receiver: MpscReceiver<MessageType<Mdl, Cu>>,
+        mut receiver: MpscReceiver<MessageType<Mdl, Ch>>,
         sender_to_process_manager: MpscSender<MessageToProcessManager>,
         model: Arc<Mdl>,
-        cache: CacheStruct<Cu>,
+        cache: CacheStruct<Ch>,
     ) {
         Rt::spawn_local(async move {
             let aborters = Aborters::default();
