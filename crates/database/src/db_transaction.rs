@@ -6,7 +6,7 @@ use tokio_postgres::error::SqlState;
 use utility::types::LogError;
 
 pub struct S<'a> {
-    pub(crate) txn: Transaction<'a>,
+    pub txn: Transaction<'a>,
 }
 
 impl DBTransaction for S<'_> {

@@ -6,8 +6,8 @@ edition = "2024"
 [features]
 infrastructure = []
 ui = []
-cache = []
-database = []
+cache = ["dep:cache", "rusqlite"]
+database = ["uuid", "dep:database"]
 client = []
 server = []
 
@@ -18,6 +18,15 @@ use_case_get_all_accounts = { workspace = true }
 utility = { workspace = true }
 utility_ui = { workspace = true }
 
+cache = { workspace = true, optional = true }
+database = { workspace = true, optional = true }
+
 anyhow = { workspace = true }
 serde = { workspace = true }
 typetag = { workspace = true }
+
+rusqlite = { workspace = true, optional = true }
+uuid = { workspace = true, optional = true }
+
+[dev-dependencies]
+tokio = { workspace = true }

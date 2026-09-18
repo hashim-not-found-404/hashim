@@ -76,7 +76,8 @@ impl OpErrorTrait for Error {
 struct WrapperInput<Ch, DBReader>
 where
     Ch: Cache + Debug + Clone,
-    DBReader: DatabaseRead<Db = Ch, Input = ReadInput, Output = ReadOutput> + Debug + Clone,
+    DBReader:
+        for<'a> DatabaseRead<Db<'a> = Ch, Input = ReadInput, Output = ReadOutput> + Debug + Clone,
 {
     inner: Input,
     _ph:   PhantomData<(Ch, DBReader)>,
@@ -85,8 +86,10 @@ where
 impl<Ch, DBReader> OpInputTrait<Ch> for WrapperInput<Ch, DBReader>
 where
     Ch: Cache + Debug + Clone,
-    DBReader:
-        DatabaseRead<Db = Ch, Input = ReadInput, Output = ReadOutput> + Debug + Clone + 'static,
+    DBReader: for<'a> DatabaseRead<Db<'a> = Ch, Input = ReadInput, Output = ReadOutput>
+        + Debug
+        + Clone
+        + 'static,
 {
     fn into_serde(self: Box<Self>) -> Box<dyn OperationsInput> {
         Box::new(self.inner)
@@ -153,7 +156,7 @@ pub enum CreateAccount {
 pub(crate) async fn state_full_operation<Ch, DBReader>(data: &Type2, state: &mut Ch) -> Type3
 where
     Ch: Cache,
-    DBReader: DatabaseRead<Db = Ch, Input = ReadInput, Output = ReadOutput>,
+    DBReader: for<'a> DatabaseRead<Db<'a> = Ch, Input = ReadInput, Output = ReadOutput>,
 {
     let errr = data.state_full_check::<DBReader>(state).await.unwrap();
 
@@ -187,10 +190,12 @@ impl CreateAccount {
     ) where
         LM: LocalModel,
         Ch: Cache + Debug + Clone,
-        DBReader:
-            DatabaseRead<Db = Ch, Input = ReadInput, Output = ReadOutput> + Debug + Clone + 'static,
-        DBReaderForFetch: DatabaseRead<
-                Db = Ch,
+        DBReader: for<'a> DatabaseRead<Db<'a> = Ch, Input = ReadInput, Output = ReadOutput>
+            + Debug
+            + Clone
+            + 'static,
+        DBReaderForFetch: for<'a> DatabaseRead<
+                Db<'a> = Ch,
                 Input = use_case_get_all_accounts::domain::ReadInput,
                 Output = use_case_get_all_accounts::domain::ReadOutput,
             > + Debug
@@ -271,8 +276,10 @@ async fn handle_submit<Ch, DBReader, LM>(
 ) where
     LM: LocalModel,
     Ch: Cache + Debug + Clone,
-    DBReader:
-        DatabaseRead<Db = Ch, Input = ReadInput, Output = ReadOutput> + Debug + Clone + 'static,
+    DBReader: for<'a> DatabaseRead<Db<'a> = Ch, Input = ReadInput, Output = ReadOutput>
+        + Debug
+        + Clone
+        + 'static,
 {
     let process_id = ProcessId::default();
     local_model.process_id().put(Some(process_id));
@@ -332,8 +339,10 @@ async fn handle_check<Ch, DBReader>(
     mut cache: CacheStruct<Ch>,
 ) where
     Ch: Cache + Debug + Clone,
-    DBReader:
-        DatabaseRead<Db = Ch, Input = ReadInput, Output = ReadOutput> + Debug + Clone + 'static,
+    DBReader: for<'a> DatabaseRead<Db<'a> = Ch, Input = ReadInput, Output = ReadOutput>
+        + Debug
+        + Clone
+        + 'static,
 {
     let data = build_input(global_model, local_model);
 

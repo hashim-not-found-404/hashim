@@ -57,7 +57,8 @@ impl OpErrorTrait for Error {
 struct WrapperInput<Ch, DBReader>
 where
     Ch: Cache + Debug + Clone,
-    DBReader: DatabaseRead<Db = Ch, Input = ReadInput, Output = ReadOutput> + Debug + Clone,
+    DBReader:
+        for<'a> DatabaseRead<Db<'a> = Ch, Input = ReadInput, Output = ReadOutput> + Debug + Clone,
 {
     inner: Input,
     _ph:   PhantomData<(DBReader, Ch)>,
@@ -66,8 +67,10 @@ where
 impl<Ch, DBReader> OpInputTrait<Ch> for WrapperInput<Ch, DBReader>
 where
     Ch: Cache + Debug + Clone,
-    DBReader:
-        DatabaseRead<Db = Ch, Input = ReadInput, Output = ReadOutput> + Debug + Clone + 'static,
+    DBReader: for<'a> DatabaseRead<Db<'a> = Ch, Input = ReadInput, Output = ReadOutput>
+        + Debug
+        + Clone
+        + 'static,
 {
     fn into_serde(self: Box<Self>) -> Box<dyn OperationsInput> {
         Box::new(self.inner)
@@ -101,8 +104,10 @@ pub async fn fetch<Ch, DBReader>(
     mut cache: CacheStruct<Ch>,
 ) where
     Ch: Cache + Debug + Clone,
-    DBReader:
-        DatabaseRead<Db = Ch, Input = ReadInput, Output = ReadOutput> + Debug + Clone + 'static,
+    DBReader: for<'a> DatabaseRead<Db<'a> = Ch, Input = ReadInput, Output = ReadOutput>
+        + Debug
+        + Clone
+        + 'static,
 {
     let input = Input {
         user_uuid,

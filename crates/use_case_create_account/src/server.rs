@@ -15,15 +15,13 @@ use kernel::types::UserUuidError;
 
 impl Input {
     pub async fn handle_operation_generic<
-        'a,
-        Txn: DBTransaction,
-        Cli: DBClient<Txn<'a> = Txn> + 'a,
-        DBReader: DatabaseRead<Db = Txn, Input = ReadInput, Output = ReadOutput>,
-        DBWrite: DatabaseWrite<Db = Txn, Input = Ok>,
+        Cli: DBClient,
+        DBReader: for<'a> DatabaseRead<Db<'a> = Cli::Txn<'a>, Input = ReadInput, Output = ReadOutput>,
+        DBWrite: for<'a> DatabaseWrite<Db<'a> = Cli::Txn<'a>, Input = Ok>,
     >(
         &self,
         side_effects: &mut SideEffects,
-        client: &'a mut Cli,
+        client: &mut Cli,
     ) -> Result<MyResult> {
         let mut errr = self.state_less_check();
         make_auth_check!(side_effects, self, errr);

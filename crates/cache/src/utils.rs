@@ -2,7 +2,7 @@ use kernel::new_types::UuidType;
 use std::ops::Deref;
 use uuid::Uuid;
 
-pub(crate) trait MyUuidConverter {
+pub trait MyUuidConverter {
     fn to_string(&self) -> String;
 }
 
@@ -13,7 +13,7 @@ impl MyUuidConverter for UuidType {
     }
 }
 
-pub(crate) trait MyUuidConverter1 {
+pub trait MyUuidConverter1 {
     fn to_uuid(self) -> UuidType;
 }
 

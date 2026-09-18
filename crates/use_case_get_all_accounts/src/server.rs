@@ -13,7 +13,7 @@ use kernel::types::UserUuidError;
 impl Input {
     pub async fn handle_operation_generic<
         Cli: DBClient,
-        DBReader: DatabaseRead<Db = Cli, Input = ReadInput, Output = ReadOutput>,
+        DBReader: for<'a> DatabaseRead<Db<'a> = Cli, Input = ReadInput, Output = ReadOutput>,
     >(
         &self,
         side_effects: &mut SideEffects,

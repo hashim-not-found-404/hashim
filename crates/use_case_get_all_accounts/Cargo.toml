@@ -6,9 +6,9 @@ edition = "2024"
 [features]
 infrastructure = []
 ui = []
-cache = []
+cache = ["dep:cache"]
 database = ["uuid", "dep:database"]
-client = ["dep:cache"]
+client = []
 server = []
 
 [dependencies]

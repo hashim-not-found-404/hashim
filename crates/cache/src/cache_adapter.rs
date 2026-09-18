@@ -21,7 +21,7 @@ const QUERY7: &str =
 const QUERY8: &str = "SAVEPOINT pending_txn_branch;";
 
 pub struct S {
-    pub(crate) tables_db:       Connection,
+    pub tables_db:              Connection,
     pub(crate) transactions_db: Connection,
 }
 

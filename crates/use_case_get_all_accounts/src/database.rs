@@ -25,11 +25,11 @@ const READ_QUERY: &str = "
 pub struct S;
 
 impl DatabaseRead for S {
-    type Db = db_client::S;
+    type Db<'a> = db_client::S;
     type Input = ReadInput;
     type Output = ReadOutput;
 
-    async fn read(db: &mut Self::Db, input: &Self::Input) -> Result<Self::Output> {
+    async fn read(db: &mut Self::Db<'_>, input: &Self::Input) -> Result<Self::Output> {
         let rows =
             db.client.query(READ_QUERY, &[&input.company_uuid.to_externel_uuid()]).await.log()?;
 

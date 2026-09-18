@@ -9,20 +9,20 @@ use kernel::types::DatabaseWrite;
 pub struct S;
 
 impl DatabaseRead for S {
-    type Db = cache_adapter::S;
+    type Db<'a> = cache_adapter::S;
     type Input = ReadInput;
     type Output = ReadOutput;
 
-    async fn read(db: &mut Self::Db, input: &Self::Input) -> Result<Self::Output> {
+    async fn read(db: &mut Self::Db<'_>, input: &Self::Input) -> Result<Self::Output> {
         todo!()
     }
 }
 
 impl DatabaseWrite for S {
-    type Db = cache_adapter::S;
+    type Db<'a> = cache_adapter::S;
     type Input = Ok;
 
-    async fn write(txn: &mut Self::Db, input: &Self::Input) -> Result<()> {
+    async fn write(txn: &mut Self::Db<'_>, input: &Self::Input) -> Result<()> {
         todo!()
     }
 }
