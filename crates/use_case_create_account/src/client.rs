@@ -19,9 +19,7 @@ use kernel::types::DatabaseRead;
 use kernel::types::MyErrorTrait;
 use std::any::Any;
 use std::fmt::Debug;
-use std::marker::PhantomData;
 use std::ops::Deref;
-use std::pin::Pin;
 use std::sync::Arc;
 use use_case_get_all_accounts::client::fetch;
 use utility::cache::CacheStruct;
@@ -35,9 +33,6 @@ use utility::cache::OpOkTrait;
 use utility::cache::OpResult;
 use utility::cache::Response;
 use utility::cache::Subscribe;
-use utility::dtos::OperationsError;
-use utility::dtos::OperationsInput;
-use utility::dtos::OperationsOk;
 use utility::dtos::TxnNumber;
 use utility::process_manager::MessageToProcessManager;
 use utility::process_manager::ProcessId;
@@ -49,72 +44,39 @@ use utility::ui_orchestration::handle_fall_back;
 use utility_ui::domain::Dialog;
 use utility_ui::domain::HashimSignal;
 
-impl<Ch: Cache> OpOkTrait<Ch> for Ok {
-    fn into_serde(self: Box<Self>) -> Box<dyn OperationsOk> {
-        todo!()
-    }
-
-    fn apply_to_cache(&self, cache: &mut Ch) -> Pin<Box<dyn Future<Output = ()>>> {
-        todo!()
-    }
-
+impl OpOkTrait for Ok {
     fn subs_to_poke(&self) -> &'static [Subscribe] {
         todo!()
     }
 }
 
 impl OpErrorTrait for Error {
-    fn into_serde(self: Box<Self>) -> Box<dyn OperationsError> {
-        todo!()
-    }
-
     fn subs_to_poke(&self) -> &'static [Subscribe] {
         todo!()
     }
 }
 
-#[derive(Debug, Clone)]
-struct WrapperInput<Ch, DBReader>
-where
-    Ch: Cache + Debug + Clone,
-    DBReader:
-        for<'a> DatabaseRead<Db<'a> = Ch, Input = ReadInput, Output = ReadOutput> + Debug + Clone,
-{
-    inner: Input,
-    _ph:   PhantomData<(Ch, DBReader)>,
+impl OpInputTrait for Input {
+    fn user_uuid(&self) -> Option<[u8; 16]> {
+        Some(*self.user_uuid.deref().deref())
+    }
 }
 
-impl<Ch, DBReader> OpInputTrait<Ch> for WrapperInput<Ch, DBReader>
-where
-    Ch: Cache + Debug + Clone,
-    DBReader: for<'a> DatabaseRead<Db<'a> = Ch, Input = ReadInput, Output = ReadOutput>
-        + Debug
-        + Clone
-        + 'static,
-{
-    fn into_serde(self: Box<Self>) -> Box<dyn OperationsInput> {
-        Box::new(self.inner)
+pub async fn check_input<
+    Ch: Cache,
+    DBReader: for<'a> DatabaseRead<Db<'a> = Ch, Input = ReadInput, Output = ReadOutput>,
+>(
+    input: &Input,
+    cache: &mut Ch,
+) -> OpResult {
+    let errr = input.state_full_check::<DBReader>(cache).await.unwrap();
+
+    if errr.is_there_error() {
+        return Err(OpError(Box::new(errr)));
     }
 
-    fn check_input<'a>(
-        &'a self,
-        cache: &'a mut Ch,
-    ) -> Pin<Box<dyn Future<Output = OpResult<Ch>> + 'a>> {
-        Box::pin(async {
-            let errr = self.inner.state_full_check::<DBReader>(cache).await.unwrap();
-
-            if errr.is_there_error() {
-                return Err(OpError(Box::new(errr)));
-            }
-
-            let state_less_operation = self.inner.state_less_operation();
-            Ok(OpOk(Box::new(state_less_operation)))
-        })
-    }
-
-    fn user_uuid(&self) -> Option<[u8; 16]> {
-        Some(*self.inner.user_uuid.deref().deref())
-    }
+    let state_less_operation = input.state_less_operation();
+    Ok(OpOk(Box::new(state_less_operation)))
 }
 
 #[derive(Debug)]
@@ -170,36 +132,19 @@ fn apply_on_the_model(output: &Type4, local_model: &impl LocalModel) {
 }
 
 impl Message {
-    pub async fn update<Ch, DBReader, LM, DBReaderForFetch>(
+    pub async fn update<LM>(
         self,
         global_model: &impl GlobalModel,
         local_model: &'static LM,
-        cache: CacheStruct<Ch>,
+        cache: CacheStruct,
         mut sender_to_process_manager: MpscSender<MessageToProcessManager>,
     ) where
         LM: LocalModel,
-        Ch: Cache + Debug + Clone,
-        DBReader: for<'a> DatabaseRead<Db<'a> = Ch, Input = ReadInput, Output = ReadOutput>
-            + Debug
-            + Clone
-            + 'static,
-        DBReaderForFetch: for<'a> DatabaseRead<
-                Db<'a> = Ch,
-                Input = use_case_get_all_accounts::domain::ReadInput,
-                Output = use_case_get_all_accounts::domain::ReadOutput,
-            > + Debug
-            + Clone
-            + 'static,
     {
         match self {
             Self::Submit => {
-                handle_submit::<Ch, DBReader, LM>(
-                    global_model,
-                    local_model,
-                    cache,
-                    sender_to_process_manager,
-                )
-                .await
+                handle_submit::<LM>(global_model, local_model, cache, sender_to_process_manager)
+                    .await
             }
             Self::Consent(i) => {
                 sender_to_process_manager
@@ -215,14 +160,14 @@ impl Message {
             Self::IsPermanentAccount(v) => local_model.is_permanent_account().set(v),
             Self::AccountName(v) => {
                 local_model.account_name().set(v);
-                handle_check::<Ch, DBReader>(global_model, local_model, cache).await;
+                handle_check(global_model, local_model, cache).await;
             }
             Self::Notes(v) => local_model.notes().set(v),
             Self::UnitOfMeasurementOfQuantity(v) => {
                 local_model.unit_of_measurement_of_quantity().set(v)
             }
             Self::Subscribe => {
-                fetch::<Ch, DBReaderForFetch>(
+                fetch(
                     global_model.selected_company().read(),
                     global_model.user_uuid().read(),
                     cache,
@@ -257,18 +202,13 @@ fn handle_clean<As: LocalModel>(local_model: &As) {
     local_model.account_name_error().reset();
 }
 
-async fn handle_submit<Ch, DBReader, LM>(
+async fn handle_submit<LM>(
     global_model: &impl GlobalModel,
     local_model: &'static LM,
-    cache: CacheStruct<Ch>,
+    cache: CacheStruct,
     sender_to_process_manager: MpscSender<MessageToProcessManager>,
 ) where
     LM: LocalModel,
-    Ch: Cache + Debug + Clone,
-    DBReader: for<'a> DatabaseRead<Db<'a> = Ch, Input = ReadInput, Output = ReadOutput>
-        + Debug
-        + Clone
-        + 'static,
 {
     let process_id = ProcessId::default();
     local_model.process_id().put(Some(process_id));
@@ -277,12 +217,7 @@ async fn handle_submit<Ch, DBReader, LM>(
 
     let data = build_input(global_model, local_model);
 
-    let data = WrapperInput {
-        inner: data,
-        _ph:   PhantomData::<(Ch, DBReader)>,
-    };
-
-    let data: OpInput<Ch> = OpInput(Arc::new(data));
+    let data: OpInput = OpInput(Arc::new(data));
 
     handle_fall_back(
         cache,
@@ -322,25 +257,14 @@ async fn handle_submit<Ch, DBReader, LM>(
     local_model.is_loading().reset();
 }
 
-async fn handle_check<Ch, DBReader>(
+async fn handle_check(
     global_model: &impl GlobalModel,
     local_model: &impl LocalModel,
-    mut cache: CacheStruct<Ch>,
-) where
-    Ch: Cache + Debug + Clone,
-    DBReader: for<'a> DatabaseRead<Db<'a> = Ch, Input = ReadInput, Output = ReadOutput>
-        + Debug
-        + Clone
-        + 'static,
-{
+    mut cache: CacheStruct,
+) {
     let data = build_input(global_model, local_model);
 
-    let data = WrapperInput {
-        inner: data,
-        _ph:   PhantomData::<(Ch, DBReader)>,
-    };
-
-    let data: OpInput<Ch> = OpInput(Arc::new(data));
+    let data: OpInput = OpInput(Arc::new(data));
 
     let mut receiver_to_response =
         cache.send_to_cache_actor(CachingStrategy::ReadCacheOnly, TxnNumber::default(), data).await;

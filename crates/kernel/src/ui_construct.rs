@@ -22,6 +22,7 @@ use infrastructure::runtime::Runtime;
 use std::marker::PhantomData;
 use std::sync::Arc;
 use std::sync::RwLock;
+use utility::cache::CacheCaster;
 use utility::cache::CacheStruct;
 use utility::cache::CacheUtility;
 use utility::cache::MessageFromServer;
@@ -46,12 +47,13 @@ use utility::ui_effect::Commander;
 use utility::ui_effect::Model;
 use utility_ui::domain::HashimSignal;
 
-pub fn new<Ch, Cu, Mdl, Cas>(model: Arc<Mdl>) -> Commander
+pub fn new<Ch, Cu, Mdl, Cas, CasCh>(model: Arc<Mdl>) -> Commander
 where
     Ch: Cache + 'static,
     Cu: CacheUtility<Cache = Ch> + 'static,
     Mdl: Model,
     Cas: Caster,
+    CasCh: CacheCaster<Cache = Ch>,
 {
     let (sender_to_network, receiver_to_network) = Mpsc::channel();
     let (sender_to_cache, receiver_to_cache) = Mpsc::channel();
@@ -69,7 +71,7 @@ where
         format!("ws://{}/ws", ADDRESS),
     );
 
-    let cache = CacheStruct::<Ch>::new::<Cu>(
+    let cache = CacheStruct::new::<Ch, Cu, CasCh>(
         receiver_to_cache,
         sender_to_cache,
         sender_to_network,
@@ -79,15 +81,15 @@ where
 
     let sender_to_process_manager = process_manager_actor();
 
-    Commander::new::<Mdl, Ch, Cas>(sender_to_process_manager, model, cache)
+    Commander::new::<Mdl, Cas>(sender_to_process_manager, model, cache)
 }
 
-struct MyNetwork<Ch: Cache> {
-    sender_to_cache: MpscSender<MessageToCache<Ch>>,
+struct MyNetwork {
+    sender_to_cache: MpscSender<MessageToCache>,
     is_online:       Arc<RwLock<bool>>,
 }
 
-impl<Ch: Cache> Network for MyNetwork<Ch> {
+impl Network for MyNetwork {
     async fn network_state(&mut self, is_online: bool) {
         self.is_online.put(is_online);
 
@@ -102,8 +104,8 @@ impl<Ch: Cache> Network for MyNetwork<Ch> {
 }
 
 pub trait Casting: 'static {
-    fn cast_input<Ch: Cache>(v: TypeOperationsInput) -> Box<dyn OpInputTrait<Ch>>;
-    fn cast_ok<Ch: Cache>(v: TypeOperationsOk) -> Box<dyn OpOkTrait<Ch>>;
+    fn cast_input<Ch: Cache>(v: TypeOperationsInput) -> Box<dyn OpInputTrait>;
+    fn cast_ok<Ch: Cache>(v: TypeOperationsOk) -> Box<dyn OpOkTrait>;
     fn cast_error(v: TypeOperationsError) -> Box<dyn OpErrorTrait>;
 }
 
@@ -130,7 +132,7 @@ where
         &mut self.cache
     }
 
-    async fn get_all_pending_txn(&mut self) -> Vec<Txn<OpInput<Self::Cache>>> {
+    async fn get_all_pending_txn(&mut self) -> Vec<Txn<OpInput>> {
         let all_txns = self.cache.get_all_pending_txn().await;
         let mut vec_to_return = Vec::new();
 
@@ -171,10 +173,10 @@ where
         self.cache.mark_input_txn_as_faild(txn_number).await
     }
 
-    async fn write_input_to_cache(&mut self, txn_number: TxnNumber, input: OpInput<Self::Cache>) {
+    async fn write_input_to_cache(&mut self, txn_number: TxnNumber, input: OpInput) {
         let operation = input.0.clone();
         let operation = dyn_clone::clone_box(&*operation);
-        let operation: TypeOperationsInput = operation.into_serde();
+        let operation: TypeOperationsInput = operation;
         let operation = Ed::encode(&operation);
 
         self.cache
@@ -188,7 +190,7 @@ where
     async fn write_error_to_cache(&mut self, txn_number: TxnNumber, error: OpError) {
         let operation = error.0;
         let operation = dyn_clone::clone_box(&*operation);
-        let operation: TypeOperationsError = operation.into_serde();
+        let operation: TypeOperationsError = operation;
         let operation = Ed::encode(&operation);
 
         self.cache
@@ -199,7 +201,7 @@ where
             .await
     }
 
-    async fn encode_the_inputs(&mut self, inputs: Vec<Txn<OpInput<Self::Cache>>>) -> Vec<u8> {
+    async fn encode_the_inputs(&mut self, inputs: Vec<Txn<OpInput>>) -> Vec<u8> {
         let mut jwts = Vec::new();
 
         for i in &inputs {
@@ -217,7 +219,7 @@ where
         for i in inputs {
             let operation = i.operation.0;
             let operation = dyn_clone::clone_box(&*operation);
-            let operation: TypeOperationsInput = operation.into_serde();
+            let operation: TypeOperationsInput = operation;
 
             let value = Txn {
                 txn_number: i.txn_number,
@@ -236,7 +238,7 @@ where
         Ed::encode(&data)
     }
 
-    fn decode_the_response(resp: Vec<u8>) -> Result<MessageFromServer<Self::Cache>> {
+    fn decode_the_response(resp: Vec<u8>) -> Result<MessageFromServer> {
         let resp: FromServer = Ed::decode(&resp).unwrap();
 
         let resp = match resp {
@@ -248,7 +250,7 @@ where
                     let a = i.operation;
                     let r = match a {
                         Ok(ok) => {
-                            let ok = Cas::cast_ok(ok);
+                            let ok = Cas::cast_ok::<Ch>(ok);
                             Ok(OpOk(ok))
                         }
                         Err(err) => {
@@ -269,7 +271,7 @@ where
                 let mut a = Vec::new();
 
                 for i in i {
-                    let v = Cas::cast_ok(i);
+                    let v = Cas::cast_ok::<Ch>(i);
                     a.push(OpOk(v));
                 }
 

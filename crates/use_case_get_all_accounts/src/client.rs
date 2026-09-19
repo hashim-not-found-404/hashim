@@ -8,10 +8,7 @@ use kernel::new_types::CompanyUuid;
 use kernel::new_types::UserUuid;
 use kernel::types::DatabaseRead;
 use kernel::types::MyErrorTrait;
-use std::fmt::Debug;
-use std::marker::PhantomData;
 use std::ops::Deref;
-use std::pin::Pin;
 use std::sync::Arc;
 use utility::cache::CacheStruct;
 use utility::cache::CachingStrategy;
@@ -23,102 +20,51 @@ use utility::cache::OpOk;
 use utility::cache::OpOkTrait;
 use utility::cache::OpResult;
 use utility::cache::Subscribe;
-use utility::dtos::OperationsError;
-use utility::dtos::OperationsInput;
-use utility::dtos::OperationsOk;
 use utility::dtos::TxnNumber;
 
-impl<Ch: Cache> OpOkTrait<Ch> for Ok {
-    fn into_serde(self: Box<Self>) -> Box<dyn OperationsOk> {
-        todo!()
-    }
-
-    fn apply_to_cache(&self, cache: &mut Ch) -> Pin<Box<dyn Future<Output = ()>>> {
-        todo!()
-    }
-
+impl OpOkTrait for Ok {
     fn subs_to_poke(&self) -> &'static [Subscribe] {
         todo!()
     }
 }
 
 impl OpErrorTrait for Error {
-    fn into_serde(self: Box<Self>) -> Box<dyn OperationsError> {
-        todo!()
-    }
-
     fn subs_to_poke(&self) -> &'static [Subscribe] {
         todo!()
     }
 }
 
-#[derive(Debug, Clone)]
-struct WrapperInput<Ch, DBReader>
-where
-    Ch: Cache + Debug + Clone,
-    DBReader:
-        for<'a> DatabaseRead<Db<'a> = Ch, Input = ReadInput, Output = ReadOutput> + Debug + Clone,
-{
-    inner: Input,
-    _ph:   PhantomData<(DBReader, Ch)>,
-}
-
-impl<Ch, DBReader> OpInputTrait<Ch> for WrapperInput<Ch, DBReader>
-where
-    Ch: Cache + Debug + Clone,
-    DBReader: for<'a> DatabaseRead<Db<'a> = Ch, Input = ReadInput, Output = ReadOutput>
-        + Debug
-        + Clone
-        + 'static,
-{
-    fn into_serde(self: Box<Self>) -> Box<dyn OperationsInput> {
-        Box::new(self.inner)
-    }
-
-    fn check_input<'a>(
-        &'a self,
-        cache: &'a mut Ch,
-    ) -> Pin<Box<dyn Future<Output = OpResult<Ch>> + 'a>> {
-        Box::pin(async {
-            let errr = self.inner.state_less_check();
-
-            if errr.is_there_error() {
-                return Err(OpError(Box::new(errr)));
-            }
-
-            let ok = self.inner.state_full_operation::<DBReader>(cache).await.unwrap();
-
-            Ok(OpOk(Box::new(ok)))
-        })
-    }
-
+impl OpInputTrait for Input {
     fn user_uuid(&self) -> Option<[u8; 16]> {
-        Some(*self.inner.user_uuid.deref().deref())
+        Some(*self.user_uuid.deref().deref())
     }
 }
 
-pub async fn fetch<Ch, DBReader>(
-    selected_company: CompanyUuid,
-    user_uuid: UserUuid,
-    mut cache: CacheStruct<Ch>,
-) where
-    Ch: Cache + Debug + Clone,
-    DBReader: for<'a> DatabaseRead<Db<'a> = Ch, Input = ReadInput, Output = ReadOutput>
-        + Debug
-        + Clone
-        + 'static,
-{
+pub async fn check_input<
+    Ch: Cache,
+    DBReader: for<'a> DatabaseRead<Db<'a> = Ch, Input = ReadInput, Output = ReadOutput>,
+>(
+    input: &Input,
+    cache: &mut Ch,
+) -> OpResult {
+    let errr = input.state_less_check();
+
+    if errr.is_there_error() {
+        return Err(OpError(Box::new(errr)));
+    }
+
+    let ok = input.state_full_operation::<DBReader>(cache).await.unwrap();
+
+    Ok(OpOk(Box::new(ok)))
+}
+
+pub async fn fetch(selected_company: CompanyUuid, user_uuid: UserUuid, mut cache: CacheStruct) {
     let input = Input {
         user_uuid,
         company_uuid: selected_company,
     };
 
-    let input = WrapperInput {
-        inner: input,
-        _ph:   PhantomData::<(DBReader, Ch)>,
-    };
-
-    let input: OpInput<Ch> = OpInput(Arc::new(input));
+    let input: OpInput = OpInput(Arc::new(input));
 
     let txn_number = TxnNumber::default();
 

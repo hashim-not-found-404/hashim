@@ -21,13 +21,13 @@ use infrastructure::runtime::JoinHandle;
 use infrastructure::runtime::Rt;
 use infrastructure::runtime::Runtime;
 
-pub async fn handle_fall_back<Ch: 'static>(
-    mut cache: CacheStruct<Ch>,
+pub async fn handle_fall_back(
+    mut cache: CacheStruct,
     mut sender_to_process_manager: MpscSender<MessageToProcessManager>,
     dialog: DialogType,
     process_id: ProcessId,
-    data: OpInput<Ch>,
-    f: impl Fn(OpResult<Ch>) -> bool + Clone + 'static,
+    data: OpInput,
+    f: impl Fn(OpResult) -> bool + Clone + 'static,
 ) {
     let txn_number = TxnNumber::default();
 
@@ -92,11 +92,11 @@ pub async fn handle_fall_back<Ch: 'static>(
     handle.abort().await;
 }
 
-pub fn spawn_listener<Ch: 'static>(
-    mut cache: CacheStruct<Ch>,
+pub fn spawn_listener(
+    mut cache: CacheStruct,
     list_of_subscribtion: &'static [Subscribe],
-    data: OpInput<Ch>,
-    is_error: impl Fn(OpResult<Ch>) + 'static,
+    data: OpInput,
+    is_error: impl Fn(OpResult) + 'static,
 ) -> impl FnOnce() {
     let component_id = Rn::generate() as u16;
     let mut cache1 = cache.clone();

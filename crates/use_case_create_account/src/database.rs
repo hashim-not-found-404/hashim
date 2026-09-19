@@ -30,9 +30,9 @@ const READ_QUERY: &str = "
         (SELECT account_name_used FROM checks) AS account_name_used
 ";
 
-pub struct Db;
+pub struct DataBaseOp;
 
-impl DatabaseRead for Db {
+impl DatabaseRead for DataBaseOp {
     type Db<'a> = db_transaction::S<'a>;
     type Input = ReadInput;
     type Output = ReadOutput;
@@ -78,7 +78,7 @@ const WRITE_QUERY: &str = "
     ) VALUES ($1, $2, $3, $4, $5, $6, $7)
 ";
 
-impl DatabaseWrite for Db {
+impl DatabaseWrite for DataBaseOp {
     type Db<'a> = db_transaction::S<'a>;
     type Input = Ok;
 

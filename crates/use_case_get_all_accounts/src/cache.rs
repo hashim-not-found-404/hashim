@@ -6,9 +6,9 @@ use cache::cache_adapter;
 use kernel::types::DatabaseRead;
 use kernel::types::DatabaseWrite;
 
-pub struct S;
+pub struct CacheOp;
 
-impl DatabaseRead for S {
+impl DatabaseRead for CacheOp {
     type Db<'a> = cache_adapter::S;
     type Input = ReadInput;
     type Output = ReadOutput;
@@ -18,7 +18,7 @@ impl DatabaseRead for S {
     }
 }
 
-impl DatabaseWrite for S {
+impl DatabaseWrite for CacheOp {
     type Db<'a> = cache_adapter::S;
     type Input = Ok;
 

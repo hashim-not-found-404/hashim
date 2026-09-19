@@ -16,9 +16,9 @@ const QUERY2: &str = "SELECT 1 FROM company WHERE rowid = ?1";
 const QUERY3: &str = "SELECT 1 FROM account WHERE rowid = ?1";
 const QUERY4: &str = "SELECT 1 FROM account WHERE belong_to_company = ?1 AND name = ?2";
 
-pub struct S;
+pub struct CacheOp;
 
-impl DatabaseRead for S {
+impl DatabaseRead for CacheOp {
     type Db<'a> = cache_adapter::S;
     type Input = ReadInput;
     type Output = ReadOutput;
@@ -54,7 +54,7 @@ impl DatabaseRead for S {
     }
 }
 
-impl DatabaseWrite for S {
+impl DatabaseWrite for CacheOp {
     type Db<'a> = cache_adapter::S;
     type Input = Ok;
 

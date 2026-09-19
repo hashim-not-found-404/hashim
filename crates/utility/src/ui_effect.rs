@@ -19,24 +19,19 @@ pub trait Model: 'static {}
 pub trait MessageTrait: Debug + 'static {}
 
 pub trait UpdaterTrait<Mdl: Model> {
-    type Cache;
-
     fn update(
         self: Box<Self>,
         model: Arc<Mdl>,
-        cache: CacheStruct<Self::Cache>,
+        cache: CacheStruct,
         sender_to_process_manager: MpscSender<MessageToProcessManager>,
         aborters: Aborters,
     ) -> Pin<Box<dyn Future<Output = ()>>>;
 }
 
 pub trait Caster {
-    fn cast_message_to_updater<Mdl, Ch>(
-        v: Box<dyn MessageTrait>,
-    ) -> Box<dyn UpdaterTrait<Mdl, Cache = Ch>>
+    fn cast_message_to_updater<Mdl>(v: Box<dyn MessageTrait>) -> Box<dyn UpdaterTrait<Mdl>>
     where
-        Mdl: Model,
-        Ch: 'static;
+        Mdl: Model;
 }
 
 #[derive(Clone)]
@@ -45,19 +40,18 @@ pub struct Commander {
 }
 
 impl Commander {
-    pub fn new<Mdl, Ch, Cas>(
+    pub fn new<Mdl, Cas>(
         sender_to_process_manager: MpscSender<MessageToProcessManager>,
         model: Arc<Mdl>,
-        cache: CacheStruct<Ch>,
+        cache: CacheStruct,
     ) -> Self
     where
         Mdl: Model,
-        Ch: 'static,
         Cas: Caster,
     {
         let (sender_to_commander, receiver_to_commander) = Mpsc::channel();
 
-        Self::commander_actor::<Mdl, Ch, Cas>(
+        Self::commander_actor::<Mdl, Cas>(
             receiver_to_commander,
             sender_to_process_manager,
             model,
@@ -79,14 +73,13 @@ impl Commander {
         });
     }
 
-    fn commander_actor<Mdl, Ch, Cas>(
+    fn commander_actor<Mdl, Cas>(
         mut receiver: MpscReceiver<Box<dyn MessageTrait>>,
         sender_to_process_manager: MpscSender<MessageToProcessManager>,
         model: Arc<Mdl>,
-        cache: CacheStruct<Ch>,
+        cache: CacheStruct,
     ) where
         Mdl: Model,
-        Ch: 'static,
         Cas: Caster,
     {
         Rt::spawn_local(async move {
