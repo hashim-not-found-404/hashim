@@ -57,19 +57,19 @@ pub trait CacheUtility: Sized + 'static {
     fn decode_the_response(resp: Vec<u8>) -> Result<MessageFromServer>;
 }
 
-pub trait OpInputTrait: OperationsInput + Any + Debug + DynClone {
+pub trait OpInputTrait: OperationsInput + DynClone {
     fn user_uuid(&self) -> Option<[u8; 16]>;
 }
 
-pub trait OpOkTrait: OperationsOk + Any + Debug {
+pub trait OpOkTrait: OperationsOk {
     fn subs_to_poke(&self) -> &'static [Subscribe];
 }
 
-pub trait OpErrorTrait: OperationsError + Any + Debug + DynClone {
+pub trait OpErrorTrait: OperationsError + DynClone {
     fn subs_to_poke(&self) -> &'static [Subscribe];
 }
 
-pub trait OpInputTrait1: OpInputTrait + Any + Debug + DynClone {
+pub trait OpInputTrait1: Any + Debug + DynClone {
     type Cache;
     fn check_input<'a>(
         &'a self,
@@ -77,7 +77,7 @@ pub trait OpInputTrait1: OpInputTrait + Any + Debug + DynClone {
     ) -> Pin<Box<dyn Future<Output = OpResult> + 'a>>;
 }
 
-pub trait OpOkTrait1: OpOkTrait + Any + Debug {
+pub trait OpOkTrait1: Any + Debug {
     type Cache;
     fn apply_to_cache<'a>(
         &'a self,

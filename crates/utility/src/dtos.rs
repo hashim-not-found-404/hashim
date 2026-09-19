@@ -39,7 +39,7 @@ pub type TypeOperationsError = Box<dyn OperationsError>;
 
 //////////////////////////////////////////////////////////////////////
 #[serde]
-pub trait ResourceDTO: Any + Debug + OperationsOk + DynClone + Send {}
+pub trait ResourceDTO: Any + Debug + DynClone + Send + OperationsOk {}
 pub type TypeResourceDTO = Box<dyn ResourceDTO>;
 
 dyn_clone::clone_trait_object!(ResourceDTO);
