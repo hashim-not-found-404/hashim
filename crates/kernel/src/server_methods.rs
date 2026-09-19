@@ -58,7 +58,7 @@ impl<Jwt: JWT, Db: Database<Client = Cli>, Cli: DBClient> ServerMethods<Jwt, Db>
         }
     }
 
-    pub fn server_actor<Ws: WSServer, Cas: Casting>(self: Arc<Self>, mut session: Ws) {
+    pub fn server_actor<Ws: WSServer, Cas: Casting<Cli = Cli>>(self: Arc<Self>, mut session: Ws) {
         Rt::spawn_local(async move {
             let mut sender_to_broker = self.sender_to_broker.clone();
             let (sender_to_server, mut receiver_to_server) =
@@ -296,7 +296,7 @@ impl<Jwt: JWT, Db: Database<Client = Cli>, Cli: DBClient> ServerMethods<Jwt, Db>
     }
 }
 
-async fn push_data<Jwt: JWT, Cli: DBClient, Cas: Casting>(
+async fn push_data<Jwt: JWT, Cli: DBClient, Cas: Casting<Cli = Cli>>(
     input: Input,
     side_effects: &mut SideEffects,
     client: &mut Cli,

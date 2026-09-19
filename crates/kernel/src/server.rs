@@ -92,7 +92,7 @@ pub trait OperationsInputServer {
 }
 
 pub trait Casting {
-    fn cast_input<Cli: DBClient>(
-        v: TypeOperationsInput,
-    ) -> Box<dyn OperationsInputServer<Cli = Cli>>;
+    type Cli: DBClient;
+
+    fn cast_input(v: TypeOperationsInput) -> Box<dyn OperationsInputServer<Cli = Self::Cli>>;
 }

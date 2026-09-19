@@ -1,0 +1,15 @@
+[package]
+name = "app_root_server"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+database = { workspace = true }
+kernel = { workspace = true }
+server = { workspace = true }
+utility = { workspace = true }
+
+use_case_create_account = { workspace = true, features = ["server", "client", "database", "cache", "wires"] }
+use_case_get_all_accounts = { workspace = true, features = ["server", "client", "database", "cache", "wires"] }
+
+actix-web = { workspace = true }

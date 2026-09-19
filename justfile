@@ -67,3 +67,6 @@ all_p crate_name:
 
 new crate_name:
     cargo new crates/{{crate_name}} --lib --vcs none
+
+run_server: fmt
+    RUSTFLAGS="-A warnings" cargo run -p app_root_server
