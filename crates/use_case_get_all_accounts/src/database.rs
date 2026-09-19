@@ -22,9 +22,9 @@ const READ_QUERY: &str = "
     ORDER BY name
 ";
 
-pub struct S;
+pub struct Db;
 
-impl DatabaseRead for S {
+impl DatabaseRead for Db {
     type Db<'a> = db_client::S;
     type Input = ReadInput;
     type Output = ReadOutput;

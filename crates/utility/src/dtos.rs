@@ -43,3 +43,20 @@ pub trait ResourceDTO: Any + Debug + OperationsOk + DynClone + Send {}
 pub type TypeResourceDTO = Box<dyn ResourceDTO>;
 
 dyn_clone::clone_trait_object!(ResourceDTO);
+
+//////////////////////////////////////////////////////////////////////
+
+pub fn dyn_result<Ok: OperationsOk, Error: OperationsError>(
+    a: Result<Ok, Error>,
+) -> Result<TypeOperationsOk, TypeOperationsError> {
+    match a {
+        Ok(a) => {
+            let a: TypeOperationsOk = Box::new(a);
+            Ok(a)
+        }
+        Err(a) => {
+            let a: TypeOperationsError = Box::new(a);
+            Err(a)
+        }
+    }
+}

@@ -30,7 +30,6 @@ pub trait CacheUtility: Sized + 'static {
     type Cache;
 
     fn new() -> impl Future<Output = Self>;
-
     fn get_inner_cache(&mut self) -> &mut Self::Cache;
 
     fn get_all_pending_txn(&mut self) -> impl Future<Output = Vec<Txn<OpInput<Self::Cache>>>>;

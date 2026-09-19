@@ -24,6 +24,7 @@ check: fmt
     RUSTFLAGS="-A warnings" cargo check --all-targets --features="database"
     RUSTFLAGS="-A warnings" cargo check --all-targets --features="cache"
     RUSTFLAGS="-A warnings" cargo check --all-targets --features="client,ui"
+    RUSTFLAGS="-A warnings" cargo check --all-targets --features="server,client,database,cache,wires"
 
 test: fmt
     RUSTFLAGS="-A warnings" cargo test -- --show-output

@@ -9,3 +9,5 @@ pub mod domain;
 pub mod server;
 #[cfg(feature = "ui")]
 pub mod ui;
+#[cfg(feature = "wires")]
+mod wires;
