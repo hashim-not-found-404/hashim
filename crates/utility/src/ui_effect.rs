@@ -10,51 +10,59 @@ use infrastructure::runtime::Rt;
 use infrastructure::runtime::Runtime;
 use std::collections::HashMap;
 use std::fmt::Debug;
+use std::pin::Pin;
 use std::sync::Arc;
 use std::sync::Mutex;
 
 pub trait Model: 'static {}
 
-pub trait Message: Debug {
-    type Mdl: Model;
+pub trait MessageTrait: Debug + 'static {}
+
+pub trait UpdaterTrait<Mdl: Model> {
     type Cache;
 
     fn update(
-        self: Arc<Self>,
-        model: Arc<Self::Mdl>,
+        self: Box<Self>,
+        model: Arc<Mdl>,
         cache: CacheStruct<Self::Cache>,
         sender_to_process_manager: MpscSender<MessageToProcessManager>,
         aborters: Aborters,
-    );
+    ) -> Pin<Box<dyn Future<Output = ()>>>;
 }
 
-type MessageType<Mdl, Ch> = Arc<dyn Message<Mdl = Mdl, Cache = Ch>>;
-
-pub struct Commander<Mdl: Model, Ch> {
-    sender: MpscSender<MessageType<Mdl, Ch>>,
+pub trait Caster {
+    fn cast_message_to_updater<Mdl, Ch>(
+        v: Box<dyn MessageTrait>,
+    ) -> Box<dyn UpdaterTrait<Mdl, Cache = Ch>>
+    where
+        Mdl: Model,
+        Ch: 'static;
 }
 
-impl<Mdl: Model, Ch> Clone for Commander<Mdl, Ch> {
-    fn clone(&self) -> Self {
-        Self {
-            sender: self.sender.clone(),
-        }
-    }
+#[derive(Clone)]
+pub struct Commander {
+    sender: MpscSender<Box<dyn MessageTrait>>,
 }
 
-impl<Mdl, Ch> Commander<Mdl, Ch>
-where
-    Mdl: Model,
-    Ch: 'static,
-{
-    pub fn new(
+impl Commander {
+    pub fn new<Mdl, Ch, Cas>(
         sender_to_process_manager: MpscSender<MessageToProcessManager>,
         model: Arc<Mdl>,
         cache: CacheStruct<Ch>,
-    ) -> Self {
+    ) -> Self
+    where
+        Mdl: Model,
+        Ch: 'static,
+        Cas: Caster,
+    {
         let (sender_to_commander, receiver_to_commander) = Mpsc::channel();
 
-        Self::commander_actor(receiver_to_commander, sender_to_process_manager, model, cache);
+        Self::commander_actor::<Mdl, Ch, Cas>(
+            receiver_to_commander,
+            sender_to_process_manager,
+            model,
+            cache,
+        );
 
         Self {
             sender: sender_to_commander,
@@ -63,25 +71,30 @@ where
 
     pub fn send<Msg>(&self, msg: Msg)
     where
-        Msg: Message<Mdl = Mdl, Cache = Ch> + 'static,
+        Msg: MessageTrait,
     {
         let mut sender = self.sender.clone();
         Rt::spawn_local(async move {
-            sender.send(Arc::new(msg)).await.unwrap();
+            sender.send(Box::new(msg)).await.unwrap();
         });
     }
 
-    fn commander_actor(
-        mut receiver: MpscReceiver<MessageType<Mdl, Ch>>,
+    fn commander_actor<Mdl, Ch, Cas>(
+        mut receiver: MpscReceiver<Box<dyn MessageTrait>>,
         sender_to_process_manager: MpscSender<MessageToProcessManager>,
         model: Arc<Mdl>,
         cache: CacheStruct<Ch>,
-    ) {
+    ) where
+        Mdl: Model,
+        Ch: 'static,
+        Cas: Caster,
+    {
         Rt::spawn_local(async move {
             let aborters = Aborters::default();
 
             loop {
                 let message = receiver.recv().await.unwrap();
+                let message = Cas::cast_message_to_updater(message);
 
                 let model = model.clone();
                 let cache = cache.clone();
@@ -89,7 +102,7 @@ where
                 let aborters = aborters.clone();
 
                 Rt::spawn_local(async move {
-                    message.update(model, cache, sender_to_process_manager, aborters);
+                    message.update(model, cache, sender_to_process_manager, aborters).await;
                 });
             }
         });

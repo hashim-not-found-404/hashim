@@ -44,6 +44,7 @@ use utility::process_manager::ProcessId;
 use utility::process_manager::UserConsent;
 use utility::types::MakeOptionIfEmpty;
 use utility::types::ReadAndSet;
+use utility::ui_effect::MessageTrait;
 use utility::ui_orchestration::handle_fall_back;
 use utility_ui::domain::Dialog;
 use utility_ui::domain::HashimSignal;
@@ -116,6 +117,21 @@ where
     }
 }
 
+#[derive(Debug)]
+pub enum Message {
+    Subscribe,
+    Submit,
+    Consent(UserConsent),
+    Clean,
+    IsDebit(bool),
+    IsPermanentAccount(bool),
+    AccountName(String),
+    Notes(String),
+    UnitOfMeasurementOfQuantity(String),
+}
+
+impl MessageTrait for Message {}
+
 type Type1 = Input;
 type Type2 = Input;
 type Type3 = MyResult;
@@ -140,33 +156,6 @@ pub trait LocalModel {
     fn account_name_error(&self) -> Self::Sig<Option<String>>;
 }
 
-#[derive(Debug)]
-pub enum CreateAccount {
-    Subscribe,
-    Submit,
-    Consent(UserConsent),
-    Clean,
-    IsDebit(bool),
-    IsPermanentAccount(bool),
-    AccountName(String),
-    Notes(String),
-    UnitOfMeasurementOfQuantity(String),
-}
-
-pub(crate) async fn state_full_operation<Ch, DBReader>(data: &Type2, state: &mut Ch) -> Type3
-where
-    Ch: Cache,
-    DBReader: for<'a> DatabaseRead<Db<'a> = Ch, Input = ReadInput, Output = ReadOutput>,
-{
-    let errr = data.state_full_check::<DBReader>(state).await.unwrap();
-
-    if errr.is_there_error() {
-        return Err(errr).into();
-    }
-
-    Ok(data.state_less_operation()).into()
-}
-
 fn apply_on_the_model(output: &Type4, local_model: &impl LocalModel) {
     match output {
         Ok(_) => {
@@ -180,8 +169,8 @@ fn apply_on_the_model(output: &Type4, local_model: &impl LocalModel) {
     }
 }
 
-impl CreateAccount {
-    pub(crate) async fn update<Ch, DBReader, LM, DBReaderForFetch>(
+impl Message {
+    pub async fn update<Ch, DBReader, LM, DBReaderForFetch>(
         self,
         global_model: &impl GlobalModel,
         local_model: &'static LM,
@@ -203,7 +192,7 @@ impl CreateAccount {
             + 'static,
     {
         match self {
-            CreateAccount::Submit => {
+            Self::Submit => {
                 handle_submit::<Ch, DBReader, LM>(
                     global_model,
                     local_model,
@@ -212,7 +201,7 @@ impl CreateAccount {
                 )
                 .await
             }
-            CreateAccount::Consent(i) => {
+            Self::Consent(i) => {
                 sender_to_process_manager
                     .send(MessageToProcessManager::FromUser {
                         process_id: local_model.process_id().read().unwrap(),
@@ -221,18 +210,18 @@ impl CreateAccount {
                     .await
                     .unwrap();
             }
-            CreateAccount::Clean => handle_clean(local_model),
-            CreateAccount::IsDebit(v) => local_model.is_debit().set(v),
-            CreateAccount::IsPermanentAccount(v) => local_model.is_permanent_account().set(v),
-            CreateAccount::AccountName(v) => {
+            Self::Clean => handle_clean(local_model),
+            Self::IsDebit(v) => local_model.is_debit().set(v),
+            Self::IsPermanentAccount(v) => local_model.is_permanent_account().set(v),
+            Self::AccountName(v) => {
                 local_model.account_name().set(v);
                 handle_check::<Ch, DBReader>(global_model, local_model, cache).await;
             }
-            CreateAccount::Notes(v) => local_model.notes().set(v),
-            CreateAccount::UnitOfMeasurementOfQuantity(v) => {
+            Self::Notes(v) => local_model.notes().set(v),
+            Self::UnitOfMeasurementOfQuantity(v) => {
                 local_model.unit_of_measurement_of_quantity().set(v)
             }
-            CreateAccount::Subscribe => {
+            Self::Subscribe => {
                 fetch::<Ch, DBReaderForFetch>(
                     global_model.selected_company().read(),
                     global_model.user_uuid().read(),

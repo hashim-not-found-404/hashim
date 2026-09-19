@@ -42,15 +42,17 @@ use utility::network::Network;
 use utility::network::network_actor;
 use utility::process_manager::process_manager_actor;
 use utility::types::ReadAndSet;
+use utility::ui_effect::Caster;
 use utility::ui_effect::Commander;
 use utility::ui_effect::Model;
 use utility_ui::domain::HashimSignal;
 
-pub fn new<Ch, Cu, Mdl>(model: Arc<Mdl>) -> Commander<Mdl, Ch>
+pub fn new<Ch, Cu, Mdl, Cas>(model: Arc<Mdl>) -> Commander
 where
     Ch: Cache + 'static,
     Cu: CacheUtility<Cache = Ch> + 'static,
     Mdl: Model,
+    Cas: Caster,
 {
     let (sender_to_network, receiver_to_network) = Mpsc::channel();
     let (sender_to_cache, receiver_to_cache) = Mpsc::channel();
@@ -78,7 +80,7 @@ where
 
     let sender_to_process_manager = process_manager_actor();
 
-    Commander::<Mdl, Ch>::new(sender_to_process_manager, model, cache)
+    Commander::new::<Mdl, Ch, Cas>(sender_to_process_manager, model, cache)
 }
 
 struct MyNetwork<Ch: Cache> {

@@ -4,10 +4,9 @@ version = "0.1.0"
 edition = "2024"
 
 [features]
-infrastructure = []
-ui = []
+ui = ["dioxus"]
 cache = ["dep:cache", "rusqlite"]
-database = ["uuid", "dep:database"]
+database = ["dep:database"]
 client = []
 server = []
 
@@ -25,8 +24,8 @@ anyhow = { workspace = true }
 serde = { workspace = true }
 typetag = { workspace = true }
 
+dioxus = { workspace = true, optional = true }
 rusqlite = { workspace = true, optional = true }
-uuid = { workspace = true, optional = true }
 
 [dev-dependencies]
 tokio = { workspace = true }

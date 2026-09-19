@@ -30,9 +30,8 @@ pub(crate) fn CreateAccount() -> Element {
             input {
                 placeholder: "Account Name",
                 oninput: move |event| {
-                    send(Message::CreateAccount(
-                            ui_model::CreateAccount::AccountName(event.value()),
-                        ),
+                    send(
+                        Message::CreateAccount(ui_model::CreateAccount::AccountName(event.value())),
                     );
                 },
                 value: local_state.account_name.read(),
@@ -45,7 +44,8 @@ pub(crate) fn CreateAccount() -> Element {
                     r#type: "checkbox",
                     checked: local_state.is_debit.read(),
                     onchange: move |event| {
-                        send(Message::CreateAccount(
+                        send(
+                            Message::CreateAccount(
                                 ui_model::CreateAccount::IsDebit(event.value().parse().unwrap_or(false)),
                             ),
                         );
@@ -59,7 +59,8 @@ pub(crate) fn CreateAccount() -> Element {
                     r#type: "checkbox",
                     checked: local_state.is_permanent_account.read(),
                     onchange: move |event| {
-                        send(Message::CreateAccount(
+                        send(
+                            Message::CreateAccount(
                                 ui_model::CreateAccount::IsPermanentAccount(
                                     event.value().parse().unwrap_or(false),
                                 ),
@@ -72,10 +73,7 @@ pub(crate) fn CreateAccount() -> Element {
             input {
                 placeholder: "Notes (optional)",
                 oninput: move |event| {
-                    send(Message::CreateAccount(
-                            ui_model::CreateAccount::Notes(event.value()),
-                        ),
-                    );
+                    send(Message::CreateAccount(ui_model::CreateAccount::Notes(event.value())));
                 },
                 value: local_state.notes.read(),
             }
@@ -83,7 +81,8 @@ pub(crate) fn CreateAccount() -> Element {
             input {
                 placeholder: "Unit of Measurement (e.g., kg, pcs)",
                 oninput: move |event| {
-                    send(Message::CreateAccount(
+                    send(
+                        Message::CreateAccount(
                             ui_model::CreateAccount::UnitOfMeasurementOfQuantity(event.value()),
                         ),
                     );

@@ -4072,6 +4072,7 @@ dependencies = [
  "anyhow",
  "cache",
  "database",
+ "dioxus",
  "infrastructure",
  "kernel",
  "rusqlite",
@@ -4081,7 +4082,6 @@ dependencies = [
  "use_case_get_all_accounts",
  "utility",
  "utility_ui",
- "uuid",
 ]
 
 [[package]]
