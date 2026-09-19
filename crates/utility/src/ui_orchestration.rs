@@ -1,5 +1,4 @@
 use crate::cache::CacheStruct;
-use crate::cache::CacheUtility;
 use crate::cache::CachingStrategy;
 use crate::cache::OpInput;
 use crate::cache::OpResult;

@@ -14,7 +14,6 @@ use std::ops::Deref;
 use std::pin::Pin;
 use std::sync::Arc;
 use utility::cache::CacheStruct;
-use utility::cache::CacheUtility;
 use utility::cache::CachingStrategy;
 use utility::cache::OpError;
 use utility::cache::OpErrorTrait;

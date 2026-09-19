@@ -33,68 +33,68 @@ pub fn CreateAccount(
     };
 
     rsx! {
+        div {
+            DialogComponent {
+                dont_wait_for_server_response,
+                wait_for_server_response,
+                cancel_operation,
+                operation_name: "create account",
+                show_dialog,
+            }
+            input {
+                placeholder: "Account Name",
+                oninput: move |event| {
+                    sender(Message::AccountName(event.value()));
+                },
+                value: account_name,
+            }
+            label { {account_name_error} }
             div {
-                DialogComponent {
-                    dont_wait_for_server_response,
-                    wait_for_server_response,
-                    cancel_operation,
-                    operation_name: "create account",
-                    show_dialog: show_dialog,
-                }
+                label { "Is Debit" }
                 input {
-                    placeholder: "Account Name",
-                    oninput: move |event| {
-                        sender(Message::AccountName(event.value()));
+                    r#type: "checkbox",
+                    checked: is_debit,
+                    onchange: move |event| {
+                        sender(Message::IsDebit(event.value().parse().unwrap_or_default()));
                     },
-                    value: account_name,
-                }
-                label { {account_name_error} }
-                div {
-                    label { "Is Debit" }
-                    input {
-                        r#type: "checkbox",
-                        checked: is_debit,
-                        onchange: move |event| {
-                            sender(Message::IsDebit(event.value().parse().unwrap_or_default()));
-                        },
-                    }
-                }
-                div {
-                    label { "Is Permanent Account" }
-                    input {
-                        r#type: "checkbox",
-                        checked: is_permanent_account,
-                        onchange: move |event| {
-    sender(Message::IsPermanentAccount(event.value().parse().unwrap_or_default()));
-                        },
-                    }
-                }
-                input {
-                    placeholder: "Notes (optional)",
-                    oninput: move |event| {
-                        sender(Message::Notes(event.value()));
-                    },
-                    value: notes,
-                }
-                input {
-                    placeholder: "Unit of Measurement (e.g., kg, pcs)",
-                    oninput: move |event| {
-                        sender(Message::UnitOfMeasurementOfQuantity(event.value()));
-                    },
-                    value: unit_of_measurement_of_quantity,
-                }
-                button {
-                    onclick: move |_| {
-                        sender(Message::Submit);
-                    },
-                    "Create Account"
-                }
-                button {
-                    onclick: move |_| {
-                        sender(Message::Clean);
-                    },
-                    "clean"
                 }
             }
+            div {
+                label { "Is Permanent Account" }
+                input {
+                    r#type: "checkbox",
+                    checked: is_permanent_account,
+                    onchange: move |event| {
+                        sender(Message::IsPermanentAccount(event.value().parse().unwrap_or_default()));
+                    },
+                }
+            }
+            input {
+                placeholder: "Notes (optional)",
+                oninput: move |event| {
+                    sender(Message::Notes(event.value()));
+                },
+                value: notes,
+            }
+            input {
+                placeholder: "Unit of Measurement (e.g., kg, pcs)",
+                oninput: move |event| {
+                    sender(Message::UnitOfMeasurementOfQuantity(event.value()));
+                },
+                value: unit_of_measurement_of_quantity,
+            }
+            button {
+                onclick: move |_| {
+                    sender(Message::Submit);
+                },
+                "Create Account"
+            }
+            button {
+                onclick: move |_| {
+                    sender(Message::Clean);
+                },
+                "clean"
+            }
         }
+    }
 }

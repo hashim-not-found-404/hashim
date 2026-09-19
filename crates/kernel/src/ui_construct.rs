@@ -32,7 +32,6 @@ use utility::cache::OpInput;
 use utility::cache::OpInputTrait;
 use utility::cache::OpOk;
 use utility::cache::OpOkTrait;
-use utility::cache::OpResult;
 use utility::dtos::Txn;
 use utility::dtos::TxnNumber;
 use utility::dtos::TypeOperationsError;
