@@ -3,6 +3,7 @@ use infrastructure::jwt::JsonWebTokenType;
 use kernel::client::Cache;
 use kernel::new_types::UserUuid;
 use rusqlite::Connection;
+use utility::cache::MarkerCache;
 use utility::dtos::Txn;
 use utility::dtos::TxnNumber;
 
@@ -24,6 +25,8 @@ pub struct S {
     pub tables_db: Connection,
     pub(crate) transactions_db: Connection,
 }
+
+impl MarkerCache for S {}
 
 impl Cache for S {
     async fn new() -> Self {

@@ -1,12 +1,13 @@
 use crate::new_types::UserUuid;
 use infrastructure::jwt::JsonWebTokenType;
+use utility::cache::MarkerCache;
 use utility::dtos::Txn;
 use utility::dtos::TxnNumber;
 use utility::process_manager::Dialog as ProcessDialog;
 use utility_ui::domain::Dialog as UiDialog;
 use utility_ui::domain::HashimSignal;
 
-pub trait Cache: Sized + 'static {
+pub trait Cache: MarkerCache + Sized {
     fn new() -> impl Future<Output = Self>;
 
     fn get_all_pending_txn(&self) -> impl Future<Output = Vec<Txn<Vec<u8>>>>;

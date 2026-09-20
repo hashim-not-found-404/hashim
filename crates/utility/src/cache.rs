@@ -27,8 +27,10 @@ use std::sync::RwLock;
 #[derive(Debug, Clone, Copy, Eq, Hash, PartialEq)]
 pub struct Subscribe(u32);
 
+pub trait MarkerCache: 'static {}
+
 pub trait CacheUtility: Sized + 'static {
-    type Cache;
+    type Cache: MarkerCache;
 
     fn new() -> impl Future<Output = Self>;
     fn get_inner_cache(&mut self) -> &mut Self::Cache;
@@ -73,7 +75,7 @@ pub trait TraitOperationClientError: TraitOperationDTOError + DynClone {
 }
 
 pub trait TraitOperationCacheInput: Any + Debug + DynClone {
-    type Cache;
+    type Cache: MarkerCache;
     fn check_input<'a>(
         &'a self,
         cache: &'a mut Self::Cache,
@@ -81,7 +83,7 @@ pub trait TraitOperationCacheInput: Any + Debug + DynClone {
 }
 
 pub trait TraitOperationCacheOk: Any + Debug {
-    type Cache;
+    type Cache: MarkerCache;
     fn apply_to_cache<'a>(
         &'a self,
         cache: &'a mut Self::Cache,
@@ -89,7 +91,7 @@ pub trait TraitOperationCacheOk: Any + Debug {
 }
 
 pub trait CastClientToCache {
-    type Cache;
+    type Cache: MarkerCache;
     fn cast_input(
         v: &dyn TraitOperationClientInput,
     ) -> &dyn TraitOperationCacheInput<Cache = Self::Cache>;
@@ -170,7 +172,11 @@ impl Clone for CacheStruct {
 }
 
 impl CacheStruct {
-    pub fn new<Ch: 'static, Cu: CacheUtility<Cache = Ch>, CasCh: CastClientToCache<Cache = Ch>>(
+    pub fn new<
+        Ch: MarkerCache,
+        Cu: CacheUtility<Cache = Ch>,
+        CasCh: CastClientToCache<Cache = Ch>,
+    >(
         receiver_to_cache: MpscReceiver<MessageToCache>,
         sender_to_cache: MpscSender<MessageToCache>,
         sender_to_network: MpscSender<Vec<u8>>,
@@ -237,7 +243,7 @@ impl CacheStruct {
     }
 
     fn cache_actor<
-        Ch: 'static,
+        Ch: MarkerCache,
         Cu: CacheUtility<Cache = Ch>,
         CasCh: CastClientToCache<Cache = Ch>,
     >(
