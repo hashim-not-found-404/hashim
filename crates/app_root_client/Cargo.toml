@@ -6,8 +6,8 @@ edition = "2024"
 [features]
 default = ["web"]
 web = ["dioxus/web"]
-desktop = ["dioxus/desktop"]
-mobile = ["dioxus/mobile"]
+# desktop = ["dioxus/desktop"]
+# mobile = ["dioxus/mobile"]
 
 [dependencies]
 accounting_engine = { workspace = true }

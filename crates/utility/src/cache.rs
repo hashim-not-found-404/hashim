@@ -96,24 +96,15 @@ pub trait CastClientToCache {
     fn cast_ok(v: &dyn TraitOperationClientOk) -> &dyn TraitOperationCacheOk<Cache = Self::Cache>;
 }
 
-#[derive(Debug)]
-pub struct TypeOperationClientInput(pub Arc<dyn TraitOperationClientInput>);
-#[derive(Debug)]
-pub struct TypeOperationClientOk(pub Box<dyn TraitOperationClientOk>);
-#[derive(Debug)]
-pub struct TypeOperationClientError(pub Box<dyn TraitOperationClientError>);
+pub type TypeOperationClientInput = Arc<dyn TraitOperationClientInput>;
+pub type TypeOperationClientOk = Box<dyn TraitOperationClientOk>;
+pub type TypeOperationClientError = Box<dyn TraitOperationClientError>;
 pub type TypeOperationClientResult = Result<TypeOperationClientOk, TypeOperationClientError>;
-
-impl Clone for TypeOperationClientInput {
-    fn clone(&self) -> Self {
-        Self(self.0.clone())
-    }
-}
 
 impl Clone for TypeOperationClientError {
     fn clone(&self) -> Self {
-        let clone_box = dyn_clone::clone_box(&*self.0);
-        Self(clone_box)
+        let clone_box = dyn_clone::clone_box(&**self);
+        clone_box
     }
 }
 
@@ -302,13 +293,13 @@ impl CacheStruct {
 
                                     match &operation {
                                         Ok(ok) => {
-                                            add_subs(&mut subs_to_poke, ok.0.subs_to_poke());
-                                            let ok = CasCh::cast_ok(ok.0.deref());
+                                            add_subs(&mut subs_to_poke, ok.subs_to_poke());
+                                            let ok = CasCh::cast_ok(ok.deref());
                                             ok.apply_to_cache(cache.get_inner_cache()).await;
                                             cache.delete_input_txn(txn_number).await;
                                         }
                                         Err(err) => {
-                                            add_subs(&mut subs_to_poke, err.0.subs_to_poke());
+                                            add_subs(&mut subs_to_poke, err.subs_to_poke());
                                             cache.mark_input_txn_as_faild(txn_number).await;
                                             cache
                                                 .write_error_to_cache(txn_number, err.clone())
@@ -332,11 +323,11 @@ impl CacheStruct {
                                 let txns = cache.get_all_pending_txn().await;
 
                                 for txn in txns {
-                                    let input = CasCh::cast_input(txn.operation.0.deref());
+                                    let input = CasCh::cast_input(txn.operation.deref());
                                     let result = input.check_input(cache.get_inner_cache()).await;
 
                                     if let Ok(resource) = result {
-                                        let ok = CasCh::cast_ok(resource.0.deref());
+                                        let ok = CasCh::cast_ok(resource.deref());
                                         ok.apply_to_cache(cache.get_inner_cache()).await;
                                     }
                                 }
@@ -353,9 +344,9 @@ impl CacheStruct {
                                 let mut subs_to_poke = HashSet::new();
 
                                 for resource in resources {
-                                    let ok = CasCh::cast_ok(resource.0.deref());
+                                    let ok = CasCh::cast_ok(resource.deref());
                                     ok.apply_to_cache(cache.get_inner_cache()).await;
-                                    add_subs(&mut subs_to_poke, resource.0.subs_to_poke());
+                                    add_subs(&mut subs_to_poke, resource.subs_to_poke());
                                 }
 
                                 poke_the_subs::<Subscribe>(
@@ -373,11 +364,11 @@ impl CacheStruct {
                                     ..
                                 } in txns
                                 {
-                                    let input = CasCh::cast_input(operation.0.deref());
+                                    let input = CasCh::cast_input(operation.deref());
                                     let result = input.check_input(cache.get_inner_cache()).await;
 
                                     if let Ok(resource) = result {
-                                        let ok = CasCh::cast_ok(resource.0.deref());
+                                        let ok = CasCh::cast_ok(resource.deref());
                                         ok.apply_to_cache(cache.get_inner_cache()).await;
                                     }
                                 }
@@ -416,7 +407,7 @@ impl CacheStruct {
                     } => {
                         match strategy {
                             CachingStrategy::ReadCacheOnly => {
-                                let input = CasCh::cast_input(data.0.deref());
+                                let input = CasCh::cast_input(data.deref());
                                 let result = input.check_input(cache.get_inner_cache()).await;
 
                                 let _ = sender
@@ -429,7 +420,7 @@ impl CacheStruct {
                             }
                             CachingStrategy::ReadCacheFirst => todo!(),
                             CachingStrategy::ReadCacheAndServer => {
-                                let input = CasCh::cast_input(data.0.deref());
+                                let input = CasCh::cast_input(data.deref());
                                 let result = input.check_input(cache.get_inner_cache()).await;
 
                                 let _ = sender
@@ -474,19 +465,19 @@ impl CacheStruct {
                                 }
                             }
                             CachingStrategy::WriteCacheOnly => {
-                                let input = CasCh::cast_input(data.0.deref());
+                                let input = CasCh::cast_input(data.deref());
                                 let result = input.check_input(cache.get_inner_cache()).await;
 
                                 let mut subs_to_poke = HashSet::new();
 
                                 match &result {
                                     Ok(ok) => {
-                                        add_subs(&mut subs_to_poke, ok.0.subs_to_poke());
-                                        let ok = CasCh::cast_ok(ok.0.deref());
+                                        add_subs(&mut subs_to_poke, ok.subs_to_poke());
+                                        let ok = CasCh::cast_ok(ok.deref());
                                         ok.apply_to_cache(cache.get_inner_cache()).await;
                                     }
                                     Err(err) => {
-                                        add_subs(&mut subs_to_poke, err.0.subs_to_poke());
+                                        add_subs(&mut subs_to_poke, err.subs_to_poke());
                                     }
                                 }
                                 cache.write_input_to_cache(txn_number, data.clone()).await;
@@ -509,19 +500,19 @@ impl CacheStruct {
                             }
                             CachingStrategy::WriteCacheFirst => todo!(),
                             CachingStrategy::WriteCacheAndServer => {
-                                let input = CasCh::cast_input(data.0.deref());
+                                let input = CasCh::cast_input(data.deref());
                                 let result = input.check_input(cache.get_inner_cache()).await;
 
                                 let mut subs_to_poke = HashSet::new();
 
                                 match &result {
                                     Ok(ok) => {
-                                        add_subs(&mut subs_to_poke, ok.0.subs_to_poke());
-                                        let ok = CasCh::cast_ok(ok.0.deref());
+                                        add_subs(&mut subs_to_poke, ok.subs_to_poke());
+                                        let ok = CasCh::cast_ok(ok.deref());
                                         ok.apply_to_cache(cache.get_inner_cache()).await;
                                     }
                                     Err(err) => {
-                                        add_subs(&mut subs_to_poke, err.0.subs_to_poke());
+                                        add_subs(&mut subs_to_poke, err.subs_to_poke());
                                     }
                                 }
                                 cache.write_input_to_cache(txn_number, data.clone()).await;

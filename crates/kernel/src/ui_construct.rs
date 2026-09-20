@@ -144,7 +144,6 @@ where
             let operation: TypeOperationDTOInput = Ed::decode(&operation).unwrap();
             let operation = CasDC::cast_input(operation);
             let operation = Arc::from(operation);
-            let operation = TypeOperationClientInput(operation);
 
             let txn = Txn {
                 txn_number,
@@ -178,7 +177,7 @@ where
         txn_number: TxnNumber,
         input: TypeOperationClientInput,
     ) {
-        let operation = input.0.clone();
+        let operation = input.clone();
         let operation = dyn_clone::clone_box(&*operation);
         let operation: TypeOperationDTOInput = operation;
         let operation = Ed::encode(&operation);
@@ -196,8 +195,8 @@ where
         txn_number: TxnNumber,
         error: TypeOperationClientError,
     ) {
-        let operation = error.0;
-        let operation = dyn_clone::clone_box(&*operation);
+        let operation: TypeOperationClientError = error;
+        let operation: TypeOperationClientError = dyn_clone::clone_box(&*operation);
         let operation: TypeOperationDTOError = operation;
         let operation = Ed::encode(&operation);
 
@@ -213,7 +212,7 @@ where
         let mut jwts = Vec::new();
 
         for i in &inputs {
-            if let Some(user_uuid) = i.operation.0.user_uuid() {
+            if let Some(user_uuid) = i.operation.user_uuid() {
                 let user_uuid1 = UserUuid::from(UuidType::from(user_uuid));
 
                 if let Some(jwt) = self.cache.get_jwt(&user_uuid1).await {
@@ -225,7 +224,7 @@ where
         let mut operations1 = Vec::with_capacity(inputs.len());
 
         for i in inputs {
-            let operation = i.operation.0;
+            let operation = i.operation;
             let operation = dyn_clone::clone_box(&*operation);
             let operation: TypeOperationDTOInput = operation;
 
@@ -259,11 +258,11 @@ where
                     let r = match a {
                         Ok(ok) => {
                             let ok = CasDC::cast_ok(ok);
-                            Ok(TypeOperationClientOk(ok))
+                            Ok(ok)
                         }
                         Err(err) => {
                             let err = CasDC::cast_error(err);
-                            Err(TypeOperationClientError(err))
+                            Err(err)
                         }
                     };
 
@@ -280,7 +279,7 @@ where
 
                 for i in i {
                     let v = CasDC::cast_ok(i);
-                    a.push(TypeOperationClientOk(v));
+                    a.push(v);
                 }
 
                 MessageFromServer::Resources(a)

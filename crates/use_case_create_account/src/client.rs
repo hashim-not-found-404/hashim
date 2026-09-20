@@ -71,11 +71,11 @@ pub async fn check_input<
     let errr = input.state_full_check::<DBReader>(cache).await.unwrap();
 
     if errr.is_there_error() {
-        return Err(TypeOperationClientError(Box::new(errr)));
+        return Err(Box::new(errr));
     }
 
     let state_less_operation = input.state_less_operation();
-    Ok(TypeOperationClientOk(Box::new(state_less_operation)))
+    Ok(Box::new(state_less_operation))
 }
 
 #[derive(Debug)]
@@ -209,7 +209,7 @@ async fn handle_submit(
 
     let data = build_input(global_model, local_model.clone());
 
-    let data: TypeOperationClientInput = TypeOperationClientInput(Arc::new(data));
+    let data: TypeOperationClientInput = Arc::new(data);
 
     let local_model1 = local_model.clone();
     handle_fall_back(
@@ -221,14 +221,14 @@ async fn handle_submit(
         move |data| {
             let result = match data {
                 Ok(ok) => {
-                    let a = ok.0;
+                    let a = ok;
                     let a: Box<dyn Any> = a;
                     let a: Box<Ok> = a.downcast().unwrap();
                     let a: Ok = a.as_ref().clone();
                     Ok(a)
                 }
                 Err(err) => {
-                    let a = err.0;
+                    let a = err;
                     let a: Box<dyn Any> = a;
                     let a: Box<Error> = a.downcast().unwrap();
                     let a: Error = a.as_ref().clone();
@@ -257,7 +257,7 @@ async fn handle_check(
 ) {
     let data = build_input(global_model, local_model.clone());
 
-    let data: TypeOperationClientInput = TypeOperationClientInput(Arc::new(data));
+    let data: TypeOperationClientInput = Arc::new(data);
 
     let mut receiver_to_response =
         cache.send_to_cache_actor(CachingStrategy::ReadCacheOnly, TxnNumber::default(), data).await;
@@ -271,14 +271,14 @@ async fn handle_check(
         } => {
             let result = match data {
                 Ok(ok) => {
-                    let a = ok.0;
+                    let a = ok;
                     let a: Box<dyn Any> = a;
                     let a: Box<Ok> = a.downcast().unwrap();
                     let a: Ok = a.as_ref().clone();
                     Ok(a)
                 }
                 Err(err) => {
-                    let a = err.0;
+                    let a = err;
                     let a: Box<dyn Any> = a;
                     let a: Box<Error> = a.downcast().unwrap();
                     let a: Error = a.as_ref().clone();

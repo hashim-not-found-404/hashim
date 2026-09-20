@@ -50,12 +50,12 @@ pub async fn check_input<
     let errr = input.state_less_check();
 
     if errr.is_there_error() {
-        return Err(TypeOperationClientError(Box::new(errr)));
+        return Err(Box::new(errr));
     }
 
     let ok = input.state_full_operation::<DBReader>(cache).await.unwrap();
 
-    Ok(TypeOperationClientOk(Box::new(ok)))
+    Ok(Box::new(ok))
 }
 
 pub async fn fetch(selected_company: CompanyUuid, user_uuid: UserUuid, mut cache: CacheStruct) {
@@ -64,7 +64,7 @@ pub async fn fetch(selected_company: CompanyUuid, user_uuid: UserUuid, mut cache
         company_uuid: selected_company,
     };
 
-    let input: TypeOperationClientInput = TypeOperationClientInput(Arc::new(input));
+    let input: TypeOperationClientInput = Arc::new(input);
 
     let txn_number = TxnNumber::default();
 
