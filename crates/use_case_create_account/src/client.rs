@@ -24,15 +24,15 @@ use std::sync::Arc;
 use use_case_get_all_accounts::client::fetch;
 use utility::cache::CacheStruct;
 use utility::cache::CachingStrategy;
-use utility::cache::OpError;
-use utility::cache::OpInput;
-use utility::cache::OpOk;
-use utility::cache::OpResult;
 use utility::cache::Response;
 use utility::cache::Subscribe;
 use utility::cache::TraitOperationClientError;
 use utility::cache::TraitOperationClientInput;
 use utility::cache::TraitOperationClientOk;
+use utility::cache::TypeOperationClientError;
+use utility::cache::TypeOperationClientInput;
+use utility::cache::TypeOperationClientOk;
+use utility::cache::TypeOperationClientResult;
 use utility::dtos::TxnNumber;
 use utility::process_manager::MessageToProcessManager;
 use utility::process_manager::ProcessId;
@@ -67,15 +67,15 @@ pub async fn check_input<
 >(
     input: &Input,
     cache: &mut Ch,
-) -> OpResult {
+) -> TypeOperationClientResult {
     let errr = input.state_full_check::<DBReader>(cache).await.unwrap();
 
     if errr.is_there_error() {
-        return Err(OpError(Box::new(errr)));
+        return Err(TypeOperationClientError(Box::new(errr)));
     }
 
     let state_less_operation = input.state_less_operation();
-    Ok(OpOk(Box::new(state_less_operation)))
+    Ok(TypeOperationClientOk(Box::new(state_less_operation)))
 }
 
 #[derive(Debug)]
@@ -209,7 +209,7 @@ async fn handle_submit(
 
     let data = build_input(global_model, local_model.clone());
 
-    let data: OpInput = OpInput(Arc::new(data));
+    let data: TypeOperationClientInput = TypeOperationClientInput(Arc::new(data));
 
     let local_model1 = local_model.clone();
     handle_fall_back(
@@ -257,7 +257,7 @@ async fn handle_check(
 ) {
     let data = build_input(global_model, local_model.clone());
 
-    let data: OpInput = OpInput(Arc::new(data));
+    let data: TypeOperationClientInput = TypeOperationClientInput(Arc::new(data));
 
     let mut receiver_to_response =
         cache.send_to_cache_actor(CachingStrategy::ReadCacheOnly, TxnNumber::default(), data).await;

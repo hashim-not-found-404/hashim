@@ -27,12 +27,12 @@ use utility::cache::CacheUtility;
 use utility::cache::CastClientToCache;
 use utility::cache::MessageFromServer;
 use utility::cache::MessageToCache;
-use utility::cache::OpError;
-use utility::cache::OpInput;
-use utility::cache::OpOk;
 use utility::cache::TraitOperationClientError;
 use utility::cache::TraitOperationClientInput;
 use utility::cache::TraitOperationClientOk;
+use utility::cache::TypeOperationClientError;
+use utility::cache::TypeOperationClientInput;
+use utility::cache::TypeOperationClientOk;
 use utility::dtos::Txn;
 use utility::dtos::TxnNumber;
 use utility::dtos::TypeOperationDTOError;
@@ -132,7 +132,7 @@ where
         &mut self.cache
     }
 
-    async fn get_all_pending_txn(&mut self) -> Vec<Txn<OpInput>> {
+    async fn get_all_pending_txn(&mut self) -> Vec<Txn<TypeOperationClientInput>> {
         let all_txns = self.cache.get_all_pending_txn().await;
         let mut vec_to_return = Vec::new();
 
@@ -144,7 +144,7 @@ where
             let operation: TypeOperationDTOInput = Ed::decode(&operation).unwrap();
             let operation = CasDC::cast_input(operation);
             let operation = Arc::from(operation);
-            let operation = OpInput(operation);
+            let operation = TypeOperationClientInput(operation);
 
             let txn = Txn {
                 txn_number,
@@ -173,7 +173,11 @@ where
         self.cache.mark_input_txn_as_faild(txn_number).await
     }
 
-    async fn write_input_to_cache(&mut self, txn_number: TxnNumber, input: OpInput) {
+    async fn write_input_to_cache(
+        &mut self,
+        txn_number: TxnNumber,
+        input: TypeOperationClientInput,
+    ) {
         let operation = input.0.clone();
         let operation = dyn_clone::clone_box(&*operation);
         let operation: TypeOperationDTOInput = operation;
@@ -187,7 +191,11 @@ where
             .await
     }
 
-    async fn write_error_to_cache(&mut self, txn_number: TxnNumber, error: OpError) {
+    async fn write_error_to_cache(
+        &mut self,
+        txn_number: TxnNumber,
+        error: TypeOperationClientError,
+    ) {
         let operation = error.0;
         let operation = dyn_clone::clone_box(&*operation);
         let operation: TypeOperationDTOError = operation;
@@ -201,7 +209,7 @@ where
             .await
     }
 
-    async fn encode_the_inputs(&mut self, inputs: Vec<Txn<OpInput>>) -> Vec<u8> {
+    async fn encode_the_inputs(&mut self, inputs: Vec<Txn<TypeOperationClientInput>>) -> Vec<u8> {
         let mut jwts = Vec::new();
 
         for i in &inputs {
@@ -251,11 +259,11 @@ where
                     let r = match a {
                         Ok(ok) => {
                             let ok = CasDC::cast_ok(ok);
-                            Ok(OpOk(ok))
+                            Ok(TypeOperationClientOk(ok))
                         }
                         Err(err) => {
                             let err = CasDC::cast_error(err);
-                            Err(OpError(err))
+                            Err(TypeOperationClientError(err))
                         }
                     };
 
@@ -272,7 +280,7 @@ where
 
                 for i in i {
                     let v = CasDC::cast_ok(i);
-                    a.push(OpOk(v));
+                    a.push(TypeOperationClientOk(v));
                 }
 
                 MessageFromServer::Resources(a)

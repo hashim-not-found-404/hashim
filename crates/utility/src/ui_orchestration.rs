@@ -1,9 +1,9 @@
 use crate::cache::CacheStruct;
 use crate::cache::CachingStrategy;
-use crate::cache::OpInput;
-use crate::cache::OpResult;
 use crate::cache::Response;
 use crate::cache::Subscribe;
+use crate::cache::TypeOperationClientInput;
+use crate::cache::TypeOperationClientResult;
 use crate::dtos::TxnNumber;
 use crate::process_manager::DialogType;
 use crate::process_manager::MessageFromProcess;
@@ -26,8 +26,8 @@ pub async fn handle_fall_back(
     mut sender_to_process_manager: MpscSender<MessageToProcessManager>,
     dialog: DialogType,
     process_id: ProcessId,
-    data: OpInput,
-    f: impl Fn(OpResult) -> bool + Clone + 'static,
+    data: TypeOperationClientInput,
+    f: impl Fn(TypeOperationClientResult) -> bool + Clone + 'static,
 ) {
     let txn_number = TxnNumber::default();
 
@@ -95,8 +95,8 @@ pub async fn handle_fall_back(
 pub fn spawn_listener(
     mut cache: CacheStruct,
     list_of_subscribtion: &'static [Subscribe],
-    data: OpInput,
-    is_error: impl Fn(OpResult) + 'static,
+    data: TypeOperationClientInput,
+    is_error: impl Fn(TypeOperationClientResult) + 'static,
 ) -> impl FnOnce() {
     let component_id = Rn::generate() as u16;
     let mut cache1 = cache.clone();

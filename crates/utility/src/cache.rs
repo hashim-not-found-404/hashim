@@ -33,7 +33,7 @@ pub trait CacheUtility: Sized + 'static {
     fn new() -> impl Future<Output = Self>;
     fn get_inner_cache(&mut self) -> &mut Self::Cache;
 
-    fn get_all_pending_txn(&mut self) -> impl Future<Output = Vec<Txn<OpInput>>>;
+    fn get_all_pending_txn(&mut self) -> impl Future<Output = Vec<Txn<TypeOperationClientInput>>>;
     fn clear_pending_txn_state(&mut self) -> impl Future<Output = ()>;
     fn start_pending_txn_state(&mut self) -> impl Future<Output = ()>;
 
@@ -43,16 +43,19 @@ pub trait CacheUtility: Sized + 'static {
     fn write_input_to_cache(
         &mut self,
         txn_number: TxnNumber,
-        input: OpInput,
+        input: TypeOperationClientInput,
     ) -> impl Future<Output = ()>;
 
     fn write_error_to_cache(
         &mut self,
         txn_number: TxnNumber,
-        error: OpError,
+        error: TypeOperationClientError,
     ) -> impl Future<Output = ()>;
 
-    fn encode_the_inputs(&mut self, inputs: Vec<Txn<OpInput>>) -> impl Future<Output = Vec<u8>>;
+    fn encode_the_inputs(
+        &mut self,
+        inputs: Vec<Txn<TypeOperationClientInput>>,
+    ) -> impl Future<Output = Vec<u8>>;
 
     fn decode_the_response(resp: Vec<u8>) -> Result<MessageFromServer>;
 }
@@ -74,7 +77,7 @@ pub trait TraitOperationCacheInput: Any + Debug + DynClone {
     fn check_input<'a>(
         &'a self,
         cache: &'a mut Self::Cache,
-    ) -> Pin<Box<dyn Future<Output = OpResult> + 'a>>;
+    ) -> Pin<Box<dyn Future<Output = TypeOperationClientResult> + 'a>>;
 }
 
 pub trait TraitOperationCacheOk: Any + Debug {
@@ -93,29 +96,21 @@ pub trait CastClientToCache {
     fn cast_ok(v: &dyn TraitOperationClientOk) -> &dyn TraitOperationCacheOk<Cache = Self::Cache>;
 }
 
-// #[derive(Debug)]
-// pub struct TypeOperationClientInput(pub Arc<dyn TraitOperationClientInput>);
-// #[derive(Debug)]
-// pub struct TypeOperationClientOk(pub Box<dyn TraitOperationClientOk>);
-// #[derive(Debug)]
-// pub struct TypeOperationClientError(pub Box<dyn TraitOperationClientError>);
-// pub type TypeOperationClientResult = Result<TypeOperationClientOk, TypeOperationClientError>;
+#[derive(Debug)]
+pub struct TypeOperationClientInput(pub Arc<dyn TraitOperationClientInput>);
+#[derive(Debug)]
+pub struct TypeOperationClientOk(pub Box<dyn TraitOperationClientOk>);
+#[derive(Debug)]
+pub struct TypeOperationClientError(pub Box<dyn TraitOperationClientError>);
+pub type TypeOperationClientResult = Result<TypeOperationClientOk, TypeOperationClientError>;
 
-#[derive(Debug)]
-pub struct OpInput(pub Arc<dyn TraitOperationClientInput>);
-#[derive(Debug)]
-pub struct OpOk(pub Box<dyn TraitOperationClientOk>);
-#[derive(Debug)]
-pub struct OpError(pub Box<dyn TraitOperationClientError>);
-pub type OpResult = Result<OpOk, OpError>;
-
-impl Clone for OpInput {
+impl Clone for TypeOperationClientInput {
     fn clone(&self) -> Self {
         Self(self.0.clone())
     }
 }
 
-impl Clone for OpError {
+impl Clone for TypeOperationClientError {
     fn clone(&self) -> Self {
         let clone_box = dyn_clone::clone_box(&*self.0);
         Self(clone_box)
@@ -124,8 +119,8 @@ impl Clone for OpError {
 
 pub enum MessageFromServer {
     Error(anyhow::Error),
-    Response(Vec<Txn<OpResult>>),
-    Resources(Vec<OpOk>),
+    Response(Vec<Txn<TypeOperationClientResult>>),
+    Resources(Vec<TypeOperationClientOk>),
 }
 
 #[derive(Debug)]
@@ -134,7 +129,7 @@ pub enum Response {
     ServerCannotBeReached,
     Data {
         is_response_from_server: bool,
-        data:                    OpResult,
+        data:                    TypeOperationClientResult,
     },
 }
 
@@ -153,7 +148,7 @@ pub enum MessageToCache {
         strategy:   CachingStrategy,
         sender:     MpscSender<Response>,
         txn_number: TxnNumber,
-        data:       OpInput,
+        data:       TypeOperationClientInput,
     },
 }
 
@@ -207,7 +202,7 @@ impl CacheStruct {
         &mut self,
         strategy: CachingStrategy,
         txn_number: TxnNumber,
-        data: OpInput,
+        data: TypeOperationClientInput,
     ) -> MpscReceiver<Response> {
         let (sender, receiver) = Mpsc::channel();
 

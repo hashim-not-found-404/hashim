@@ -12,14 +12,14 @@ use std::ops::Deref;
 use std::sync::Arc;
 use utility::cache::CacheStruct;
 use utility::cache::CachingStrategy;
-use utility::cache::OpError;
-use utility::cache::OpInput;
-use utility::cache::OpOk;
-use utility::cache::OpResult;
 use utility::cache::Subscribe;
 use utility::cache::TraitOperationClientError;
 use utility::cache::TraitOperationClientInput;
 use utility::cache::TraitOperationClientOk;
+use utility::cache::TypeOperationClientError;
+use utility::cache::TypeOperationClientInput;
+use utility::cache::TypeOperationClientOk;
+use utility::cache::TypeOperationClientResult;
 use utility::dtos::TxnNumber;
 
 impl TraitOperationClientOk for Ok {
@@ -46,16 +46,16 @@ pub async fn check_input<
 >(
     input: &Input,
     cache: &mut Ch,
-) -> OpResult {
+) -> TypeOperationClientResult {
     let errr = input.state_less_check();
 
     if errr.is_there_error() {
-        return Err(OpError(Box::new(errr)));
+        return Err(TypeOperationClientError(Box::new(errr)));
     }
 
     let ok = input.state_full_operation::<DBReader>(cache).await.unwrap();
 
-    Ok(OpOk(Box::new(ok)))
+    Ok(TypeOperationClientOk(Box::new(ok)))
 }
 
 pub async fn fetch(selected_company: CompanyUuid, user_uuid: UserUuid, mut cache: CacheStruct) {
@@ -64,7 +64,7 @@ pub async fn fetch(selected_company: CompanyUuid, user_uuid: UserUuid, mut cache
         company_uuid: selected_company,
     };
 
-    let input: OpInput = OpInput(Arc::new(input));
+    let input: TypeOperationClientInput = TypeOperationClientInput(Arc::new(input));
 
     let txn_number = TxnNumber::default();
 

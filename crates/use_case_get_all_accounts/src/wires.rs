@@ -11,9 +11,9 @@ use kernel::server::SideEffects;
 use kernel::server::TraitOperationServerInput;
 use kernel::types::DatabaseWrite;
 use std::pin::Pin;
-use utility::cache::OpResult;
 use utility::cache::TraitOperationCacheInput;
 use utility::cache::TraitOperationCacheOk;
+use utility::cache::TypeOperationClientResult;
 use utility::dtos::TypeOperationDTOError;
 use utility::dtos::TypeOperationDTOOk;
 use utility::dtos::dyn_result;
@@ -43,7 +43,7 @@ impl TraitOperationCacheInput for Input {
     fn check_input<'a>(
         &'a self,
         cache: &'a mut Self::Cache,
-    ) -> Pin<Box<dyn Future<Output = OpResult> + 'a>> {
+    ) -> Pin<Box<dyn Future<Output = TypeOperationClientResult> + 'a>> {
         Box::pin(async { client::check_input::<Self::Cache, CacheOp>(self, cache).await })
     }
 }
