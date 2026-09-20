@@ -4,3 +4,16 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+accounting_engine = { workspace = true }
+cache = { workspace = true }
+kernel = { workspace = true }
+utility = { workspace = true }
+utility_ui = { workspace = true, features = ["ui"] }
+
+use_case_create_account = { workspace = true, features = ["server", "client", "database", "cache", "wires", "ui"] }
+use_case_get_all_accounts = { workspace = true, features = ["server", "client", "database", "cache", "wires", "ui"] }
+
+serde = { workspace = true }
+
+dioxus = { workspace = true }
+dioxus-logger = { workspace = true }

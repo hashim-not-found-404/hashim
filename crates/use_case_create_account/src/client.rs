@@ -17,6 +17,9 @@ use kernel::new_types::UserUuid;
 use kernel::new_types::UuidType;
 use kernel::types::DatabaseRead;
 use kernel::types::MyErrorTrait;
+use serde::Deserialize;
+use serde::Serialize;
+use serde::de::DeserializeOwned;
 use std::any::Any;
 use std::fmt::Debug;
 use std::ops::Deref;
@@ -100,22 +103,20 @@ type Type3 = MyResult;
 type Type4 = MyResult;
 
 pub trait GlobalModel {
-    fn user_uuid(&self) -> impl ReadAndSet<UserUuid>;
-    fn selected_company(&self) -> impl ReadAndSet<CompanyUuid>;
+    fn user_uuid(&self) -> impl HashimSignal<UserUuid>;
+    fn selected_company(&self) -> impl HashimSignal<CompanyUuid>;
 }
 
 pub trait LocalModel {
-    type Sig<T: Clone + Default>: HashimSignal<T>;
-
-    fn process_id(&self) -> impl ReadAndSet<Option<ProcessId>>;
-    fn show_dialog(&self) -> Self::Sig<Dialog>;
-    fn is_loading(&self) -> Self::Sig<bool>;
-    fn is_debit(&self) -> Self::Sig<bool>;
-    fn is_permanent_account(&self) -> Self::Sig<bool>;
-    fn account_name(&self) -> Self::Sig<String>;
-    fn notes(&self) -> Self::Sig<String>;
-    fn unit_of_measurement_of_quantity(&self) -> Self::Sig<String>;
-    fn account_name_error(&self) -> Self::Sig<Option<String>>;
+    fn process_id(&self) -> impl HashimSignal<Option<ProcessId>>;
+    fn show_dialog(&self) -> impl HashimSignal<Dialog>;
+    fn is_loading(&self) -> impl HashimSignal<bool>;
+    fn is_debit(&self) -> impl HashimSignal<bool>;
+    fn is_permanent_account(&self) -> impl HashimSignal<bool>;
+    fn account_name(&self) -> impl HashimSignal<String>;
+    fn notes(&self) -> impl HashimSignal<String>;
+    fn unit_of_measurement_of_quantity(&self) -> impl HashimSignal<String>;
+    fn account_name_error(&self) -> impl HashimSignal<Option<String>>;
 }
 
 fn apply_on_the_model(output: &Type4, local_model: &impl LocalModel) {
@@ -132,7 +133,7 @@ fn apply_on_the_model(output: &Type4, local_model: &impl LocalModel) {
 }
 
 impl Message {
-    pub async fn update<LM>(
+    pub async fn update_generic<LM>(
         self,
         global_model: &impl GlobalModel,
         local_model: &'static LM,
@@ -192,7 +193,7 @@ fn build_input(global_model: &impl GlobalModel, local_model: &impl LocalModel) -
 }
 
 fn handle_clean<As: LocalModel>(local_model: &As) {
-    local_model.process_id().put(None);
+    local_model.process_id().reset();
     local_model.account_name().reset();
     local_model.is_debit().reset();
     local_model.is_permanent_account().reset();
@@ -211,7 +212,7 @@ async fn handle_submit<LM>(
     LM: LocalModel,
 {
     let process_id = ProcessId::default();
-    local_model.process_id().put(Some(process_id));
+    local_model.process_id().set(Some(process_id));
 
     let dialog_signal_adapter = Arc::new(DialogSignalAdapter(local_model.show_dialog()));
 

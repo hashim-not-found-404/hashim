@@ -47,12 +47,12 @@ use utility::ui_effect::Commander;
 use utility::ui_effect::Model;
 use utility_ui::domain::HashimSignal;
 
-pub fn new<Ch, Cu, Mdl, Cas, CasCh>(model: Arc<Mdl>) -> Commander
+pub fn new<Ch, Mdl, Cas, Cas1, CasCh>(model: Arc<Mdl>) -> Commander
 where
     Ch: Cache + 'static,
-    Cu: CacheUtility<Cache = Ch> + 'static,
     Mdl: Model,
-    Cas: Caster,
+    Cas: Casting,
+    Cas1: Caster<Mdl = Mdl>,
     CasCh: CacheCaster<Cache = Ch>,
 {
     let (sender_to_network, receiver_to_network) = Mpsc::channel();
@@ -71,7 +71,7 @@ where
         format!("ws://{}/ws", ADDRESS),
     );
 
-    let cache = CacheStruct::new::<Ch, Cu, CasCh>(
+    let cache = CacheStruct::new::<Ch, MyCache<Ch, Cas>, CasCh>(
         receiver_to_cache,
         sender_to_cache,
         sender_to_network,
@@ -81,7 +81,7 @@ where
 
     let sender_to_process_manager = process_manager_actor();
 
-    Commander::new::<Mdl, Cas>(sender_to_process_manager, model, cache)
+    Commander::new::<Mdl, Cas1>(sender_to_process_manager, model, cache)
 }
 
 struct MyNetwork {
@@ -104,8 +104,8 @@ impl Network for MyNetwork {
 }
 
 pub trait Casting: 'static {
-    fn cast_input<Ch: Cache>(v: TypeOperationsInput) -> Box<dyn OpInputTrait>;
-    fn cast_ok<Ch: Cache>(v: TypeOperationsOk) -> Box<dyn OpOkTrait>;
+    fn cast_input(v: TypeOperationsInput) -> Box<dyn OpInputTrait>;
+    fn cast_ok(v: TypeOperationsOk) -> Box<dyn OpOkTrait>;
     fn cast_error(v: TypeOperationsError) -> Box<dyn OpErrorTrait>;
 }
 
@@ -142,7 +142,7 @@ where
         } in all_txns
         {
             let operation: TypeOperationsInput = Ed::decode(&operation).unwrap();
-            let operation = Cas::cast_input::<Self::Cache>(operation);
+            let operation = Cas::cast_input(operation);
             let operation = Arc::from(operation);
             let operation = OpInput(operation);
 
@@ -250,7 +250,7 @@ where
                     let a = i.operation;
                     let r = match a {
                         Ok(ok) => {
-                            let ok = Cas::cast_ok::<Ch>(ok);
+                            let ok = Cas::cast_ok(ok);
                             Ok(OpOk(ok))
                         }
                         Err(err) => {
@@ -271,7 +271,7 @@ where
                 let mut a = Vec::new();
 
                 for i in i {
-                    let v = Cas::cast_ok::<Ch>(i);
+                    let v = Cas::cast_ok(i);
                     a.push(OpOk(v));
                 }
 

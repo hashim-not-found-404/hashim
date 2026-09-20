@@ -16,7 +16,7 @@ use std::sync::Mutex;
 
 pub trait Model: 'static {}
 
-pub trait MessageTrait: Debug + 'static {}
+pub trait MessageTrait: Debug + 'static + Send {}
 
 pub trait UpdaterTrait<Mdl: Model> {
     fn update(
@@ -29,9 +29,8 @@ pub trait UpdaterTrait<Mdl: Model> {
 }
 
 pub trait Caster {
-    fn cast_message_to_updater<Mdl>(v: Box<dyn MessageTrait>) -> Box<dyn UpdaterTrait<Mdl>>
-    where
-        Mdl: Model;
+    type Mdl: Model;
+    fn cast_message_to_updater(v: Box<dyn MessageTrait>) -> Box<dyn UpdaterTrait<Self::Mdl>>;
 }
 
 #[derive(Clone)]
@@ -47,7 +46,7 @@ impl Commander {
     ) -> Self
     where
         Mdl: Model,
-        Cas: Caster,
+        Cas: Caster<Mdl = Mdl>,
     {
         let (sender_to_commander, receiver_to_commander) = Mpsc::channel();
 
@@ -80,7 +79,7 @@ impl Commander {
         cache: CacheStruct,
     ) where
         Mdl: Model,
-        Cas: Caster,
+        Cas: Caster<Mdl = Mdl>,
     {
         Rt::spawn_local(async move {
             let aborters = Aborters::default();

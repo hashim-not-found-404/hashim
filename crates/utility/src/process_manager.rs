@@ -10,13 +10,15 @@ use infrastructure::runtime::Jh;
 use infrastructure::runtime::JoinHandle;
 use infrastructure::runtime::Rt;
 use infrastructure::runtime::Runtime;
+use serde::Deserialize;
+use serde::Serialize;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::sync::Arc;
 use std::time::Duration;
 
-#[derive(Debug, Clone, Copy, Eq, Hash, PartialEq)]
+#[derive(Debug, Clone, Copy, Eq, Hash, PartialEq, Deserialize, Serialize)]
 pub struct ProcessId(u16);
 
 impl Default for ProcessId {
