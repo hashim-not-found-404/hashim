@@ -70,3 +70,6 @@ new crate_name:
 
 run_server: fmt
     RUSTFLAGS="-A warnings" cargo run -p app_root_server
+
+run_client: fmt
+    RUSTFLAGS="-A warnings" dx serve -p app_root_client

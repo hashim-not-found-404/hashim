@@ -12,49 +12,56 @@ members = [
 # database = { path = "./old_crates/database" }
 # my_core = { path = "./old_crates/my_core" }
 
+# app agnostic
 accounting_engine = { path = "./crates/accounting_engine" }
-cache = { path = "./crates/cache" }
-database = { path = "./crates/database" }
 infrastructure = { path = "./crates/infrastructure" }
-kernel = { path = "./crates/kernel" }
-server = { path = "./crates/server" }
 utility = { path = "./crates/utility" }
 utility_ui = { path = "./crates/utility_ui" }
 
+# internal use cases agnostic
+cache = { path = "./crates/cache" }
+database = { path = "./crates/database" }
+kernel = { path = "./crates/kernel" }
+server = { path = "./crates/server" }
+
+# use cases
 use_case_create_account = { path = "./crates/use_case_create_account" }
 use_case_get_all_accounts = { path = "./crates/use_case_get_all_accounts" }
 
-actix-cors = { version = "0.7.1" }
-actix-web = { version = "4.14.0", features = ["rustls-0_23"] }
-actix-ws = { version = "0.4.0" }
+# external in the domain
 anyhow = { version = "1.0.104" }
+dyn-clone = { version = "1.0.20" }
+serde = { version = "1.0.229", features = ["derive"] }
+typetag = { version = "0.2.23" }
+
+# external out the domain
+actix-cors = { version = "0.7.2" }
+actix-web = { version = "4.15.0", features = ["rustls-0_23"] }
+actix-ws = { version = "0.4.0" }
 argon2 = { version = "0.5.3" }
 chrono = { version = "0.4.45" }
-deadpool-postgres = { version = "0.14.1" }
+deadpool-postgres = { version = "0.14.2" }
 derive_more = { version = "2.1.1", features = ["full"] }
-dioxus = { version = "0.7.9", features = ["router"] }
-dioxus-logger = { version = "0.7.9" }
-dyn-clone = { version = "1.0.20" }
-futures = { version = "0.3.32" }
-futures-util = { version = "0.3.32" }
+dioxus = { version = "0.7.10", features = ["router"] }
+dioxus-logger = { version = "0.7.10" }
+futures = { version = "0.3.34" }
+futures-util = { version = "0.3.34" }
 getrandom = { version = "0.4.3", features = ["wasm_js"] }
 gloo-net = { version = "0.7.0" }
 gloo-timers = { version = "0.4.0", features = ["futures"] }
 jsonwebtoken = { version = "10.4.0", features = ["rust_crypto"] }
 postcard = { version = "1.1.3", features = ["alloc"] }
 regex = { version = "1.13.1" }
-rusqlite = { version = "0.40.1", features = ["bundled"] }
-rust_decimal = { version = "1.42.1", features = ["db-tokio-postgres"] }
-rustls = { version = "0.23.42" }
+rusqlite = { version = "0.40.2", features = ["bundled"] }
+rust_decimal = { version = "1.43.0", features = ["db-tokio-postgres"] }
+rustls = { version = "0.23.45" }
 rustls-pemfile = { version = "2.2.0" }
-serde = { version = "1.0.228", features = ["derive"] }
-serde_json = { version = "1.0.150" }
-tokio = { version = "1.53.0", features = ["macros", "rt"] }
+serde_json = { version = "1.0.151" }
+tokio = { version = "1.53.1", features = ["macros", "rt"] }
 tokio-postgres = { version = "0.7.18", features = ["with-uuid-1", "with-serde_json-1"] }
 tokio-tungstenite = { version = "0.29.0" }
-typetag = { version = "0.2.23" }
-uuid = { version = "1.24.0", features = ["v7", "serde", "js"] }
-wasm-bindgen-futures = { version = "0.4.76" }
+uuid = { version = "1.26.1", features = ["v7", "serde", "js"] }
+wasm-bindgen-futures = { version = "0.4.78" }
 
 [profile.dev.package."*"]
 opt-level = 0
