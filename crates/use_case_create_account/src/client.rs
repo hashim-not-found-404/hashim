@@ -17,9 +17,6 @@ use kernel::new_types::UserUuid;
 use kernel::new_types::UuidType;
 use kernel::types::DatabaseRead;
 use kernel::types::MyErrorTrait;
-use serde::Deserialize;
-use serde::Serialize;
-use serde::de::DeserializeOwned;
 use std::any::Any;
 use std::fmt::Debug;
 use std::ops::Deref;
@@ -41,7 +38,6 @@ use utility::process_manager::MessageToProcessManager;
 use utility::process_manager::ProcessId;
 use utility::process_manager::UserConsent;
 use utility::types::MakeOptionIfEmpty;
-use utility::types::ReadAndSet;
 use utility::ui_effect::MessageTrait;
 use utility::ui_orchestration::handle_fall_back;
 use utility_ui::domain::Dialog;
@@ -102,12 +98,12 @@ type Type2 = Input;
 type Type3 = MyResult;
 type Type4 = MyResult;
 
-pub trait GlobalModel {
-    fn user_uuid(&self) -> impl HashimSignal<UserUuid>;
-    fn selected_company(&self) -> impl HashimSignal<CompanyUuid>;
+pub trait GlobalModel: 'static {
+    fn user_uuid(&self) -> impl HashimSignal<Option<UserUuid>>;
+    fn selected_company(&self) -> impl HashimSignal<Option<CompanyUuid>>;
 }
 
-pub trait LocalModel {
+pub trait LocalModel: 'static {
     fn process_id(&self) -> impl HashimSignal<Option<ProcessId>>;
     fn show_dialog(&self) -> impl HashimSignal<Dialog>;
     fn is_loading(&self) -> impl HashimSignal<bool>;
@@ -119,7 +115,7 @@ pub trait LocalModel {
     fn account_name_error(&self) -> impl HashimSignal<Option<String>>;
 }
 
-fn apply_on_the_model(output: &Type4, local_model: &impl LocalModel) {
+fn apply_on_the_model(output: &Type4, local_model: Arc<impl LocalModel>) {
     match output {
         Ok(_) => {
             local_model.account_name_error().reset();
@@ -133,19 +129,16 @@ fn apply_on_the_model(output: &Type4, local_model: &impl LocalModel) {
 }
 
 impl Message {
-    pub async fn update_generic<LM>(
+    pub async fn update_generic(
         self,
-        global_model: &impl GlobalModel,
-        local_model: &'static LM,
+        global_model: Arc<impl GlobalModel>,
+        local_model: Arc<impl LocalModel>,
         cache: CacheStruct,
         mut sender_to_process_manager: MpscSender<MessageToProcessManager>,
-    ) where
-        LM: LocalModel,
-    {
+    ) {
         match self {
             Self::Submit => {
-                handle_submit::<LM>(global_model, local_model, cache, sender_to_process_manager)
-                    .await
+                handle_submit(global_model, local_model, cache, sender_to_process_manager).await
             }
             Self::Consent(i) => {
                 sender_to_process_manager
@@ -169,8 +162,8 @@ impl Message {
             }
             Self::Subscribe => {
                 fetch(
-                    global_model.selected_company().read(),
-                    global_model.user_uuid().read(),
+                    global_model.selected_company().read().unwrap(),
+                    global_model.user_uuid().read().unwrap(),
                     cache,
                 )
                 .await
@@ -179,20 +172,20 @@ impl Message {
     }
 }
 
-fn build_input(global_model: &impl GlobalModel, local_model: &impl LocalModel) -> Type1 {
+fn build_input(global_model: Arc<impl GlobalModel>, local_model: Arc<impl LocalModel>) -> Type1 {
     Input {
-        user_uuid:                       global_model.user_uuid().read(),
+        user_uuid:                       global_model.user_uuid().read().unwrap(),
         new_uuid:                        AccountUuid::from(UuidType::from(Id::generate())),
         is_debit:                        local_model.is_debit().read(),
         is_permanent_account:            local_model.is_permanent_account().read(),
         account_name:                    local_model.account_name().read(),
         notes:                           local_model.notes().read().none_if_empty(),
         unit_of_measurement_of_quantity: local_model.unit_of_measurement_of_quantity().read(),
-        belong_to_company:               global_model.selected_company().read(),
+        belong_to_company:               global_model.selected_company().read().unwrap(),
     }
 }
 
-fn handle_clean<As: LocalModel>(local_model: &As) {
+fn handle_clean(local_model: Arc<impl LocalModel>) {
     local_model.process_id().reset();
     local_model.account_name().reset();
     local_model.is_debit().reset();
@@ -203,23 +196,22 @@ fn handle_clean<As: LocalModel>(local_model: &As) {
     local_model.account_name_error().reset();
 }
 
-async fn handle_submit<LM>(
-    global_model: &impl GlobalModel,
-    local_model: &'static LM,
+async fn handle_submit(
+    global_model: Arc<impl GlobalModel>,
+    local_model: Arc<impl LocalModel>,
     cache: CacheStruct,
     sender_to_process_manager: MpscSender<MessageToProcessManager>,
-) where
-    LM: LocalModel,
-{
+) {
     let process_id = ProcessId::default();
     local_model.process_id().set(Some(process_id));
 
     let dialog_signal_adapter = Arc::new(DialogSignalAdapter(local_model.show_dialog()));
 
-    let data = build_input(global_model, local_model);
+    let data = build_input(global_model, local_model.clone());
 
     let data: OpInput = OpInput(Arc::new(data));
 
+    let local_model1 = local_model.clone();
     handle_fall_back(
         cache,
         sender_to_process_manager,
@@ -243,11 +235,11 @@ async fn handle_submit<LM>(
                     Err(a)
                 }
             };
-            apply_on_the_model(&result, local_model);
+            apply_on_the_model(&result, local_model.clone());
 
             let is_ok = result.is_ok();
             if is_ok {
-                handle_clean(local_model);
+                handle_clean(local_model.clone());
             }
 
             is_ok
@@ -255,15 +247,15 @@ async fn handle_submit<LM>(
     )
     .await;
 
-    local_model.is_loading().reset();
+    local_model1.clone().is_loading().reset();
 }
 
 async fn handle_check(
-    global_model: &impl GlobalModel,
-    local_model: &impl LocalModel,
+    global_model: Arc<impl GlobalModel>,
+    local_model: Arc<impl LocalModel>,
     mut cache: CacheStruct,
 ) {
-    let data = build_input(global_model, local_model);
+    let data = build_input(global_model, local_model.clone());
 
     let data: OpInput = OpInput(Arc::new(data));
 

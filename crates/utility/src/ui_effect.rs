@@ -18,10 +18,12 @@ pub trait Model: 'static {}
 
 pub trait MessageTrait: Debug + 'static + Send {}
 
-pub trait UpdaterTrait<Mdl: Model> {
+pub trait UpdaterTrait {
+    type Mdl: Model;
+
     fn update(
         self: Box<Self>,
-        model: Arc<Mdl>,
+        model: Arc<Self::Mdl>,
         cache: CacheStruct,
         sender_to_process_manager: MpscSender<MessageToProcessManager>,
         aborters: Aborters,
@@ -30,7 +32,8 @@ pub trait UpdaterTrait<Mdl: Model> {
 
 pub trait Caster {
     type Mdl: Model;
-    fn cast_message_to_updater(v: Box<dyn MessageTrait>) -> Box<dyn UpdaterTrait<Self::Mdl>>;
+
+    fn cast_message_to_updater(v: Box<dyn MessageTrait>) -> Box<dyn UpdaterTrait<Mdl = Self::Mdl>>;
 }
 
 #[derive(Clone)]

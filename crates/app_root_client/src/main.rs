@@ -33,7 +33,7 @@ struct MyCaster;
 impl Caster for MyCaster {
     type Mdl = TypeModel;
 
-    fn cast_message_to_updater(v: Box<dyn MessageTrait>) -> Box<dyn UpdaterTrait<Self::Mdl>> {
+    fn cast_message_to_updater(v: Box<dyn MessageTrait>) -> Box<dyn UpdaterTrait<Mdl = Self::Mdl>> {
         todo!()
     }
 }

@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 accounting_engine = { workspace = true }
 cache = { workspace = true }
+infrastructure = { workspace = true }
 kernel = { workspace = true }
 utility = { workspace = true }
 utility_ui = { workspace = true, features = ["ui"] }
