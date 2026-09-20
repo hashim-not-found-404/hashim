@@ -13,28 +13,28 @@ use std::sync::Arc;
 use utility::cache::CacheStruct;
 use utility::cache::CachingStrategy;
 use utility::cache::OpError;
-use utility::cache::OpErrorTrait;
 use utility::cache::OpInput;
-use utility::cache::OpInputTrait;
 use utility::cache::OpOk;
 use utility::cache::OpOkTrait;
-use utility::cache::OpResult;
 use utility::cache::Subscribe;
+use utility::cache::TrResulrationClientOk;
+use utility::cache::TraitOperationClientError;
+use utility::cache::TraitOperationClientInput;
 use utility::dtos::TxnNumber;
 
-impl OpOkTrait for Ok {
+impl TraitOperationClientOk for Ok {
     fn subs_to_poke(&self) -> &'static [Subscribe] {
         todo!()
     }
 }
 
-impl OpErrorTrait for Error {
+impl TraitOperationClientError for Error {
     fn subs_to_poke(&self) -> &'static [Subscribe] {
         todo!()
     }
 }
 
-impl OpInputTrait for Input {
+impl TraitOperationClientInput for Input {
     fn user_uuid(&self) -> Option<[u8; 16]> {
         Some(*self.user_uuid.deref().deref())
     }

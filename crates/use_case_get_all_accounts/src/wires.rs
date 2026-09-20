@@ -7,25 +7,25 @@ use crate::domain::Ok;
 use ::cache::cache_adapter;
 use anyhow::Result;
 use database::db_client;
-use kernel::server::OperationsInputServer;
 use kernel::server::SideEffects;
+use kernel::server::TraitOperationServerInput;
 use kernel::types::DatabaseWrite;
 use std::pin::Pin;
-use utility::cache::OpInputTrait1;
-use utility::cache::OpOkTrait1;
 use utility::cache::OpResult;
-use utility::dtos::TypeOperationsError;
-use utility::dtos::TypeOperationsOk;
+use utility::cache::TraitOperationCacheInput;
+use utility::cache::TraitOperationCacheOk;
+use utility::dtos::TypeOperationDTOError;
+use utility::dtos::TypeOperationDTOOk;
 use utility::dtos::dyn_result;
 
-impl OperationsInputServer for Input {
+impl TraitOperationServerInput for Input {
     type Cli = db_client::S;
 
     fn handle_operation<'a>(
         self: Box<Self>,
         side_effects: &'a mut SideEffects,
         client: &'a mut Self::Cli,
-    ) -> Pin<Box<dyn Future<Output = Result<Result<TypeOperationsOk, TypeOperationsError>>> + 'a>>
+    ) -> Pin<Box<dyn Future<Output = Result<Result<TypeOperationDTOOk, TypeOperationDTOError>>> + 'a>>
     {
         Box::pin(async move {
             let a = self
@@ -37,7 +37,7 @@ impl OperationsInputServer for Input {
     }
 }
 
-impl OpInputTrait1 for Input {
+impl TraitOperationCacheInput for Input {
     type Cache = cache_adapter::S;
 
     fn check_input<'a>(
@@ -48,7 +48,7 @@ impl OpInputTrait1 for Input {
     }
 }
 
-impl OpOkTrait1 for Ok {
+impl TraitOperationCacheOk for Ok {
     type Cache = cache_adapter::S;
 
     fn apply_to_cache<'a>(

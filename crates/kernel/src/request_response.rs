@@ -7,16 +7,16 @@ use serde::Deserialize;
 use serde::Serialize;
 use std::fmt::Debug;
 use utility::dtos::Txn;
-use utility::dtos::TypeOperationsError;
-use utility::dtos::TypeOperationsInput;
-use utility::dtos::TypeOperationsOk;
-use utility::dtos::TypeOperationsResource;
+use utility::dtos::TypeOperationDTOError;
+use utility::dtos::TypeOperationDTOInput;
+use utility::dtos::TypeOperationDTOOk;
+use utility::dtos::TypeOperationDTOResource;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub(crate) enum FromServer {
     Error(HashimError),
     PushData(MyResult),
-    Resources(Vec<TypeOperationsResource>),
+    Resources(Vec<TypeOperationDTOResource>),
 }
 
 pub(crate) type FromClient = Input;
@@ -25,12 +25,12 @@ pub(crate) type FromClient = Input;
 pub(crate) struct Input {
     pub(crate) jwts:       Vec<JsonWebTokenType>,
     pub(crate) nonce:      NonceUuid,
-    pub(crate) operations: Vec<Txn<TypeOperationsInput>>,
+    pub(crate) operations: Vec<Txn<TypeOperationDTOInput>>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 pub(crate) struct MyResult {
     pub(crate) jwts:       Vec<Result<(), JWTError>>,
     pub(crate) nonce:      Result<(), NonceError>,
-    pub(crate) operations: Vec<Txn<Result<TypeOperationsOk, TypeOperationsError>>>,
+    pub(crate) operations: Vec<Txn<Result<TypeOperationDTOOk, TypeOperationDTOError>>>,
 }

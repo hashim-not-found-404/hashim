@@ -13,14 +13,14 @@ use kernel::ui_construct::CastDTOToClient;
 use std::sync::Arc;
 use std::sync::LazyLock;
 use utility::cache::CastClientToCache;
-use utility::cache::OpErrorTrait;
-use utility::cache::OpInputTrait;
-use utility::cache::OpInputTrait1;
-use utility::cache::OpOkTrait;
-use utility::cache::OpOkTrait1;
-use utility::dtos::TypeOperationsError;
-use utility::dtos::TypeOperationsInput;
-use utility::dtos::TypeOperationsOk;
+use utility::cache::TraitOperationCacheInput;
+use utility::cache::TraitOperationCacheOk;
+use utility::cache::TraitOperationClientError;
+use utility::cache::TraitOperationClientInput;
+use utility::cache::TraitOperationClientOk;
+use utility::dtos::TypeOperationDTOError;
+use utility::dtos::TypeOperationDTOInput;
+use utility::dtos::TypeOperationDTOOk;
 use utility::ui_effect::CastMessageToUpdater;
 use utility::ui_effect::Commander;
 use utility::ui_effect::MessageTrait;
@@ -41,25 +41,27 @@ impl CastMessageToUpdater for MyCaster {
 impl CastClientToCache for MyCaster {
     type Cache = cache_adapter::S;
 
-    fn cast_input(v: &dyn OpInputTrait) -> &dyn OpInputTrait1<Cache = Self::Cache> {
+    fn cast_input(
+        v: &dyn TraitOperationClientInput,
+    ) -> &dyn TraitOperationCacheInput<Cache = Self::Cache> {
         todo!()
     }
 
-    fn cast_ok(v: &dyn OpOkTrait) -> &dyn OpOkTrait1<Cache = Self::Cache> {
+    fn cast_ok(v: &dyn TraitOperationClientOk) -> &dyn TraitOperationCacheOk<Cache = Self::Cache> {
         todo!()
     }
 }
 
 impl CastDTOToClient for MyCaster {
-    fn cast_input(v: TypeOperationsInput) -> Box<dyn OpInputTrait> {
+    fn cast_input(v: TypeOperationDTOInput) -> Box<dyn TraitOperationClientInput> {
         todo!()
     }
 
-    fn cast_ok(v: TypeOperationsOk) -> Box<dyn OpOkTrait> {
+    fn cast_ok(v: TypeOperationDTOOk) -> Box<dyn TraitOperationClientOk> {
         todo!()
     }
 
-    fn cast_error(v: TypeOperationsError) -> Box<dyn OpErrorTrait> {
+    fn cast_error(v: TypeOperationDTOError) -> Box<dyn TraitOperationClientError> {
         todo!()
     }
 }

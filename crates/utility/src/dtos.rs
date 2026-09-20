@@ -24,38 +24,38 @@ pub struct Txn<T> {
 
 //////////////////////////////////////////////////////////////////////
 #[serde]
-pub trait OperationsInput: Any + Debug {}
-pub type TypeOperationsInput = Box<dyn OperationsInput>;
+pub trait TraitOperationDTOInput: Any + Debug {}
+pub type TypeOperationDTOInput = Box<dyn TraitOperationDTOInput>;
 
 //////////////////////////////////////////////////////////////////////
 #[serde]
-pub trait OperationsOk: Any + Debug {}
-pub type TypeOperationsOk = Box<dyn OperationsOk>;
+pub trait TraitOperationDTOOk: Any + Debug {}
+pub type TypeOperationDTOOk = Box<dyn TraitOperationDTOOk>;
 
 //////////////////////////////////////////////////////////////////////
 #[serde]
-pub trait OperationsError: Any + Debug {}
-pub type TypeOperationsError = Box<dyn OperationsError>;
+pub trait TraitOperationDTOError: Any + Debug {}
+pub type TypeOperationDTOError = Box<dyn TraitOperationDTOError>;
 
 //////////////////////////////////////////////////////////////////////
 #[serde]
-pub trait OperationsResource: Any + Debug + DynClone + Send + OperationsOk {}
-pub type TypeOperationsResource = Box<dyn OperationsResource>;
+pub trait TraitOperationDTOResource: Any + Debug + DynClone + Send + TraitOperationDTOOk {}
+pub type TypeOperationDTOResource = Box<dyn TraitOperationDTOResource>;
 
-dyn_clone::clone_trait_object!(OperationsResource);
+dyn_clone::clone_trait_object!(TraitOperationDTOResource);
 
 //////////////////////////////////////////////////////////////////////
 
-pub fn dyn_result<Ok: OperationsOk, Error: OperationsError>(
+pub fn dyn_result<Ok: TraitOperationDTOOk, Error: TraitOperationDTOError>(
     a: Result<Ok, Error>,
-) -> Result<TypeOperationsOk, TypeOperationsError> {
+) -> Result<TypeOperationDTOOk, TypeOperationDTOError> {
     match a {
         Ok(a) => {
-            let a: TypeOperationsOk = Box::new(a);
+            let a: TypeOperationDTOOk = Box::new(a);
             Ok(a)
         }
         Err(a) => {
-            let a: TypeOperationsError = Box::new(a);
+            let a: TypeOperationDTOError = Box::new(a);
             Err(a)
         }
     }

@@ -6,10 +6,10 @@ use anyhow::Result;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::pin::Pin;
-use utility::dtos::TypeOperationsError;
-use utility::dtos::TypeOperationsInput;
-use utility::dtos::TypeOperationsOk;
-use utility::dtos::TypeOperationsResource;
+use utility::dtos::TypeOperationDTOError;
+use utility::dtos::TypeOperationDTOInput;
+use utility::dtos::TypeOperationDTOOk;
+use utility::dtos::TypeOperationDTOResource;
 
 pub struct TheCompaniesAndBranchesHeIn {
     pub branches_of_each_company: HashMap<CompanyUuid, HashSet<BranchUuid>>,
@@ -52,7 +52,7 @@ pub trait Database: 'static {
     fn get_client(&self) -> impl Future<Output = Result<Self::Client>>;
 }
 
-pub(crate) type ListOfResources = HashMap<BranchUuid, Vec<TypeOperationsResource>>;
+pub(crate) type ListOfResources = HashMap<BranchUuid, Vec<TypeOperationDTOResource>>;
 
 #[derive(Debug, Default)]
 pub struct SideEffects {
@@ -81,18 +81,18 @@ pub trait WSServer: 'static {
     fn close(self) -> impl Future<Output = Result<()>>;
 }
 
-pub trait OperationsInputServer {
+pub trait TraitOperationServerInput {
     type Cli: DBClient;
 
     fn handle_operation<'a>(
         self: Box<Self>,
         side_effects: &'a mut SideEffects,
         client: &'a mut Self::Cli,
-    ) -> Pin<Box<dyn Future<Output = Result<Result<TypeOperationsOk, TypeOperationsError>>> + 'a>>;
+    ) -> Pin<Box<dyn Future<Output = Result<Result<TypeOperationDTOOk, TypeOperationDTOError>>> + 'a>>;
 }
 
 pub trait CastDTOToServer {
     type Cli: DBClient;
 
-    fn cast_input(v: TypeOperationsInput) -> Box<dyn OperationsInputServer<Cli = Self::Cli>>;
+    fn cast_input(v: TypeOperationDTOInput) -> Box<dyn TraitOperationServerInput<Cli = Self::Cli>>;
 }

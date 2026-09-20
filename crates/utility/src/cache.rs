@@ -1,6 +1,6 @@
-use crate::dtos::OperationsError;
-use crate::dtos::OperationsInput;
-use crate::dtos::OperationsOk;
+use crate::dtos::TraitOperationDTOError;
+use crate::dtos::TraitOperationDTOInput;
+use crate::dtos::TraitOperationDTOOk;
 use crate::dtos::Txn;
 use crate::dtos::TxnNumber;
 use crate::types::ReadAndSet;
@@ -57,19 +57,19 @@ pub trait CacheUtility: Sized + 'static {
     fn decode_the_response(resp: Vec<u8>) -> Result<MessageFromServer>;
 }
 
-pub trait OpInputTrait: OperationsInput + DynClone {
+pub trait TraitOperationClientInput: TraitOperationDTOInput + DynClone {
     fn user_uuid(&self) -> Option<[u8; 16]>;
 }
 
-pub trait OpOkTrait: OperationsOk {
+pub trait TraitOperationClientOk: TraitOperationDTOOk {
     fn subs_to_poke(&self) -> &'static [Subscribe];
 }
 
-pub trait OpErrorTrait: OperationsError + DynClone {
+pub trait TraitOperationClientError: TraitOperationDTOError + DynClone {
     fn subs_to_poke(&self) -> &'static [Subscribe];
 }
 
-pub trait OpInputTrait1: Any + Debug + DynClone {
+pub trait TraitOperationCacheInput: Any + Debug + DynClone {
     type Cache;
     fn check_input<'a>(
         &'a self,
@@ -77,7 +77,7 @@ pub trait OpInputTrait1: Any + Debug + DynClone {
     ) -> Pin<Box<dyn Future<Output = OpResult> + 'a>>;
 }
 
-pub trait OpOkTrait1: Any + Debug {
+pub trait TraitOperationCacheOk: Any + Debug {
     type Cache;
     fn apply_to_cache<'a>(
         &'a self,
@@ -87,16 +87,18 @@ pub trait OpOkTrait1: Any + Debug {
 
 pub trait CastClientToCache {
     type Cache;
-    fn cast_input(v: &dyn OpInputTrait) -> &dyn OpInputTrait1<Cache = Self::Cache>;
-    fn cast_ok(v: &dyn OpOkTrait) -> &dyn OpOkTrait1<Cache = Self::Cache>;
+    fn cast_input(
+        v: &dyn TraitOperationClientInput,
+    ) -> &dyn TraitOperationCacheInput<Cache = Self::Cache>;
+    fn cast_ok(v: &dyn TraitOperationClientOk) -> &dyn TraitOperationCacheOk<Cache = Self::Cache>;
 }
 
 #[derive(Debug)]
-pub struct OpInput(pub Arc<dyn OpInputTrait>);
+pub struct OpInput(pub Arc<dyn TraitOperationClientInput>);
 #[derive(Debug)]
-pub struct OpOk(pub Box<dyn OpOkTrait>);
+pub struct OpOk(pub Box<dyn TraitOperationClientOk>);
 #[derive(Debug)]
-pub struct OpError(pub Box<dyn OpErrorTrait>);
+pub struct OpError(pub Box<dyn TraitOperationClientError>);
 pub type OpResult = Result<OpOk, OpError>;
 
 impl Clone for OpInput {

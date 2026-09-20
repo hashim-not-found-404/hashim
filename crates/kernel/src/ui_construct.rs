@@ -28,16 +28,16 @@ use utility::cache::CastClientToCache;
 use utility::cache::MessageFromServer;
 use utility::cache::MessageToCache;
 use utility::cache::OpError;
-use utility::cache::OpErrorTrait;
 use utility::cache::OpInput;
-use utility::cache::OpInputTrait;
 use utility::cache::OpOk;
-use utility::cache::OpOkTrait;
+use utility::cache::TraitOperationClientError;
+use utility::cache::TraitOperationClientInput;
+use utility::cache::TraitOperationClientOk;
 use utility::dtos::Txn;
 use utility::dtos::TxnNumber;
-use utility::dtos::TypeOperationsError;
-use utility::dtos::TypeOperationsInput;
-use utility::dtos::TypeOperationsOk;
+use utility::dtos::TypeOperationDTOError;
+use utility::dtos::TypeOperationDTOInput;
+use utility::dtos::TypeOperationDTOOk;
 use utility::network::Network;
 use utility::network::network_actor;
 use utility::process_manager::process_manager_actor;
@@ -104,9 +104,9 @@ impl Network for MyNetwork {
 }
 
 pub trait CastDTOToClient: 'static {
-    fn cast_input(v: TypeOperationsInput) -> Box<dyn OpInputTrait>;
-    fn cast_ok(v: TypeOperationsOk) -> Box<dyn OpOkTrait>;
-    fn cast_error(v: TypeOperationsError) -> Box<dyn OpErrorTrait>;
+    fn cast_input(v: TypeOperationDTOInput) -> Box<dyn TraitOperationClientInput>;
+    fn cast_ok(v: TypeOperationDTOOk) -> Box<dyn TraitOperationClientOk>;
+    fn cast_error(v: TypeOperationDTOError) -> Box<dyn TraitOperationClientError>;
 }
 
 struct MyCache<Ch: Cache, CasDC: CastDTOToClient> {
@@ -141,7 +141,7 @@ where
             operation,
         } in all_txns
         {
-            let operation: TypeOperationsInput = Ed::decode(&operation).unwrap();
+            let operation: TypeOperationDTOInput = Ed::decode(&operation).unwrap();
             let operation = CasDC::cast_input(operation);
             let operation = Arc::from(operation);
             let operation = OpInput(operation);
@@ -176,7 +176,7 @@ where
     async fn write_input_to_cache(&mut self, txn_number: TxnNumber, input: OpInput) {
         let operation = input.0.clone();
         let operation = dyn_clone::clone_box(&*operation);
-        let operation: TypeOperationsInput = operation;
+        let operation: TypeOperationDTOInput = operation;
         let operation = Ed::encode(&operation);
 
         self.cache
@@ -190,7 +190,7 @@ where
     async fn write_error_to_cache(&mut self, txn_number: TxnNumber, error: OpError) {
         let operation = error.0;
         let operation = dyn_clone::clone_box(&*operation);
-        let operation: TypeOperationsError = operation;
+        let operation: TypeOperationDTOError = operation;
         let operation = Ed::encode(&operation);
 
         self.cache
@@ -219,7 +219,7 @@ where
         for i in inputs {
             let operation = i.operation.0;
             let operation = dyn_clone::clone_box(&*operation);
-            let operation: TypeOperationsInput = operation;
+            let operation: TypeOperationDTOInput = operation;
 
             let value = Txn {
                 txn_number: i.txn_number,

@@ -36,7 +36,7 @@ use std::sync::Arc;
 use std::time::SystemTime;
 use std::time::UNIX_EPOCH;
 use utility::dtos::Txn;
-use utility::dtos::TypeOperationsResource;
+use utility::dtos::TypeOperationDTOResource;
 use utility::types::HashMapWithHashMapValue;
 use utility::types::LogError;
 
@@ -65,7 +65,7 @@ impl<Jwt: JWT, Db: Database<Client = Cli>, Cli: DBClient> ServerMethods<Jwt, Db>
         Rt::spawn_local(async move {
             let mut sender_to_broker = self.sender_to_broker.clone();
             let (sender_to_server, mut receiver_to_server) =
-                Mpsc::channel::<Vec<TypeOperationsResource>>();
+                Mpsc::channel::<Vec<TypeOperationDTOResource>>();
             let connection_id = Rn::generate();
 
             loop {
@@ -264,7 +264,7 @@ impl<Jwt: JWT, Db: Database<Client = Cli>, Cli: DBClient> ServerMethods<Jwt, Db>
                         connection_id,
                         list_of_resources_for_branch,
                     } => {
-                        let mut resource_to_send: HashMap<UserUuid, Vec<TypeOperationsResource>> =
+                        let mut resource_to_send: HashMap<UserUuid, Vec<TypeOperationDTOResource>> =
                             HashMap::new();
 
                         broker_functions::map_resource_to_subscribes(
@@ -416,14 +416,14 @@ mod broker_functions {
     use crate::server::ListOfResources;
     use std::collections::HashMap;
     use std::collections::HashSet;
-    use utility::dtos::TypeOperationsResource;
+    use utility::dtos::TypeOperationDTOResource;
 
     pub(crate) type UserSubscribes = HashMap<BranchUuid, HashSet<UserUuid>>;
 
     pub(crate) fn map_resource_to_subscribes(
         pool_of_pubsub: &UserSubscribes,
         list_of_resources: &ListOfResources,
-        resource_to_send: &mut HashMap<UserUuid, Vec<TypeOperationsResource>>,
+        resource_to_send: &mut HashMap<UserUuid, Vec<TypeOperationDTOResource>>,
     ) {
         for (branch, resources_for_branch) in list_of_resources {
             let Some(users) = pool_of_pubsub.get(&branch) else {
@@ -466,7 +466,7 @@ pub(crate) struct AllSubscribes {
 
 type UserSenders = HashMap<
     UserUuid,
-    HashMap<u64, MpscSender<Vec<TypeOperationsResource>>>, // because user may have multiple web socket connection
+    HashMap<u64, MpscSender<Vec<TypeOperationDTOResource>>>, // because user may have multiple web socket connection
 >;
 
 pub(crate) enum MessageToBroker {
@@ -474,7 +474,7 @@ pub(crate) enum MessageToBroker {
         connection_id:        u64,
         list_of_subscribtion: AllSubscribes,
         users_uuids:          HashSet<UserUuid>,
-        sender_to_server:     MpscSender<Vec<TypeOperationsResource>>,
+        sender_to_server:     MpscSender<Vec<TypeOperationDTOResource>>,
     },
     Unsubscribe {
         connection_id: u64,

@@ -1,9 +1,9 @@
 use database::db_client;
 use kernel::server::CastDTOToServer;
-use kernel::server::OperationsInputServer;
+use kernel::server::TraitOperationServerInput;
 use server::app;
 use std::any::Any;
-use utility::dtos::TypeOperationsInput;
+use utility::dtos::TypeOperationDTOInput;
 
 macro_rules! downcast {
     ($v:expr, $crate_name:tt) => {
@@ -18,7 +18,7 @@ struct Cas;
 impl CastDTOToServer for Cas {
     type Cli = db_client::S;
 
-    fn cast_input(v: TypeOperationsInput) -> Box<dyn OperationsInputServer<Cli = Self::Cli>> {
+    fn cast_input(v: TypeOperationDTOInput) -> Box<dyn TraitOperationServerInput<Cli = Self::Cli>> {
         let v: Box<dyn Any> = v;
 
         downcast!(v, use_case_get_all_accounts);

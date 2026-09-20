@@ -11,16 +11,16 @@ use kernel::types::UserUuidError;
 use serde::Deserialize;
 use serde::Serialize;
 use typetag::serde;
-use utility::dtos::OperationsError;
-use utility::dtos::OperationsInput;
-use utility::dtos::OperationsOk;
+use utility::dtos::TraitOperationDTOError;
+use utility::dtos::TraitOperationDTOInput;
+use utility::dtos::TraitOperationDTOOk;
 
 #[serde]
-impl OperationsInput for Input {}
+impl TraitOperationDTOInput for Input {}
 #[serde]
-impl OperationsOk for Ok {}
+impl TraitOperationDTOOk for Ok {}
 #[serde]
-impl OperationsError for Error {}
+impl TraitOperationDTOError for Error {}
 
 pub type MyResult = Result<Ok, Error>;
 

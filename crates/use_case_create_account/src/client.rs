@@ -25,14 +25,14 @@ use use_case_get_all_accounts::client::fetch;
 use utility::cache::CacheStruct;
 use utility::cache::CachingStrategy;
 use utility::cache::OpError;
-use utility::cache::OpErrorTrait;
 use utility::cache::OpInput;
-use utility::cache::OpInputTrait;
 use utility::cache::OpOk;
 use utility::cache::OpOkTrait;
-use utility::cache::OpResult;
 use utility::cache::Response;
 use utility::cache::Subscribe;
+use utility::cache::TrResulrationClientOk;
+use utility::cache::TraitOperationClientError;
+use utility::cache::TraitOperationClientInput;
 use utility::dtos::TxnNumber;
 use utility::process_manager::MessageToProcessManager;
 use utility::process_manager::ProcessId;
@@ -43,19 +43,19 @@ use utility::ui_orchestration::handle_fall_back;
 use utility_ui::domain::Dialog;
 use utility_ui::domain::HashimSignal;
 
-impl OpOkTrait for Ok {
+impl TraitOperationClientOk for Ok {
     fn subs_to_poke(&self) -> &'static [Subscribe] {
         todo!()
     }
 }
 
-impl OpErrorTrait for Error {
+impl TraitOperationClientError for Error {
     fn subs_to_poke(&self) -> &'static [Subscribe] {
         todo!()
     }
 }
 
-impl OpInputTrait for Input {
+impl TraitOperationClientInput for Input {
     fn user_uuid(&self) -> Option<[u8; 16]> {
         Some(*self.user_uuid.deref().deref())
     }
