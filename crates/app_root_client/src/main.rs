@@ -9,10 +9,10 @@ use dioxus::prelude::*;
 use dioxus_logger::init;
 use dioxus_logger::tracing::Level;
 use kernel::ui_construct;
-use kernel::ui_construct::Casting;
+use kernel::ui_construct::CastDTOToClient;
 use std::sync::Arc;
 use std::sync::LazyLock;
-use utility::cache::CacheCaster;
+use utility::cache::CastClientToCache;
 use utility::cache::OpErrorTrait;
 use utility::cache::OpInputTrait;
 use utility::cache::OpInputTrait1;
@@ -21,7 +21,7 @@ use utility::cache::OpOkTrait1;
 use utility::dtos::TypeOperationsError;
 use utility::dtos::TypeOperationsInput;
 use utility::dtos::TypeOperationsOk;
-use utility::ui_effect::Caster;
+use utility::ui_effect::CastMessageToUpdater;
 use utility::ui_effect::Commander;
 use utility::ui_effect::MessageTrait;
 use utility::ui_effect::UpdaterTrait;
@@ -30,7 +30,7 @@ use utility_ui::domain::HashimSignal;
 
 struct MyCaster;
 
-impl Caster for MyCaster {
+impl CastMessageToUpdater for MyCaster {
     type Mdl = TypeModel;
 
     fn cast_message_to_updater(v: Box<dyn MessageTrait>) -> Box<dyn UpdaterTrait<Mdl = Self::Mdl>> {
@@ -38,7 +38,7 @@ impl Caster for MyCaster {
     }
 }
 
-impl CacheCaster for MyCaster {
+impl CastClientToCache for MyCaster {
     type Cache = cache_adapter::S;
 
     fn cast_input(v: &dyn OpInputTrait) -> &dyn OpInputTrait1<Cache = Self::Cache> {
@@ -50,7 +50,7 @@ impl CacheCaster for MyCaster {
     }
 }
 
-impl Casting for MyCaster {
+impl CastDTOToClient for MyCaster {
     fn cast_input(v: TypeOperationsInput) -> Box<dyn OpInputTrait> {
         todo!()
     }

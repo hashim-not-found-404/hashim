@@ -3,7 +3,7 @@ use crate::new_types::UuidType;
 use crate::request_response::FromServer;
 use crate::request_response::Input;
 use crate::request_response::MyResult;
-use crate::server::Casting;
+use crate::server::CastDTOToServer;
 use crate::server::DBClient;
 use crate::server::Database;
 use crate::server::ListOfResources;
@@ -36,7 +36,7 @@ use std::sync::Arc;
 use std::time::SystemTime;
 use std::time::UNIX_EPOCH;
 use utility::dtos::Txn;
-use utility::dtos::TypeResourceDTO;
+use utility::dtos::TypeOperationsResource;
 use utility::types::HashMapWithHashMapValue;
 use utility::types::LogError;
 
@@ -58,11 +58,14 @@ impl<Jwt: JWT, Db: Database<Client = Cli>, Cli: DBClient> ServerMethods<Jwt, Db>
         }
     }
 
-    pub fn server_actor<Ws: WSServer, Cas: Casting<Cli = Cli>>(self: Arc<Self>, mut session: Ws) {
+    pub fn server_actor<Ws: WSServer, Cas: CastDTOToServer<Cli = Cli>>(
+        self: Arc<Self>,
+        mut session: Ws,
+    ) {
         Rt::spawn_local(async move {
             let mut sender_to_broker = self.sender_to_broker.clone();
             let (sender_to_server, mut receiver_to_server) =
-                Mpsc::channel::<Vec<TypeResourceDTO>>();
+                Mpsc::channel::<Vec<TypeOperationsResource>>();
             let connection_id = Rn::generate();
 
             loop {
@@ -261,7 +264,7 @@ impl<Jwt: JWT, Db: Database<Client = Cli>, Cli: DBClient> ServerMethods<Jwt, Db>
                         connection_id,
                         list_of_resources_for_branch,
                     } => {
-                        let mut resource_to_send: HashMap<UserUuid, Vec<TypeResourceDTO>> =
+                        let mut resource_to_send: HashMap<UserUuid, Vec<TypeOperationsResource>> =
                             HashMap::new();
 
                         broker_functions::map_resource_to_subscribes(
@@ -296,7 +299,7 @@ impl<Jwt: JWT, Db: Database<Client = Cli>, Cli: DBClient> ServerMethods<Jwt, Db>
     }
 }
 
-async fn push_data<Jwt: JWT, Cli: DBClient, Cas: Casting<Cli = Cli>>(
+async fn push_data<Jwt: JWT, Cli: DBClient, Cas: CastDTOToServer<Cli = Cli>>(
     input: Input,
     side_effects: &mut SideEffects,
     client: &mut Cli,
@@ -413,14 +416,14 @@ mod broker_functions {
     use crate::server::ListOfResources;
     use std::collections::HashMap;
     use std::collections::HashSet;
-    use utility::dtos::TypeResourceDTO;
+    use utility::dtos::TypeOperationsResource;
 
     pub(crate) type UserSubscribes = HashMap<BranchUuid, HashSet<UserUuid>>;
 
     pub(crate) fn map_resource_to_subscribes(
         pool_of_pubsub: &UserSubscribes,
         list_of_resources: &ListOfResources,
-        resource_to_send: &mut HashMap<UserUuid, Vec<TypeResourceDTO>>,
+        resource_to_send: &mut HashMap<UserUuid, Vec<TypeOperationsResource>>,
     ) {
         for (branch, resources_for_branch) in list_of_resources {
             let Some(users) = pool_of_pubsub.get(&branch) else {
@@ -463,7 +466,7 @@ pub(crate) struct AllSubscribes {
 
 type UserSenders = HashMap<
     UserUuid,
-    HashMap<u64, MpscSender<Vec<TypeResourceDTO>>>, // because user may have multiple web socket connection
+    HashMap<u64, MpscSender<Vec<TypeOperationsResource>>>, // because user may have multiple web socket connection
 >;
 
 pub(crate) enum MessageToBroker {
@@ -471,7 +474,7 @@ pub(crate) enum MessageToBroker {
         connection_id:        u64,
         list_of_subscribtion: AllSubscribes,
         users_uuids:          HashSet<UserUuid>,
-        sender_to_server:     MpscSender<Vec<TypeResourceDTO>>,
+        sender_to_server:     MpscSender<Vec<TypeOperationsResource>>,
     },
     Unsubscribe {
         connection_id: u64,

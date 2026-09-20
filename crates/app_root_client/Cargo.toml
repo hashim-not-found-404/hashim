@@ -3,6 +3,12 @@ name = "app_root_client"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+default = ["web"]
+web = ["dioxus/web"]
+desktop = ["dioxus/desktop"]
+mobile = ["dioxus/mobile"]
+
 [dependencies]
 accounting_engine = { workspace = true }
 cache = { workspace = true }

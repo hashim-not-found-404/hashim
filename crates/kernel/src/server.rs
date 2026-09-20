@@ -9,7 +9,7 @@ use std::pin::Pin;
 use utility::dtos::TypeOperationsError;
 use utility::dtos::TypeOperationsInput;
 use utility::dtos::TypeOperationsOk;
-use utility::dtos::TypeResourceDTO;
+use utility::dtos::TypeOperationsResource;
 
 pub struct TheCompaniesAndBranchesHeIn {
     pub branches_of_each_company: HashMap<CompanyUuid, HashSet<BranchUuid>>,
@@ -52,7 +52,7 @@ pub trait Database: 'static {
     fn get_client(&self) -> impl Future<Output = Result<Self::Client>>;
 }
 
-pub(crate) type ListOfResources = HashMap<BranchUuid, Vec<TypeResourceDTO>>;
+pub(crate) type ListOfResources = HashMap<BranchUuid, Vec<TypeOperationsResource>>;
 
 #[derive(Debug, Default)]
 pub struct SideEffects {
@@ -91,7 +91,7 @@ pub trait OperationsInputServer {
     ) -> Pin<Box<dyn Future<Output = Result<Result<TypeOperationsOk, TypeOperationsError>>> + 'a>>;
 }
 
-pub trait Casting {
+pub trait CastDTOToServer {
     type Cli: DBClient;
 
     fn cast_input(v: TypeOperationsInput) -> Box<dyn OperationsInputServer<Cli = Self::Cli>>;

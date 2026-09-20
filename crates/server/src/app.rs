@@ -16,7 +16,7 @@ use database::db;
 use database::db_client;
 use futures_util::StreamExt;
 use infrastructure::jwt::Jwt;
-use kernel::server::Casting;
+use kernel::server::CastDTOToServer;
 use kernel::server::WSMessage;
 use kernel::server::WSServer;
 use kernel::server_methods::ServerMethods;
@@ -26,7 +26,7 @@ use utility::types::LogError;
 
 type ServerMethodsType = ServerMethods<Jwt, db::S>;
 
-pub async fn main<Cas: Casting<Cli = db_client::S> + 'static>() {
+pub async fn main<Cas: CastDTOToServer<Cli = db_client::S> + 'static>() {
     println!("started server");
     let actions = Data::new(ServerMethodsType::new().await);
 
@@ -50,7 +50,7 @@ pub async fn main<Cas: Casting<Cli = db_client::S> + 'static>() {
     .unwrap()
 }
 
-async fn ws_handler<Cas: Casting<Cli = db_client::S>>(
+async fn ws_handler<Cas: CastDTOToServer<Cli = db_client::S>>(
     req: HttpRequest,
     stream: Payload,
 ) -> HttpResponse {

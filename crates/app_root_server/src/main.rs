@@ -1,5 +1,5 @@
 use database::db_client;
-use kernel::server::Casting;
+use kernel::server::CastDTOToServer;
 use kernel::server::OperationsInputServer;
 use server::app;
 use std::any::Any;
@@ -15,7 +15,7 @@ macro_rules! downcast {
 
 struct Cas;
 
-impl Casting for Cas {
+impl CastDTOToServer for Cas {
     type Cli = db_client::S;
 
     fn cast_input(v: TypeOperationsInput) -> Box<dyn OperationsInputServer<Cli = Self::Cli>> {

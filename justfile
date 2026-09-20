@@ -46,6 +46,7 @@ check_p crate_name: fmt
     RUSTFLAGS="-A warnings" cargo check -p {{crate_name}} --all-targets --features="database"
     RUSTFLAGS="-A warnings" cargo check -p {{crate_name}} --all-targets --features="cache"
     RUSTFLAGS="-A warnings" cargo check -p {{crate_name}} --all-targets --features="client,ui"
+    RUSTFLAGS="-A warnings" cargo check -p {{crate_name}} --all-targets --features="server,client,database,cache,wires"
 
 test_p crate_name: fmt
     RUSTFLAGS="-A warnings" cargo test -p {{crate_name}} -- --show-output

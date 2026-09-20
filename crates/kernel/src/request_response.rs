@@ -10,13 +10,13 @@ use utility::dtos::Txn;
 use utility::dtos::TypeOperationsError;
 use utility::dtos::TypeOperationsInput;
 use utility::dtos::TypeOperationsOk;
-use utility::dtos::TypeResourceDTO;
+use utility::dtos::TypeOperationsResource;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub(crate) enum FromServer {
     Error(HashimError),
     PushData(MyResult),
-    Resources(Vec<TypeResourceDTO>),
+    Resources(Vec<TypeOperationsResource>),
 }
 
 pub(crate) type FromClient = Input;

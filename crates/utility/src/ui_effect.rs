@@ -30,7 +30,7 @@ pub trait UpdaterTrait {
     ) -> Pin<Box<dyn Future<Output = ()>>>;
 }
 
-pub trait Caster {
+pub trait CastMessageToUpdater {
     type Mdl: Model;
 
     fn cast_message_to_updater(v: Box<dyn MessageTrait>) -> Box<dyn UpdaterTrait<Mdl = Self::Mdl>>;
@@ -42,18 +42,18 @@ pub struct Commander {
 }
 
 impl Commander {
-    pub fn new<Mdl, Cas>(
+    pub fn new<Mdl, CasMsg>(
         sender_to_process_manager: MpscSender<MessageToProcessManager>,
         model: Arc<Mdl>,
         cache: CacheStruct,
     ) -> Self
     where
         Mdl: Model,
-        Cas: Caster<Mdl = Mdl>,
+        CasMsg: CastMessageToUpdater<Mdl = Mdl>,
     {
         let (sender_to_commander, receiver_to_commander) = Mpsc::channel();
 
-        Self::commander_actor::<Mdl, Cas>(
+        Self::commander_actor::<Mdl, CasMsg>(
             receiver_to_commander,
             sender_to_process_manager,
             model,
@@ -75,21 +75,21 @@ impl Commander {
         });
     }
 
-    fn commander_actor<Mdl, Cas>(
+    fn commander_actor<Mdl, CasMsg>(
         mut receiver: MpscReceiver<Box<dyn MessageTrait>>,
         sender_to_process_manager: MpscSender<MessageToProcessManager>,
         model: Arc<Mdl>,
         cache: CacheStruct,
     ) where
         Mdl: Model,
-        Cas: Caster<Mdl = Mdl>,
+        CasMsg: CastMessageToUpdater<Mdl = Mdl>,
     {
         Rt::spawn_local(async move {
             let aborters = Aborters::default();
 
             loop {
                 let message = receiver.recv().await.unwrap();
-                let message = Cas::cast_message_to_updater(message);
+                let message = CasMsg::cast_message_to_updater(message);
 
                 let model = model.clone();
                 let cache = cache.clone();

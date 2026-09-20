@@ -22,9 +22,9 @@ use infrastructure::runtime::Runtime;
 use std::marker::PhantomData;
 use std::sync::Arc;
 use std::sync::RwLock;
-use utility::cache::CacheCaster;
 use utility::cache::CacheStruct;
 use utility::cache::CacheUtility;
+use utility::cache::CastClientToCache;
 use utility::cache::MessageFromServer;
 use utility::cache::MessageToCache;
 use utility::cache::OpError;
@@ -42,18 +42,18 @@ use utility::network::Network;
 use utility::network::network_actor;
 use utility::process_manager::process_manager_actor;
 use utility::types::ReadAndSet;
-use utility::ui_effect::Caster;
+use utility::ui_effect::CastMessageToUpdater;
 use utility::ui_effect::Commander;
 use utility::ui_effect::Model;
 use utility_ui::domain::HashimSignal;
 
-pub fn new<Ch, Mdl, Cas, Cas1, CasCh>(model: Arc<Mdl>) -> Commander
+pub fn new<Ch, Mdl, CasDC, CasMsg, CasCh>(model: Arc<Mdl>) -> Commander
 where
     Ch: Cache + 'static,
     Mdl: Model,
-    Cas: Casting,
-    Cas1: Caster<Mdl = Mdl>,
-    CasCh: CacheCaster<Cache = Ch>,
+    CasDC: CastDTOToClient,
+    CasMsg: CastMessageToUpdater<Mdl = Mdl>,
+    CasCh: CastClientToCache<Cache = Ch>,
 {
     let (sender_to_network, receiver_to_network) = Mpsc::channel();
     let (sender_to_cache, receiver_to_cache) = Mpsc::channel();
@@ -71,7 +71,7 @@ where
         format!("ws://{}/ws", ADDRESS),
     );
 
-    let cache = CacheStruct::new::<Ch, MyCache<Ch, Cas>, CasCh>(
+    let cache = CacheStruct::new::<Ch, MyCache<Ch, CasDC>, CasCh>(
         receiver_to_cache,
         sender_to_cache,
         sender_to_network,
@@ -81,7 +81,7 @@ where
 
     let sender_to_process_manager = process_manager_actor();
 
-    Commander::new::<Mdl, Cas1>(sender_to_process_manager, model, cache)
+    Commander::new::<Mdl, CasMsg>(sender_to_process_manager, model, cache)
 }
 
 struct MyNetwork {
@@ -103,21 +103,21 @@ impl Network for MyNetwork {
     }
 }
 
-pub trait Casting: 'static {
+pub trait CastDTOToClient: 'static {
     fn cast_input(v: TypeOperationsInput) -> Box<dyn OpInputTrait>;
     fn cast_ok(v: TypeOperationsOk) -> Box<dyn OpOkTrait>;
     fn cast_error(v: TypeOperationsError) -> Box<dyn OpErrorTrait>;
 }
 
-struct MyCache<Ch: Cache, Cas: Casting> {
+struct MyCache<Ch: Cache, CasDC: CastDTOToClient> {
     cache: Ch,
-    _ph:   PhantomData<Cas>,
+    _ph:   PhantomData<CasDC>,
 }
 
-impl<Ch, Cas> CacheUtility for MyCache<Ch, Cas>
+impl<Ch, CasDC> CacheUtility for MyCache<Ch, CasDC>
 where
     Ch: Cache,
-    Cas: Casting,
+    CasDC: CastDTOToClient,
 {
     type Cache = Ch;
 
@@ -142,7 +142,7 @@ where
         } in all_txns
         {
             let operation: TypeOperationsInput = Ed::decode(&operation).unwrap();
-            let operation = Cas::cast_input(operation);
+            let operation = CasDC::cast_input(operation);
             let operation = Arc::from(operation);
             let operation = OpInput(operation);
 
@@ -250,11 +250,11 @@ where
                     let a = i.operation;
                     let r = match a {
                         Ok(ok) => {
-                            let ok = Cas::cast_ok(ok);
+                            let ok = CasDC::cast_ok(ok);
                             Ok(OpOk(ok))
                         }
                         Err(err) => {
-                            let err = Cas::cast_error(err);
+                            let err = CasDC::cast_error(err);
                             Err(OpError(err))
                         }
                     };
@@ -271,7 +271,7 @@ where
                 let mut a = Vec::new();
 
                 for i in i {
-                    let v = Cas::cast_ok(i);
+                    let v = CasDC::cast_ok(i);
                     a.push(OpOk(v));
                 }
 
