@@ -15,11 +15,11 @@ use utility::cache::CachingStrategy;
 use utility::cache::OpError;
 use utility::cache::OpInput;
 use utility::cache::OpOk;
-use utility::cache::OpOkTrait;
+use utility::cache::OpResult;
 use utility::cache::Subscribe;
-use utility::cache::TrResulrationClientOk;
 use utility::cache::TraitOperationClientError;
 use utility::cache::TraitOperationClientInput;
+use utility::cache::TraitOperationClientOk;
 use utility::dtos::TxnNumber;
 
 impl TraitOperationClientOk for Ok {

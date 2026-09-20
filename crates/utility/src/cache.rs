@@ -93,6 +93,14 @@ pub trait CastClientToCache {
     fn cast_ok(v: &dyn TraitOperationClientOk) -> &dyn TraitOperationCacheOk<Cache = Self::Cache>;
 }
 
+// #[derive(Debug)]
+// pub struct TypeOperationClientInput(pub Arc<dyn TraitOperationClientInput>);
+// #[derive(Debug)]
+// pub struct TypeOperationClientOk(pub Box<dyn TraitOperationClientOk>);
+// #[derive(Debug)]
+// pub struct TypeOperationClientError(pub Box<dyn TraitOperationClientError>);
+// pub type TypeOperationClientResult = Result<TypeOperationClientOk, TypeOperationClientError>;
+
 #[derive(Debug)]
 pub struct OpInput(pub Arc<dyn TraitOperationClientInput>);
 #[derive(Debug)]
