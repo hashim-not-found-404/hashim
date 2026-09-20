@@ -41,8 +41,8 @@ use utility::types::HashMapWithHashMapValue;
 use utility::types::LogError;
 
 pub struct ServerMethods<Jwt: JWT, Db: Database> {
-    database:         Db,
-    jwt:              Jwt,
+    database: Db,
+    jwt: Jwt,
     sender_to_broker: MpscSender<MessageToBroker>,
 }
 
@@ -205,9 +205,7 @@ impl<Jwt: JWT, Db: Database<Client = Cli>, Cli: DBClient> ServerMethods<Jwt, Db>
             session.close().await.unwrap();
 
             sender_to_broker
-                .send(MessageToBroker::Unsubscribe {
-                    connection_id,
-                })
+                .send(MessageToBroker::Unsubscribe { connection_id })
                 .await
                 .unwrap();
         });
@@ -241,9 +239,7 @@ impl<Jwt: JWT, Db: Database<Client = Cli>, Cli: DBClient> ServerMethods<Jwt, Db>
                             list_of_subscribtion.branches,
                         );
                     }
-                    MessageToBroker::Unsubscribe {
-                        connection_id,
-                    } => {
+                    MessageToBroker::Unsubscribe { connection_id } => {
                         let mut user_to_remove = Vec::new();
 
                         for (user_uuid, inner) in &mut pool_of_server_facad_channels {
@@ -306,8 +302,8 @@ async fn push_data<Jwt: JWT, Cli: DBClient, Cas: CastDTOToServer<Cli = Cli>>(
     jwt: &Jwt,
 ) -> Result<MyResult> {
     let mut the_return_result = MyResult {
-        jwts:       Vec::with_capacity(input.jwts.len()),
-        nonce:      Ok(()),
+        jwts: Vec::with_capacity(input.jwts.len()),
+        nonce: Ok(()),
         operations: Vec::with_capacity(input.operations.len()),
     };
 
@@ -327,8 +323,9 @@ async fn push_data<Jwt: JWT, Cli: DBClient, Cas: CastDTOToServer<Cli = Cli>>(
         return Ok(the_return_result);
     }
 
-    let is_nonce_used =
-        client.write_nonce_if_not_used_and_return_is_nonce_used(&input.nonce).await?;
+    let is_nonce_used = client
+        .write_nonce_if_not_used_and_return_is_nonce_used(&input.nonce)
+        .await?;
 
     if !check_nonce_if_valid(&input.nonce, is_nonce_used) {
         the_return_result.nonce = Err(NonceError::Invalid);
@@ -344,7 +341,7 @@ async fn push_data<Jwt: JWT, Cli: DBClient, Cas: CastDTOToServer<Cli = Cli>>(
 
         the_return_result.operations.push(Txn {
             txn_number: transaction.txn_number,
-            operation:  result,
+            operation: result,
         });
     }
 
@@ -360,7 +357,10 @@ fn check_nonce_if_valid(nonce: &UuidType, is_used: bool) -> bool {
         return false;
     };
 
-    let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
 
     let max_future = 5;
 
@@ -389,21 +389,28 @@ async fn get_table_of_subscribed_data<Cli: DBClient>(
 
     for (user, companies) in the_companies_and_branches_he_in.companies {
         for company in companies {
-            let Some(branches) =
-                the_companies_and_branches_he_in.branches_of_each_company.get(&company)
+            let Some(branches) = the_companies_and_branches_he_in
+                .branches_of_each_company
+                .get(&company)
             else {
                 continue;
             };
 
             for branch in branches {
-                subs.branches.entry(branch.clone()).or_default().insert(user.clone());
+                subs.branches
+                    .entry(branch.clone())
+                    .or_default()
+                    .insert(user.clone());
             }
         }
     }
 
     for (user, branches) in the_companies_and_branches_he_in.branches {
         for branch in branches {
-            subs.branches.entry(branch.clone()).or_default().insert(user.clone());
+            subs.branches
+                .entry(branch.clone())
+                .or_default()
+                .insert(user.clone());
         }
     }
 
@@ -454,7 +461,10 @@ mod broker_functions {
     ) {
         for (branch, users_subscribes) in list_of_subscribtion {
             for user_uuid in users_subscribes {
-                pool_of_pubsub.entry(branch.clone()).or_default().insert(user_uuid);
+                pool_of_pubsub
+                    .entry(branch.clone())
+                    .or_default()
+                    .insert(user_uuid);
             }
         }
     }
@@ -471,16 +481,16 @@ type UserSenders = HashMap<
 
 pub(crate) enum MessageToBroker {
     Subscribe {
-        connection_id:        u64,
+        connection_id: u64,
         list_of_subscribtion: AllSubscribes,
-        users_uuids:          HashSet<UserUuid>,
-        sender_to_server:     MpscSender<Vec<TypeOperationDTOResource>>,
+        users_uuids: HashSet<UserUuid>,
+        sender_to_server: MpscSender<Vec<TypeOperationDTOResource>>,
     },
     Unsubscribe {
         connection_id: u64,
     },
     Publish {
-        connection_id:                u64,
+        connection_id: u64,
         list_of_resources_for_branch: ListOfResources,
     },
 }

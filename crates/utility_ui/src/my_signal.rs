@@ -15,23 +15,23 @@ use std::sync::Arc;
 use std::sync::Mutex;
 
 pub struct MySignal<T> {
-    value:       Arc<Mutex<T>>,
+    value: Arc<Mutex<T>>,
     subscribers: Arc<Mutex<HashSet<ReactiveContext>>>,
 }
 
 impl<T: Debug> Debug for MySignal<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("MySignal").field("value", &self.value.lock().unwrap()).finish()
+        f.debug_struct("MySignal")
+            .field("value", &self.value.lock().unwrap())
+            .finish()
     }
 }
 
 impl<T: 'static + Default> Default for MySignal<T> {
     fn default() -> Self {
-        use_hook(|| {
-            MySignal {
-                value:       Arc::new(Mutex::new(T::default())),
-                subscribers: Default::default(),
-            }
+        use_hook(|| MySignal {
+            value: Arc::new(Mutex::new(T::default())),
+            subscribers: Default::default(),
         })
     }
 }
@@ -39,7 +39,7 @@ impl<T: 'static + Default> Default for MySignal<T> {
 impl<T> Clone for MySignal<T> {
     fn clone(&self) -> Self {
         Self {
-            value:       self.value.clone(),
+            value: self.value.clone(),
             subscribers: self.subscribers.clone(),
         }
     }

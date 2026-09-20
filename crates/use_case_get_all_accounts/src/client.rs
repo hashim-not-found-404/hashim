@@ -68,5 +68,7 @@ pub async fn fetch(selected_company: CompanyUuid, user_uuid: UserUuid, mut cache
 
     let txn_number = TxnNumber::default();
 
-    cache.send_to_cache_actor(CachingStrategy::ReadServerOnly, txn_number, input).await;
+    cache
+        .send_to_cache_actor(CachingStrategy::ReadServerOnly, txn_number, input)
+        .await;
 }

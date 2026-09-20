@@ -131,7 +131,7 @@ mod tests_sort {
     #[derive(Debug, Clone, PartialEq)]
     struct Person {
         name: String,
-        age:  u32,
+        age: u32,
     }
 
     impl Sortable for Person {
@@ -144,7 +144,7 @@ mod tests_sort {
 
     #[derive(Debug, PartialEq)]
     struct Product {
-        id:    u32,
+        id: u32,
         price: f64,
     }
 
@@ -167,13 +167,16 @@ mod tests_sort {
     fn sort_single_element() {
         let mut list = vec![Person {
             name: "Alice".to_string(),
-            age:  30,
+            age: 30,
         }];
         let result = sort(&mut list);
-        assert_eq!(result, &vec![Person {
-            name: "Alice".to_string(),
-            age:  30,
-        }]);
+        assert_eq!(
+            result,
+            &vec![Person {
+                name: "Alice".to_string(),
+                age: 30,
+            }]
+        );
     }
 
     #[test]
@@ -181,29 +184,29 @@ mod tests_sort {
         let mut list = vec![
             Person {
                 name: "Bob".to_string(),
-                age:  25,
+                age: 25,
             },
             Person {
                 name: "Alice".to_string(),
-                age:  30,
+                age: 30,
             },
             Person {
                 name: "Charlie".to_string(),
-                age:  25,
+                age: 25,
             },
         ];
         let expected = vec![
             Person {
                 name: "Bob".to_string(),
-                age:  25,
+                age: 25,
             },
             Person {
                 name: "Charlie".to_string(),
-                age:  25,
+                age: 25,
             },
             Person {
                 name: "Alice".to_string(),
-                age:  30,
+                age: 30,
             },
         ];
         let result = sort(&mut list);
@@ -213,32 +216,14 @@ mod tests_sort {
     #[test]
     fn sort_with_primitive_key() {
         let mut list = vec![
-            Product {
-                id:    3,
-                price: 10.0,
-            },
-            Product {
-                id:    1,
-                price: 20.0,
-            },
-            Product {
-                id:    2,
-                price: 15.0,
-            },
+            Product { id: 3, price: 10.0 },
+            Product { id: 1, price: 20.0 },
+            Product { id: 2, price: 15.0 },
         ];
         let expected = vec![
-            Product {
-                id:    1,
-                price: 20.0,
-            },
-            Product {
-                id:    2,
-                price: 15.0,
-            },
-            Product {
-                id:    3,
-                price: 10.0,
-            },
+            Product { id: 1, price: 20.0 },
+            Product { id: 2, price: 15.0 },
+            Product { id: 3, price: 10.0 },
         ];
         let result = sort(&mut list);
         assert_eq!(result, &expected);
@@ -248,7 +233,7 @@ mod tests_sort {
     fn sort_is_not_stable() {
         #[derive(Debug, PartialEq)]
         struct EqualKey {
-            id:    u32,
+            id: u32,
             value: char,
         }
         impl Sortable for EqualKey {
@@ -259,18 +244,9 @@ mod tests_sort {
             }
         }
         let mut list = vec![
-            EqualKey {
-                id:    1,
-                value: 'a',
-            },
-            EqualKey {
-                id:    2,
-                value: 'b',
-            },
-            EqualKey {
-                id:    1,
-                value: 'c',
-            },
+            EqualKey { id: 1, value: 'a' },
+            EqualKey { id: 2, value: 'b' },
+            EqualKey { id: 1, value: 'c' },
         ];
         let result = sort(&mut list);
         let ids: Vec<_> = result.iter().map(|e| e.id).collect();
@@ -281,7 +257,7 @@ mod tests_sort {
     fn sort_multiple_key() {
         #[derive(Debug, PartialEq)]
         struct EqualKey {
-            id:    u32,
+            id: u32,
             value: char,
         }
         impl Sortable for EqualKey {
@@ -292,41 +268,17 @@ mod tests_sort {
             }
         }
         let mut list = vec![
-            EqualKey {
-                id:    1,
-                value: 'a',
-            },
-            EqualKey {
-                id:    2,
-                value: 'b',
-            },
-            EqualKey {
-                id:    1,
-                value: 'c',
-            },
-            EqualKey {
-                id:    0,
-                value: 'c',
-            },
+            EqualKey { id: 1, value: 'a' },
+            EqualKey { id: 2, value: 'b' },
+            EqualKey { id: 1, value: 'c' },
+            EqualKey { id: 0, value: 'c' },
         ];
         let result = sort(&mut list);
         let expected = vec![
-            EqualKey {
-                id:    1,
-                value: 'a',
-            },
-            EqualKey {
-                id:    2,
-                value: 'b',
-            },
-            EqualKey {
-                id:    0,
-                value: 'c',
-            },
-            EqualKey {
-                id:    1,
-                value: 'c',
-            },
+            EqualKey { id: 1, value: 'a' },
+            EqualKey { id: 2, value: 'b' },
+            EqualKey { id: 0, value: 'c' },
+            EqualKey { id: 1, value: 'c' },
         ];
         assert_eq!(result, &expected);
     }

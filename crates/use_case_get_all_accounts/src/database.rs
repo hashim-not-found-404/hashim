@@ -30,8 +30,11 @@ impl DatabaseRead for DataBaseOp {
     type Output = ReadOutput;
 
     async fn read(db: &mut Self::Db<'_>, input: &Self::Input) -> Result<Self::Output> {
-        let rows =
-            db.client.query(READ_QUERY, &[&input.company_uuid.to_externel_uuid()]).await.log()?;
+        let rows = db
+            .client
+            .query(READ_QUERY, &[&input.company_uuid.to_externel_uuid()])
+            .await
+            .log()?;
 
         let mut data = Vec::with_capacity(rows.len());
         for row in rows {
@@ -55,9 +58,7 @@ impl DatabaseRead for DataBaseOp {
             });
         }
 
-        Ok(ReadOutput {
-            data,
-        })
+        Ok(ReadOutput { data })
     }
 }
 

@@ -81,7 +81,12 @@ mod target {
             };
 
             JsonWebTokenType(
-                encode(&Header::default(), &claims, &EncodingKey::from_secret(&self.key)).unwrap(),
+                encode(
+                    &Header::default(),
+                    &claims,
+                    &EncodingKey::from_secret(&self.key),
+                )
+                .unwrap(),
             )
         }
 

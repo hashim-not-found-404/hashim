@@ -101,8 +101,8 @@ pub enum Nature {
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct InventoryRecord {
     pub time_unix: u64,
-    pub quantity:  f64,
-    pub amount:    f64,
+    pub quantity: f64,
+    pub amount: f64,
 }
 
 pub trait DoubleEntry {
@@ -268,8 +268,8 @@ pub(crate) fn sum_inventory<I: Inventory>(inventory: &I) -> (f64, f64) {
 fn combine_all_inventory_record_in_one_record<I: Inventory>(inventory: &mut I) {
     let mut total = InventoryRecord {
         time_unix: 0,
-        quantity:  0.0,
-        amount:    0.0,
+        quantity: 0.0,
+        amount: 0.0,
     };
 
     for record in inventory.iter1() {
@@ -404,18 +404,18 @@ mod tests {
         let mut inv = TestInventory::default();
         inv.push(InventoryRecord {
             time_unix: 1,
-            quantity:  2.0,
-            amount:    10.0,
+            quantity: 2.0,
+            amount: 10.0,
         });
         inv.push(InventoryRecord {
             time_unix: 2,
-            quantity:  3.0,
-            amount:    15.0,
+            quantity: 3.0,
+            amount: 15.0,
         });
         inv.push(InventoryRecord {
             time_unix: 3,
-            quantity:  5.0,
-            amount:    25.0,
+            quantity: 5.0,
+            amount: 25.0,
         });
 
         decrease_inventory_by_price(4.0, &mut inv);
@@ -435,13 +435,13 @@ mod tests {
         let mut inv = TestInventory::default();
         inv.push(InventoryRecord {
             time_unix: 10,
-            quantity:  2.0,
-            amount:    5.0,
+            quantity: 2.0,
+            amount: 5.0,
         });
         inv.push(InventoryRecord {
             time_unix: 20,
-            quantity:  3.0,
-            amount:    7.0,
+            quantity: 3.0,
+            amount: 7.0,
         });
         combine_all_inventory_record_in_one_record(&mut inv);
         assert_eq!(inv.iter1().count(), 1);
@@ -456,13 +456,13 @@ mod tests {
         let mut inv = TestInventory::default();
         inv.push(InventoryRecord {
             time_unix: 1,
-            quantity:  2.0,
-            amount:    4.0,
+            quantity: 2.0,
+            amount: 4.0,
         });
         inv.push(InventoryRecord {
             time_unix: 2,
-            quantity:  3.0,
-            amount:    9.0,
+            quantity: 3.0,
+            amount: 9.0,
         });
         decrease_inventory_by_price(2.0, &mut inv);
         let records: Vec<_> = inv.iter1().collect();
@@ -476,13 +476,13 @@ mod tests {
         let mut inv = TestInventory::default();
         inv.push(InventoryRecord {
             time_unix: 1,
-            quantity:  2.0,
-            amount:    4.0,
+            quantity: 2.0,
+            amount: 4.0,
         });
         inv.push(InventoryRecord {
             time_unix: 2,
-            quantity:  3.0,
-            amount:    9.0,
+            quantity: 3.0,
+            amount: 9.0,
         });
         decrease_inventory_by_price(5.0, &mut inv);
         assert!(inv.is_empty());
@@ -493,13 +493,13 @@ mod tests {
         let mut inv = TestInventory::default();
         inv.push(InventoryRecord {
             time_unix: 1,
-            quantity:  5.0,
-            amount:    10.0,
+            quantity: 5.0,
+            amount: 10.0,
         });
         inv.push(InventoryRecord {
             time_unix: 2,
-            quantity:  3.0,
-            amount:    9.0,
+            quantity: 3.0,
+            amount: 9.0,
         });
         decrease_inventory_by_price(7.0, &mut inv);
         let records: Vec<_> = inv.iter1().collect();
@@ -513,8 +513,8 @@ mod tests {
         let mut inv = TestInventory::default();
         inv.push(InventoryRecord {
             time_unix: 1,
-            quantity:  5.0,
-            amount:    10.0,
+            quantity: 5.0,
+            amount: 10.0,
         });
         decrease_inventory_by_price(0.0, &mut inv);
         let (qty, amt) = sum_inventory(&inv);
@@ -541,8 +541,8 @@ mod tests {
         let mut inv = TestInventory::default();
         inv.push(InventoryRecord {
             time_unix: 1,
-            quantity:  2.0,
-            amount:    4.0,
+            quantity: 2.0,
+            amount: 4.0,
         });
         assert_eq!(get_quantity(4.0, &inv), 2.0);
     }
@@ -552,8 +552,8 @@ mod tests {
         let mut inv = TestInventory::default();
         inv.push(InventoryRecord {
             time_unix: 1,
-            quantity:  5.0,
-            amount:    10.0,
+            quantity: 5.0,
+            amount: 10.0,
         });
         assert_eq!(get_quantity(3.0, &inv), 1.5);
         assert_eq!(get_quantity(0.0, &inv), 0.0);
@@ -566,13 +566,13 @@ mod tests {
         let mut inv = TestInventory::default();
         inv.push(InventoryRecord {
             time_unix: 1,
-            quantity:  2.0,
-            amount:    4.0,
+            quantity: 2.0,
+            amount: 4.0,
         });
         inv.push(InventoryRecord {
             time_unix: 2,
-            quantity:  3.0,
-            amount:    6.0,
+            quantity: 3.0,
+            amount: 6.0,
         });
         assert_eq!(get_quantity(5.0, &inv), 2.5);
         assert_eq!(get_quantity(4.0, &inv), 2.0);
@@ -586,13 +586,13 @@ mod tests {
         let mut inv = TestInventory::default();
         inv.push(InventoryRecord {
             time_unix: 1,
-            quantity:  0.0,
-            amount:    5.0,
+            quantity: 0.0,
+            amount: 5.0,
         });
         inv.push(InventoryRecord {
             time_unix: 2,
-            quantity:  2.0,
-            amount:    4.0,
+            quantity: 2.0,
+            amount: 4.0,
         });
         assert_eq!(get_quantity(4.0, &inv), 0.0);
         assert_eq!(get_quantity(6.0, &inv), 0.5);
@@ -604,8 +604,8 @@ mod tests {
         let mut inv = TestInventory::default();
         inv.push(InventoryRecord {
             time_unix: 1,
-            quantity:  5.0,
-            amount:    10.0,
+            quantity: 5.0,
+            amount: 10.0,
         });
         assert_eq!(get_quantity(-1.0, &inv), 0.0);
         assert_eq!(get_quantity(-5.0, &inv), 0.0);
@@ -616,13 +616,13 @@ mod tests {
         let mut inv = TestInventory::default();
         inv.push(InventoryRecord {
             time_unix: 1,
-            quantity:  5.0,
-            amount:    10.0,
+            quantity: 5.0,
+            amount: 10.0,
         });
         inv.push(InventoryRecord {
             time_unix: 2,
-            quantity:  3.0,
-            amount:    6.0,
+            quantity: 3.0,
+            amount: 6.0,
         });
         sort_inventory(OutFlowType::Wac, &mut inv);
         assert_eq!(get_quantity(8.0, &inv), 4.0);
@@ -636,13 +636,13 @@ mod tests {
         let mut inv = TestInventory::default();
         inv.push(InventoryRecord {
             time_unix: 1,
-            quantity:  0.0,
-            amount:    5.0,
+            quantity: 0.0,
+            amount: 5.0,
         });
         inv.push(InventoryRecord {
             time_unix: 2,
-            quantity:  0.0,
-            amount:    10.0,
+            quantity: 0.0,
+            amount: 10.0,
         });
         assert_eq!(get_quantity(5.0, &inv), 0.0);
         assert_eq!(get_quantity(0.0, &inv), 0.0);

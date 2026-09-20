@@ -19,7 +19,7 @@ pub enum GetCompaniesAndBranches {
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize)]
 pub struct HomeNav {
-    pub show_menu:       bool,
+    pub show_menu: bool,
     pub page_to_present: Menu,
 }
 

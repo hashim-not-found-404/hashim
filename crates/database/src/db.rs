@@ -24,9 +24,7 @@ impl Database for S {
 
         let pool = cfg.create_pool(Some(Runtime::Tokio1), NoTls).unwrap();
 
-        S {
-            pool,
-        }
+        S { pool }
     }
 
     async fn get_client(&self) -> Result<Self::Client> {

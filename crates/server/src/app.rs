@@ -62,26 +62,28 @@ async fn ws_handler<Cas: CastDTOToServer<Cli = db_client::S>>(
         }
     };
 
-    let stream = stream.aggregate_continuations().max_continuation_size(2_usize.pow(16));
+    let stream = stream
+        .aggregate_continuations()
+        .max_continuation_size(2_usize.pow(16));
 
     let session = WsType::new(session, stream);
     let state = req.app_data::<Data<ServerMethodsType>>().unwrap();
-    state.clone().into_inner().server_actor::<WsType, Cas>(session);
+    state
+        .clone()
+        .into_inner()
+        .server_actor::<WsType, Cas>(session);
 
     response
 }
 
 struct WsType {
     session: Session,
-    stream:  AggregatedMessageStream,
+    stream: AggregatedMessageStream,
 }
 
 impl WsType {
     fn new(session: Session, stream: AggregatedMessageStream) -> Self {
-        Self {
-            session,
-            stream,
-        }
+        Self { session, stream }
     }
 }
 
@@ -93,19 +95,17 @@ impl WSServer for WsType {
 
     async fn receive(&mut self) -> Result<WSMessage> {
         match self.stream.next().await {
-            Some(msg) => {
-                match msg.log()? {
-                    AggregatedMessage::Binary(data) => Ok(WSMessage::Binary(data.to_vec())),
-                    AggregatedMessage::Text(_) => bail!("we dont use text"),
-                    AggregatedMessage::Ping(_) => {
-                        todo!()
-                    }
-                    AggregatedMessage::Pong(_) => {
-                        todo!()
-                    }
-                    AggregatedMessage::Close(_) => Ok(WSMessage::Close),
+            Some(msg) => match msg.log()? {
+                AggregatedMessage::Binary(data) => Ok(WSMessage::Binary(data.to_vec())),
+                AggregatedMessage::Text(_) => bail!("we dont use text"),
+                AggregatedMessage::Ping(_) => {
+                    todo!()
                 }
-            }
+                AggregatedMessage::Pong(_) => {
+                    todo!()
+                }
+                AggregatedMessage::Close(_) => Ok(WSMessage::Close),
+            },
             None => bail!("WebSocket connection closed"),
         }
     }
@@ -118,7 +118,9 @@ impl WSServer for WsType {
 
 #[allow(dead_code)]
 fn get_tls_config() -> rustls::ServerConfig {
-    rustls::crypto::aws_lc_rs::default_provider().install_default().unwrap();
+    rustls::crypto::aws_lc_rs::default_provider()
+        .install_default()
+        .unwrap();
 
     const CERT_PEM: &[u8] = include_bytes!("../../../privet/cert.pem");
     const KEY_PEM: &[u8] = include_bytes!("../../../privet/key.pem");
@@ -131,8 +133,13 @@ fn get_tls_config() -> rustls::ServerConfig {
     // load TLS certs and key
     // to create a self-signed temporary cert for testing:
     // `openssl req -x509 -newkey rsa:4096 -nodes -keyout key.pem -out cert.pem -days 365 -subj '/CN=localhost'`
-    let tls_certs = rustls_pemfile::certs(&mut certs_file).collect::<Result<_, _>>().unwrap();
-    let tls_key = rustls_pemfile::pkcs8_private_keys(&mut key_file).next().unwrap().unwrap();
+    let tls_certs = rustls_pemfile::certs(&mut certs_file)
+        .collect::<Result<_, _>>()
+        .unwrap();
+    let tls_key = rustls_pemfile::pkcs8_private_keys(&mut key_file)
+        .next()
+        .unwrap()
+        .unwrap();
 
     // set up TLS config options
     rustls::ServerConfig::builder()

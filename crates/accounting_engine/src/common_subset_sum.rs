@@ -86,7 +86,11 @@ where
     let last_r = dp_r.last().unwrap();
 
     // Collect all common sums and sort them for deterministic order
-    let mut common_sums: Vec<N> = last_l.iter().filter(|&s| last_r.contains(s)).copied().collect();
+    let mut common_sums: Vec<N> = last_l
+        .iter()
+        .filter(|&s| last_r.contains(s))
+        .copied()
+        .collect();
     common_sums.sort(); // smallest first
 
     let mut chosen = None;
@@ -174,7 +178,10 @@ mod tests {
         let equations = split_to_max(&lhs, &rhs, &weight);
         assert_eq!(equations.len(), 2);
         for (l, r) in equations {
-            assert_eq!(l.iter().map(&weight).sum::<u8>(), r.iter().map(&weight).sum::<u8>());
+            assert_eq!(
+                l.iter().map(&weight).sum::<u8>(),
+                r.iter().map(&weight).sum::<u8>()
+            );
         }
     }
 
@@ -231,35 +238,35 @@ mod tests {
     fn with_custom_struct() {
         #[derive(Debug, Clone, PartialEq)]
         struct Item {
-            name:  char,
+            name: char,
             value: u64,
         }
 
         let lhs = vec![
             Item {
-                name:  'A',
+                name: 'A',
                 value: 1,
             },
             Item {
-                name:  'D',
+                name: 'D',
                 value: 4,
             },
             Item {
-                name:  'E',
+                name: 'E',
                 value: 5,
             },
         ];
         let rhs = vec![
             Item {
-                name:  'B',
+                name: 'B',
                 value: 2,
             },
             Item {
-                name:  'C',
+                name: 'C',
                 value: 3,
             },
             Item {
-                name:  'F',
+                name: 'F',
                 value: 5,
             },
         ];
@@ -269,7 +276,10 @@ mod tests {
         let equations = split_to_max(&lhs, &rhs, &weight);
         assert_eq!(equations.len(), 2);
         for (l, r) in equations {
-            assert_eq!(l.iter().map(&weight).sum::<i64>(), r.iter().map(&weight).sum::<i64>());
+            assert_eq!(
+                l.iter().map(&weight).sum::<i64>(),
+                r.iter().map(&weight).sum::<i64>()
+            );
         }
     }
 

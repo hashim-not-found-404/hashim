@@ -23,14 +23,14 @@ pub(crate) type FromClient = Input;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub(crate) struct Input {
-    pub(crate) jwts:       Vec<JsonWebTokenType>,
-    pub(crate) nonce:      NonceUuid,
+    pub(crate) jwts: Vec<JsonWebTokenType>,
+    pub(crate) nonce: NonceUuid,
     pub(crate) operations: Vec<Txn<TypeOperationDTOInput>>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 pub(crate) struct MyResult {
-    pub(crate) jwts:       Vec<Result<(), JWTError>>,
-    pub(crate) nonce:      Result<(), NonceError>,
+    pub(crate) jwts: Vec<Result<(), JWTError>>,
+    pub(crate) nonce: Result<(), NonceError>,
     pub(crate) operations: Vec<Txn<Result<TypeOperationDTOOk, TypeOperationDTOError>>>,
 }

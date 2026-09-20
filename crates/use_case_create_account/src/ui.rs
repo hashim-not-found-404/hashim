@@ -12,15 +12,15 @@ use utility_ui::my_signal::MySignal;
 
 #[derive(Debug, Default, Deserialize, Serialize)]
 pub struct TypeLocalModel {
-    pub process_id:                      MySignal<Option<ProcessId>>,
-    pub is_loading:                      MySignal<bool>,
-    pub show_dialog:                     MySignal<Dialog>,
-    pub is_debit:                        MySignal<bool>,
-    pub is_permanent_account:            MySignal<bool>,
-    pub account_name:                    MySignal<String>,
-    pub notes:                           MySignal<String>,
+    pub process_id: MySignal<Option<ProcessId>>,
+    pub is_loading: MySignal<bool>,
+    pub show_dialog: MySignal<Dialog>,
+    pub is_debit: MySignal<bool>,
+    pub is_permanent_account: MySignal<bool>,
+    pub account_name: MySignal<String>,
+    pub notes: MySignal<String>,
     pub unit_of_measurement_of_quantity: MySignal<String>,
-    pub account_name_error:              MySignal<Option<String>>,
+    pub account_name_error: MySignal<Option<String>>,
 }
 
 impl LocalModel for TypeLocalModel {

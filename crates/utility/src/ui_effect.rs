@@ -97,7 +97,9 @@ impl Commander {
                 let aborters = aborters.clone();
 
                 Rt::spawn_local(async move {
-                    message.update(model, cache, sender_to_process_manager, aborters).await;
+                    message
+                        .update(model, cache, sender_to_process_manager, aborters)
+                        .await;
                 });
             }
         });

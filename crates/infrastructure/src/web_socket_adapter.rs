@@ -25,7 +25,7 @@ pub mod target {
 
     pub struct S {
         write: SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>,
-        read:  SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>,
+        read: SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>,
     }
 
     impl WSClient for S {
@@ -33,28 +33,25 @@ pub mod target {
             let (ws_stream, _) = connect_async(url).await?;
             let (write, read) = ws_stream.split();
 
-            Ok(Self {
-                write,
-                read,
-            })
+            Ok(Self { write, read })
         }
 
         async fn send_bin(&mut self, data: &[u8]) -> Result<()> {
-            self.write.send(Message::Binary(data.to_vec().into())).await?;
+            self.write
+                .send(Message::Binary(data.to_vec().into()))
+                .await?;
 
             Ok(())
         }
 
         async fn receive_bin(&mut self) -> Result<Vec<u8>> {
             match self.read.next().await {
-                Some(Ok(message)) => {
-                    match message {
-                        Message::Text(_) => bail!("it's text"),
-                        Message::Binary(bytes) => Ok(bytes.to_vec()),
-                        Message::Close(_) => bail!("connection closed"),
-                        _ => bail!("other message type"),
-                    }
-                }
+                Some(Ok(message)) => match message {
+                    Message::Text(_) => bail!("it's text"),
+                    Message::Binary(bytes) => Ok(bytes.to_vec()),
+                    Message::Close(_) => bail!("connection closed"),
+                    _ => bail!("other message type"),
+                },
                 Some(Err(e)) => Err(e.into()),
                 None => bail!("connection closed"),
             }
@@ -76,7 +73,7 @@ pub mod target {
 
     pub struct S {
         write: SplitSink<WebSocket, Message>,
-        read:  SplitStream<WebSocket>,
+        read: SplitStream<WebSocket>,
     }
 
     impl WSClient for S {
@@ -85,10 +82,7 @@ pub mod target {
             let (mut write, read) = ws.split();
             write.send(Message::Bytes(Vec::new())).await?;
 
-            Ok(Self {
-                write,
-                read,
-            })
+            Ok(Self { write, read })
         }
 
         async fn send_bin(&mut self, data: &[u8]) -> Result<()> {
@@ -99,12 +93,10 @@ pub mod target {
 
         async fn receive_bin(&mut self) -> Result<Vec<u8>> {
             match self.read.next().await {
-                Some(Ok(message)) => {
-                    match message {
-                        Message::Text(_) => bail!("it's text"),
-                        Message::Bytes(bytes) => Ok(bytes.to_vec()),
-                    }
-                }
+                Some(Ok(message)) => match message {
+                    Message::Text(_) => bail!("it's text"),
+                    Message::Bytes(bytes) => Ok(bytes.to_vec()),
+                },
                 Some(Err(e)) => Err(e.into()),
                 None => bail!("connection closed"),
             }

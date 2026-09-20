@@ -27,33 +27,33 @@ pub type MyResult = Result<Ok, Error>;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Input {
-    pub user_uuid:                       UserUuid,
-    pub new_uuid:                        AccountUuid,
-    pub is_debit:                        bool,
-    pub is_permanent_account:            bool,
-    pub account_name:                    String,
-    pub notes:                           Option<String>,
+    pub user_uuid: UserUuid,
+    pub new_uuid: AccountUuid,
+    pub is_debit: bool,
+    pub is_permanent_account: bool,
+    pub account_name: String,
+    pub notes: Option<String>,
     pub unit_of_measurement_of_quantity: String,
-    pub belong_to_company:               CompanyUuid,
+    pub belong_to_company: CompanyUuid,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Ok {
-    pub new_uuid:                        AccountUuid,
-    pub is_debit:                        bool,
-    pub is_permanent_account:            bool,
-    pub account_name:                    String,
-    pub notes:                           Option<String>,
+    pub new_uuid: AccountUuid,
+    pub is_debit: bool,
+    pub is_permanent_account: bool,
+    pub account_name: String,
+    pub notes: Option<String>,
     pub unit_of_measurement_of_quantity: String,
-    pub belong_to_company:               CompanyUuid,
+    pub belong_to_company: CompanyUuid,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
 pub struct Error {
-    pub(crate) user_uuid:         Option<UserUuidError>,
-    pub(crate) new_uuid:          Option<RowIdError>,
+    pub(crate) user_uuid: Option<UserUuidError>,
+    pub(crate) new_uuid: Option<RowIdError>,
     pub(crate) belong_to_company: Option<RowIdError>,
-    pub(crate) account_name:      Option<AccountNameError>,
+    pub(crate) account_name: Option<AccountNameError>,
 }
 
 impl MarkerMyErrorTrait for Error {}
@@ -64,17 +64,17 @@ pub(crate) enum AccountNameError {
 }
 
 pub struct ReadInput {
-    pub user_uuid:         UserUuid,
-    pub new_uuid:          AccountUuid,
+    pub user_uuid: UserUuid,
+    pub new_uuid: AccountUuid,
     pub belong_to_company: CompanyUuid,
-    pub account_name:      String,
+    pub account_name: String,
 }
 
 pub struct ReadOutput {
     pub is_company_uuid_exist: bool,
-    pub is_new_uuid_used:      bool,
-    pub user_roles:            Vec<Role>,
-    pub is_account_name_used:  bool,
+    pub is_new_uuid_used: bool,
+    pub user_roles: Vec<Role>,
+    pub is_account_name_used: bool,
 }
 
 impl Input {
@@ -101,12 +101,15 @@ impl Input {
         &self,
         db: &mut Db::Db<'_>,
     ) -> Result<Error> {
-        let read_output = Db::read(db, &ReadInput {
-            user_uuid:         self.user_uuid.clone(),
-            new_uuid:          self.new_uuid.clone(),
-            belong_to_company: self.belong_to_company.clone(),
-            account_name:      self.account_name.clone(),
-        })
+        let read_output = Db::read(
+            db,
+            &ReadInput {
+                user_uuid: self.user_uuid.clone(),
+                new_uuid: self.new_uuid.clone(),
+                belong_to_company: self.belong_to_company.clone(),
+                account_name: self.account_name.clone(),
+            },
+        )
         .await?;
 
         let mut errr = Error::default();
@@ -132,13 +135,13 @@ impl Input {
 
     pub(crate) fn state_less_operation(&self) -> Ok {
         Ok {
-            new_uuid:                        self.new_uuid.clone(),
-            is_debit:                        self.is_debit,
-            is_permanent_account:            self.is_permanent_account,
-            account_name:                    self.account_name.clone(),
-            notes:                           self.notes.clone(),
+            new_uuid: self.new_uuid.clone(),
+            is_debit: self.is_debit,
+            is_permanent_account: self.is_permanent_account,
+            account_name: self.account_name.clone(),
+            notes: self.notes.clone(),
             unit_of_measurement_of_quantity: self.unit_of_measurement_of_quantity.clone(),
-            belong_to_company:               self.belong_to_company.clone(),
+            belong_to_company: self.belong_to_company.clone(),
         }
     }
 }

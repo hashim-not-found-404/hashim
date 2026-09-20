@@ -37,8 +37,9 @@ pub async fn handle_fall_back(
     let mut sender_to_process_manager1 = sender_to_process_manager.clone();
 
     let mut handle = Rt::abortable_spawn_local(async move {
-        let mut receiver_to_response =
-            cache1.send_to_cache_actor(CachingStrategy::WriteServerOnly, txn_number, data1).await;
+        let mut receiver_to_response = cache1
+            .send_to_cache_actor(CachingStrategy::WriteServerOnly, txn_number, data1)
+            .await;
 
         match receiver_to_response.recv().await.unwrap() {
             Response::CloseTheChannel | Response::ServerCannotBeReached => {}
@@ -64,10 +65,7 @@ pub async fn handle_fall_back(
     sender_to_process_manager
         .send(MessageToProcessManager::FromProcess {
             process_id,
-            message: MessageFromProcess::Subscribe {
-                sender,
-                dialog,
-            },
+            message: MessageFromProcess::Subscribe { sender, dialog },
         })
         .await
         .unwrap();
@@ -75,8 +73,9 @@ pub async fn handle_fall_back(
     match receiver_to_process.recv().await.unwrap() {
         MessageToProcess::CancelOperation => {}
         MessageToProcess::FallBackToCache => {
-            let mut receiver_to_response =
-                cache.send_to_cache_actor(CachingStrategy::WriteCacheOnly, txn_number, data).await;
+            let mut receiver_to_response = cache
+                .send_to_cache_actor(CachingStrategy::WriteCacheOnly, txn_number, data)
+                .await;
 
             match receiver_to_response.recv().await.unwrap() {
                 Response::CloseTheChannel | Response::ServerCannotBeReached => {}
@@ -102,8 +101,9 @@ pub fn spawn_listener(
     let mut cache1 = cache.clone();
 
     let mut handle = Rt::abortable_spawn_local(async move {
-        let mut receiver_to_poke =
-            cache.send_subs_to_cache_actor(component_id, list_of_subscribtion).await;
+        let mut receiver_to_poke = cache
+            .send_subs_to_cache_actor(component_id, list_of_subscribtion)
+            .await;
 
         cache
             .send_to_cache_actor(
@@ -125,11 +125,7 @@ pub fn spawn_listener(
                 .await
                 .unwrap();
 
-            if let Response::Data {
-                data,
-                ..
-            } = value
-            {
+            if let Response::Data { data, .. } = value {
                 is_error(data);
             }
 

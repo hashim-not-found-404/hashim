@@ -13,8 +13,8 @@ use utility::dtos::TypeOperationDTOResource;
 
 pub struct TheCompaniesAndBranchesHeIn {
     pub branches_of_each_company: HashMap<CompanyUuid, HashSet<BranchUuid>>,
-    pub companies:                HashMap<UserUuid, HashSet<CompanyUuid>>,
-    pub branches:                 HashMap<UserUuid, HashSet<BranchUuid>>,
+    pub companies: HashMap<UserUuid, HashSet<CompanyUuid>>,
+    pub branches: HashMap<UserUuid, HashSet<BranchUuid>>,
 }
 
 pub enum AtCommit {
@@ -56,8 +56,8 @@ pub(crate) type ListOfResources = HashMap<BranchUuid, Vec<TypeOperationDTOResour
 
 #[derive(Debug, Default)]
 pub struct SideEffects {
-    pub authenticated_users:              HashSet<UserUuid>,
-    pub users_to_resubscribe:             HashSet<UserUuid>,
+    pub authenticated_users: HashSet<UserUuid>,
+    pub users_to_resubscribe: HashSet<UserUuid>,
     pub resource_to_broadcast_for_branch: ListOfResources,
 }
 

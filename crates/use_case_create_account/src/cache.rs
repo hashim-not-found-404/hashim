@@ -27,7 +27,10 @@ impl DatabaseRead for CacheOp {
         let mut stmt = db.tables_db.prepare(QUERY1).unwrap();
         let roles_iter = stmt
             .query_map(
-                params![input.belong_to_company.to_string(), input.user_uuid.to_string()],
+                params![
+                    input.belong_to_company.to_string(),
+                    input.user_uuid.to_string()
+                ],
                 |row| {
                     let role_str: String = row.get(0).unwrap();
                     let role = Role::from_str(role_str.as_str()).unwrap();
@@ -37,13 +40,18 @@ impl DatabaseRead for CacheOp {
             .unwrap();
         let user_roles: Vec<Role> = roles_iter.map(|r| r.unwrap()).collect();
         let mut stmt = db.tables_db.prepare(QUERY2).unwrap();
-        let is_company_uuid_exist =
-            stmt.exists(params![input.belong_to_company.to_string()]).unwrap();
+        let is_company_uuid_exist = stmt
+            .exists(params![input.belong_to_company.to_string()])
+            .unwrap();
         let mut stmt = db.tables_db.prepare(QUERY3).unwrap();
         let is_new_uuid_used = stmt.exists(params![input.new_uuid.to_string()]).unwrap();
         let mut stmt = db.tables_db.prepare(QUERY4).unwrap();
-        let is_account_name_used =
-            stmt.exists(params![input.belong_to_company.to_string(), &input.account_name]).unwrap();
+        let is_account_name_used = stmt
+            .exists(params![
+                input.belong_to_company.to_string(),
+                &input.account_name
+            ])
+            .unwrap();
 
         Ok(ReadOutput {
             is_company_uuid_exist,

@@ -182,7 +182,7 @@ mod join_handle {
 
     pub struct S<T> {
         pub output: Arc<Mutex<Option<T>>>,
-        aborter:    Option<oneshot::Sender<()>>,
+        aborter: Option<oneshot::Sender<()>>,
     }
 
     impl<T> JoinHandle for S<T> {
@@ -199,7 +199,7 @@ mod join_handle {
     impl<T> S<T> {
         pub fn new(aborter: oneshot::Sender<()>) -> Self {
             Self {
-                output:  Arc::default(),
+                output: Arc::default(),
                 aborter: Some(aborter),
             }
         }

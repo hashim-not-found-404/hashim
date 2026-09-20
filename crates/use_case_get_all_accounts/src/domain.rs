@@ -26,36 +26,36 @@ pub type MyResult = Result<Ok, Error>;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Input {
-    pub(crate) user_uuid:    UserUuid,
+    pub(crate) user_uuid: UserUuid,
     pub(crate) company_uuid: CompanyUuid,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Ok {
     pub(crate) company_uuid: CompanyUuid,
-    pub(crate) data:         Vec<Data>,
+    pub(crate) data: Vec<Data>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Data {
-    pub row_uuid:                        AccountUuid,
-    pub is_debit:                        bool,
-    pub is_permanent_account:            bool,
-    pub account_name:                    String,
-    pub notes:                           Option<String>,
+    pub row_uuid: AccountUuid,
+    pub is_debit: bool,
+    pub is_permanent_account: bool,
+    pub account_name: String,
+    pub notes: Option<String>,
     pub unit_of_measurement_of_quantity: String,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
 pub struct Error {
-    pub(crate) user_uuid:    Option<UserUuidError>,
+    pub(crate) user_uuid: Option<UserUuidError>,
     pub(crate) company_uuid: Option<RowIdError>,
 }
 
 impl MarkerMyErrorTrait for Error {}
 
 pub struct ReadInput {
-    pub user_uuid:    UserUuid,
+    pub user_uuid: UserUuid,
     pub company_uuid: CompanyUuid,
 }
 
@@ -84,15 +84,18 @@ impl Input {
         &self,
         db: &mut Db::Db<'_>,
     ) -> Result<Ok> {
-        let read_output = Db::read(db, &ReadInput {
-            user_uuid:    self.user_uuid.clone(),
-            company_uuid: self.company_uuid.clone(),
-        })
+        let read_output = Db::read(
+            db,
+            &ReadInput {
+                user_uuid: self.user_uuid.clone(),
+                company_uuid: self.company_uuid.clone(),
+            },
+        )
         .await?;
 
         Ok(Ok {
             company_uuid: self.company_uuid.clone(),
-            data:         read_output.data,
+            data: read_output.data,
         })
     }
 }

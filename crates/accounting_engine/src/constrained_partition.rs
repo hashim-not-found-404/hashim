@@ -131,18 +131,14 @@ mod tests {
 
     #[derive(Debug, Clone, PartialEq)]
     struct Item {
-        name:  char,
+        name: char,
         value: i64,
-        side:  Side,
+        side: Side,
     }
 
     impl Item {
         fn new(name: char, value: i64, side: Side) -> Self {
-            Item {
-                name,
-                value,
-                side,
-            }
+            Item { name, value, side }
         }
     }
 
@@ -159,11 +155,19 @@ mod tests {
     }
 
     fn sum_lhs(items: &[Item]) -> i64 {
-        items.iter().filter(|it| it.side == Side::Lhs).map(|it| it.value).sum()
+        items
+            .iter()
+            .filter(|it| it.side == Side::Lhs)
+            .map(|it| it.value)
+            .sum()
     }
 
     fn sum_rhs(items: &[Item]) -> i64 {
-        items.iter().filter(|it| it.side == Side::Rhs).map(|it| it.value).sum()
+        items
+            .iter()
+            .filter(|it| it.side == Side::Rhs)
+            .map(|it| it.value)
+            .sum()
     }
 
     #[test]

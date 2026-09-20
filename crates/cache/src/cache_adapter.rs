@@ -21,7 +21,7 @@ const QUERY7: &str =
 const QUERY8: &str = "SAVEPOINT pending_txn_branch;";
 
 pub struct S {
-    pub tables_db:              Connection,
+    pub tables_db: Connection,
     pub(crate) transactions_db: Connection,
 }
 
@@ -78,11 +78,15 @@ impl Cache for S {
     }
 
     async fn mark_input_txn_as_faild(&self, txn_number: TxnNumber) {
-        self.transactions_db.execute(QUERY4, rusqlite::params![txn_number.0 as i64]).unwrap();
+        self.transactions_db
+            .execute(QUERY4, rusqlite::params![txn_number.0 as i64])
+            .unwrap();
     }
 
     async fn delete_input_txn(&self, txn_number: TxnNumber) {
-        self.transactions_db.execute(QUERY5, rusqlite::params![txn_number.0 as i64]).unwrap();
+        self.transactions_db
+            .execute(QUERY5, rusqlite::params![txn_number.0 as i64])
+            .unwrap();
     }
 
     async fn clear_pending_txn_state(&self) {

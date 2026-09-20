@@ -57,11 +57,15 @@ impl DBClient for S {
         &mut self,
         users_uuid: &HashSet<UserUuid>,
     ) -> Result<TheCompaniesAndBranchesHeIn> {
-        let stmt = self.client.prepare_cached(READ_ROLES_FOR_USER_QUERY).await.log()?;
+        let stmt = self
+            .client
+            .prepare_cached(READ_ROLES_FOR_USER_QUERY)
+            .await
+            .log()?;
 
         let mut result = TheCompaniesAndBranchesHeIn {
-            companies:                Default::default(),
-            branches:                 Default::default(),
+            companies: Default::default(),
+            branches: Default::default(),
             branches_of_each_company: Default::default(),
         };
 
@@ -127,6 +131,8 @@ mod tests {
     #[tokio::test]
     async fn test_query_string_directly() {
         test_query_helper(READ_ROLES_FOR_USER_QUERY).await.unwrap();
-        test_query_helper(WRITE_NONCE_IF_NOT_USED_QUERY).await.unwrap();
+        test_query_helper(WRITE_NONCE_IF_NOT_USED_QUERY)
+            .await
+            .unwrap();
     }
 }

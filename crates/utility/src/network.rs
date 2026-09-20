@@ -61,17 +61,15 @@ pub fn network_actor<Nw: Network + 'static>(
                     }
                 }
 
-                Either::Two(from_network) => {
-                    match from_network {
-                        Ok(data) => {
-                            network_utils.network_sender(data).await;
-                        }
-                        Err(error) => {
-                            sender_to_error.send(error).await.unwrap();
-                            connect::<Nw>(&mut network_utils, &url, &mut ws).await;
-                        }
+                Either::Two(from_network) => match from_network {
+                    Ok(data) => {
+                        network_utils.network_sender(data).await;
                     }
-                }
+                    Err(error) => {
+                        sender_to_error.send(error).await.unwrap();
+                        connect::<Nw>(&mut network_utils, &url, &mut ws).await;
+                    }
+                },
             }
         }
     });

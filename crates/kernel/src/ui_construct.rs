@@ -66,7 +66,7 @@ where
         sender_to_error.clone(),
         MyNetwork {
             sender_to_cache: sender_to_cache.clone(),
-            is_online:       is_online.clone(),
+            is_online: is_online.clone(),
         },
         format!("ws://{}/ws", ADDRESS),
     );
@@ -86,7 +86,7 @@ where
 
 struct MyNetwork {
     sender_to_cache: MpscSender<MessageToCache>,
-    is_online:       Arc<RwLock<bool>>,
+    is_online: Arc<RwLock<bool>>,
 }
 
 impl Network for MyNetwork {
@@ -94,12 +94,18 @@ impl Network for MyNetwork {
         self.is_online.put(is_online);
 
         if is_online {
-            self.sender_to_cache.send(MessageToCache::WeAreBackOnline).await.unwrap();
+            self.sender_to_cache
+                .send(MessageToCache::WeAreBackOnline)
+                .await
+                .unwrap();
         }
     }
 
     async fn network_sender(&mut self, data: Vec<u8>) {
-        self.sender_to_cache.send(MessageToCache::DataFromServer(data)).await.unwrap();
+        self.sender_to_cache
+            .send(MessageToCache::DataFromServer(data))
+            .await
+            .unwrap();
     }
 }
 
@@ -111,7 +117,7 @@ pub trait CastDTOToClient: 'static {
 
 struct MyCache<Ch: Cache, CasDC: CastDTOToClient> {
     cache: Ch,
-    _ph:   PhantomData<CasDC>,
+    _ph: PhantomData<CasDC>,
 }
 
 impl<Ch, CasDC> CacheUtility for MyCache<Ch, CasDC>
@@ -124,7 +130,7 @@ where
     async fn new() -> Self {
         Self {
             cache: Ch::new().await,
-            _ph:   PhantomData,
+            _ph: PhantomData,
         }
     }
 
@@ -268,7 +274,7 @@ where
 
                     operations.push(Txn {
                         txn_number: i.txn_number,
-                        operation:  r,
+                        operation: r,
                     });
                 }
 

@@ -48,18 +48,18 @@ pub enum MessageFromProcess {
     },
     Response {
         is_response_from_server: bool,
-        is_response_ok:          bool,
+        is_response_ok: bool,
     },
 }
 
 pub enum MessageToProcessManager {
     FromUser {
         process_id: ProcessId,
-        consent:    UserConsent,
+        consent: UserConsent,
     },
     FromProcess {
         process_id: ProcessId,
-        message:    MessageFromProcess,
+        message: MessageFromProcess,
     },
 }
 
@@ -77,11 +77,11 @@ pub fn process_manager_actor() -> MpscSender<MessageToProcessManager> {
 
     Rt::spawn_local(async move {
         struct ProcessInfo {
-            sender:                  MpscSender<MessageToProcess>,
-            dialog:                  DialogType,
-            timer_handle:            Jh<()>,
+            sender: MpscSender<MessageToProcess>,
+            dialog: DialogType,
+            timer_handle: Jh<()>,
             is_response_from_server: Option<bool>,
-            is_ok:                   Option<bool>,
+            is_ok: Option<bool>,
             is_user_want_to_proceed: UserConsent,
         }
 
@@ -106,50 +106,60 @@ pub fn process_manager_actor() -> MpscSender<MessageToProcessManager> {
                             table.timer_handle = timer_handle(table.dialog.clone());
                         }
                         UserConsent::DontWaitForServerResponse => {
-                            table.sender.send(MessageToProcess::FallBackToCache).await.unwrap();
+                            table
+                                .sender
+                                .send(MessageToProcess::FallBackToCache)
+                                .await
+                                .unwrap();
                         }
                         UserConsent::CancelOperation => {
-                            table.sender.send(MessageToProcess::CancelOperation).await.unwrap();
+                            table
+                                .sender
+                                .send(MessageToProcess::CancelOperation)
+                                .await
+                                .unwrap();
                         }
                     }
                 }
                 MessageToProcessManager::FromProcess {
                     process_id,
                     message,
-                } => {
-                    match message {
-                        MessageFromProcess::Subscribe {
-                            sender,
-                            dialog,
-                        } => {
-                            let timer_handle = timer_handle(dialog.clone());
+                } => match message {
+                    MessageFromProcess::Subscribe { sender, dialog } => {
+                        let timer_handle = timer_handle(dialog.clone());
 
-                            process_states.insert(process_id, ProcessInfo {
+                        process_states.insert(
+                            process_id,
+                            ProcessInfo {
                                 sender,
                                 dialog,
                                 timer_handle,
                                 is_response_from_server: None,
                                 is_ok: None,
                                 is_user_want_to_proceed: UserConsent::WaitForServerResponse,
-                            });
-                        }
-                        MessageFromProcess::Response {
-                            is_response_from_server,
-                            is_response_ok,
-                        } => {
-                            let table = process_states.get_mut(&process_id).unwrap();
+                            },
+                        );
+                    }
+                    MessageFromProcess::Response {
+                        is_response_from_server,
+                        is_response_ok,
+                    } => {
+                        let table = process_states.get_mut(&process_id).unwrap();
 
-                            table.is_ok = Some(is_response_ok);
-                            table.is_response_from_server = Some(is_response_from_server);
+                        table.is_ok = Some(is_response_ok);
+                        table.is_response_from_server = Some(is_response_from_server);
 
-                            if is_response_from_server {
-                                table.sender.send(MessageToProcess::CancelOperation).await.unwrap();
+                        if is_response_from_server {
+                            table
+                                .sender
+                                .send(MessageToProcess::CancelOperation)
+                                .await
+                                .unwrap();
 
-                                process_states.remove(&process_id);
-                            }
+                            process_states.remove(&process_id);
                         }
                     }
-                }
+                },
             }
         }
     });

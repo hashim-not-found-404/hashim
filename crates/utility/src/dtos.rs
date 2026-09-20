@@ -19,7 +19,7 @@ impl Default for TxnNumber {
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Txn<T> {
     pub txn_number: TxnNumber,
-    pub operation:  T,
+    pub operation: T,
 }
 
 //////////////////////////////////////////////////////////////////////

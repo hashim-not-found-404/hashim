@@ -121,9 +121,12 @@ fn apply_on_the_model(output: &Type4, local_model: Arc<impl LocalModel>) {
             local_model.account_name_error().reset();
         }
         Err(business_error) => {
-            local_model
-                .account_name_error()
-                .set(business_error.account_name.as_ref().map(|_| String::from("duplicated")));
+            local_model.account_name_error().set(
+                business_error
+                    .account_name
+                    .as_ref()
+                    .map(|_| String::from("duplicated")),
+            );
         }
     }
 }
@@ -144,7 +147,7 @@ impl Message {
                 sender_to_process_manager
                     .send(MessageToProcessManager::FromUser {
                         process_id: local_model.process_id().read().unwrap(),
-                        consent:    i,
+                        consent: i,
                     })
                     .await
                     .unwrap();
@@ -174,14 +177,14 @@ impl Message {
 
 fn build_input(global_model: Arc<impl GlobalModel>, local_model: Arc<impl LocalModel>) -> Type1 {
     Input {
-        user_uuid:                       global_model.user_uuid().read().unwrap(),
-        new_uuid:                        AccountUuid::from(UuidType::from(Id::generate())),
-        is_debit:                        local_model.is_debit().read(),
-        is_permanent_account:            local_model.is_permanent_account().read(),
-        account_name:                    local_model.account_name().read(),
-        notes:                           local_model.notes().read().none_if_empty(),
+        user_uuid: global_model.user_uuid().read().unwrap(),
+        new_uuid: AccountUuid::from(UuidType::from(Id::generate())),
+        is_debit: local_model.is_debit().read(),
+        is_permanent_account: local_model.is_permanent_account().read(),
+        account_name: local_model.account_name().read(),
+        notes: local_model.notes().read().none_if_empty(),
         unit_of_measurement_of_quantity: local_model.unit_of_measurement_of_quantity().read(),
-        belong_to_company:               global_model.selected_company().read().unwrap(),
+        belong_to_company: global_model.selected_company().read().unwrap(),
     }
 }
 
@@ -259,8 +262,9 @@ async fn handle_check(
 
     let data: TypeOperationClientInput = Arc::new(data);
 
-    let mut receiver_to_response =
-        cache.send_to_cache_actor(CachingStrategy::ReadCacheOnly, TxnNumber::default(), data).await;
+    let mut receiver_to_response = cache
+        .send_to_cache_actor(CachingStrategy::ReadCacheOnly, TxnNumber::default(), data)
+        .await;
 
     match receiver_to_response.recv().await.unwrap() {
         Response::CloseTheChannel => {}

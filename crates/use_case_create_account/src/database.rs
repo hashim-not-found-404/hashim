@@ -41,12 +41,15 @@ impl DatabaseRead for DataBaseOp {
         let stmt = db.txn.prepare_cached(READ_QUERY).await.log()?;
         let row = db
             .txn
-            .query_one(&stmt, &[
-                &input.belong_to_company.to_externel_uuid(),
-                &input.user_uuid.to_externel_uuid(),
-                &input.new_uuid.to_externel_uuid(),
-                &input.account_name,
-            ])
+            .query_one(
+                &stmt,
+                &[
+                    &input.belong_to_company.to_externel_uuid(),
+                    &input.user_uuid.to_externel_uuid(),
+                    &input.new_uuid.to_externel_uuid(),
+                    &input.account_name,
+                ],
+            )
             .await
             .log()?;
 
@@ -85,15 +88,18 @@ impl DatabaseWrite for DataBaseOp {
     async fn write(txn: &mut Self::Db<'_>, input: &Self::Input) -> Result<()> {
         let stmt = txn.txn.prepare_cached(WRITE_QUERY).await.log()?;
         txn.txn
-            .execute(&stmt, &[
-                &input.new_uuid.to_externel_uuid(),
-                &input.is_debit,
-                &input.is_permanent_account,
-                &input.account_name,
-                &input.notes,
-                &input.belong_to_company.to_externel_uuid(),
-                &input.unit_of_measurement_of_quantity,
-            ])
+            .execute(
+                &stmt,
+                &[
+                    &input.new_uuid.to_externel_uuid(),
+                    &input.is_debit,
+                    &input.is_permanent_account,
+                    &input.account_name,
+                    &input.notes,
+                    &input.belong_to_company.to_externel_uuid(),
+                    &input.unit_of_measurement_of_quantity,
+                ],
+            )
             .await
             .log()?;
 

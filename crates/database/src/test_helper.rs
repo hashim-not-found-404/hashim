@@ -8,8 +8,9 @@ pub async fn test_query_helper(sql_query: &str) -> Result<()> {
     let dbname = "accounting_app".to_string();
     let url = format!("postgresql://{}@{}:{}/{}", user, host, port, dbname);
 
-    let (client, connection) =
-        tokio_postgres::connect(&url, NoTls).await.expect("Failed to connect to CockroachDB");
+    let (client, connection) = tokio_postgres::connect(&url, NoTls)
+        .await
+        .expect("Failed to connect to CockroachDB");
 
     tokio::spawn(async move {
         if let Err(e) = connection.await {
