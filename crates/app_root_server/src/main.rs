@@ -1,7 +1,6 @@
-mod cast;
-pub mod wire;
+mod wire;
 
-use crate::cast::MyCaster;
+use crate::wire::MyCaster;
 use server::app;
 
 #[actix_web::main]

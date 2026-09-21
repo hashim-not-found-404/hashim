@@ -1,4 +1,3 @@
-use heck::ToUpperCamelCase;
 use proc_macro::TokenStream;
 use quote::format_ident;
 use quote::quote;
@@ -8,37 +7,45 @@ use syn::parse_macro_input;
 pub fn my_macro(input: TokenStream) -> TokenStream {
     let use_case_name = parse_macro_input!(input as Ident);
     let crate_name = format_ident!("use_case_{}", use_case_name);
-    let camel = crate_name.to_string().to_upper_camel_case();
-    let wrapper = format_ident!("Wrapper{}", camel);
+    let mod_name = format_ident!("server_use_case_{}", use_case_name);
 
     quote! {
-        pub(crate) struct #wrapper(pub(crate) #crate_name::domain::Input);
+        mod #mod_name {
+            use anyhow::Result;
+            use database::db_client;
+            use kernel::server::SideEffects;
+            use kernel::server::TraitOperationServerInput;
+            use std::pin::Pin;
+            use #crate_name::database::DataBaseOp;
+            use #crate_name::domain::Input;
+            use #crate_name::server::handle_operation_generic;
+            use utility::dtos::TypeOperationDTOError;
+            use utility::dtos::TypeOperationDTOOk;
+            use utility::dtos::dyn_result;
 
-        impl kernel::server::TraitOperationServerInput for #wrapper {
-            type Cli = database::db_client::S;
+            pub(crate) struct Wrapper(pub(crate) Input);
 
-            fn handle_operation<'a>(
-                self: Box<Self>,
-                side_effects: &'a mut kernel::server::SideEffects,
-                client: &'a mut Self::Cli,
-            ) -> std::pin::Pin<Box<
-                dyn Future<Output = anyhow::Result<
-                    anyhow::Result<
-                        utility::dtos::TypeOperationDTOOk,
-                        utility::dtos::TypeOperationDTOError,
+            impl TraitOperationServerInput for Wrapper {
+                type Cli = db_client::S;
+                fn handle_operation<'a>(
+                    self: Box<Self>,
+                    side_effects: &'a mut SideEffects,
+                    client: &'a mut Self::Cli,
+                ) -> Pin<
+                    Box<
+                        dyn Future<Output = Result<Result<TypeOperationDTOOk, TypeOperationDTOError>>> + 'a,
                     >,
-                >> + 'a,
-            >> {
-                Box::pin(async move {
-                    let a = #crate_name::server::handle_operation_generic::<
-                        Self::Cli,
-                        #crate_name::database::DataBaseOp,
-                        #crate_name::database::DataBaseOp,
-                    >(&self.0, side_effects, client)
-                    .await?;
-
-                    anyhow::Result::Ok(utility::dtos::dyn_result(a))
-                })
+                > {
+                    Box::pin(async move {
+                        let a = handle_operation_generic::<Self::Cli, DataBaseOp, DataBaseOp>(
+                            &self.0,
+                            side_effects,
+                            client,
+                        )
+                        .await?;
+                        Result::Ok(dyn_result(a))
+                    })
+                }
             }
         }
     }

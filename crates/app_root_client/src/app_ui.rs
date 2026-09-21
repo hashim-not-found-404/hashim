@@ -1,6 +1,6 @@
-use crate::cast::MyCaster;
 use crate::model::TypeModel;
 use crate::navigator::Navigator;
+use crate::wire::MyCaster;
 use cache::cache_adapter;
 use dioxus::prelude::*;
 use kernel::ui_construct;

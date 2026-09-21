@@ -8,6 +8,7 @@ use infrastructure::actors::Receiver;
 use infrastructure::actors::Sender;
 use infrastructure::runtime::Rt;
 use infrastructure::runtime::Runtime;
+use std::any::Any;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::pin::Pin;
@@ -16,7 +17,7 @@ use std::sync::Mutex;
 
 pub trait Model: 'static {}
 
-pub trait MessageTrait: Debug + 'static + Send {}
+pub trait MessageTrait: Any + Debug + 'static + Send {}
 
 pub trait UpdaterTrait {
     type Mdl: Model;
