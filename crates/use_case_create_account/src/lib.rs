@@ -1,13 +1,3 @@
-#[cfg(feature = "cache")]
-pub mod cache;
-#[cfg(feature = "client")]
-pub mod client;
-#[cfg(feature = "database")]
-pub mod database;
-pub mod domain;
-#[cfg(feature = "server")]
-pub mod server;
-#[cfg(feature = "ui")]
-pub mod ui;
-#[cfg(feature = "wires")]
-mod wires;
+use kernel::make_lib_file;
+
+make_lib_file!();

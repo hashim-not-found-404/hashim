@@ -9,7 +9,6 @@ cache = ["dep:cache"]
 database = ["uuid", "dep:database"]
 client = []
 server = []
-wires = []
 
 [dependencies]
 infrastructure = { workspace = true }

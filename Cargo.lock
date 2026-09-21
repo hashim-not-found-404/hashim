@@ -309,8 +309,10 @@ name = "app_root_server"
 version = "0.1.0"
 dependencies = [
  "actix-web",
+ "anyhow",
  "database",
  "kernel",
+ "paste",
  "server",
  "use_case_create_account",
  "use_case_get_all_accounts",
@@ -3262,6 +3264,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "paste"
+version = "1.0.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
+
+[[package]]
 name = "pem"
 version = "3.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3535,7 +3543,7 @@ dependencies = [
  "once_cell",
  "socket2",
  "tracing",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]

@@ -31,6 +31,7 @@ use_case_get_all_accounts = { path = "./crates/use_case_get_all_accounts" }
 # external in the domain
 anyhow = { version = "1.0.104" }
 dyn-clone = { version = "1.0.20" }
+paste = { version = "1.0.15" }
 serde = { version = "1.0.229", features = ["derive"] }
 typetag = { version = "0.2.23" }
 
