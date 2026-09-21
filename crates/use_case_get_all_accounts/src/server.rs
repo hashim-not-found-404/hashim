@@ -1,33 +1,17 @@
-use crate::domain::Input;
-use crate::domain::MyResult;
-use crate::domain::ReadInput;
-use crate::domain::ReadOutput;
-use anyhow::Result;
 use kernel::make_auth_check;
-use kernel::server::DBClient;
-use kernel::server::SideEffects;
-use kernel::types::DatabaseRead;
 use kernel::types::MyErrorTrait;
 use kernel::types::UserUuidError;
+use patterns::make_server_handler_without_write;
 
-impl Input {
-    pub async fn handle_operation_generic<
-        Cli: DBClient,
-        DBReader: for<'a> DatabaseRead<Db<'a> = Cli, Input = ReadInput, Output = ReadOutput>,
-    >(
-        &self,
-        side_effects: &mut SideEffects,
-        client: &mut Cli,
-    ) -> Result<MyResult> {
-        let mut errr = self.state_less_check();
-        make_auth_check!(side_effects, self, errr);
+make_server_handler_without_write! {
+    let mut errr = input.state_less_check();
+    make_auth_check!(side_effects, input, errr);
 
-        if errr.is_there_error() {
-            return Ok(Err(errr));
-        }
-
-        let ok = self.state_full_operation::<DBReader>(client).await?;
-
-        Ok(Ok(ok))
+    if errr.is_there_error() {
+        return Ok(Err(errr));
     }
+
+    let ok = input.state_full_operation::<DBReader>(client).await?;
+
+    Ok(Ok(ok))
 }

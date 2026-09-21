@@ -32,7 +32,6 @@ use utility::cache::TraitOperationClientInput;
 use utility::cache::TraitOperationClientOk;
 use utility::cache::TypeOperationClientError;
 use utility::cache::TypeOperationClientInput;
-use utility::cache::TypeOperationClientOk;
 use utility::dtos::Txn;
 use utility::dtos::TxnNumber;
 use utility::dtos::TypeOperationDTOError;

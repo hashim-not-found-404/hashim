@@ -22,6 +22,7 @@ utility_ui = { path = "./crates/utility_ui" }
 cache = { path = "./crates/cache" }
 database = { path = "./crates/database" }
 kernel = { path = "./crates/kernel" }
+patterns = { path = "./crates/patterns" }
 server = { path = "./crates/server" }
 
 # use cases
@@ -32,7 +33,10 @@ use_case_get_all_accounts = { path = "./crates/use_case_get_all_accounts" }
 anyhow = { version = "1.0.104" }
 dyn-clone = { version = "1.0.20" }
 paste = { version = "1.0.15" }
+proc-macro2 = { version = "1.0.107" }
+quote = { version = "1.0.47" }
 serde = { version = "1.0.229", features = ["derive"] }
+syn = { version = "3.0.6" }
 typetag = { version = "0.2.23" }
 
 # external out the domain

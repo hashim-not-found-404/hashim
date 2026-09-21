@@ -7,8 +7,9 @@ use utility::process_manager::MessageToProcessManager;
 use utility::ui_effect::Aborters;
 use utility::ui_effect::UpdaterTrait;
 
-struct WrapperMessage(use_case_create_account::client::Message);
-impl UpdaterTrait for WrapperMessage {
+struct WrapperUseCaseCreateAccount(use_case_create_account::client::Message);
+
+impl UpdaterTrait for WrapperUseCaseCreateAccount {
     type Mdl = TypeModel;
 
     fn update(

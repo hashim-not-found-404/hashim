@@ -16,9 +16,7 @@ use utility::cache::Subscribe;
 use utility::cache::TraitOperationClientError;
 use utility::cache::TraitOperationClientInput;
 use utility::cache::TraitOperationClientOk;
-use utility::cache::TypeOperationClientError;
 use utility::cache::TypeOperationClientInput;
-use utility::cache::TypeOperationClientOk;
 use utility::cache::TypeOperationClientResult;
 use utility::dtos::TxnNumber;
 
