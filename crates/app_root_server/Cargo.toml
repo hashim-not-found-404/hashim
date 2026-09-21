@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 database = { workspace = true }
 kernel = { workspace = true }
+patterns = { workspace = true }
 server = { workspace = true }
 utility = { workspace = true }
 

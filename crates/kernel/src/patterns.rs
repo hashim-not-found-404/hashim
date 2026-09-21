@@ -2,6 +2,7 @@
 // * lib file for use case
 // * write the impls of the DTO in the domain
 // * write the handle input for the server
+// * write the wire of the handle of the server
 
 // new type
 // write the check input for the client
@@ -12,7 +13,6 @@
 // write the method impl of the local model
 // write macro for each caster method
 
-// write the wire of the handle of the server
 // write the wire of the read of the cache
 // write the wire of the write of the cache
 // write the wire of the model
