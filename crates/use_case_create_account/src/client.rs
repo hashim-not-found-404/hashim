@@ -36,6 +36,7 @@ use utility::process_manager::MessageToProcessManager;
 use utility::process_manager::ProcessId;
 use utility::process_manager::UserConsent;
 use utility::types::MakeOptionIfEmpty;
+use utility::ui_effect::Aborters;
 use utility::ui_effect::MessageTrait;
 use utility::ui_orchestration::handle_fall_back;
 use utility_ui::domain::Dialog;
@@ -129,46 +130,45 @@ fn apply_on_the_model(output: &Type4, local_model: Arc<impl LocalModel>) {
     }
 }
 
-impl Message {
-    pub async fn update_generic(
-        self,
-        global_model: Arc<impl GlobalModel>,
-        local_model: Arc<impl LocalModel>,
-        cache: CacheStruct,
-        mut sender_to_process_manager: MpscSender<MessageToProcessManager>,
-    ) {
-        match self {
-            Self::Submit => {
-                handle_submit(global_model, local_model, cache, sender_to_process_manager).await
-            }
-            Self::Consent(i) => {
-                sender_to_process_manager
-                    .send(MessageToProcessManager::FromUser {
-                        process_id: local_model.process_id().read().unwrap(),
-                        consent: i,
-                    })
-                    .await
-                    .unwrap();
-            }
-            Self::Clean => handle_clean(local_model),
-            Self::IsDebit(v) => local_model.is_debit().set(v),
-            Self::IsPermanentAccount(v) => local_model.is_permanent_account().set(v),
-            Self::AccountName(v) => {
-                local_model.account_name().set(v);
-                handle_check(global_model, local_model, cache).await;
-            }
-            Self::Notes(v) => local_model.notes().set(v),
-            Self::UnitOfMeasurementOfQuantity(v) => {
-                local_model.unit_of_measurement_of_quantity().set(v)
-            }
-            Self::Subscribe => {
-                fetch(
-                    global_model.selected_company().read().unwrap(),
-                    global_model.user_uuid().read().unwrap(),
-                    cache,
-                )
+pub async fn update_generic(
+    message: Message,
+    global_model: Arc<impl GlobalModel>,
+    local_model: Arc<impl LocalModel>,
+    cache: CacheStruct,
+    mut sender_to_process_manager: MpscSender<MessageToProcessManager>,
+    aborters: Aborters,
+) {
+    match message {
+        Message::Submit => {
+            handle_submit(global_model, local_model, cache, sender_to_process_manager).await
+        }
+        Message::Consent(i) => {
+            sender_to_process_manager
+                .send(MessageToProcessManager::FromUser {
+                    process_id: local_model.process_id().read().unwrap(),
+                    consent: i,
+                })
                 .await
-            }
+                .unwrap();
+        }
+        Message::Clean => handle_clean(local_model),
+        Message::IsDebit(v) => local_model.is_debit().set(v),
+        Message::IsPermanentAccount(v) => local_model.is_permanent_account().set(v),
+        Message::AccountName(v) => {
+            local_model.account_name().set(v);
+            handle_check(global_model, local_model, cache).await;
+        }
+        Message::Notes(v) => local_model.notes().set(v),
+        Message::UnitOfMeasurementOfQuantity(v) => {
+            local_model.unit_of_measurement_of_quantity().set(v)
+        }
+        Message::Subscribe => {
+            fetch(
+                global_model.selected_company().read().unwrap(),
+                global_model.user_uuid().read().unwrap(),
+                cache,
+            )
+            .await
         }
     }
 }
