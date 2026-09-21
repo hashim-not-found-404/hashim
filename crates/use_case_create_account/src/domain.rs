@@ -1,7 +1,6 @@
 use anyhow::Result;
 use infrastructure::row_id::Id;
 use infrastructure::row_id::RowId;
-use kernel::make_the_domain_impls_and_types;
 use kernel::new_types::AccountUuid;
 use kernel::new_types::CompanyUuid;
 use kernel::new_types::UserUuid;
@@ -12,8 +11,21 @@ use kernel::types::RowIdError;
 use kernel::types::UserUuidError;
 use serde::Deserialize;
 use serde::Serialize;
+use typetag::serde;
+use utility::dtos::TraitOperationDTOError;
+use utility::dtos::TraitOperationDTOInput;
+use utility::dtos::TraitOperationDTOOk;
 
-make_the_domain_impls_and_types!();
+#[serde]
+impl TraitOperationDTOInput for Input {}
+
+#[serde]
+impl TraitOperationDTOOk for Ok {}
+
+#[serde]
+impl TraitOperationDTOError for Error {}
+
+pub type MyResult = Result<Ok, Error>;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Input {

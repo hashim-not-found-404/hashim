@@ -1,6 +1,5 @@
 pub mod client;
 pub mod new_types;
-pub mod patterns;
 pub mod request_response;
 pub mod server;
 pub mod server_methods;

@@ -1,13 +1,13 @@
 default: fmt stat
 
 fmt:
-    @cargo sort -w --grouped
-    @cargo sort-derives --order "Debug,...,Deserialize,Serialize"
-    @cargo +nightly fmt
-    @clear
+    cargo sort -w --grouped
+    cargo sort-derives --order "Debug,...,Deserialize,Serialize"
+    cargo +nightly fmt
+    clear
 
 stat:
-    @clear
+    clear
     git ls-files "crates/*.rs" | xargs wc -l | tail -1
     git ls-files "*.rs" | xargs wc -l | tail -1
     git ls-files | xargs wc -l | tail -1
