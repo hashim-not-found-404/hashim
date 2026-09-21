@@ -13,6 +13,7 @@ make_client_wrapper_cache_write!(get_all_accounts);
 use crate::model::TypeModel;
 use cache::cache_adapter;
 use kernel::ui_construct::CastDTOToClient;
+use paste::paste;
 use utility::cache::CastClientToCache;
 use utility::cache::TraitOperationCacheInput;
 use utility::cache::TraitOperationCacheOk;
@@ -25,6 +26,16 @@ use utility::dtos::TypeOperationDTOOk;
 use utility::ui_effect::CastMessageToUpdater;
 use utility::ui_effect::MessageTrait;
 use utility::ui_effect::UpdaterTrait;
+
+// macro_rules! downcast {
+//     ($v:expr, $crate_name:tt) => {
+//         if let Some(v) = $v.downcast_ref::<$crate_name::>() {
+//             paste! {
+//                 return Box::new(crate::wire::[<updater_ $crate_name>]::Wrapper(v.clone()));
+//             };
+//         };
+//     };
+// }
 
 pub(crate) struct MyCaster;
 

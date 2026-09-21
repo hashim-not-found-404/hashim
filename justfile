@@ -74,3 +74,6 @@ run_server: fmt
 
 run_client: fmt
     RUSTFLAGS="-A warnings" dx serve -p app_root_client
+
+udeps:
+    RUSTFLAGS="-A warnings" cargo +nightly udeps --all-targets

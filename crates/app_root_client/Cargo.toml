@@ -21,6 +21,7 @@ utility_ui = { workspace = true, features = ["ui"] }
 use_case_create_account = { workspace = true, features = ["client", "cache", "ui"] }
 use_case_get_all_accounts = { workspace = true, features = ["client", "cache", "ui"] }
 
+paste = { workspace = true }
 serde = { workspace = true }
 
 dioxus = { workspace = true }

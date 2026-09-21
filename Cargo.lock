@@ -297,6 +297,7 @@ dependencies = [
  "dioxus-logger",
  "infrastructure",
  "kernel",
+ "paste",
  "patterns",
  "serde",
  "use_case_create_account",
@@ -332,12 +333,6 @@ dependencies = [
  "cpufeatures 0.2.17",
  "password-hash",
 ]
-
-[[package]]
-name = "arrayvec"
-version = "0.7.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d3fb67a6e08acf24fdeccbac2cb6ac4305825bd1f117462e0e6f2f193345ad56"
 
 [[package]]
 name = "async-stream"
@@ -538,30 +533,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "borsh"
-version = "1.8.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "553c5d846a6ba5150c65e3b1b8ec073bcf1abc20f9b7220de384a4443ea4e20a"
-dependencies = [
- "borsh-derive",
- "bytes",
- "cfg_aliases",
-]
-
-[[package]]
-name = "borsh-derive"
-version = "1.8.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "12cdfe656708a01f89b451a7d36466e6fe6c414de0aa18fc54f864f6f9ca9f56"
-dependencies = [
- "once_cell",
- "proc-macro-crate",
- "proc-macro2",
- "quote",
- "syn 3.0.6",
-]
-
-[[package]]
 name = "brotli"
 version = "8.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -616,7 +587,6 @@ dependencies = [
 name = "cache"
 version = "0.1.0"
 dependencies = [
- "accounting_engine",
  "anyhow",
  "infrastructure",
  "kernel",
@@ -1077,7 +1047,6 @@ dependencies = [
  "anyhow",
  "deadpool-postgres",
  "kernel",
- "rust_decimal",
  "serde",
  "serde_json",
  "tokio",
@@ -2265,12 +2234,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "heck"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2304e00983f87ffb38b55b444b5e3b60a884b5d30c0fca7d82fe33449bbe55ea"
-
-[[package]]
 name = "hkdf"
 version = "0.12.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3281,7 +3244,6 @@ checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
 name = "patterns"
 version = "0.1.0"
 dependencies = [
- "heck",
  "proc-macro2",
  "quote",
  "syn 3.0.6",
@@ -3831,24 +3793,6 @@ dependencies = [
  "libsqlite3-sys",
  "smallvec",
  "sqlite-wasm-rs",
-]
-
-[[package]]
-name = "rust_decimal"
-version = "1.43.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7653272e75dcac41dc199fbea6f5797633994fafd339943c06c9af16bf29cd3a"
-dependencies = [
- "arrayvec",
- "borsh",
- "bytes",
- "num-traits",
- "postgres-types",
- "rand 0.8.8",
- "rand 0.9.5",
- "serde",
- "serde_json",
- "wasm-bindgen",
 ]
 
 [[package]]
@@ -4872,7 +4816,6 @@ dependencies = [
  "dioxus",
  "infrastructure",
  "kernel",
- "patterns",
  "rusqlite",
  "serde",
  "tokio",
@@ -4892,7 +4835,6 @@ dependencies = [
  "dyn-clone",
  "infrastructure",
  "kernel",
- "patterns",
  "serde",
  "tokio",
  "typetag",
@@ -5038,7 +4980,6 @@ dependencies = [
  "cfg-if",
  "once_cell",
  "rustversion",
- "serde",
  "wasm-bindgen-macro",
  "wasm-bindgen-shared",
 ]

@@ -13,7 +13,6 @@ server = []
 [dependencies]
 infrastructure = { workspace = true }
 kernel = { workspace = true }
-patterns = { workspace = true }
 use_case_get_all_accounts = { workspace = true }
 utility = { workspace = true }
 utility_ui = { workspace = true }
