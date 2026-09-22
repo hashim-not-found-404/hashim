@@ -1,3 +1,4 @@
+use anyhow::Context;
 use anyhow::Result;
 use deadpool_postgres::Transaction;
 use kernel::server::AtCommit;
@@ -14,7 +15,7 @@ impl DBTransaction for S<'_> {
         match self.txn.commit().await {
             Ok(_) => Ok(Ok(())),
             Err(e) => {
-                if get_sql_state(&e) == SqlState::T_R_SERIALIZATION_FAILURE {
+                if get_sql_state(&e)? == SqlState::T_R_SERIALIZATION_FAILURE {
                     return Ok(Err(AtCommit::DataIsChanged));
                 }
                 Err(e.into())
@@ -28,6 +29,6 @@ impl DBTransaction for S<'_> {
     }
 }
 
-fn get_sql_state(error: &tokio_postgres::Error) -> SqlState {
-    error.as_db_error().unwrap().code().clone()
+fn get_sql_state(error: &tokio_postgres::Error) -> Result<SqlState> {
+    Ok(error.as_db_error().context("context")?.code().clone())
 }

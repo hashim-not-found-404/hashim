@@ -1,4 +1,5 @@
 use crate::utils::MyUuidConverter;
+use anyhow::Result;
 use infrastructure::jwt::JsonWebTokenType;
 use kernel::client::Cache;
 use kernel::new_types::UserUuid;
@@ -29,87 +30,95 @@ pub struct S {
 impl MarkerCache for S {}
 
 impl Cache for S {
-    async fn new() -> Self {
-        let tables_db = Connection::open("opfs-sahpool://tables.db").unwrap();
+    async fn new() -> Result<Self> {
+        let tables_db = Connection::open("opfs-sahpool://tables.db")?;
         const TABLES_SCHEMA: &str = include_str!("../schema/tables.sql");
-        tables_db.execute_batch(TABLES_SCHEMA).unwrap();
+        tables_db.execute_batch(TABLES_SCHEMA)?;
 
-        let transactions_db = Connection::open("opfs-sahpool://transactions.db").unwrap();
+        let transactions_db = Connection::open("opfs-sahpool://transactions.db")?;
         const TRANSACTIONS_SCHEMA: &str = include_str!("../schema/transactions.sql");
-        transactions_db.execute_batch(TRANSACTIONS_SCHEMA).unwrap();
+        transactions_db.execute_batch(TRANSACTIONS_SCHEMA)?;
 
-        Self {
+        Ok(Self {
             tables_db,
             transactions_db,
-        }
+        })
     }
 
-    async fn get_all_pending_txn(&self) -> Vec<Txn<Vec<u8>>> {
-        let mut stmt = self.transactions_db.prepare(QUERY1).unwrap();
+    async fn get_all_pending_txn(&self) -> Result<Vec<Txn<Vec<u8>>>> {
+        let mut stmt = self.transactions_db.prepare(QUERY1)?;
 
-        let rows = stmt
-            .query_map([], |row| {
-                let txn_number = row.get::<usize, i64>(0).unwrap() as u64;
-                let txn_number = TxnNumber(txn_number);
-                let items = row.get::<usize, Vec<u8>>(1).unwrap();
-                Ok(Txn {
-                    txn_number,
-                    operation: items,
-                })
+        let rows = stmt.query_map([], |row| {
+            let txn_number = row.get::<usize, i64>(0)? as u64;
+            let txn_number = TxnNumber(txn_number);
+            let items = row.get::<usize, Vec<u8>>(1)?;
+            Ok(Txn {
+                txn_number,
+                operation: items,
             })
-            .unwrap();
+        })?;
 
         let mut transactions: Vec<Txn<Vec<u8>>> = Vec::new();
         for row in rows {
-            transactions.push(row.unwrap());
+            transactions.push(row?);
         }
-        transactions
+        Ok(transactions)
     }
 
-    async fn write_txn_input(&self, txn: &Txn<Vec<u8>>) -> () {
+    async fn write_txn_input(&self, txn: &Txn<Vec<u8>>) -> Result<()> {
         let txn_data = txn.operation.clone();
         self.transactions_db
-            .execute(QUERY2, rusqlite::params![txn.txn_number.0 as i64, txn_data])
-            .unwrap();
+            .execute(QUERY2, rusqlite::params![txn.txn_number.0 as i64, txn_data])?;
+
+        Ok(())
     }
 
-    async fn write_txn_result(&self, txn: &Txn<Vec<u8>>) {
+    async fn write_txn_result(&self, txn: &Txn<Vec<u8>>) -> Result<()> {
         let txn_data = txn.operation.clone();
         self.transactions_db
-            .execute(QUERY3, rusqlite::params![txn.txn_number.0 as i64, txn_data])
-            .unwrap();
+            .execute(QUERY3, rusqlite::params![txn.txn_number.0 as i64, txn_data])?;
+
+        Ok(())
     }
 
-    async fn mark_input_txn_as_faild(&self, txn_number: TxnNumber) {
+    async fn mark_input_txn_as_faild(&self, txn_number: TxnNumber) -> Result<()> {
         self.transactions_db
-            .execute(QUERY4, rusqlite::params![txn_number.0 as i64])
-            .unwrap();
+            .execute(QUERY4, rusqlite::params![txn_number.0 as i64])?;
+
+        Ok(())
     }
 
-    async fn delete_input_txn(&self, txn_number: TxnNumber) {
+    async fn delete_input_txn(&self, txn_number: TxnNumber) -> Result<()> {
         self.transactions_db
-            .execute(QUERY5, rusqlite::params![txn_number.0 as i64])
-            .unwrap();
+            .execute(QUERY5, rusqlite::params![txn_number.0 as i64])?;
+
+        Ok(())
     }
 
-    async fn clear_pending_txn_state(&self) {
-        self.tables_db.execute_batch(QUERY7).unwrap();
+    async fn clear_pending_txn_state(&self) -> Result<()> {
+        self.tables_db.execute_batch(QUERY7)?;
+
+        Ok(())
     }
 
-    async fn start_pending_txn_state(&self) {
-        self.tables_db.execute_batch(QUERY8).unwrap();
+    async fn start_pending_txn_state(&self) -> Result<()> {
+        self.tables_db.execute_batch(QUERY8)?;
+
+        Ok(())
     }
 
-    async fn get_jwt(&self, user_uuid: &UserUuid) -> Option<JsonWebTokenType> {
-        let mut stmt = self.tables_db.prepare(QUERY6).unwrap();
+    async fn get_jwt(&self, user_uuid: &UserUuid) -> Result<Option<JsonWebTokenType>> {
+        let mut stmt = self.tables_db.prepare(QUERY6)?;
 
         let json_web_token_type =
             stmt.query_one([&user_uuid.to_string()], |row| row.get::<_, String>(0));
 
-        match json_web_token_type {
+        let json_web_token = match json_web_token_type {
             Ok(a) => Some(JsonWebTokenType::from(a)),
             Err(_) => None,
-        }
+        };
+
+        Ok(json_web_token)
     }
 }
 

@@ -72,13 +72,13 @@ where
         receiver_to_cache,
         sender_to_cache,
         sender_to_network,
-        sender_to_error,
+        sender_to_error.clone(),
         is_online,
     );
 
     let sender_to_process_manager = process_manager_actor();
 
-    Commander::new::<Mdl, CasMsg>(sender_to_process_manager, model, cache)
+    Commander::new::<Mdl, CasMsg>(sender_to_error, sender_to_process_manager, model, cache)
 }
 
 struct MyNetwork {
@@ -124,19 +124,19 @@ where
 {
     type Cache = Ch;
 
-    async fn new() -> Self {
-        Self {
-            cache: Ch::new().await,
+    async fn new() -> Result<Self> {
+        Ok(Self {
+            cache: Ch::new().await?,
             _ph: PhantomData,
-        }
+        })
     }
 
     fn get_inner_cache(&mut self) -> &mut Self::Cache {
         &mut self.cache
     }
 
-    async fn get_all_pending_txn(&mut self) -> Vec<Txn<TypeOperationClientInput>> {
-        let all_txns = self.cache.get_all_pending_txn().await;
+    async fn get_all_pending_txn(&mut self) -> Result<Vec<Txn<TypeOperationClientInput>>> {
+        let all_txns = self.cache.get_all_pending_txn().await?;
         let mut vec_to_return = Vec::new();
 
         for Txn {
@@ -144,7 +144,7 @@ where
             operation,
         } in all_txns
         {
-            let operation: TypeOperationDTOInput = Ed::decode(&operation).unwrap();
+            let operation: TypeOperationDTOInput = Ed::decode(&operation)?;
             let operation = CasDC::cast_input(operation);
             let operation = Arc::from(operation);
 
@@ -156,30 +156,34 @@ where
             vec_to_return.push(txn);
         }
 
-        vec_to_return
+        Ok(vec_to_return)
     }
 
-    async fn clear_pending_txn_state(&mut self) {
-        self.cache.clear_pending_txn_state().await
+    async fn clear_pending_txn_state(&mut self) -> Result<()> {
+        self.cache.clear_pending_txn_state().await?;
+        Ok(())
     }
 
-    async fn start_pending_txn_state(&mut self) {
-        self.cache.start_pending_txn_state().await
+    async fn start_pending_txn_state(&mut self) -> Result<()> {
+        self.cache.start_pending_txn_state().await?;
+        Ok(())
     }
 
-    async fn delete_input_txn(&mut self, txn_number: TxnNumber) {
-        self.cache.delete_input_txn(txn_number).await
+    async fn delete_input_txn(&mut self, txn_number: TxnNumber) -> Result<()> {
+        self.cache.delete_input_txn(txn_number).await?;
+        Ok(())
     }
 
-    async fn mark_input_txn_as_faild(&mut self, txn_number: TxnNumber) {
-        self.cache.mark_input_txn_as_faild(txn_number).await
+    async fn mark_input_txn_as_faild(&mut self, txn_number: TxnNumber) -> Result<()> {
+        self.cache.mark_input_txn_as_faild(txn_number).await?;
+        Ok(())
     }
 
     async fn write_input_to_cache(
         &mut self,
         txn_number: TxnNumber,
         input: TypeOperationClientInput,
-    ) {
+    ) -> Result<()> {
         let operation = input.clone();
         let operation = dyn_clone::clone_box(&*operation);
         let operation: TypeOperationDTOInput = operation;
@@ -197,7 +201,7 @@ where
         &mut self,
         txn_number: TxnNumber,
         error: TypeOperationClientError,
-    ) {
+    ) -> Result<()> {
         let operation: TypeOperationClientError = error;
         let operation: TypeOperationClientError = dyn_clone::clone_box(&*operation);
         let operation: TypeOperationDTOError = operation;
@@ -211,14 +215,17 @@ where
             .await
     }
 
-    async fn encode_the_inputs(&mut self, inputs: Vec<Txn<TypeOperationClientInput>>) -> Vec<u8> {
+    async fn encode_the_inputs(
+        &mut self,
+        inputs: Vec<Txn<TypeOperationClientInput>>,
+    ) -> Result<Vec<u8>> {
         let mut jwts = Vec::new();
 
         for i in &inputs {
             if let Some(user_uuid) = i.operation.user_uuid() {
                 let user_uuid1 = UserUuid::from(UuidType::from(user_uuid));
 
-                if let Some(jwt) = self.cache.get_jwt(&user_uuid1).await {
+                if let Some(jwt) = self.cache.get_jwt(&user_uuid1).await? {
                     jwts.push(jwt)
                 }
             }
@@ -245,11 +252,11 @@ where
             operations: operations1,
         };
 
-        Ed::encode(&data)
+        Ok(Ed::encode(&data))
     }
 
     fn decode_the_response(resp: Vec<u8>) -> Result<MessageFromServer> {
-        let resp: FromServer = Ed::decode(&resp).unwrap();
+        let resp: FromServer = Ed::decode(&resp)?;
 
         let resp = match resp {
             FromServer::Error(i) => MessageFromServer::Error(i.into()),

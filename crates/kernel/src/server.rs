@@ -46,9 +46,9 @@ pub trait DBClient {
     ) -> impl Future<Output = Result<TheCompaniesAndBranchesHeIn>>;
 }
 
-pub trait Database: 'static {
+pub trait Database: Sized + 'static {
     type Client: DBClient;
-    fn new() -> impl Future<Output = Self>;
+    fn new() -> impl Future<Output = Result<Self>>;
     fn get_client(&self) -> impl Future<Output = Result<Self::Client>>;
 }
 

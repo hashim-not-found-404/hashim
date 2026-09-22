@@ -12,7 +12,9 @@ pub fn my_macro(input: TokenStream) -> TokenStream {
     quote! {
         mod #mod_name {
             use crate::model::TypeModel;
+            use anyhow::Result;
             use infrastructure::actors::MpscSender;
+            use std::pin::Pin;
             use std::sync::Arc;
             use #crate_name::client::Message;
             use #crate_name::client::update_generic;
@@ -31,7 +33,7 @@ pub fn my_macro(input: TokenStream) -> TokenStream {
                     cache: CacheStruct,
                     sender_to_process_manager: MpscSender<MessageToProcessManager>,
                     aborters: Aborters,
-                ) -> std::pin::Pin<Box<dyn Future<Output = ()>>> {
+                ) -> Pin<Box<dyn Future<Output = Result<()>>>> {
                     Box::pin(async move {
                         update_generic(
                             self.0,
@@ -41,7 +43,9 @@ pub fn my_macro(input: TokenStream) -> TokenStream {
                             sender_to_process_manager,
                             aborters,
                         )
-                        .await
+                        .await?;
+
+                        Ok(())
                     })
                 }
             }

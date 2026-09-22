@@ -1,3 +1,5 @@
+use anyhow::Result;
+use anyhow::bail;
 use patterns::make_client_wrapper_cache_check;
 use patterns::make_client_wrapper_cache_write;
 use patterns::make_client_wrapper_updater;
@@ -48,30 +50,40 @@ impl CastClientToCache for MyCaster {
 
     fn cast_input(
         v: TypeOperationClientInput,
-    ) -> Box<dyn TraitOperationCacheInput<Cache = Self::Cache>> {
+    ) -> Result<Box<dyn TraitOperationCacheInput<Cache = Self::Cache>>> {
         let v: Arc<dyn Any> = v;
 
         if let Some(v) = v.downcast_ref::<use_case_create_account::domain::Input>() {
-            return Box::new(cache_check_use_case_create_account::Wrapper(v.clone()));
+            return Ok(Box::new(cache_check_use_case_create_account::Wrapper(
+                v.clone(),
+            )));
         };
         if let Some(v) = v.downcast_ref::<use_case_get_all_accounts::domain::Input>() {
-            return Box::new(cache_check_use_case_get_all_accounts::Wrapper(v.clone()));
+            return Ok(Box::new(cache_check_use_case_get_all_accounts::Wrapper(
+                v.clone(),
+            )));
         };
 
-        unreachable!()
+        bail!("downcast error")
     }
 
-    fn cast_ok(v: TypeOperationClientOk) -> Box<dyn TraitOperationCacheOk<Cache = Self::Cache>> {
+    fn cast_ok(
+        v: TypeOperationClientOk,
+    ) -> Result<Box<dyn TraitOperationCacheOk<Cache = Self::Cache>>> {
         let v: Arc<dyn Any> = v;
 
         if let Some(v) = v.downcast_ref::<use_case_create_account::domain::Ok>() {
-            return Box::new(cache_write_use_case_create_account::Wrapper(v.clone()));
+            return Ok(Box::new(cache_write_use_case_create_account::Wrapper(
+                v.clone(),
+            )));
         };
         if let Some(v) = v.downcast_ref::<use_case_get_all_accounts::domain::Ok>() {
-            return Box::new(cache_write_use_case_get_all_accounts::Wrapper(v.clone()));
+            return Ok(Box::new(cache_write_use_case_get_all_accounts::Wrapper(
+                v.clone(),
+            )));
         };
 
-        unreachable!()
+        bail!("downcast error")
     }
 }
 

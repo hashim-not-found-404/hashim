@@ -1,5 +1,7 @@
 use crate::cache::CacheStruct;
 use crate::process_manager::MessageToProcessManager;
+use anyhow::Error;
+use anyhow::Result;
 use dyn_clone::DynClone;
 use infrastructure::actors::Mpsc;
 use infrastructure::actors::MpscReceiver;
@@ -29,7 +31,7 @@ pub trait UpdaterTrait {
         cache: CacheStruct,
         sender_to_process_manager: MpscSender<MessageToProcessManager>,
         aborters: Aborters,
-    ) -> Pin<Box<dyn Future<Output = ()>>>;
+    ) -> Pin<Box<dyn Future<Output = Result<()>>>>;
 }
 
 pub trait CastMessageToUpdater {
@@ -45,6 +47,7 @@ pub struct Commander {
 
 impl Commander {
     pub fn new<Mdl, CasMsg>(
+        sender_to_error: MpscSender<Error>,
         sender_to_process_manager: MpscSender<MessageToProcessManager>,
         model: Arc<Mdl>,
         cache: CacheStruct,
@@ -56,6 +59,7 @@ impl Commander {
         let (sender_to_commander, receiver_to_commander) = Mpsc::channel();
 
         Self::commander_actor::<Mdl, CasMsg>(
+            sender_to_error,
             receiver_to_commander,
             sender_to_process_manager,
             model,
@@ -78,6 +82,7 @@ impl Commander {
     }
 
     fn commander_actor<Mdl, CasMsg>(
+        sender_to_error: MpscSender<Error>,
         mut receiver: MpscReceiver<Box<dyn MessageTrait>>,
         sender_to_process_manager: MpscSender<MessageToProcessManager>,
         model: Arc<Mdl>,
@@ -97,11 +102,16 @@ impl Commander {
                 let cache = cache.clone();
                 let sender_to_process_manager = sender_to_process_manager.clone();
                 let aborters = aborters.clone();
+                let mut sender_to_error = sender_to_error.clone();
 
                 Rt::spawn_local(async move {
-                    message
+                    let result = message
                         .update(model, cache, sender_to_process_manager, aborters)
                         .await;
+
+                    if let Err(err) = result {
+                        sender_to_error.send(err).await.unwrap()
+                    }
                 });
             }
         });

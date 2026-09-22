@@ -26,7 +26,7 @@ pub async fn handle_operation_generic<
     make_auth_check!(side_effects, input, errr);
 
     if errr.is_there_error() {
-        return Ok(Err(errr).into());
+        return Ok(Err(errr));
     }
 
     let mut txn = client.begin_transaction().await?;
@@ -34,11 +34,11 @@ pub async fn handle_operation_generic<
     let result: Result<MyResult> = async {
         let errr = input.state_full_check::<DBReader>(&mut txn).await?;
         if errr.is_there_error() {
-            return Ok(Err(errr).into());
+            return Ok(Err(errr));
         }
         let result = input.state_less_operation();
         DBWrite::write(&mut txn, &result).await?;
-        Ok(Ok(result).into())
+        Ok(Ok(result))
     }
     .await;
 

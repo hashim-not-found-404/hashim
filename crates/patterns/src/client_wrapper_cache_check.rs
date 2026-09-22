@@ -11,6 +11,7 @@ pub fn my_macro(input: TokenStream) -> TokenStream {
 
     quote! {
         mod #mod_name {
+            use anyhow::Result;
             use cache::cache_adapter;
             use std::pin::Pin;
             use #crate_name::cache::CacheOp;
@@ -28,7 +29,7 @@ pub fn my_macro(input: TokenStream) -> TokenStream {
                 fn check_input<'a>(
                     &'a self,
                     cache: &'a mut Self::Cache,
-                ) -> Pin<Box<dyn Future<Output = TypeOperationClientResult> + 'a>> {
+                ) -> Pin<Box<dyn Future<Output = Result<TypeOperationClientResult>> + 'a>> {
                     Box::pin(async { check_input::<Self::Cache, CacheOp>(&self.0, cache).await })
                 }
             }

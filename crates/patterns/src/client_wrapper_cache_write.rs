@@ -11,6 +11,7 @@ pub fn my_macro(input: TokenStream) -> TokenStream {
 
     quote! {
         mod #mod_name {
+            use anyhow::Result;
             use cache::cache_adapter;
             use kernel::types::DatabaseWrite;
             use std::pin::Pin;
@@ -27,8 +28,8 @@ pub fn my_macro(input: TokenStream) -> TokenStream {
                 fn apply_to_cache<'a>(
                     &'a self,
                     cache: &'a mut Self::Cache,
-                ) -> Pin<Box<dyn Future<Output = ()> + 'a>> {
-                    Box::pin(async { CacheOp::write(cache, &self.0).await.unwrap() })
+                ) -> Pin<Box<dyn Future<Output = Result<()>> + 'a>> {
+                    Box::pin(async { CacheOp::write(cache, &self.0).await })
                 }
             }
         }

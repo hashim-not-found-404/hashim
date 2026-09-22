@@ -4,6 +4,9 @@ use crate::domain::MyResult;
 use crate::domain::Ok;
 use crate::domain::ReadInput;
 use crate::domain::ReadOutput;
+use anyhow::Context;
+use anyhow::Result;
+use anyhow::anyhow;
 use infrastructure::actors::MpscSender;
 use infrastructure::actors::Receiver;
 use infrastructure::actors::Sender;
@@ -66,15 +69,15 @@ pub async fn check_input<
 >(
     input: &Input,
     cache: &mut Ch,
-) -> TypeOperationClientResult {
-    let errr = input.state_full_check::<DBReader>(cache).await.unwrap();
+) -> Result<TypeOperationClientResult> {
+    let errr = input.state_full_check::<DBReader>(cache).await?;
 
     if errr.is_there_error() {
-        return Err(Box::new(errr));
+        return Ok(Err(Box::new(errr)));
     }
 
     let state_less_operation = input.state_less_operation();
-    Ok(Arc::new(state_less_operation))
+    Ok(Ok(Arc::new(state_less_operation)))
 }
 
 #[derive(Debug, Clone)]
@@ -137,26 +140,25 @@ pub async fn update_generic(
     cache: CacheStruct,
     mut sender_to_process_manager: MpscSender<MessageToProcessManager>,
     aborters: Aborters,
-) {
+) -> Result<()> {
     match message {
         Message::Submit => {
-            handle_submit(global_model, local_model, cache, sender_to_process_manager).await
+            handle_submit(global_model, local_model, cache, sender_to_process_manager).await?;
         }
         Message::Consent(i) => {
             sender_to_process_manager
                 .send(MessageToProcessManager::FromUser {
-                    process_id: local_model.process_id().read().unwrap(),
+                    process_id: local_model.process_id().read().context("context")?,
                     consent: i,
                 })
-                .await
-                .unwrap();
+                .await?;
         }
         Message::Clean => handle_clean(local_model),
         Message::IsDebit(v) => local_model.is_debit().set(v),
         Message::IsPermanentAccount(v) => local_model.is_permanent_account().set(v),
         Message::AccountName(v) => {
             local_model.account_name().set(v);
-            handle_check(global_model, local_model, cache).await;
+            handle_check(global_model, local_model, cache).await?;
         }
         Message::Notes(v) => local_model.notes().set(v),
         Message::UnitOfMeasurementOfQuantity(v) => {
@@ -164,26 +166,31 @@ pub async fn update_generic(
         }
         Message::Subscribe => {
             fetch(
-                global_model.selected_company().read().unwrap(),
-                global_model.user_uuid().read().unwrap(),
+                global_model.selected_company().read().context("context")?,
+                global_model.user_uuid().read().context("context")?,
                 cache,
             )
-            .await
+            .await?;
         }
     }
+
+    Ok(())
 }
 
-fn build_input(global_model: Arc<impl GlobalModel>, local_model: Arc<impl LocalModel>) -> Type1 {
-    Input {
-        user_uuid: global_model.user_uuid().read().unwrap(),
+fn build_input(
+    global_model: Arc<impl GlobalModel>,
+    local_model: Arc<impl LocalModel>,
+) -> Result<Type1> {
+    Ok(Input {
+        user_uuid: global_model.user_uuid().read().context("context")?,
         new_uuid: AccountUuid::from(UuidType::from(Id::generate())),
         is_debit: local_model.is_debit().read(),
         is_permanent_account: local_model.is_permanent_account().read(),
         account_name: local_model.account_name().read(),
         notes: local_model.notes().read().none_if_empty(),
         unit_of_measurement_of_quantity: local_model.unit_of_measurement_of_quantity().read(),
-        belong_to_company: global_model.selected_company().read().unwrap(),
-    }
+        belong_to_company: global_model.selected_company().read().context("context")?,
+    })
 }
 
 fn handle_clean(local_model: Arc<impl LocalModel>) {
@@ -202,13 +209,13 @@ async fn handle_submit(
     local_model: Arc<impl LocalModel>,
     cache: CacheStruct,
     sender_to_process_manager: MpscSender<MessageToProcessManager>,
-) {
+) -> Result<()> {
     let process_id = ProcessId::default();
     local_model.process_id().set(Some(process_id));
 
     let dialog_signal_adapter = Arc::new(DialogSignalAdapter(local_model.show_dialog()));
 
-    let data = build_input(global_model, local_model.clone());
+    let data = build_input(global_model, local_model.clone())?;
 
     let data: TypeOperationClientInput = Arc::new(data);
 
@@ -224,14 +231,14 @@ async fn handle_submit(
                 Ok(ok) => {
                     let a = ok;
                     let a: Arc<dyn Any> = a;
-                    let a: &Ok = a.downcast_ref().unwrap();
+                    let a: &Ok = a.downcast_ref().context("context")?;
                     let a: Ok = a.clone();
                     Ok(a)
                 }
                 Err(err) => {
                     let a = err;
                     let a: Box<dyn Any> = a;
-                    let a: Box<Error> = a.downcast().unwrap();
+                    let a: Box<Error> = a.downcast().map_err(|_| anyhow!(""))?;
                     let a: Error = a.as_ref().clone();
                     Err(a)
                 }
@@ -243,28 +250,30 @@ async fn handle_submit(
                 handle_clean(local_model.clone());
             }
 
-            is_ok
+            Ok(is_ok)
         },
     )
-    .await;
+    .await?;
 
     local_model1.clone().is_loading().reset();
+
+    Ok(())
 }
 
 async fn handle_check(
     global_model: Arc<impl GlobalModel>,
     local_model: Arc<impl LocalModel>,
     mut cache: CacheStruct,
-) {
-    let data = build_input(global_model, local_model.clone());
+) -> Result<()> {
+    let data = build_input(global_model, local_model.clone())?;
 
     let data: TypeOperationClientInput = Arc::new(data);
 
     let mut receiver_to_response = cache
         .send_to_cache_actor(CachingStrategy::ReadCacheOnly, TxnNumber::default(), data)
-        .await;
+        .await?;
 
-    match receiver_to_response.recv().await.unwrap() {
+    match receiver_to_response.recv().await? {
         Response::CloseTheChannel => {}
         Response::ServerCannotBeReached => {}
         Response::Data {
@@ -275,14 +284,14 @@ async fn handle_check(
                 Ok(ok) => {
                     let a = ok;
                     let a: Arc<dyn Any> = a;
-                    let a: &Ok = a.downcast_ref().unwrap();
+                    let a: &Ok = a.downcast_ref().context("context")?;
                     let a: Ok = a.clone();
                     Ok(a)
                 }
                 Err(err) => {
                     let a = err;
                     let a: Box<dyn Any> = a;
-                    let a: Box<Error> = a.downcast().unwrap();
+                    let a: Box<Error> = a.downcast().map_err(|_| anyhow!(""))?;
                     let a: Error = a.as_ref().clone();
                     Err(a)
                 }
@@ -290,4 +299,6 @@ async fn handle_check(
             apply_on_the_model(&result, local_model);
         }
     }
+
+    Ok(())
 }

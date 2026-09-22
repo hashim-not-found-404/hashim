@@ -1,3 +1,4 @@
+use anyhow::Result;
 use kernel::new_types::UuidType;
 use std::ops::Deref;
 use uuid::Uuid;
@@ -14,12 +15,12 @@ impl MyUuidConverter for UuidType {
 }
 
 pub trait MyUuidConverter1 {
-    fn to_uuid(self) -> UuidType;
+    fn to_uuid(self) -> Result<UuidType>;
 }
 
 impl MyUuidConverter1 for String {
-    fn to_uuid(self) -> UuidType {
-        let uuid = Uuid::parse_str(&self).unwrap();
-        UuidType::from(*uuid.as_bytes())
+    fn to_uuid(self) -> Result<UuidType> {
+        let uuid = Uuid::parse_str(&self)?;
+        Ok(UuidType::from(*uuid.as_bytes()))
     }
 }

@@ -47,15 +47,15 @@ pub struct ServerMethods<Jwt: JWT, Db: Database> {
 }
 
 impl<Jwt: JWT, Db: Database<Client = Cli>, Cli: DBClient> ServerMethods<Jwt, Db> {
-    pub async fn new() -> Self {
+    pub async fn new() -> Result<Self> {
         let (sender_to_broker, receiver_to_broker) = Mpsc::channel();
         Self::broker_actor(receiver_to_broker);
 
-        Self {
-            database: Db::new().await,
+        Ok(Self {
+            database: Db::new().await?,
             jwt: Jwt::new(),
             sender_to_broker,
-        }
+        })
     }
 
     pub fn server_actor<Ws: WSServer, Cas: CastDTOToServer<Cli = Cli>>(

@@ -14,7 +14,7 @@ pub struct S {
 impl Database for S {
     type Client = db_client::S;
 
-    async fn new() -> Self {
+    async fn new() -> Result<Self> {
         let mut cfg = Config::new();
 
         cfg.host = Some("localhost".to_string());
@@ -22,9 +22,9 @@ impl Database for S {
         cfg.user = Some("root".to_string());
         cfg.dbname = Some("accounting_app".to_string());
 
-        let pool = cfg.create_pool(Some(Runtime::Tokio1), NoTls).unwrap();
+        let pool = cfg.create_pool(Some(Runtime::Tokio1), NoTls)?;
 
-        S { pool }
+        Ok(S { pool })
     }
 
     async fn get_client(&self) -> Result<Self::Client> {

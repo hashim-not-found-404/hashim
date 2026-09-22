@@ -3,6 +3,7 @@ use crate::domain::Input;
 use crate::domain::Ok;
 use crate::domain::ReadInput;
 use crate::domain::ReadOutput;
+use anyhow::Result;
 use kernel::client::Cache;
 use kernel::new_types::CompanyUuid;
 use kernel::new_types::UserUuid;
@@ -44,19 +45,23 @@ pub async fn check_input<
 >(
     input: &Input,
     cache: &mut Ch,
-) -> TypeOperationClientResult {
+) -> Result<TypeOperationClientResult> {
     let errr = input.state_less_check();
 
     if errr.is_there_error() {
-        return Err(Box::new(errr));
+        return Ok(Err(Box::new(errr)));
     }
 
     let ok = input.state_full_operation::<DBReader>(cache).await.unwrap();
 
-    Ok(Arc::new(ok))
+    Ok(Ok(Arc::new(ok)))
 }
 
-pub async fn fetch(selected_company: CompanyUuid, user_uuid: UserUuid, mut cache: CacheStruct) {
+pub async fn fetch(
+    selected_company: CompanyUuid,
+    user_uuid: UserUuid,
+    mut cache: CacheStruct,
+) -> Result<()> {
     let input = Input {
         user_uuid,
         company_uuid: selected_company,
@@ -68,5 +73,7 @@ pub async fn fetch(selected_company: CompanyUuid, user_uuid: UserUuid, mut cache
 
     cache
         .send_to_cache_actor(CachingStrategy::ReadServerOnly, txn_number, input)
-        .await;
+        .await?;
+
+    Ok(())
 }

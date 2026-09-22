@@ -10,6 +10,7 @@ use crate::process_manager::MessageFromProcess;
 use crate::process_manager::MessageToProcess;
 use crate::process_manager::MessageToProcessManager;
 use crate::process_manager::ProcessId;
+use anyhow::Result;
 use infrastructure::actors::Mpsc;
 use infrastructure::actors::MpscSender;
 use infrastructure::actors::MultiProducerSingleConsumer;
@@ -27,8 +28,8 @@ pub async fn handle_fall_back(
     dialog: DialogType,
     process_id: ProcessId,
     data: TypeOperationClientInput,
-    f: impl Fn(TypeOperationClientResult) -> bool + Clone + 'static,
-) {
+    f: impl Fn(TypeOperationClientResult) -> Result<bool> + Clone + 'static,
+) -> Result<()> {
     let txn_number = TxnNumber::default();
 
     let f1 = f.clone();
@@ -39,7 +40,8 @@ pub async fn handle_fall_back(
     let mut handle = Rt::abortable_spawn_local(async move {
         let mut receiver_to_response = cache1
             .send_to_cache_actor(CachingStrategy::WriteServerOnly, txn_number, data1)
-            .await;
+            .await
+            .unwrap();
 
         match receiver_to_response.recv().await.unwrap() {
             Response::CloseTheChannel | Response::ServerCannotBeReached => {}
@@ -52,7 +54,7 @@ pub async fn handle_fall_back(
                         process_id,
                         message: MessageFromProcess::Response {
                             is_response_from_server,
-                            is_response_ok: f1(data),
+                            is_response_ok: f1(data).unwrap(),
                         },
                     })
                     .await
@@ -67,28 +69,28 @@ pub async fn handle_fall_back(
             process_id,
             message: MessageFromProcess::Subscribe { sender, dialog },
         })
-        .await
-        .unwrap();
+        .await?;
 
-    match receiver_to_process.recv().await.unwrap() {
+    match receiver_to_process.recv().await? {
         MessageToProcess::CancelOperation => {}
         MessageToProcess::FallBackToCache => {
             let mut receiver_to_response = cache
                 .send_to_cache_actor(CachingStrategy::WriteCacheOnly, txn_number, data)
-                .await;
+                .await?;
 
-            match receiver_to_response.recv().await.unwrap() {
+            match receiver_to_response.recv().await? {
                 Response::CloseTheChannel | Response::ServerCannotBeReached => {}
                 Response::Data {
                     is_response_from_server: _,
                     data,
                 } => {
-                    f(data);
+                    f(data)?;
                 }
             }
         }
     }
     handle.abort().await;
+    Ok(())
 }
 
 pub fn spawn_listener(
@@ -103,7 +105,8 @@ pub fn spawn_listener(
     let mut handle = Rt::abortable_spawn_local(async move {
         let mut receiver_to_poke = cache
             .send_subs_to_cache_actor(component_id, list_of_subscribtion)
-            .await;
+            .await
+            .unwrap();
 
         cache
             .send_to_cache_actor(
@@ -111,7 +114,8 @@ pub fn spawn_listener(
                 TxnNumber::default(),
                 data.clone(),
             )
-            .await;
+            .await
+            .unwrap();
 
         loop {
             let value = cache
@@ -121,6 +125,7 @@ pub fn spawn_listener(
                     data.clone(),
                 )
                 .await
+                .unwrap()
                 .recv()
                 .await
                 .unwrap();
@@ -133,13 +138,19 @@ pub fn spawn_listener(
                 break;
             }
         }
-        cache.send_unsubs_to_cache_actor(component_id).await;
+        cache
+            .send_unsubs_to_cache_actor(component_id)
+            .await
+            .unwrap();
     });
 
     move || {
         Rt::spawn_local(async move {
             handle.abort().await;
-            cache1.send_unsubs_to_cache_actor(component_id).await;
+            cache1
+                .send_unsubs_to_cache_actor(component_id)
+                .await
+                .unwrap();
         });
     }
 }
