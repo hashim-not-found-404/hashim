@@ -52,7 +52,7 @@ pub async fn check_input<
         return Ok(Err(Box::new(errr)));
     }
 
-    let ok = input.state_full_operation::<DBReader>(cache).await.unwrap();
+    let ok = input.state_full_operation::<DBReader>(cache).await?;
 
     Ok(Ok(Arc::new(ok)))
 }

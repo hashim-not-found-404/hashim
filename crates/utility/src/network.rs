@@ -1,6 +1,6 @@
+use anyhow::Context;
 use anyhow::Error;
 use anyhow::Result;
-use anyhow::bail;
 use infrastructure::actors::MpscReceiver;
 use infrastructure::actors::MpscSender;
 use infrastructure::actors::Receiver;
@@ -14,26 +14,29 @@ use std::time::Duration;
 
 pub trait Network {
     const SLEEP_DURATION: Duration = Duration::from_millis(100);
-    fn network_state(&mut self, is_online: bool) -> impl Future<Output = ()>;
-    fn network_sender(&mut self, data: Vec<u8>) -> impl Future<Output = ()>;
+    fn network_state(&mut self, is_online: bool) -> impl Future<Output = Result<()>>;
+    fn network_sender(&mut self, data: Vec<u8>) -> impl Future<Output = Result<()>>;
 }
 
 async fn network_radar(ws: Option<&mut Ws>) -> Result<Vec<u8>> {
-    match ws {
-        Some(ws) => ws.receive_bin().await,
-        None => bail!("error"),
-    }
+    ws.context("context")?.receive_bin().await
 }
 
-async fn connect<Nw: Network>(network_utils: &mut Nw, url: impl AsRef<str>, ws: &mut Option<Ws>) {
-    network_utils.network_state(false).await;
+async fn connect<Nw: Network>(
+    network_utils: &mut Nw,
+    url: impl AsRef<str>,
+    ws: &mut Option<Ws>,
+) -> Result<()> {
+    network_utils.network_state(false).await?;
 
     if let Ok(ok) = Ws::connect(url.as_ref()).await {
         *ws = Some(ok);
-        network_utils.network_state(true).await;
-        return;
+        network_utils.network_state(true).await?;
+        return Ok(());
     }
     Rt::sleep(Nw::SLEEP_DURATION).await;
+
+    Ok(())
 }
 
 pub fn network_actor<Nw: Network + 'static>(
@@ -54,7 +57,9 @@ pub fn network_actor<Nw: Network + 'static>(
                         Some(ws1) => {
                             let result = ws1.send_bin(&data).await;
                             if result.is_err() {
-                                connect::<Nw>(&mut network_utils, &url, &mut ws).await;
+                                connect::<Nw>(&mut network_utils, &url, &mut ws)
+                                    .await
+                                    .unwrap();
                             }
                         }
                         None => Rt::sleep(Nw::SLEEP_DURATION).await,
@@ -63,11 +68,13 @@ pub fn network_actor<Nw: Network + 'static>(
 
                 Either::Two(from_network) => match from_network {
                     Ok(data) => {
-                        network_utils.network_sender(data).await;
+                        network_utils.network_sender(data).await.unwrap();
                     }
                     Err(error) => {
                         sender_to_error.send(error).await.unwrap();
-                        connect::<Nw>(&mut network_utils, &url, &mut ws).await;
+                        connect::<Nw>(&mut network_utils, &url, &mut ws)
+                            .await
+                            .unwrap();
                     }
                 },
             }

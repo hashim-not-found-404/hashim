@@ -87,22 +87,24 @@ struct MyNetwork {
 }
 
 impl Network for MyNetwork {
-    async fn network_state(&mut self, is_online: bool) {
+    async fn network_state(&mut self, is_online: bool) -> Result<()> {
         self.is_online.put(is_online);
 
         if is_online {
             self.sender_to_cache
                 .send(MessageToCache::WeAreBackOnline)
-                .await
-                .unwrap();
+                .await?;
         }
+
+        Ok(())
     }
 
-    async fn network_sender(&mut self, data: Vec<u8>) {
+    async fn network_sender(&mut self, data: Vec<u8>) -> Result<()> {
         self.sender_to_cache
             .send(MessageToCache::DataFromServer(data))
-            .await
-            .unwrap();
+            .await?;
+
+        Ok(())
     }
 }
 
