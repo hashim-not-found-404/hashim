@@ -32,7 +32,7 @@ pub(crate) enum Route {
     // SignUp {},
     // #[route("/get_companies_and_branches")]
     // GetCompaniesAndBranches {},
-    #[route("/home")]
+    #[route("/")]
     Home {},
 }
 

@@ -58,7 +58,7 @@ where
 
     let is_online = Arc::new(RwLock::new(false));
 
-    network_actor::<_>(
+    network_actor(
         receiver_to_network,
         sender_to_error.clone(),
         MyNetwork {
