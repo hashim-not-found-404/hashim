@@ -7,5 +7,3 @@ pub mod database;
 pub mod domain;
 #[cfg(feature = "server")]
 pub mod server;
-#[cfg(feature = "ui")]
-pub mod ui;

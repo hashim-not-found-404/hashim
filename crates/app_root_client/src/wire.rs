@@ -2,6 +2,10 @@ use patterns::make_client_wrapper_cache_check;
 use patterns::make_client_wrapper_cache_write;
 use patterns::make_client_wrapper_updater;
 use std::any::Any;
+use std::sync::Arc;
+use utility::cache::TypeOperationClientError;
+use utility::cache::TypeOperationClientInput;
+use utility::cache::TypeOperationClientOk;
 
 make_client_wrapper_updater!(create_account);
 make_client_wrapper_cache_check!(create_account);
@@ -13,29 +17,15 @@ make_client_wrapper_cache_write!(get_all_accounts);
 use crate::model::TypeModel;
 use cache::cache_adapter;
 use kernel::ui_construct::CastDTOToClient;
-use paste::paste;
 use utility::cache::CastClientToCache;
 use utility::cache::TraitOperationCacheInput;
 use utility::cache::TraitOperationCacheOk;
-use utility::cache::TraitOperationClientError;
-use utility::cache::TraitOperationClientInput;
-use utility::cache::TraitOperationClientOk;
 use utility::dtos::TypeOperationDTOError;
 use utility::dtos::TypeOperationDTOInput;
 use utility::dtos::TypeOperationDTOOk;
 use utility::ui_effect::CastMessageToUpdater;
 use utility::ui_effect::MessageTrait;
 use utility::ui_effect::UpdaterTrait;
-
-// macro_rules! downcast {
-//     ($v:expr, $crate_name:tt) => {
-//         if let Some(v) = $v.downcast_ref::<$crate_name::>() {
-//             paste! {
-//                 return Box::new(crate::wire::[<updater_ $crate_name>]::Wrapper(v.clone()));
-//             };
-//         };
-//     };
-// }
 
 pub(crate) struct MyCaster;
 
@@ -45,8 +35,9 @@ impl CastMessageToUpdater for MyCaster {
     fn cast_message_to_updater(v: Box<dyn MessageTrait>) -> Box<dyn UpdaterTrait<Mdl = Self::Mdl>> {
         let v: Box<dyn Any> = v;
 
-        // downcast!(v, use_case_get_all_accounts);
-        // downcast!(v, use_case_create_account);
+        if let Some(v) = v.downcast_ref::<use_case_create_account::client::Message>() {
+            return Box::new(updater_use_case_create_account::Wrapper(v.clone()));
+        };
 
         unreachable!()
     }
@@ -56,26 +47,71 @@ impl CastClientToCache for MyCaster {
     type Cache = cache_adapter::S;
 
     fn cast_input(
-        v: &dyn TraitOperationClientInput,
-    ) -> &dyn TraitOperationCacheInput<Cache = Self::Cache> {
-        todo!()
+        v: TypeOperationClientInput,
+    ) -> Box<dyn TraitOperationCacheInput<Cache = Self::Cache>> {
+        let v: Arc<dyn Any> = v;
+
+        if let Some(v) = v.downcast_ref::<use_case_create_account::domain::Input>() {
+            return Box::new(cache_check_use_case_create_account::Wrapper(v.clone()));
+        };
+        if let Some(v) = v.downcast_ref::<use_case_get_all_accounts::domain::Input>() {
+            return Box::new(cache_check_use_case_get_all_accounts::Wrapper(v.clone()));
+        };
+
+        unreachable!()
     }
 
-    fn cast_ok(v: &dyn TraitOperationClientOk) -> &dyn TraitOperationCacheOk<Cache = Self::Cache> {
-        todo!()
+    fn cast_ok(v: TypeOperationClientOk) -> Box<dyn TraitOperationCacheOk<Cache = Self::Cache>> {
+        let v: Arc<dyn Any> = v;
+
+        if let Some(v) = v.downcast_ref::<use_case_create_account::domain::Ok>() {
+            return Box::new(cache_write_use_case_create_account::Wrapper(v.clone()));
+        };
+        if let Some(v) = v.downcast_ref::<use_case_get_all_accounts::domain::Ok>() {
+            return Box::new(cache_write_use_case_get_all_accounts::Wrapper(v.clone()));
+        };
+
+        unreachable!()
     }
 }
 
 impl CastDTOToClient for MyCaster {
-    fn cast_input(v: TypeOperationDTOInput) -> Box<dyn TraitOperationClientInput> {
-        todo!()
+    fn cast_input(v: TypeOperationDTOInput) -> TypeOperationClientInput {
+        let v: Box<dyn Any> = v;
+
+        if let Some(v) = v.downcast_ref::<use_case_create_account::domain::Input>() {
+            return Arc::new(v.clone());
+        };
+        if let Some(v) = v.downcast_ref::<use_case_get_all_accounts::domain::Input>() {
+            return Arc::new(v.clone());
+        };
+
+        unreachable!()
     }
 
-    fn cast_ok(v: TypeOperationDTOOk) -> Box<dyn TraitOperationClientOk> {
-        todo!()
+    fn cast_ok(v: TypeOperationDTOOk) -> TypeOperationClientOk {
+        let v: Box<dyn Any> = v;
+
+        if let Some(v) = v.downcast_ref::<use_case_create_account::domain::Ok>() {
+            return Arc::new(v.clone());
+        };
+        if let Some(v) = v.downcast_ref::<use_case_get_all_accounts::domain::Ok>() {
+            return Arc::new(v.clone());
+        };
+
+        unreachable!()
     }
 
-    fn cast_error(v: TypeOperationDTOError) -> Box<dyn TraitOperationClientError> {
-        todo!()
+    fn cast_error(v: TypeOperationDTOError) -> TypeOperationClientError {
+        let v: Box<dyn Any> = v;
+
+        if let Some(v) = v.downcast_ref::<use_case_create_account::domain::Error>() {
+            return Box::new(v.clone());
+        };
+        if let Some(v) = v.downcast_ref::<use_case_get_all_accounts::domain::Error>() {
+            return Box::new(v.clone());
+        };
+
+        unreachable!()
     }
 }

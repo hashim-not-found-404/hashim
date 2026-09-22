@@ -15,7 +15,7 @@ macro_rules! downcast {
     ($v:expr, $crate_name:tt) => {
         if let Some(v) = $v.downcast_ref::<$crate_name::domain::Input>() {
             paste! {
-                return Box::new(crate::wire::[<server_ $crate_name>]::Wrapper(v.clone()));
+                return Box::new([<server_ $crate_name>]::Wrapper(v.clone()));
             };
         };
     };

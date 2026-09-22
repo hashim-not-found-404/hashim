@@ -53,7 +53,7 @@ pub async fn check_input<
 
     let ok = input.state_full_operation::<DBReader>(cache).await.unwrap();
 
-    Ok(Box::new(ok))
+    Ok(Arc::new(ok))
 }
 
 pub async fn fetch(selected_company: CompanyUuid, user_uuid: UserUuid, mut cache: CacheStruct) {

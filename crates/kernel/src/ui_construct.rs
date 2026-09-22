@@ -32,6 +32,7 @@ use utility::cache::TraitOperationClientInput;
 use utility::cache::TraitOperationClientOk;
 use utility::cache::TypeOperationClientError;
 use utility::cache::TypeOperationClientInput;
+use utility::cache::TypeOperationClientOk;
 use utility::dtos::Txn;
 use utility::dtos::TxnNumber;
 use utility::dtos::TypeOperationDTOError;
@@ -109,9 +110,9 @@ impl Network for MyNetwork {
 }
 
 pub trait CastDTOToClient: 'static {
-    fn cast_input(v: TypeOperationDTOInput) -> Box<dyn TraitOperationClientInput>;
-    fn cast_ok(v: TypeOperationDTOOk) -> Box<dyn TraitOperationClientOk>;
-    fn cast_error(v: TypeOperationDTOError) -> Box<dyn TraitOperationClientError>;
+    fn cast_input(v: TypeOperationDTOInput) -> TypeOperationClientInput;
+    fn cast_ok(v: TypeOperationDTOOk) -> TypeOperationClientOk;
+    fn cast_error(v: TypeOperationDTOError) -> TypeOperationClientError;
 }
 
 struct MyCache<Ch: Cache, CasDC: CastDTOToClient> {

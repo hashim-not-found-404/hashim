@@ -1,5 +1,6 @@
 use crate::cache::CacheStruct;
 use crate::process_manager::MessageToProcessManager;
+use dyn_clone::DynClone;
 use infrastructure::actors::Mpsc;
 use infrastructure::actors::MpscReceiver;
 use infrastructure::actors::MpscSender;
@@ -17,7 +18,7 @@ use std::sync::Mutex;
 
 pub trait Model: 'static {}
 
-pub trait MessageTrait: Any + Debug + 'static + Send {}
+pub trait MessageTrait: Any + Debug + 'static + Send + DynClone {}
 
 pub trait UpdaterTrait {
     type Mdl: Model;

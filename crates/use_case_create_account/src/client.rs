@@ -74,10 +74,10 @@ pub async fn check_input<
     }
 
     let state_less_operation = input.state_less_operation();
-    Ok(Box::new(state_less_operation))
+    Ok(Arc::new(state_less_operation))
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Message {
     Subscribe,
     Submit,
@@ -223,9 +223,9 @@ async fn handle_submit(
             let result = match data {
                 Ok(ok) => {
                     let a = ok;
-                    let a: Box<dyn Any> = a;
-                    let a: Box<Ok> = a.downcast().unwrap();
-                    let a: Ok = a.as_ref().clone();
+                    let a: Arc<dyn Any> = a;
+                    let a: &Ok = a.downcast_ref().unwrap();
+                    let a: Ok = a.clone();
                     Ok(a)
                 }
                 Err(err) => {
@@ -274,9 +274,9 @@ async fn handle_check(
             let result = match data {
                 Ok(ok) => {
                     let a = ok;
-                    let a: Box<dyn Any> = a;
-                    let a: Box<Ok> = a.downcast().unwrap();
-                    let a: Ok = a.as_ref().clone();
+                    let a: Arc<dyn Any> = a;
+                    let a: &Ok = a.downcast_ref().unwrap();
+                    let a: Ok = a.clone();
                     Ok(a)
                 }
                 Err(err) => {
