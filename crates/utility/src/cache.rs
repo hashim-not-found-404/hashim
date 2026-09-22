@@ -19,7 +19,6 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fmt::Debug;
 use std::hash::Hash;
-use std::ops::Deref;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::sync::RwLock;

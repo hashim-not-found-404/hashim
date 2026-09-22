@@ -297,7 +297,6 @@ dependencies = [
  "dioxus-logger",
  "infrastructure",
  "kernel",
- "paste",
  "patterns",
  "serde",
  "use_case_create_account",
