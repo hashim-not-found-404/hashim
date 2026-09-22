@@ -49,35 +49,53 @@ pub fn network_actor<Nw: Network + 'static>(
         let mut ws: Option<Ws> = None;
 
         loop {
-            match Rt::select(receiver_to_network.recv(), network_radar(ws.as_mut())).await {
-                Either::One(data) => {
-                    let data = data.unwrap();
-
-                    match &mut ws {
-                        Some(ws1) => {
-                            let result = ws1.send_bin(&data).await;
-                            if result.is_err() {
-                                connect::<Nw>(&mut network_utils, &url, &mut ws)
-                                    .await
-                                    .unwrap();
-                            }
-                        }
-                        None => Rt::sleep(Nw::SLEEP_DURATION).await,
-                    }
-                }
-
-                Either::Two(from_network) => match from_network {
-                    Ok(data) => {
-                        network_utils.network_sender(data).await.unwrap();
-                    }
-                    Err(error) => {
-                        sender_to_error.send(error).await.unwrap();
-                        connect::<Nw>(&mut network_utils, &url, &mut ws)
-                            .await
-                            .unwrap();
-                    }
-                },
-            }
+            if let Err(err) = fun_name(
+                &mut receiver_to_network,
+                &mut sender_to_error,
+                &mut network_utils,
+                &url,
+                &mut ws,
+            )
+            .await
+            {
+                sender_to_error.send(err).await.unwrap();
+            };
         }
     });
+}
+
+async fn fun_name<Nw: Network + 'static>(
+    receiver_to_network: &mut MpscReceiver<Vec<u8>>,
+    sender_to_error: &mut MpscSender<Error>,
+    network_utils: &mut Nw,
+    url: impl AsRef<str>,
+    ws: &mut Option<Ws>,
+) -> Result<()> {
+    match Rt::select(receiver_to_network.recv(), network_radar(ws.as_mut())).await {
+        Either::One(data) => {
+            let data = data?;
+
+            match ws {
+                Some(ws1) => {
+                    let result = ws1.send_bin(&data).await;
+                    if result.is_err() {
+                        connect::<Nw>(network_utils, url, ws).await?;
+                    }
+                }
+                None => Rt::sleep(Nw::SLEEP_DURATION).await,
+            }
+        }
+
+        Either::Two(from_network) => match from_network {
+            Ok(data) => {
+                network_utils.network_sender(data).await?;
+            }
+            Err(error) => {
+                sender_to_error.send(error).await?;
+                connect::<Nw>(network_utils, url, ws).await?;
+            }
+        },
+    }
+
+    Ok(())
 }

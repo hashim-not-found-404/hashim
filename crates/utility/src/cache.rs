@@ -23,6 +23,7 @@ use std::hash::Hash;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::sync::RwLock;
+use std::time::Duration;
 
 #[derive(Debug, Clone, Copy, Eq, Hash, PartialEq)]
 pub struct Subscribe(u32);
@@ -264,7 +265,15 @@ impl CacheStruct {
             let mut pool_of_pokers = HashMap::<u16, MpscSender<()>>::with_capacity(10);
             let mut pool_of_subscribes = HashMap::<Subscribe, HashSet<u16>>::with_capacity(100);
 
-            let mut cache = Cu::new().await.unwrap();
+            let mut cache = loop {
+                match Cu::new().await {
+                    Ok(ok) => break ok,
+                    Err(err) => {
+                        sender_to_error.send(err).await.unwrap();
+                        Rt::sleep(Duration::from_millis(1000)).await;
+                    }
+                }
+            };
 
             loop {
                 if let Err(err) = message_handler::<Ch, Cu, CasCh>(
