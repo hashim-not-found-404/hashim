@@ -4,7 +4,7 @@ pub trait Regex: 'static {
 
 pub type Rg = target::S;
 
-mod target {
+pub mod target {
     use super::Regex as MyRegex;
     use regex::Regex;
     use std::sync::LazyLock;

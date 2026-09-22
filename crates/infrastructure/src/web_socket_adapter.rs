@@ -61,15 +61,15 @@ pub mod target {
 
 #[cfg(target_arch = "wasm32")]
 pub mod target {
+    use super::WSClient;
     use anyhow::Result;
+    use anyhow::bail;
     use futures_util::SinkExt;
     use futures_util::StreamExt;
     use futures_util::stream::SplitSink;
     use futures_util::stream::SplitStream;
     use gloo_net::websocket::Message;
     use gloo_net::websocket::futures::WebSocket;
-    use my_core::client::network_actor::WSClient;
-    use std::sync::Mutex;
 
     pub struct S {
         write: SplitSink<WebSocket, Message>,

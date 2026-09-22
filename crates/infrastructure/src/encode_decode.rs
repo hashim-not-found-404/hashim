@@ -9,7 +9,7 @@ pub trait Coding {
 
 pub type Ed = target::S;
 
-mod target {
+pub mod target {
     use super::Coding;
     use anyhow::Result;
     use postcard::from_bytes;

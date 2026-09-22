@@ -87,11 +87,12 @@ mod target {
 }
 
 #[cfg(target_arch = "wasm32")]
-mod target {
+pub mod target {
     use super::Either;
     use super::Runtime;
     use super::*;
     use anyhow::Result;
+    use anyhow::bail;
     use futures::channel::oneshot;
     use futures::future::Either as Eth;
     use futures::future::select;
@@ -134,7 +135,7 @@ mod target {
 
             match select(fut_pinned, timeout_pinned).await {
                 Eth::Left((result, _)) => Ok(result),
-                Eth::Right((_, _)) => Err("timeout".into()),
+                Eth::Right((_, _)) => bail!("timeout"),
             }
         }
 

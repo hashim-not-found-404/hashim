@@ -3,6 +3,7 @@ pub trait HashedPassword {
     fn sign_in(password: &str, password_hash: &str) -> bool;
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 pub type Auth = target::S;
 
 #[cfg(not(target_arch = "wasm32"))]

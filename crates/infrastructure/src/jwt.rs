@@ -30,6 +30,7 @@ pub trait JWT: 'static {
     ) -> Option<Subject>;
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 pub type Jwt = target::S;
 
 #[cfg(not(target_arch = "wasm32"))]

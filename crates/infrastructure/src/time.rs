@@ -4,7 +4,7 @@ pub trait Time: 'static {
 
 pub type Ti = target::S;
 
-mod target {
+pub mod target {
     use super::Time;
     use chrono::Utc;
 

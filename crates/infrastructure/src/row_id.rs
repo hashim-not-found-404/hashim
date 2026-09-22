@@ -9,7 +9,7 @@ pub trait RowId: 'static {
 
 pub type Id = target::S;
 
-mod target {
+pub mod target {
     use super::RowId;
     use super::UuidType;
     use uuid::Uuid;
