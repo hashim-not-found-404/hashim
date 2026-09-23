@@ -12,7 +12,7 @@ use utility::ui_effect::MessageTrait;
 pub(crate) static MODEL: LazyLock<Arc<TypeModel>> =
     LazyLock::new(|| -> Arc<TypeModel> { Arc::new(TypeModel::default()) });
 
-pub(crate) static COMMANDER: LazyLock<Commander> = LazyLock::new(|| {
+static COMMANDER: LazyLock<Commander> = LazyLock::new(|| {
     let (sender_to_error, receiver_to_error) = Mpsc::channel();
 
     let model = MODEL.to_owned();
@@ -30,4 +30,9 @@ pub(crate) static COMMANDER: LazyLock<Commander> = LazyLock::new(|| {
 
 pub(crate) fn send<Msg: MessageTrait>(msg: Msg) {
     COMMANDER.send(msg);
+}
+
+pub(crate) fn init_commander_and_model() {
+    LazyLock::force(&MODEL);
+    LazyLock::force(&COMMANDER);
 }

@@ -1,5 +1,6 @@
 use crate::navigator::Navigator;
 use crate::utils::MODEL;
+use crate::utils::init_commander_and_model;
 use crate::utils::send;
 use dioxus::prelude::*;
 use use_case_error_handler::client::LocalModel;
@@ -48,6 +49,8 @@ fn RootLayout() -> Element {
 
 #[component]
 pub(crate) fn App() -> Element {
+    init_commander_and_model();
+
     rsx! {
         // document::Link { rel: "stylesheet", href: MAIN_CSS }
         Router::<Route> {}
