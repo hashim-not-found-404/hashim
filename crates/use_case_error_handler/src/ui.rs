@@ -2,7 +2,6 @@ use crate::client::ErrorList;
 use crate::client::LocalModel;
 use crate::client::Message;
 use chrono::DateTime;
-use chrono::Utc;
 use dioxus::prelude::*;
 use serde::Deserialize;
 use serde::Serialize;
