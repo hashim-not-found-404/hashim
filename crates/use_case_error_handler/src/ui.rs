@@ -26,7 +26,7 @@ impl LocalModel for TypeLocalModel {
 
 #[component]
 pub fn ErrorStack(
-    close_error_callback: EventHandler<Message>,
+    sender: EventHandler<Message>,
     is_expand_all: bool,
     errors: ErrorList,
 ) -> Element {
@@ -38,8 +38,7 @@ pub fn ErrorStack(
     if !is_expand_all {
         let count = errors.0.len();
         return rsx! {
-            button {
-                onclick: move |_| close_error_callback(Message::ExpandOrCollapseAll),
+            button { onclick: move |_| sender(Message::ExpandOrCollapseAll),
                 "⚠ {count} errors"
             }
         };
@@ -49,14 +48,10 @@ pub fn ErrorStack(
     rsx! {
         div {
             div {
-                button {
-                    onclick: move |_| close_error_callback(Message::ExpandOrCollapseAll),
+                button { onclick: move |_| sender(Message::ExpandOrCollapseAll),
                     "Collapse All"
                 }
-                button {
-                    onclick: move |_| close_error_callback(Message::DeleteAll),
-                    "Delete All"
-                }
+                button { onclick: move |_| sender(Message::DeleteAll), "Delete All" }
             }
 
             for (index, error) in errors.0.iter().enumerate() {
@@ -73,16 +68,13 @@ pub fn ErrorStack(
                                 label { "{count} " }
                                 label { "{name} " }
                                 label { "{time}" }
-                                button {
-                                    onclick: move |_| {
-                                        close_error_callback(Message::ExpandOrCollapseOne(index))
-                                    },
-                                    if is_error_expanded { "Hide" } else { "Show" }
+                                button { onclick: move |_| { sender(Message::ExpandOrCollapseOne(index)) },
+                                    if is_error_expanded {
+                                        "Hide"
+                                    }
+                                    button { "Show" }
                                 }
-                                button {
-                                    onclick: move |_| {
-                                        close_error_callback(Message::DeleteOne(index))
-                                    },
+                                button { onclick: move |_| { sender(Message::DeleteOne(index)) },
                                     "X"
                                 }
                             }

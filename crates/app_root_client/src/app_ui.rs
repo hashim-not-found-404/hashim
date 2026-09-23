@@ -55,7 +55,7 @@ pub(crate) fn App() -> Element {
         // document::Link { rel: "stylesheet", href: MAIN_CSS }
         Router::<Route> {}
         ErrorStack {
-            close_error_callback: move |msg| {
+            sender: move |msg| {
                 send(msg);
             },
             is_expand_all: MODEL.page_error_handler.is_expand_all().read(),

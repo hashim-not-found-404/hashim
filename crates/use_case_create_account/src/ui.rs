@@ -12,15 +12,15 @@ use utility_ui::my_signal::MySignal;
 
 #[derive(Debug, Default, Deserialize, Serialize)]
 pub struct TypeLocalModel {
-    pub process_id: MySignal<Option<ProcessId>>,
-    pub is_loading: MySignal<bool>,
-    pub show_dialog: MySignal<Dialog>,
-    pub is_debit: MySignal<bool>,
-    pub is_permanent_account: MySignal<bool>,
-    pub account_name: MySignal<String>,
-    pub notes: MySignal<String>,
-    pub unit_of_measurement_of_quantity: MySignal<String>,
-    pub account_name_error: MySignal<Option<String>>,
+    process_id: MySignal<Option<ProcessId>>,
+    is_loading: MySignal<bool>,
+    show_dialog: MySignal<Dialog>,
+    is_debit: MySignal<bool>,
+    is_permanent_account: MySignal<bool>,
+    account_name: MySignal<String>,
+    notes: MySignal<String>,
+    unit_of_measurement_of_quantity: MySignal<String>,
+    account_name_error: MySignal<Option<String>>,
 }
 
 impl LocalModel for TypeLocalModel {
@@ -77,24 +77,18 @@ pub fn CreateAccount(
         sender(Message::Subscribe);
     });
 
-    let dont_wait_for_server_response = move || {
-        sender(Message::Consent(UserConsent::DontWaitForServerResponse));
-    };
-
-    let wait_for_server_response = move || {
-        sender(Message::Consent(UserConsent::WaitForServerResponse));
-    };
-
-    let cancel_operation = move || {
-        sender(Message::Consent(UserConsent::CancelOperation));
-    };
-
     rsx! {
         div {
             DialogComponent {
-                dont_wait_for_server_response,
-                wait_for_server_response,
-                cancel_operation,
+                dont_wait_for_server_response: move || {
+                    sender(Message::Consent(UserConsent::DontWaitForServerResponse));
+                },
+                wait_for_server_response: move || {
+                    sender(Message::Consent(UserConsent::WaitForServerResponse));
+                },
+                cancel_operation: move || {
+                    sender(Message::Consent(UserConsent::CancelOperation));
+                },
                 operation_name: "create account",
                 show_dialog,
             }
