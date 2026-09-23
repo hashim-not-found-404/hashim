@@ -89,6 +89,7 @@ pub(crate) fn App() -> Element {
             close_error_callback: move |msg| {
                 send(msg);
             },
+            is_expand_all: MODEL.page_error_handler.is_expand_all().read(),
             errors: MODEL.page_error_handler.errors().read(),
         }
     }

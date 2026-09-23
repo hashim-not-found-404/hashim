@@ -4,15 +4,17 @@ version = "0.1.0"
 edition = "2024"
 
 [features]
-ui = ["dep:dioxus"]
+ui = ["dep:dioxus", "dep:chrono"]
 client = []
 
 [dependencies]
 infrastructure = { workspace = true }
+kernel = { workspace = true }
 utility = { workspace = true }
 utility_ui = { workspace = true }
 
 anyhow = { workspace = true }
 serde = { workspace = true }
 
+chrono = { workspace = true, optional = true }
 dioxus = { workspace = true, optional = true }

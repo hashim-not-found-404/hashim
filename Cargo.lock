@@ -4831,8 +4831,10 @@ name = "use_case_error_handler"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "chrono",
  "dioxus",
  "infrastructure",
+ "kernel",
  "serde",
  "utility",
  "utility_ui",
