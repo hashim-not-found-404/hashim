@@ -25,11 +25,7 @@ impl LocalModel for TypeLocalModel {
 }
 
 #[component]
-pub fn ErrorStack(
-    sender: EventHandler<Message>,
-    is_expand_all: bool,
-    errors: ErrorList,
-) -> Element {
+pub fn Component(sender: EventHandler<Message>, is_expand_all: bool, errors: ErrorList) -> Element {
     if errors.0.is_empty() {
         return rsx!();
     }

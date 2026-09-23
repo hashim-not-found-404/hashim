@@ -62,7 +62,7 @@ impl LocalModel for TypeLocalModel {
 }
 
 #[component]
-pub fn CreateAccount(
+pub fn Component(
     sender: EventHandler<Message>,
     show_dialog: Dialog,
     is_loading: bool,
@@ -71,7 +71,7 @@ pub fn CreateAccount(
     account_name: String,
     notes: String,
     unit_of_measurement_of_quantity: String,
-    account_name_error: String,
+    account_name_error: Option<String>,
 ) -> Element {
     use_effect(move || {
         sender(Message::Subscribe);
@@ -99,7 +99,9 @@ pub fn CreateAccount(
                 },
                 value: account_name,
             }
-            label { {account_name_error} }
+            if let Some(account_name_error) = account_name_error{
+                label { {account_name_error} }
+            }
             div {
                 label { "Is Debit" }
                 input {
