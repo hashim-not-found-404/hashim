@@ -3,23 +3,37 @@ use crate::navigator::Navigator;
 use crate::wire::MyCaster;
 use cache::cache_adapter;
 use dioxus::prelude::*;
+use infrastructure::actors::Mpsc;
+use infrastructure::actors::MultiProducerSingleConsumer;
 use kernel::ui_construct;
 use std::sync::Arc;
 use std::sync::LazyLock;
+use use_case_error_handler::client::LocalModel;
+use use_case_error_handler::ui::ErrorStack;
 use utility::ui_effect::Commander;
 use utility::ui_effect::MessageTrait;
-use utility_ui::components::ErrorStack;
 use utility_ui::domain::HashimSignal;
 
 static MODEL: LazyLock<Arc<TypeModel>> =
     LazyLock::new(|| -> Arc<TypeModel> { Arc::new(TypeModel::default()) });
 
-pub(crate) fn send<Msg: MessageTrait>(msg: Msg) {
-    static COMMANDER: LazyLock<Commander> = LazyLock::new(|| {
-        let model = MODEL.to_owned();
-        ui_construct::new::<cache_adapter::S, TypeModel, MyCaster, MyCaster, MyCaster>(model)
-    });
+static COMMANDER: LazyLock<Commander> = LazyLock::new(|| {
+    let (sender_to_error, receiver_to_error) = Mpsc::channel();
 
+    let model = MODEL.to_owned();
+
+    use_case_error_handler::client::spawn_listener(
+        receiver_to_error,
+        model.page_error_handler.clone(),
+    );
+
+    ui_construct::new::<cache_adapter::S, TypeModel, MyCaster, MyCaster, MyCaster>(
+        model,
+        sender_to_error,
+    )
+});
+
+pub(crate) fn send<Msg: MessageTrait>(msg: Msg) {
     COMMANDER.send(msg);
 }
 
@@ -65,14 +79,17 @@ fn RootLayout() -> Element {
 
 #[component]
 pub(crate) fn App() -> Element {
+    LazyLock::force(&MODEL);
+    LazyLock::force(&COMMANDER);
+
     rsx! {
         // document::Link { rel: "stylesheet", href: MAIN_CSS }
         Router::<Route> {}
         ErrorStack {
-           close_error_callback: move |_| {
-               // send();
-           },
-           error: "hash",
+            close_error_callback: move |msg| {
+                send(msg);
+            },
+            errors: MODEL.page_error_handler.errors().read(),
         }
     }
 }

@@ -27,7 +27,7 @@ pub struct TypeModel {
     pub navigator: MySignal<Navigator>,
 
     // global states
-    pub external_errors: MySignal<String>,
+    pub page_error_handler: Arc<use_case_error_handler::ui::TypeLocalModel>,
     pub user_id: MySignal<String>,
     pub user_name: MySignal<String>,
 
@@ -161,3 +161,5 @@ impl use_case_create_account::client::GlobalModel for TypeModel {
         self.selected_company.clone()
     }
 }
+
+impl use_case_error_handler::client::GlobalModel for TypeModel {}

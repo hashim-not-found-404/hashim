@@ -301,6 +301,7 @@ dependencies = [
  "patterns",
  "serde",
  "use_case_create_account",
+ "use_case_error_handler",
  "use_case_get_all_accounts",
  "utility",
  "utility_ui",
@@ -4821,6 +4822,18 @@ dependencies = [
  "tokio",
  "typetag",
  "use_case_get_all_accounts",
+ "utility",
+ "utility_ui",
+]
+
+[[package]]
+name = "use_case_error_handler"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "dioxus",
+ "infrastructure",
+ "serde",
  "utility",
  "utility_ui",
 ]

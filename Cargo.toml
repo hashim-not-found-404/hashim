@@ -27,6 +27,7 @@ server = { path = "./crates/server" }
 
 # use cases
 use_case_create_account = { path = "./crates/use_case_create_account" }
+use_case_error_handler = { path = "./crates/use_case_error_handler" }
 use_case_get_all_accounts = { path = "./crates/use_case_get_all_accounts" }
 
 # external in the domain

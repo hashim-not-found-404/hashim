@@ -8,6 +8,7 @@ pub fn my_macro(input: TokenStream) -> TokenStream {
     let use_case_name = parse_macro_input!(input as Ident);
     let crate_name = format_ident!("use_case_{}", use_case_name);
     let mod_name = format_ident!("updater_use_case_{}", use_case_name);
+    let model_field_name = format_ident!("page_{}", use_case_name);
 
     quote! {
         mod #mod_name {
@@ -38,7 +39,7 @@ pub fn my_macro(input: TokenStream) -> TokenStream {
                         update_generic(
                             self.0,
                             model.clone(),
-                            model.page_create_account.clone(),
+                            model.#model_field_name.clone(),
                             cache,
                             sender_to_process_manager,
                             aborters,

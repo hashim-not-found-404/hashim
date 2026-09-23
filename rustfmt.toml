@@ -11,9 +11,9 @@ group_imports = "One"
 # use_small_heuristics="Off"
 # use_try_shorthand=true
 
-# format_macro_matchers=true
-# format_macro_bodies=true
-# hex_literal_case="Upper"
-# float_literal_trailing_zero="Always"
+format_macro_matchers=true
+format_macro_bodies=true
+hex_literal_case="Upper"
+float_literal_trailing_zero="Always"
 # single_line_if_else_max_width=0
 # single_line_let_else_max_width=0

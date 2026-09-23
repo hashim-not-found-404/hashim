@@ -1,0 +1,18 @@
+[package]
+name = "use_case_error_handler"
+version = "0.1.0"
+edition = "2024"
+
+[features]
+ui = ["dep:dioxus"]
+client = []
+
+[dependencies]
+infrastructure = { workspace = true }
+utility = { workspace = true }
+utility_ui = { workspace = true }
+
+anyhow = { workspace = true }
+serde = { workspace = true }
+
+dioxus = { workspace = true, optional = true }

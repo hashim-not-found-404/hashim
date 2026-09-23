@@ -13,6 +13,8 @@ make_client_wrapper_updater!(create_account);
 make_client_wrapper_cache_check!(create_account);
 make_client_wrapper_cache_write!(create_account);
 
+make_client_wrapper_updater!(error_handler);
+
 make_client_wrapper_cache_check!(get_all_accounts);
 make_client_wrapper_cache_write!(get_all_accounts);
 
@@ -39,6 +41,9 @@ impl CastMessageToUpdater for MyCaster {
 
         if let Some(v) = v.downcast_ref::<use_case_create_account::client::Message>() {
             return Box::new(updater_use_case_create_account::Wrapper(v.clone()));
+        };
+        if let Some(v) = v.downcast_ref::<use_case_error_handler::client::Message>() {
+            return Box::new(updater_use_case_error_handler::Wrapper(v.clone()));
         };
 
         unreachable!()

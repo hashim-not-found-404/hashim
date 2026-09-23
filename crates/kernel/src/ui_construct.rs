@@ -5,20 +5,15 @@ use crate::new_types::UuidType;
 use crate::request_response::FromClient;
 use crate::request_response::FromServer;
 use crate::types::ADDRESS;
-use crate::types::HashimError;
 use anyhow::Result;
 use infrastructure::actors::Mpsc;
-use infrastructure::actors::MpscReceiver;
 use infrastructure::actors::MpscSender;
 use infrastructure::actors::MultiProducerSingleConsumer;
-use infrastructure::actors::Receiver;
 use infrastructure::actors::Sender;
 use infrastructure::encode_decode::Coding;
 use infrastructure::encode_decode::Ed;
 use infrastructure::row_id::Id;
 use infrastructure::row_id::RowId;
-use infrastructure::runtime::Rt;
-use infrastructure::runtime::Runtime;
 use std::marker::PhantomData;
 use std::sync::Arc;
 use std::sync::RwLock;
@@ -42,9 +37,11 @@ use utility::types::ReadAndSet;
 use utility::ui_effect::CastMessageToUpdater;
 use utility::ui_effect::Commander;
 use utility::ui_effect::Model;
-use utility_ui::domain::HashimSignal;
 
-pub fn new<Ch, Mdl, CasDC, CasMsg, CasCh>(model: Arc<Mdl>) -> Commander
+pub fn new<Ch, Mdl, CasDC, CasMsg, CasCh>(
+    model: Arc<Mdl>,
+    sender_to_error: MpscSender<anyhow::Error>,
+) -> Commander
 where
     Ch: Cache + 'static,
     Mdl: Model,
@@ -54,7 +51,6 @@ where
 {
     let (sender_to_network, receiver_to_network) = Mpsc::channel();
     let (sender_to_cache, receiver_to_cache) = Mpsc::channel();
-    let (sender_to_error, receiver_to_error) = Mpsc::channel();
 
     let is_online = Arc::new(RwLock::new(false));
 
@@ -300,16 +296,4 @@ where
 
         Ok(resp)
     }
-}
-
-fn listen_to_error_actor(
-    mut receiver_to_error: MpscReceiver<HashimError>,
-    external_errors_signal: impl HashimSignal<String>,
-) {
-    Rt::spawn_local(async move {
-        loop {
-            let err = receiver_to_error.recv().await.unwrap();
-            external_errors_signal.set(err.to_string());
-        }
-    });
 }
