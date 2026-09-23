@@ -71,8 +71,9 @@ pub fn ErrorStack(
                                 button { onclick: move |_| { sender(Message::ExpandOrCollapseOne(index)) },
                                     if is_error_expanded {
                                         "Hide"
+                                    } else {
+                                        "Show"
                                     }
-                                    button { "Show" }
                                 }
                                 button { onclick: move |_| { sender(Message::DeleteOne(index)) },
                                     "X"
