@@ -29,7 +29,15 @@ pub fn spawn_listener(
             let new_err = receiver_to_error.recv().await.unwrap();
             let back_trace = match new_err.downcast_ref::<HashimError>() {
                 Some(_) => None,
-                None => Some(new_err.backtrace().to_string()),
+                None => {
+                    let bt = new_err.backtrace().to_string();
+
+                    if bt.is_empty() || bt.contains("disabled") || bt.contains("unsupported") {
+                        None
+                    } else {
+                        Some(bt)
+                    }
+                }
             };
 
             let error_name = new_err.to_string();
