@@ -4858,6 +4858,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "use_case_sign_up"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "cache",
+ "database",
+ "dioxus",
+ "infrastructure",
+ "kernel",
+ "rusqlite",
+ "serde",
+ "tokio",
+ "typetag",
+ "use_case_get_all_accounts",
+ "utility",
+ "utility_ui",
+]
+
+[[package]]
 name = "utf-8"
 version = "0.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"

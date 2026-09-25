@@ -1,0 +1,31 @@
+[package]
+name = "use_case_sign_up"
+version = "0.1.0"
+edition = "2024"
+
+[features]
+ui = ["dioxus"]
+cache = ["dep:cache", "rusqlite"]
+database = ["dep:database"]
+client = []
+server = []
+
+[dependencies]
+infrastructure = { workspace = true }
+kernel = { workspace = true }
+use_case_get_all_accounts = { workspace = true }
+utility = { workspace = true }
+utility_ui = { workspace = true }
+
+anyhow = { workspace = true }
+serde = { workspace = true }
+typetag = { workspace = true }
+
+cache = { workspace = true, optional = true }
+database = { workspace = true, optional = true }
+
+dioxus = { workspace = true, optional = true }
+rusqlite = { workspace = true, optional = true }
+
+[dev-dependencies]
+tokio = { workspace = true }
