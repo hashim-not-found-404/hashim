@@ -314,12 +314,14 @@ dependencies = [
  "actix-web",
  "anyhow",
  "database",
+ "infrastructure",
  "kernel",
  "paste",
  "patterns",
  "server",
  "use_case_create_account",
  "use_case_get_all_accounts",
+ "use_case_sign_up",
  "utility",
 ]
 
@@ -4871,7 +4873,6 @@ dependencies = [
  "serde",
  "tokio",
  "typetag",
- "use_case_get_all_accounts",
  "utility",
  "utility_ui",
 ]

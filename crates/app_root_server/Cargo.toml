@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 database = { workspace = true }
+infrastructure = { workspace = true }
 kernel = { workspace = true }
 patterns = { workspace = true }
 server = { workspace = true }
@@ -12,6 +13,7 @@ utility = { workspace = true }
 
 use_case_create_account = { workspace = true, features = ["server", "database"] }
 use_case_get_all_accounts = { workspace = true, features = ["server", "database"] }
+use_case_sign_up = { workspace = true, features = ["server", "database"] }
 
 anyhow = { workspace = true }
 paste = { workspace = true }

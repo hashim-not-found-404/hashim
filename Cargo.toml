@@ -29,6 +29,7 @@ server = { path = "./crates/server" }
 use_case_create_account = { path = "./crates/use_case_create_account" }
 use_case_error_handler = { path = "./crates/use_case_error_handler" }
 use_case_get_all_accounts = { path = "./crates/use_case_get_all_accounts" }
+use_case_sign_up = { path = "./crates/use_case_sign_up" }
 
 # external in the domain
 anyhow = { version = "1.0.104" }

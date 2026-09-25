@@ -3,6 +3,7 @@ use crate::new_types::CompanyUuid;
 use crate::new_types::NonceUuid;
 use crate::new_types::UserUuid;
 use anyhow::Result;
+use infrastructure::jwt::JWT;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::pin::Pin;
@@ -83,16 +84,21 @@ pub trait WSServer: 'static {
 
 pub trait TraitOperationServerInput {
     type Cli: DBClient;
+    type Jwt: JWT;
 
     fn handle_operation<'a>(
         self: Box<Self>,
         side_effects: &'a mut SideEffects,
         client: &'a mut Self::Cli,
+        jwt: &'a Self::Jwt,
     ) -> Pin<Box<dyn Future<Output = Result<Result<TypeOperationDTOOk, TypeOperationDTOError>>> + 'a>>;
 }
 
 pub trait CastDTOToServer {
     type Cli: DBClient;
+    type Jwt: JWT;
 
-    fn cast_input(v: TypeOperationDTOInput) -> Box<dyn TraitOperationServerInput<Cli = Self::Cli>>;
+    fn cast_input(
+        v: TypeOperationDTOInput,
+    ) -> Box<dyn TraitOperationServerInput<Cli = Self::Cli, Jwt = Self::Jwt>>;
 }

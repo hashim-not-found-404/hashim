@@ -58,7 +58,7 @@ impl<Jwt: JWT, Db: Database<Client = Cli>, Cli: DBClient> ServerMethods<Jwt, Db>
         })
     }
 
-    pub fn server_actor<Ws: WSServer, Cas: CastDTOToServer<Cli = Cli>>(
+    pub fn server_actor<Ws: WSServer, Cas: CastDTOToServer<Cli = Cli, Jwt = Jwt>>(
         self: Arc<Self>,
         mut session: Ws,
     ) {
@@ -295,7 +295,7 @@ impl<Jwt: JWT, Db: Database<Client = Cli>, Cli: DBClient> ServerMethods<Jwt, Db>
     }
 }
 
-async fn push_data<Jwt: JWT, Cli: DBClient, Cas: CastDTOToServer<Cli = Cli>>(
+async fn push_data<Jwt: JWT, Cli: DBClient, Cas: CastDTOToServer<Cli = Cli, Jwt = Jwt>>(
     input: Input,
     side_effects: &mut SideEffects,
     client: &mut Cli,
@@ -337,7 +337,7 @@ async fn push_data<Jwt: JWT, Cli: DBClient, Cas: CastDTOToServer<Cli = Cli>>(
 
     for transaction in input.operations {
         let input = Cas::cast_input(transaction.operation);
-        let result = input.handle_operation(side_effects, client).await?;
+        let result = input.handle_operation(side_effects, client, jwt).await?;
 
         the_return_result.operations.push(Txn {
             txn_number: transaction.txn_number,

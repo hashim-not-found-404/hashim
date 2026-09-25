@@ -21,7 +21,7 @@ pub async fn handle_operation_generic<
     input: &Input,
     side_effects: &mut SideEffects,
     client: &mut Cli,
-    jwt: &mut Jwt,
+    jwt: &Jwt,
 ) -> Result<MyResult> {
     let errr = input.state_less_check();
 

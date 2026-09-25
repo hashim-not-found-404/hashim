@@ -4,6 +4,7 @@ use crate::domain::Ok;
 use crate::domain::ReadInput;
 use crate::domain::ReadOutput;
 use anyhow::Result;
+use infrastructure::jwt::JWT;
 use kernel::make_auth_check;
 use kernel::server::DBClient;
 use kernel::server::DBTransaction;
@@ -17,10 +18,12 @@ pub async fn handle_operation_generic<
     Cli: DBClient,
     DBReader: for<'a> DatabaseRead<Db<'a> = Cli::Txn<'a>, Input = ReadInput, Output = ReadOutput>,
     DBWrite: for<'a> DatabaseWrite<Db<'a> = Cli::Txn<'a>, Input = Ok>,
+    Jwt: JWT,
 >(
     input: &Input,
     side_effects: &mut SideEffects,
     client: &mut Cli,
+    jwt: &Jwt,
 ) -> Result<MyResult> {
     let mut errr = input.state_less_check();
     make_auth_check!(side_effects, input, errr);

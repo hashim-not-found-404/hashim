@@ -26,7 +26,7 @@ use utility::types::LogError;
 
 type ServerMethodsType = ServerMethods<Jwt, db::S>;
 
-pub async fn main<Cas: CastDTOToServer<Cli = db_client::S> + 'static>() {
+pub async fn main<Cas: CastDTOToServer<Cli = db_client::S, Jwt = Jwt> + 'static>() {
     println!("started server");
     let actions = Data::new(ServerMethodsType::new().await);
 
@@ -50,7 +50,7 @@ pub async fn main<Cas: CastDTOToServer<Cli = db_client::S> + 'static>() {
     .unwrap()
 }
 
-async fn ws_handler<Cas: CastDTOToServer<Cli = db_client::S>>(
+async fn ws_handler<Cas: CastDTOToServer<Cli = db_client::S, Jwt = Jwt>>(
     req: HttpRequest,
     stream: Payload,
 ) -> HttpResponse {

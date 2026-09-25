@@ -13,6 +13,7 @@ pub fn my_macro(input: TokenStream) -> TokenStream {
         mod #mod_name {
             use anyhow::Result;
             use database::db_client;
+            use infrastructure::jwt::Jwt;
             use kernel::server::SideEffects;
             use kernel::server::TraitOperationServerInput;
             use std::pin::Pin;
@@ -27,20 +28,24 @@ pub fn my_macro(input: TokenStream) -> TokenStream {
 
             impl TraitOperationServerInput for Wrapper {
                 type Cli = db_client::S;
+                type Jwt = Jwt;
+
                 fn handle_operation<'a>(
                     self: Box<Self>,
                     side_effects: &'a mut SideEffects,
                     client: &'a mut Self::Cli,
+                    jwt: &'a Self::Jwt,
                 ) -> Pin<
                     Box<
                         dyn Future<Output = Result<Result<TypeOperationDTOOk, TypeOperationDTOError>>> + 'a,
                     >,
                 > {
                     Box::pin(async move {
-                        let a = handle_operation_generic::<Self::Cli, DataBaseOp, DataBaseOp>(
+                        let a = handle_operation_generic::<Self::Cli, DataBaseOp, DataBaseOp, Self::Jwt>(
                             &self.0,
                             side_effects,
                             client,
+                            jwt,
                         )
                         .await?;
                         Result::Ok(dyn_result(a))

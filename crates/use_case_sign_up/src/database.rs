@@ -14,9 +14,9 @@ const READ_QUERY: &str = "
          EXISTS(SELECT 1 FROM accounting_app.user WHERE id = $2) AS user_id_exists
 ";
 
-pub struct S;
+pub struct DataBaseOp;
 
-impl DatabaseRead for S {
+impl DatabaseRead for DataBaseOp {
     type Db<'a> = db_transaction::S<'a>;
     type Input = ReadInput;
     type Output = ReadOutput;
@@ -40,7 +40,7 @@ impl DatabaseRead for S {
 const WRITE_QUERY: &str =
     "INSERT INTO accounting_app.user (rowid, id, pass, name) VALUES ($1, $2, $3, $4)";
 
-impl DatabaseWrite for S {
+impl DatabaseWrite for DataBaseOp {
     type Db<'a> = db_transaction::S<'a>;
     type Input = Ok;
 
