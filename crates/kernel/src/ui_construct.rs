@@ -105,9 +105,9 @@ impl Network for MyNetwork {
 }
 
 pub trait CastDTOToClient: 'static {
-    fn cast_input(v: TypeOperationDTOInput) -> TypeOperationClientInput;
-    fn cast_ok(v: TypeOperationDTOOk) -> TypeOperationClientOk;
-    fn cast_error(v: TypeOperationDTOError) -> TypeOperationClientError;
+    fn cast_input(v: TypeOperationDTOInput) -> Result<TypeOperationClientInput>;
+    fn cast_ok(v: TypeOperationDTOOk) -> Result<TypeOperationClientOk>;
+    fn cast_error(v: TypeOperationDTOError) -> Result<TypeOperationClientError>;
 }
 
 struct MyCache<Ch: Cache, CasDC: CastDTOToClient> {
@@ -143,7 +143,7 @@ where
         } in all_txns
         {
             let operation: TypeOperationDTOInput = Ed::decode(&operation)?;
-            let operation = CasDC::cast_input(operation);
+            let operation = CasDC::cast_input(operation)?;
             let operation = Arc::from(operation);
 
             let txn = Txn {
@@ -265,11 +265,11 @@ where
                     let a = i.operation;
                     let r = match a {
                         Ok(ok) => {
-                            let ok = CasDC::cast_ok(ok);
+                            let ok = CasDC::cast_ok(ok)?;
                             Ok(ok)
                         }
                         Err(err) => {
-                            let err = CasDC::cast_error(err);
+                            let err = CasDC::cast_error(err)?;
                             Err(err)
                         }
                     };
@@ -286,7 +286,7 @@ where
                 let mut a = Vec::new();
 
                 for i in i {
-                    let v = CasDC::cast_ok(i);
+                    let v = CasDC::cast_ok(i)?;
                     a.push(v);
                 }
 

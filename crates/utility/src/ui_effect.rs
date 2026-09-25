@@ -37,7 +37,9 @@ pub trait UpdaterTrait {
 pub trait CastMessageToUpdater {
     type Mdl: Model;
 
-    fn cast_message_to_updater(v: Box<dyn MessageTrait>) -> Box<dyn UpdaterTrait<Mdl = Self::Mdl>>;
+    fn cast_message_to_updater(
+        v: Box<dyn MessageTrait>,
+    ) -> Result<Box<dyn UpdaterTrait<Mdl = Self::Mdl>>>;
 }
 
 #[derive(Clone)]
@@ -82,7 +84,7 @@ impl Commander {
     }
 
     fn commander_actor<Mdl, CasMsg>(
-        sender_to_error: MpscSender<Error>,
+        mut sender_to_error: MpscSender<Error>,
         mut receiver: MpscReceiver<Box<dyn MessageTrait>>,
         sender_to_process_manager: MpscSender<MessageToProcessManager>,
         model: Arc<Mdl>,
@@ -96,7 +98,13 @@ impl Commander {
 
             loop {
                 let message = receiver.recv().await.unwrap();
-                let message = CasMsg::cast_message_to_updater(message);
+                let message = match CasMsg::cast_message_to_updater(message) {
+                    Ok(ok) => ok,
+                    Err(err) => {
+                        let _ = sender_to_error.send(err);
+                        continue;
+                    }
+                };
 
                 let model = model.clone();
                 let cache = cache.clone();

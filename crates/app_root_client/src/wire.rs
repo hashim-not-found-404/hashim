@@ -36,17 +36,21 @@ pub(crate) struct MyCaster;
 impl CastMessageToUpdater for MyCaster {
     type Mdl = TypeModel;
 
-    fn cast_message_to_updater(v: Box<dyn MessageTrait>) -> Box<dyn UpdaterTrait<Mdl = Self::Mdl>> {
+    fn cast_message_to_updater(
+        v: Box<dyn MessageTrait>,
+    ) -> Result<Box<dyn UpdaterTrait<Mdl = Self::Mdl>>> {
         let v: Box<dyn Any> = v;
 
         if let Some(v) = v.downcast_ref::<use_case_create_account::client::Message>() {
-            return Box::new(updater_use_case_create_account::Wrapper(v.clone()));
+            return Ok(Box::new(updater_use_case_create_account::Wrapper(
+                v.clone(),
+            )));
         };
         if let Some(v) = v.downcast_ref::<use_case_error_handler::client::Message>() {
-            return Box::new(updater_use_case_error_handler::Wrapper(v.clone()));
+            return Ok(Box::new(updater_use_case_error_handler::Wrapper(v.clone())));
         };
 
-        unreachable!()
+        bail!("downcast error")
     }
 }
 
@@ -93,42 +97,42 @@ impl CastClientToCache for MyCaster {
 }
 
 impl CastDTOToClient for MyCaster {
-    fn cast_input(v: TypeOperationDTOInput) -> TypeOperationClientInput {
+    fn cast_input(v: TypeOperationDTOInput) -> Result<TypeOperationClientInput> {
         let v: Box<dyn Any> = v;
 
         if let Some(v) = v.downcast_ref::<use_case_create_account::domain::Input>() {
-            return Arc::new(v.clone());
+            return Ok(Arc::new(v.clone()));
         };
         if let Some(v) = v.downcast_ref::<use_case_get_all_accounts::domain::Input>() {
-            return Arc::new(v.clone());
+            return Ok(Arc::new(v.clone()));
         };
 
-        unreachable!()
+        bail!("downcast error")
     }
 
-    fn cast_ok(v: TypeOperationDTOOk) -> TypeOperationClientOk {
+    fn cast_ok(v: TypeOperationDTOOk) -> Result<TypeOperationClientOk> {
         let v: Box<dyn Any> = v;
 
         if let Some(v) = v.downcast_ref::<use_case_create_account::domain::Ok>() {
-            return Arc::new(v.clone());
+            return Ok(Arc::new(v.clone()));
         };
         if let Some(v) = v.downcast_ref::<use_case_get_all_accounts::domain::Ok>() {
-            return Arc::new(v.clone());
+            return Ok(Arc::new(v.clone()));
         };
 
-        unreachable!()
+        bail!("downcast error")
     }
 
-    fn cast_error(v: TypeOperationDTOError) -> TypeOperationClientError {
+    fn cast_error(v: TypeOperationDTOError) -> Result<TypeOperationClientError> {
         let v: Box<dyn Any> = v;
 
         if let Some(v) = v.downcast_ref::<use_case_create_account::domain::Error>() {
-            return Box::new(v.clone());
+            return Ok(Box::new(v.clone()));
         };
         if let Some(v) = v.downcast_ref::<use_case_get_all_accounts::domain::Error>() {
-            return Box::new(v.clone());
+            return Ok(Box::new(v.clone()));
         };
 
-        unreachable!()
+        bail!("downcast error")
     }
 }

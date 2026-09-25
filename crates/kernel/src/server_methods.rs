@@ -336,7 +336,7 @@ async fn push_data<Jwt: JWT, Cli: DBClient, Cas: CastDTOToServer<Cli = Cli, Jwt 
     }
 
     for transaction in input.operations {
-        let input = Cas::cast_input(transaction.operation);
+        let input = Cas::cast_input(transaction.operation)?;
         let result = input.handle_operation(side_effects, client, jwt).await?;
 
         the_return_result.operations.push(Txn {

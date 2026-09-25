@@ -100,5 +100,5 @@ pub trait CastDTOToServer {
 
     fn cast_input(
         v: TypeOperationDTOInput,
-    ) -> Box<dyn TraitOperationServerInput<Cli = Self::Cli, Jwt = Self::Jwt>>;
+    ) -> Result<Box<dyn TraitOperationServerInput<Cli = Self::Cli, Jwt = Self::Jwt>>>;
 }
