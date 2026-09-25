@@ -79,7 +79,7 @@ impl Commander {
     {
         let mut sender = self.sender.clone();
         Rt::spawn_local(async move {
-            sender.send(Box::new(msg)).await.unwrap();
+            let _ = sender.send(Box::new(msg)).await;
         });
     }
 
@@ -118,7 +118,7 @@ impl Commander {
                         .await;
 
                     if let Err(err) = result {
-                        sender_to_error.send(err).await.unwrap()
+                        let _ = sender_to_error.send(err).await;
                     }
                 });
             }

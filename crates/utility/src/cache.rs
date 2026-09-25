@@ -269,7 +269,7 @@ impl CacheStruct {
                 match Cu::new().await {
                     Ok(ok) => break ok,
                     Err(err) => {
-                        sender_to_error.send(err).await.unwrap();
+                        let _ = sender_to_error.send(err).await;
                         Rt::sleep(Duration::from_millis(1000)).await;
                     }
                 }
@@ -288,7 +288,7 @@ impl CacheStruct {
                 )
                 .await
                 {
-                    sender_to_error.send(err).await.unwrap()
+                    let _ = sender_to_error.send(err).await;
                 };
             }
         });

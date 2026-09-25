@@ -58,7 +58,7 @@ pub fn network_actor<Nw: Network + 'static>(
             )
             .await
             {
-                sender_to_error.send(err).await.unwrap();
+                let _ = sender_to_error.send(err).await;
             };
         }
     });

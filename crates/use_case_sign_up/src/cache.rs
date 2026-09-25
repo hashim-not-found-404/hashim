@@ -22,19 +22,16 @@ impl DatabaseRead for S {
     async fn read(db: &mut Self::Db<'_>, input: &Self::Input) -> Result<Self::Output> {
         let query = QUERY;
 
-        let a = db
-            .tables_db
-            .query_one(
-                query,
-                params![input.new_uuid.to_string(), input.user_id],
-                |row| {
-                    Ok(ReadOutput {
-                        is_new_uuid_exist: row.get(0).unwrap(),
-                        is_user_id_exist: row.get(1).unwrap(),
-                    })
-                },
-            )
-            .unwrap();
+        let a = db.tables_db.query_one(
+            query,
+            params![input.new_uuid.to_string(), input.user_id],
+            |row| {
+                Ok(ReadOutput {
+                    is_new_uuid_exist: row.get(0)?,
+                    is_user_id_exist: row.get(1)?,
+                })
+            },
+        )?;
 
         Ok(a)
     }
