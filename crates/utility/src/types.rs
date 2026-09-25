@@ -2,7 +2,6 @@ use core::fmt::Debug;
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::sync::Arc;
-use std::sync::Mutex;
 use std::sync::RwLock;
 
 pub trait LogError {
@@ -25,16 +24,6 @@ impl<T, E: Debug> LogError for Result<T, E> {
             );
         }
         self
-    }
-}
-
-pub trait HashMapWithVectorValue<K, V> {
-    fn insert_append(&mut self, k: K, v: Vec<V>);
-}
-
-impl<K: Eq + Hash, V> HashMapWithVectorValue<K, V> for HashMap<K, Vec<V>> {
-    fn insert_append(&mut self, k: K, mut v: Vec<V>) {
-        self.entry(k).or_default().append(&mut v);
     }
 }
 
@@ -62,16 +51,6 @@ impl<T: Clone> ReadAndSet<T> for Arc<RwLock<T>> {
 
     fn put(&self, v: T) {
         *self.write().unwrap() = v;
-    }
-}
-
-impl<T: Clone> ReadAndSet<T> for Mutex<T> {
-    fn read(&self) -> T {
-        Mutex::lock(self).unwrap().clone()
-    }
-
-    fn put(&self, v: T) {
-        *self.lock().unwrap() = v;
     }
 }
 

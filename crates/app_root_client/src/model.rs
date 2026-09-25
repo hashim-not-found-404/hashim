@@ -1,18 +1,12 @@
 use crate::navigator::Navigator;
-use accounting_engine::accounting_stuff::InFlowType;
-use accounting_engine::accounting_stuff::OutFlowType;
-use kernel::new_types::AccountForBranchUuid;
 use kernel::new_types::BranchUuid;
 use kernel::new_types::CompanyUuid;
 use kernel::new_types::UserUuid;
-use kernel::types::Currency;
-use kernel::types::Location;
 use serde::Deserialize;
 use serde::Serialize;
 use std::fmt::Debug;
 use std::sync::Arc;
 use utility::ui_effect::Model;
-use utility_ui::domain::Dialog;
 use utility_ui::domain::HashimSignal;
 use utility_ui::my_signal::MySignal;
 
@@ -29,127 +23,26 @@ pub struct TypeModel {
     // global states
     pub page_error_handler: Arc<use_case_error_handler::ui::TypeLocalModel>,
     pub user_id: MySignal<String>,
-    pub user_name: MySignal<String>,
+    pub user_name: MySignal<Option<String>>,
 
     // feature state
     pub feature_state_auth: FeatureStateAuth,
 
     // pages
-    pub page_sign_up: PageSignUp,
-    pub page_sign_in: PageSignIn,
-    pub page_company_branch_selection: PageCompanyBranchSelection,
-    pub page_create_company: PageCreateCompany,
-    pub page_create_company_branch: PageCreateCompanyBranch,
+    pub page_sign_up: Arc<use_case_sign_up::ui::TypeLocalModel>,
+    // pub page_sign_in: Arc<use_case_sign_in::ui::TypeLocalModel>,
+    // pub page_company_branch_selection: Arc<use_case_company_branch_selection::ui::TypeLocalModel>,
+    // pub page_create_company: Arc<use_case_create_company::ui::TypeLocalModel>,
+    // pub page_create_company_branch: Arc<use_case_create_company_branch::ui::TypeLocalModel>,
     pub page_create_account: Arc<use_case_create_account::ui::TypeLocalModel>,
-    pub page_create_account_for_branch: PageCreateAccountForBranch,
-    pub page_create_journal_entry: PageCreateJournalEntry,
+    // pub page_create_account_for_branch: Arc<use_case_create_account_for_branch::ui::TypeLocalModel>,
+    // pub page_create_journal_entry: Arc<use_case_create_journal_entry::ui::TypeLocalModel>,
 }
 
 #[derive(Debug, Default, Deserialize, Serialize)]
 pub struct FeatureStateAuth {
     pub user_password: MySignal<String>,
     pub is_loading: MySignal<bool>,
-}
-
-#[derive(Debug, Default, Deserialize, Serialize)]
-pub struct PageSignIn {
-    pub show_dialog: MySignal<Dialog>,
-    pub user_id_error: MySignal<Option<String>>,
-    pub user_password_error: MySignal<Option<String>>,
-}
-
-#[derive(Debug, Default, Deserialize, Serialize)]
-pub struct PageSignUp {
-    pub show_dialog: MySignal<Dialog>,
-    pub user_id_error: MySignal<Option<String>>,
-    pub user_name_error: MySignal<Option<String>>,
-}
-
-#[derive(Debug, Default, Deserialize, Serialize)]
-pub struct PageCompanyBranchSelection {
-    // pub list: MySignal<CompanyAndBranchList>,
-}
-
-#[derive(Debug, Default, Deserialize, Serialize)]
-pub struct PageCreateCompany {
-    pub company_name: MySignal<String>,
-    pub currency: MySignal<Currency>,
-}
-
-#[derive(Debug, Default, Deserialize, Serialize)]
-pub struct PageCreateCompanyBranch {
-    pub is_loading: MySignal<bool>,
-    pub show_dialog: MySignal<Dialog>,
-    pub currency: MySignal<Currency>,
-    pub branch_name: MySignal<String>,
-    pub location: MySignal<Location>,
-    pub branch_name_error: MySignal<Option<String>>,
-    pub location_error: MySignal<Option<String>>,
-}
-
-#[derive(Debug, Default, Deserialize, Serialize)]
-pub struct PageCreateAccountForBranch {
-    // pub(crate) list_of_available_account: MySignal<Vec<Account>>,
-    pub is_loading: MySignal<bool>,
-    pub show_dialog: MySignal<Dialog>,
-    // pub filtered_list: MySignal<AccountsSuggestionList>,
-    pub account_name: MySignal<String>,
-    pub outflow_type: MySignal<OutFlowType>,
-    pub inflow_type: MySignal<InFlowType>,
-}
-
-#[derive(Debug, Default, Deserialize, Serialize)]
-pub struct PageCreateJournalEntry {
-    // pub(crate) list_of_available_account: MySignal<Vec<Account>>,
-    // pub filtered_list:                    MySignal<AccountsSuggestionList>,
-    pub is_loading: MySignal<bool>,
-    pub show_dialog: MySignal<Dialog>,
-    pub shared_entry_id: MySignal<String>,
-
-    pub some_account_are_not_inferred: MySignal<bool>,
-    pub error_container_is_empty: MySignal<bool>,
-    pub not_all_entry_inferred: MySignal<bool>,
-    // pub double_entries:                MySignal<JournalEntry>,
-}
-
-#[derive(Debug, Clone, Default, Deserialize, Serialize)]
-pub struct DoubleEntry {
-    pub entry_is_empty: bool,
-    pub you_need_to_split_the_entry: bool,
-    // pub debit_not_equal_credit: Option<DebitNotEqualCreditError>,
-    pub singles: Vec<SingleEntry>,
-}
-
-#[derive(Debug, Clone, Default, Deserialize, Serialize)]
-pub struct SingleEntry {
-    pub user_input_account_name: String,
-    pub(crate) inferred_account_id: Option<AccountForBranchUuid>,
-
-    pub user_input_is_debit: Option<bool>,
-    pub user_input_is_inflow: Option<bool>,
-    pub user_input_quantity: Option<f64>,
-    pub user_input_amount: Option<f64>,
-    pub user_input_inflow_type: Option<InFlowType>,
-    pub user_input_outflow_type: Option<OutFlowType>,
-
-    pub inferred_is_debit: Option<bool>,
-    pub inferred_is_inflow: Option<bool>,
-    pub inferred_quantity: Option<f64>,
-    pub inferred_amount: Option<f64>,
-    pub inferred_inflow_type: Option<InFlowType>,
-    pub inferred_outflow_type: Option<OutFlowType>,
-
-    // Error flags
-    pub quantity_and_amount_are_zero: bool,
-    pub duplicate_account_in_entry: bool,
-    pub inventory_is_empty: bool,
-    pub the_amount_should_be_positive: bool,
-    pub the_quantity_should_be_positive: bool,
-    pub quantity_not_equal_amount: bool,
-    pub quantity_not_equal_zero: bool,
-    pub insufficient_quantity_in_inventory: Option<f64>,
-    pub amount_mismatch: Option<f64>,
-    pub insufficient_amount_in_inventory: Option<f64>,
 }
 
 impl use_case_create_account::client::GlobalModel for TypeModel {
@@ -163,3 +56,25 @@ impl use_case_create_account::client::GlobalModel for TypeModel {
 }
 
 impl use_case_error_handler::client::GlobalModel for TypeModel {}
+
+impl use_case_sign_up::client::GlobalModel for TypeModel {
+    fn is_auth_loading(&self) -> impl HashimSignal<bool> {
+        self.feature_state_auth.is_loading.clone()
+    }
+
+    fn user_uuid(&self) -> impl HashimSignal<Option<UserUuid>> {
+        self.user_uuid.clone()
+    }
+
+    fn user_name(&self) -> impl HashimSignal<Option<String>> {
+        self.user_name.clone()
+    }
+
+    fn user_id(&self) -> impl HashimSignal<String> {
+        self.user_id.clone()
+    }
+
+    fn password(&self) -> impl HashimSignal<String> {
+        self.feature_state_auth.user_password.clone()
+    }
+}

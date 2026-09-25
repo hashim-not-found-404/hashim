@@ -33,6 +33,7 @@ use utility::dtos::TxnNumber;
 use utility::process_manager::MessageToProcessManager;
 use utility::process_manager::ProcessId;
 use utility::process_manager::UserConsent;
+use utility::types::MakeOptionIfEmpty;
 use utility::ui_effect::Aborters;
 use utility::ui_effect::MessageTrait;
 use utility::ui_orchestration::handle_fall_back;
@@ -154,8 +155,7 @@ pub async fn update_generic(
                 .await?;
         }
         Message::UserName(i) => {
-            let i = if i.is_empty() { None } else { Some(i) };
-            global_model.user_name().set(i);
+            global_model.user_name().set(i.none_if_empty());
             handle_check(global_model, local_model, cache).await?;
         }
         Message::UserId(i) => {
