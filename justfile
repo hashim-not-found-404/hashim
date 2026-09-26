@@ -73,7 +73,7 @@ run_server: fmt
     RUSTFLAGS="-A warnings" cargo run -p app_root_server
 
 run_client: fmt
-    RUSTFLAGS="-A warnings" dx serve --open --port=8081 --watch=false -p app_root_client
+    RUSTFLAGS="-A warnings" dx serve --open --port=8081 --watch=false --keep-names --debug-symbols=true -p app_root_client
 
 udeps:
     clear

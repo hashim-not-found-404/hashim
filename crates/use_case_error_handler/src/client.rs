@@ -10,6 +10,7 @@ use infrastructure::time::Time;
 use kernel::types::HashimError;
 use serde::Deserialize;
 use serde::Serialize;
+use std::backtrace::BacktraceStatus;
 use std::fmt::Debug;
 use std::sync::Arc;
 use utility::cache::CacheStruct;
@@ -30,12 +31,13 @@ pub fn spawn_listener(
             let back_trace = match new_err.downcast_ref::<HashimError>() {
                 Some(_) => None,
                 None => {
-                    let bt = new_err.backtrace().to_string();
+                    let bt = new_err.backtrace();
 
-                    if bt.is_empty() || bt.contains("disabled") || bt.contains("unsupported") {
-                        None
-                    } else {
-                        Some(bt)
+                    match bt.status() {
+                        BacktraceStatus::Unsupported => None,
+                        BacktraceStatus::Disabled => None,
+                        BacktraceStatus::Captured => Some(bt.to_string()),
+                        _ => unreachable!(),
                     }
                 }
             };
@@ -128,7 +130,7 @@ pub async fn update_generic(
         Message::ExpandOrCollapseOne(i) => {
             let mut err = local_model.errors().read();
 
-            let a = err.0.get_mut(i).context("context")?;
+            let a = err.0.get_mut(i).context("value not found")?;
             a.is_expand ^= true;
 
             local_model.errors().set(err);

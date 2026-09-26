@@ -148,7 +148,10 @@ pub async fn update_generic(
         Message::Consent(i) => {
             sender_to_process_manager
                 .send(MessageToProcessManager::FromUser {
-                    process_id: local_model.process_id().read().context("context")?,
+                    process_id: local_model
+                        .process_id()
+                        .read()
+                        .context("process id not found")?,
                     consent: i,
                 })
                 .await?;
@@ -166,8 +169,14 @@ pub async fn update_generic(
         }
         Message::Subscribe => {
             fetch(
-                global_model.selected_company().read().context("context")?,
-                global_model.user_uuid().read().context("context")?,
+                global_model
+                    .selected_company()
+                    .read()
+                    .context("company uuid not found")?,
+                global_model
+                    .user_uuid()
+                    .read()
+                    .context("user uuid not found")?,
                 cache,
             )
             .await?;
@@ -182,14 +191,20 @@ fn build_input(
     local_model: Arc<impl LocalModel>,
 ) -> Result<Type1> {
     Ok(Input {
-        user_uuid: global_model.user_uuid().read().context("context")?,
+        user_uuid: global_model
+            .user_uuid()
+            .read()
+            .context("user uuid not found")?,
         new_uuid: AccountUuid::from(UuidType::from(Id::generate())),
         is_debit: local_model.is_debit().read(),
         is_permanent_account: local_model.is_permanent_account().read(),
         account_name: local_model.account_name().read(),
         notes: local_model.notes().read().none_if_empty(),
         unit_of_measurement_of_quantity: local_model.unit_of_measurement_of_quantity().read(),
-        belong_to_company: global_model.selected_company().read().context("context")?,
+        belong_to_company: global_model
+            .selected_company()
+            .read()
+            .context("company uuid not found")?,
     })
 }
 
@@ -231,7 +246,7 @@ async fn handle_submit(
                 Ok(ok) => {
                     let a = ok;
                     let a: Arc<dyn Any> = a;
-                    let a: &Ok = a.downcast_ref().context("context")?;
+                    let a: &Ok = a.downcast_ref().context("downcast error")?;
                     let a: Ok = a.clone();
                     Ok(a)
                 }
@@ -284,7 +299,7 @@ async fn handle_check(
                 Ok(ok) => {
                     let a = ok;
                     let a: Arc<dyn Any> = a;
-                    let a: &Ok = a.downcast_ref().context("context")?;
+                    let a: &Ok = a.downcast_ref().context("downcast error")?;
                     let a: Ok = a.clone();
                     Ok(a)
                 }

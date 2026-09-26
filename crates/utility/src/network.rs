@@ -19,7 +19,9 @@ pub trait Network {
 }
 
 async fn network_radar(ws: Option<&mut Ws>) -> Result<Vec<u8>> {
-    ws.context("context")?.receive_bin().await
+    ws.context("web socket connection not found")?
+        .receive_bin()
+        .await
 }
 
 async fn connect<Nw: Network>(

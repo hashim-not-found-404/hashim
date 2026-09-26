@@ -30,5 +30,9 @@ impl DBTransaction for S<'_> {
 }
 
 fn get_sql_state(error: &tokio_postgres::Error) -> Result<SqlState> {
-    Ok(error.as_db_error().context("context")?.code().clone())
+    Ok(error
+        .as_db_error()
+        .context("db error not found")?
+        .code()
+        .clone())
 }

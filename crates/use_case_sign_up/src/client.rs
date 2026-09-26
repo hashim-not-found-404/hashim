@@ -149,7 +149,10 @@ pub async fn update_generic(
         Message::Consent(i) => {
             sender_to_process_manager
                 .send(MessageToProcessManager::FromUser {
-                    process_id: local_model.process_id().read().context("context")?,
+                    process_id: local_model
+                        .process_id()
+                        .read()
+                        .context("process id not found")?,
                     consent: i,
                 })
                 .await?;
@@ -177,7 +180,10 @@ fn build_input(
     local_model: Arc<impl LocalModel>,
 ) -> Result<Type1> {
     Ok(Input {
-        user_uuid: global_model.user_uuid().read().context("context")?,
+        user_uuid: global_model
+            .user_uuid()
+            .read()
+            .context("user uuid not found")?,
         name: global_model.user_name().read(),
         user_id: global_model.user_id().read(),
         password: global_model.password().read(),
@@ -216,7 +222,7 @@ async fn handle_submit(
                 Ok(ok) => {
                     let a = ok;
                     let a: Arc<dyn Any> = a;
-                    let a: &Ok = a.downcast_ref().context("context")?;
+                    let a: &Ok = a.downcast_ref().context("downcast error")?;
                     let a: Ok = a.clone();
                     Ok(a)
                 }
@@ -269,7 +275,7 @@ async fn handle_check(
                 Ok(ok) => {
                     let a = ok;
                     let a: Arc<dyn Any> = a;
-                    let a: &Ok = a.downcast_ref().context("context")?;
+                    let a: &Ok = a.downcast_ref().context("downcast error")?;
                     let a: Ok = a.clone();
                     Ok(a)
                 }
