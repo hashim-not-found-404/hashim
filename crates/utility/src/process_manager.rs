@@ -1,3 +1,5 @@
+use anyhow::Context;
+use anyhow::Result;
 use infrastructure::actors::Mpsc;
 use infrastructure::actors::MpscReceiver;
 use infrastructure::actors::MpscSender;
@@ -88,79 +90,76 @@ pub fn process_manager_actor() -> MpscSender<MessageToProcessManager> {
         let mut process_states = HashMap::<ProcessId, ProcessInfo>::new();
 
         loop {
-            let msg: MessageToProcessManager = receiver.recv().await.unwrap();
+            let _: Result<()> = async {
+                let msg: MessageToProcessManager = receiver.recv().await?;
 
-            match msg {
-                MessageToProcessManager::FromUser {
-                    process_id,
-                    consent,
-                } => {
-                    let table = process_states.get_mut(&process_id).unwrap();
-
-                    table.dialog.hide();
-                    table.is_user_want_to_proceed = consent;
-                    table.timer_handle.abort().await;
-
-                    match consent {
-                        UserConsent::WaitForServerResponse => {
-                            table.timer_handle = timer_handle(table.dialog.clone());
-                        }
-                        UserConsent::DontWaitForServerResponse => {
-                            table
-                                .sender
-                                .send(MessageToProcess::FallBackToCache)
-                                .await
-                                .unwrap();
-                        }
-                        UserConsent::CancelOperation => {
-                            table
-                                .sender
-                                .send(MessageToProcess::CancelOperation)
-                                .await
-                                .unwrap();
-                        }
-                    }
-                }
-                MessageToProcessManager::FromProcess {
-                    process_id,
-                    message,
-                } => match message {
-                    MessageFromProcess::Subscribe { sender, dialog } => {
-                        let timer_handle = timer_handle(dialog.clone());
-
-                        process_states.insert(
-                            process_id,
-                            ProcessInfo {
-                                sender,
-                                dialog,
-                                timer_handle,
-                                is_response_from_server: None,
-                                is_ok: None,
-                                is_user_want_to_proceed: UserConsent::WaitForServerResponse,
-                            },
-                        );
-                    }
-                    MessageFromProcess::Response {
-                        is_response_from_server,
-                        is_response_ok,
+                match msg {
+                    MessageToProcessManager::FromUser {
+                        process_id,
+                        consent,
                     } => {
-                        let table = process_states.get_mut(&process_id).unwrap();
+                        let table = process_states
+                            .get_mut(&process_id)
+                            .context("process id not found")?;
 
-                        table.is_ok = Some(is_response_ok);
-                        table.is_response_from_server = Some(is_response_from_server);
+                        table.dialog.hide();
+                        table.is_user_want_to_proceed = consent;
+                        table.timer_handle.abort().await;
 
-                        if is_response_from_server {
-                            table
-                                .sender
-                                .send(MessageToProcess::CancelOperation)
-                                .await
-                                .unwrap();
-
-                            process_states.remove(&process_id);
+                        match consent {
+                            UserConsent::WaitForServerResponse => {
+                                table.timer_handle = timer_handle(table.dialog.clone());
+                            }
+                            UserConsent::DontWaitForServerResponse => {
+                                table.sender.send(MessageToProcess::FallBackToCache).await?;
+                            }
+                            UserConsent::CancelOperation => {
+                                table.sender.send(MessageToProcess::CancelOperation).await?;
+                            }
                         }
                     }
-                },
+                    MessageToProcessManager::FromProcess {
+                        process_id,
+                        message,
+                    } => match message {
+                        MessageFromProcess::Subscribe { sender, dialog } => {
+                            let timer_handle = timer_handle(dialog.clone());
+
+                            process_states.insert(
+                                process_id,
+                                ProcessInfo {
+                                    sender,
+                                    dialog,
+                                    timer_handle,
+                                    is_response_from_server: None,
+                                    is_ok: None,
+                                    is_user_want_to_proceed: UserConsent::WaitForServerResponse,
+                                },
+                            );
+                        }
+                        MessageFromProcess::Response {
+                            is_response_from_server,
+                            is_response_ok,
+                        } => {
+                            let table = process_states
+                                .get_mut(&process_id)
+                                .context("process id not found")?;
+
+                            table.is_ok = Some(is_response_ok);
+                            table.is_response_from_server = Some(is_response_from_server);
+
+                            if is_response_from_server {
+                                table.sender.send(MessageToProcess::CancelOperation).await?;
+
+                                process_states.remove(&process_id);
+                            }
+                        }
+                    },
+                }
+
+                Ok(())
             }
+            .await;
         }
     });
 

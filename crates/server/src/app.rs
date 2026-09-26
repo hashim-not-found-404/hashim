@@ -26,9 +26,10 @@ use utility::types::LogError;
 
 type ServerMethodsType = ServerMethods<Jwt, db::S>;
 
-pub async fn main<Cas: CastDTOToServer<Cli = db_client::S, Jwt = Jwt> + 'static>() {
+pub async fn main<Cas: CastDTOToServer<Cli = db_client::S, Jwt = Jwt> + 'static>() -> Result<()> {
     println!("started server");
-    let actions = Data::new(ServerMethodsType::new().await);
+
+    let actions = Data::new(ServerMethodsType::new().await?);
 
     HttpServer::new(move || {
         let cors = Cors::default()
@@ -38,16 +39,16 @@ pub async fn main<Cas: CastDTOToServer<Cli = db_client::S, Jwt = Jwt> + 'static>
             .max_age(3600);
 
         App::new()
-            .wrap(cors)
             .app_data(actions.clone())
+            .wrap(cors)
             .route("/ws", web::get().to(ws_handler::<Cas>))
     })
     // .bind_rustls_0_23((HOST, PORT), get_tls_config())
-    .bind((HOST, PORT))
-    .unwrap()
+    .bind((HOST, PORT))?
     .run()
-    .await
-    .unwrap()
+    .await?;
+
+    Ok(())
 }
 
 async fn ws_handler<Cas: CastDTOToServer<Cli = db_client::S, Jwt = Jwt>>(
