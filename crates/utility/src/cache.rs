@@ -28,6 +28,10 @@ use std::time::Duration;
 #[derive(Debug, Clone, Copy, Eq, Hash, PartialEq)]
 pub struct Subscribe(u32);
 
+pub const fn new_sub(x: u32) -> Subscribe {
+    Subscribe(x)
+}
+
 pub trait MarkerCache: 'static {}
 
 pub trait CacheUtility: Sized + 'static {

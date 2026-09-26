@@ -7,13 +7,17 @@ use crate::domain::ReadOutput;
 use anyhow::Context;
 use anyhow::Result;
 use anyhow::anyhow;
+use const_random::const_random;
 use infrastructure::actors::MpscSender;
 use infrastructure::actors::Receiver;
 use infrastructure::actors::Sender;
 use infrastructure::jwt::JsonWebTokenType;
+use infrastructure::row_id::Id;
+use infrastructure::row_id::RowId;
 use kernel::client::Cache;
 use kernel::client::DialogSignalAdapter;
 use kernel::new_types::UserUuid;
+use kernel::new_types::UuidType;
 use kernel::types::DatabaseRead;
 use kernel::types::MyErrorTrait;
 use std::any::Any;
@@ -29,6 +33,7 @@ use utility::cache::TraitOperationClientInput;
 use utility::cache::TraitOperationClientOk;
 use utility::cache::TypeOperationClientInput;
 use utility::cache::TypeOperationClientResult;
+use utility::cache::new_sub;
 use utility::dtos::TxnNumber;
 use utility::process_manager::MessageToProcessManager;
 use utility::process_manager::ProcessId;
@@ -40,15 +45,17 @@ use utility::ui_orchestration::handle_fall_back;
 use utility_ui::domain::Dialog;
 use utility_ui::domain::HashimSignal;
 
+const USE_CASE_NAME: Subscribe = new_sub(const_random!(u32));
+
 impl TraitOperationClientOk for Ok {
     fn subs_to_poke(&self) -> &'static [Subscribe] {
-        todo!()
+        &[USE_CASE_NAME]
     }
 }
 
 impl TraitOperationClientError for Error {
     fn subs_to_poke(&self) -> &'static [Subscribe] {
-        todo!()
+        &[USE_CASE_NAME]
     }
 }
 
@@ -180,10 +187,7 @@ fn build_input(
     local_model: Arc<impl LocalModel>,
 ) -> Result<Type1> {
     Ok(Input {
-        user_uuid: global_model
-            .user_uuid()
-            .read()
-            .context("user uuid not found")?,
+        user_uuid: UserUuid::from(UuidType::from(Id::generate())),
         name: global_model.user_name().read(),
         user_id: global_model.user_id().read(),
         password: global_model.password().read(),

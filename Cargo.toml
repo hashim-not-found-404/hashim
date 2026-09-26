@@ -33,6 +33,7 @@ use_case_sign_up = { path = "./crates/use_case_sign_up" }
 
 # external in the domain
 anyhow = { version = "1.0.104" }
+const-random = { version = "0.1.18" }
 dyn-clone = { version = "1.0.20" }
 heck = { version = "0.5.0" }
 paste = { version = "1.0.15" }

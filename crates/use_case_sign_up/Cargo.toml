@@ -17,6 +17,7 @@ utility = { workspace = true }
 utility_ui = { workspace = true }
 
 anyhow = { workspace = true }
+const-random = { workspace = true }
 serde = { workspace = true }
 typetag = { workspace = true }
 
