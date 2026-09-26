@@ -55,11 +55,25 @@ pub trait Database: Sized + 'static {
 
 pub(crate) type ListOfResources = HashMap<BranchUuid, Vec<TypeOperationDTOResource>>;
 
-#[derive(Debug, Default)]
-pub struct SideEffects {
+#[derive(Debug)]
+pub struct SideEffects<'a, Cli: DBClient, Jwt: JWT> {
     pub authenticated_users: HashSet<UserUuid>,
     pub users_to_resubscribe: HashSet<UserUuid>,
     pub resource_to_broadcast_for_branch: ListOfResources,
+    pub client: &'a mut Cli,
+    pub jwt: &'a Jwt,
+}
+
+impl<'a, Cli: DBClient, Jwt: JWT> SideEffects<'a, Cli, Jwt> {
+    pub(crate) fn new(client: &'a mut Cli, jwt: &'a Jwt) -> Self {
+        Self {
+            authenticated_users: Default::default(),
+            users_to_resubscribe: Default::default(),
+            resource_to_broadcast_for_branch: Default::default(),
+            client,
+            jwt,
+        }
+    }
 }
 
 #[macro_export]
@@ -88,9 +102,7 @@ pub trait TraitOperationServerInput {
 
     fn handle_operation<'a>(
         self: Box<Self>,
-        side_effects: &'a mut SideEffects,
-        client: &'a mut Self::Cli,
-        jwt: &'a Self::Jwt,
+        side_effects: &'a mut SideEffects<'_, Self::Cli, Self::Jwt>,
     ) -> Pin<Box<dyn Future<Output = Result<Result<TypeOperationDTOOk, TypeOperationDTOError>>> + 'a>>;
 }
 

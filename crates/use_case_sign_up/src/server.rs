@@ -20,9 +20,7 @@ pub async fn handle_operation_generic<
     Jwt: JWT,
 >(
     input: &Input,
-    side_effects: &mut SideEffects,
-    client: &mut Cli,
-    jwt: &Jwt,
+    side_effects: &mut SideEffects<'_, Cli, Jwt>,
 ) -> Result<MyResult> {
     let errr = input.state_less_check();
 
@@ -30,14 +28,14 @@ pub async fn handle_operation_generic<
         return Ok(Err(errr));
     }
 
-    let mut txn = client.begin_transaction().await?;
+    let mut txn = side_effects.client.begin_transaction().await?;
 
     let result: Result<MyResult> = async {
         let errr = input.state_full_check::<DBReader>(&mut txn).await?;
         if errr.is_there_error() {
             return Ok(Err(errr));
         }
-        let result = input.state_full_operation::<Jwt, Auth>(jwt);
+        let result = input.state_full_operation::<Jwt, Auth>(side_effects.jwt);
         DBWrite::write(&mut txn, &result).await?;
         Ok(Ok(result))
     }

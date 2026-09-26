@@ -16,9 +16,7 @@ pub async fn handle_operation_generic<
     Jwt: JWT,
 >(
     input: &Input,
-    side_effects: &mut SideEffects,
-    client: &mut Cli,
-    jwt: &Jwt,
+    side_effects: &mut SideEffects<'_, Cli, Jwt>,
 ) -> anyhow::Result<MyResult> {
     let mut errr = input.state_less_check();
     make_auth_check!(side_effects, input, errr);
@@ -27,7 +25,9 @@ pub async fn handle_operation_generic<
         return Ok(Err(errr));
     }
 
-    let ok = input.state_full_operation::<DBReader>(client).await?;
+    let ok = input
+        .state_full_operation::<DBReader>(side_effects.client)
+        .await?;
 
     Ok(Ok(ok))
 }

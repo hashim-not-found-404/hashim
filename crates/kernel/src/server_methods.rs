@@ -106,14 +106,9 @@ impl<Jwt: JWT, Db: Database<Client = Cli>, Cli: DBClient> ServerMethods<Jwt, Db>
                                 };
 
                                 dbg!(&input);
-                                let mut side_effects = SideEffects::default();
-                                let output = push_data::<Jwt, Cli, Cas>(
-                                    input,
-                                    &mut side_effects,
-                                    &mut client,
-                                    &self.jwt,
-                                )
-                                .await;
+                                let mut side_effects = SideEffects::new(&mut client, &self.jwt);
+                                let output =
+                                    push_data::<Jwt, Cli, Cas>(input, &mut side_effects).await;
 
                                 dbg!(&output);
                                 match output {
@@ -141,7 +136,7 @@ impl<Jwt: JWT, Db: Database<Client = Cli>, Cli: DBClient> ServerMethods<Jwt, Db>
 
                                 if !side_effects.users_to_resubscribe.is_empty() {
                                     let Ok(subs) = get_table_of_subscribed_data::<Cli>(
-                                        &mut client,
+                                        side_effects.client,
                                         &side_effects.users_to_resubscribe,
                                     )
                                     .await
@@ -295,11 +290,9 @@ impl<Jwt: JWT, Db: Database<Client = Cli>, Cli: DBClient> ServerMethods<Jwt, Db>
     }
 }
 
-async fn push_data<Jwt: JWT, Cli: DBClient, Cas: CastDTOToServer<Cli = Cli, Jwt = Jwt>>(
+async fn push_data<'a, Jwt: JWT, Cli: DBClient, Cas: CastDTOToServer<Cli = Cli, Jwt = Jwt>>(
     input: Input,
-    side_effects: &mut SideEffects,
-    client: &mut Cli,
-    jwt: &Jwt,
+    side_effects: &mut SideEffects<'a, Cli, Jwt>,
 ) -> Result<MyResult> {
     let mut the_return_result = MyResult {
         jwts: Vec::with_capacity(input.jwts.len()),
@@ -310,7 +303,7 @@ async fn push_data<Jwt: JWT, Cli: DBClient, Cas: CastDTOToServer<Cli = Cli, Jwt 
     let mut is_there_error = false;
 
     for jwt_value in &input.jwts {
-        if let Some(user_uuid) = jwt.validate(jwt_value.clone()) {
+        if let Some(user_uuid) = side_effects.jwt.validate(jwt_value.clone()) {
             side_effects.authenticated_users.insert(user_uuid);
         } else {
             the_return_result.jwts.push(Err(JWTError::Invalid));
@@ -323,7 +316,8 @@ async fn push_data<Jwt: JWT, Cli: DBClient, Cas: CastDTOToServer<Cli = Cli, Jwt 
         return Ok(the_return_result);
     }
 
-    let is_nonce_used = client
+    let is_nonce_used = side_effects
+        .client
         .write_nonce_if_not_used_and_return_is_nonce_used(&input.nonce)
         .await?;
 
@@ -337,7 +331,7 @@ async fn push_data<Jwt: JWT, Cli: DBClient, Cas: CastDTOToServer<Cli = Cli, Jwt 
 
     for transaction in input.operations {
         let input = Cas::cast_input(transaction.operation)?;
-        let result = input.handle_operation(side_effects, client, jwt).await?;
+        let result = input.handle_operation(side_effects).await?;
 
         the_return_result.operations.push(Txn {
             txn_number: transaction.txn_number,
