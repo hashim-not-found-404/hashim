@@ -13,6 +13,7 @@ pub fn my_macro(input: TokenStream) -> TokenStream {
     quote! {
         mod #mod_name {
             use crate::model::TypeModel;
+            use anyhow::Error;
             use anyhow::Result;
             use infrastructure::actors::MpscSender;
             use std::pin::Pin;
@@ -23,7 +24,6 @@ pub fn my_macro(input: TokenStream) -> TokenStream {
             use utility::process_manager::MessageToProcessManager;
             use utility::ui_effect::Aborters;
             use utility::ui_effect::UpdaterTrait;
-
             pub(crate) struct Wrapper(pub(crate) Message);
 
             impl UpdaterTrait for Wrapper {
@@ -34,6 +34,7 @@ pub fn my_macro(input: TokenStream) -> TokenStream {
                     cache: CacheStruct,
                     sender_to_process_manager: MpscSender<MessageToProcessManager>,
                     aborters: Aborters,
+                    sender_to_error: MpscSender<Error>,
                 ) -> Pin<Box<dyn Future<Output = Result<()>>>> {
                     Box::pin(async move {
                         update_generic(
@@ -43,9 +44,9 @@ pub fn my_macro(input: TokenStream) -> TokenStream {
                             cache,
                             sender_to_process_manager,
                             aborters,
+                            sender_to_error,
                         )
                         .await?;
-
                         Ok(())
                     })
                 }

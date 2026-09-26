@@ -140,10 +140,18 @@ pub async fn update_generic(
     cache: CacheStruct,
     mut sender_to_process_manager: MpscSender<MessageToProcessManager>,
     aborters: Aborters,
+    sender_to_error: MpscSender<anyhow::Error>,
 ) -> Result<()> {
     match message {
         Message::Submit => {
-            handle_submit(global_model, local_model, cache, sender_to_process_manager).await?;
+            handle_submit(
+                sender_to_error,
+                global_model,
+                local_model,
+                cache,
+                sender_to_process_manager,
+            )
+            .await?;
         }
         Message::Consent(i) => {
             sender_to_process_manager
@@ -220,6 +228,7 @@ fn handle_clean(local_model: Arc<impl LocalModel>) {
 }
 
 async fn handle_submit(
+    sender_to_error: MpscSender<anyhow::Error>,
     global_model: Arc<impl GlobalModel>,
     local_model: Arc<impl LocalModel>,
     cache: CacheStruct,
@@ -236,6 +245,7 @@ async fn handle_submit(
 
     let local_model1 = local_model.clone();
     handle_fall_back(
+        sender_to_error,
         cache,
         sender_to_process_manager,
         dialog_signal_adapter,

@@ -1,4 +1,5 @@
 use crate::cache::CacheStruct;
+use crate::handle_errors::handle_error;
 use crate::process_manager::MessageToProcessManager;
 use anyhow::Error;
 use anyhow::Result;
@@ -31,6 +32,7 @@ pub trait UpdaterTrait {
         cache: CacheStruct,
         sender_to_process_manager: MpscSender<MessageToProcessManager>,
         aborters: Aborters,
+        sender_to_error: MpscSender<Error>,
     ) -> Pin<Box<dyn Future<Output = Result<()>>>>;
 }
 
@@ -84,7 +86,7 @@ impl Commander {
     }
 
     fn commander_actor<Mdl, CasMsg>(
-        mut sender_to_error: MpscSender<Error>,
+        sender_to_error: MpscSender<Error>,
         mut receiver: MpscReceiver<Box<dyn MessageTrait>>,
         sender_to_process_manager: MpscSender<MessageToProcessManager>,
         model: Arc<Mdl>,
@@ -96,32 +98,35 @@ impl Commander {
         Rt::spawn_local(async move {
             let aborters = Aborters::default();
 
-            loop {
-                let message = receiver.recv().await.unwrap();
-                let message = match CasMsg::cast_message_to_updater(message) {
-                    Ok(ok) => ok,
-                    Err(err) => {
-                        let _ = sender_to_error.send(err);
-                        continue;
-                    }
-                };
+            handle_error::<(), _>(sender_to_error.clone(), async || {
+                loop {
+                    let message = receiver.recv().await?;
+                    let message = CasMsg::cast_message_to_updater(message)?;
 
-                let model = model.clone();
-                let cache = cache.clone();
-                let sender_to_process_manager = sender_to_process_manager.clone();
-                let aborters = aborters.clone();
-                let mut sender_to_error = sender_to_error.clone();
+                    let model = model.clone();
+                    let cache = cache.clone();
+                    let sender_to_process_manager = sender_to_process_manager.clone();
+                    let aborters = aborters.clone();
+                    let mut sender_to_error = sender_to_error.clone();
 
-                Rt::spawn_local(async move {
-                    let result = message
-                        .update(model, cache, sender_to_process_manager, aborters)
-                        .await;
+                    Rt::spawn_local(async move {
+                        let result = message
+                            .update(
+                                model,
+                                cache,
+                                sender_to_process_manager,
+                                aborters,
+                                sender_to_error.clone(),
+                            )
+                            .await;
 
-                    if let Err(err) = result {
-                        let _ = sender_to_error.send(err).await;
-                    }
-                });
-            }
+                        if let Err(err) = result {
+                            let _ = sender_to_error.send(err).await;
+                        }
+                    });
+                }
+            })
+            .await;
         });
     }
 }

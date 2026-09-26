@@ -72,7 +72,7 @@ where
         is_online,
     );
 
-    let sender_to_process_manager = process_manager_actor();
+    let sender_to_process_manager = process_manager_actor(sender_to_error.clone());
 
     Commander::new::<Mdl, CasMsg>(sender_to_error, sender_to_process_manager, model, cache)
 }

@@ -1,5 +1,6 @@
+use crate::handle_errors::handle_error;
 use anyhow::Context;
-use anyhow::Result;
+use anyhow::Error;
 use infrastructure::actors::Mpsc;
 use infrastructure::actors::MpscReceiver;
 use infrastructure::actors::MpscSender;
@@ -71,7 +72,9 @@ pub enum MessageToProcess {
     CancelOperation,
 }
 
-pub fn process_manager_actor() -> MpscSender<MessageToProcessManager> {
+pub fn process_manager_actor(
+    sender_to_error: MpscSender<Error>,
+) -> MpscSender<MessageToProcessManager> {
     let (sender, mut receiver): (
         MpscSender<MessageToProcessManager>,
         MpscReceiver<MessageToProcessManager>,
@@ -89,8 +92,8 @@ pub fn process_manager_actor() -> MpscSender<MessageToProcessManager> {
 
         let mut process_states = HashMap::<ProcessId, ProcessInfo>::new();
 
-        loop {
-            let _: Result<()> = async {
+        handle_error::<(), _>(sender_to_error, async || {
+            loop {
                 let msg: MessageToProcessManager = receiver.recv().await?;
 
                 match msg {
@@ -156,11 +159,9 @@ pub fn process_manager_actor() -> MpscSender<MessageToProcessManager> {
                         }
                     },
                 }
-
-                Ok(())
             }
-            .await;
-        }
+        })
+        .await;
     });
 
     sender

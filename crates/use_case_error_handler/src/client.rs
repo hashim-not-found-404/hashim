@@ -110,6 +110,7 @@ pub async fn update_generic(
     cache: CacheStruct,
     mut sender_to_process_manager: MpscSender<MessageToProcessManager>,
     aborters: Aborters,
+    sender_to_error: MpscSender<anyhow::Error>,
 ) -> Result<()> {
     match message {
         Message::DeleteOne(i) => {

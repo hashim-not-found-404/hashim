@@ -5,11 +5,13 @@ use crate::cache::Subscribe;
 use crate::cache::TypeOperationClientInput;
 use crate::cache::TypeOperationClientResult;
 use crate::dtos::TxnNumber;
+use crate::handle_errors::handle_error_one_time;
 use crate::process_manager::DialogType;
 use crate::process_manager::MessageFromProcess;
 use crate::process_manager::MessageToProcess;
 use crate::process_manager::MessageToProcessManager;
 use crate::process_manager::ProcessId;
+use anyhow::Error;
 use anyhow::Result;
 use infrastructure::actors::Mpsc;
 use infrastructure::actors::MpscSender;
@@ -23,6 +25,7 @@ use infrastructure::runtime::Rt;
 use infrastructure::runtime::Runtime;
 
 pub async fn handle_fall_back(
+    sender_to_error: MpscSender<Error>,
     mut cache: CacheStruct,
     mut sender_to_process_manager: MpscSender<MessageToProcessManager>,
     dialog: DialogType,
@@ -38,29 +41,32 @@ pub async fn handle_fall_back(
     let mut sender_to_process_manager1 = sender_to_process_manager.clone();
 
     let mut handle = Rt::abortable_spawn_local(async move {
-        let mut receiver_to_response = cache1
-            .send_to_cache_actor(CachingStrategy::WriteServerOnly, txn_number, data1)
-            .await
-            .unwrap();
+        handle_error_one_time(sender_to_error, async move || {
+            let mut receiver_to_response = cache1
+                .send_to_cache_actor(CachingStrategy::WriteServerOnly, txn_number, data1)
+                .await?;
 
-        match receiver_to_response.recv().await.unwrap() {
-            Response::CloseTheChannel | Response::ServerCannotBeReached => {}
-            Response::Data {
-                is_response_from_server,
-                data,
-            } => {
-                sender_to_process_manager1
-                    .send(MessageToProcessManager::FromProcess {
-                        process_id,
-                        message: MessageFromProcess::Response {
-                            is_response_from_server,
-                            is_response_ok: f1(data).unwrap(),
-                        },
-                    })
-                    .await
-                    .unwrap();
+            match receiver_to_response.recv().await? {
+                Response::CloseTheChannel | Response::ServerCannotBeReached => {}
+                Response::Data {
+                    is_response_from_server,
+                    data,
+                } => {
+                    sender_to_process_manager1
+                        .send(MessageToProcessManager::FromProcess {
+                            process_id,
+                            message: MessageFromProcess::Response {
+                                is_response_from_server,
+                                is_response_ok: f1(data)?,
+                            },
+                        })
+                        .await?;
+                }
             }
-        }
+
+            Ok(())
+        })
+        .await;
     });
 
     let (sender, mut receiver_to_process) = Mpsc::channel();
@@ -94,6 +100,7 @@ pub async fn handle_fall_back(
 }
 
 pub fn spawn_listener(
+    sender_to_error: MpscSender<Error>,
     mut cache: CacheStruct,
     list_of_subscribtion: &'static [Subscribe],
     data: TypeOperationClientInput,
@@ -101,56 +108,56 @@ pub fn spawn_listener(
 ) -> impl FnOnce() {
     let component_id = Rn::generate() as u16;
     let mut cache1 = cache.clone();
+    let sender_to_error1 = sender_to_error.clone();
 
     let mut handle = Rt::abortable_spawn_local(async move {
-        let mut receiver_to_poke = cache
-            .send_subs_to_cache_actor(component_id, list_of_subscribtion)
-            .await
-            .unwrap();
+        handle_error_one_time(sender_to_error1, async move || {
+            let mut receiver_to_poke = cache
+                .send_subs_to_cache_actor(component_id, list_of_subscribtion)
+                .await?;
 
-        cache
-            .send_to_cache_actor(
-                CachingStrategy::ReadServerOnly,
-                TxnNumber::default(),
-                data.clone(),
-            )
-            .await
-            .unwrap();
-
-        loop {
-            let value = cache
+            cache
                 .send_to_cache_actor(
-                    CachingStrategy::ReadCacheOnly,
+                    CachingStrategy::ReadServerOnly,
                     TxnNumber::default(),
                     data.clone(),
                 )
-                .await
-                .unwrap()
-                .recv()
-                .await
-                .unwrap();
+                .await?;
 
-            if let Response::Data { data, .. } = value {
-                is_error(data);
-            }
+            loop {
+                let value = cache
+                    .send_to_cache_actor(
+                        CachingStrategy::ReadCacheOnly,
+                        TxnNumber::default(),
+                        data.clone(),
+                    )
+                    .await?
+                    .recv()
+                    .await?;
 
-            if receiver_to_poke.recv().await.is_err() {
-                break;
+                if let Response::Data { data, .. } = value {
+                    is_error(data);
+                }
+
+                if receiver_to_poke.recv().await.is_err() {
+                    break;
+                }
             }
-        }
-        cache
-            .send_unsubs_to_cache_actor(component_id)
-            .await
-            .unwrap();
+            cache.send_unsubs_to_cache_actor(component_id).await?;
+
+            Ok(())
+        })
+        .await;
     });
 
     move || {
         Rt::spawn_local(async move {
-            handle.abort().await;
-            cache1
-                .send_unsubs_to_cache_actor(component_id)
-                .await
-                .unwrap();
+            handle_error_one_time(sender_to_error, async move || {
+                handle.abort().await;
+                cache1.send_unsubs_to_cache_actor(component_id).await?;
+                Ok(())
+            })
+            .await;
         });
     }
 }
