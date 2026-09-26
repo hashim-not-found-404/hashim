@@ -5,6 +5,7 @@ use crate::utils::send;
 use dioxus::prelude::*;
 use use_case_create_account::client::LocalModel as a;
 use use_case_error_handler::client::LocalModel as b;
+use use_case_sign_up::client::LocalModel as c;
 use utility_ui::domain::HashimSignal;
 
 #[derive(Debug, Clone, PartialEq, Routable)]
@@ -12,11 +13,11 @@ pub(crate) enum Route {
     #[layout(RootLayout)]
     // #[route("/")]
     // SignIn {},
-    // #[route("/sign_up")]
-    // SignUp {},
+    #[route("/")]
+    SignUp {},
     // #[route("/get_companies_and_branches")]
     // GetCompaniesAndBranches {},
-    #[route("/")]
+    #[route("/home")]
     Home {},
 }
 
@@ -27,7 +28,7 @@ fn RootLayout() -> Element {
             // navigator().push(Route::SignIn {});
         }
         Navigator::SignUp => {
-            // navigator().push(Route::SignUp {});
+            navigator().push(Route::SignUp {});
         }
         Navigator::GetCompaniesAndBranches(_) => {
             // navigator().push(Route::GetCompaniesAndBranches {});
@@ -76,4 +77,19 @@ fn Home() -> Element {
             account_name_error: MODEL.page_create_account.account_name_error().read(),
         }
     }
+}
+
+#[component]
+fn SignUp() -> Element {
+    rsx! {use_case_sign_up::ui::Component {
+        sender: move |msg| {
+            send(msg);
+        },
+        show_dialog: MODEL.page_sign_up.show_dialog().read() ,
+        user_id: MODEL.user_id.read() ,
+        user_name: MODEL.user_name.read() ,
+        password: MODEL.feature_state_auth.user_password.read() ,
+        error_user_id: MODEL.page_sign_up.error_user_id().read() ,
+        error_user_name: MODEL.page_sign_up.error_user_name().read() ,
+    }}
 }

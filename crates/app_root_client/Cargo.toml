@@ -20,7 +20,7 @@ utility_ui = { workspace = true, features = ["ui"] }
 use_case_create_account = { workspace = true, features = ["client", "cache", "ui"] }
 use_case_error_handler = { workspace = true, features = ["client", "ui"] }
 use_case_get_all_accounts = { workspace = true, features = ["client", "cache", "ui"] }
-use_case_sign_up = { workspace = true, features = ["client", "ui"] }
+use_case_sign_up = { workspace = true, features = ["client", "cache", "ui"] }
 
 anyhow = { workspace = true }
 serde = { workspace = true }

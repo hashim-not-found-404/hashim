@@ -1,5 +1,4 @@
 use anyhow::Result;
-use infrastructure::authentication::Auth;
 use infrastructure::authentication::HashedPassword;
 use infrastructure::jwt::JWT;
 use infrastructure::jwt::JsonWebTokenType;
@@ -107,7 +106,7 @@ impl Input {
         Ok(errr)
     }
 
-    pub(crate) fn state_full_operation<Jwt: JWT>(&self, jwt: &Jwt) -> Ok {
+    pub(crate) fn state_full_operation<Jwt: JWT, Auth: HashedPassword>(&self, jwt: &Jwt) -> Ok {
         let hashed_password = Auth::sign_up(&self.password);
         let jwt = jwt.sign(&self.user_uuid);
 

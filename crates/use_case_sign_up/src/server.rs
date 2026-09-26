@@ -4,6 +4,7 @@ use crate::domain::Ok;
 use crate::domain::ReadInput;
 use crate::domain::ReadOutput;
 use anyhow::Result;
+use infrastructure::authentication::Auth;
 use infrastructure::jwt::JWT;
 use kernel::server::DBClient;
 use kernel::server::DBTransaction;
@@ -36,7 +37,7 @@ pub async fn handle_operation_generic<
         if errr.is_there_error() {
             return Ok(Err(errr));
         }
-        let result = input.state_full_operation(jwt);
+        let result = input.state_full_operation::<Jwt, Auth>(jwt);
         DBWrite::write(&mut txn, &result).await?;
         Ok(Ok(result))
     }

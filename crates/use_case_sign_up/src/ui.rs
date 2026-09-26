@@ -42,7 +42,7 @@ pub fn Component(
     sender: EventHandler<Message>,
     show_dialog: Dialog,
     user_id: String,
-    user_name: String,
+    user_name: Option<String>,
     password: String,
     error_user_id: Option<String>,
     error_user_name: Option<String>,
@@ -68,7 +68,7 @@ pub fn Component(
                 oninput: move |event| {
                     sender(Message::UserName(event.value()));
                 },
-                value: user_name,
+                value: user_name.unwrap_or_default(),
             }
             if let Some(error) = error_user_name {
                 label { {error} }

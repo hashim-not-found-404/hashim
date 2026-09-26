@@ -2,7 +2,7 @@ use serde::Deserialize;
 use serde::Serialize;
 
 #[derive(Debug, Clone, Copy, Default, Deserialize, Serialize)]
-pub enum Navigator {
+pub(crate) enum Navigator {
     #[default]
     SignIn,
     SignUp,
@@ -11,20 +11,20 @@ pub enum Navigator {
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize)]
-pub enum GetCompaniesAndBranches {
+pub(crate) enum GetCompaniesAndBranches {
     None,
     CreateCompany,
     CreateCompanyBranch,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize)]
-pub struct HomeNav {
-    pub show_menu: bool,
-    pub page_to_present: Menu,
+pub(crate) struct HomeNav {
+    pub(crate) show_menu: bool,
+    pub(crate) page_to_present: Menu,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize)]
-pub enum Menu {
+pub(crate) enum Menu {
     Dashboard,
     CreateAccount,
     CreateAccountForBranch,
