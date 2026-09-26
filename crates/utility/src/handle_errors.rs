@@ -18,7 +18,7 @@ where
     }
 }
 
-pub async fn handle_error_one_time<F>(mut sender_to_error: MpscSender<Error>, mut f: F)
+pub async fn handle_error_one_time<F>(mut sender_to_error: MpscSender<Error>, f: F)
 where
     F: AsyncFnOnce() -> Result<()>,
 {

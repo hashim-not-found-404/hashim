@@ -1,7 +1,6 @@
 use anyhow::Context;
 use anyhow::Result;
 use infrastructure::actors::MpscReceiver;
-use infrastructure::actors::MpscSender;
 use infrastructure::actors::Receiver;
 use infrastructure::runtime::Rt;
 use infrastructure::runtime::Runtime;
@@ -13,10 +12,9 @@ use serde::Serialize;
 use std::backtrace::BacktraceStatus;
 use std::fmt::Debug;
 use std::sync::Arc;
-use utility::cache::CacheStruct;
-use utility::process_manager::MessageToProcessManager;
-use utility::ui_effect::Aborters;
 use utility::ui_effect::MessageTrait;
+use utility::ui_effect::Model;
+use utility::ui_effect::UiContext;
 use utility_ui::domain::HashimSignal;
 
 pub fn spawn_listener(
@@ -96,7 +94,7 @@ pub enum Message {
 
 impl MessageTrait for Message {}
 
-pub trait GlobalModel: 'static {}
+pub trait GlobalModel: Model {}
 
 pub trait LocalModel: 'static {
     fn is_expand_all(&self) -> impl HashimSignal<bool>;
@@ -105,12 +103,8 @@ pub trait LocalModel: 'static {
 
 pub async fn update_generic(
     message: Message,
-    global_model: Arc<impl GlobalModel>,
     local_model: Arc<impl LocalModel>,
-    cache: CacheStruct,
-    mut sender_to_process_manager: MpscSender<MessageToProcessManager>,
-    aborters: Aborters,
-    sender_to_error: MpscSender<anyhow::Error>,
+    context: UiContext<impl GlobalModel>,
 ) -> Result<()> {
     match message {
         Message::DeleteOne(i) => {

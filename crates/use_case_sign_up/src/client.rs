@@ -39,8 +39,9 @@ use utility::process_manager::MessageToProcessManager;
 use utility::process_manager::ProcessId;
 use utility::process_manager::UserConsent;
 use utility::types::MakeOptionIfEmpty;
-use utility::ui_effect::Aborters;
 use utility::ui_effect::MessageTrait;
+use utility::ui_effect::Model;
+use utility::ui_effect::UiContext;
 use utility::ui_orchestration::handle_fall_back;
 use utility_ui::domain::Dialog;
 use utility_ui::domain::HashimSignal;
@@ -106,7 +107,7 @@ type Type2 = Input;
 type Type3 = MyResult;
 type Type4 = MyResult;
 
-pub trait GlobalModel: 'static {
+pub trait GlobalModel: Model + 'static {
     fn is_auth_loading(&self) -> impl HashimSignal<bool>;
     fn user_uuid(&self) -> impl HashimSignal<Option<UserUuid>>;
     fn user_name(&self) -> impl HashimSignal<Option<String>>;
@@ -143,26 +144,23 @@ fn apply_on_the_model(output: &Type4, local_model: Arc<impl LocalModel>) {
 
 pub async fn update_generic(
     message: Message,
-    global_model: Arc<impl GlobalModel>,
     local_model: Arc<impl LocalModel>,
-    cache: CacheStruct,
-    mut sender_to_process_manager: MpscSender<MessageToProcessManager>,
-    aborters: Aborters,
-    sender_to_error: MpscSender<anyhow::Error>,
+    mut context: UiContext<impl GlobalModel>,
 ) -> Result<()> {
     match message {
         Message::Submit => {
             handle_submit(
-                sender_to_error,
-                global_model,
+                context.sender_to_error,
+                context.model,
                 local_model,
-                cache,
-                sender_to_process_manager,
+                context.cache,
+                context.sender_to_process_manager,
             )
             .await?;
         }
         Message::Consent(i) => {
-            sender_to_process_manager
+            context
+                .sender_to_process_manager
                 .send(MessageToProcessManager::FromUser {
                     process_id: local_model
                         .process_id()
@@ -173,16 +171,16 @@ pub async fn update_generic(
                 .await?;
         }
         Message::UserName(i) => {
-            global_model.user_name().set(i.none_if_empty());
-            handle_check(global_model, local_model, cache).await?;
+            context.model.user_name().set(i.none_if_empty());
+            handle_check(context.model, local_model, context.cache).await?;
         }
         Message::UserId(i) => {
-            global_model.user_id().set(i);
-            handle_check(global_model, local_model, cache).await?;
+            context.model.user_id().set(i);
+            handle_check(context.model, local_model, context.cache).await?;
         }
         Message::Password(i) => {
-            global_model.password().set(i);
-            handle_check(global_model, local_model, cache).await?;
+            context.model.password().set(i);
+            handle_check(context.model, local_model, context.cache).await?;
         }
         Message::GoToSignIn => todo!(),
     }

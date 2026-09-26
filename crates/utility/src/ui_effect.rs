@@ -23,16 +23,32 @@ pub trait Model: 'static {}
 
 pub trait MessageTrait: Any + Debug + 'static + Send + DynClone {}
 
+pub struct UiContext<Mdl: Model> {
+    pub model: Arc<Mdl>,
+    pub cache: CacheStruct,
+    pub sender_to_process_manager: MpscSender<MessageToProcessManager>,
+    pub aborters: Aborters,
+    pub sender_to_error: MpscSender<Error>,
+}
+
+impl<Mdl: Model> Clone for UiContext<Mdl> {
+    fn clone(&self) -> Self {
+        Self {
+            model: self.model.clone(),
+            cache: self.cache.clone(),
+            sender_to_process_manager: self.sender_to_process_manager.clone(),
+            aborters: self.aborters.clone(),
+            sender_to_error: self.sender_to_error.clone(),
+        }
+    }
+}
+
 pub trait UpdaterTrait {
     type Mdl: Model;
 
     fn update(
         self: Box<Self>,
-        model: Arc<Self::Mdl>,
-        cache: CacheStruct,
-        sender_to_process_manager: MpscSender<MessageToProcessManager>,
-        aborters: Aborters,
-        sender_to_error: MpscSender<Error>,
+        context: UiContext<Self::Mdl>,
     ) -> Pin<Box<dyn Future<Output = Result<()>>>>;
 }
 
@@ -98,27 +114,23 @@ impl Commander {
         Rt::spawn_local(async move {
             let aborters = Aborters::default();
 
+            let context = UiContext {
+                model,
+                cache,
+                sender_to_process_manager,
+                aborters,
+                sender_to_error: sender_to_error.clone(),
+            };
+
             handle_error::<(), _>(sender_to_error.clone(), async || {
                 loop {
                     let message = receiver.recv().await?;
                     let message = CasMsg::cast_message_to_updater(message)?;
-
-                    let model = model.clone();
-                    let cache = cache.clone();
-                    let sender_to_process_manager = sender_to_process_manager.clone();
-                    let aborters = aborters.clone();
+                    let context = context.clone();
                     let mut sender_to_error = sender_to_error.clone();
 
                     Rt::spawn_local(async move {
-                        let result = message
-                            .update(
-                                model,
-                                cache,
-                                sender_to_process_manager,
-                                aborters,
-                                sender_to_error.clone(),
-                            )
-                            .await;
+                        let result = message.update(context).await;
 
                         if let Err(err) = result {
                             let _ = sender_to_error.send(err).await;

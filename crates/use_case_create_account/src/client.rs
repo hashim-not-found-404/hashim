@@ -39,8 +39,9 @@ use utility::process_manager::MessageToProcessManager;
 use utility::process_manager::ProcessId;
 use utility::process_manager::UserConsent;
 use utility::types::MakeOptionIfEmpty;
-use utility::ui_effect::Aborters;
 use utility::ui_effect::MessageTrait;
+use utility::ui_effect::Model;
+use utility::ui_effect::UiContext;
 use utility::ui_orchestration::handle_fall_back;
 use utility_ui::domain::Dialog;
 use utility_ui::domain::HashimSignal;
@@ -100,7 +101,7 @@ type Type2 = Input;
 type Type3 = MyResult;
 type Type4 = MyResult;
 
-pub trait GlobalModel: 'static {
+pub trait GlobalModel: Model + 'static {
     fn user_uuid(&self) -> impl HashimSignal<Option<UserUuid>>;
     fn selected_company(&self) -> impl HashimSignal<Option<CompanyUuid>>;
 }
@@ -135,26 +136,23 @@ fn apply_on_the_model(output: &Type4, local_model: Arc<impl LocalModel>) {
 
 pub async fn update_generic(
     message: Message,
-    global_model: Arc<impl GlobalModel>,
     local_model: Arc<impl LocalModel>,
-    cache: CacheStruct,
-    mut sender_to_process_manager: MpscSender<MessageToProcessManager>,
-    aborters: Aborters,
-    sender_to_error: MpscSender<anyhow::Error>,
+    mut context: UiContext<impl GlobalModel>,
 ) -> Result<()> {
     match message {
         Message::Submit => {
             handle_submit(
-                sender_to_error,
-                global_model,
+                context.sender_to_error,
+                context.model,
                 local_model,
-                cache,
-                sender_to_process_manager,
+                context.cache,
+                context.sender_to_process_manager,
             )
             .await?;
         }
         Message::Consent(i) => {
-            sender_to_process_manager
+            context
+                .sender_to_process_manager
                 .send(MessageToProcessManager::FromUser {
                     process_id: local_model
                         .process_id()
@@ -169,7 +167,7 @@ pub async fn update_generic(
         Message::IsPermanentAccount(v) => local_model.is_permanent_account().set(v),
         Message::AccountName(v) => {
             local_model.account_name().set(v);
-            handle_check(global_model, local_model, cache).await?;
+            handle_check(context.model, local_model, context.cache).await?;
         }
         Message::Notes(v) => local_model.notes().set(v),
         Message::UnitOfMeasurementOfQuantity(v) => {
@@ -177,15 +175,17 @@ pub async fn update_generic(
         }
         Message::Subscribe => {
             fetch(
-                global_model
+                context
+                    .model
                     .selected_company()
                     .read()
                     .context("company uuid not found")?,
-                global_model
+                context
+                    .model
                     .user_uuid()
                     .read()
                     .context("user uuid not found")?,
-                cache,
+                context.cache,
             )
             .await?;
         }
