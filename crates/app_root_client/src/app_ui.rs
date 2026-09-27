@@ -85,6 +85,8 @@ fn SignUp() -> Element {
         sender: move |msg| {
             send(msg);
         },
+        on_back: move || {
+        },
         show_dialog: MODEL.page_sign_up.show_dialog().read() ,
         user_id: MODEL.user_id.read() ,
         user_name: MODEL.user_name.read() ,

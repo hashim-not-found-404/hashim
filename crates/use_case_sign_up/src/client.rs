@@ -97,7 +97,6 @@ pub enum Message {
     UserName(String),
     UserId(String),
     Password(String),
-    GoToSignIn,
 }
 
 impl MessageTrait for Message {}
@@ -182,7 +181,6 @@ pub async fn update_generic(
             context.model.password().set(i);
             handle_check(context.model, local_model, context.cache).await?;
         }
-        Message::GoToSignIn => todo!(),
     }
 
     Ok(())

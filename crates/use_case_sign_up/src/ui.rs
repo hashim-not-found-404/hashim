@@ -40,6 +40,7 @@ impl LocalModel for TypeLocalModel {
 #[component]
 pub fn Component(
     sender: EventHandler<Message>,
+    on_back: EventHandler<()>,
     show_dialog: Dialog,
     user_id: String,
     user_name: Option<String>,
@@ -100,7 +101,7 @@ pub fn Component(
             }
             button {
                 onclick: move |_| {
-                    sender(Message::GoToSignIn);
+                    on_back(());
                 },
                 "Back"
             }
