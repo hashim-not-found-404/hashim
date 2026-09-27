@@ -51,40 +51,37 @@ pub fn network_actor<Nw: Network + 'static>(
     Rt::spawn_local(async move {
         let mut ws: Option<Ws> = None;
 
-        handle_error(sender_to_error.clone(), async || {
-            let either = Rt::select(
-                (&mut receiver_to_network).recv(),
-                network_radar((&mut ws).as_mut()),
-            )
-            .await;
+        handle_error::<(), _>(sender_to_error.clone(), async || {
+            loop {
+                let either =
+                    Rt::select(receiver_to_network.recv(), network_radar(ws.as_mut())).await;
 
-            match either {
-                Either::One(data) => {
-                    let data = data?;
+                match either {
+                    Either::One(data) => {
+                        let data = data?;
 
-                    match &mut ws {
-                        Some(ws1) => {
-                            let result = ws1.send_bin(&data).await;
-                            if result.is_err() {
-                                connect::<Nw>(&mut network_utils, &url, &mut ws).await?;
+                        match &mut ws {
+                            Some(ws1) => {
+                                let result = ws1.send_bin(&data).await;
+                                if result.is_err() {
+                                    connect::<Nw>(&mut network_utils, &url, &mut ws).await?;
+                                }
                             }
+                            None => Rt::sleep(Nw::SLEEP_DURATION).await,
                         }
-                        None => Rt::sleep(Nw::SLEEP_DURATION).await,
                     }
+
+                    Either::Two(from_network) => match from_network {
+                        Ok(data) => {
+                            network_utils.network_sender(data).await?;
+                        }
+                        Err(error) => {
+                            sender_to_error.send(error).await?;
+                            connect::<Nw>(&mut network_utils, &url, &mut ws).await?;
+                        }
+                    },
                 }
-
-                Either::Two(from_network) => match from_network {
-                    Ok(data) => {
-                        (&mut network_utils).network_sender(data).await?;
-                    }
-                    Err(error) => {
-                        (&mut sender_to_error).send(error).await?;
-                        connect::<Nw>(&mut network_utils, &url, &mut ws).await?;
-                    }
-                },
             }
-
-            Ok(())
         })
         .await;
     });

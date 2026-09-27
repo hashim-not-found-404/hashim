@@ -171,7 +171,8 @@ pub enum JWTError {
 #[derive(Debug, PartialEq, Deserialize, Serialize)]
 pub enum HashimError {
     InternalServerError,
-    InvalidDataFormat,
+    InvalidDataFormatCameFromServer,
+    InvalidDataFormatCameFromClient,
     ConnectionClosed,
 }
 
@@ -180,9 +181,14 @@ impl Error for HashimError {}
 impl Display for HashimError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            HashimError::InternalServerError => write!(f, "Internal Server Error"),
-            HashimError::InvalidDataFormat => write!(f, "Invalid Data Format"),
-            HashimError::ConnectionClosed => write!(f, "Connection Closed"),
+            HashimError::InternalServerError => write!(f, "InternalServerError"),
+            HashimError::InvalidDataFormatCameFromServer => {
+                write!(f, "InvalidDataFormatCameFromServer")
+            }
+            HashimError::InvalidDataFormatCameFromClient => {
+                write!(f, "InvalidDataFormatCameFromClient")
+            }
+            HashimError::ConnectionClosed => write!(f, "ConnectionClosed"),
         }
     }
 }

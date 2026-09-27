@@ -79,10 +79,11 @@ impl<Jwt: JWT, Db: Database<Client = Cli>, Cli: DBClient> ServerMethods<Jwt, Db>
                         match msg {
                             WSMessage::Close => break,
                             WSMessage::Binary(received_data) => {
+                                dbg!(&received_data);
                                 let Ok(input) = Ed::decode::<Input>(&received_data) else {
                                     if session
                                         .send_bin(Ed::encode(&FromServer::Error(
-                                            HashimError::InvalidDataFormat,
+                                            HashimError::InvalidDataFormatCameFromClient,
                                         )))
                                         .await
                                         .is_err()
@@ -91,6 +92,8 @@ impl<Jwt: JWT, Db: Database<Client = Cli>, Cli: DBClient> ServerMethods<Jwt, Db>
                                     }
                                     continue;
                                 };
+
+                                dbg!(&input);
 
                                 let Ok(mut client) = self.database.get_client().await else {
                                     if session
