@@ -1,11 +1,9 @@
 use crate::handle_errors::handle_error;
-use anyhow::Context;
 use anyhow::Error;
 use anyhow::Result;
 use infrastructure::actors::MpscReceiver;
 use infrastructure::actors::MpscSender;
 use infrastructure::actors::Receiver;
-use infrastructure::actors::Sender;
 use infrastructure::runtime::Either;
 use infrastructure::runtime::Rt;
 use infrastructure::runtime::Runtime;
@@ -19,67 +17,37 @@ pub trait Network {
     fn network_sender(&mut self, data: Vec<u8>) -> impl Future<Output = Result<()>>;
 }
 
-async fn network_radar(ws: Option<&mut Ws>) -> Result<Vec<u8>> {
-    ws.context("web socket connection not found")?
-        .receive_bin()
-        .await
-}
-
-async fn connect<Nw: Network>(
-    network_utils: &mut Nw,
-    url: impl AsRef<str>,
-    ws: &mut Option<Ws>,
-) -> Result<()> {
+async fn connect<Nw: Network>(network_utils: &mut Nw, url: impl AsRef<str>) -> Result<Ws> {
     network_utils.network_state(false).await?;
-
-    if let Ok(ok) = Ws::connect(url.as_ref()).await {
-        *ws = Some(ok);
-        network_utils.network_state(true).await?;
-        return Ok(());
+    loop {
+        if let Ok(ok) = Ws::connect(url.as_ref()).await {
+            network_utils.network_state(true).await?;
+            return Ok(ok);
+        }
+        Rt::sleep(Nw::SLEEP_DURATION).await;
     }
-    Rt::sleep(Nw::SLEEP_DURATION).await;
-
-    Ok(())
 }
 
 pub fn network_actor<Nw: Network + 'static>(
     mut receiver_to_network: MpscReceiver<Vec<u8>>,
-    mut sender_to_error: MpscSender<Error>,
+    sender_to_error: MpscSender<Error>,
     mut network_utils: Nw,
     url: impl AsRef<str> + 'static,
 ) {
     Rt::spawn_local(async move {
-        let mut ws: Option<Ws> = None;
-
         handle_error::<(), _>(sender_to_error.clone(), async || {
+            let mut ws: Ws = connect::<Nw>(&mut network_utils, &url).await?;
+
             loop {
-                let either =
-                    Rt::select(receiver_to_network.recv(), network_radar(ws.as_mut())).await;
+                let either = Rt::select(receiver_to_network.recv(), ws.receive_bin()).await;
 
                 match either {
                     Either::One(data) => {
-                        let data = data?;
-
-                        match &mut ws {
-                            Some(ws1) => {
-                                let result = ws1.send_bin(&data).await;
-                                if result.is_err() {
-                                    connect::<Nw>(&mut network_utils, &url, &mut ws).await?;
-                                }
-                            }
-                            None => Rt::sleep(Nw::SLEEP_DURATION).await,
-                        }
+                        ws.send_bin(&data?).await?;
                     }
-
-                    Either::Two(from_network) => match from_network {
-                        Ok(data) => {
-                            network_utils.network_sender(data).await?;
-                        }
-                        Err(error) => {
-                            sender_to_error.send(error).await?;
-                            connect::<Nw>(&mut network_utils, &url, &mut ws).await?;
-                        }
-                    },
+                    Either::Two(data) => {
+                        network_utils.network_sender(data?).await?;
+                    }
                 }
             }
         })
