@@ -107,7 +107,6 @@ type Type3 = MyResult;
 type Type4 = MyResult;
 
 pub trait GlobalModel: Model + 'static {
-    fn is_authenticated(&self) -> impl HashimSignal<bool>;
     fn is_auth_loading(&self) -> impl HashimSignal<bool>;
     fn user_uuid(&self) -> impl HashimSignal<Option<UserUuid>>;
     fn user_name(&self) -> impl HashimSignal<Option<String>>;
@@ -122,14 +121,44 @@ pub trait LocalModel: 'static {
     fn error_user_name(&self) -> impl HashimSignal<Option<String>>;
 }
 
-fn apply_on_the_model(
+fn apply_on_the_model_for_submit(
     output: &Type4,
     local_model: Arc<impl LocalModel>,
     global_model: Arc<impl GlobalModel>,
 ) {
     match output {
         Ok(ok) => {
+            local_model.process_id().reset();
+            local_model.error_user_id().reset();
+            local_model.error_user_name().reset();
+
             global_model.user_uuid().set(Some(ok.new_uuid.clone()));
+            global_model.user_name().set(ok.user_name.clone());
+            global_model.user_id().set(ok.user_id.clone());
+            local_model.error_user_id().reset();
+            local_model.error_user_name().reset();
+        }
+        Err(business_error) => {
+            local_model.error_user_id().set(
+                business_error
+                    .user_id
+                    .as_ref()
+                    .map(|_| String::from("duplicated user")),
+            );
+            local_model
+                .error_user_name()
+                .set(business_error.name.clone());
+        }
+    }
+}
+
+fn apply_on_the_model_for_check(
+    output: &Type4,
+    local_model: Arc<impl LocalModel>,
+    global_model: Arc<impl GlobalModel>,
+) {
+    match output {
+        Ok(ok) => {
             global_model.user_name().set(ok.user_name.clone());
             global_model.user_id().set(ok.user_id.clone());
             local_model.error_user_id().reset();
@@ -203,12 +232,6 @@ fn build_input(global_model: Arc<impl GlobalModel>) -> Result<Type1> {
     })
 }
 
-fn handle_clean(local_model: Arc<impl LocalModel>) {
-    local_model.process_id().reset();
-    local_model.error_user_id().reset();
-    local_model.error_user_name().reset();
-}
-
 async fn handle_submit(
     sender_to_error: MpscSender<anyhow::Error>,
     global_model: Arc<impl GlobalModel>,
@@ -250,13 +273,8 @@ async fn handle_submit(
                     Err(a)
                 }
             };
-            apply_on_the_model(&result, local_model.clone(), global_model.clone());
-
+            apply_on_the_model_for_submit(&result, local_model.clone(), global_model.clone());
             let is_ok = result.is_ok();
-            if is_ok {
-                handle_clean(local_model.clone());
-                global_model.is_authenticated().set(true);
-            }
 
             Ok(is_ok)
         },
@@ -304,7 +322,7 @@ async fn handle_check(
                     Err(a)
                 }
             };
-            apply_on_the_model(&result, local_model.clone(), global_model.clone());
+            apply_on_the_model_for_check(&result, local_model.clone(), global_model.clone());
         }
     }
 

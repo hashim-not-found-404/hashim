@@ -37,7 +37,7 @@ fn RootLayout() -> Element {
           // }
     }
 
-    if MODEL.is_authenticated.read() {
+    if MODEL.user_uuid.read().is_some() {
         navigator().push(Route::Home {});
     }
 
