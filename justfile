@@ -78,3 +78,11 @@ run_client: fmt
 udeps:
     clear
     RUSTFLAGS="-A warnings" cargo +nightly udeps --all-targets
+
+run_db:
+    clear
+    cockroach start-single-node --insecure --store=trush
+
+push_schema:
+    clear
+    cockroach sql --file crates/app_root_server/schema/tables.sql --insecure

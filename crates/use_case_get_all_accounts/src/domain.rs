@@ -15,13 +15,13 @@ use utility::dtos::TraitOperationDTOError;
 use utility::dtos::TraitOperationDTOInput;
 use utility::dtos::TraitOperationDTOOk;
 
-#[serde]
+#[serde(name = "get_all_accounts")]
 impl TraitOperationDTOInput for Input {}
 
-#[serde]
+#[serde(name = "get_all_accounts")]
 impl TraitOperationDTOOk for Ok {}
 
-#[serde]
+#[serde(name = "get_all_accounts")]
 impl TraitOperationDTOError for Error {}
 
 pub type MyResult = Result<Ok, Error>;
