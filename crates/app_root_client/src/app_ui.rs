@@ -32,10 +32,13 @@ fn RootLayout() -> Element {
         }
         Navigator::GetCompaniesAndBranches(_) => {
             // navigator().push(Route::GetCompaniesAndBranches {});
-        }
-        Navigator::Home(_) => {
-            navigator().push(Route::Home {});
-        }
+        } // Navigator::Home(_) => {
+          //     navigator().push(Route::Home {});
+          // }
+    }
+
+    if MODEL.is_authenticated.read() {
+        navigator().push(Route::Home {});
     }
 
     rsx! {

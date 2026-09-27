@@ -14,6 +14,7 @@ impl Model for TypeModel {}
 
 #[derive(Default)]
 pub(crate) struct TypeModel {
+    pub(crate) is_authenticated: MySignal<bool>,
     pub(crate) user_uuid: MySignal<Option<UserUuid>>,
     pub(crate) selected_company_branch: MySignal<Option<BranchUuid>>,
     pub(crate) selected_company: MySignal<Option<CompanyUuid>>,
@@ -58,6 +59,10 @@ impl use_case_create_account::client::GlobalModel for TypeModel {
 impl use_case_error_handler::client::GlobalModel for TypeModel {}
 
 impl use_case_sign_up::client::GlobalModel for TypeModel {
+    fn is_authenticated(&self) -> impl HashimSignal<bool> {
+        self.is_authenticated.clone()
+    }
+
     fn is_auth_loading(&self) -> impl HashimSignal<bool> {
         self.feature_state_auth.is_loading.clone()
     }

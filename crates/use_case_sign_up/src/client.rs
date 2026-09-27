@@ -107,6 +107,7 @@ type Type3 = MyResult;
 type Type4 = MyResult;
 
 pub trait GlobalModel: Model + 'static {
+    fn is_authenticated(&self) -> impl HashimSignal<bool>;
     fn is_auth_loading(&self) -> impl HashimSignal<bool>;
     fn user_uuid(&self) -> impl HashimSignal<Option<UserUuid>>;
     fn user_name(&self) -> impl HashimSignal<Option<String>>;
@@ -121,9 +122,16 @@ pub trait LocalModel: 'static {
     fn error_user_name(&self) -> impl HashimSignal<Option<String>>;
 }
 
-fn apply_on_the_model(output: &Type4, local_model: Arc<impl LocalModel>) {
+fn apply_on_the_model(
+    output: &Type4,
+    local_model: Arc<impl LocalModel>,
+    global_model: Arc<impl GlobalModel>,
+) {
     match output {
-        Ok(_) => {
+        Ok(ok) => {
+            global_model.user_uuid().set(Some(ok.new_uuid.clone()));
+            global_model.user_name().set(ok.user_name.clone());
+            global_model.user_id().set(ok.user_id.clone());
             local_model.error_user_id().reset();
             local_model.error_user_name().reset();
         }
@@ -186,10 +194,7 @@ pub async fn update_generic(
     Ok(())
 }
 
-fn build_input(
-    global_model: Arc<impl GlobalModel>,
-    local_model: Arc<impl LocalModel>,
-) -> Result<Type1> {
+fn build_input(global_model: Arc<impl GlobalModel>) -> Result<Type1> {
     Ok(Input {
         user_uuid: UserUuid::from(UuidType::from(Id::generate())),
         name: global_model.user_name().read(),
@@ -213,10 +218,11 @@ async fn handle_submit(
 ) -> Result<()> {
     let process_id = ProcessId::default();
     local_model.process_id().set(Some(process_id));
+    let global_model1 = global_model.clone();
 
     let dialog_signal_adapter = Arc::new(DialogSignalAdapter(local_model.show_dialog()));
 
-    let data = build_input(global_model.clone(), local_model.clone())?;
+    let data = build_input(global_model.clone())?;
 
     let data: TypeOperationClientInput = Arc::new(data);
 
@@ -244,11 +250,12 @@ async fn handle_submit(
                     Err(a)
                 }
             };
-            apply_on_the_model(&result, local_model.clone());
+            apply_on_the_model(&result, local_model.clone(), global_model.clone());
 
             let is_ok = result.is_ok();
             if is_ok {
                 handle_clean(local_model.clone());
+                global_model.is_authenticated().set(true);
             }
 
             Ok(is_ok)
@@ -256,7 +263,7 @@ async fn handle_submit(
     )
     .await?;
 
-    global_model.clone().is_auth_loading().reset();
+    global_model1.clone().is_auth_loading().reset();
 
     Ok(())
 }
@@ -266,7 +273,7 @@ async fn handle_check(
     local_model: Arc<impl LocalModel>,
     mut cache: CacheStruct,
 ) -> Result<()> {
-    let data = build_input(global_model, local_model.clone())?;
+    let data = build_input(global_model.clone())?;
 
     let data: TypeOperationClientInput = Arc::new(data);
 
@@ -292,12 +299,12 @@ async fn handle_check(
                 Err(err) => {
                     let a = err;
                     let a: Box<dyn Any> = a;
-                    let a: Box<Error> = a.downcast().map_err(|_| anyhow!(""))?;
+                    let a: Box<Error> = a.downcast().map_err(|_| anyhow!("downcast error"))?;
                     let a: Error = a.as_ref().clone();
                     Err(a)
                 }
             };
-            apply_on_the_model(&result, local_model);
+            apply_on_the_model(&result, local_model.clone(), global_model.clone());
         }
     }
 

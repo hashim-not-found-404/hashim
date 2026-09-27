@@ -7,7 +7,7 @@ pub(crate) enum Navigator {
     SignIn,
     SignUp,
     GetCompaniesAndBranches(GetCompaniesAndBranches),
-    Home(HomeNav),
+    // Home(HomeNav),
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize)]
