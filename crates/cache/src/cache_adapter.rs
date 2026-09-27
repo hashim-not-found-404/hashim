@@ -39,10 +39,14 @@ impl Cache for S {
         const TRANSACTIONS_SCHEMA: &str = include_str!("../schema/transactions.sql");
         transactions_db.execute_batch(TRANSACTIONS_SCHEMA)?;
 
-        Ok(Self {
+        let s = Self {
             tables_db,
             transactions_db,
-        })
+        };
+
+        s.start_pending_txn_state().await?;
+
+        Ok(s)
     }
 
     async fn get_all_pending_txn(&self) -> Result<Vec<Txn<Vec<u8>>>> {
