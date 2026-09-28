@@ -61,7 +61,7 @@ mod target {
 
     #[derive(Debug, Deserialize, Serialize)]
     struct Claims<Subject> {
-        sub: Subject,
+        id: Subject,
         exp: u64,
     }
 
@@ -77,7 +77,7 @@ mod target {
             subject: &Subject,
         ) -> JsonWebTokenType {
             let claims = Claims {
-                sub: subject.clone(),
+                id: subject.clone(),
                 exp: exp_time(),
             };
 
@@ -100,7 +100,7 @@ mod target {
                 &DecodingKey::from_secret(&self.key),
                 &Validation::new(Algorithm::HS256),
             );
-            result.ok().map(|data| data.claims.sub)
+            result.ok().map(|data| data.claims.id)
         }
     }
 }
