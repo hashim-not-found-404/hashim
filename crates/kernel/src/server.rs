@@ -56,7 +56,7 @@ pub trait Database: Sized + 'static {
 pub(crate) type ListOfResources = HashMap<BranchUuid, Vec<TypeOperationDTOResource>>;
 
 #[derive(Debug)]
-pub struct SideEffects<'a, Cli: DBClient, Jwt: JWT> {
+pub struct SideEffects<'a, Cli: DBClient, Jwt: JWT<UserUuid>> {
     pub authenticated_users: HashSet<UserUuid>,
     pub users_to_resubscribe: HashSet<UserUuid>,
     pub resource_to_broadcast_for_branch: ListOfResources,
@@ -64,7 +64,7 @@ pub struct SideEffects<'a, Cli: DBClient, Jwt: JWT> {
     pub jwt: &'a Jwt,
 }
 
-impl<'a, Cli: DBClient, Jwt: JWT> SideEffects<'a, Cli, Jwt> {
+impl<'a, Cli: DBClient, Jwt: JWT<UserUuid>> SideEffects<'a, Cli, Jwt> {
     pub(crate) fn new(client: &'a mut Cli, jwt: &'a Jwt) -> Self {
         Self {
             authenticated_users: Default::default(),
@@ -98,7 +98,7 @@ pub trait WSServer: 'static {
 
 pub trait TraitOperationServerInput {
     type Cli: DBClient;
-    type Jwt: JWT;
+    type Jwt: JWT<UserUuid>;
 
     fn handle_operation<'a>(
         self: Box<Self>,
@@ -108,7 +108,7 @@ pub trait TraitOperationServerInput {
 
 pub trait CastDTOToServer {
     type Cli: DBClient;
-    type Jwt: JWT;
+    type Jwt: JWT<UserUuid>;
 
     fn cast_input(
         v: TypeOperationDTOInput,

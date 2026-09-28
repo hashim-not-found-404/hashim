@@ -4,6 +4,7 @@ use crate::domain::ReadInput;
 use crate::domain::ReadOutput;
 use infrastructure::jwt::JWT;
 use kernel::make_auth_check;
+use kernel::new_types::UserUuid;
 use kernel::server::DBClient;
 use kernel::server::SideEffects;
 use kernel::types::DatabaseRead;
@@ -13,7 +14,7 @@ use kernel::types::UserUuidError;
 pub async fn handle_operation_generic<
     Cli: DBClient,
     DBReader: for<'a> DatabaseRead<Db<'a> = Cli, Input = ReadInput, Output = ReadOutput>,
-    Jwt: JWT,
+    Jwt: JWT<UserUuid>,
 >(
     input: &Input,
     side_effects: &mut SideEffects<'_, Cli, Jwt>,

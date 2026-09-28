@@ -6,6 +6,7 @@ use crate::domain::ReadOutput;
 use anyhow::Result;
 use infrastructure::authentication::Auth;
 use infrastructure::jwt::JWT;
+use kernel::new_types::UserUuid;
 use kernel::server::DBClient;
 use kernel::server::DBTransaction;
 use kernel::server::SideEffects;
@@ -17,7 +18,7 @@ pub async fn handle_operation_generic<
     Cli: DBClient,
     DBReader: for<'a> DatabaseRead<Db<'a> = Cli::Txn<'a>, Input = ReadInput, Output = ReadOutput>,
     DBWrite: for<'a> DatabaseWrite<Db<'a> = Cli::Txn<'a>, Input = Ok>,
-    Jwt: JWT,
+    Jwt: JWT<UserUuid>,
 >(
     input: &Input,
     side_effects: &mut SideEffects<'_, Cli, Jwt>,

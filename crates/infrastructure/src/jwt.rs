@@ -18,16 +18,10 @@ impl From<String> for JsonWebTokenType {
     }
 }
 
-pub trait JWT: 'static {
+pub trait JWT<Subject: Serialize + for<'de> Deserialize<'de> + Clone>: 'static {
     fn new() -> Self;
-    fn sign<Subject: Serialize + for<'de> Deserialize<'de> + Clone>(
-        &self,
-        subject: &Subject,
-    ) -> JsonWebTokenType;
-    fn validate<Subject: Serialize + for<'de> Deserialize<'de> + Clone>(
-        &self,
-        token: JsonWebTokenType,
-    ) -> Option<Subject>;
+    fn sign(&self, subject: &Subject) -> JsonWebTokenType;
+    fn validate(&self, token: JsonWebTokenType) -> Option<Subject>;
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -65,17 +59,14 @@ mod target {
         exp: u64,
     }
 
-    impl JWT for S {
+    impl<Subject: Serialize + for<'de> Deserialize<'de> + Clone> JWT<Subject> for S {
         fn new() -> Self {
             Self {
                 key: Arc::new("key".into()),
             }
         }
 
-        fn sign<Subject: Serialize + for<'de> Deserialize<'de> + Clone>(
-            &self,
-            subject: &Subject,
-        ) -> JsonWebTokenType {
+        fn sign(&self, subject: &Subject) -> JsonWebTokenType {
             let claims = Claims {
                 id: subject.clone(),
                 exp: exp_time(),
@@ -91,10 +82,7 @@ mod target {
             )
         }
 
-        fn validate<Subject: Serialize + for<'de> Deserialize<'de> + Clone>(
-            &self,
-            token: JsonWebTokenType,
-        ) -> Option<Subject> {
+        fn validate(&self, token: JsonWebTokenType) -> Option<Subject> {
             let result = decode::<Claims<Subject>>(
                 &token.0,
                 &DecodingKey::from_secret(&self.key),

@@ -106,7 +106,10 @@ impl Input {
         Ok(errr)
     }
 
-    pub(crate) fn state_full_operation<Jwt: JWT, Auth: HashedPassword>(&self, jwt: &Jwt) -> Ok {
+    pub(crate) fn state_full_operation<Jwt: JWT<UserUuid>, Auth: HashedPassword>(
+        &self,
+        jwt: &Jwt,
+    ) -> Ok {
         let hashed_password = Auth::sign_up(&self.password);
         let jwt = jwt.sign(&self.user_uuid);
 

@@ -40,13 +40,13 @@ use utility::dtos::TypeOperationDTOResource;
 use utility::types::HashMapWithHashMapValue;
 use utility::types::LogError;
 
-pub struct ServerMethods<Jwt: JWT, Db: Database> {
+pub struct ServerMethods<Jwt: JWT<UserUuid>, Db: Database> {
     database: Db,
     jwt: Jwt,
     sender_to_broker: MpscSender<MessageToBroker>,
 }
 
-impl<Jwt: JWT, Db: Database<Client = Cli>, Cli: DBClient> ServerMethods<Jwt, Db> {
+impl<Jwt: JWT<UserUuid>, Db: Database<Client = Cli>, Cli: DBClient> ServerMethods<Jwt, Db> {
     pub async fn new() -> Result<Self> {
         let (sender_to_broker, receiver_to_broker) = Mpsc::channel();
         Self::broker_actor(receiver_to_broker);
@@ -293,7 +293,12 @@ impl<Jwt: JWT, Db: Database<Client = Cli>, Cli: DBClient> ServerMethods<Jwt, Db>
     }
 }
 
-async fn push_data<'a, Jwt: JWT, Cli: DBClient, Cas: CastDTOToServer<Cli = Cli, Jwt = Jwt>>(
+async fn push_data<
+    'a,
+    Jwt: JWT<UserUuid>,
+    Cli: DBClient,
+    Cas: CastDTOToServer<Cli = Cli, Jwt = Jwt>,
+>(
     input: Input,
     side_effects: &mut SideEffects<'a, Cli, Jwt>,
 ) -> Result<MyResult> {

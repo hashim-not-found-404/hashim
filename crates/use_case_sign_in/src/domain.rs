@@ -71,7 +71,7 @@ impl Input {
     /// returns `Ok` with a freshly signed JWT.
     pub(crate) async fn state_full_operation<
         Db: DatabaseRead<Input = ReadInput, Output = ReadOutput>,
-        Jwt: JWT,
+        Jwt: JWT<UserUuid>,
         Auth: HashedPassword,
     >(
         &self,
