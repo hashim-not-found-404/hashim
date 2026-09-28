@@ -11,6 +11,7 @@ pub type Ws = target::S;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod target {
     use super::WSClient;
+    use anyhow::Context;
     use anyhow::Result;
     use anyhow::bail;
     use futures::SinkExt;
@@ -45,15 +46,10 @@ pub mod target {
         }
 
         async fn receive_bin(&mut self) -> Result<Vec<u8>> {
-            match self.read.next().await {
-                Some(Ok(message)) => match message {
-                    Message::Text(_) => bail!("it's text"),
-                    Message::Binary(bytes) => Ok(bytes.to_vec()),
-                    Message::Close(_) => bail!("connection closed"),
-                    _ => bail!("other message type"),
-                },
-                Some(Err(e)) => Err(e.into()),
-                None => bail!("connection closed"),
+            match self.read.next().await.context("connection closed")?? {
+                Message::Binary(bytes) => Ok(bytes.to_vec()),
+                Message::Close(_) => bail!("connection closed"),
+                _ => bail!("message type not supported"),
             }
         }
     }
@@ -62,6 +58,7 @@ pub mod target {
 #[cfg(target_arch = "wasm32")]
 pub mod target {
     use super::WSClient;
+    use anyhow::Context;
     use anyhow::Result;
     use anyhow::bail;
     use futures_util::SinkExt;
@@ -80,7 +77,6 @@ pub mod target {
         async fn connect(url: &str) -> Result<Self> {
             let ws = WebSocket::open(url)?;
             let (mut write, read) = ws.split();
-            write.send(Message::Bytes(Vec::new())).await?;
 
             Ok(Self { write, read })
         }
@@ -92,13 +88,9 @@ pub mod target {
         }
 
         async fn receive_bin(&mut self) -> Result<Vec<u8>> {
-            match self.read.next().await {
-                Some(Ok(message)) => match message {
-                    Message::Text(_) => bail!("it's text"),
-                    Message::Bytes(bytes) => Ok(bytes.to_vec()),
-                },
-                Some(Err(e)) => Err(e.into()),
-                None => bail!("connection closed"),
+            match self.read.next().await.context("connection closed")?? {
+                Message::Bytes(bytes) => Ok(bytes.to_vec()),
+                _ => bail!("message type not supported"),
             }
         }
     }
