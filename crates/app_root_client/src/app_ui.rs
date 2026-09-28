@@ -91,7 +91,7 @@ fn SignIn() -> Element {
             sender: move |msg| {
                 send(msg);
             },
-            on_go_to_sign_up: move |_| send(Message::GoToSignUp),
+            on_go_to_sign_up: move || send(Message::GoToSignUp),
             show_dialog: MODEL.page_sign_in.show_dialog().read(),
             user_id: MODEL.user_id.read(),
             password: MODEL.feature_state_auth.user_password.read(),
@@ -108,7 +108,7 @@ fn SignUp() -> Element {
             sender: move |msg| {
                 send(msg);
             },
-            on_back: move |_| send(Message::GoToSignIn),
+            on_back: move || send(Message::GoToSignIn),
             show_dialog: MODEL.page_sign_up.show_dialog().read(),
             user_id: MODEL.user_id.read(),
             user_name: MODEL.user_name.read(),
