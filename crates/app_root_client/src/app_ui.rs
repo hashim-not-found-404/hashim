@@ -5,6 +5,7 @@ use crate::utils::init_commander_and_model;
 use crate::utils::send;
 use dioxus::prelude::*;
 use use_case_create_account::client::LocalModel as _;
+use use_case_create_company::client::LocalModel as _;
 use use_case_error_handler::client::LocalModel as _;
 use use_case_sign_in::client::LocalModel as _;
 use use_case_sign_up::client::LocalModel as _;
@@ -56,9 +57,7 @@ pub(crate) fn App() -> Element {
         // document::Link { rel: "stylesheet", href: MAIN_CSS }
         Router::<Route> {}
         use_case_error_handler::ui::Component {
-            sender: move |msg| {
-                send(msg);
-            },
+            sender: move |msg| send(msg),
             is_expand_all: MODEL.page_error_handler.is_expand_all().read(),
             errors: MODEL.page_error_handler.errors().read(),
         }
@@ -68,10 +67,16 @@ pub(crate) fn App() -> Element {
 #[component]
 fn Home() -> Element {
     rsx! {
+        use_case_create_company::ui::Component {
+            sender: move |msg| send(msg),
+            show_dialog: MODEL.page_create_company.show_dialog().read(),
+            is_loading: MODEL.page_create_company.is_loading().read(),
+            company_name: MODEL.page_create_company.company_name().read(),
+            currency: MODEL.page_create_company.currency().read(),
+            company_name_error: MODEL.page_create_company.company_name_error().read(),
+        }
         use_case_create_account::ui::Component {
-            sender: move |msg| {
-                send(msg);
-            },
+            sender: move |msg| send(msg),
             show_dialog: MODEL.page_create_account.show_dialog().read(),
             is_loading: MODEL.page_create_account.is_loading().read(),
             is_debit: MODEL.page_create_account.is_debit().read(),
@@ -88,9 +93,7 @@ fn Home() -> Element {
 fn SignIn() -> Element {
     rsx! {
         use_case_sign_in::ui::Component {
-            sender: move |msg| {
-                send(msg);
-            },
+            sender: move |msg| send(msg),
             on_go_to_sign_up: move || send(Message::GoToSignUp),
             show_dialog: MODEL.page_sign_in.show_dialog().read(),
             user_id: MODEL.user_id.read(),
@@ -105,9 +108,7 @@ fn SignIn() -> Element {
 fn SignUp() -> Element {
     rsx! {
         use_case_sign_up::ui::Component {
-            sender: move |msg| {
-                send(msg);
-            },
+            sender: move |msg| send(msg),
             on_back: move || send(Message::GoToSignIn),
             show_dialog: MODEL.page_sign_up.show_dialog().read(),
             user_id: MODEL.user_id.read(),

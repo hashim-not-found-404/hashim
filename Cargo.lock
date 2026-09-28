@@ -301,6 +301,7 @@ dependencies = [
  "patterns",
  "serde",
  "use_case_create_account",
+ "use_case_create_company",
  "use_case_error_handler",
  "use_case_get_all_accounts",
  "use_case_sign_in",
@@ -322,6 +323,7 @@ dependencies = [
  "patterns",
  "server",
  "use_case_create_account",
+ "use_case_create_company",
  "use_case_get_all_accounts",
  "use_case_sign_in",
  "use_case_sign_up",
@@ -4866,6 +4868,25 @@ dependencies = [
  "tokio",
  "typetag",
  "use_case_get_all_accounts",
+ "utility",
+ "utility_ui",
+]
+
+[[package]]
+name = "use_case_create_company"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "cache",
+ "const-random",
+ "database",
+ "dioxus",
+ "infrastructure",
+ "kernel",
+ "rusqlite",
+ "serde",
+ "tokio",
+ "typetag",
  "utility",
  "utility_ui",
 ]

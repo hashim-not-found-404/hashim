@@ -5,6 +5,7 @@ make_server_wrapper_write!(create_account);
 make_server_wrapper_read!(get_all_accounts);
 make_server_wrapper_write!(sign_up);
 make_server_wrapper_read!(sign_in);
+make_server_wrapper_write!(create_company);
 
 use anyhow::Result;
 use anyhow::bail;
@@ -41,6 +42,7 @@ impl CastDTOToServer for MyCaster {
         downcast!(v, use_case_create_account);
         downcast!(v, use_case_sign_in);
         downcast!(v, use_case_sign_up);
+        downcast!(v, use_case_create_company);
 
         bail!("downcast error")
     }

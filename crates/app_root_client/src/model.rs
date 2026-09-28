@@ -32,7 +32,7 @@ pub(crate) struct TypeModel {
     pub(crate) page_sign_up: Arc<use_case_sign_up::ui::TypeLocalModel>,
     pub(crate) page_sign_in: Arc<use_case_sign_in::ui::TypeLocalModel>,
     // pub(crate) page_company_branch_selection: Arc<use_case_company_branch_selection::ui::TypeLocalModel>,
-    // pub(crate) page_create_company: Arc<use_case_create_company::ui::TypeLocalModel>,
+    pub(crate) page_create_company: Arc<use_case_create_company::ui::TypeLocalModel>,
     // pub(crate) page_create_company_branch: Arc<use_case_create_company_branch::ui::TypeLocalModel>,
     pub(crate) page_create_account: Arc<use_case_create_account::ui::TypeLocalModel>,
     // pub(crate) page_create_account_for_branch: Arc<use_case_create_account_for_branch::ui::TypeLocalModel>,
@@ -98,5 +98,11 @@ impl use_case_sign_in::client::GlobalModel for TypeModel {
 
     fn password(&self) -> impl HashimSignal<String> {
         self.feature_state_auth.user_password.clone()
+    }
+}
+
+impl use_case_create_company::client::GlobalModel for TypeModel {
+    fn user_uuid(&self) -> impl HashimSignal<Option<UserUuid>> {
+        self.user_uuid.clone()
     }
 }

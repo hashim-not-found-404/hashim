@@ -73,7 +73,7 @@ impl Location {
     }
 }
 
-#[derive(Debug, Clone, Default, Deserialize, Serialize)]
+#[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
 pub enum Currency {
     #[default]
     USD,
