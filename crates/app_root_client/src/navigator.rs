@@ -38,9 +38,15 @@ pub(crate) enum Menu {
     CreateJournalEntry,
 }
 
-impl MessageTrait for Navigator {}
+#[derive(Debug, Clone)]
+pub(crate) enum Message {
+    GoToSignIn,
+    GoToSignUp,
+}
 
-impl UpdaterTrait for Navigator {
+impl MessageTrait for Message {}
+
+impl UpdaterTrait for Message {
     type Mdl = TypeModel;
 
     fn update(
@@ -48,10 +54,21 @@ impl UpdaterTrait for Navigator {
         context: UiContext<Self::Mdl>,
     ) -> Pin<Box<dyn Future<Output = Result<()>>>> {
         Box::pin(async move {
-            if context.model.navigator.read() == *self {
-                return Ok(());
+            match *self {
+                Message::GoToSignIn => {
+                    if context.model.feature_state_auth.is_loading.read() {
+                        return Ok(());
+                    }
+                    context.model.navigator.set(Navigator::SignIn);
+                }
+                Message::GoToSignUp => {
+                    if context.model.feature_state_auth.is_loading.read() {
+                        return Ok(());
+                    }
+                    context.model.navigator.set(Navigator::SignUp);
+                }
             }
-            context.model.navigator.set(*self);
+
             Ok(())
         })
     }
