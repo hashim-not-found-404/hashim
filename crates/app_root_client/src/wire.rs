@@ -15,6 +15,10 @@ make_client_wrapper_updater!(sign_up);
 make_client_wrapper_cache_check!(sign_up);
 make_client_wrapper_cache_write!(sign_up);
 
+make_client_wrapper_updater!(sign_in);
+make_client_wrapper_cache_check!(sign_in);
+make_client_wrapper_cache_write!(sign_in);
+
 use crate::model::TypeModel;
 use anyhow::Result;
 use anyhow::bail;
@@ -53,6 +57,9 @@ impl CastMessageToUpdater for MyCaster {
         if let Some(v) = v.downcast_ref::<use_case_error_handler::client::Message>() {
             return Ok(Box::new(updater_use_case_error_handler::Wrapper(v.clone())));
         };
+        if let Some(v) = v.downcast_ref::<use_case_sign_in::client::Message>() {
+            return Ok(Box::new(updater_use_case_sign_in::Wrapper(v.clone())));
+        };
         if let Some(v) = v.downcast_ref::<use_case_sign_up::client::Message>() {
             return Ok(Box::new(updater_use_case_sign_up::Wrapper(v.clone())));
         };
@@ -79,6 +86,9 @@ impl CastClientToCache for MyCaster {
                 v.clone(),
             )));
         };
+        if let Some(v) = v.downcast_ref::<use_case_sign_in::domain::Input>() {
+            return Ok(Box::new(cache_check_use_case_sign_in::Wrapper(v.clone())));
+        };
         if let Some(v) = v.downcast_ref::<use_case_sign_up::domain::Input>() {
             return Ok(Box::new(cache_check_use_case_sign_up::Wrapper(v.clone())));
         };
@@ -101,6 +111,9 @@ impl CastClientToCache for MyCaster {
                 v.clone(),
             )));
         };
+        if let Some(v) = v.downcast_ref::<use_case_sign_in::domain::Ok>() {
+            return Ok(Box::new(cache_write_use_case_sign_in::Wrapper(v.clone())));
+        };
         if let Some(v) = v.downcast_ref::<use_case_sign_up::domain::Ok>() {
             return Ok(Box::new(cache_write_use_case_sign_up::Wrapper(v.clone())));
         };
@@ -119,6 +132,9 @@ impl CastDTOToClient for MyCaster {
         if let Some(v) = v.downcast_ref::<use_case_get_all_accounts::domain::Input>() {
             return Ok(Arc::new(v.clone()));
         };
+        if let Some(v) = v.downcast_ref::<use_case_sign_in::domain::Input>() {
+            return Ok(Arc::new(v.clone()));
+        };
         if let Some(v) = v.downcast_ref::<use_case_sign_up::domain::Input>() {
             return Ok(Arc::new(v.clone()));
         };
@@ -135,6 +151,9 @@ impl CastDTOToClient for MyCaster {
         if let Some(v) = v.downcast_ref::<use_case_get_all_accounts::domain::Ok>() {
             return Ok(Arc::new(v.clone()));
         };
+        if let Some(v) = v.downcast_ref::<use_case_sign_in::domain::Ok>() {
+            return Ok(Arc::new(v.clone()));
+        };
         if let Some(v) = v.downcast_ref::<use_case_sign_up::domain::Ok>() {
             return Ok(Arc::new(v.clone()));
         };
@@ -149,6 +168,9 @@ impl CastDTOToClient for MyCaster {
             return Ok(Box::new(v.clone()));
         };
         if let Some(v) = v.downcast_ref::<use_case_get_all_accounts::domain::Error>() {
+            return Ok(Box::new(v.clone()));
+        };
+        if let Some(v) = v.downcast_ref::<use_case_sign_in::domain::Error>() {
             return Ok(Box::new(v.clone()));
         };
         if let Some(v) = v.downcast_ref::<use_case_sign_up::domain::Error>() {

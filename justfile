@@ -28,7 +28,7 @@ check: fmt
     RUSTFLAGS="-A warnings" cargo check --all-targets --features="client,ui"
 
 test: fmt
-    RUSTFLAGS="-A warnings" cargo test -- --show-output
+    RUSTFLAGS="-A warnings" cargo test
 
 warn: fmt
     cargo clippy --all-targets --all-features -- -W clippy::pedantic
@@ -49,7 +49,7 @@ check_p crate_name: fmt
     RUSTFLAGS="-A warnings" cargo check -p {{crate_name}} --all-targets --features="client,ui"
 
 test_p crate_name: fmt
-    RUSTFLAGS="-A warnings" cargo test -p {{crate_name}} -- --show-output
+    RUSTFLAGS="-A warnings" cargo test -p {{crate_name}}
 
 warn_p crate_name: fmt
     cargo clippy -p {{crate_name}} --all-targets --all-features -- -W clippy::pedantic

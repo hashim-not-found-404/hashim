@@ -30,7 +30,7 @@ pub(crate) struct TypeModel {
 
     // pages
     pub(crate) page_sign_up: Arc<use_case_sign_up::ui::TypeLocalModel>,
-    // pub(crate) page_sign_in: Arc<use_case_sign_in::ui::TypeLocalModel>,
+    pub(crate) page_sign_in: Arc<use_case_sign_in::ui::TypeLocalModel>,
     // pub(crate) page_company_branch_selection: Arc<use_case_company_branch_selection::ui::TypeLocalModel>,
     // pub(crate) page_create_company: Arc<use_case_create_company::ui::TypeLocalModel>,
     // pub(crate) page_create_company_branch: Arc<use_case_create_company_branch::ui::TypeLocalModel>,
@@ -58,6 +58,28 @@ impl use_case_create_account::client::GlobalModel for TypeModel {
 impl use_case_error_handler::client::GlobalModel for TypeModel {}
 
 impl use_case_sign_up::client::GlobalModel for TypeModel {
+    fn is_auth_loading(&self) -> impl HashimSignal<bool> {
+        self.feature_state_auth.is_loading.clone()
+    }
+
+    fn user_uuid(&self) -> impl HashimSignal<Option<UserUuid>> {
+        self.user_uuid.clone()
+    }
+
+    fn user_name(&self) -> impl HashimSignal<Option<String>> {
+        self.user_name.clone()
+    }
+
+    fn user_id(&self) -> impl HashimSignal<String> {
+        self.user_id.clone()
+    }
+
+    fn password(&self) -> impl HashimSignal<String> {
+        self.feature_state_auth.user_password.clone()
+    }
+}
+
+impl use_case_sign_in::client::GlobalModel for TypeModel {
     fn is_auth_loading(&self) -> impl HashimSignal<bool> {
         self.feature_state_auth.is_loading.clone()
     }

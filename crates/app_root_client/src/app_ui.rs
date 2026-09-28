@@ -3,17 +3,18 @@ use crate::utils::MODEL;
 use crate::utils::init_commander_and_model;
 use crate::utils::send;
 use dioxus::prelude::*;
-use use_case_create_account::client::LocalModel as a;
-use use_case_error_handler::client::LocalModel as b;
-use use_case_sign_up::client::LocalModel as c;
+use use_case_create_account::client::LocalModel as _;
+use use_case_error_handler::client::LocalModel as _;
+use use_case_sign_in::client::LocalModel as _;
+use use_case_sign_up::client::LocalModel as _;
 use utility_ui::domain::HashimSignal;
 
 #[derive(Debug, Clone, PartialEq, Routable)]
 pub(crate) enum Route {
     #[layout(RootLayout)]
-    // #[route("/")]
-    // SignIn {},
     #[route("/")]
+    SignIn {},
+    #[route("/sign_up")]
     SignUp {},
     // #[route("/get_companies_and_branches")]
     // GetCompaniesAndBranches {},
@@ -25,7 +26,7 @@ pub(crate) enum Route {
 fn RootLayout() -> Element {
     match MODEL.navigator.read() {
         Navigator::SignIn => {
-            // navigator().push(Route::SignIn {});
+            navigator().push(Route::SignIn {});
         }
         Navigator::SignUp => {
             navigator().push(Route::SignUp {});
@@ -78,6 +79,24 @@ fn Home() -> Element {
             notes: MODEL.page_create_account.notes().read(),
             unit_of_measurement_of_quantity: MODEL.page_create_account.unit_of_measurement_of_quantity().read(),
             account_name_error: MODEL.page_create_account.account_name_error().read(),
+        }
+    }
+}
+
+#[component]
+fn SignIn() -> Element {
+    rsx! {
+        use_case_sign_in::ui::Component {
+            sender: move |msg| {
+                send(msg);
+            },
+            on_go_to_sign_up: move |_| {
+            },
+            show_dialog: MODEL.page_sign_in.show_dialog().read(),
+            user_id: MODEL.user_id.read(),
+            password: MODEL.feature_state_auth.user_password.read(),
+            error_user_id: MODEL.page_sign_in.error_user_id().read(),
+            error_password: MODEL.page_sign_in.error_password().read(),
         }
     }
 }

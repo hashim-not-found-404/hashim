@@ -303,6 +303,7 @@ dependencies = [
  "use_case_create_account",
  "use_case_error_handler",
  "use_case_get_all_accounts",
+ "use_case_sign_in",
  "use_case_sign_up",
  "utility",
  "utility_ui",
@@ -322,6 +323,7 @@ dependencies = [
  "server",
  "use_case_create_account",
  "use_case_get_all_accounts",
+ "use_case_sign_in",
  "use_case_sign_up",
  "utility",
 ]
@@ -4896,6 +4898,26 @@ dependencies = [
  "tokio",
  "typetag",
  "utility",
+ "uuid",
+]
+
+[[package]]
+name = "use_case_sign_in"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "cache",
+ "const-random",
+ "database",
+ "dioxus",
+ "infrastructure",
+ "kernel",
+ "rusqlite",
+ "serde",
+ "tokio",
+ "typetag",
+ "utility",
+ "utility_ui",
  "uuid",
 ]
 
