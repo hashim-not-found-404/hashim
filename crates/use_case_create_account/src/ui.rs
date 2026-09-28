@@ -99,7 +99,7 @@ pub fn Component(
                 },
                 value: account_name,
             }
-            if let Some(account_name_error) = account_name_error{
+            if let Some(account_name_error) = account_name_error {
                 label { {account_name_error} }
             }
             div {

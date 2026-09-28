@@ -34,9 +34,7 @@ pub fn Component(sender: EventHandler<Message>, is_expand_all: bool, errors: Err
     if !is_expand_all {
         let count = errors.0.len();
         return rsx! {
-            button { onclick: move |_| sender(Message::ExpandOrCollapseAll),
-                "⚠ {count} errors"
-            }
+            button { onclick: move |_| sender(Message::ExpandOrCollapseAll), "⚠ {count} errors" }
         };
     }
 
@@ -44,9 +42,7 @@ pub fn Component(sender: EventHandler<Message>, is_expand_all: bool, errors: Err
     rsx! {
         div {
             div {
-                button { onclick: move |_| sender(Message::ExpandOrCollapseAll),
-                    "Collapse All"
-                }
+                button { onclick: move |_| sender(Message::ExpandOrCollapseAll), "Collapse All" }
                 button { onclick: move |_| sender(Message::DeleteAll), "Delete All" }
             }
 
@@ -71,9 +67,7 @@ pub fn Component(sender: EventHandler<Message>, is_expand_all: bool, errors: Err
                                         "Show"
                                     }
                                 }
-                                button { onclick: move |_| { sender(Message::DeleteOne(index)) },
-                                    "X"
-                                }
+                                button { onclick: move |_| { sender(Message::DeleteOne(index)) }, "X" }
                             }
                             if is_error_expanded {
                                 if let Some(bt) = back_trace {

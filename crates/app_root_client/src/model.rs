@@ -14,11 +14,11 @@ impl Model for TypeModel {}
 
 #[derive(Default)]
 pub(crate) struct TypeModel {
+    pub(crate) navigator: MySignal<Navigator>,
+
     pub(crate) user_uuid: MySignal<Option<UserUuid>>,
     pub(crate) selected_company_branch: MySignal<Option<BranchUuid>>,
     pub(crate) selected_company: MySignal<Option<CompanyUuid>>,
-
-    pub(crate) navigator: MySignal<Navigator>,
 
     // global states
     pub(crate) page_error_handler: Arc<use_case_error_handler::ui::TypeLocalModel>,

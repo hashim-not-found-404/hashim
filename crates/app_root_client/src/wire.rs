@@ -20,6 +20,7 @@ make_client_wrapper_cache_check!(sign_in);
 make_client_wrapper_cache_write!(sign_in);
 
 use crate::model::TypeModel;
+use crate::navigator::Navigator;
 use anyhow::Result;
 use anyhow::bail;
 use cache::cache_adapter;
@@ -48,6 +49,10 @@ impl CastMessageToUpdater for MyCaster {
         v: Box<dyn MessageTrait>,
     ) -> Result<Box<dyn UpdaterTrait<Mdl = Self::Mdl>>> {
         let v: Box<dyn Any> = v;
+
+        if let Some(v) = v.downcast_ref::<Navigator>() {
+            return Ok(Box::new(v.clone()));
+        }
 
         if let Some(v) = v.downcast_ref::<use_case_create_account::client::Message>() {
             return Ok(Box::new(updater_use_case_create_account::Wrapper(

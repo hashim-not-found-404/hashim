@@ -90,8 +90,7 @@ fn SignIn() -> Element {
             sender: move |msg| {
                 send(msg);
             },
-            on_go_to_sign_up: move |_| {
-            },
+            on_go_to_sign_up: move |_| send(Navigator::SignUp),
             show_dialog: MODEL.page_sign_in.show_dialog().read(),
             user_id: MODEL.user_id.read(),
             password: MODEL.feature_state_auth.user_password.read(),
@@ -103,17 +102,18 @@ fn SignIn() -> Element {
 
 #[component]
 fn SignUp() -> Element {
-    rsx! {use_case_sign_up::ui::Component {
-        sender: move |msg| {
-            send(msg);
-        },
-        on_back: move || {
-        },
-        show_dialog: MODEL.page_sign_up.show_dialog().read() ,
-        user_id: MODEL.user_id.read() ,
-        user_name: MODEL.user_name.read() ,
-        password: MODEL.feature_state_auth.user_password.read() ,
-        error_user_id: MODEL.page_sign_up.error_user_id().read() ,
-        error_user_name: MODEL.page_sign_up.error_user_name().read() ,
-    }}
+    rsx! {
+        use_case_sign_up::ui::Component {
+            sender: move |msg| {
+                send(msg);
+            },
+            on_back: move |_| send(Navigator::SignIn),
+            show_dialog: MODEL.page_sign_up.show_dialog().read(),
+            user_id: MODEL.user_id.read(),
+            user_name: MODEL.user_name.read(),
+            password: MODEL.feature_state_auth.user_password.read(),
+            error_user_id: MODEL.page_sign_up.error_user_id().read(),
+            error_user_name: MODEL.page_sign_up.error_user_name().read(),
+        }
+    }
 }
