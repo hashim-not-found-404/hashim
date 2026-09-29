@@ -7,6 +7,7 @@ use kernel::new_types::UserUuid;
 use kernel::types::Currency;
 use kernel::types::DatabaseRead;
 use kernel::types::MarkerMyErrorTrait;
+use kernel::types::Role;
 use kernel::types::UserUuidError;
 use serde::Deserialize;
 use serde::Serialize;
@@ -42,6 +43,7 @@ pub struct CompanyWithBranches {
     pub uuid: CompanyUuid,
     pub name: String,
     pub currency: Currency,
+    pub roles: Vec<Role>,
     pub branches: Vec<BranchInfo>,
 }
 
@@ -49,8 +51,8 @@ pub struct CompanyWithBranches {
 pub struct BranchInfo {
     pub uuid: BranchUuid,
     pub name: String,
+    pub roles: Vec<Role>,
 }
-
 #[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
 pub struct Error {
     pub(crate) user_uuid: Option<UserUuidError>,

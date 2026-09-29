@@ -67,6 +67,7 @@ impl DatabaseRead for CacheOp {
                 uuid: uuid.into(),
                 name,
                 currency,
+                roles: Vec::new(),
                 branches: Vec::new(),
             });
         }
@@ -88,6 +89,7 @@ impl DatabaseRead for CacheOp {
             companies[idx].branches.push(BranchInfo {
                 uuid: uuid.into(),
                 name,
+                roles: Vec::new(),
             });
         }
 
@@ -103,30 +105,54 @@ const WRITE_BRANCH_QUERY: &str = "
     VALUES (?1, ?2, ?3)
 ";
 
+const WRITE_ACCESS_COMPANY_QUERY: &str = "
+    INSERT OR REPLACE INTO access_control_for_company (rowid, data_group, user_, role)
+    VALUES (?1, ?2, ?3, ?4)
+";
+
+const WRITE_ACCESS_BRANCH_QUERY: &str = "
+    INSERT OR REPLACE INTO access_control_for_company_branch (rowid, data_group, user_, role)
+    VALUES (?1, ?2, ?3, ?4)
+";
+
 impl DatabaseWrite for CacheOp {
     type Db<'a> = cache_adapter::S;
     type Input = Ok;
 
     async fn write(txn: &mut Self::Db<'_>, input: &Self::Input) -> Result<()> {
+        let user_uuid = input.user_uuid.to_string();
+
         for company in &input.companies {
+            let company_uuid = company.uuid.to_string();
+
             txn.tables_db.execute(
                 WRITE_COMPANY_QUERY,
-                params![
-                    company.uuid.to_string(),
-                    &company.name,
-                    company.currency.as_str(),
-                ],
+                params![&company_uuid, &company.name, company.currency.as_str()],
             )?;
 
+            for role in &company.roles {
+                let access_rowid = format!("{}_{}", company_uuid, role.as_str());
+                txn.tables_db.execute(
+                    WRITE_ACCESS_COMPANY_QUERY,
+                    params![&access_rowid, &company_uuid, &user_uuid, role.as_str()],
+                )?;
+            }
+
             for branch in &company.branches {
+                let branch_uuid = branch.uuid.to_string();
+
                 txn.tables_db.execute(
                     WRITE_BRANCH_QUERY,
-                    params![
-                        branch.uuid.to_string(),
-                        company.uuid.to_string(),
-                        &branch.name,
-                    ],
+                    params![&branch_uuid, &company_uuid, &branch.name],
                 )?;
+
+                for role in &branch.roles {
+                    let access_rowid = format!("{}_{}", branch_uuid, role.as_str());
+                    txn.tables_db.execute(
+                        WRITE_ACCESS_BRANCH_QUERY,
+                        params![&access_rowid, &branch_uuid, &user_uuid, role.as_str()],
+                    )?;
+                }
             }
         }
 
@@ -145,5 +171,7 @@ mod tests {
         test_query_helper_for_tables_schema(READ_BRANCHES_QUERY).unwrap();
         test_query_helper_for_tables_schema(WRITE_COMPANY_QUERY).unwrap();
         test_query_helper_for_tables_schema(WRITE_BRANCH_QUERY).unwrap();
+        test_query_helper_for_tables_schema(WRITE_ACCESS_COMPANY_QUERY).unwrap();
+        test_query_helper_for_tables_schema(WRITE_ACCESS_BRANCH_QUERY).unwrap();
     }
 }

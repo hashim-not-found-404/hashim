@@ -8,6 +8,7 @@ use database::utils::MyUuidConverter;
 use database::utils::MyUuidConverter1;
 use kernel::types::Currency;
 use kernel::types::DatabaseRead;
+use kernel::types::Role;
 use serde::Deserialize;
 use std::str::FromStr;
 use utility::types::LogError;
@@ -18,12 +19,20 @@ const READ_QUERY: &str = r#"
         SELECT
             c.rowid AS company_uuid,
             c.name AS company_name,
-            c.currency AS company_currency
+            c.currency AS company_currency,
+            acf.role AS role
         FROM accounting_app.access_control_for_company acf
         JOIN accounting_app.company c ON acf.data_group = c.rowid
         WHERE acf.user_ = $1
     ),
-    user_branches AS (
+    company_roles AS (
+        SELECT
+            company_uuid,
+            jsonb_agg(DISTINCT role) AS roles
+        FROM user_companies
+        GROUP BY company_uuid
+    ),
+    visible_branches AS (
         SELECT
             cb.rowid AS branch_uuid,
             cb.name AS branch_name,
@@ -34,22 +43,37 @@ const READ_QUERY: &str = r#"
                SELECT data_group FROM accounting_app.access_control_for_company_branch
                WHERE user_ = $1
            )
+    ),
+    branch_roles AS (
+        SELECT
+            data_group AS branch_uuid,
+            jsonb_agg(DISTINCT role) AS roles
+        FROM accounting_app.access_control_for_company_branch
+        WHERE user_ = $1
+        GROUP BY data_group
     )
     SELECT
-        uc.company_uuid::text,
-        uc.company_name,
-        uc.company_currency,
+        cr.company_uuid::text,
+        c.name AS company_name,
+        c.currency AS company_currency,
+        cr.roles AS company_roles,
         COALESCE(
             jsonb_agg(
-                jsonb_build_object('uuid', ub.branch_uuid::text, 'name', ub.branch_name)
-                ORDER BY ub.branch_name
-            ) FILTER (WHERE ub.branch_uuid IS NOT NULL),
+                jsonb_build_object(
+                    'uuid', b.branch_uuid::text,
+                    'name', b.branch_name,
+                    'roles', COALESCE(br.roles, '[]'::jsonb)
+                )
+                ORDER BY b.branch_name
+            ) FILTER (WHERE b.branch_uuid IS NOT NULL),
             '[]'::jsonb
         ) AS branches
-    FROM user_companies uc
-    LEFT JOIN user_branches ub ON ub.company_uuid = uc.company_uuid
-    GROUP BY uc.company_uuid, uc.company_name, uc.company_currency
-    ORDER BY uc.company_name
+    FROM company_roles cr
+    JOIN accounting_app.company c ON c.rowid = cr.company_uuid
+    LEFT JOIN visible_branches b ON b.company_uuid = cr.company_uuid
+    LEFT JOIN branch_roles br ON br.branch_uuid = b.branch_uuid
+    GROUP BY cr.company_uuid, c.name, c.currency, cr.roles
+    ORDER BY c.name
 "#;
 
 pub struct DataBaseOp;
@@ -71,6 +95,7 @@ impl DatabaseRead for DataBaseOp {
         struct BranchJson {
             uuid: String,
             name: String,
+            roles: Vec<Role>,
         }
 
         let mut companies = Vec::with_capacity(rows.len());
@@ -78,10 +103,12 @@ impl DatabaseRead for DataBaseOp {
             let company_uuid_str: String = row.try_get(0).log()?;
             let company_name: String = row.try_get(1).log()?;
             let company_currency_str: String = row.try_get(2).log()?;
-            let branches_json: serde_json::Value = row.try_get(3).log()?;
+            let company_roles_json: serde_json::Value = row.try_get(3).log()?;
+            let branches_json: serde_json::Value = row.try_get(4).log()?;
 
             let company_uuid = Uuid::parse_str(&company_uuid_str).log()?.to_uuid();
             let currency = Currency::from_str(&company_currency_str).log()?;
+            let roles: Vec<Role> = serde_json::from_value(company_roles_json).log()?;
 
             let raw_branches: Vec<BranchJson> = serde_json::from_value(branches_json).log()?;
             let branches = raw_branches
@@ -91,6 +118,7 @@ impl DatabaseRead for DataBaseOp {
                     Ok(BranchInfo {
                         uuid: uuid.into(),
                         name: b.name,
+                        roles: b.roles,
                     })
                 })
                 .collect::<Result<Vec<_>, anyhow::Error>>()
@@ -100,6 +128,7 @@ impl DatabaseRead for DataBaseOp {
                 uuid: company_uuid.into(),
                 name: company_name,
                 currency,
+                roles,
                 branches,
             });
         }
