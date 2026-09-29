@@ -365,13 +365,13 @@ async fn message_handler<
 
                             let sender = pool_of_senders.remove(&txn_number);
                             if let Some(mut sender) = sender {
-                                sender
+                                let _ = sender
                                     .send(Response::Data {
                                         is_response_from_server: true,
                                         data: operation,
                                     })
-                                    .await?;
-                                sender.send(Response::CloseTheChannel).await?;
+                                    .await;
+                                let _ = sender.send(Response::CloseTheChannel).await;
                             }
                         }
 
@@ -393,7 +393,7 @@ async fn message_handler<
                             &*pool_of_subscribes,
                             &subs_to_poke,
                         )
-                        .await?;
+                        .await;
                     }
                     MessageFromServer::Resources(resources) => {
                         cache.clear_pending_txn_state().await?;
@@ -410,7 +410,7 @@ async fn message_handler<
                             &*pool_of_subscribes,
                             &subs_to_poke,
                         )
-                        .await?;
+                        .await;
 
                         cache.start_pending_txn_state().await?;
                         let txns = cache.get_all_pending_txn().await?;
@@ -532,7 +532,7 @@ async fn message_handler<
                     cache.write_input_to_cache(txn_number, data.clone()).await?;
 
                     poke_the_subs::<Subscribe>(pool_of_pokers, &*pool_of_subscribes, &subs_to_poke)
-                        .await?;
+                        .await;
 
                     sender
                         .send(Response::Data {
@@ -563,7 +563,7 @@ async fn message_handler<
                     cache.write_input_to_cache(txn_number, data.clone()).await?;
 
                     poke_the_subs::<Subscribe>(pool_of_pokers, &*pool_of_subscribes, &subs_to_poke)
-                        .await?;
+                        .await;
 
                     sender
                         .send(Response::Data {
@@ -615,7 +615,7 @@ async fn poke_the_subs<Subscribe: 'static + Hash + Eq>(
     pool_of_pokers: &mut HashMap<u16, MpscSender<()>>,
     pool_of_subscribes: &HashMap<Subscribe, HashSet<u16>>,
     subs_to_poke: &HashSet<Subscribe>,
-) -> Result<()> {
+) {
     let mut components_to_poke = HashSet::new();
 
     for one_sub in subs_to_poke {
@@ -629,11 +629,10 @@ async fn poke_the_subs<Subscribe: 'static + Hash + Eq>(
     }
 
     for i in components_to_poke {
-        let sender = pool_of_pokers.get_mut(i).context("missing value")?;
-        sender.send(()).await?;
+        if let Some(sender) = pool_of_pokers.get_mut(i) {
+            let _ = sender.send(()).await;
+        }
     }
-
-    Ok(())
 }
 
 fn add_subs(subs_to_poke: &mut HashSet<Subscribe>, subs: &[Subscribe]) {

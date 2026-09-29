@@ -75,8 +75,8 @@ fn Home() -> Element {
                     .or_else(|| MODEL.user_id.read().into())
                     .unwrap_or_default(),
 
-            companies: MODEL.page_select_default_company.list_companies().read(),
-            branches: MODEL.page_select_default_company.list_branches().read(),
+            companies: MODEL.page_select_default_company.list_of_companies().read(),
+            branches: MODEL.page_select_default_company.list_of_branches().read(),
             selected_company: MODEL.selected_company_uuid.read(),
             selected_company_name: MODEL.selected_company_name.read(),
             selected_branch: MODEL.selected_company_branch_uuid.read(),

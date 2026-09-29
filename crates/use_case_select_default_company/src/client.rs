@@ -41,9 +41,9 @@ pub trait GlobalModel: Model + 'static {
 
 pub trait LocalModel: 'static {
     fn page_id(&self) -> impl ReadAndSet<Option<PageId>>;
-    fn list_of_companies(&self) -> impl HashimSignal<Vec<CompanyWithBranches>>;
-    fn list_companies(&self) -> impl HashimSignal<Vec<(CompanyUuid, String)>>;
-    fn list_branches(&self) -> impl HashimSignal<Vec<(BranchUuid, String)>>;
+    fn list_of_companies_and_branches(&self) -> impl HashimSignal<Vec<CompanyWithBranches>>;
+    fn list_of_companies(&self) -> impl HashimSignal<Vec<(CompanyUuid, String)>>;
+    fn list_of_branches(&self) -> impl HashimSignal<Vec<(BranchUuid, String)>>;
     fn is_loading(&self) -> impl HashimSignal<bool>;
 }
 
@@ -57,18 +57,22 @@ fn apply_on_the_model(
     match output {
         Ok(ok) => {
             let companies = ok.companies.clone();
-            local_model.list_of_companies().set(companies.clone());
-            local_model.list_companies().set(flat_companies(&companies));
+            local_model
+                .list_of_companies_and_branches()
+                .set(companies.clone());
+            local_model
+                .list_of_companies()
+                .set(flat_companies(&companies));
             if let Some(company_uuid) = global_model.selected_company_uuid().read() {
                 local_model
-                    .list_branches()
+                    .list_of_branches()
                     .set(flat_branches_for(&companies, &company_uuid));
             }
         }
         Err(_) => {
+            local_model.list_of_companies_and_branches().reset();
             local_model.list_of_companies().reset();
-            local_model.list_companies().reset();
-            local_model.list_branches().reset();
+            local_model.list_of_branches().reset();
         }
     }
 }
@@ -94,7 +98,7 @@ pub async fn update_generic(
             }
 
             let name = local_model
-                .list_companies()
+                .list_of_companies()
                 .read()
                 .into_iter()
                 .find_map(|(c_uuid, c_name)| (c_uuid == uuid).then_some(c_name))
@@ -109,8 +113,9 @@ pub async fn update_generic(
             context.model.selected_company_branch_uuid().reset();
             context.model.selected_company_branch_name().reset();
 
-            let branches = flat_branches_for(&local_model.list_of_companies().read(), &uuid);
-            local_model.list_branches().set(branches);
+            let branches =
+                flat_branches_for(&local_model.list_of_companies_and_branches().read(), &uuid);
+            local_model.list_of_branches().set(branches);
         }
 
         Message::SelectBranch(uuid) => {
@@ -119,7 +124,7 @@ pub async fn update_generic(
             }
 
             let name = local_model
-                .list_branches()
+                .list_of_branches()
                 .read()
                 .into_iter()
                 .find_map(|(b_uuid, b_name)| (b_uuid == uuid).then_some(b_name))

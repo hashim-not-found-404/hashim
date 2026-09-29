@@ -29,15 +29,15 @@ impl LocalModel for TypeLocalModel {
         self.page_id.clone()
     }
 
-    fn list_of_companies(&self) -> impl HashimSignal<Vec<CompanyWithBranches>> {
+    fn list_of_companies_and_branches(&self) -> impl HashimSignal<Vec<CompanyWithBranches>> {
         self.list_of_companies.clone()
     }
 
-    fn list_companies(&self) -> impl HashimSignal<Vec<(CompanyUuid, String)>> {
+    fn list_of_companies(&self) -> impl HashimSignal<Vec<(CompanyUuid, String)>> {
         self.list_companies.clone()
     }
 
-    fn list_branches(&self) -> impl HashimSignal<Vec<(BranchUuid, String)>> {
+    fn list_of_branches(&self) -> impl HashimSignal<Vec<(BranchUuid, String)>> {
         self.list_branches.clone()
     }
 
@@ -46,13 +46,6 @@ impl LocalModel for TypeLocalModel {
     }
 }
 
-/// Top-left breadcrumb: `user > [company ▾] > [branch ▾]`.
-///
-/// * `user_name` — display label for the logged-in user.
-/// * `companies` / `branches` — flat dropdown lists (`(uuid, name)`),
-///   already filtered by the client for the current selection.
-/// * The `*_name` props come straight from the global model so we don't
-///   re-derive them from the list on every render.
 #[component]
 pub fn Component(
     sender: EventHandler<Message>,
@@ -72,50 +65,56 @@ pub fn Component(
         sender(Message::UnSubscribe);
     });
 
-    // Local dropdown open/close state. Only one is ever open at a time.
-    let mut company_open = use_signal(|| false);
-    let mut branch_open = use_signal(|| false);
+    let mut show_companies = use_signal(|| false);
+    let mut show_branches = use_signal(|| false);
 
-    let company_label = selected_company_name
-        .clone()
-        .unwrap_or_else(|| "select company".to_string());
-    let branch_label = selected_branch_name
-        .clone()
-        .unwrap_or_else(|| "select branch".to_string());
+    let companies_open = *show_companies.read();
+    let branches_open = *show_branches.read();
+
+    let company_label = match &selected_company_name {
+        Some(n) => n.clone(),
+        None => "select company".to_string(),
+    };
+    let branch_label = match &selected_branch_name {
+        Some(n) => n.clone(),
+        None => "select branch".to_string(),
+    };
     let has_company = selected_company.is_some();
 
     rsx! {
-        div { class: "top-left-breadcrumb",
-            span { class: "breadcrumb-user", "{user_name}" }
-            span { class: "breadcrumb-sep", " > " }
+        div {
+            span { "{user_name}" }
+            span { " > " }
 
-            // ---------------- company selector ----------------
-            div { class: "breadcrumb-selector",
+            div {
                 button {
-                    class: "breadcrumb-button",
                     onclick: move |_| {
-                        let next = !*company_open.read();
-                        company_open.set(next);
-                        branch_open.set(false);
+                        // Use `*write()` exactly like PasswordInput does.
+                        *show_companies.write() ^= true;
+                        *show_branches.write() = false;
                     },
-                    "{company_label} ▾"
+                    "{company_label}"
                 }
 
-                if *company_open.read() {
-                    div { class: "breadcrumb-dropdown",
-                        for (uuid, name) in companies.iter() {
-                            {
-                                let uuid = uuid.clone();
-                                let name = name.clone();
-                                let is_selected = selected_company.as_ref() == Some(&uuid);
-                                rsx! {
-                                    button {
-                                        class: if is_selected { "active" } else { "" },
-                                        onclick: move |_| {
-                                            sender(Message::SelectCompany(uuid.clone()));
-                                            company_open.set(false);
-                                        },
-                                        "{name}"
+                if companies_open {
+                    div {
+                        if companies.is_empty() {
+                            // So you can *see* the dropdown is open but
+                            // the list hasn't arrived yet.
+                            span { "loading companies…" }
+                        } else {
+                            for (uuid, name) in companies.iter() {
+                                {
+                                    let uuid = uuid.clone();
+                                    let name = name.clone();
+                                    rsx! {
+                                        button {
+                                            onclick: move |_| {
+                                                sender(Message::SelectCompany(uuid.clone()));
+                                                *show_companies.write() = false;
+                                            },
+                                            "{name}"
+                                        }
                                     }
                                 }
                             }
@@ -124,39 +123,38 @@ pub fn Component(
                 }
             }
 
-            span { class: "breadcrumb-sep", " > " }
+            span { " > " }
 
-            // ---------------- branch selector ----------------
-            div { class: "breadcrumb-selector",
+            div {
                 button {
-                    class: "breadcrumb-button",
                     disabled: !has_company,
                     onclick: move |_| {
                         if !has_company {
                             return;
                         }
-                        let next = !*branch_open.read();
-                        branch_open.set(next);
-                        company_open.set(false);
+                        *show_branches.write() ^= true;
+                        *show_companies.write() = false;
                     },
-                    "{branch_label} ▾"
+                    "{branch_label}"
                 }
 
-                if *branch_open.read() && has_company {
-                    div { class: "breadcrumb-dropdown",
-                        for (uuid, name) in branches.iter() {
-                            {
-                                let uuid = uuid.clone();
-                                let name = name.clone();
-                                let is_selected = selected_branch.as_ref() == Some(&uuid);
-                                rsx! {
-                                    button {
-                                        class: if is_selected { "active" } else { "" },
-                                        onclick: move |_| {
-                                            sender(Message::SelectBranch(uuid.clone()));
-                                            branch_open.set(false);
-                                        },
-                                        "{name}"
+                if branches_open && has_company {
+                    div {
+                        if branches.is_empty() {
+                            span { "no branches for this company" }
+                        } else {
+                            for (uuid, name) in branches.iter() {
+                                {
+                                    let uuid = uuid.clone();
+                                    let name = name.clone();
+                                    rsx! {
+                                        button {
+                                            onclick: move |_| {
+                                                sender(Message::SelectBranch(uuid.clone()));
+                                                *show_branches.write() = false;
+                                            },
+                                            "{name}"
+                                        }
                                     }
                                 }
                             }
