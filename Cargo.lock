@@ -304,6 +304,8 @@ dependencies = [
  "use_case_create_company",
  "use_case_error_handler",
  "use_case_get_all_accounts",
+ "use_case_get_companies_and_branches",
+ "use_case_select_default_company",
  "use_case_sign_in",
  "use_case_sign_up",
  "utility",
@@ -325,6 +327,7 @@ dependencies = [
  "use_case_create_account",
  "use_case_create_company",
  "use_case_get_all_accounts",
+ "use_case_get_companies_and_branches",
  "use_case_sign_in",
  "use_case_sign_up",
  "utility",
@@ -4919,6 +4922,49 @@ dependencies = [
  "tokio",
  "typetag",
  "utility",
+ "uuid",
+]
+
+[[package]]
+name = "use_case_get_companies_and_branches"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "cache",
+ "const-random",
+ "database",
+ "dioxus",
+ "infrastructure",
+ "kernel",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "tokio",
+ "typetag",
+ "utility",
+ "utility_ui",
+ "uuid",
+]
+
+[[package]]
+name = "use_case_select_default_company"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "cache",
+ "const-random",
+ "database",
+ "dioxus",
+ "infrastructure",
+ "kernel",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "tokio",
+ "typetag",
+ "use_case_get_companies_and_branches",
+ "utility",
+ "utility_ui",
  "uuid",
 ]
 

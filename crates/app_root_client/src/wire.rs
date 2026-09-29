@@ -23,6 +23,10 @@ make_client_wrapper_updater!(create_company);
 make_client_wrapper_cache_check!(create_company);
 make_client_wrapper_cache_write!(create_company);
 
+make_client_wrapper_updater!(select_default_company);
+make_client_wrapper_cache_check!(get_companies_and_branches);
+make_client_wrapper_cache_write!(get_companies_and_branches);
+
 use crate::model::TypeModel;
 use anyhow::Result;
 use anyhow::bail;
@@ -76,6 +80,11 @@ impl CastMessageToUpdater for MyCaster {
                 v.clone(),
             )));
         };
+        if let Some(v) = v.downcast_ref::<use_case_select_default_company::client::Message>() {
+            return Ok(Box::new(updater_use_case_select_default_company::Wrapper(
+                v.clone(),
+            )));
+        };
 
         bail!("downcast error")
     }
@@ -110,6 +119,11 @@ impl CastClientToCache for MyCaster {
                 v.clone(),
             )));
         };
+        if let Some(v) = v.downcast_ref::<use_case_get_companies_and_branches::domain::Input>() {
+            return Ok(Box::new(
+                cache_check_use_case_get_companies_and_branches::Wrapper(v.clone()),
+            ));
+        };
 
         bail!("downcast error")
     }
@@ -140,6 +154,11 @@ impl CastClientToCache for MyCaster {
                 v.clone(),
             )));
         };
+        if let Some(v) = v.downcast_ref::<use_case_get_companies_and_branches::domain::Ok>() {
+            return Ok(Box::new(
+                cache_write_use_case_get_companies_and_branches::Wrapper(v.clone()),
+            ));
+        };
 
         bail!("downcast error")
     }
@@ -164,6 +183,9 @@ impl CastDTOToClient for MyCaster {
         if let Some(v) = v.downcast_ref::<use_case_create_company::domain::Input>() {
             return Ok(Arc::new(v.clone()));
         };
+        if let Some(v) = v.downcast_ref::<use_case_get_companies_and_branches::domain::Input>() {
+            return Ok(Arc::new(v.clone()));
+        };
 
         bail!("downcast error")
     }
@@ -186,6 +208,9 @@ impl CastDTOToClient for MyCaster {
         if let Some(v) = v.downcast_ref::<use_case_create_company::domain::Ok>() {
             return Ok(Arc::new(v.clone()));
         };
+        if let Some(v) = v.downcast_ref::<use_case_get_companies_and_branches::domain::Ok>() {
+            return Ok(Arc::new(v.clone()));
+        };
 
         bail!("downcast error")
     }
@@ -206,6 +231,9 @@ impl CastDTOToClient for MyCaster {
             return Ok(Box::new(v.clone()));
         };
         if let Some(v) = v.downcast_ref::<use_case_create_company::domain::Error>() {
+            return Ok(Box::new(v.clone()));
+        };
+        if let Some(v) = v.downcast_ref::<use_case_get_companies_and_branches::domain::Error>() {
             return Ok(Box::new(v.clone()));
         };
 

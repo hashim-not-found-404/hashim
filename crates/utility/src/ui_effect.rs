@@ -10,6 +10,8 @@ use infrastructure::actors::MpscSender;
 use infrastructure::actors::MultiProducerSingleConsumer;
 use infrastructure::actors::Receiver;
 use infrastructure::actors::Sender;
+use infrastructure::random_number::RandomNumber;
+use infrastructure::random_number::Rn;
 use infrastructure::runtime::Rt;
 use infrastructure::runtime::Runtime;
 use std::any::Any;
@@ -146,15 +148,29 @@ impl Commander {
 #[derive(Debug, Clone, Copy, Eq, Hash, PartialEq)]
 pub struct PageId(i32);
 
+impl Default for PageId {
+    fn default() -> Self {
+        Self(Rn::generate() as i32)
+    }
+}
+
 pub struct Aborter(Box<dyn FnOnce()>);
+
+impl Aborter {
+    pub(crate) fn new(a: impl FnOnce() + 'static) -> Self {
+        Self(Box::new(a))
+    }
+}
 
 #[derive(Clone, Default)]
 pub struct Aborters(Arc<Mutex<HashMap<PageId, Aborter>>>);
 
 impl Aborters {
-    pub fn register(&self, page: PageId, aborter: Aborter) {
+    pub fn register(&self, aborter: Aborter) -> PageId {
         let mut mutex_guard = self.0.lock().unwrap();
+        let page = PageId::default();
         mutex_guard.insert(page, aborter);
+        page
     }
 
     pub fn abort(&self, page: PageId) {

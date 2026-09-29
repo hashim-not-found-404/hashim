@@ -30,6 +30,8 @@ use_case_create_account = { path = "./crates/use_case_create_account" }
 use_case_create_company = { path = "./crates/use_case_create_company" }
 use_case_error_handler = { path = "./crates/use_case_error_handler" }
 use_case_get_all_accounts = { path = "./crates/use_case_get_all_accounts" }
+use_case_get_companies_and_branches = { path = "./crates/use_case_get_companies_and_branches" }
+use_case_select_default_company = { path = "./crates/use_case_select_default_company" }
 use_case_sign_in = { path = "./crates/use_case_sign_in" }
 use_case_sign_up = { path = "./crates/use_case_sign_up" }
 

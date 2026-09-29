@@ -11,6 +11,7 @@ use crate::process_manager::MessageFromProcess;
 use crate::process_manager::MessageToProcess;
 use crate::process_manager::MessageToProcessManager;
 use crate::process_manager::ProcessId;
+use crate::ui_effect::Aborter;
 use anyhow::Error;
 use anyhow::Result;
 use infrastructure::actors::Mpsc;
@@ -104,8 +105,8 @@ pub fn spawn_listener(
     mut cache: CacheStruct,
     list_of_subscribtion: &'static [Subscribe],
     data: TypeOperationClientInput,
-    is_error: impl Fn(TypeOperationClientResult) + 'static,
-) -> impl FnOnce() {
+    f: impl Fn(TypeOperationClientResult) -> Result<()> + 'static,
+) -> Aborter {
     let component_id = Rn::generate() as u16;
     let mut cache1 = cache.clone();
     let sender_to_error1 = sender_to_error.clone();
@@ -136,7 +137,7 @@ pub fn spawn_listener(
                     .await?;
 
                 if let Response::Data { data, .. } = value {
-                    is_error(data);
+                    f(data)?;
                 }
 
                 if receiver_to_poke.recv().await.is_err() {
@@ -150,7 +151,7 @@ pub fn spawn_listener(
         .await;
     });
 
-    move || {
+    Aborter::new(move || {
         Rt::spawn_local(async move {
             handle_error_one_time(sender_to_error, async move || {
                 handle.abort().await;
@@ -159,5 +160,5 @@ pub fn spawn_listener(
             })
             .await;
         });
-    }
+    })
 }

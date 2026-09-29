@@ -17,8 +17,10 @@ pub(crate) struct TypeModel {
     pub(crate) navigator: MySignal<Navigator>,
 
     pub(crate) user_uuid: MySignal<Option<UserUuid>>,
-    pub(crate) selected_company_branch: MySignal<Option<BranchUuid>>,
-    pub(crate) selected_company: MySignal<Option<CompanyUuid>>,
+    pub(crate) selected_company_uuid: MySignal<Option<CompanyUuid>>,
+    pub(crate) selected_company_name: MySignal<Option<String>>,
+    pub(crate) selected_company_branch_uuid: MySignal<Option<BranchUuid>>,
+    pub(crate) selected_company_branch_name: MySignal<Option<String>>,
 
     // global states
     pub(crate) page_error_handler: Arc<use_case_error_handler::ui::TypeLocalModel>,
@@ -31,6 +33,8 @@ pub(crate) struct TypeModel {
     // pages
     pub(crate) page_sign_up: Arc<use_case_sign_up::ui::TypeLocalModel>,
     pub(crate) page_sign_in: Arc<use_case_sign_in::ui::TypeLocalModel>,
+    pub(crate) page_select_default_company:
+        Arc<use_case_select_default_company::ui::TypeLocalModel>,
     // pub(crate) page_company_branch_selection: Arc<use_case_company_branch_selection::ui::TypeLocalModel>,
     pub(crate) page_create_company: Arc<use_case_create_company::ui::TypeLocalModel>,
     // pub(crate) page_create_company_branch: Arc<use_case_create_company_branch::ui::TypeLocalModel>,
@@ -51,7 +55,7 @@ impl use_case_create_account::client::GlobalModel for TypeModel {
     }
 
     fn selected_company(&self) -> impl HashimSignal<Option<CompanyUuid>> {
-        self.selected_company.clone()
+        self.selected_company_uuid.clone()
     }
 }
 
@@ -104,5 +108,27 @@ impl use_case_sign_in::client::GlobalModel for TypeModel {
 impl use_case_create_company::client::GlobalModel for TypeModel {
     fn user_uuid(&self) -> impl HashimSignal<Option<UserUuid>> {
         self.user_uuid.clone()
+    }
+}
+
+impl use_case_select_default_company::client::GlobalModel for TypeModel {
+    fn user_uuid(&self) -> impl HashimSignal<Option<UserUuid>> {
+        self.user_uuid.clone()
+    }
+
+    fn selected_company_uuid(&self) -> impl HashimSignal<Option<CompanyUuid>> {
+        self.selected_company_uuid.clone()
+    }
+
+    fn selected_company_name(&self) -> impl HashimSignal<Option<String>> {
+        self.selected_company_name.clone()
+    }
+
+    fn selected_company_branch_uuid(&self) -> impl HashimSignal<Option<BranchUuid>> {
+        self.selected_company_branch_uuid.clone()
+    }
+
+    fn selected_company_branch_name(&self) -> impl HashimSignal<Option<String>> {
+        self.selected_company_branch_name.clone()
     }
 }

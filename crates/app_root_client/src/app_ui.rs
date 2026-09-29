@@ -7,6 +7,7 @@ use dioxus::prelude::*;
 use use_case_create_account::client::LocalModel as _;
 use use_case_create_company::client::LocalModel as _;
 use use_case_error_handler::client::LocalModel as _;
+use use_case_select_default_company::client::LocalModel as _;
 use use_case_sign_in::client::LocalModel as _;
 use use_case_sign_up::client::LocalModel as _;
 use utility_ui::domain::HashimSignal;
@@ -67,6 +68,20 @@ pub(crate) fn App() -> Element {
 #[component]
 fn Home() -> Element {
     rsx! {
+        use_case_select_default_company::ui::Component {
+            sender: move |msg| send(msg),
+            user_name: MODEL                        .user_name
+                    .read()
+                    .or_else(|| MODEL.user_id.read().into())
+                    .unwrap_or_default(),
+
+            companies: MODEL.page_select_default_company.list_companies().read(),
+            branches: MODEL.page_select_default_company.list_branches().read(),
+            selected_company: MODEL.selected_company_uuid.read(),
+            selected_company_name: MODEL.selected_company_name.read(),
+            selected_branch: MODEL.selected_company_branch_uuid.read(),
+            selected_branch_name: MODEL.selected_company_branch_name.read(),
+        }
         use_case_create_company::ui::Component {
             sender: move |msg| send(msg),
             show_dialog: MODEL.page_create_company.show_dialog().read(),
