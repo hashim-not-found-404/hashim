@@ -203,7 +203,6 @@ fn build_input(
 }
 
 fn handle_clean(local_model: Arc<impl LocalModel>) {
-    local_model.process_id().reset();
     local_model.branch_name().reset();
     local_model.currency().reset();
     local_model.location().reset();

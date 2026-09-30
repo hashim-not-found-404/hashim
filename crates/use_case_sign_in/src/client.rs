@@ -132,7 +132,6 @@ fn apply_on_the_model(
 ) {
     match output {
         Ok(ok) => {
-            local_model.process_id().reset();
             local_model.error_user_id().reset();
             local_model.error_password().reset();
 

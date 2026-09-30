@@ -220,7 +220,6 @@ fn build_input(
 }
 
 fn handle_clean(local_model: Arc<impl LocalModel>) {
-    local_model.process_id().reset();
     local_model.account_name().reset();
     local_model.is_debit().reset();
     local_model.is_permanent_account().reset();
