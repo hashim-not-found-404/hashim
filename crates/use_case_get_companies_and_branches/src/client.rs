@@ -4,7 +4,6 @@ use crate::domain::Ok;
 use crate::domain::ReadInput;
 use crate::domain::ReadOutput;
 use anyhow::Result;
-use const_random::const_random;
 use kernel::client::Cache;
 use kernel::new_types::UserUuid;
 use kernel::types::DatabaseRead;
@@ -13,26 +12,29 @@ use std::ops::Deref;
 use std::sync::Arc;
 use utility::cache::CacheStruct;
 use utility::cache::CachingStrategy;
-use utility::cache::Subscribe;
+use utility::cache::ResourceName;
 use utility::cache::TraitOperationClientError;
 use utility::cache::TraitOperationClientInput;
 use utility::cache::TraitOperationClientOk;
 use utility::cache::TypeOperationClientInput;
 use utility::cache::TypeOperationClientResult;
-use utility::cache::new_sub;
+use utility::cache::new_resource_name;
 use utility::dtos::TxnNumber;
 
-pub const USE_CASE_NAME: Subscribe = new_sub(const_random!(u32));
+const RESOURCES_NAME_TO_POKE: &[ResourceName] = &[
+    new_resource_name("companies"),
+    new_resource_name("branches"),
+];
 
 impl TraitOperationClientOk for Ok {
-    fn subs_to_poke(&self) -> &'static [Subscribe] {
-        &[USE_CASE_NAME]
+    fn subs_to_poke(&self) -> &'static [ResourceName] {
+        RESOURCES_NAME_TO_POKE
     }
 }
 
 impl TraitOperationClientError for Error {
-    fn subs_to_poke(&self) -> &'static [Subscribe] {
-        &[USE_CASE_NAME]
+    fn subs_to_poke(&self) -> &'static [ResourceName] {
+        RESOURCES_NAME_TO_POKE
     }
 }
 

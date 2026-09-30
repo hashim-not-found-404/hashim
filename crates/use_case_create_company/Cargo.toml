@@ -20,7 +20,6 @@ cache = { workspace = true, optional = true }
 database = { workspace = true, optional = true }
 
 anyhow = { workspace = true }
-const-random = { workspace = true }
 serde = { workspace = true }
 typetag = { workspace = true }
 

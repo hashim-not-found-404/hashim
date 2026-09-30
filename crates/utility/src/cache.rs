@@ -27,10 +27,10 @@ use std::sync::RwLock;
 use std::time::Duration;
 
 #[derive(Debug, Clone, Copy, Eq, Hash, PartialEq)]
-pub struct Subscribe(u32);
+pub struct ResourceName(&'static str);
 
-pub const fn new_sub(x: u32) -> Subscribe {
-    Subscribe(x)
+pub const fn new_resource_name(x: &'static str) -> ResourceName {
+    ResourceName(x)
 }
 
 pub trait MarkerCache: 'static {}
@@ -78,11 +78,11 @@ pub trait TraitOperationClientInput: TraitOperationDTOInput + DynClone {
 }
 
 pub trait TraitOperationClientOk: TraitOperationDTOOk {
-    fn subs_to_poke(&self) -> &'static [Subscribe];
+    fn subs_to_poke(&self) -> &'static [ResourceName];
 }
 
 pub trait TraitOperationClientError: TraitOperationDTOError + DynClone {
-    fn subs_to_poke(&self) -> &'static [Subscribe];
+    fn subs_to_poke(&self) -> &'static [ResourceName];
 }
 
 pub trait TraitOperationCacheInput: Any + Debug + DynClone {
@@ -144,7 +144,7 @@ pub enum MessageToCache {
     DataFromServer(Vec<u8>),
     Subscribe {
         component_id: u16,
-        list_of_subscribtion: &'static [Subscribe],
+        list_of_subscribtion: &'static [ResourceName],
         sender: MpscSender<()>,
     },
     UnSubscribe {
@@ -231,7 +231,7 @@ impl CacheStruct {
     pub async fn send_subs_to_cache_actor(
         &mut self,
         component_id: u16,
-        list_of_subscribtion: &'static [Subscribe],
+        list_of_subscribtion: &'static [ResourceName],
     ) -> Result<MpscReceiver<()>> {
         let (sender, receiver) = Mpsc::channel();
 
@@ -268,7 +268,7 @@ impl CacheStruct {
             let mut pool_of_senders =
                 HashMap::<TxnNumber, MpscSender<Response>>::with_capacity(100);
             let mut pool_of_pokers = HashMap::<u16, MpscSender<()>>::with_capacity(10);
-            let mut pool_of_subscribes = HashMap::<Subscribe, HashSet<u16>>::with_capacity(100);
+            let mut pool_of_subscribes = HashMap::<ResourceName, HashSet<u16>>::with_capacity(100);
 
             handle_error::<(), _>(sender_to_error.clone(), async || {
                 let mut cache = loop {
@@ -311,7 +311,7 @@ async fn message_handler<
     is_online: &Arc<RwLock<bool>>,
     pool_of_senders: &mut HashMap<TxnNumber, MpscSender<Response>>,
     pool_of_pokers: &mut HashMap<u16, MpscSender<()>>,
-    pool_of_subscribes: &mut HashMap<Subscribe, HashSet<u16>>,
+    pool_of_subscribes: &mut HashMap<ResourceName, HashSet<u16>>,
     cache: &mut Cu,
 ) -> Result<()> {
     loop {
@@ -388,7 +388,7 @@ async fn message_handler<
                             }
                         }
 
-                        poke_the_subs::<Subscribe>(
+                        poke_the_subs::<ResourceName>(
                             pool_of_pokers,
                             &*pool_of_subscribes,
                             &subs_to_poke,
@@ -405,7 +405,7 @@ async fn message_handler<
                             add_subs(&mut subs_to_poke, resource.subs_to_poke());
                         }
 
-                        poke_the_subs::<Subscribe>(
+                        poke_the_subs::<ResourceName>(
                             pool_of_pokers,
                             &*pool_of_subscribes,
                             &subs_to_poke,
@@ -531,8 +531,12 @@ async fn message_handler<
                     }
                     cache.write_input_to_cache(txn_number, data.clone()).await?;
 
-                    poke_the_subs::<Subscribe>(pool_of_pokers, &*pool_of_subscribes, &subs_to_poke)
-                        .await;
+                    poke_the_subs::<ResourceName>(
+                        pool_of_pokers,
+                        &*pool_of_subscribes,
+                        &subs_to_poke,
+                    )
+                    .await;
 
                     sender
                         .send(Response::Data {
@@ -562,8 +566,12 @@ async fn message_handler<
                     }
                     cache.write_input_to_cache(txn_number, data.clone()).await?;
 
-                    poke_the_subs::<Subscribe>(pool_of_pokers, &*pool_of_subscribes, &subs_to_poke)
-                        .await;
+                    poke_the_subs::<ResourceName>(
+                        pool_of_pokers,
+                        &*pool_of_subscribes,
+                        &subs_to_poke,
+                    )
+                    .await;
 
                     sender
                         .send(Response::Data {
@@ -635,7 +643,7 @@ async fn poke_the_subs<Subscribe: 'static + Hash + Eq>(
     }
 }
 
-fn add_subs(subs_to_poke: &mut HashSet<Subscribe>, subs: &[Subscribe]) {
+fn add_subs(subs_to_poke: &mut HashSet<ResourceName>, subs: &[ResourceName]) {
     for sub in subs {
         subs_to_poke.insert(*sub);
     }

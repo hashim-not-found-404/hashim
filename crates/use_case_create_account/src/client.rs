@@ -27,13 +27,14 @@ use std::sync::Arc;
 use use_case_get_all_accounts::client::fetch;
 use utility::cache::CacheStruct;
 use utility::cache::CachingStrategy;
+use utility::cache::ResourceName;
 use utility::cache::Response;
-use utility::cache::Subscribe;
 use utility::cache::TraitOperationClientError;
 use utility::cache::TraitOperationClientInput;
 use utility::cache::TraitOperationClientOk;
 use utility::cache::TypeOperationClientInput;
 use utility::cache::TypeOperationClientResult;
+use utility::cache::new_resource_name;
 use utility::dtos::TxnNumber;
 use utility::process_manager::MessageToProcessManager;
 use utility::process_manager::ProcessId;
@@ -46,15 +47,17 @@ use utility::ui_orchestration::handle_fall_back;
 use utility_ui::domain::Dialog;
 use utility_ui::domain::HashimSignal;
 
+const RESOURCES_NAME_TO_POKE: &[ResourceName] = &[new_resource_name("accounts")];
+
 impl TraitOperationClientOk for Ok {
-    fn subs_to_poke(&self) -> &'static [Subscribe] {
-        todo!()
+    fn subs_to_poke(&self) -> &'static [ResourceName] {
+        RESOURCES_NAME_TO_POKE
     }
 }
 
 impl TraitOperationClientError for Error {
-    fn subs_to_poke(&self) -> &'static [Subscribe] {
-        todo!()
+    fn subs_to_poke(&self) -> &'static [ResourceName] {
+        RESOURCES_NAME_TO_POKE
     }
 }
 

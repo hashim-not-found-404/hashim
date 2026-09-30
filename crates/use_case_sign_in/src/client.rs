@@ -8,7 +8,6 @@ use crate::domain::UserIdError;
 use anyhow::Context;
 use anyhow::Result;
 use anyhow::anyhow;
-use const_random::const_random;
 use infrastructure::actors::MpscSender;
 use infrastructure::actors::Sender;
 use infrastructure::jwt::JsonWebTokenType;
@@ -20,13 +19,13 @@ use std::any::Any;
 use std::fmt::Debug;
 use std::sync::Arc;
 use utility::cache::CacheStruct;
-use utility::cache::Subscribe;
+use utility::cache::ResourceName;
 use utility::cache::TraitOperationClientError;
 use utility::cache::TraitOperationClientInput;
 use utility::cache::TraitOperationClientOk;
 use utility::cache::TypeOperationClientInput;
 use utility::cache::TypeOperationClientResult;
-use utility::cache::new_sub;
+use utility::cache::new_resource_name;
 use utility::process_manager::MessageToProcessManager;
 use utility::process_manager::ProcessId;
 use utility::process_manager::UserConsent;
@@ -37,17 +36,17 @@ use utility::ui_orchestration::handle_fall_back;
 use utility_ui::domain::Dialog;
 use utility_ui::domain::HashimSignal;
 
-const USE_CASE_NAME: Subscribe = new_sub(const_random!(u32));
+const RESOURCES_NAME_TO_POKE: &[ResourceName] = &[new_resource_name("users")];
 
 impl TraitOperationClientOk for Ok {
-    fn subs_to_poke(&self) -> &'static [Subscribe] {
-        &[USE_CASE_NAME]
+    fn subs_to_poke(&self) -> &'static [ResourceName] {
+        RESOURCES_NAME_TO_POKE
     }
 }
 
 impl TraitOperationClientError for Error {
-    fn subs_to_poke(&self) -> &'static [Subscribe] {
-        &[USE_CASE_NAME]
+    fn subs_to_poke(&self) -> &'static [ResourceName] {
+        RESOURCES_NAME_TO_POKE
     }
 }
 

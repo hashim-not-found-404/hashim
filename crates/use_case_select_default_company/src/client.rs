@@ -7,12 +7,13 @@ use kernel::new_types::UserUuid;
 use std::any::Any;
 use std::fmt::Debug;
 use std::sync::Arc;
-use use_case_get_companies_and_branches::client::USE_CASE_NAME;
 use use_case_get_companies_and_branches::domain::CompanyWithBranches;
 use use_case_get_companies_and_branches::domain::Error;
 use use_case_get_companies_and_branches::domain::Input;
 use use_case_get_companies_and_branches::domain::MyResult;
 use use_case_get_companies_and_branches::domain::Ok;
+use utility::cache::ResourceName;
+use utility::cache::new_resource_name;
 use utility::types::ReadAndSet;
 use utility::ui_effect::MessageTrait;
 use utility::ui_effect::Model;
@@ -20,6 +21,11 @@ use utility::ui_effect::PageId;
 use utility::ui_effect::UiContext;
 use utility::ui_orchestration::spawn_listener;
 use utility_ui::domain::HashimSignal;
+
+const RESOURCES_NAME_TO_LISTEN: &[ResourceName] = &[
+    new_resource_name("companies"),
+    new_resource_name("branches"),
+];
 
 #[derive(Debug, Clone)]
 pub enum Message {
@@ -147,7 +153,7 @@ fn handle_subscribe(
     let aborter = spawn_listener(
         context.sender_to_error,
         context.cache,
-        &[USE_CASE_NAME],
+        RESOURCES_NAME_TO_LISTEN,
         Arc::new(Input {
             user_uuid: context
                 .model

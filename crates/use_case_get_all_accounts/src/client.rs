@@ -13,23 +13,26 @@ use std::ops::Deref;
 use std::sync::Arc;
 use utility::cache::CacheStruct;
 use utility::cache::CachingStrategy;
-use utility::cache::Subscribe;
+use utility::cache::ResourceName;
 use utility::cache::TraitOperationClientError;
 use utility::cache::TraitOperationClientInput;
 use utility::cache::TraitOperationClientOk;
 use utility::cache::TypeOperationClientInput;
 use utility::cache::TypeOperationClientResult;
+use utility::cache::new_resource_name;
 use utility::dtos::TxnNumber;
 
+const RESOURCES_NAME_TO_POKE: &[ResourceName] = &[new_resource_name("accounts")];
+
 impl TraitOperationClientOk for Ok {
-    fn subs_to_poke(&self) -> &'static [Subscribe] {
-        todo!()
+    fn subs_to_poke(&self) -> &'static [ResourceName] {
+        RESOURCES_NAME_TO_POKE
     }
 }
 
 impl TraitOperationClientError for Error {
-    fn subs_to_poke(&self) -> &'static [Subscribe] {
-        todo!()
+    fn subs_to_poke(&self) -> &'static [ResourceName] {
+        RESOURCES_NAME_TO_POKE
     }
 }
 

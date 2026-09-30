@@ -1,7 +1,7 @@
 use crate::cache::CacheStruct;
 use crate::cache::CachingStrategy;
+use crate::cache::ResourceName;
 use crate::cache::Response;
-use crate::cache::Subscribe;
 use crate::cache::TypeOperationClientInput;
 use crate::cache::TypeOperationClientResult;
 use crate::dtos::TxnNumber;
@@ -103,7 +103,7 @@ pub async fn handle_fall_back(
 pub fn spawn_listener(
     sender_to_error: MpscSender<Error>,
     mut cache: CacheStruct,
-    list_of_subscribtion: &'static [Subscribe],
+    list_of_subscribtion: &'static [ResourceName],
     data: TypeOperationClientInput,
     f: impl Fn(TypeOperationClientResult) -> Result<()> + 'static,
 ) -> Aborter {
