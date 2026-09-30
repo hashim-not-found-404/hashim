@@ -17,7 +17,7 @@ stat:
     git rev-list --count HEAD
 
 dump: fmt stat
-    git ls-files | while read -r f; do file -b --mime-type "$f" | grep -q "^text/" && { echo "=== $f ==="; nl -ba -w1 -s' | ' "$f"; } done > codebase.txt
+    git ls-files | while read -r f; do file -b --mime-type "$f" | grep -q "^text/" && { echo "=== $f ==="; nl -ba -w5 -s' | ' "$f"; } done > codebase.txt
 
 check: fmt
     RUSTFLAGS="-A warnings" cargo check --all-targets
