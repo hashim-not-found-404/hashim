@@ -12,6 +12,7 @@ server = { workspace = true }
 utility = { workspace = true }
 
 use_case_create_account = { workspace = true, features = ["server", "database"] }
+use_case_create_branch = { workspace = true, features = ["server", "database"] }
 use_case_create_company = { workspace = true, features = ["server", "database"] }
 use_case_get_all_accounts = { workspace = true, features = ["server", "database"] }
 use_case_get_companies_and_branches = { workspace = true, features = ["server", "database"] }

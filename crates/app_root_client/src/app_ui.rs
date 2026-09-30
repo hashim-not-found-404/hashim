@@ -5,6 +5,7 @@ use crate::utils::init_commander_and_model;
 use crate::utils::send;
 use dioxus::prelude::*;
 use use_case_create_account::client::LocalModel as _;
+use use_case_create_branch::client::LocalModel as _;
 use use_case_create_company::client::LocalModel as _;
 use use_case_error_handler::client::LocalModel as _;
 use use_case_select_default_company::client::LocalModel as _;
@@ -89,6 +90,16 @@ fn Home() -> Element {
             company_name: MODEL.page_create_company.company_name().read(),
             currency: MODEL.page_create_company.currency().read(),
             company_name_error: MODEL.page_create_company.company_name_error().read(),
+        }
+        use_case_create_branch::ui::Component {
+            sender: move |msg| send(msg),
+            show_dialog: MODEL.page_create_branch.show_dialog().read(),
+            is_loading: MODEL.page_create_branch.is_loading().read(),
+            branch_name: MODEL.page_create_branch.branch_name().read(),
+            currency: MODEL.page_create_branch.currency().read(),
+            location: MODEL.page_create_branch.location().read(),
+            branch_name_error: MODEL.page_create_branch.branch_name_error().read(),
+            location_error: MODEL.page_create_branch.location_error().read(),
         }
         use_case_create_account::ui::Component {
             sender: move |msg| send(msg),

@@ -56,7 +56,7 @@ pub struct Branch {
     pub name: String,
 }
 
-#[derive(Debug, Clone, Default, Deserialize, Serialize)]
+#[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
 pub struct Location {
     pub latitude: f64,
     pub longitude: f64,

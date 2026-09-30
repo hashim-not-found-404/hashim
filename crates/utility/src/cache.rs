@@ -5,7 +5,6 @@ use crate::dtos::Txn;
 use crate::dtos::TxnNumber;
 use crate::handle_errors::handle_error;
 use crate::types::ReadAndSet;
-use anyhow::Context;
 use anyhow::Result;
 use dyn_clone::DynClone;
 use infrastructure::actors::Mpsc;

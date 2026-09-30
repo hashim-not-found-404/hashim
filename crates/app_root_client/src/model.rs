@@ -35,6 +35,7 @@ pub(crate) struct TypeModel {
     pub(crate) page_sign_in: Arc<use_case_sign_in::ui::TypeLocalModel>,
     pub(crate) page_select_default_company:
         Arc<use_case_select_default_company::ui::TypeLocalModel>,
+    pub(crate) page_create_branch: Arc<use_case_create_branch::ui::TypeLocalModel>,
     // pub(crate) page_company_branch_selection: Arc<use_case_company_branch_selection::ui::TypeLocalModel>,
     pub(crate) page_create_company: Arc<use_case_create_company::ui::TypeLocalModel>,
     // pub(crate) page_create_company_branch: Arc<use_case_create_company_branch::ui::TypeLocalModel>,
@@ -130,5 +131,15 @@ impl use_case_select_default_company::client::GlobalModel for TypeModel {
 
     fn selected_company_branch_name(&self) -> impl HashimSignal<Option<String>> {
         self.selected_company_branch_name.clone()
+    }
+}
+
+impl use_case_create_branch::client::GlobalModel for TypeModel {
+    fn user_uuid(&self) -> impl HashimSignal<Option<UserUuid>> {
+        self.user_uuid.clone()
+    }
+
+    fn selected_company(&self) -> impl HashimSignal<Option<CompanyUuid>> {
+        self.selected_company_uuid.clone()
     }
 }
