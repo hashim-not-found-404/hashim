@@ -105,11 +105,6 @@ pub enum Message {
 
 impl MessageTrait for Message {}
 
-type Type1 = Input;
-type Type2 = Input;
-type Type3 = MyResult;
-type Type4 = MyResult;
-
 pub trait GlobalModel: Model + 'static {
     fn is_auth_loading(&self) -> impl HashimSignal<bool>;
     fn user_uuid(&self) -> impl HashimSignal<Option<UserUuid>>;
@@ -126,7 +121,7 @@ pub trait LocalModel: 'static {
 }
 
 fn apply_on_the_model(
-    output: &Type4,
+    output: &MyResult,
     local_model: Arc<impl LocalModel>,
     global_model: Arc<impl GlobalModel>,
 ) {
@@ -195,7 +190,7 @@ pub async fn update_generic(
     Ok(())
 }
 
-fn build_input(global_model: Arc<impl GlobalModel>) -> Result<Type1> {
+fn build_input(global_model: Arc<impl GlobalModel>) -> Result<Input> {
     Ok(Input {
         user_id: global_model.user_id().read(),
         password: global_model.password().read(),

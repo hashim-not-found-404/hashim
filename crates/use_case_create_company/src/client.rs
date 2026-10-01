@@ -89,11 +89,6 @@ pub enum Message {
 
 impl MessageTrait for Message {}
 
-type Type1 = Input;
-type Type2 = Input;
-type Type3 = MyResult;
-type Type4 = MyResult;
-
 pub trait GlobalModel: Model + 'static {
     fn user_uuid(&self) -> impl HashimSignal<Option<UserUuid>>;
 }
@@ -107,7 +102,7 @@ pub trait LocalModel: 'static {
     fn company_name_error(&self) -> impl HashimSignal<Option<String>>;
 }
 
-fn apply_on_the_model_for_submit(output: &Type4, local_model: Arc<impl LocalModel>) {
+fn apply_on_the_model_for_submit(output: &MyResult, local_model: Arc<impl LocalModel>) {
     match output {
         Ok(_) => {
             handle_clean(local_model);
@@ -162,7 +157,7 @@ pub async fn update_generic(
 fn build_input(
     global_model: Arc<impl GlobalModel>,
     local_model: Arc<impl LocalModel>,
-) -> Result<Type1> {
+) -> Result<Input> {
     Ok(Input {
         user_uuid: global_model
             .user_uuid()
