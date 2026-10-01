@@ -1,6 +1,7 @@
 use crate::client::LocalModel;
 use crate::client::Message;
 use dioxus::prelude::*;
+use kernel::new_types::CompanyUuid;
 use kernel::types::Currency;
 use kernel::types::Location;
 use serde::Deserialize;
@@ -9,6 +10,7 @@ use std::str::FromStr;
 use utility::process_manager::ProcessId;
 use utility::process_manager::UserConsent;
 use utility_ui::components::DialogComponent;
+use utility_ui::components::ListInput;
 use utility_ui::domain::Dialog;
 use utility_ui::domain::HashimSignal;
 use utility_ui::my_signal::MySignal;
@@ -23,6 +25,10 @@ pub struct TypeLocalModel {
     location: MySignal<Location>,
     branch_name_error: MySignal<Option<String>>,
     location_error: MySignal<Option<String>>,
+    list_of_companies_to_display: MySignal<Vec<(CompanyUuid, String)>>,
+    selected_company_name: MySignal<String>,
+    company_name_error: MySignal<String>,
+    selected_company_uuid: MySignal<Option<CompanyUuid>>,
 }
 
 impl LocalModel for TypeLocalModel {
@@ -36,6 +42,22 @@ impl LocalModel for TypeLocalModel {
 
     fn is_loading(&self) -> impl HashimSignal<bool> {
         self.is_loading.clone()
+    }
+
+    fn list_of_companies_to_display(&self) -> impl HashimSignal<Vec<(CompanyUuid, String)>> {
+        self.list_of_companies_to_display.clone()
+    }
+
+    fn company_name_error(&self) -> impl HashimSignal<String> {
+        self.company_name_error.clone()
+    }
+
+    fn selected_company_name(&self) -> impl HashimSignal<String> {
+        self.selected_company_name.clone()
+    }
+
+    fn selected_company_uuid(&self) -> impl HashimSignal<Option<CompanyUuid>> {
+        self.selected_company_uuid.clone()
     }
 
     fn branch_name(&self) -> impl HashimSignal<String> {
@@ -64,11 +86,15 @@ pub fn Component(
     sender: EventHandler<Message>,
     show_dialog: Dialog,
     is_loading: bool,
+    selected_company_name: String,
+    company_name_error: String,
+    selected_company_uuid: String,
     branch_name: String,
     currency: Currency,
     location: Location,
     branch_name_error: Option<String>,
     location_error: Option<String>,
+    list_of_company_name_and_uuid: Vec<(CompanyUuid, String)>,
 ) -> Element {
     rsx! {
         div {
@@ -86,6 +112,20 @@ pub fn Component(
                 show_dialog,
             }
 
+            ListInput {
+                placeholder: "type company name or use default",
+                selected_item: selected_company_name,
+                on_input: move |a| sender(Message::CompanyName(a)),
+                on_select: move |a| sender(Message::SelectedCompany(a)),
+                list: list_of_company_name_and_uuid,
+                row_renderer: Callback::new(move |a: (CompanyUuid, String)| {
+                    rsx! {
+                        button { "{a.1}" }
+                    }
+                }),
+            }
+            label { {company_name_error} }
+            label { {selected_company_uuid} }
             input {
                 placeholder: "Branch Name",
                 oninput: move |event| {

@@ -3,6 +3,7 @@ use crate::navigator::Navigator;
 use crate::utils::MODEL;
 use crate::utils::init_commander_and_model;
 use crate::utils::send;
+use cache::utils::MyUuidConverter;
 use dioxus::prelude::*;
 use use_case_create_account::client::LocalModel as _;
 use use_case_create_branch::client::LocalModel as _;
@@ -72,9 +73,9 @@ fn Home() -> Element {
         use_case_select_default_company::ui::Component {
             sender: move |msg| send(msg),
             user_name: MODEL                        .user_name
-                                .read()
-                                .or_else(|| MODEL.user_id.read().into())
-                                .unwrap_or_default(),
+                                            .read()
+                                            .or_else(|| MODEL.user_id.read().into())
+                                            .unwrap_or_default(),
 
             companies: MODEL.page_select_default_company.list_of_companies().read(),
             branches: MODEL.page_select_default_company.list_of_branches().read(),
@@ -95,11 +96,20 @@ fn Home() -> Element {
             sender: move |msg| send(msg),
             show_dialog: MODEL.page_create_branch.show_dialog().read(),
             is_loading: MODEL.page_create_branch.is_loading().read(),
+            selected_company_name: MODEL.page_create_branch.selected_company_name().read(),
+            company_name_error: MODEL.page_create_branch.company_name_error().read(),
+            selected_company_uuid: MODEL
+                .page_create_branch
+                .selected_company_uuid()
+                .read()
+                .map(|a| { a.into_inner().to_string() })
+                .unwrap_or_default(),
             branch_name: MODEL.page_create_branch.branch_name().read(),
             currency: MODEL.page_create_branch.currency().read(),
             location: MODEL.page_create_branch.location().read(),
             branch_name_error: MODEL.page_create_branch.branch_name_error().read(),
             location_error: MODEL.page_create_branch.location_error().read(),
+            list_of_company_name_and_uuid: MODEL.page_create_branch.list_of_companies_to_display().read(),
         }
         use_case_create_account::ui::Component {
             sender: move |msg| send(msg),

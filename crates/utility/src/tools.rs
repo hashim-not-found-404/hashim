@@ -1,15 +1,11 @@
-pub trait Searchable {
-    fn search_key(&self) -> String;
-}
-
-pub fn select_strings<T: Searchable>(s_list: Vec<T>, s: impl AsRef<str>) -> Vec<T> {
+pub fn select_strings<T>(s_list: Vec<T>, s: impl AsRef<str>, search_key: fn(&T) -> &str) -> Vec<T> {
     if s.as_ref().is_empty() {
         return s_list;
     }
     let needle = s.as_ref().to_lowercase();
     s_list
         .into_iter()
-        .filter(|item| is_subsequence(&needle, &item.search_key().to_lowercase()))
+        .filter(|item| is_subsequence(&needle, search_key(item).to_lowercase().as_str()))
         .collect()
 }
 
@@ -31,84 +27,83 @@ fn is_subsequence(needle: &str, haystack: &str) -> bool {
 mod tests_select_strings {
     use super::*;
 
-    impl Searchable for &str {
-        fn search_key(&self) -> String {
-            self.to_string()
-        }
+    fn search_key(s: &str) -> &str {
+        s
     }
+
     #[test]
     fn fuzzy_search() {
         let list = vec!["apple", "banana"];
-        let result = select_strings(list.clone(), "apl");
+        let result = select_strings(list.clone(), "apl", |a| search_key(a));
         assert_eq!(result, vec!["apple"]);
 
-        let result = select_strings(list.clone(), "bnn");
+        let result = select_strings(list.clone(), "bnn", |a| search_key(a));
         assert_eq!(result, vec!["banana"]);
 
-        let result = select_strings(list.clone(), "aa");
+        let result = select_strings(list.clone(), "aa", |a| search_key(a));
         assert_eq!(result, vec!["banana"]);
 
-        let result = select_strings(list.clone(), "ab");
+        let result = select_strings(list.clone(), "ab", |a| search_key(a));
         assert_eq!(result, Vec::<String>::new());
     }
 
     #[test]
     fn empty_search_returns_all() {
         let list = vec!["apple", "banana"];
-        let result = select_strings(list.clone(), "");
+        let result = select_strings(list.clone(), "", |a| search_key(a));
         assert_eq!(result, list);
     }
 
     #[test]
     fn empty_list_returns_empty() {
         let list: Vec<&str> = vec![];
-        let result = select_strings(list, "a");
+        let result = select_strings(list, "a", |a| search_key(a));
         assert!(result.is_empty());
     }
 
     #[test]
     fn exact_match_returns_one() {
         let list = vec!["apple", "banana"];
-        let result = select_strings(list, "apple");
+        let result = select_strings(list, "apple", |a| search_key(a));
         assert_eq!(result, vec!["apple"]);
     }
 
     #[test]
     fn substring_match() {
         let list = vec!["apple", "pineapple", "banana"];
-        let result = select_strings(list, "app");
+        let result = select_strings(list, "app", |a| search_key(a));
         assert_eq!(result, vec!["apple", "pineapple"]);
     }
 
     #[test]
     fn case_insensitive() {
         let list = vec!["Apple", "BANANA", "Grape"];
-        let result = select_strings(list, "ap");
+        let result = select_strings(list, "ap", |a| search_key(a));
         assert_eq!(result, vec!["Apple", "Grape"]);
 
         let list2 = vec!["Apple", "BANANA", "Grape"];
-        let result2 = select_strings(list2, "ban");
+        let result2 = select_strings(list2, "ban", |a| search_key(a));
         assert_eq!(result2, vec!["BANANA"]);
     }
 
     #[test]
     fn no_match_returns_empty() {
         let list = vec!["apple", "banana"];
-        let result = select_strings(list, "xyz");
+        let result = select_strings(list, "xyz", |a| search_key(a));
         assert!(result.is_empty());
     }
 
     #[test]
     fn handles_unicode_characters() {
         let list = vec!["café", "coffee", "tea"];
-        let result = select_strings(list, "é");
+        let result = select_strings(list, "é", |a| search_key(a));
         assert_eq!(result, vec!["café"]);
     }
 
     #[test]
     fn does_not_modify_original_list() {
         let original = vec!["one", "two"];
-        let result = select_strings(original.clone(), "o");
+        let result = select_strings(original.clone(), "o", |a| search_key(a));
         assert_eq!(result, vec!["one", "two"]);
         assert_eq!(original, vec!["one", "two"]);
     }

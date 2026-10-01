@@ -6,6 +6,7 @@ use serde::Deserialize;
 use serde::Serialize;
 use std::fmt::Debug;
 use std::sync::Arc;
+use use_case_select_default_company::client::LocalModel;
 use utility::ui_effect::Model;
 use utility_ui::domain::HashimSignal;
 use utility_ui::my_signal::MySignal;
@@ -135,6 +136,10 @@ impl use_case_select_default_company::client::GlobalModel for TypeModel {
 }
 
 impl use_case_create_branch::client::GlobalModel for TypeModel {
+    fn list_of_companies(&self) -> impl HashimSignal<Vec<(CompanyUuid, String)>> {
+        self.page_select_default_company.list_of_companies()
+    }
+
     fn user_uuid(&self) -> impl HashimSignal<Option<UserUuid>> {
         self.user_uuid.clone()
     }

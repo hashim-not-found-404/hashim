@@ -75,15 +75,55 @@ pub fn PasswordInput(password_callback: EventHandler<String>, password: String) 
 }
 
 #[component]
-pub fn ErrorStack(close_error_callback: EventHandler, error: String) -> Element {
-    if error.is_empty() {
-        return rsx!();
-    }
+pub fn ListInput<T: PartialEq + Clone + 'static>(
+    placeholder: String,
+    selected_item: String,
+    on_input: EventHandler<String>,
+    on_select: EventHandler<usize>,
+    list: Vec<T>,
+    row_renderer: Callback<T, Element>,
+) -> Element {
+    let mut is_open = use_signal(|| false);
 
     rsx! {
         div {
-            button { onclick: move |_| { close_error_callback(()) }, "X" }
-            label { {error} }
+            input {
+                placeholder: "{placeholder}",
+                value: selected_item,
+                onfocus: move |_| is_open.set(true),
+                onblur: move |_| is_open.set(false),
+                oninput: move |event| {
+                    let v = event.value();
+                    is_open.set(true);
+                    on_input.call(v);
+                },
+            }
+
+            if is_open() {
+                if list.is_empty() {
+                    ul {
+                        li { "no items" }
+                    }
+                } else {
+                    ul {
+                        for (idx, item) in list.iter().enumerate() {
+                            {
+                                rsx! {
+                                    li {
+                                        key: "{idx}",
+                                        onmousedown: move |event| {
+                                            event.prevent_default();
+                                            is_open.set(false);
+                                            on_select.call(idx);
+                                        },
+                                        {row_renderer.call(item.clone())}
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }

@@ -36,6 +36,7 @@ use utility::cache::new_resource_name;
 use utility::process_manager::MessageToProcessManager;
 use utility::process_manager::ProcessId;
 use utility::process_manager::UserConsent;
+use utility::tools::select_strings;
 use utility::ui_effect::MessageTrait;
 use utility::ui_effect::Model;
 use utility::ui_effect::UiContext;
@@ -85,6 +86,8 @@ pub enum Message {
     Submit,
     Consent(UserConsent),
     Clean,
+    CompanyName(String),
+    SelectedCompany(usize),
     BranchName(String),
     Currency(Currency),
     Latitude(String),
@@ -99,6 +102,7 @@ type Type3 = MyResult;
 type Type4 = MyResult;
 
 pub trait GlobalModel: Model + 'static {
+    fn list_of_companies(&self) -> impl HashimSignal<Vec<(CompanyUuid, String)>>;
     fn user_uuid(&self) -> impl HashimSignal<Option<UserUuid>>;
     fn selected_company(&self) -> impl HashimSignal<Option<CompanyUuid>>;
 }
@@ -107,6 +111,10 @@ pub trait LocalModel: 'static {
     fn process_id(&self) -> impl HashimSignal<Option<ProcessId>>;
     fn show_dialog(&self) -> impl HashimSignal<Dialog>;
     fn is_loading(&self) -> impl HashimSignal<bool>;
+    fn list_of_companies_to_display(&self) -> impl HashimSignal<Vec<(CompanyUuid, String)>>;
+    fn company_name_error(&self) -> impl HashimSignal<String>;
+    fn selected_company_name(&self) -> impl HashimSignal<String>;
+    fn selected_company_uuid(&self) -> impl HashimSignal<Option<CompanyUuid>>;
     fn branch_name(&self) -> impl HashimSignal<String>;
     fn currency(&self) -> impl HashimSignal<Currency>;
     fn location(&self) -> impl HashimSignal<Location>;
@@ -177,6 +185,36 @@ pub async fn update_generic(
             loc.longitude = v.parse().unwrap_or_default();
             local_model.location().set(loc);
         }
+        Message::CompanyName(v) => {
+            let list_of_companies = context.model.list_of_companies().read();
+            let a = select_strings(list_of_companies, v.clone(), |a| a.1.as_str());
+
+            let list_of_companies_to_display = local_model.list_of_companies_to_display();
+            list_of_companies_to_display.set(a);
+            local_model.selected_company_name().set(v.clone());
+            let selected_company_uuid = local_model.selected_company_uuid();
+
+            match list_of_companies_to_display.read().get(0) {
+                Some(a) => {
+                    if v == a.1 {
+                        selected_company_uuid.set(Some(a.0.clone()));
+                    } else {
+                        selected_company_uuid.set(None);
+                    }
+                }
+                None => {
+                    selected_company_uuid.set(None);
+                }
+            }
+        }
+        Message::SelectedCompany(v) => {
+            let a = local_model.list_of_companies_to_display().read();
+
+            if let Some(a) = a.get(v) {
+                local_model.selected_company_name().set(a.1.clone());
+                local_model.selected_company_uuid().set(Some(a.0.clone()));
+            };
+        }
     }
 
     Ok(())
@@ -185,21 +223,43 @@ pub async fn update_generic(
 fn build_input(
     global_model: Arc<impl GlobalModel>,
     local_model: Arc<impl LocalModel>,
-) -> Result<Type1> {
-    Ok(Input {
+) -> Result<Option<Type1>> {
+    Ok(Some(Input {
         user_uuid: global_model
             .user_uuid()
             .read()
             .context("user uuid not found")?,
         new_uuid: BranchUuid::from(UuidType::from(Id::generate())),
-        company_belong: global_model
-            .selected_company()
-            .read()
-            .context("company uuid not found")?,
+        company_belong: {
+            let company_name = local_model.selected_company_name().read();
+            let read = local_model.list_of_companies_to_display().read();
+
+            let first_company_name = match read.get(0) {
+                Some(a) => a.1.clone(),
+                None => return Ok(None),
+            };
+
+            if !company_name.is_empty() && company_name != first_company_name {
+                local_model
+                    .company_name_error()
+                    .set("please select company".to_string());
+                return Ok(None);
+            } else {
+                local_model.company_name_error().reset();
+            }
+
+            match local_model.selected_company_uuid().read() {
+                Some(a) => a,
+                None => global_model
+                    .selected_company()
+                    .read()
+                    .context("company uuid not found")?,
+            }
+        },
         branch_name: local_model.branch_name().read(),
         currency: local_model.currency().read(),
         location: local_model.location().read(),
-    })
+    }))
 }
 
 fn handle_clean(local_model: Arc<impl LocalModel>) {
@@ -224,6 +284,10 @@ async fn handle_submit(
     let dialog_signal_adapter = Arc::new(DialogSignalAdapter(local_model.show_dialog()));
 
     let data = build_input(global_model, local_model.clone())?;
+    let data = match data {
+        Some(a) => a,
+        None => return Ok(()),
+    };
     let data: TypeOperationClientInput = Arc::new(data);
 
     let local_model1 = local_model.clone();
