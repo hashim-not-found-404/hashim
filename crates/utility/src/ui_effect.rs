@@ -179,11 +179,9 @@ impl Aborter {
 pub struct Aborters(Arc<Mutex<HashMap<ProcessId, Aborter>>>);
 
 impl Aborters {
-    pub fn register(&self, aborter: Aborter) -> ProcessId {
+    pub fn register(&self, process_id: ProcessId, aborter: Aborter) {
         let mut mutex_guard = self.0.lock().unwrap();
-        let page = ProcessId::default();
-        mutex_guard.insert(page, aborter);
-        page
+        mutex_guard.insert(process_id, aborter);
     }
 
     pub fn abort(&self, page: ProcessId) {

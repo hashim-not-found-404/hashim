@@ -148,14 +148,14 @@ pub fn Component(
             input {
                 placeholder: "Latitude",
                 oninput: move |event| {
-                    sender(Intent::Latitude(event.value()));
+                    sender(Intent::Latitude(event.value().parse().unwrap_or_default()));
                 },
                 value: "{location.latitude}",
             }
             input {
                 placeholder: "Longitude",
                 oninput: move |event| {
-                    sender(Intent::Longitude(event.value()));
+                    sender(Intent::Longitude(event.value().parse().unwrap_or_default()));
                 },
                 value: "{location.longitude}",
             }

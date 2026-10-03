@@ -14,10 +14,9 @@ use use_case_get_companies_and_branches::domain::MyResult;
 use use_case_get_companies_and_branches::domain::Ok;
 use utility::cache::ResourceName;
 use utility::cache::new_resource_name;
-use utility::types::ReadAndSet;
+use utility::process_manager::ProcessId;
 use utility::ui_effect::MessageTrait;
 use utility::ui_effect::Model;
-use utility::ui_effect::PageId;
 use utility::ui_effect::UiContext;
 use utility::ui_orchestration::spawn_listener;
 use utility_ui::domain::HashimSignal;
@@ -26,16 +25,6 @@ const RESOURCES_NAME_TO_LISTEN: &[ResourceName] = &[
     new_resource_name("companies"),
     new_resource_name("branches"),
 ];
-
-#[derive(Debug, Clone)]
-pub enum Message {
-    Subscribe,
-    UnSubscribe,
-    SelectCompany(CompanyUuid),
-    SelectBranch(BranchUuid),
-}
-
-impl MessageTrait for Message {}
 
 pub trait GlobalModel: Model + 'static {
     fn user_uuid(&self) -> impl HashimSignal<Option<UserUuid>>;
@@ -46,143 +35,219 @@ pub trait GlobalModel: Model + 'static {
 }
 
 pub trait LocalModel: 'static {
-    fn page_id(&self) -> impl ReadAndSet<Option<PageId>>;
     fn list_of_companies_and_branches(&self) -> impl HashimSignal<Vec<CompanyWithBranches>>;
     fn list_of_companies(&self) -> impl HashimSignal<Vec<(CompanyUuid, String)>>;
     fn list_of_branches(&self) -> impl HashimSignal<Vec<(BranchUuid, String)>>;
     fn is_loading(&self) -> impl HashimSignal<bool>;
 }
 
-fn apply_on_the_model(
-    output: &MyResult,
-    local_model: Arc<impl LocalModel>,
-    global_model: Arc<impl GlobalModel>,
-) {
-    local_model.is_loading().set(false);
+#[derive(Debug, Clone)]
+pub enum Change {
+    IsLoading(bool),
+    ListOfCompaniesAndBranches(Vec<CompanyWithBranches>),
+    ListOfCompanies(Vec<(CompanyUuid, String)>),
+    ListOfBranches(Vec<(BranchUuid, String)>),
+    SelectedCompanyUuid(Option<CompanyUuid>),
+    SelectedCompanyName(Option<String>),
+    SelectedCompanyBranchUuid(Option<BranchUuid>),
+    SelectedCompanyBranchName(Option<String>),
+}
 
-    match output {
-        Ok(ok) => {
-            let companies = ok.companies.clone();
-            local_model
-                .list_of_companies_and_branches()
-                .set(companies.clone());
-            local_model
-                .list_of_companies()
-                .set(flat_companies(&companies));
-            if let Some(company_uuid) = global_model.selected_company_uuid().read() {
-                local_model
-                    .list_of_branches()
-                    .set(flat_branches_for(&companies, &company_uuid));
+#[derive(Debug, Clone)]
+pub enum Effect {
+    Subscribe {
+        process_id: ProcessId,
+        user_uuid: UserUuid,
+    },
+    UnSubscribe {
+        process_id: ProcessId,
+    },
+}
+
+#[derive(Debug, Clone)]
+pub enum Intent {
+    Subscribe,
+    UnSubscribe,
+    SelectCompany(CompanyUuid),
+    SelectBranch(BranchUuid),
+}
+
+#[derive(Debug, Clone)]
+pub enum Observe {
+    Result(MyResult),
+}
+
+#[derive(Debug, Clone)]
+pub enum Message {
+    Intent(Intent),
+    Observe(Observe),
+}
+
+impl MessageTrait for Message {}
+
+pub fn reduce(
+    msg: Message,
+    process_id: ProcessId,
+    local_model: &impl LocalModel,
+    global_model: &impl GlobalModel,
+) -> Result<(Vec<Change>, Vec<Effect>)> {
+    match msg {
+        Message::Intent(intent) => match intent {
+            Intent::Subscribe => {
+                let Some(user_uuid) = global_model.user_uuid().read() else {
+                    return Ok((vec![], vec![]));
+                };
+                let change = vec![Change::IsLoading(true)];
+                let effect = vec![Effect::Subscribe {
+                    process_id,
+                    user_uuid,
+                }];
+                Ok((change, effect))
             }
-        }
-        Err(_) => {
-            local_model.list_of_companies_and_branches().reset();
-            local_model.list_of_companies().reset();
-            local_model.list_of_branches().reset();
-        }
+            Intent::UnSubscribe => {
+                let change = vec![];
+                let effect = vec![Effect::UnSubscribe { process_id }];
+                Ok((change, effect))
+            }
+            Intent::SelectCompany(uuid) => {
+                if global_model.selected_company_uuid().read().as_ref() == Some(&uuid) {
+                    return Ok((vec![], vec![]));
+                }
+
+                let Some(name) = local_model
+                    .list_of_companies()
+                    .read()
+                    .into_iter()
+                    .find_map(|(c_uuid, c_name)| (c_uuid == uuid).then_some(c_name))
+                else {
+                    return Ok((vec![], vec![]));
+                };
+
+                let branches =
+                    flat_branches_for(&local_model.list_of_companies_and_branches().read(), &uuid);
+
+                let change = vec![
+                    Change::SelectedCompanyUuid(Some(uuid)),
+                    Change::SelectedCompanyName(Some(name)),
+                    Change::SelectedCompanyBranchUuid(None),
+                    Change::SelectedCompanyBranchName(None),
+                    Change::ListOfBranches(branches),
+                ];
+                Ok((change, vec![]))
+            }
+            Intent::SelectBranch(uuid) => {
+                if global_model.selected_company_branch_uuid().read().as_ref() == Some(&uuid) {
+                    return Ok((vec![], vec![]));
+                }
+
+                let Some(name) = local_model
+                    .list_of_branches()
+                    .read()
+                    .into_iter()
+                    .find_map(|(b_uuid, b_name)| (b_uuid == uuid).then_some(b_name))
+                else {
+                    return Ok((vec![], vec![]));
+                };
+
+                let change = vec![
+                    Change::SelectedCompanyBranchUuid(Some(uuid)),
+                    Change::SelectedCompanyBranchName(Some(name)),
+                ];
+                Ok((change, vec![]))
+            }
+        },
+        Message::Observe(observe) => match observe {
+            Observe::Result(result) => {
+                let mut change = vec![Change::IsLoading(false)];
+                match result {
+                    Ok(ok) => {
+                        let companies = ok.companies.clone();
+                        change.push(Change::ListOfCompaniesAndBranches(companies.clone()));
+                        change.push(Change::ListOfCompanies(flat_companies(&companies)));
+
+                        if let Some(company_uuid) = global_model.selected_company_uuid().read() {
+                            change.push(Change::ListOfBranches(flat_branches_for(
+                                &companies,
+                                &company_uuid,
+                            )));
+                        }
+                    }
+                    Err(_) => {
+                        change.push(Change::ListOfCompaniesAndBranches(Vec::new()));
+                        change.push(Change::ListOfCompanies(Vec::new()));
+                        change.push(Change::ListOfBranches(Vec::new()));
+                    }
+                }
+                Ok((change, vec![]))
+            }
+        },
     }
 }
 
-pub async fn update_generic(
-    message: Message,
-    local_model: Arc<impl LocalModel>,
-    context: UiContext,
-) -> Result<()> {
-    match message {
-        Message::Subscribe => handle_subscribe(local_model, context)?,
-        Message::UnSubscribe => {
-            context.aborters.abort(
-                local_model
-                    .page_id()
-                    .read()
-                    .context("there is no page id to abort")?,
-            );
+pub fn update(msg: Change, local_model: &impl LocalModel, global_model: &impl GlobalModel) {
+    match msg {
+        Change::IsLoading(i) => local_model.is_loading().set(i),
+        Change::ListOfCompaniesAndBranches(i) => {
+            local_model.list_of_companies_and_branches().set(i)
         }
-        Message::SelectCompany(uuid) => {
-            if context.model.selected_company_uuid().read().as_ref() == Some(&uuid) {
-                return Ok(());
-            }
+        Change::ListOfCompanies(i) => local_model.list_of_companies().set(i),
+        Change::ListOfBranches(i) => local_model.list_of_branches().set(i),
+        Change::SelectedCompanyUuid(i) => global_model.selected_company_uuid().set(i),
+        Change::SelectedCompanyName(i) => global_model.selected_company_name().set(i),
+        Change::SelectedCompanyBranchUuid(i) => global_model.selected_company_branch_uuid().set(i),
+        Change::SelectedCompanyBranchName(i) => global_model.selected_company_branch_name().set(i),
+    }
+}
 
-            let name = local_model
-                .list_of_companies()
-                .read()
-                .into_iter()
-                .find_map(|(c_uuid, c_name)| (c_uuid == uuid).then_some(c_name))
-                .context("selected company is not in the list")?;
-
-            context
-                .model
-                .selected_company_uuid()
-                .set(Some(uuid.clone()));
-            context.model.selected_company_name().set(Some(name));
-
-            context.model.selected_company_branch_uuid().reset();
-            context.model.selected_company_branch_name().reset();
-
-            let branches =
-                flat_branches_for(&local_model.list_of_companies_and_branches().read(), &uuid);
-            local_model.list_of_branches().set(branches);
+pub async fn effect(msg: Effect, context: UiContext) -> Result<()> {
+    match msg {
+        Effect::Subscribe {
+            process_id,
+            user_uuid,
+        } => {
+            handle_subscribe(process_id, user_uuid, context).await?;
         }
-
-        Message::SelectBranch(uuid) => {
-            if context.model.selected_company_branch_uuid().read().as_ref() == Some(&uuid) {
-                return Ok(());
-            }
-
-            let name = local_model
-                .list_of_branches()
-                .read()
-                .into_iter()
-                .find_map(|(b_uuid, b_name)| (b_uuid == uuid).then_some(b_name))
-                .context("selected branch is not in the list")?;
-
-            context.model.selected_company_branch_uuid().set(Some(uuid));
-            context.model.selected_company_branch_name().set(Some(name));
+        Effect::UnSubscribe { process_id } => {
+            context.aborters.abort(process_id);
         }
     }
-
     Ok(())
 }
 
-fn handle_subscribe(local_model: Arc<impl LocalModel>, context: UiContext) -> Result<()> {
-    let local_model1 = local_model.clone();
+async fn handle_subscribe(
+    process_id: ProcessId,
+    user_uuid: UserUuid,
+    context: UiContext,
+) -> Result<()> {
+    let sender_to_commander = context.sender_to_commander.clone();
 
     let aborter = spawn_listener(
-        context.sender_to_error,
-        context.cache,
+        context.sender_to_error.clone(),
+        context.cache.clone(),
         RESOURCES_NAME_TO_LISTEN,
-        Arc::new(Input {
-            user_uuid: context
-                .model
-                .user_uuid()
-                .read()
-                .context("user uuid not found")?,
-        }),
+        Arc::new(Input { user_uuid }),
         move |data| {
             let result = match data {
                 Ok(ok) => {
-                    let a = ok;
-                    let a: Arc<dyn Any> = a;
+                    let a: Arc<dyn Any> = ok;
                     let a: &Ok = a.downcast_ref().context("downcast error")?;
-                    let a: Ok = a.clone();
-                    Ok(a)
+                    Ok(a.clone())
                 }
                 Err(err) => {
-                    let a = err;
-                    let a: Box<dyn Any> = a;
+                    let a: Box<dyn Any> = err;
                     let a: Box<Error> = a.downcast().map_err(|_| anyhow!("downcast error"))?;
-                    let a: Error = a.as_ref().clone();
-                    Err(a)
+                    Err(*a)
                 }
             };
 
-            apply_on_the_model(&result, local_model1.clone(), context.model.clone());
+            sender_to_commander.send(process_id, Message::Observe(Observe::Result(result)));
 
             Ok(())
         },
     );
-    let a = context.aborters.register(aborter);
-    local_model.page_id().put(Some(a));
+
+    context.aborters.register(process_id, aborter);
+
     Ok(())
 }
 

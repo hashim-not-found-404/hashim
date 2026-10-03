@@ -1,23 +1,16 @@
+use crate::client::Intent;
 use crate::client::LocalModel;
-use crate::client::Message;
 use dioxus::prelude::*;
 use kernel::new_types::BranchUuid;
 use kernel::new_types::CompanyUuid;
 use serde::Deserialize;
 use serde::Serialize;
-use std::sync::Arc;
-use std::sync::RwLock;
 use use_case_get_companies_and_branches::domain::CompanyWithBranches;
-use utility::types::ReadAndSet;
-use utility::ui_effect::PageId;
 use utility_ui::domain::HashimSignal;
 use utility_ui::my_signal::MySignal;
 
 #[derive(Debug, Default, Deserialize, Serialize)]
 pub struct TypeLocalModel {
-    #[serde(skip)]
-    page_id: Arc<RwLock<Option<PageId>>>,
-
     list_of_companies: MySignal<Vec<CompanyWithBranches>>,
     list_companies: MySignal<Vec<(CompanyUuid, String)>>,
     list_branches: MySignal<Vec<(BranchUuid, String)>>,
@@ -25,10 +18,6 @@ pub struct TypeLocalModel {
 }
 
 impl LocalModel for TypeLocalModel {
-    fn page_id(&self) -> impl ReadAndSet<Option<PageId>> {
-        self.page_id.clone()
-    }
-
     fn list_of_companies_and_branches(&self) -> impl HashimSignal<Vec<CompanyWithBranches>> {
         self.list_of_companies.clone()
     }
@@ -48,7 +37,7 @@ impl LocalModel for TypeLocalModel {
 
 #[component]
 pub fn Component(
-    sender: EventHandler<Message>,
+    sender: EventHandler<Intent>,
     user_name: String,
     companies: Vec<(CompanyUuid, String)>,
     branches: Vec<(BranchUuid, String)>,
@@ -58,11 +47,11 @@ pub fn Component(
     selected_branch_name: Option<String>,
 ) -> Element {
     use_effect(move || {
-        sender(Message::Subscribe);
+        sender(Intent::Subscribe);
     });
 
     use_drop(move || {
-        sender(Message::UnSubscribe);
+        sender(Intent::UnSubscribe);
     });
 
     let mut show_companies = use_signal(|| false);
@@ -110,7 +99,7 @@ pub fn Component(
                                     rsx! {
                                         button {
                                             onclick: move |_| {
-                                                sender(Message::SelectCompany(uuid.clone()));
+                                                sender(Intent::SelectCompany(uuid.clone()));
                                                 *show_companies.write() = false;
                                             },
                                             "{name}"
@@ -150,7 +139,7 @@ pub fn Component(
                                     rsx! {
                                         button {
                                             onclick: move |_| {
-                                                sender(Message::SelectBranch(uuid.clone()));
+                                                sender(Intent::SelectBranch(uuid.clone()));
                                                 *show_branches.write() = false;
                                             },
                                             "{name}"
