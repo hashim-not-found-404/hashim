@@ -62,18 +62,18 @@ pub struct Error {
 impl MarkerMyErrorTrait for Error {}
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
-pub(crate) enum CompanyBelongError {
+pub enum CompanyBelongError {
     NotExist,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
-pub(crate) enum BranchNameError {
+pub enum BranchNameError {
     Empty,
     Duplicated,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
-pub(crate) enum LocationError {
+pub enum LocationError {
     Invalid,
 }
 

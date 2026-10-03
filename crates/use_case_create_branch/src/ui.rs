@@ -1,5 +1,7 @@
+use crate::client::Intent;
 use crate::client::LocalModel;
-use crate::client::Message;
+use crate::domain::BranchNameError;
+use crate::domain::LocationError;
 use dioxus::prelude::*;
 use kernel::new_types::CompanyUuid;
 use kernel::types::Currency;
@@ -23,8 +25,8 @@ pub struct TypeLocalModel {
     branch_name: MySignal<String>,
     currency: MySignal<Currency>,
     location: MySignal<Location>,
-    branch_name_error: MySignal<Option<String>>,
-    location_error: MySignal<Option<String>>,
+    branch_name_error: MySignal<Option<BranchNameError>>,
+    location_error: MySignal<Option<LocationError>>,
     list_of_companies_to_display: MySignal<Vec<(CompanyUuid, String)>>,
     selected_company_name: MySignal<String>,
     company_name_error: MySignal<String>,
@@ -32,10 +34,6 @@ pub struct TypeLocalModel {
 }
 
 impl LocalModel for TypeLocalModel {
-    fn process_id(&self) -> impl HashimSignal<Option<ProcessId>> {
-        self.process_id.clone()
-    }
-
     fn show_dialog(&self) -> impl HashimSignal<Dialog> {
         self.show_dialog.clone()
     }
@@ -72,18 +70,18 @@ impl LocalModel for TypeLocalModel {
         self.location.clone()
     }
 
-    fn branch_name_error(&self) -> impl HashimSignal<Option<String>> {
+    fn branch_name_error(&self) -> impl HashimSignal<Option<BranchNameError>> {
         self.branch_name_error.clone()
     }
 
-    fn location_error(&self) -> impl HashimSignal<Option<String>> {
+    fn location_error(&self) -> impl HashimSignal<Option<LocationError>> {
         self.location_error.clone()
     }
 }
 
 #[component]
 pub fn Component(
-    sender: EventHandler<Message>,
+    sender: EventHandler<Intent>,
     show_dialog: Dialog,
     is_loading: bool,
     selected_company_name: String,
@@ -100,13 +98,13 @@ pub fn Component(
         div {
             DialogComponent {
                 dont_wait_for_server_response: move || {
-                    sender(Message::Consent(UserConsent::DontWaitForServerResponse));
+                    sender(Intent::Consent(UserConsent::DontWaitForServerResponse));
                 },
                 wait_for_server_response: move || {
-                    sender(Message::Consent(UserConsent::WaitForServerResponse));
+                    sender(Intent::Consent(UserConsent::WaitForServerResponse));
                 },
                 cancel_operation: move || {
-                    sender(Message::Consent(UserConsent::CancelOperation));
+                    sender(Intent::Consent(UserConsent::CancelOperation));
                 },
                 operation_name: "create branch",
                 show_dialog,
@@ -115,8 +113,8 @@ pub fn Component(
             ListInput {
                 placeholder: "type company name or use default",
                 selected_item: selected_company_name,
-                on_input: move |a| sender(Message::CompanyName(a)),
-                on_select: move |a| sender(Message::SelectedCompany(a)),
+                on_input: move |a| sender(Intent::CompanyName(a)),
+                on_select: move |a| sender(Intent::SelectedCompany(a)),
                 list: list_of_company_name_and_uuid,
                 row_renderer: Callback::new(move |a: (CompanyUuid, String)| {
                     rsx! {
@@ -129,7 +127,7 @@ pub fn Component(
             input {
                 placeholder: "Branch Name",
                 oninput: move |event| {
-                    sender(Message::BranchName(event.value()));
+                    sender(Intent::BranchName(event.value()));
                 },
                 value: branch_name,
             }
@@ -141,7 +139,7 @@ pub fn Component(
                 value: currency.as_str(),
                 onchange: move |event| {
                     let c = Currency::from_str(&event.value()).unwrap_or_default();
-                    sender(Message::Currency(c));
+                    sender(Intent::Currency(c));
                 },
                 option { value: "USD", "USD" }
                 option { value: "IQD", "IQD" }
@@ -150,14 +148,14 @@ pub fn Component(
             input {
                 placeholder: "Latitude",
                 oninput: move |event| {
-                    sender(Message::Latitude(event.value()));
+                    sender(Intent::Latitude(event.value()));
                 },
                 value: "{location.latitude}",
             }
             input {
                 placeholder: "Longitude",
                 oninput: move |event| {
-                    sender(Message::Longitude(event.value()));
+                    sender(Intent::Longitude(event.value()));
                 },
                 value: "{location.longitude}",
             }
@@ -168,13 +166,13 @@ pub fn Component(
             button {
                 disabled: is_loading,
                 onclick: move |_| {
-                    sender(Message::Submit);
+                    sender(Intent::Submit);
                 },
                 "Create Branch"
             }
             button {
                 onclick: move |_| {
-                    sender(Message::Clean);
+                    sender(Intent::Clean);
                 },
                 "Clean"
             }
