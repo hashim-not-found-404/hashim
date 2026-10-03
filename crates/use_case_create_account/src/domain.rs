@@ -61,7 +61,7 @@ pub struct Error {
 impl MarkerMyErrorTrait for Error {}
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
-pub(crate) enum AccountNameError {
+pub enum AccountNameError {
     Duplicated,
 }
 

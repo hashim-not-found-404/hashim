@@ -1,3 +1,4 @@
+use crate::domain::AccountNameError;
 use crate::domain::Error;
 use crate::domain::Input;
 use crate::domain::MyResult;
@@ -7,13 +8,11 @@ use crate::domain::ReadOutput;
 use anyhow::Context;
 use anyhow::Result;
 use anyhow::anyhow;
-use infrastructure::actors::MpscSender;
 use infrastructure::actors::Receiver;
 use infrastructure::actors::Sender;
 use infrastructure::row_id::Id;
 use infrastructure::row_id::RowId;
 use kernel::client::Cache;
-use kernel::client::DialogSignalAdapter;
 use kernel::new_types::AccountUuid;
 use kernel::new_types::CompanyUuid;
 use kernel::new_types::UserUuid;
@@ -25,7 +24,6 @@ use std::fmt::Debug;
 use std::ops::Deref;
 use std::sync::Arc;
 use use_case_get_all_accounts::client::fetch;
-use utility::cache::CacheStruct;
 use utility::cache::CachingStrategy;
 use utility::cache::ResourceName;
 use utility::cache::Response;
@@ -37,9 +35,11 @@ use utility::cache::TypeOperationClientResult;
 use utility::cache::new_resource_name;
 use utility::dtos::TxnNumber;
 use utility::process_manager::MessageToProcessManager;
+use utility::process_manager::ProcessDialog;
 use utility::process_manager::ProcessId;
 use utility::process_manager::UserConsent;
 use utility::types::MakeOptionIfEmpty;
+use utility::ui_effect::Commander;
 use utility::ui_effect::MessageTrait;
 use utility::ui_effect::Model;
 use utility::ui_effect::UiContext;
@@ -84,8 +84,68 @@ pub async fn check_input<
     Ok(Ok(Arc::new(state_less_operation)))
 }
 
+pub trait GlobalModel: Model + 'static {
+    fn user_uuid(&self) -> impl HashimSignal<Option<UserUuid>>;
+    fn selected_company(&self) -> impl HashimSignal<Option<CompanyUuid>>;
+}
+
+pub trait LocalModel: 'static {
+    fn show_dialog(&self) -> impl HashimSignal<Dialog>;
+    fn is_loading(&self) -> impl HashimSignal<bool>;
+    fn is_debit(&self) -> impl HashimSignal<bool>;
+    fn is_permanent_account(&self) -> impl HashimSignal<bool>;
+    fn account_name(&self) -> impl HashimSignal<String>;
+    fn notes(&self) -> impl HashimSignal<String>;
+    fn unit_of_measurement_of_quantity(&self) -> impl HashimSignal<String>;
+    fn account_name_error(&self) -> impl HashimSignal<Option<AccountNameError>>;
+}
+
 #[derive(Debug, Clone)]
-pub enum Message {
+pub enum Change {
+    ShowDialog(Dialog),
+    IsLoading(bool),
+    IsDebit(bool),
+    IsPermanentAccount(bool),
+    AccountName(String),
+    Notes(String),
+    UnitOfMeasurementOfQuantity(String),
+    AccountNameError(Option<AccountNameError>),
+}
+
+#[derive(Debug, Clone)]
+pub enum Effect {
+    Submit {
+        process_id: ProcessId,
+        user_uuid: UserUuid,
+        is_debit: bool,
+        is_permanent_account: bool,
+        account_name: String,
+        notes: Option<String>,
+        unit_of_measurement_of_quantity: String,
+        belong_to_company: CompanyUuid,
+    },
+    Consent {
+        process_id: ProcessId,
+        user_consent: UserConsent,
+    },
+    Check {
+        process_id: ProcessId,
+        is_debit: bool,
+        is_permanent_account: bool,
+        account_name: String,
+        notes: Option<String>,
+        unit_of_measurement_of_quantity: String,
+        user_uuid: UserUuid,
+        belong_to_company: CompanyUuid,
+    },
+    Refresh {
+        user_uuid: UserUuid,
+        company_uuid: CompanyUuid,
+    },
+}
+
+#[derive(Debug, Clone)]
+pub enum Intent {
     Subscribe,
     Submit,
     Consent(UserConsent),
@@ -97,201 +157,307 @@ pub enum Message {
     UnitOfMeasurementOfQuantity(String),
 }
 
+#[derive(Debug, Clone)]
+pub enum Observe {
+    ShowDialog,
+    HideDialog,
+    SubmitResult(MyResult),
+    CheckResult(MyResult),
+}
+
+#[derive(Debug, Clone)]
+pub enum Message {
+    Intent(Intent),
+    Observe(Observe),
+}
+
 impl MessageTrait for Message {}
 
-pub trait GlobalModel: Model + 'static {
-    fn user_uuid(&self) -> impl HashimSignal<Option<UserUuid>>;
-    fn selected_company(&self) -> impl HashimSignal<Option<CompanyUuid>>;
-}
+pub fn reduce(
+    msg: Message,
+    process_id: ProcessId,
+    local_model: &impl LocalModel,
+    global_model: &impl GlobalModel,
+) -> Result<(Vec<Change>, Vec<Effect>)> {
+    match msg {
+        Message::Intent(intent) => match intent {
+            Intent::Subscribe => {
+                let Some(user_uuid) = global_model.user_uuid().read() else {
+                    return Ok((vec![], vec![]));
+                };
+                let Some(company_uuid) = global_model.selected_company().read() else {
+                    return Ok((vec![], vec![]));
+                };
+                let effect = vec![Effect::Refresh {
+                    user_uuid,
+                    company_uuid,
+                }];
+                Ok((vec![], effect))
+            }
+            Intent::Submit => {
+                let Some(user_uuid) = global_model.user_uuid().read() else {
+                    return Ok((vec![], vec![]));
+                };
+                let Some(belong_to_company) = global_model.selected_company().read() else {
+                    return Ok((vec![], vec![]));
+                };
 
-pub trait LocalModel: 'static {
-    fn process_id(&self) -> impl HashimSignal<Option<ProcessId>>;
-    fn show_dialog(&self) -> impl HashimSignal<Dialog>;
-    fn is_loading(&self) -> impl HashimSignal<bool>;
-    fn is_debit(&self) -> impl HashimSignal<bool>;
-    fn is_permanent_account(&self) -> impl HashimSignal<bool>;
-    fn account_name(&self) -> impl HashimSignal<String>;
-    fn notes(&self) -> impl HashimSignal<String>;
-    fn unit_of_measurement_of_quantity(&self) -> impl HashimSignal<String>;
-    fn account_name_error(&self) -> impl HashimSignal<Option<String>>;
-}
+                let change = vec![
+                    Change::ShowDialog(Default::default()),
+                    Change::AccountNameError(None),
+                ];
+                let effect = vec![Effect::Submit {
+                    process_id,
+                    user_uuid,
+                    is_debit: local_model.is_debit().read(),
+                    is_permanent_account: local_model.is_permanent_account().read(),
+                    account_name: local_model.account_name().read(),
+                    notes: local_model.notes().read().none_if_empty(),
+                    unit_of_measurement_of_quantity: local_model
+                        .unit_of_measurement_of_quantity()
+                        .read(),
+                    belong_to_company,
+                }];
+                Ok((change, effect))
+            }
+            Intent::Consent(v) => {
+                let change = vec![Change::ShowDialog(Dialog::Hide)];
+                let effect = vec![Effect::Consent {
+                    process_id,
+                    user_consent: v,
+                }];
+                Ok((change, effect))
+            }
+            Intent::Clean => {
+                let change = vec![
+                    Change::AccountName(Default::default()),
+                    Change::IsDebit(Default::default()),
+                    Change::IsPermanentAccount(Default::default()),
+                    Change::Notes(Default::default()),
+                    Change::UnitOfMeasurementOfQuantity(Default::default()),
+                    Change::IsLoading(Default::default()),
+                    Change::AccountNameError(Default::default()),
+                ];
+                Ok((change, vec![]))
+            }
+            Intent::IsDebit(v) => Ok((vec![Change::IsDebit(v)], vec![])),
+            Intent::IsPermanentAccount(v) => Ok((vec![Change::IsPermanentAccount(v)], vec![])),
+            Intent::AccountName(v) => {
+                let Some(user_uuid) = global_model.user_uuid().read() else {
+                    return Ok((vec![Change::AccountName(v)], vec![]));
+                };
+                let Some(belong_to_company) = global_model.selected_company().read() else {
+                    return Ok((vec![Change::AccountName(v)], vec![]));
+                };
 
-fn apply_on_the_model(output: &MyResult, local_model: Arc<impl LocalModel>) {
-    match output {
-        Ok(_) => {
-            local_model.account_name_error().reset();
-        }
-        Err(business_error) => {
-            local_model.account_name_error().set(
-                business_error
-                    .account_name
-                    .as_ref()
-                    .map(|_| String::from("duplicated")),
-            );
-        }
+                let change = vec![Change::AccountName(v.clone())];
+                let effect = vec![Effect::Check {
+                    process_id,
+                    is_debit: local_model.is_debit().read(),
+                    is_permanent_account: local_model.is_permanent_account().read(),
+                    account_name: v,
+                    notes: local_model.notes().read().none_if_empty(),
+                    unit_of_measurement_of_quantity: local_model
+                        .unit_of_measurement_of_quantity()
+                        .read(),
+                    user_uuid,
+                    belong_to_company,
+                }];
+                Ok((change, effect))
+            }
+            Intent::Notes(v) => Ok((vec![Change::Notes(v)], vec![])),
+            Intent::UnitOfMeasurementOfQuantity(v) => {
+                Ok((vec![Change::UnitOfMeasurementOfQuantity(v)], vec![]))
+            }
+        },
+        Message::Observe(observe) => match observe {
+            Observe::ShowDialog => Ok((vec![Change::ShowDialog(Dialog::Show)], vec![])),
+            Observe::HideDialog => Ok((vec![Change::ShowDialog(Dialog::Hide)], vec![])),
+            Observe::SubmitResult(result) => {
+                let change = match result {
+                    Ok(_) => vec![
+                        Change::ShowDialog(Default::default()),
+                        Change::IsLoading(Default::default()),
+                        Change::AccountName(Default::default()),
+                        Change::IsDebit(Default::default()),
+                        Change::IsPermanentAccount(Default::default()),
+                        Change::Notes(Default::default()),
+                        Change::UnitOfMeasurementOfQuantity(Default::default()),
+                        Change::AccountNameError(None),
+                    ],
+                    Err(a) => vec![
+                        Change::ShowDialog(Default::default()),
+                        Change::IsLoading(Default::default()),
+                        Change::AccountNameError(a.account_name),
+                    ],
+                };
+                Ok((change, vec![]))
+            }
+            Observe::CheckResult(result) => {
+                let change = match result {
+                    Ok(_) => vec![Change::AccountNameError(None)],
+                    Err(a) => vec![Change::AccountNameError(a.account_name)],
+                };
+                Ok((change, vec![]))
+            }
+        },
     }
 }
 
-pub async fn update_generic(
-    message: Message,
-    local_model: Arc<impl LocalModel>,
-    mut context: UiContext,
-) -> Result<()> {
-    match message {
-        Message::Submit => {
-            handle_submit(
-                context.sender_to_error,
-                context.model,
-                local_model,
-                context.cache,
-                context.sender_to_process_manager,
-            )
-            .await?;
+pub fn update(msg: Change, local_model: &impl LocalModel, _global_model: &impl GlobalModel) {
+    match msg {
+        Change::ShowDialog(i) => local_model.show_dialog().set(i),
+        Change::IsLoading(i) => local_model.is_loading().set(i),
+        Change::IsDebit(i) => local_model.is_debit().set(i),
+        Change::IsPermanentAccount(i) => local_model.is_permanent_account().set(i),
+        Change::AccountName(i) => local_model.account_name().set(i),
+        Change::Notes(i) => local_model.notes().set(i),
+        Change::UnitOfMeasurementOfQuantity(i) => {
+            local_model.unit_of_measurement_of_quantity().set(i)
         }
-        Message::Consent(i) => {
+        Change::AccountNameError(i) => local_model.account_name_error().set(i),
+    }
+}
+
+pub async fn effect(msg: Effect, mut context: UiContext) -> Result<()> {
+    match msg {
+        Effect::Submit {
+            process_id,
+            user_uuid,
+            is_debit,
+            is_permanent_account,
+            account_name,
+            notes,
+            unit_of_measurement_of_quantity,
+            belong_to_company,
+        } => {
+            let new_uuid = AccountUuid::from(UuidType::from(Id::generate()));
+
+            let input = Input {
+                user_uuid,
+                new_uuid,
+                is_debit,
+                is_permanent_account,
+                account_name,
+                notes,
+                unit_of_measurement_of_quantity,
+                belong_to_company,
+            };
+            handle_submit(process_id, &input, context).await?;
+        }
+        Effect::Consent {
+            process_id,
+            user_consent,
+        } => {
             context
                 .sender_to_process_manager
                 .send(MessageToProcessManager::FromUser {
-                    process_id: local_model
-                        .process_id()
-                        .read()
-                        .context("process id not found")?,
-                    consent: i,
+                    process_id,
+                    consent: user_consent,
                 })
                 .await?;
         }
-        Message::Clean => handle_clean(local_model),
-        Message::IsDebit(v) => local_model.is_debit().set(v),
-        Message::IsPermanentAccount(v) => local_model.is_permanent_account().set(v),
-        Message::AccountName(v) => {
-            local_model.account_name().set(v);
-            handle_check(context.model, local_model, context.cache).await?;
+        Effect::Check {
+            process_id,
+            is_debit,
+            is_permanent_account,
+            account_name,
+            notes,
+            unit_of_measurement_of_quantity,
+            user_uuid,
+            belong_to_company,
+        } => {
+            let new_uuid = AccountUuid::from(UuidType::from(Id::generate()));
+
+            let input = Input {
+                user_uuid,
+                new_uuid,
+                is_debit,
+                is_permanent_account,
+                account_name,
+                notes,
+                unit_of_measurement_of_quantity,
+                belong_to_company,
+            };
+            handle_check(process_id, input, context).await?;
         }
-        Message::Notes(v) => local_model.notes().set(v),
-        Message::UnitOfMeasurementOfQuantity(v) => {
-            local_model.unit_of_measurement_of_quantity().set(v)
-        }
-        Message::Subscribe => {
-            fetch(
-                context
-                    .model
-                    .selected_company()
-                    .read()
-                    .context("company uuid not found")?,
-                context
-                    .model
-                    .user_uuid()
-                    .read()
-                    .context("user uuid not found")?,
-                context.cache,
-            )
-            .await?;
+        Effect::Refresh {
+            user_uuid,
+            company_uuid,
+        } => {
+            fetch(company_uuid, user_uuid, context.cache).await?;
         }
     }
-
     Ok(())
 }
 
-fn build_input(
-    global_model: Arc<impl GlobalModel>,
-    local_model: Arc<impl LocalModel>,
-) -> Result<Input> {
-    Ok(Input {
-        user_uuid: global_model
-            .user_uuid()
-            .read()
-            .context("user uuid not found")?,
-        new_uuid: AccountUuid::from(UuidType::from(Id::generate())),
-        is_debit: local_model.is_debit().read(),
-        is_permanent_account: local_model.is_permanent_account().read(),
-        account_name: local_model.account_name().read(),
-        notes: local_model.notes().read().none_if_empty(),
-        unit_of_measurement_of_quantity: local_model.unit_of_measurement_of_quantity().read(),
-        belong_to_company: global_model
-            .selected_company()
-            .read()
-            .context("company uuid not found")?,
-    })
+struct DialogDispatchAdapter {
+    process_id: ProcessId,
+    sender: Commander,
 }
 
-fn handle_clean(local_model: Arc<impl LocalModel>) {
-    local_model.account_name().reset();
-    local_model.is_debit().reset();
-    local_model.is_permanent_account().reset();
-    local_model.notes().reset();
-    local_model.unit_of_measurement_of_quantity().reset();
-    local_model.is_loading().reset();
-    local_model.account_name_error().reset();
+impl ProcessDialog for DialogDispatchAdapter {
+    fn show(&self) {
+        self.sender
+            .send(self.process_id, Message::Observe(Observe::ShowDialog));
+    }
+
+    fn hide(&self) {
+        self.sender
+            .send(self.process_id, Message::Observe(Observe::HideDialog));
+    }
 }
 
-async fn handle_submit(
-    sender_to_error: MpscSender<anyhow::Error>,
-    global_model: Arc<impl GlobalModel>,
-    local_model: Arc<impl LocalModel>,
-    cache: CacheStruct,
-    sender_to_process_manager: MpscSender<MessageToProcessManager>,
-) -> Result<()> {
-    let process_id = ProcessId::default();
-    local_model.process_id().set(Some(process_id));
+async fn handle_submit(process_id: ProcessId, input: &Input, context: UiContext) -> Result<()> {
+    let context1 = context.clone();
 
-    let dialog_signal_adapter = Arc::new(DialogSignalAdapter(local_model.show_dialog()));
+    let dialog_signal_adapter = Arc::new(DialogDispatchAdapter {
+        process_id,
+        sender: context.sender_to_commander.clone(),
+    });
 
-    let data = build_input(global_model, local_model.clone())?;
+    let data: TypeOperationClientInput = Arc::new(input.clone());
 
-    let data: TypeOperationClientInput = Arc::new(data);
-
-    let local_model1 = local_model.clone();
     handle_fall_back(
-        sender_to_error,
-        cache,
-        sender_to_process_manager,
+        context.sender_to_error,
+        context.cache,
+        context.sender_to_process_manager,
         dialog_signal_adapter,
         process_id,
         data,
         move |data| {
             let result = match data {
                 Ok(ok) => {
-                    let a = ok;
-                    let a: Arc<dyn Any> = a;
+                    let a: Arc<dyn Any> = ok;
                     let a: &Ok = a.downcast_ref().context("downcast error")?;
-                    let a: Ok = a.clone();
-                    Ok(a)
+                    Ok(a.clone())
                 }
                 Err(err) => {
-                    let a = err;
-                    let a: Box<dyn Any> = a;
-                    let a: Box<Error> = a.downcast().map_err(|_| anyhow!(""))?;
-                    let a: Error = a.as_ref().clone();
-                    Err(a)
+                    let a: Box<dyn Any> = err;
+                    let a: Box<Error> = a.downcast().map_err(|_| anyhow!("downcast error"))?;
+                    Err(*a)
                 }
             };
-            apply_on_the_model(&result, local_model.clone());
 
             let is_ok = result.is_ok();
-            if is_ok {
-                handle_clean(local_model.clone());
-            }
+
+            context1
+                .sender_to_commander
+                .send(process_id, Message::Observe(Observe::SubmitResult(result)));
 
             Ok(is_ok)
         },
     )
     .await?;
 
-    local_model1.clone().is_loading().reset();
-
     Ok(())
 }
 
-async fn handle_check(
-    global_model: Arc<impl GlobalModel>,
-    local_model: Arc<impl LocalModel>,
-    mut cache: CacheStruct,
-) -> Result<()> {
-    let data = build_input(global_model, local_model.clone())?;
+async fn handle_check(process_id: ProcessId, input: Input, mut context: UiContext) -> Result<()> {
+    let data: TypeOperationClientInput = Arc::new(input);
 
-    let data: TypeOperationClientInput = Arc::new(data);
-
-    let mut receiver_to_response = cache
+    let mut receiver_to_response = context
+        .cache
         .send_to_cache_actor(CachingStrategy::ReadCacheOnly, TxnNumber::default(), data)
         .await?;
 
@@ -304,21 +470,20 @@ async fn handle_check(
         } => {
             let result = match data {
                 Ok(ok) => {
-                    let a = ok;
-                    let a: Arc<dyn Any> = a;
+                    let a: Arc<dyn Any> = ok;
                     let a: &Ok = a.downcast_ref().context("downcast error")?;
-                    let a: Ok = a.clone();
-                    Ok(a)
+                    Ok(a.clone())
                 }
                 Err(err) => {
-                    let a = err;
-                    let a: Box<dyn Any> = a;
-                    let a: Box<Error> = a.downcast().map_err(|_| anyhow!(""))?;
-                    let a: Error = a.as_ref().clone();
-                    Err(a)
+                    let a: Box<dyn Any> = err;
+                    let a: Box<Error> = a.downcast().map_err(|_| anyhow!("downcast error"))?;
+                    Err(*a)
                 }
             };
-            apply_on_the_model(&result, local_model);
+
+            context
+                .sender_to_commander
+                .send(process_id, Message::Observe(Observe::CheckResult(result)));
         }
     }
 

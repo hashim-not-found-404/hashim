@@ -1,5 +1,6 @@
+use crate::client::Intent;
 use crate::client::LocalModel;
-use crate::client::Message;
+use crate::domain::AccountNameError;
 use dioxus::prelude::*;
 use serde::Deserialize;
 use serde::Serialize;
@@ -20,14 +21,10 @@ pub struct TypeLocalModel {
     account_name: MySignal<String>,
     notes: MySignal<String>,
     unit_of_measurement_of_quantity: MySignal<String>,
-    account_name_error: MySignal<Option<String>>,
+    account_name_error: MySignal<Option<AccountNameError>>,
 }
 
 impl LocalModel for TypeLocalModel {
-    fn process_id(&self) -> impl HashimSignal<Option<ProcessId>> {
-        self.process_id.clone()
-    }
-
     fn show_dialog(&self) -> impl HashimSignal<Dialog> {
         self.show_dialog.clone()
     }
@@ -56,14 +53,14 @@ impl LocalModel for TypeLocalModel {
         self.unit_of_measurement_of_quantity.clone()
     }
 
-    fn account_name_error(&self) -> impl HashimSignal<Option<String>> {
+    fn account_name_error(&self) -> impl HashimSignal<Option<AccountNameError>> {
         self.account_name_error.clone()
     }
 }
 
 #[component]
 pub fn Component(
-    sender: EventHandler<Message>,
+    sender: EventHandler<Intent>,
     show_dialog: Dialog,
     is_loading: bool,
     is_debit: bool,
@@ -74,20 +71,20 @@ pub fn Component(
     account_name_error: Option<String>,
 ) -> Element {
     use_effect(move || {
-        sender(Message::Subscribe);
+        sender(Intent::Subscribe);
     });
 
     rsx! {
         div {
             DialogComponent {
                 dont_wait_for_server_response: move || {
-                    sender(Message::Consent(UserConsent::DontWaitForServerResponse));
+                    sender(Intent::Consent(UserConsent::DontWaitForServerResponse));
                 },
                 wait_for_server_response: move || {
-                    sender(Message::Consent(UserConsent::WaitForServerResponse));
+                    sender(Intent::Consent(UserConsent::WaitForServerResponse));
                 },
                 cancel_operation: move || {
-                    sender(Message::Consent(UserConsent::CancelOperation));
+                    sender(Intent::Consent(UserConsent::CancelOperation));
                 },
                 operation_name: "create account",
                 show_dialog,
@@ -95,7 +92,7 @@ pub fn Component(
             input {
                 placeholder: "Account Name",
                 oninput: move |event| {
-                    sender(Message::AccountName(event.value()));
+                    sender(Intent::AccountName(event.value()));
                 },
                 value: account_name,
             }
@@ -108,7 +105,7 @@ pub fn Component(
                     r#type: "checkbox",
                     checked: is_debit,
                     onchange: move |event| {
-                        sender(Message::IsDebit(event.value().parse().unwrap_or_default()));
+                        sender(Intent::IsDebit(event.value().parse().unwrap_or_default()));
                     },
                 }
             }
@@ -118,33 +115,33 @@ pub fn Component(
                     r#type: "checkbox",
                     checked: is_permanent_account,
                     onchange: move |event| {
-                        sender(Message::IsPermanentAccount(event.value().parse().unwrap_or_default()));
+                        sender(Intent::IsPermanentAccount(event.value().parse().unwrap_or_default()));
                     },
                 }
             }
             input {
                 placeholder: "Notes (optional)",
                 oninput: move |event| {
-                    sender(Message::Notes(event.value()));
+                    sender(Intent::Notes(event.value()));
                 },
                 value: notes,
             }
             input {
                 placeholder: "Unit of Measurement (e.g., kg, pcs)",
                 oninput: move |event| {
-                    sender(Message::UnitOfMeasurementOfQuantity(event.value()));
+                    sender(Intent::UnitOfMeasurementOfQuantity(event.value()));
                 },
                 value: unit_of_measurement_of_quantity,
             }
             button {
                 onclick: move |_| {
-                    sender(Message::Submit);
+                    sender(Intent::Submit);
                 },
                 "Create Account"
             }
             button {
                 onclick: move |_| {
-                    sender(Message::Clean);
+                    sender(Intent::Clean);
                 },
                 "clean"
             }
