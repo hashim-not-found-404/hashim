@@ -2,23 +2,21 @@ use crate::domain::Error;
 use crate::domain::Input;
 use crate::domain::MyResult;
 use crate::domain::Ok;
+use crate::domain::PasswordError;
 use crate::domain::ReadInput;
 use crate::domain::ReadOutput;
 use crate::domain::UserIdError;
 use anyhow::Context;
 use anyhow::Result;
 use anyhow::anyhow;
-use infrastructure::actors::MpscSender;
 use infrastructure::actors::Sender;
 use infrastructure::jwt::JsonWebTokenType;
 use kernel::client::Cache;
-use kernel::client::DialogSignalAdapter;
 use kernel::new_types::UserUuid;
 use kernel::types::DatabaseRead;
 use std::any::Any;
 use std::fmt::Debug;
 use std::sync::Arc;
-use utility::cache::CacheStruct;
 use utility::cache::ResourceName;
 use utility::cache::TraitOperationClientError;
 use utility::cache::TraitOperationClientInput;
@@ -27,8 +25,10 @@ use utility::cache::TypeOperationClientInput;
 use utility::cache::TypeOperationClientResult;
 use utility::cache::new_resource_name;
 use utility::process_manager::MessageToProcessManager;
+use utility::process_manager::ProcessDialog;
 use utility::process_manager::ProcessId;
 use utility::process_manager::UserConsent;
+use utility::ui_effect::Commander;
 use utility::ui_effect::MessageTrait;
 use utility::ui_effect::Model;
 use utility::ui_effect::UiContext;
@@ -95,16 +95,6 @@ pub async fn check_input<
     })))
 }
 
-#[derive(Debug, Clone)]
-pub enum Message {
-    Submit,
-    Consent(UserConsent),
-    UserId(String),
-    Password(String),
-}
-
-impl MessageTrait for Message {}
-
 pub trait GlobalModel: Model + 'static {
     fn is_auth_loading(&self) -> impl HashimSignal<bool>;
     fn user_uuid(&self) -> impl HashimSignal<Option<UserUuid>>;
@@ -114,114 +104,193 @@ pub trait GlobalModel: Model + 'static {
 }
 
 pub trait LocalModel: 'static {
-    fn process_id(&self) -> impl HashimSignal<Option<ProcessId>>;
     fn show_dialog(&self) -> impl HashimSignal<Dialog>;
-    fn error_user_id(&self) -> impl HashimSignal<Option<String>>;
-    fn error_password(&self) -> impl HashimSignal<Option<String>>;
+    fn error_user_id(&self) -> impl HashimSignal<Option<UserIdError>>;
+    fn error_password(&self) -> impl HashimSignal<Option<PasswordError>>;
 }
 
-fn apply_on_the_model(
-    output: &MyResult,
-    local_model: Arc<impl LocalModel>,
-    global_model: Arc<impl GlobalModel>,
-) {
-    match output {
-        Ok(ok) => {
-            local_model.error_user_id().reset();
-            local_model.error_password().reset();
+#[derive(Debug, Clone)]
+pub enum Change {
+    ShowDialog(Dialog),
+    IsAuthLoading(bool),
+    UserUuid(Option<UserUuid>),
+    UserName(Option<String>),
+    ErrorUserId(Option<UserIdError>),
+    ErrorPassword(Option<PasswordError>),
+}
 
-            global_model.user_uuid().set(Some(ok.user_uuid.clone()));
-            global_model.user_name().set(ok.user_name.clone());
-            global_model.user_id().set(ok.user_id.clone());
-        }
-        Err(business_error) => {
-            local_model.error_user_id().set(
-                business_error
-                    .user_id
-                    .as_ref()
-                    .map(|_| String::from("user not exist")),
-            );
-            local_model.error_password().set(
-                business_error
-                    .password
-                    .as_ref()
-                    .map(|_| String::from("wrong password")),
-            );
-        }
+#[derive(Debug, Clone)]
+pub enum Effect {
+    Submit {
+        process_id: ProcessId,
+        user_id: String,
+        password: String,
+    },
+    Consent {
+        process_id: ProcessId,
+        user_consent: UserConsent,
+    },
+}
+
+#[derive(Debug, Clone)]
+pub enum Intent {
+    Submit,
+    Consent(UserConsent),
+    UserId(String),
+    Password(String),
+}
+
+#[derive(Debug, Clone)]
+pub enum Observe {
+    ShowDialog,
+    HideDialog,
+    Result(MyResult),
+}
+
+#[derive(Debug, Clone)]
+pub enum Message {
+    Intent(Intent),
+    Observe(Observe),
+}
+
+impl MessageTrait for Message {}
+
+pub fn reduce(
+    msg: Message,
+    process_id: ProcessId,
+    local_model: &impl LocalModel,
+    global_model: &impl GlobalModel,
+) -> Result<(Vec<Change>, Vec<Effect>)> {
+    match msg {
+        Message::Intent(intent) => match intent {
+            Intent::Submit => {
+                if global_model.is_auth_loading().read() {
+                    return Ok((vec![], vec![]));
+                }
+                let change = vec![
+                    Change::IsAuthLoading(true),
+                    Change::ShowDialog(Default::default()),
+                    Change::ErrorUserId(Default::default()),
+                    Change::ErrorPassword(Default::default()),
+                ];
+                let effect = vec![Effect::Submit {
+                    process_id,
+                    user_id: global_model.user_id().read(),
+                    password: global_model.password().read(),
+                }];
+                Ok((change, effect))
+            }
+            Intent::Consent(v) => {
+                let change = vec![Change::ShowDialog(Dialog::Hide)];
+                let effect = vec![Effect::Consent {
+                    process_id,
+                    user_consent: v,
+                }];
+                Ok((change, effect))
+            }
+            Intent::UserId(v) => {
+                let change = vec![Change::UserUuid(None)];
+                let effect = vec![];
+                let _ = v;
+                Ok((change, effect))
+            }
+            Intent::Password(_) => {
+                let change = vec![];
+                let effect = vec![];
+                Ok((change, effect))
+            }
+        },
+        Message::Observe(observe) => match observe {
+            Observe::ShowDialog => Ok((vec![Change::ShowDialog(Dialog::Show)], vec![])),
+            Observe::HideDialog => Ok((vec![Change::ShowDialog(Dialog::Hide)], vec![])),
+            Observe::Result(result) => {
+                let change = match result {
+                    Ok(ok) => vec![
+                        Change::IsAuthLoading(false),
+                        Change::UserUuid(Some(ok.user_uuid.clone())),
+                        Change::UserName(ok.user_name.clone()),
+                        Change::ErrorUserId(None),
+                        Change::ErrorPassword(None),
+                    ],
+                    Err(a) => vec![
+                        Change::IsAuthLoading(false),
+                        Change::ErrorUserId(a.user_id),
+                        Change::ErrorPassword(a.password),
+                    ],
+                };
+                Ok((change, vec![]))
+            }
+        },
     }
 }
 
-pub async fn update_generic(
-    message: Message,
-    local_model: Arc<impl LocalModel>,
-    mut context: UiContext,
-) -> Result<()> {
-    match message {
-        Message::Submit => {
-            handle_submit(
-                context.sender_to_error,
-                context.model,
-                local_model,
-                context.cache,
-                context.sender_to_process_manager,
-            )
-            .await?;
+pub fn update(msg: Change, local_model: &impl LocalModel, global_model: &impl GlobalModel) {
+    match msg {
+        Change::ShowDialog(i) => local_model.show_dialog().set(i),
+        Change::IsAuthLoading(i) => global_model.is_auth_loading().set(i),
+        Change::UserUuid(i) => global_model.user_uuid().set(i),
+        Change::UserName(i) => global_model.user_name().set(i),
+        Change::ErrorUserId(i) => local_model.error_user_id().set(i),
+        Change::ErrorPassword(i) => local_model.error_password().set(i),
+    }
+}
+
+pub async fn effect(msg: Effect, mut context: UiContext) -> Result<()> {
+    match msg {
+        Effect::Submit {
+            process_id,
+            user_id,
+            password,
+        } => {
+            handle_submit(process_id, &Input { user_id, password }, context).await?;
         }
-        Message::Consent(i) => {
+        Effect::Consent {
+            process_id,
+            user_consent,
+        } => {
             context
                 .sender_to_process_manager
                 .send(MessageToProcessManager::FromUser {
-                    process_id: local_model
-                        .process_id()
-                        .read()
-                        .context("process id not found")?,
-                    consent: i,
+                    process_id,
+                    consent: user_consent,
                 })
                 .await?;
         }
-        Message::UserId(i) => {
-            context.model.user_id().set(i);
-        }
-        Message::Password(i) => {
-            context.model.password().set(i);
-        }
     }
-
     Ok(())
 }
 
-fn build_input(global_model: Arc<impl GlobalModel>) -> Result<Input> {
-    Ok(Input {
-        user_id: global_model.user_id().read(),
-        password: global_model.password().read(),
-    })
+struct DialogDispatchAdapter {
+    process_id: ProcessId,
+    sender: Commander,
 }
 
-async fn handle_submit(
-    sender_to_error: MpscSender<anyhow::Error>,
-    global_model: Arc<impl GlobalModel>,
-    local_model: Arc<impl LocalModel>,
-    cache: CacheStruct,
-    sender_to_process_manager: MpscSender<MessageToProcessManager>,
-) -> Result<()> {
-    if global_model.is_auth_loading().read() {
-        return Ok(());
+impl ProcessDialog for DialogDispatchAdapter {
+    fn show(&self) {
+        self.sender
+            .send(self.process_id, Message::Observe(Observe::ShowDialog));
     }
-    global_model.is_auth_loading().set(true);
 
-    let process_id = ProcessId::default();
-    local_model.process_id().set(Some(process_id));
+    fn hide(&self) {
+        self.sender
+            .send(self.process_id, Message::Observe(Observe::HideDialog));
+    }
+}
 
-    let dialog_signal_adapter = Arc::new(DialogSignalAdapter(local_model.show_dialog()));
+async fn handle_submit(process_id: ProcessId, input: &Input, context: UiContext) -> Result<()> {
+    let context1 = context.clone();
 
-    let data = build_input(global_model.clone())?;
-    let data: TypeOperationClientInput = Arc::new(data);
+    let dialog_signal_adapter = Arc::new(DialogDispatchAdapter {
+        process_id,
+        sender: context.sender_to_commander.clone(),
+    });
 
-    let global_model1 = global_model.clone();
+    let data: TypeOperationClientInput = Arc::new(input.clone());
+
     handle_fall_back(
-        sender_to_error,
-        cache,
-        sender_to_process_manager,
+        context.sender_to_error,
+        context.cache,
+        context.sender_to_process_manager,
         dialog_signal_adapter,
         process_id,
         data,
@@ -239,14 +308,16 @@ async fn handle_submit(
                 }
             };
 
-            apply_on_the_model(&result, local_model.clone(), global_model.clone());
+            let is_ok = result.is_ok();
 
-            Ok(result.is_ok())
+            context1
+                .sender_to_commander
+                .send(process_id, Message::Observe(Observe::Result(result)));
+
+            Ok(is_ok)
         },
     )
     .await?;
-
-    global_model1.is_auth_loading().reset();
 
     Ok(())
 }

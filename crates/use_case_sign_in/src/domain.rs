@@ -57,12 +57,12 @@ pub struct ReadOutput {
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
-pub(crate) enum UserIdError {
+pub enum UserIdError {
     NotExist,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
-pub(crate) enum PasswordError {
+pub enum PasswordError {
     WrongPassword,
 }
 

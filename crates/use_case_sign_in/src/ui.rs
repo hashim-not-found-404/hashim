@@ -1,5 +1,7 @@
+use crate::client::Intent;
 use crate::client::LocalModel;
-use crate::client::Message;
+use crate::domain::PasswordError;
+use crate::domain::UserIdError;
 use dioxus::prelude::*;
 use serde::Deserialize;
 use serde::Serialize;
@@ -15,31 +17,27 @@ use utility_ui::my_signal::MySignal;
 pub struct TypeLocalModel {
     process_id: MySignal<Option<ProcessId>>,
     show_dialog: MySignal<Dialog>,
-    error_user_id: MySignal<Option<String>>,
-    error_password: MySignal<Option<String>>,
+    error_user_id: MySignal<Option<UserIdError>>,
+    error_password: MySignal<Option<PasswordError>>,
 }
 
 impl LocalModel for TypeLocalModel {
-    fn process_id(&self) -> impl HashimSignal<Option<ProcessId>> {
-        self.process_id.clone()
-    }
-
     fn show_dialog(&self) -> impl HashimSignal<Dialog> {
         self.show_dialog.clone()
     }
 
-    fn error_user_id(&self) -> impl HashimSignal<Option<String>> {
+    fn error_user_id(&self) -> impl HashimSignal<Option<UserIdError>> {
         self.error_user_id.clone()
     }
 
-    fn error_password(&self) -> impl HashimSignal<Option<String>> {
+    fn error_password(&self) -> impl HashimSignal<Option<PasswordError>> {
         self.error_password.clone()
     }
 }
 
 #[component]
 pub fn Component(
-    sender: EventHandler<Message>,
+    sender: EventHandler<Intent>,
     on_go_to_sign_up: EventHandler<()>,
     show_dialog: Dialog,
     user_id: String,
@@ -51,13 +49,13 @@ pub fn Component(
         div {
             DialogComponent {
                 dont_wait_for_server_response: move || {
-                    sender(Message::Consent(UserConsent::DontWaitForServerResponse));
+                    sender(Intent::Consent(UserConsent::DontWaitForServerResponse));
                 },
                 wait_for_server_response: move || {
-                    sender(Message::Consent(UserConsent::WaitForServerResponse));
+                    sender(Intent::Consent(UserConsent::WaitForServerResponse));
                 },
                 cancel_operation: move || {
-                    sender(Message::Consent(UserConsent::CancelOperation));
+                    sender(Intent::Consent(UserConsent::CancelOperation));
                 },
                 operation_name: "sign in",
                 show_dialog,
@@ -66,7 +64,7 @@ pub fn Component(
             input {
                 placeholder: "User Id",
                 oninput: move |event| {
-                    sender(Message::UserId(event.value()));
+                    sender(Intent::UserId(event.value()));
                 },
                 value: user_id,
             }
@@ -76,7 +74,7 @@ pub fn Component(
 
             PasswordInput {
                 password_callback: move |p| {
-                    sender(Message::Password(p));
+                    sender(Intent::Password(p));
                 },
                 password,
             }
@@ -86,7 +84,7 @@ pub fn Component(
 
             button {
                 onclick: move |_| {
-                    sender(Message::Submit);
+                    sender(Intent::Submit);
                 },
                 "Sign In"
             }
