@@ -5,7 +5,6 @@ use crate::domain::UserIdError;
 use dioxus::prelude::*;
 use serde::Deserialize;
 use serde::Serialize;
-use utility::process_manager::ProcessId;
 use utility::process_manager::UserConsent;
 use utility_ui::components::DialogComponent;
 use utility_ui::components::PasswordInput;
@@ -15,7 +14,6 @@ use utility_ui::my_signal::MySignal;
 
 #[derive(Debug, Default, Deserialize, Serialize)]
 pub struct TypeLocalModel {
-    process_id: MySignal<Option<ProcessId>>,
     show_dialog: MySignal<Dialog>,
     error_user_id: MySignal<Option<UserIdError>>,
     error_password: MySignal<Option<PasswordError>>,

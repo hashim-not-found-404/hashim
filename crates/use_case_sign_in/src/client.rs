@@ -111,12 +111,12 @@ pub trait LocalModel: 'static {
 
 #[derive(Debug, Clone)]
 pub enum Change {
-    ShowDialog(Dialog),
-    IsAuthLoading(bool),
-    UserUuid(Option<UserUuid>),
-    UserName(Option<String>),
-    ErrorUserId(Option<UserIdError>),
     ErrorPassword(Option<PasswordError>),
+    ErrorUserId(Option<UserIdError>),
+    IsAuthLoading(bool),
+    ShowDialog(Dialog),
+    UserName(Option<String>),
+    UserUuid(Option<UserUuid>),
 }
 
 #[derive(Debug, Clone)]

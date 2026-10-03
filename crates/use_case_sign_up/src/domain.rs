@@ -47,7 +47,7 @@ pub struct Ok {
 pub struct Error {
     pub(crate) new_uuid: Option<RowIdError>,
     pub(crate) user_id: Option<UserIdError>,
-    pub(crate) name: Option<String>,
+    pub(crate) name: Option<UserNameError>,
 }
 
 impl MarkerMyErrorTrait for Error {}
@@ -63,8 +63,13 @@ pub struct ReadOutput {
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
-pub(crate) enum UserIdError {
+pub enum UserIdError {
     Duplicated,
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+pub enum UserNameError {
+    Empty,
 }
 
 impl Input {
