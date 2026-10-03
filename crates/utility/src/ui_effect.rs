@@ -184,9 +184,9 @@ impl Aborters {
         mutex_guard.insert(process_id, aborter);
     }
 
-    pub fn abort(&self, page: ProcessId) {
+    pub fn abort(&self, process_id: ProcessId) {
         let mut mutex_guard = self.0.lock().unwrap();
-        if let Some(a) = mutex_guard.remove(&page) {
+        if let Some(a) = mutex_guard.remove(&process_id) {
             a.0();
         }
     }
