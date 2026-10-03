@@ -1,5 +1,6 @@
+use crate::client::Intent;
 use crate::client::LocalModel;
-use crate::client::Message;
+use crate::domain::CompanyNameError;
 use dioxus::prelude::*;
 use kernel::types::Currency;
 use serde::Deserialize;
@@ -19,14 +20,10 @@ pub struct TypeLocalModel {
     show_dialog: MySignal<Dialog>,
     company_name: MySignal<String>,
     currency: MySignal<Currency>,
-    company_name_error: MySignal<Option<String>>,
+    company_name_error: MySignal<Option<CompanyNameError>>,
 }
 
 impl LocalModel for TypeLocalModel {
-    fn process_id(&self) -> impl HashimSignal<Option<ProcessId>> {
-        self.process_id.clone()
-    }
-
     fn show_dialog(&self) -> impl HashimSignal<Dialog> {
         self.show_dialog.clone()
     }
@@ -43,14 +40,14 @@ impl LocalModel for TypeLocalModel {
         self.currency.clone()
     }
 
-    fn company_name_error(&self) -> impl HashimSignal<Option<String>> {
+    fn company_name_error(&self) -> impl HashimSignal<Option<CompanyNameError>> {
         self.company_name_error.clone()
     }
 }
 
 #[component]
 pub fn Component(
-    sender: EventHandler<Message>,
+    sender: EventHandler<Intent>,
     show_dialog: Dialog,
     is_loading: bool,
     company_name: String,
@@ -61,13 +58,13 @@ pub fn Component(
         div {
             DialogComponent {
                 dont_wait_for_server_response: move || {
-                    sender(Message::Consent(UserConsent::DontWaitForServerResponse));
+                    sender(Intent::Consent(UserConsent::DontWaitForServerResponse));
                 },
                 wait_for_server_response: move || {
-                    sender(Message::Consent(UserConsent::WaitForServerResponse));
+                    sender(Intent::Consent(UserConsent::WaitForServerResponse));
                 },
                 cancel_operation: move || {
-                    sender(Message::Consent(UserConsent::CancelOperation));
+                    sender(Intent::Consent(UserConsent::CancelOperation));
                 },
                 operation_name: "create company",
                 show_dialog,
@@ -76,7 +73,7 @@ pub fn Component(
             input {
                 placeholder: "Company Name",
                 oninput: move |event| {
-                    sender(Message::CompanyName(event.value()));
+                    sender(Intent::CompanyName(event.value()));
                 },
                 value: company_name,
             }
@@ -88,7 +85,7 @@ pub fn Component(
                 value: currency.as_str(),
                 onchange: move |event| {
                     let c = Currency::from_str(&event.value()).unwrap_or_default();
-                    sender(Message::Currency(c));
+                    sender(Intent::Currency(c));
                 },
                 option { value: "USD", "USD" }
                 option { value: "IQD", "IQD" }
@@ -97,13 +94,13 @@ pub fn Component(
             button {
                 disabled: is_loading,
                 onclick: move |_| {
-                    sender(Message::Submit);
+                    sender(Intent::Submit);
                 },
                 "Create Company"
             }
             button {
                 onclick: move |_| {
-                    sender(Message::Clean);
+                    sender(Intent::Clean);
                 },
                 "Clean"
             }

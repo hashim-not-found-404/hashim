@@ -47,16 +47,16 @@ use utility::cache::TypeOperationClientOk;
 use utility::dtos::TypeOperationDTOError;
 use utility::dtos::TypeOperationDTOInput;
 use utility::dtos::TypeOperationDTOOk;
-use utility::ui_effect::CastMessageToUpdater;
+use utility::ui_effect::CastMessageToReducer;
 use utility::ui_effect::MessageTrait;
 use utility::ui_effect::UpdaterTrait;
 
 pub(crate) struct MyCaster;
 
-impl CastMessageToUpdater for MyCaster {
+impl CastMessageToReducer for MyCaster {
     type Mdl = TypeModel;
 
-    fn cast_message_to_updater(
+    fn cast_message_to_reducer(
         v: Box<dyn MessageTrait>,
     ) -> Result<Box<dyn UpdaterTrait<Mdl = Self::Mdl>>> {
         let v: Box<dyn Any> = v;

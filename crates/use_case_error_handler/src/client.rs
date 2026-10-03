@@ -104,7 +104,7 @@ pub trait LocalModel: 'static {
 pub async fn update_generic(
     message: Message,
     local_model: Arc<impl LocalModel>,
-    context: UiContext<impl GlobalModel>,
+    context: UiContext,
 ) -> Result<()> {
     match message {
         Message::DeleteOne(i) => {

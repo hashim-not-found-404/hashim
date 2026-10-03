@@ -34,7 +34,7 @@ use utility::network::Network;
 use utility::network::network_actor;
 use utility::process_manager::process_manager_actor;
 use utility::types::ReadAndSet;
-use utility::ui_effect::CastMessageToUpdater;
+use utility::ui_effect::CastMessageToReducer;
 use utility::ui_effect::Commander;
 use utility::ui_effect::Model;
 
@@ -46,7 +46,7 @@ where
     Ch: Cache + 'static,
     Mdl: Model,
     CasDC: CastDTOToClient,
-    CasMsg: CastMessageToUpdater<Mdl = Mdl>,
+    CasMsg: CastMessageToReducer<Mdl = Mdl>,
     CasCh: CastClientToCache<Cache = Ch>,
 {
     let (sender_to_network, receiver_to_network) = Mpsc::channel();

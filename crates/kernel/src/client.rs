@@ -4,9 +4,6 @@ use infrastructure::jwt::JsonWebTokenType;
 use utility::cache::MarkerCache;
 use utility::dtos::Txn;
 use utility::dtos::TxnNumber;
-use utility::process_manager::Dialog as ProcessDialog;
-use utility_ui::domain::Dialog as UiDialog;
-use utility_ui::domain::HashimSignal;
 
 pub trait Cache: MarkerCache + Sized {
     fn new() -> impl Future<Output = Result<Self>>;
@@ -23,17 +20,4 @@ pub trait Cache: MarkerCache + Sized {
         &self,
         user_uuid: &UserUuid,
     ) -> impl Future<Output = Result<Option<JsonWebTokenType>>>;
-}
-
-#[derive(Clone)]
-pub struct DialogSignalAdapter<S: HashimSignal<UiDialog>>(pub S);
-
-impl<S: HashimSignal<UiDialog>> ProcessDialog for DialogSignalAdapter<S> {
-    fn show(&self) {
-        self.0.set(UiDialog::Show);
-    }
-
-    fn hide(&self) {
-        self.0.set(UiDialog::Hide);
-    }
 }

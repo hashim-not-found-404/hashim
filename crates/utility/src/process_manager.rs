@@ -30,12 +30,12 @@ impl Default for ProcessId {
     }
 }
 
-pub trait Dialog {
+pub trait ProcessDialog {
     fn show(&self);
     fn hide(&self);
 }
 
-pub type DialogType = Arc<dyn Dialog>;
+pub type DialogType = Arc<dyn ProcessDialog>;
 
 #[derive(Debug, Clone, Copy)]
 pub enum UserConsent {

@@ -174,7 +174,7 @@ fn apply_on_the_model_for_check(
 pub async fn update_generic(
     message: Message,
     local_model: Arc<impl LocalModel>,
-    mut context: UiContext<impl GlobalModel>,
+    mut context: UiContext,
 ) -> Result<()> {
     match message {
         Message::Submit => {

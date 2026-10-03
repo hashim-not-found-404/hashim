@@ -86,7 +86,7 @@ fn apply_on_the_model(
 pub async fn update_generic(
     message: Message,
     local_model: Arc<impl LocalModel>,
-    context: UiContext<impl GlobalModel>,
+    context: UiContext,
 ) -> Result<()> {
     match message {
         Message::Subscribe => handle_subscribe(local_model, context)?,
@@ -144,10 +144,7 @@ pub async fn update_generic(
     Ok(())
 }
 
-fn handle_subscribe(
-    local_model: Arc<impl LocalModel>,
-    context: UiContext<impl GlobalModel>,
-) -> Result<()> {
+fn handle_subscribe(local_model: Arc<impl LocalModel>, context: UiContext) -> Result<()> {
     let local_model1 = local_model.clone();
 
     let aborter = spawn_listener(

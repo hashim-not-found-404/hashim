@@ -1,3 +1,4 @@
+use crate::domain::CompanyNameError;
 use crate::domain::Error;
 use crate::domain::Input;
 use crate::domain::MyResult;
@@ -7,12 +8,10 @@ use crate::domain::ReadOutput;
 use anyhow::Context;
 use anyhow::Result;
 use anyhow::anyhow;
-use infrastructure::actors::MpscSender;
 use infrastructure::actors::Sender;
 use infrastructure::row_id::Id;
 use infrastructure::row_id::RowId;
 use kernel::client::Cache;
-use kernel::client::DialogSignalAdapter;
 use kernel::new_types::CompanyUuid;
 use kernel::new_types::UserUuid;
 use kernel::new_types::UuidType;
@@ -23,7 +22,7 @@ use std::any::Any;
 use std::fmt::Debug;
 use std::ops::Deref;
 use std::sync::Arc;
-use utility::cache::CacheStruct;
+use std::sync::Mutex;
 use utility::cache::ResourceName;
 use utility::cache::TraitOperationClientError;
 use utility::cache::TraitOperationClientInput;
@@ -32,8 +31,10 @@ use utility::cache::TypeOperationClientInput;
 use utility::cache::TypeOperationClientResult;
 use utility::cache::new_resource_name;
 use utility::process_manager::MessageToProcessManager;
+use utility::process_manager::ProcessDialog;
 use utility::process_manager::ProcessId;
 use utility::process_manager::UserConsent;
+use utility::ui_effect::Commander;
 use utility::ui_effect::MessageTrait;
 use utility::ui_effect::Model;
 use utility::ui_effect::UiContext;
@@ -78,124 +79,231 @@ pub async fn check_input<
     Ok(Ok(Arc::new(state_less_operation)))
 }
 
-#[derive(Debug, Clone)]
-pub enum Message {
-    Submit,
-    Consent(UserConsent),
-    Clean,
-    CompanyName(String),
-    Currency(Currency),
-}
-
-impl MessageTrait for Message {}
-
 pub trait GlobalModel: Model + 'static {
     fn user_uuid(&self) -> impl HashimSignal<Option<UserUuid>>;
 }
 
 pub trait LocalModel: 'static {
-    fn process_id(&self) -> impl HashimSignal<Option<ProcessId>>;
     fn show_dialog(&self) -> impl HashimSignal<Dialog>;
     fn is_loading(&self) -> impl HashimSignal<bool>;
     fn company_name(&self) -> impl HashimSignal<String>;
     fn currency(&self) -> impl HashimSignal<Currency>;
-    fn company_name_error(&self) -> impl HashimSignal<Option<String>>;
+    fn company_name_error(&self) -> impl HashimSignal<Option<CompanyNameError>>;
 }
 
-fn apply_on_the_model_for_submit(output: &MyResult, local_model: Arc<impl LocalModel>) {
-    match output {
-        Ok(_) => {
-            handle_clean(local_model);
-        }
-        Err(business_error) => {
-            local_model.company_name_error().set(
-                business_error
-                    .company_name
-                    .as_ref()
-                    .map(|_| String::from("invalid company name")),
-            );
-        }
+#[derive(Debug, Clone)]
+pub enum Change {
+    ShowDialog(Dialog),
+    IsLoading(bool),
+    CompanyName(String),
+    Currency(Currency),
+    CompanyNameError(Option<CompanyNameError>),
+}
+
+#[derive(Debug, Clone)]
+pub enum Effect {
+    Submit {
+        process_id: ProcessId,
+        user_uuid: UserUuid,
+        company_name: String,
+        currency: Currency,
+    },
+    Consent {
+        process_id: ProcessId,
+        user_consent: UserConsent,
+    },
+}
+
+#[derive(Debug, Clone)]
+pub enum Intent {
+    Clean,
+    CompanyName(String),
+    Consent(UserConsent),
+    Currency(Currency),
+    Submit,
+}
+
+#[derive(Debug, Clone)]
+pub enum Observe {
+    ShowDialog,
+    HideDialog,
+    Result(MyResult),
+}
+
+#[derive(Debug, Clone)]
+pub enum Message {
+    Intent(Intent),
+    Observe(Observe),
+}
+
+impl MessageTrait for Message {}
+
+pub fn reduce(
+    msg: Message,
+    process_id: ProcessId,
+    local_model: &impl LocalModel,
+    global_model: &impl GlobalModel,
+) -> Result<(Vec<Change>, Vec<Effect>)> {
+    match msg {
+        Message::Intent(intent) => match intent {
+            Intent::Clean => {
+                let change = vec![
+                    Change::ShowDialog(Default::default()),
+                    Change::IsLoading(Default::default()),
+                    Change::CompanyName(Default::default()),
+                    Change::Currency(Default::default()),
+                    Change::CompanyNameError(Default::default()),
+                ];
+                let effect = vec![];
+                Ok((change, effect))
+            }
+            Intent::CompanyName(v) => {
+                let change = vec![Change::CompanyName(v)];
+                let effect = vec![];
+                Ok((change, effect))
+            }
+            Intent::Consent(v) => {
+                let change = vec![Change::ShowDialog(Default::default())];
+                let effect = vec![Effect::Consent {
+                    process_id,
+                    user_consent: v,
+                }];
+                Ok((change, effect))
+            }
+            Intent::Currency(v) => {
+                let change = vec![Change::Currency(v)];
+                let effect = vec![];
+                Ok((change, effect))
+            }
+            Intent::Submit => {
+                let change = vec![Change::IsLoading(true)];
+                let effect = vec![Effect::Submit {
+                    process_id,
+                    user_uuid: global_model
+                        .user_uuid()
+                        .read()
+                        .context("user uuid not found")?,
+                    company_name: local_model.company_name().read(),
+                    currency: local_model.currency().read(),
+                }];
+                Ok((change, effect))
+            }
+        },
+        Message::Observe(observe) => match observe {
+            Observe::ShowDialog => {
+                let change = vec![Change::ShowDialog(Dialog::Show)];
+                let effect = vec![];
+                Ok((change, effect))
+            }
+            Observe::HideDialog => {
+                let change = vec![Change::ShowDialog(Dialog::Hide)];
+                let effect = vec![];
+                Ok((change, effect))
+            }
+            Observe::Result(v) => {
+                let change = match v {
+                    Ok(_) => {
+                        vec![
+                            Change::ShowDialog(Default::default()),
+                            Change::IsLoading(Default::default()),
+                            Change::CompanyName(Default::default()),
+                            Change::Currency(Default::default()),
+                            Change::CompanyNameError(Default::default()),
+                        ]
+                    }
+                    Err(a) => {
+                        vec![
+                            Change::ShowDialog(Default::default()),
+                            Change::IsLoading(Default::default()),
+                            Change::CompanyNameError(a.company_name),
+                        ]
+                    }
+                };
+                let effect = vec![];
+                Ok((change, effect))
+            }
+        },
     }
 }
 
-pub async fn update_generic(
-    message: Message,
-    local_model: Arc<impl LocalModel>,
-    mut context: UiContext<impl GlobalModel>,
-) -> Result<()> {
-    match message {
-        Message::Submit => {
+pub fn update(msg: Change, local_model: &impl LocalModel, global_model: &impl GlobalModel) {
+    match msg {
+        Change::ShowDialog(i) => local_model.show_dialog().set(i),
+        Change::IsLoading(i) => local_model.is_loading().set(i),
+        Change::CompanyName(i) => local_model.company_name().set(i),
+        Change::Currency(i) => local_model.currency().set(i),
+        Change::CompanyNameError(i) => local_model.company_name_error().set(i),
+    }
+}
+
+pub async fn effect(msg: Effect, mut context: UiContext) -> Result<()> {
+    match msg {
+        Effect::Submit {
+            process_id,
+            user_uuid,
+            company_name,
+            currency,
+        } => {
             handle_submit(
-                context.sender_to_error,
-                context.model,
-                local_model,
-                context.cache,
-                context.sender_to_process_manager,
+                process_id,
+                &Input {
+                    user_uuid,
+                    new_uuid: CompanyUuid::from(UuidType::from(Id::generate())),
+                    company_name,
+                    currency,
+                },
+                context,
             )
             .await?;
         }
-        Message::Consent(i) => {
+        Effect::Consent {
+            process_id,
+            user_consent,
+        } => {
             context
                 .sender_to_process_manager
                 .send(MessageToProcessManager::FromUser {
-                    process_id: local_model
-                        .process_id()
-                        .read()
-                        .context("process id not found")?,
-                    consent: i,
+                    process_id: process_id,
+                    consent: user_consent,
                 })
                 .await?;
         }
-        Message::Clean => handle_clean(local_model),
-        Message::CompanyName(v) => local_model.company_name().set(v),
-        Message::Currency(v) => local_model.currency().set(v),
     }
 
     Ok(())
 }
 
-fn build_input(
-    global_model: Arc<impl GlobalModel>,
-    local_model: Arc<impl LocalModel>,
-) -> Result<Input> {
-    Ok(Input {
-        user_uuid: global_model
-            .user_uuid()
-            .read()
-            .context("user uuid not found")?,
-        new_uuid: CompanyUuid::from(UuidType::from(Id::generate())),
-        company_name: local_model.company_name().read(),
-        currency: local_model.currency().read(),
-    })
+struct A {
+    process_id: ProcessId,
+    sender: Commander,
 }
 
-fn handle_clean(local_model: Arc<impl LocalModel>) {
-    local_model.company_name().reset();
-    local_model.currency().reset();
-    local_model.is_loading().reset();
-    local_model.company_name_error().reset();
+impl ProcessDialog for A {
+    fn show(&self) {
+        self.sender
+            .send(self.process_id, Message::Observe(Observe::ShowDialog));
+    }
+
+    fn hide(&self) {
+        self.sender
+            .send(self.process_id, Message::Observe(Observe::HideDialog));
+    }
 }
 
-async fn handle_submit(
-    sender_to_error: MpscSender<anyhow::Error>,
-    global_model: Arc<impl GlobalModel>,
-    local_model: Arc<impl LocalModel>,
-    cache: CacheStruct,
-    sender_to_process_manager: MpscSender<MessageToProcessManager>,
-) -> Result<()> {
-    let process_id = ProcessId::default();
-    local_model.process_id().set(Some(process_id));
+async fn handle_submit(process_id: ProcessId, input: &Input, context: UiContext) -> Result<()> {
+    let context1 = context.clone();
 
-    let dialog_signal_adapter = Arc::new(DialogSignalAdapter(local_model.show_dialog()));
+    let dialog_signal_adapter = Arc::new(A {
+        process_id,
+        sender: context.sender_to_commander,
+    });
 
-    let data = build_input(global_model, local_model.clone())?;
-    let data: TypeOperationClientInput = Arc::new(data);
+    let data: TypeOperationClientInput = Arc::new(input.clone());
 
-    let local_model1 = local_model.clone();
     handle_fall_back(
-        sender_to_error,
-        cache,
-        sender_to_process_manager,
+        context.sender_to_error,
+        context.cache,
+        context.sender_to_process_manager,
         dialog_signal_adapter,
         process_id,
         data,
@@ -212,16 +320,17 @@ async fn handle_submit(
                     Err(*a)
                 }
             };
-            apply_on_the_model_for_submit(&result, local_model.clone());
 
             let is_ok = result.is_ok();
+
+            context1
+                .sender_to_commander
+                .send(process_id, Message::Observe(Observe::Result(result)));
 
             Ok(is_ok)
         },
     )
     .await?;
-
-    local_model1.clone().is_loading().reset();
 
     Ok(())
 }

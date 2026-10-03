@@ -54,7 +54,7 @@ pub struct Error {
 impl MarkerMyErrorTrait for Error {}
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
-pub(crate) enum CompanyNameError {
+pub enum CompanyNameError {
     Empty,
 }
 
