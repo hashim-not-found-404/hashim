@@ -49,7 +49,7 @@ use utility::dtos::TypeOperationDTOInput;
 use utility::dtos::TypeOperationDTOOk;
 use utility::ui_effect::CastMessageToReducer;
 use utility::ui_effect::MessageTrait;
-use utility::ui_effect::UpdaterTrait;
+use utility::ui_effect::ReducerTrait;
 
 pub(crate) struct MyCaster;
 
@@ -58,7 +58,7 @@ impl CastMessageToReducer for MyCaster {
 
     fn cast_message_to_reducer(
         v: Box<dyn MessageTrait>,
-    ) -> Result<Box<dyn UpdaterTrait<Mdl = Self::Mdl>>> {
+    ) -> Result<Box<dyn ReducerTrait<Mdl = Self::Mdl>>> {
         let v: Box<dyn Any> = v;
 
         if let Some(v) = v.downcast_ref::<crate::navigator::Message>() {
@@ -66,31 +66,39 @@ impl CastMessageToReducer for MyCaster {
         }
 
         if let Some(v) = v.downcast_ref::<use_case_create_account::client::Message>() {
-            return Ok(Box::new(updater_use_case_create_account::Wrapper(
+            return Ok(Box::new(updater_use_case_create_account::WrapperMessage(
                 v.clone(),
             )));
         };
         if let Some(v) = v.downcast_ref::<use_case_error_handler::client::Message>() {
-            return Ok(Box::new(updater_use_case_error_handler::Wrapper(v.clone())));
+            return Ok(Box::new(updater_use_case_error_handler::WrapperMessage(
+                v.clone(),
+            )));
         };
         if let Some(v) = v.downcast_ref::<use_case_sign_in::client::Message>() {
-            return Ok(Box::new(updater_use_case_sign_in::Wrapper(v.clone())));
+            return Ok(Box::new(updater_use_case_sign_in::WrapperMessage(
+                v.clone(),
+            )));
         };
         if let Some(v) = v.downcast_ref::<use_case_sign_up::client::Message>() {
-            return Ok(Box::new(updater_use_case_sign_up::Wrapper(v.clone())));
+            return Ok(Box::new(updater_use_case_sign_up::WrapperMessage(
+                v.clone(),
+            )));
         };
         if let Some(v) = v.downcast_ref::<use_case_create_company::client::Message>() {
-            return Ok(Box::new(updater_use_case_create_company::Wrapper(
+            return Ok(Box::new(updater_use_case_create_company::WrapperMessage(
                 v.clone(),
             )));
         };
         if let Some(v) = v.downcast_ref::<use_case_select_default_company::client::Message>() {
-            return Ok(Box::new(updater_use_case_select_default_company::Wrapper(
-                v.clone(),
-            )));
+            return Ok(Box::new(
+                updater_use_case_select_default_company::WrapperMessage(v.clone()),
+            ));
         };
         if let Some(v) = v.downcast_ref::<use_case_create_branch::client::Message>() {
-            return Ok(Box::new(updater_use_case_create_branch::Wrapper(v.clone())));
+            return Ok(Box::new(updater_use_case_create_branch::WrapperMessage(
+                v.clone(),
+            )));
         };
 
         bail!("downcast error")
