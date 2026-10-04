@@ -19,6 +19,7 @@ use std::fmt::Debug;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::sync::Mutex;
+use tracing::info;
 
 pub trait Model: 'static {}
 
@@ -145,8 +146,13 @@ impl Commander {
             handle_error::<(), _>(sender_to_error.clone(), async || {
                 loop {
                     let message = receiver.recv().await?;
+                    info!(?message);
+
                     let msg = CasMsg::cast_message_to_reducer(message.inner)?;
                     let (change, effect) = msg.reduce(&model, message.process_id)?;
+
+                    info!(?change);
+                    info!(?effect);
 
                     for i in change {
                         i.update(&model, message.process_id);

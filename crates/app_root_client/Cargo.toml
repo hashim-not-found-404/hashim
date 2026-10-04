@@ -29,7 +29,10 @@ use_case_sign_up = { workspace = true, features = ["client", "cache", "ui"] }
 
 anyhow = { workspace = true }
 serde = { workspace = true }
+tracing = { workspace = true }
 
 console_error_panic_hook = { workspace = true }
 dioxus = { workspace = true }
 dioxus-logger = { workspace = true }
+tracing-subscriber = { workspace = true }
+tracing-web = { workspace = true }

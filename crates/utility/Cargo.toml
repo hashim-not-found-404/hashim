@@ -9,4 +9,5 @@ infrastructure = { workspace = true }
 anyhow = { workspace = true }
 dyn-clone = { workspace = true }
 serde = { workspace = true }
+tracing = { workspace = true }
 typetag = { workspace = true }
