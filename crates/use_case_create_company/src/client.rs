@@ -22,7 +22,6 @@ use std::any::Any;
 use std::fmt::Debug;
 use std::ops::Deref;
 use std::sync::Arc;
-use std::sync::Mutex;
 use utility::cache::ResourceName;
 use utility::cache::TraitOperationClientError;
 use utility::cache::TraitOperationClientInput;

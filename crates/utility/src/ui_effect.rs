@@ -89,18 +89,19 @@ impl Commander {
     {
         let (sender_to_commander, receiver_to_commander) = Mpsc::channel();
 
-        Self::commander_actor::<Mdl, CasMsg>(
+        let commander = Self {
+            sender: sender_to_commander,
+        };
+
+        commander.clone().commander_actor::<Mdl, CasMsg>(
             sender_to_error,
             receiver_to_commander,
-            sender_to_commander.clone(),
             sender_to_process_manager,
             model,
             cache,
         );
 
-        Self {
-            sender: sender_to_commander,
-        }
+        commander
     }
 
     pub fn send<Msg>(&self, process_id: ProcessId, msg: Msg)
@@ -119,9 +120,9 @@ impl Commander {
     }
 
     fn commander_actor<Mdl, CasMsg>(
+        self,
         sender_to_error: MpscSender<Error>,
         mut receiver: MpscReceiver<MessageToCommander>,
-        sender: MpscSender<MessageToCommander>,
         sender_to_process_manager: MpscSender<MessageToProcessManager>,
         model: Arc<Mdl>,
         cache: CacheStruct,
@@ -137,7 +138,7 @@ impl Commander {
                 sender_to_process_manager,
                 aborters,
                 sender_to_error: sender_to_error.clone(),
-                sender_to_commander: Self { sender },
+                sender_to_commander: self,
             };
 
             handle_error::<(), _>(sender_to_error.clone(), async || {
