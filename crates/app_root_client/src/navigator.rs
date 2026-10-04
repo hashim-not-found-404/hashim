@@ -1,11 +1,10 @@
-use crate::model::TypeModel;
 use anyhow::Result;
 use serde::Deserialize;
 use serde::Serialize;
-use std::pin::Pin;
+use utility::process_manager::ProcessId;
 use utility::ui_effect::MessageTrait;
+use utility::ui_effect::Model;
 use utility::ui_effect::UiContext;
-use utility::ui_effect::UpdaterTrait;
 use utility_ui::domain::HashimSignal;
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Deserialize, Serialize)]
@@ -38,38 +37,128 @@ pub(crate) enum Menu {
     CreateJournalEntry,
 }
 
+pub(crate) trait GlobalModel: Model + 'static {
+    fn is_auth_loading(&self) -> impl HashimSignal<bool>;
+    fn navigator(&self) -> impl HashimSignal<Navigator>;
+}
+
 #[derive(Debug, Clone)]
-pub(crate) enum Message {
+pub(crate) enum Change {
+    Navigator(Navigator),
+}
+
+#[derive(Debug, Clone)]
+pub(crate) enum Effect {}
+
+#[derive(Debug, Clone)]
+pub(crate) enum Intent {
     GoToSignIn,
     GoToSignUp,
 }
 
+#[derive(Debug, Clone)]
+pub(crate) enum Observe {}
+
+#[derive(Debug, Clone)]
+pub(crate) enum Message {
+    Intent(Intent),
+    Observe(Observe),
+}
+
 impl MessageTrait for Message {}
 
-impl UpdaterTrait for Message {
-    type Mdl = TypeModel;
-
-    fn update(
-        self: Box<Self>,
-        context: UiContext<Self::Mdl>,
-    ) -> Pin<Box<dyn Future<Output = Result<()>>>> {
-        Box::pin(async move {
-            match *self {
-                Message::GoToSignIn => {
-                    if context.model.feature_state_auth.is_loading.read() {
-                        return Ok(());
-                    }
-                    context.model.navigator.set(Navigator::SignIn);
+pub(crate) fn reduce(
+    msg: Message,
+    _: ProcessId,
+    global_model: &impl GlobalModel,
+) -> Result<(Vec<Change>, Vec<Effect>)> {
+    match msg {
+        Message::Intent(intent) => match intent {
+            Intent::GoToSignIn => {
+                if global_model.is_auth_loading().read() {
+                    return Ok((vec![], vec![]));
                 }
-                Message::GoToSignUp => {
-                    if context.model.feature_state_auth.is_loading.read() {
-                        return Ok(());
-                    }
-                    context.model.navigator.set(Navigator::SignUp);
-                }
+                Ok((vec![Change::Navigator(Navigator::SignIn)], vec![]))
             }
+            Intent::GoToSignUp => {
+                if global_model.is_auth_loading().read() {
+                    return Ok((vec![], vec![]));
+                }
+                Ok((vec![Change::Navigator(Navigator::SignUp)], vec![]))
+            }
+        },
+        Message::Observe(observe) => match observe {},
+    }
+}
 
-            Ok(())
-        })
+pub(crate) fn update(msg: Change, global_model: &impl GlobalModel) {
+    match msg {
+        Change::Navigator(i) => global_model.navigator().set(i),
+    }
+}
+
+pub(crate) async fn effect(_: Effect, _: UiContext) -> Result<()> {
+    Ok(())
+}
+
+pub(crate) mod navigator_reducer {
+    use crate::model::TypeModel;
+    use crate::navigator::Change;
+    use crate::navigator::Effect;
+    use crate::navigator::Message;
+    use crate::navigator::effect;
+    use crate::navigator::reduce;
+    use crate::navigator::update;
+    use anyhow::Result;
+    use std::pin::Pin;
+    use utility::process_manager::ProcessId;
+    use utility::ui_effect::EffectorTrait;
+    use utility::ui_effect::ReducerTrait;
+    use utility::ui_effect::UiContext;
+    use utility::ui_effect::UpdaterTrait;
+
+    pub(crate) struct WrapperMessage(pub(crate) Message);
+
+    impl ReducerTrait for WrapperMessage {
+        type Mdl = TypeModel;
+        fn reduce(
+            &self,
+            model: &Self::Mdl,
+            process_id: ProcessId,
+        ) -> Result<(
+            Vec<Box<dyn UpdaterTrait<Mdl = TypeModel>>>,
+            Vec<Box<dyn EffectorTrait>>,
+        )> {
+            let (changes, effects) = reduce(self.0.clone(), process_id, model)?;
+
+            let updaters: Vec<Box<dyn UpdaterTrait<Mdl = TypeModel>>> = changes
+                .into_iter()
+                .map(|c| Box::new(WrapperChange(c)) as Box<dyn UpdaterTrait<Mdl = TypeModel>>)
+                .collect();
+
+            let effectors: Vec<Box<dyn EffectorTrait>> = effects
+                .into_iter()
+                .map(|e| Box::new(WrapperEffect(e)) as Box<dyn EffectorTrait>)
+                .collect();
+
+            Ok((updaters, effectors))
+        }
+    }
+
+    pub(crate) struct WrapperChange(pub(crate) Change);
+
+    impl UpdaterTrait for WrapperChange {
+        type Mdl = TypeModel;
+        fn update(&self, model: &Self::Mdl, _: ProcessId) {
+            update(self.0.clone(), model);
+        }
+    }
+
+    pub(crate) struct WrapperEffect(pub(crate) Effect);
+
+    impl EffectorTrait for WrapperEffect {
+        fn effect(&self, context: UiContext) -> Pin<Box<dyn Future<Output = Result<()>>>> {
+            Box::pin(effect(self.0.clone(), context))
+        }
     }
 }

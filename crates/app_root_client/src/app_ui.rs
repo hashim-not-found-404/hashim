@@ -72,11 +72,10 @@ fn Home() -> Element {
     rsx! {
         use_case_select_default_company::ui::Component {
             sender: move |msg| send(msg),
-            user_name: MODEL                        .user_name
-                                            .read()
-                                            .or_else(|| MODEL.user_id.read().into())
-                                            .unwrap_or_default(),
-
+            user_name: MODEL.user_name
+                    .read()
+                    .or_else(|| MODEL.user_id.read().into())
+                    .unwrap_or_default(),
             companies: MODEL.page_select_default_company.list_of_companies().read(),
             branches: MODEL.page_select_default_company.list_of_branches().read(),
             selected_company: MODEL.selected_company_uuid.read(),

@@ -32,6 +32,7 @@ make_client_wrapper_cache_check!(create_branch);
 make_client_wrapper_cache_write!(create_branch);
 
 use crate::model::TypeModel;
+use crate::navigator::navigator_reducer;
 use anyhow::Result;
 use anyhow::bail;
 use cache::cache_adapter;
@@ -62,7 +63,7 @@ impl CastMessageToReducer for MyCaster {
         let v: Box<dyn Any> = v;
 
         if let Some(v) = v.downcast_ref::<crate::navigator::Message>() {
-            return Ok(Box::new(v.clone()));
+            return Ok(Box::new(navigator_reducer::WrapperMessage(v.clone())));
         }
 
         if let Some(v) = v.downcast_ref::<use_case_create_account::client::Message>() {

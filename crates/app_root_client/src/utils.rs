@@ -3,9 +3,11 @@ use crate::wire::MyCaster;
 use cache::cache_adapter;
 use infrastructure::actors::Mpsc;
 use infrastructure::actors::MultiProducerSingleConsumer;
-use kernel::ui_construct;
+use kernel::ui_construct::new;
 use std::sync::Arc;
 use std::sync::LazyLock;
+use use_case_error_handler::client::spawn_listener;
+use utility::process_manager::ProcessId;
 use utility::ui_effect::Commander;
 use utility::ui_effect::MessageTrait;
 
@@ -17,19 +19,16 @@ static COMMANDER: LazyLock<Commander> = LazyLock::new(|| {
 
     let model = MODEL.to_owned();
 
-    use_case_error_handler::client::spawn_listener(
-        receiver_to_error,
-        model.page_error_handler.clone(),
-    );
+    let commander =
+        new::<cache_adapter::S, TypeModel, MyCaster, MyCaster, MyCaster>(model, sender_to_error);
 
-    ui_construct::new::<cache_adapter::S, TypeModel, MyCaster, MyCaster, MyCaster>(
-        model,
-        sender_to_error,
-    )
+    spawn_listener(receiver_to_error, commander.clone());
+
+    commander
 });
 
-pub(crate) fn send<Msg: MessageTrait>(msg: Msg) {
-    COMMANDER.send(msg);
+pub(crate) fn send<Msg: MessageTrait>(process_id: ProcessId, msg: Msg) {
+    COMMANDER.send(process_id, msg);
 }
 
 pub(crate) fn init_commander_and_model() {

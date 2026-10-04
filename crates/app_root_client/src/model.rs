@@ -148,3 +148,13 @@ impl use_case_create_branch::client::GlobalModel for TypeModel {
         self.selected_company_uuid.clone()
     }
 }
+
+impl crate::navigator::GlobalModel for TypeModel {
+    fn is_auth_loading(&self) -> impl HashimSignal<bool> {
+        self.feature_state_auth.is_loading.clone()
+    }
+
+    fn navigator(&self) -> impl HashimSignal<Navigator> {
+        self.navigator.clone()
+    }
+}
