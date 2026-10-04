@@ -1,6 +1,6 @@
 use crate::client::ErrorList;
+use crate::client::Intent;
 use crate::client::LocalModel;
-use crate::client::Message;
 use chrono::DateTime;
 use dioxus::prelude::*;
 use serde::Deserialize;
@@ -25,7 +25,7 @@ impl LocalModel for TypeLocalModel {
 }
 
 #[component]
-pub fn Component(sender: EventHandler<Message>, is_expand_all: bool, errors: ErrorList) -> Element {
+pub fn Component(sender: EventHandler<Intent>, is_expand_all: bool, errors: ErrorList) -> Element {
     if errors.0.is_empty() {
         return rsx!();
     }
@@ -34,7 +34,7 @@ pub fn Component(sender: EventHandler<Message>, is_expand_all: bool, errors: Err
     if !is_expand_all {
         let count = errors.0.len();
         return rsx! {
-            button { onclick: move |_| sender(Message::ExpandOrCollapseAll), "⚠ {count} errors" }
+            button { onclick: move |_| sender(Intent::ExpandOrCollapseAll), "⚠ {count} errors" }
         };
     }
 
@@ -42,8 +42,8 @@ pub fn Component(sender: EventHandler<Message>, is_expand_all: bool, errors: Err
     rsx! {
         div {
             div {
-                button { onclick: move |_| sender(Message::ExpandOrCollapseAll), "Collapse All" }
-                button { onclick: move |_| sender(Message::DeleteAll), "Delete All" }
+                button { onclick: move |_| sender(Intent::ExpandOrCollapseAll), "Collapse All" }
+                button { onclick: move |_| sender(Intent::DeleteAll), "Delete All" }
             }
 
             for (index, error) in errors.0.iter().enumerate() {
@@ -60,14 +60,14 @@ pub fn Component(sender: EventHandler<Message>, is_expand_all: bool, errors: Err
                                 label { "{count} " }
                                 label { "{name} " }
                                 label { "{time}" }
-                                button { onclick: move |_| { sender(Message::ExpandOrCollapseOne(index)) },
+                                button { onclick: move |_| { sender(Intent::ExpandOrCollapseOne(index)) },
                                     if is_error_expanded {
                                         "Hide"
                                     } else {
                                         "Show"
                                     }
                                 }
-                                button { onclick: move |_| { sender(Message::DeleteOne(index)) }, "X" }
+                                button { onclick: move |_| { sender(Intent::DeleteOne(index)) }, "X" }
                             }
                             if is_error_expanded {
                                 if let Some(bt) = back_trace {
