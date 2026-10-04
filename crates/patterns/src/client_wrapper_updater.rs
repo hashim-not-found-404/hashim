@@ -27,6 +27,7 @@ pub fn my_macro(input: TokenStream) -> TokenStream {
             use utility::ui_effect::UiContext;
             use utility::ui_effect::UpdaterTrait;
 
+            #[derive(Debug)]
             pub(crate) struct WrapperMessage(pub(crate) Message);
 
             impl ReducerTrait for WrapperMessage {
@@ -58,6 +59,7 @@ pub fn my_macro(input: TokenStream) -> TokenStream {
                 }
             }
 
+            #[derive(Debug)]
             pub(crate) struct WrapperChange(pub(crate) Change);
 
             impl UpdaterTrait for WrapperChange {
@@ -68,6 +70,7 @@ pub fn my_macro(input: TokenStream) -> TokenStream {
                 }
             }
 
+            #[derive(Debug)]
             pub(crate) struct WrapperEffect(pub(crate) Effect);
 
             impl EffectorTrait for WrapperEffect {

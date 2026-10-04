@@ -26,6 +26,7 @@ pub trait MessageTrait: Any + Debug + 'static + Send + DynClone {
     // here it should have method that return serializable dyn trait for the intent to store it
 }
 
+#[derive(Debug)]
 pub struct MessageToCommander {
     pub process_id: ProcessId,
     pub inner: Box<dyn MessageTrait>,
@@ -40,7 +41,7 @@ pub struct UiContext {
     pub sender_to_commander: Commander,
 }
 
-pub trait ReducerTrait {
+pub trait ReducerTrait: Debug {
     type Mdl: Model;
 
     fn reduce(
@@ -53,13 +54,13 @@ pub trait ReducerTrait {
     )>;
 }
 
-pub trait UpdaterTrait {
+pub trait UpdaterTrait: Debug {
     type Mdl: Model;
 
     fn update(&self, model: &Self::Mdl, process_id: ProcessId);
 }
 
-pub trait EffectorTrait {
+pub trait EffectorTrait: Debug {
     fn effect(&self, context: UiContext) -> Pin<Box<dyn Future<Output = Result<()>>>>;
 }
 

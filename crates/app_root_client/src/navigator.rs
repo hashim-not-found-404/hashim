@@ -117,6 +117,7 @@ pub(crate) mod navigator_reducer {
     use utility::ui_effect::UiContext;
     use utility::ui_effect::UpdaterTrait;
 
+    #[derive(Debug)]
     pub(crate) struct WrapperMessage(pub(crate) Message);
 
     impl ReducerTrait for WrapperMessage {
@@ -145,6 +146,7 @@ pub(crate) mod navigator_reducer {
         }
     }
 
+    #[derive(Debug)]
     pub(crate) struct WrapperChange(pub(crate) Change);
 
     impl UpdaterTrait for WrapperChange {
@@ -154,6 +156,7 @@ pub(crate) mod navigator_reducer {
         }
     }
 
+    #[derive(Debug)]
     pub(crate) struct WrapperEffect(pub(crate) Effect);
 
     impl EffectorTrait for WrapperEffect {
