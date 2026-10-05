@@ -138,13 +138,15 @@ pub enum Response {
     },
 }
 
+pub type PokeType = Box<dyn Fn() + 'static>;
+
 pub enum MessageToCache {
     WeAreBackOnline,
     DataFromServer(Vec<u8>),
     Subscribe {
         component_id: u16,
         list_of_subscribtion: &'static [ResourceName],
-        sender: MpscSender<()>,
+        sender: PokeType,
     },
     UnSubscribe {
         component_id: u16,
@@ -231,18 +233,15 @@ impl CacheStruct {
         &mut self,
         component_id: u16,
         list_of_subscribtion: &'static [ResourceName],
-    ) -> Result<MpscReceiver<()>> {
-        let (sender, receiver) = Mpsc::channel();
-
+        poke: impl Fn() + 'static,
+    ) -> Result<()> {
         self.sender
             .send(MessageToCache::Subscribe {
                 component_id,
                 list_of_subscribtion,
-                sender,
+                sender: Box::new(poke),
             })
-            .await?;
-
-        Ok(receiver)
+            .await
     }
 
     pub async fn send_unsubs_to_cache_actor(&mut self, component_id: u16) -> Result<()> {
@@ -266,7 +265,7 @@ impl CacheStruct {
         Rt::spawn_local(async move {
             let mut pool_of_senders =
                 HashMap::<TxnNumber, MpscSender<Response>>::with_capacity(100);
-            let mut pool_of_pokers = HashMap::<u16, MpscSender<()>>::with_capacity(10);
+            let mut pool_of_pokers = HashMap::<u16, PokeType>::with_capacity(10);
             let mut pool_of_subscribes = HashMap::<ResourceName, HashSet<u16>>::with_capacity(100);
 
             handle_error::<(), _>(sender_to_error.clone(), async || {
@@ -309,7 +308,7 @@ async fn message_handler<
     sender_to_error: &mut MpscSender<anyhow::Error>,
     is_online: &Arc<RwLock<bool>>,
     pool_of_senders: &mut HashMap<TxnNumber, MpscSender<Response>>,
-    pool_of_pokers: &mut HashMap<u16, MpscSender<()>>,
+    pool_of_pokers: &mut HashMap<u16, PokeType>,
     pool_of_subscribes: &mut HashMap<ResourceName, HashSet<u16>>,
     cache: &mut Cu,
 ) -> Result<()> {
@@ -391,8 +390,7 @@ async fn message_handler<
                             pool_of_pokers,
                             &*pool_of_subscribes,
                             &subs_to_poke,
-                        )
-                        .await;
+                        );
                     }
                     MessageFromServer::Resources(resources) => {
                         cache.clear_pending_txn_state().await?;
@@ -408,8 +406,7 @@ async fn message_handler<
                             pool_of_pokers,
                             &*pool_of_subscribes,
                             &subs_to_poke,
-                        )
-                        .await;
+                        );
 
                         cache.start_pending_txn_state().await?;
                         let txns = cache.get_all_pending_txn().await?;
@@ -534,8 +531,7 @@ async fn message_handler<
                         pool_of_pokers,
                         &*pool_of_subscribes,
                         &subs_to_poke,
-                    )
-                    .await;
+                    );
 
                     sender
                         .send(Response::Data {
@@ -569,8 +565,7 @@ async fn message_handler<
                         pool_of_pokers,
                         &*pool_of_subscribes,
                         &subs_to_poke,
-                    )
-                    .await;
+                    );
 
                     sender
                         .send(Response::Data {
@@ -618,8 +613,8 @@ async fn message_handler<
     }
 }
 
-async fn poke_the_subs<Subscribe: 'static + Hash + Eq>(
-    pool_of_pokers: &mut HashMap<u16, MpscSender<()>>,
+fn poke_the_subs<Subscribe: 'static + Hash + Eq>(
+    pool_of_pokers: &mut HashMap<u16, PokeType>,
     pool_of_subscribes: &HashMap<Subscribe, HashSet<u16>>,
     subs_to_poke: &HashSet<Subscribe>,
 ) {
@@ -637,7 +632,7 @@ async fn poke_the_subs<Subscribe: 'static + Hash + Eq>(
 
     for i in components_to_poke {
         if let Some(sender) = pool_of_pokers.get_mut(i) {
-            let _ = sender.send(()).await;
+            let _ = sender();
         }
     }
 }

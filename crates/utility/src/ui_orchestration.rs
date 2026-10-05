@@ -12,6 +12,8 @@ use crate::process_manager::MessageToProcess;
 use crate::process_manager::MessageToProcessManager;
 use crate::process_manager::ProcessId;
 use crate::ui_effect::Aborter;
+use crate::ui_effect::MessageTrait;
+use crate::ui_effect::UiContext;
 use anyhow::Error;
 use anyhow::Result;
 use infrastructure::actors::Mpsc;
@@ -100,65 +102,34 @@ pub async fn handle_fall_back(
     Ok(())
 }
 
-pub fn spawn_listener(
-    sender_to_error: MpscSender<Error>,
-    mut cache: CacheStruct,
+pub async fn spawn_listener(
+    mut context: UiContext,
     list_of_subscribtion: &'static [ResourceName],
-    data: TypeOperationClientInput,
-    f: impl Fn(TypeOperationClientResult) -> Result<()> + 'static,
-) -> Aborter {
+    process_id: ProcessId,
+    msg: impl MessageTrait + Clone,
+) -> Result<()> {
     let component_id = Rn::generate() as u16;
-    let mut cache1 = cache.clone();
-    let sender_to_error1 = sender_to_error.clone();
 
-    let mut handle = Rt::abortable_spawn_local(async move {
-        handle_error_one_time(sender_to_error1, async move || {
-            let mut receiver_to_poke = cache
-                .send_subs_to_cache_actor(component_id, list_of_subscribtion)
-                .await?;
-
-            cache
-                .send_to_cache_actor(
-                    CachingStrategy::ReadServerOnly,
-                    TxnNumber::default(),
-                    data.clone(),
-                )
-                .await?;
-
-            loop {
-                let value = cache
-                    .send_to_cache_actor(
-                        CachingStrategy::ReadCacheOnly,
-                        TxnNumber::default(),
-                        data.clone(),
-                    )
-                    .await?
-                    .recv()
-                    .await?;
-
-                if let Response::Data { data, .. } = value {
-                    f(data)?;
-                }
-
-                if receiver_to_poke.recv().await.is_err() {
-                    break;
-                }
-            }
-            cache.send_unsubs_to_cache_actor(component_id).await?;
-
-            Ok(())
+    context
+        .cache
+        .send_subs_to_cache_actor(component_id, list_of_subscribtion, move || {
+            context.sender_to_commander.send(process_id, msg.clone());
         })
-        .await;
-    });
+        .await?;
 
-    Aborter::new(move || {
+    let aborter = Aborter::new(move || {
         Rt::spawn_local(async move {
-            handle_error_one_time(sender_to_error, async move || {
-                handle.abort().await;
-                cache1.send_unsubs_to_cache_actor(component_id).await?;
+            handle_error_one_time(context.sender_to_error, async move || {
+                context
+                    .cache
+                    .send_unsubs_to_cache_actor(component_id)
+                    .await?;
                 Ok(())
             })
             .await;
         });
-    })
+    });
+
+    context.aborters.register(process_id, aborter);
+    Ok(())
 }

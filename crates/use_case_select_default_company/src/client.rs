@@ -1,6 +1,7 @@
 use anyhow::Context;
 use anyhow::Result;
 use anyhow::anyhow;
+use infrastructure::actors::Receiver;
 use kernel::new_types::BranchUuid;
 use kernel::new_types::CompanyUuid;
 use kernel::new_types::UserUuid;
@@ -12,8 +13,12 @@ use use_case_get_companies_and_branches::domain::Error;
 use use_case_get_companies_and_branches::domain::Input;
 use use_case_get_companies_and_branches::domain::MyResult;
 use use_case_get_companies_and_branches::domain::Ok;
+use utility::cache::CachingStrategy;
 use utility::cache::ResourceName;
+use utility::cache::Response;
+use utility::cache::TypeOperationClientInput;
 use utility::cache::new_resource_name;
+use utility::dtos::TxnNumber;
 use utility::process_manager::ProcessId;
 use utility::ui_effect::MessageTrait;
 use utility::ui_effect::Model;
@@ -57,10 +62,13 @@ pub enum Change {
 pub enum Effect {
     Subscribe {
         process_id: ProcessId,
-        user_uuid: UserUuid,
     },
     UnSubscribe {
         process_id: ProcessId,
+    },
+    Refresh {
+        process_id: ProcessId,
+        user_uuid: UserUuid,
     },
 }
 
@@ -74,6 +82,7 @@ pub enum Intent {
 
 #[derive(Debug, Clone)]
 pub enum Observe {
+    Refresh,
     Result(MyResult),
 }
 
@@ -98,10 +107,13 @@ pub fn reduce(
                     return Ok((vec![], vec![]));
                 };
                 let change = vec![Change::IsLoading(true)];
-                let effect = vec![Effect::Subscribe {
-                    process_id,
-                    user_uuid,
-                }];
+                let effect = vec![
+                    Effect::Subscribe { process_id },
+                    Effect::Refresh {
+                        process_id,
+                        user_uuid,
+                    },
+                ];
                 Ok((change, effect))
             }
             Intent::UnSubscribe => {
@@ -180,6 +192,17 @@ pub fn reduce(
                 }
                 Ok((change, vec![]))
             }
+            Observe::Refresh => {
+                let Some(user_uuid) = global_model.user_uuid().read() else {
+                    return Ok((vec![], vec![]));
+                };
+                let change = vec![Change::IsLoading(true)];
+                let effect = vec![Effect::Refresh {
+                    process_id,
+                    user_uuid,
+                }];
+                Ok((change, effect))
+            }
         },
     }
 }
@@ -201,32 +224,45 @@ pub fn update(msg: Change, local_model: &impl LocalModel, global_model: &impl Gl
 
 pub async fn effect(msg: Effect, context: UiContext) -> Result<()> {
     match msg {
-        Effect::Subscribe {
-            process_id,
-            user_uuid,
-        } => {
-            handle_subscribe(process_id, user_uuid, context).await?;
+        Effect::Subscribe { process_id } => {
+            handle_subscribe(process_id, context).await?;
         }
         Effect::UnSubscribe { process_id } => {
             context.aborters.abort(process_id);
+        }
+        Effect::Refresh {
+            process_id,
+            user_uuid,
+        } => {
+            handle_refresh(process_id, user_uuid, context).await?;
         }
     }
     Ok(())
 }
 
-async fn handle_subscribe(
+async fn handle_refresh(
     process_id: ProcessId,
     user_uuid: UserUuid,
     context: UiContext,
 ) -> Result<()> {
     let sender_to_commander = context.sender_to_commander.clone();
+    let mut cache = context.cache.clone();
 
-    let aborter = spawn_listener(
-        context.sender_to_error.clone(),
-        context.cache.clone(),
-        RESOURCES_NAME_TO_LISTEN,
-        Arc::new(Input { user_uuid }),
-        move |data| {
+    let input: TypeOperationClientInput = Arc::new(Input { user_uuid });
+
+    let mut receiver_to_response = cache
+        .send_to_cache_actor(CachingStrategy::ReadCacheOnly, TxnNumber::default(), input)
+        .await?;
+
+    match receiver_to_response.recv().await? {
+        Response::CloseTheChannel => {}
+        Response::ServerCannotBeReached => {
+            sender_to_commander.send(
+                process_id,
+                Message::Observe(Observe::Result(Err(Error::default()))),
+            );
+        }
+        Response::Data { data, .. } => {
             let result = match data {
                 Ok(ok) => {
                     let a: Arc<dyn Any> = ok;
@@ -241,14 +277,20 @@ async fn handle_subscribe(
             };
 
             sender_to_commander.send(process_id, Message::Observe(Observe::Result(result)));
-
-            Ok(())
-        },
-    );
-
-    context.aborters.register(process_id, aborter);
+        }
+    }
 
     Ok(())
+}
+
+async fn handle_subscribe(process_id: ProcessId, context: UiContext) -> Result<()> {
+    spawn_listener(
+        context,
+        RESOURCES_NAME_TO_LISTEN,
+        process_id,
+        Message::Observe(Observe::Refresh),
+    )
+    .await
 }
 
 fn flat_companies(companies: &[CompanyWithBranches]) -> Vec<(CompanyUuid, String)> {
