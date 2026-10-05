@@ -6,7 +6,6 @@ use kernel::types::Currency;
 use serde::Deserialize;
 use serde::Serialize;
 use std::str::FromStr;
-use utility::process_manager::ProcessId;
 use utility::process_manager::UserConsent;
 use utility_ui::components::DialogComponent;
 use utility_ui::domain::Dialog;
