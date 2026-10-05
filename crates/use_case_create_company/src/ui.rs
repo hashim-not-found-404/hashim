@@ -15,7 +15,6 @@ use utility_ui::my_signal::MySignal;
 
 #[derive(Debug, Default, Deserialize, Serialize)]
 pub struct TypeLocalModel {
-    process_id: MySignal<Option<ProcessId>>,
     is_loading: MySignal<bool>,
     show_dialog: MySignal<Dialog>,
     company_name: MySignal<String>,
