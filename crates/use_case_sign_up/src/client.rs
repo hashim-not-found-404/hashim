@@ -108,7 +108,7 @@ pub trait LocalModel: 'static {
 pub enum Change {
     ErrorUserId(Option<UserIdError>),
     ErrorUserName(Option<UserNameError>),
-    IsAuthLoading(bool),
+    IsLoading(bool),
     Password(String),
     ShowDialog(Dialog),
     UserId(String),
@@ -175,7 +175,7 @@ pub fn reduce(
                 }
 
                 let change = vec![
-                    Change::IsAuthLoading(true),
+                    Change::IsLoading(true),
                     Change::ShowDialog(Default::default()),
                     Change::ErrorUserId(Default::default()),
                     Change::ErrorUserName(Default::default()),
@@ -189,7 +189,12 @@ pub fn reduce(
                 Ok((change, effect))
             }
             Intent::Consent(v) => {
-                let change = vec![Change::ShowDialog(Dialog::Hide)];
+                let change = match v {
+                    UserConsent::CancelOperation => {
+                        vec![Change::ShowDialog(Dialog::Hide), Change::IsLoading(false)]
+                    }
+                    _ => vec![Change::ShowDialog(Dialog::Hide)],
+                };
                 let effect = vec![Effect::Consent {
                     process_id,
                     user_consent: v,
@@ -234,14 +239,14 @@ pub fn reduce(
             Observe::SubmitResult(result) => {
                 let change = match result {
                     Ok(ok) => vec![
-                        Change::IsAuthLoading(Default::default()),
+                        Change::IsLoading(Default::default()),
                         Change::UserUuid(Some(ok.new_uuid.clone())),
                         Change::UserName(ok.user_name.clone()),
                         Change::ErrorUserId(None),
                         Change::ErrorUserName(None),
                     ],
                     Err(a) => vec![
-                        Change::IsAuthLoading(Default::default()),
+                        Change::IsLoading(Default::default()),
                         Change::ErrorUserId(a.user_id),
                         Change::ErrorUserName(a.name),
                     ],
@@ -275,7 +280,7 @@ pub fn update(msg: Change, local_model: &impl LocalModel, global_model: &impl Gl
         Change::Password(i) => global_model.password().set(i),
         Change::ErrorUserId(i) => local_model.error_user_id().set(i),
         Change::ErrorUserName(i) => local_model.error_user_name().set(i),
-        Change::IsAuthLoading(i) => global_model.is_auth_loading().set(i),
+        Change::IsLoading(i) => global_model.is_auth_loading().set(i),
     }
 }
 

@@ -162,7 +162,12 @@ pub fn reduce(
                 Ok((change, effect))
             }
             Intent::Consent(v) => {
-                let change = vec![Change::ShowDialog(Default::default())];
+                let change = match v {
+                    UserConsent::CancelOperation => {
+                        vec![Change::ShowDialog(Dialog::Hide), Change::IsLoading(false)]
+                    }
+                    _ => vec![Change::ShowDialog(Dialog::Hide)],
+                };
                 let effect = vec![Effect::Consent {
                     process_id,
                     user_consent: v,

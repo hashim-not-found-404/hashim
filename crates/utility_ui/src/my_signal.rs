@@ -1,6 +1,5 @@
 use crate::domain::HashimSignal;
 use dioxus::core::ReactiveContext;
-use dioxus::prelude::*;
 use serde::Deserialize;
 use serde::Deserializer;
 use serde::Serialize;
@@ -29,10 +28,10 @@ impl<T: Debug> Debug for MySignal<T> {
 
 impl<T: 'static + Default> Default for MySignal<T> {
     fn default() -> Self {
-        use_hook(|| MySignal {
+        Self {
             value: Arc::new(Mutex::new(T::default())),
             subscribers: Default::default(),
-        })
+        }
     }
 }
 
