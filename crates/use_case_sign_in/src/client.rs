@@ -114,7 +114,9 @@ pub enum Change {
     ErrorPassword(Option<PasswordError>),
     ErrorUserId(Option<UserIdError>),
     IsAuthLoading(bool),
+    Password(String),
     ShowDialog(Dialog),
+    UserId(String),
     UserName(Option<String>),
     UserUuid(Option<UserUuid>),
 }
@@ -189,13 +191,12 @@ pub fn reduce(
                 Ok((change, effect))
             }
             Intent::UserId(v) => {
-                let change = vec![Change::UserUuid(None)];
+                let change = vec![Change::UserId(v.clone())];
                 let effect = vec![];
-                let _ = v;
                 Ok((change, effect))
             }
-            Intent::Password(_) => {
-                let change = vec![];
+            Intent::Password(v) => {
+                let change = vec![Change::Password(v.clone())];
                 let effect = vec![];
                 Ok((change, effect))
             }
@@ -226,12 +227,14 @@ pub fn reduce(
 
 pub fn update(msg: Change, local_model: &impl LocalModel, global_model: &impl GlobalModel) {
     match msg {
+        Change::Password(i) => global_model.password().set(i),
         Change::ShowDialog(i) => local_model.show_dialog().set(i),
         Change::IsAuthLoading(i) => global_model.is_auth_loading().set(i),
         Change::UserUuid(i) => global_model.user_uuid().set(i),
         Change::UserName(i) => global_model.user_name().set(i),
         Change::ErrorUserId(i) => local_model.error_user_id().set(i),
         Change::ErrorPassword(i) => local_model.error_password().set(i),
+        Change::UserId(i) => global_model.user_id().set(i),
     }
 }
 

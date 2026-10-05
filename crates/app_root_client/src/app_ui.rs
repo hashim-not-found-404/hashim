@@ -56,14 +56,12 @@ fn RootLayout() -> Element {
 pub(crate) fn App() -> Element {
     init_commander_and_model();
 
-    let process_id = ProcessId::default();
+    let process_id = use_hook(ProcessId::default);
+
     rsx! {
         Router::<Route> {}
         use_case_error_handler::ui::Component {
-            sender: move |i| send(
-                process_id,
-                use_case_error_handler::client::Message::Intent(i),
-            ),
+            sender: move |i| send(process_id, use_case_error_handler::client::Message::Intent(i)),
             is_expand_all: MODEL.page_error_handler.is_expand_all().read(),
             errors: MODEL.page_error_handler.errors().read(),
         }
@@ -72,10 +70,11 @@ pub(crate) fn App() -> Element {
 
 #[component]
 fn Home() -> Element {
-    let process_id = ProcessId::default();
-    let process_id1 = ProcessId::default();
-    let process_id2 = ProcessId::default();
-    let process_id3 = ProcessId::default();
+    let process_id = use_hook(ProcessId::default);
+    let process_id1 = use_hook(ProcessId::default);
+    let process_id2 = use_hook(ProcessId::default);
+    let process_id3 = use_hook(ProcessId::default);
+
     rsx! {
         use_case_select_default_company::ui::Component {
             sender: move |i| send(
@@ -94,10 +93,7 @@ fn Home() -> Element {
             selected_branch_name: MODEL.selected_company_branch_name.read(),
         }
         use_case_create_company::ui::Component {
-            sender: move |i| send(
-                process_id1,
-                use_case_create_company::client::Message::Intent(i),
-            ),
+            sender: move |i| send(process_id1, use_case_create_company::client::Message::Intent(i)),
             show_dialog: MODEL.page_create_company.show_dialog().read(),
             is_loading: MODEL.page_create_company.is_loading().read(),
             company_name: MODEL.page_create_company.company_name().read(),
@@ -109,10 +105,7 @@ fn Home() -> Element {
                 .map(|e| format!("{e:?}")),
         }
         use_case_create_branch::ui::Component {
-            sender: move |i| send(
-                process_id2,
-                use_case_create_branch::client::Message::Intent(i),
-            ),
+            sender: move |i| send(process_id2, use_case_create_branch::client::Message::Intent(i)),
             show_dialog: MODEL.page_create_branch.show_dialog().read(),
             is_loading: MODEL.page_create_branch.is_loading().read(),
             selected_company_name: MODEL.page_create_branch.selected_company_name().read(),
@@ -142,10 +135,7 @@ fn Home() -> Element {
                 .read(),
         }
         use_case_create_account::ui::Component {
-            sender: move |i| send(
-                process_id3,
-                use_case_create_account::client::Message::Intent(i),
-            ),
+            sender: move |i| send(process_id3, use_case_create_account::client::Message::Intent(i)),
             show_dialog: MODEL.page_create_account.show_dialog().read(),
             is_loading: MODEL.page_create_account.is_loading().read(),
             is_debit: MODEL.page_create_account.is_debit().read(),
@@ -167,18 +157,13 @@ fn Home() -> Element {
 
 #[component]
 fn SignIn() -> Element {
-    let process_id = ProcessId::default();
-    let process_id1 = ProcessId::default();
+    let process_id = use_hook(ProcessId::default);
+    let process_id1 = use_hook(ProcessId::default);
+
     rsx! {
         use_case_sign_in::ui::Component {
-            sender: move |i| send(
-                process_id,
-                use_case_sign_in::client::Message::Intent(i),
-            ),
-            on_go_to_sign_up: move || send(
-                process_id1,
-                Message::Intent(NavIntent::GoToSignUp),
-            ),
+            sender: move |i| send(process_id, use_case_sign_in::client::Message::Intent(i)),
+            on_go_to_sign_up: move || send(process_id1, Message::Intent(NavIntent::GoToSignUp)),
             show_dialog: MODEL.page_sign_in.show_dialog().read(),
             user_id: MODEL.user_id.read(),
             password: MODEL.feature_state_auth.user_password.read(),
@@ -198,18 +183,13 @@ fn SignIn() -> Element {
 
 #[component]
 fn SignUp() -> Element {
-    let process_id = ProcessId::default();
-    let process_id1 = ProcessId::default();
+    let process_id = use_hook(ProcessId::default);
+    let process_id1 = use_hook(ProcessId::default);
+
     rsx! {
         use_case_sign_up::ui::Component {
-            sender: move |i| send(
-                process_id,
-                use_case_sign_up::client::Message::Intent(i),
-            ),
-            on_back: move || send(
-                process_id1,
-                Message::Intent(NavIntent::GoToSignIn),
-            ),
+            sender: move |i| send(process_id, use_case_sign_up::client::Message::Intent(i)),
+            on_back: move || send(process_id1, Message::Intent(NavIntent::GoToSignIn)),
             show_dialog: MODEL.page_sign_up.show_dialog().read(),
             user_id: MODEL.user_id.read(),
             user_name: MODEL.user_name.read(),

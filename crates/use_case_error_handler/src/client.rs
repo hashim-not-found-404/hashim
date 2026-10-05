@@ -35,18 +35,13 @@ pub fn spawn_listener(mut receiver_to_error: MpscReceiver<anyhow::Error>, comman
                 }
             };
 
-            let info = ErrorInfo {
+            let info = Observe::ErrorArrived {
                 name: new_err.to_string(),
-                number_of_errors: 1,
                 time_unix_ms: Ti::now_as_unix_milliseconds(),
                 back_trace,
-                is_expand: false,
             };
 
-            commander.send(
-                ProcessId::default(),
-                Message::Observe(Observe::ErrorArrived(info)),
-            );
+            commander.send(ProcessId::default(), Message::Observe(info));
         }
     });
 }
@@ -89,7 +84,11 @@ pub enum Intent {
 
 #[derive(Debug, Clone)]
 pub enum Observe {
-    ErrorArrived(ErrorInfo),
+    ErrorArrived {
+        name: String,
+        time_unix_ms: u64,
+        back_trace: Option<String>,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -128,18 +127,28 @@ pub fn reduce(
             }
         },
         Message::Observe(observe) => match observe {
-            Observe::ErrorArrived(info) => {
+            Observe::ErrorArrived {
+                name,
+                time_unix_ms,
+                back_trace,
+            } => {
                 let mut errors = local_model.errors().read();
-                match errors.0.iter_mut().find(|e| e.name == info.name) {
+                match errors.0.iter_mut().find(|e| e.name == name) {
                     Some(entry) => {
                         if entry.back_trace.is_none() {
-                            entry.back_trace = info.back_trace;
+                            entry.back_trace = back_trace;
                         }
                         entry.number_of_errors = entry.number_of_errors.saturating_add(1);
-                        entry.time_unix_ms = info.time_unix_ms;
+                        entry.time_unix_ms = time_unix_ms;
                     }
                     None => {
-                        errors.0.push(info);
+                        errors.0.push(ErrorInfo {
+                            name,
+                            number_of_errors: 1,
+                            time_unix_ms,
+                            back_trace,
+                            is_expand: false,
+                        });
                     }
                 }
                 errors.0.sort_by_key(|e| e.time_unix_ms);
