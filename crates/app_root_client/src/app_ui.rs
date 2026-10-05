@@ -76,80 +76,92 @@ fn Home() -> Element {
     let process_id3 = use_hook(ProcessId::default);
 
     rsx! {
-        use_case_select_default_company::ui::Component {
-            sender: move |i| send(
-                process_id,
-                use_case_select_default_company::client::Message::Intent(i),
-            ),
-            user_name: MODEL.user_name
-                .read()
-                .or_else(|| MODEL.user_id.read().into())
-                .unwrap_or_default(),
-            companies: MODEL.page_select_default_company.list_of_companies().read(),
-            branches: MODEL.page_select_default_company.list_of_branches().read(),
-            selected_company: MODEL.selected_company_uuid.read(),
-            selected_company_name: MODEL.selected_company_name.read(),
-            selected_branch: MODEL.selected_company_branch_uuid.read(),
-            selected_branch_name: MODEL.selected_company_branch_name.read(),
-        }
-        use_case_create_company::ui::Component {
-            sender: move |i| send(process_id1, use_case_create_company::client::Message::Intent(i)),
-            show_dialog: MODEL.page_create_company.show_dialog().read(),
-            is_loading: MODEL.page_create_company.is_loading().read(),
-            company_name: MODEL.page_create_company.company_name().read(),
-            currency: MODEL.page_create_company.currency().read(),
-            company_name_error: MODEL
-                .page_create_company
-                .company_name_error()
-                .read()
-                .map(|e| format!("{e:?}")),
-        }
-        use_case_create_branch::ui::Component {
-            sender: move |i| send(process_id2, use_case_create_branch::client::Message::Intent(i)),
-            show_dialog: MODEL.page_create_branch.show_dialog().read(),
-            is_loading: MODEL.page_create_branch.is_loading().read(),
-            selected_company_name: MODEL.page_create_branch.selected_company_name().read(),
-            company_name_error: MODEL.page_create_branch.company_name_error().read(),
-            selected_company_uuid: MODEL
-                .page_create_branch
-                .selected_company_uuid()
-                .read()
-                .map(|a| { a.into_inner().to_string() })
-                .unwrap_or_default(),
-            branch_name: MODEL.page_create_branch.branch_name().read(),
-            currency: MODEL.page_create_branch.currency().read(),
-            location: MODEL.page_create_branch.location().read(),
-            branch_name_error: MODEL
-                .page_create_branch
-                .branch_name_error()
-                .read()
-                .map(|e| format!("{e:?}")),
-            location_error: MODEL
-                .page_create_branch
-                .location_error()
-                .read()
-                .map(|e| format!("{e:?}")),
-            list_of_company_name_and_uuid: MODEL
-                .page_create_branch
-                .list_of_companies_to_display()
-                .read(),
-        }
-        use_case_create_account::ui::Component {
-            sender: move |i| send(process_id3, use_case_create_account::client::Message::Intent(i)),
-            show_dialog: MODEL.page_create_account.show_dialog().read(),
-            is_loading: MODEL.page_create_account.is_loading().read(),
-            is_debit: MODEL.page_create_account.is_debit().read(),
-            is_permanent_account: MODEL.page_create_account.is_permanent_account().read(),
-            account_name: MODEL.page_create_account.account_name().read(),
-            unit_of_measurement_of_quantity: MODEL
-                .page_create_account
-                .unit_of_measurement_of_quantity()
-                .read(),
-            account_name_error: MODEL
-                .page_create_account
-                .account_name_error()
-                .read()
-                .map(|e| format!("{e:?}")),
+    use_case_select_default_company::ui::Component {
+        sender: move |i| send(
+            process_id,
+            use_case_select_default_company::client::Message::Intent(i),
+        ),
+        user_name: MODEL.user_name
+            .read()
+            .or_else(|| MODEL.user_id.read().into())
+            .unwrap_or_default(),
+        companies: MODEL.page_select_default_company.list_of_companies().read(),
+        branches: MODEL.page_select_default_company.list_of_branches().read(),
+        selected_company: MODEL.selected_company_uuid.read(),
+        selected_company_name: MODEL.selected_company_name.read(),
+        selected_branch: MODEL.selected_company_branch_uuid.read(),
+        selected_branch_name: MODEL.selected_company_branch_name.read(),
+    }
+    use_case_create_company::ui::Component {
+        sender: move |i| send(process_id1, use_case_create_company::client::Message::Intent(i)),
+        show_dialog: MODEL.page_create_company.show_dialog().read(),
+        is_loading: MODEL.page_create_company.is_loading().read(),
+        company_name: MODEL.page_create_company.company_name().read(),
+        currency: MODEL.page_create_company.currency().read(),
+        company_name_error: MODEL
+            .page_create_company
+            .company_name_error()
+            .read()
+            .map(|e| format!("{e:?}")),
+    }
+    use_case_create_branch::ui::Component {
+        sender: move |i| send(process_id2, use_case_create_branch::client::Message::Intent(i)),
+        show_dialog: MODEL.page_create_branch.show_dialog().read(),
+        is_loading: MODEL.page_create_branch.is_loading().read(),
+        selected_company_name: MODEL.page_create_branch.selected_company_name().read(),
+        company_name_error: MODEL.page_create_branch.company_name_error().read(),
+        selected_company_uuid: MODEL
+            .page_create_branch
+            .selected_company_uuid()
+            .read()
+            .map(|a| { a.into_inner().to_string() })
+            .unwrap_or_default(),
+        branch_name: MODEL.page_create_branch.branch_name().read(),
+        currency: MODEL.page_create_branch.currency().read(),
+        location: MODEL.page_create_branch.location().read(),
+        branch_name_error: MODEL
+            .page_create_branch
+            .branch_name_error()
+            .read()
+            .map(|e| format!("{e:?}")),
+        location_error: MODEL
+            .page_create_branch
+            .location_error()
+            .read()
+            .map(|e| format!("{e:?}")),
+        list_of_company_name_and_uuid: MODEL
+            .page_create_branch
+            .list_of_companies_to_display()
+            .read(),
+    }
+    use_case_create_account::ui::Component {
+        sender: move |i| send(process_id3, use_case_create_account::client::Message::Intent(i)),
+        show_dialog: MODEL.page_create_account.show_dialog().read(),
+        is_loading: MODEL.page_create_account.is_loading().read(),
+        is_debit: MODEL.page_create_account.is_debit().read(),
+        is_permanent_account: MODEL.page_create_account.is_permanent_account().read(),
+        account_name: MODEL.page_create_account.account_name().read(),
+        unit_of_measurement_of_quantity: MODEL
+            .page_create_account
+            .unit_of_measurement_of_quantity()
+            .read(),
+        account_name_error: MODEL
+            .page_create_account
+            .account_name_error()
+            .read()
+            .map(|e| format!("{e:?}")),
+        selected_company_name: MODEL.page_create_account.selected_company_name().read(),
+        selected_company_uuid: MODEL
+            .page_create_account
+            .selected_company_uuid()
+            .read()
+            .map(|a| a.into_inner().to_string())
+            .unwrap_or_default(),
+        company_name_error: MODEL.page_create_account.company_name_error().read(),
+        list_of_company_name_and_uuid: MODEL
+            .page_create_account
+            .list_of_companies_to_display()
+            .read(),
         }
     }
 }

@@ -59,6 +59,10 @@ impl use_case_create_account::client::GlobalModel for TypeModel {
     fn selected_company(&self) -> impl HashimSignal<Option<CompanyUuid>> {
         self.selected_company_uuid.clone()
     }
+
+    fn list_of_companies(&self) -> impl HashimSignal<Vec<(CompanyUuid, String)>> {
+        self.page_select_default_company.list_of_companies()
+    }
 }
 
 impl use_case_error_handler::client::GlobalModel for TypeModel {}

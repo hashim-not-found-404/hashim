@@ -1,11 +1,14 @@
+use crate::client::CompanyNameError;
 use crate::client::Intent;
 use crate::client::LocalModel;
 use crate::domain::AccountNameError;
 use dioxus::prelude::*;
+use kernel::new_types::CompanyUuid;
 use serde::Deserialize;
 use serde::Serialize;
 use utility::process_manager::UserConsent;
 use utility_ui::components::DialogComponent;
+use utility_ui::components::ListInput;
 use utility_ui::domain::Dialog;
 use utility_ui::domain::HashimSignal;
 use utility_ui::my_signal::MySignal;
@@ -19,6 +22,10 @@ pub struct TypeLocalModel {
     account_name: MySignal<String>,
     unit_of_measurement_of_quantity: MySignal<String>,
     account_name_error: MySignal<Option<AccountNameError>>,
+    selected_company_name: MySignal<String>,
+    selected_company_uuid: MySignal<Option<CompanyUuid>>,
+    list_of_companies_to_display: MySignal<Vec<(CompanyUuid, String)>>,
+    company_name_error: MySignal<Option<CompanyNameError>>,
 }
 
 impl LocalModel for TypeLocalModel {
@@ -49,6 +56,22 @@ impl LocalModel for TypeLocalModel {
     fn account_name_error(&self) -> impl HashimSignal<Option<AccountNameError>> {
         self.account_name_error.clone()
     }
+
+    fn selected_company_name(&self) -> impl HashimSignal<String> {
+        self.selected_company_name.clone()
+    }
+
+    fn selected_company_uuid(&self) -> impl HashimSignal<Option<CompanyUuid>> {
+        self.selected_company_uuid.clone()
+    }
+
+    fn list_of_companies_to_display(&self) -> impl HashimSignal<Vec<(CompanyUuid, String)>> {
+        self.list_of_companies_to_display.clone()
+    }
+
+    fn company_name_error(&self) -> impl HashimSignal<Option<CompanyNameError>> {
+        self.company_name_error.clone()
+    }
 }
 
 #[component]
@@ -61,6 +84,10 @@ pub fn Component(
     account_name: String,
     unit_of_measurement_of_quantity: String,
     account_name_error: Option<String>,
+    selected_company_name: String,
+    selected_company_uuid: String,
+    company_name_error: Option<CompanyNameError>,
+    list_of_company_name_and_uuid: Vec<(CompanyUuid, String)>,
 ) -> Element {
     use_effect(move || {
         sender(Intent::Subscribe);
@@ -81,6 +108,33 @@ pub fn Component(
                 operation_name: "create account",
                 show_dialog,
             }
+
+            ListInput {
+                placeholder: "type company name or use default",
+                selected_item: selected_company_name,
+                on_input: move |a| sender(Intent::CompanyName(a)),
+                on_select: move |a| sender(Intent::SelectedCompany(a)),
+                list: list_of_company_name_and_uuid,
+                row_renderer: Callback::new(move |a: (CompanyUuid, String)| {
+                    rsx! {
+                        button { "{a.1}" }
+                    }
+                }),
+            }
+
+            div {
+                if !selected_company_uuid.is_empty() {
+                    label { "{selected_company_uuid}" }
+                }
+            }
+
+            if let Some(err) = company_name_error {
+                // Translation hook: replace `format!("{err:?}")` with your
+                // translator once it exists, e.g.
+                //     label { {translate(err)} }
+                label { {format!("{err:?}")} }
+            }
+
             input {
                 placeholder: "Account Name",
                 oninput: move |event| {
@@ -91,6 +145,7 @@ pub fn Component(
             if let Some(account_name_error) = account_name_error {
                 label { {account_name_error} }
             }
+
             div {
                 label { "Is Debit" }
                 input {
@@ -101,6 +156,7 @@ pub fn Component(
                     },
                 }
             }
+
             div {
                 label { "Is Permanent Account" }
                 input {
@@ -111,6 +167,7 @@ pub fn Component(
                     },
                 }
             }
+
             input {
                 placeholder: "Unit of Measurement (e.g., kg, pcs)",
                 oninput: move |event| {
@@ -118,7 +175,9 @@ pub fn Component(
                 },
                 value: unit_of_measurement_of_quantity,
             }
+
             button {
+                disabled: is_loading,
                 onclick: move |_| {
                     sender(Intent::Submit);
                 },
