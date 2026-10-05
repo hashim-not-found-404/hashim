@@ -75,10 +75,9 @@ const WRITE_QUERY: &str = "
         is_debit,
         is_permanent_account,
         name,
-        notes,
         belong_to_company,
         unit_of_measurement_of_quantity
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+    ) VALUES ($1, $2, $3, $4, $5, $6)
 ";
 
 impl DatabaseWrite for DataBaseOp {
@@ -95,7 +94,6 @@ impl DatabaseWrite for DataBaseOp {
                     &input.is_debit,
                     &input.is_permanent_account,
                     &input.account_name,
-                    &input.notes,
                     &input.belong_to_company.to_externel_uuid(),
                     &input.unit_of_measurement_of_quantity,
                 ],

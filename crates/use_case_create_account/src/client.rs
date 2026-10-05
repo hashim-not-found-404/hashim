@@ -38,7 +38,6 @@ use utility::process_manager::MessageToProcessManager;
 use utility::process_manager::ProcessDialog;
 use utility::process_manager::ProcessId;
 use utility::process_manager::UserConsent;
-use utility::types::MakeOptionIfEmpty;
 use utility::ui_effect::Commander;
 use utility::ui_effect::MessageTrait;
 use utility::ui_effect::Model;
@@ -95,7 +94,6 @@ pub trait LocalModel: 'static {
     fn is_debit(&self) -> impl HashimSignal<bool>;
     fn is_permanent_account(&self) -> impl HashimSignal<bool>;
     fn account_name(&self) -> impl HashimSignal<String>;
-    fn notes(&self) -> impl HashimSignal<String>;
     fn unit_of_measurement_of_quantity(&self) -> impl HashimSignal<String>;
     fn account_name_error(&self) -> impl HashimSignal<Option<AccountNameError>>;
 }
@@ -107,7 +105,6 @@ pub enum Change {
     IsDebit(bool),
     IsPermanentAccount(bool),
     AccountName(String),
-    Notes(String),
     UnitOfMeasurementOfQuantity(String),
     AccountNameError(Option<AccountNameError>),
 }
@@ -120,7 +117,6 @@ pub enum Effect {
         is_debit: bool,
         is_permanent_account: bool,
         account_name: String,
-        notes: Option<String>,
         unit_of_measurement_of_quantity: String,
         belong_to_company: CompanyUuid,
     },
@@ -133,7 +129,6 @@ pub enum Effect {
         is_debit: bool,
         is_permanent_account: bool,
         account_name: String,
-        notes: Option<String>,
         unit_of_measurement_of_quantity: String,
         user_uuid: UserUuid,
         belong_to_company: CompanyUuid,
@@ -153,7 +148,6 @@ pub enum Intent {
     IsDebit(bool),
     IsPermanentAccount(bool),
     AccountName(String),
-    Notes(String),
     UnitOfMeasurementOfQuantity(String),
 }
 
@@ -212,7 +206,6 @@ pub fn reduce(
                     is_debit: local_model.is_debit().read(),
                     is_permanent_account: local_model.is_permanent_account().read(),
                     account_name: local_model.account_name().read(),
-                    notes: local_model.notes().read().none_if_empty(),
                     unit_of_measurement_of_quantity: local_model
                         .unit_of_measurement_of_quantity()
                         .read(),
@@ -238,7 +231,6 @@ pub fn reduce(
                     Change::AccountName(Default::default()),
                     Change::IsDebit(Default::default()),
                     Change::IsPermanentAccount(Default::default()),
-                    Change::Notes(Default::default()),
                     Change::UnitOfMeasurementOfQuantity(Default::default()),
                     Change::IsLoading(Default::default()),
                     Change::AccountNameError(Default::default()),
@@ -261,7 +253,6 @@ pub fn reduce(
                     is_debit: local_model.is_debit().read(),
                     is_permanent_account: local_model.is_permanent_account().read(),
                     account_name: v,
-                    notes: local_model.notes().read().none_if_empty(),
                     unit_of_measurement_of_quantity: local_model
                         .unit_of_measurement_of_quantity()
                         .read(),
@@ -270,7 +261,6 @@ pub fn reduce(
                 }];
                 Ok((change, effect))
             }
-            Intent::Notes(v) => Ok((vec![Change::Notes(v)], vec![])),
             Intent::UnitOfMeasurementOfQuantity(v) => {
                 Ok((vec![Change::UnitOfMeasurementOfQuantity(v)], vec![]))
             }
@@ -286,7 +276,6 @@ pub fn reduce(
                         Change::AccountName(Default::default()),
                         Change::IsDebit(Default::default()),
                         Change::IsPermanentAccount(Default::default()),
-                        Change::Notes(Default::default()),
                         Change::UnitOfMeasurementOfQuantity(Default::default()),
                         Change::AccountNameError(None),
                     ],
@@ -316,7 +305,6 @@ pub fn update(msg: Change, local_model: &impl LocalModel, _global_model: &impl G
         Change::IsDebit(i) => local_model.is_debit().set(i),
         Change::IsPermanentAccount(i) => local_model.is_permanent_account().set(i),
         Change::AccountName(i) => local_model.account_name().set(i),
-        Change::Notes(i) => local_model.notes().set(i),
         Change::UnitOfMeasurementOfQuantity(i) => {
             local_model.unit_of_measurement_of_quantity().set(i)
         }
@@ -332,7 +320,6 @@ pub async fn effect(msg: Effect, mut context: UiContext) -> Result<()> {
             is_debit,
             is_permanent_account,
             account_name,
-            notes,
             unit_of_measurement_of_quantity,
             belong_to_company,
         } => {
@@ -344,7 +331,6 @@ pub async fn effect(msg: Effect, mut context: UiContext) -> Result<()> {
                 is_debit,
                 is_permanent_account,
                 account_name,
-                notes,
                 unit_of_measurement_of_quantity,
                 belong_to_company,
             };
@@ -367,7 +353,6 @@ pub async fn effect(msg: Effect, mut context: UiContext) -> Result<()> {
             is_debit,
             is_permanent_account,
             account_name,
-            notes,
             unit_of_measurement_of_quantity,
             user_uuid,
             belong_to_company,
@@ -380,7 +365,6 @@ pub async fn effect(msg: Effect, mut context: UiContext) -> Result<()> {
                 is_debit,
                 is_permanent_account,
                 account_name,
-                notes,
                 unit_of_measurement_of_quantity,
                 belong_to_company,
             };

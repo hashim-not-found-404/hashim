@@ -19,7 +19,6 @@ pub struct TypeLocalModel {
     is_debit: MySignal<bool>,
     is_permanent_account: MySignal<bool>,
     account_name: MySignal<String>,
-    notes: MySignal<String>,
     unit_of_measurement_of_quantity: MySignal<String>,
     account_name_error: MySignal<Option<AccountNameError>>,
 }
@@ -45,10 +44,6 @@ impl LocalModel for TypeLocalModel {
         self.account_name.clone()
     }
 
-    fn notes(&self) -> impl HashimSignal<String> {
-        self.notes.clone()
-    }
-
     fn unit_of_measurement_of_quantity(&self) -> impl HashimSignal<String> {
         self.unit_of_measurement_of_quantity.clone()
     }
@@ -66,7 +61,6 @@ pub fn Component(
     is_debit: bool,
     is_permanent_account: bool,
     account_name: String,
-    notes: String,
     unit_of_measurement_of_quantity: String,
     account_name_error: Option<String>,
 ) -> Element {
@@ -118,13 +112,6 @@ pub fn Component(
                         sender(Intent::IsPermanentAccount(event.value().parse().unwrap_or_default()));
                     },
                 }
-            }
-            input {
-                placeholder: "Notes (optional)",
-                oninput: move |event| {
-                    sender(Intent::Notes(event.value()));
-                },
-                value: notes,
             }
             input {
                 placeholder: "Unit of Measurement (e.g., kg, pcs)",

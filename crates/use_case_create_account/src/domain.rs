@@ -34,7 +34,6 @@ pub struct Input {
     pub is_debit: bool,
     pub is_permanent_account: bool,
     pub account_name: String,
-    pub notes: Option<String>,
     pub unit_of_measurement_of_quantity: String,
     pub belong_to_company: CompanyUuid,
 }
@@ -45,7 +44,6 @@ pub struct Ok {
     pub is_debit: bool,
     pub is_permanent_account: bool,
     pub account_name: String,
-    pub notes: Option<String>,
     pub unit_of_measurement_of_quantity: String,
     pub belong_to_company: CompanyUuid,
 }
@@ -141,7 +139,6 @@ impl Input {
             is_debit: self.is_debit,
             is_permanent_account: self.is_permanent_account,
             account_name: self.account_name.clone(),
-            notes: self.notes.clone(),
             unit_of_measurement_of_quantity: self.unit_of_measurement_of_quantity.clone(),
             belong_to_company: self.belong_to_company.clone(),
         }

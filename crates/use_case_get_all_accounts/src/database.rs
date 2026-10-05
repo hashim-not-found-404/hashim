@@ -15,7 +15,6 @@ const READ_QUERY: &str = "
         is_debit,
         is_permanent_account,
         name as account_name,
-        notes,
         unit_of_measurement_of_quantity
     FROM accounting_app.account
     WHERE belong_to_company = $1
@@ -45,15 +44,13 @@ impl DatabaseRead for DataBaseOp {
             let is_debit: bool = row.try_get(1).log()?;
             let is_permanent_account: bool = row.try_get(2).log()?;
             let account_name: String = row.try_get(3).log()?;
-            let notes: Option<String> = row.try_get(4).log()?;
-            let unit_of_measurement_of_quantity: String = row.try_get(5).log()?;
+            let unit_of_measurement_of_quantity: String = row.try_get(4).log()?;
 
             data.push(Data {
                 row_uuid,
                 is_debit,
                 is_permanent_account,
                 account_name,
-                notes,
                 unit_of_measurement_of_quantity,
             });
         }

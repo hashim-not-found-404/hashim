@@ -22,10 +22,9 @@ const WRITE_QUERY: &str = "
         is_debit,
         is_permanent_account,
         name,
-        notes,
         unit_of_measurement_of_quantity,
         belong_to_company
-    ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+    ) VALUES (?1, ?2, ?3, ?4, ?5, ?6)
 ";
 
 pub struct CacheOp;
@@ -80,7 +79,6 @@ impl DatabaseWrite for CacheOp {
                 input.is_debit,
                 input.is_permanent_account,
                 &input.account_name,
-                &input.notes,
                 &input.unit_of_measurement_of_quantity,
                 input.belong_to_company.to_string(),
             ],

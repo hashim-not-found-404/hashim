@@ -141,7 +141,6 @@ fn Home() -> Element {
             is_debit: MODEL.page_create_account.is_debit().read(),
             is_permanent_account: MODEL.page_create_account.is_permanent_account().read(),
             account_name: MODEL.page_create_account.account_name().read(),
-            notes: MODEL.page_create_account.notes().read(),
             unit_of_measurement_of_quantity: MODEL
                 .page_create_account
                 .unit_of_measurement_of_quantity()
