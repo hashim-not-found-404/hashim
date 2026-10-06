@@ -5,7 +5,7 @@ edition = "2024"
 
 [features]
 ui = []
-cache = ["dep:cache","dep:rusqlite"]
+cache = ["dep:cache", "dep:rusqlite"]
 database = ["uuid", "dep:database"]
 client = []
 server = []
@@ -23,8 +23,8 @@ dyn-clone = { workspace = true }
 serde = { workspace = true }
 typetag = { workspace = true }
 
-uuid = { workspace = true, optional = true }
 rusqlite = { workspace = true, optional = true }
+uuid = { workspace = true, optional = true }
 
 [dev-dependencies]
 tokio = { workspace = true }

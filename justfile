@@ -1,6 +1,7 @@
 default: fmt stat
 
 fmt:
+    taplo fmt
     cargo sort -w --grouped
     cargo sort-derives --order "Debug,...,Deserialize,Serialize"
     cargo +nightly fmt
