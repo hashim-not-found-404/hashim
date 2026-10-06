@@ -30,7 +30,6 @@ use utility::process_manager::ProcessId;
 use utility::process_manager::UserConsent;
 use utility::ui_effect::Commander;
 use utility::ui_effect::MessageTrait;
-use utility::ui_effect::Model;
 use utility::ui_effect::UiContext;
 use utility::ui_orchestration::handle_fall_back;
 use utility_ui::domain::Dialog;
@@ -95,7 +94,7 @@ pub async fn check_input<
     })))
 }
 
-pub trait GlobalModel: Model + 'static {
+pub trait GlobalModel {
     fn is_auth_loading(&self) -> impl HashimSignal<bool>;
     fn user_uuid(&self) -> impl HashimSignal<Option<UserUuid>>;
     fn user_name(&self) -> impl HashimSignal<Option<String>>;
@@ -103,7 +102,7 @@ pub trait GlobalModel: Model + 'static {
     fn password(&self) -> impl HashimSignal<String>;
 }
 
-pub trait LocalModel: 'static {
+pub trait LocalModel {
     fn show_dialog(&self) -> impl HashimSignal<Dialog>;
     fn error_user_id(&self) -> impl HashimSignal<Option<UserIdError>>;
     fn error_password(&self) -> impl HashimSignal<Option<PasswordError>>;

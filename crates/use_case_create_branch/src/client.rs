@@ -39,7 +39,6 @@ use utility::process_manager::UserConsent;
 use utility::tools::select_strings;
 use utility::ui_effect::Commander;
 use utility::ui_effect::MessageTrait;
-use utility::ui_effect::Model;
 use utility::ui_effect::UiContext;
 use utility::ui_orchestration::handle_fall_back;
 use utility_ui::domain::Dialog;
@@ -82,13 +81,13 @@ pub async fn check_input<
     Ok(Ok(Arc::new(state_less_operation)))
 }
 
-pub trait GlobalModel: Model + 'static {
+pub trait GlobalModel {
     fn list_of_companies(&self) -> impl HashimSignal<Vec<(CompanyUuid, String)>>;
     fn user_uuid(&self) -> impl HashimSignal<Option<UserUuid>>;
     fn selected_company(&self) -> impl HashimSignal<Option<CompanyUuid>>;
 }
 
-pub trait LocalModel: 'static {
+pub trait LocalModel {
     fn show_dialog(&self) -> impl HashimSignal<Dialog>;
     fn is_loading(&self) -> impl HashimSignal<bool>;
     fn list_of_companies_to_display(&self) -> impl HashimSignal<Vec<(CompanyUuid, String)>>;

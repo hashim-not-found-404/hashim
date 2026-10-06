@@ -13,7 +13,6 @@ use std::fmt::Debug;
 use utility::process_manager::ProcessId;
 use utility::ui_effect::Commander;
 use utility::ui_effect::MessageTrait;
-use utility::ui_effect::Model;
 use utility::ui_effect::UiContext;
 use utility_ui::domain::HashimSignal;
 
@@ -58,9 +57,9 @@ pub struct ErrorInfo {
 #[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
 pub struct ErrorList(pub Vec<ErrorInfo>);
 
-pub trait GlobalModel: Model {}
+pub trait GlobalModel {}
 
-pub trait LocalModel: 'static {
+pub trait LocalModel {
     fn is_expand_all(&self) -> impl HashimSignal<bool>;
     fn errors(&self) -> impl HashimSignal<ErrorList>;
 }

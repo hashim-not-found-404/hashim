@@ -21,7 +21,6 @@ use utility::cache::new_resource_name;
 use utility::dtos::TxnNumber;
 use utility::process_manager::ProcessId;
 use utility::ui_effect::MessageTrait;
-use utility::ui_effect::Model;
 use utility::ui_effect::UiContext;
 use utility::ui_orchestration::spawn_listener;
 use utility_ui::domain::HashimSignal;
@@ -31,7 +30,7 @@ const RESOURCES_NAME_TO_LISTEN: &[ResourceName] = &[
     new_resource_name("branches"),
 ];
 
-pub trait GlobalModel: Model + 'static {
+pub trait GlobalModel {
     fn user_uuid(&self) -> impl HashimSignal<Option<UserUuid>>;
     fn selected_company_uuid(&self) -> impl HashimSignal<Option<CompanyUuid>>;
     fn selected_company_name(&self) -> impl HashimSignal<Option<String>>;
@@ -39,7 +38,7 @@ pub trait GlobalModel: Model + 'static {
     fn selected_company_branch_name(&self) -> impl HashimSignal<Option<String>>;
 }
 
-pub trait LocalModel: 'static {
+pub trait LocalModel {
     fn list_of_companies_and_branches(&self) -> impl HashimSignal<Vec<CompanyWithBranches>>;
     fn list_of_companies(&self) -> impl HashimSignal<Vec<(CompanyUuid, String)>>;
     fn list_of_branches(&self) -> impl HashimSignal<Vec<(BranchUuid, String)>>;

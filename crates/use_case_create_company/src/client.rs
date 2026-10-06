@@ -35,7 +35,6 @@ use utility::process_manager::ProcessId;
 use utility::process_manager::UserConsent;
 use utility::ui_effect::Commander;
 use utility::ui_effect::MessageTrait;
-use utility::ui_effect::Model;
 use utility::ui_effect::UiContext;
 use utility::ui_orchestration::handle_fall_back;
 use utility_ui::domain::Dialog;
@@ -78,11 +77,11 @@ pub async fn check_input<
     Ok(Ok(Arc::new(state_less_operation)))
 }
 
-pub trait GlobalModel: Model + 'static {
+pub trait GlobalModel {
     fn user_uuid(&self) -> impl HashimSignal<Option<UserUuid>>;
 }
 
-pub trait LocalModel: 'static {
+pub trait LocalModel {
     fn show_dialog(&self) -> impl HashimSignal<Dialog>;
     fn is_loading(&self) -> impl HashimSignal<bool>;
     fn company_name(&self) -> impl HashimSignal<String>;
