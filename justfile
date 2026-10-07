@@ -20,7 +20,8 @@ stat:
 dump: fmt stat
     git ls-files | while read -r f; do file -b --mime-type "$f" | grep -q "^text/" && { echo "=== $f ==="; nl -ba -w5 -s' | ' "$f"; } done > codebase.txt
 
-check: fmt
+check:
+    clear
     RUSTFLAGS="-A warnings" cargo check --all-targets
     RUSTFLAGS="-A warnings" cargo check --all-targets --features="server"
     RUSTFLAGS="-A warnings" cargo check --all-targets --features="client"
@@ -28,20 +29,25 @@ check: fmt
     RUSTFLAGS="-A warnings" cargo check --all-targets --features="cache"
     RUSTFLAGS="-A warnings" cargo check --all-targets --features="client,ui"
 
-test: fmt
+test:
+    clear
     RUSTFLAGS="-A warnings" cargo test
 
-warn: fmt
+warn:
+    clear
     cargo clippy --all-targets --all-features -- -W clippy::pedantic
 
-test_cover: fmt
+test_cover:
+    clear
     cargo tarpaulin --out HTML
     xdg-open /home/hashem/Documents/backup_folder_for_hashem/accounting_app/tarpaulin-report.html
 
-all: fmt check test warn test_cover
+all:
+    clear check test warn test_cover
 
 
-check_p crate_name: fmt
+check_p crate_name:
+    clear
     RUSTFLAGS="-A warnings" cargo check -p {{crate_name}} --all-targets
     RUSTFLAGS="-A warnings" cargo check -p {{crate_name}} --all-targets --features="server"
     RUSTFLAGS="-A warnings" cargo check -p {{crate_name}} --all-targets --features="client"
@@ -49,13 +55,16 @@ check_p crate_name: fmt
     RUSTFLAGS="-A warnings" cargo check -p {{crate_name}} --all-targets --features="cache"
     RUSTFLAGS="-A warnings" cargo check -p {{crate_name}} --all-targets --features="client,ui"
 
-test_p crate_name: fmt
+test_p crate_name:
+    clear
     RUSTFLAGS="-A warnings" cargo test -p {{crate_name}}
 
-warn_p crate_name: fmt
+warn_p crate_name:
+    clear
     cargo clippy -p {{crate_name}} --all-targets --all-features -- -W clippy::pedantic
 
-test_cover_p crate_name: fmt
+test_cover_p crate_name:
+    clear
     cargo tarpaulin -p {{crate_name}} --out HTML
     xdg-open /home/hashem/Documents/backup_folder_for_hashem/accounting_app/tarpaulin-report.html
 
@@ -70,10 +79,12 @@ all_p crate_name:
 new crate_name:
     cargo new crates/{{crate_name}} --lib --vcs none
 
-run_server: fmt
+run_server:
+    clear
     RUSTFLAGS="-A warnings" cargo run -p app_root_server
 
-run_client: fmt
+run_client:
+    clear
     RUSTFLAGS="-A warnings" dx serve --open --port=8082 --watch=false --keep-names --debug-symbols=true -p app_root_client
 
 udeps:
