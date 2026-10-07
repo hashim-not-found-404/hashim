@@ -93,10 +93,7 @@ pub fn Component(
                 list: list_of_company_name_and_uuid,
                 row_renderer: Callback::new(move |a: (CompanyUuid, String)| {
                     rsx! {
-                        button {
-                            disabled: is_loading,
-                            "{a.1}"
-                        }
+                        button { disabled: is_loading, "{a.1}" }
                     }
                 }),
             }

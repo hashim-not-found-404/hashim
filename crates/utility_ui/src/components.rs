@@ -63,7 +63,7 @@ pub fn PasswordInput(
     rsx! {
         div {
             input {
-                disabled: disabled,
+                disabled,
                 placeholder: "Password",
                 r#type: input_type,
                 oninput: move |event| password_callback(event.value()),

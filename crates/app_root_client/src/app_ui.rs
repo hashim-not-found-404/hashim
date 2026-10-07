@@ -107,9 +107,7 @@ fn Home() -> Element {
         use_case_create_company::ui::Component {
             sender: move |i| send(process_id1, use_case_create_company::client::Message::Intent(i)),
             show_dialog: MODEL.page_create_company.show_dialog().read(),
-            is_loading: use_case_create_company::client::is_loading(
-                MODEL.page_create_company.as_ref(),
-            ),
+            is_loading: use_case_create_company::client::is_loading(MODEL.page_create_company.as_ref()),
             company_name: MODEL.page_create_company.company_name().read(),
             currency: MODEL.page_create_company.currency().read(),
             company_name_error: use_case_create_company::client::error_company_name(
@@ -120,9 +118,7 @@ fn Home() -> Element {
         use_case_create_branch::ui::Component {
             sender: move |i| send(process_id2, use_case_create_branch::client::Message::Intent(i)),
             show_dialog: MODEL.page_create_branch.show_dialog().read(),
-            is_loading: use_case_create_branch::client::is_loading(
-                MODEL.page_create_branch.as_ref(),
-            ),
+            is_loading: use_case_create_branch::client::is_loading(MODEL.page_create_branch.as_ref()),
             company_name: MODEL.page_create_branch.company_name().read(),
             company_name_error: use_case_create_branch::client::company_name_error(
                 MODEL.page_create_branch.as_ref(),
@@ -139,14 +135,10 @@ fn Home() -> Element {
             branch_name: MODEL.page_create_branch.branch_name().read(),
             currency: MODEL.page_create_branch.currency().read(),
             location: MODEL.page_create_branch.location().read(),
-            branch_name_error: use_case_create_branch::client::error_branch_name(
-                MODEL.page_create_branch.as_ref(),
-            )
-            .map(|e| format!("{e:?}")),
-            location_error: use_case_create_branch::client::error_location(
-                MODEL.page_create_branch.as_ref(),
-            )
-            .map(|e| format!("{e:?}")),
+            branch_name_error: use_case_create_branch::client::error_branch_name(MODEL.page_create_branch.as_ref())
+                .map(|e| format!("{e:?}")),
+            location_error: use_case_create_branch::client::error_location(MODEL.page_create_branch.as_ref())
+                .map(|e| format!("{e:?}")),
             list_of_company_name_and_uuid: use_case_create_branch::client::list_of_companies_to_display(
                 MODEL.page_create_branch.as_ref(),
                 MODEL.as_ref(),
@@ -155,9 +147,7 @@ fn Home() -> Element {
         use_case_create_account::ui::Component {
             sender: move |i| send(process_id3, use_case_create_account::client::Message::Intent(i)),
             show_dialog: MODEL.page_create_account.show_dialog().read(),
-            is_loading: use_case_create_account::client::is_loading(
-                MODEL.page_create_account.as_ref(),
-            ),
+            is_loading: use_case_create_account::client::is_loading(MODEL.page_create_account.as_ref()),
             is_debit: MODEL.page_create_account.is_debit().read(),
             is_permanent_account: MODEL.page_create_account.is_permanent_account().read(),
             account_name: MODEL.page_create_account.account_name().read(),
@@ -203,17 +193,11 @@ fn SignIn() -> Element {
             show_dialog: MODEL.page_sign_in.show_dialog().read(),
             user_id: MODEL.user_id.read(),
             password: MODEL.feature_state_auth.user_password.read(),
-            error_user_id: use_case_sign_in::client::error_user_id(
-                    MODEL.page_sign_in.deref(),
-                )
+            error_user_id: use_case_sign_in::client::error_user_id(MODEL.page_sign_in.deref())
                 .map(|e| format!("{e:?}")),
-            error_password: use_case_sign_in::client::error_password(
-                    MODEL.page_sign_in.deref(),
-                )
+            error_password: use_case_sign_in::client::error_password(MODEL.page_sign_in.deref())
                 .map(|e| format!("{e:?}")),
-            is_loading: use_case_sign_in::client::is_auth_loading(
-                MODEL.page_sign_in.deref(),
-            ),
+            is_loading: use_case_sign_in::client::is_auth_loading(MODEL.page_sign_in.deref()),
         }
     }
 }
@@ -231,17 +215,11 @@ fn SignUp() -> Element {
             user_id: MODEL.user_id.read(),
             user_name: MODEL.user_name.read(),
             password: MODEL.feature_state_auth.user_password.read(),
-            error_user_id: use_case_sign_up::client::error_user_id(
-                    MODEL.page_sign_up.deref(),
-                )
+            error_user_id: use_case_sign_up::client::error_user_id(MODEL.page_sign_up.deref())
                 .map(|e| format!("{e:?}")),
-            error_user_name: use_case_sign_up::client::error_user_name(
-                    MODEL.page_sign_up.deref(),
-                )
+            error_user_name: use_case_sign_up::client::error_user_name(MODEL.page_sign_up.deref())
                 .map(|e| format!("{e:?}")),
-            is_loading: use_case_sign_up::client::is_auth_loading(
-                    MODEL.page_sign_up.deref(),
-                ),
+            is_loading: use_case_sign_up::client::is_auth_loading(MODEL.page_sign_up.deref()),
         }
     }
 }
