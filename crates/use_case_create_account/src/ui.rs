@@ -110,6 +110,7 @@ pub fn Component(
             }
 
             ListInput {
+                disabled: is_loading,
                 placeholder: "type company name or use default",
                 selected_item: selected_company_name,
                 on_input: move |a| sender(Intent::CompanyName(a)),

@@ -120,32 +120,37 @@ fn Home() -> Element {
         use_case_create_branch::ui::Component {
             sender: move |i| send(process_id2, use_case_create_branch::client::Message::Intent(i)),
             show_dialog: MODEL.page_create_branch.show_dialog().read(),
-            is_loading: MODEL.page_create_branch.is_loading().read(),
-            selected_company_name: MODEL.page_create_branch.selected_company_name().read(),
-            company_name_error: MODEL.page_create_branch.company_name_error().read(),
-            selected_company_uuid: MODEL
-                .page_create_branch
-                .selected_company_uuid()
-                .read()
-                .map(|a| { a.into_inner().to_string() })
-                .unwrap_or_default(),
+            is_loading: use_case_create_branch::client::is_loading(
+                MODEL.page_create_branch.as_ref(),
+            ),
+            company_name: MODEL.page_create_branch.company_name().read(),
+            company_name_error: use_case_create_branch::client::company_name_error(
+                MODEL.page_create_branch.as_ref(),
+                MODEL.as_ref(),
+            )
+            .map(|e| format!("{e:?}")),
+            resolved_company_uuid: use_case_create_branch::client::resolved_company_uuid(
+                MODEL.page_create_branch.as_ref(),
+                MODEL.as_ref(),
+            )
+            .map(|uuid| {
+                uuid.to_string()
+            }),
             branch_name: MODEL.page_create_branch.branch_name().read(),
             currency: MODEL.page_create_branch.currency().read(),
             location: MODEL.page_create_branch.location().read(),
-            branch_name_error: MODEL
-                .page_create_branch
-                .branch_name_error()
-                .read()
-                .map(|e| format!("{e:?}")),
-            location_error: MODEL
-                .page_create_branch
-                .location_error()
-                .read()
-                .map(|e| format!("{e:?}")),
-            list_of_company_name_and_uuid: MODEL
-                .page_create_branch
-                .list_of_companies_to_display()
-                .read(),
+            branch_name_error: use_case_create_branch::client::error_branch_name(
+                MODEL.page_create_branch.as_ref(),
+            )
+            .map(|e| format!("{e:?}")),
+            location_error: use_case_create_branch::client::error_location(
+                MODEL.page_create_branch.as_ref(),
+            )
+            .map(|e| format!("{e:?}")),
+            list_of_company_name_and_uuid: use_case_create_branch::client::list_of_companies_to_display(
+                MODEL.page_create_branch.as_ref(),
+                MODEL.as_ref(),
+            ),
         }
         use_case_create_account::ui::Component {
             sender: move |i| send(process_id3, use_case_create_account::client::Message::Intent(i)),

@@ -2,7 +2,6 @@ use crate::domain::BranchNameError;
 use crate::domain::Error;
 use crate::domain::Input;
 use crate::domain::LocationError;
-use crate::domain::MyResult;
 use crate::domain::Ok;
 use crate::domain::ReadInput;
 use crate::domain::ReadOutput;
@@ -21,8 +20,9 @@ use kernel::types::Currency;
 use kernel::types::DatabaseRead;
 use kernel::types::Location;
 use kernel::types::MyErrorTrait;
+use serde::Deserialize;
+use serde::Serialize;
 use std::any::Any;
-use std::fmt::Debug;
 use std::ops::Deref;
 use std::sync::Arc;
 use utility::cache::ResourceName;
@@ -82,49 +82,129 @@ pub async fn check_input<
 }
 
 pub trait GlobalModel {
-    fn list_of_companies(&self) -> Vec<(CompanyUuid, String)>;
     fn user_uuid(&self) -> Option<UserUuid>;
-    fn selected_company(&self) -> impl HashimSignal<Option<CompanyUuid>>;
+    fn selected_company(&self) -> Option<CompanyUuid>;
+    fn list_of_companies(&self) -> Vec<(CompanyUuid, String)>;
 }
 
 pub trait LocalModel {
     fn show_dialog(&self) -> impl HashimSignal<Dialog>;
-    fn is_loading(&self) -> impl HashimSignal<bool>;
-    fn list_of_companies_to_display(&self) -> impl HashimSignal<Vec<(CompanyUuid, String)>>;
-    fn company_name_error(&self) -> impl HashimSignal<String>;
-    fn selected_company_name(&self) -> impl HashimSignal<String>;
-    fn selected_company_uuid(&self) -> impl HashimSignal<Option<CompanyUuid>>;
+    fn company_name(&self) -> impl HashimSignal<String>;
     fn branch_name(&self) -> impl HashimSignal<String>;
     fn currency(&self) -> impl HashimSignal<Currency>;
     fn location(&self) -> impl HashimSignal<Location>;
-    fn branch_name_error(&self) -> impl HashimSignal<Option<BranchNameError>>;
-    fn location_error(&self) -> impl HashimSignal<Option<LocationError>>;
+    fn async_state(&self) -> impl HashimSignal<AsyncState>;
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+pub enum CompanyNameError {
+    NotSelected,
+    NotExist,
+}
+
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
+pub enum AsyncState {
+    #[default]
+    Idle,
+    Loading {
+        input: AsyncInput,
+    },
+    Success {
+        input: AsyncInput,
+        ok: Ok,
+    },
+    Failure {
+        input: AsyncInput,
+        error: Error,
+    },
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct AsyncInput {
+    pub user_uuid: UserUuid,
+    pub company_belong: CompanyUuid,
+    pub branch_name: String,
+    pub currency: Currency,
+    pub location: Location,
+}
+
+pub fn is_loading(local_model: &impl LocalModel) -> bool {
+    matches!(local_model.async_state().read(), AsyncState::Loading { .. })
+}
+
+pub fn error_branch_name(local_model: &impl LocalModel) -> Option<BranchNameError> {
+    match local_model.async_state().read() {
+        AsyncState::Failure { error, .. } => error.branch_name,
+        _ => None,
+    }
+}
+
+pub fn error_location(local_model: &impl LocalModel) -> Option<LocationError> {
+    match local_model.async_state().read() {
+        AsyncState::Failure { error, .. } => error.location,
+        _ => None,
+    }
+}
+
+pub fn resolved_company_uuid(
+    local_model: &impl LocalModel,
+    global_model: &impl GlobalModel,
+) -> Option<CompanyUuid> {
+    let typed = local_model.company_name().read();
+    if typed.is_empty() {
+        return global_model.selected_company();
+    }
+    global_model
+        .list_of_companies()
+        .into_iter()
+        .find_map(|(uuid, name)| (name == typed).then_some(uuid))
+}
+
+pub fn company_name_error(
+    local_model: &impl LocalModel,
+    global_model: &impl GlobalModel,
+) -> Option<CompanyNameError> {
+    let typed = local_model.company_name().read();
+    if typed.is_empty() {
+        if global_model.selected_company().is_none() {
+            return Some(CompanyNameError::NotSelected);
+        }
+        return None;
+    }
+    if resolved_company_uuid(local_model, global_model).is_some() {
+        None
+    } else {
+        Some(CompanyNameError::NotExist)
+    }
+}
+
+pub fn list_of_companies_to_display(
+    local_model: &impl LocalModel,
+    global_model: &impl GlobalModel,
+) -> Vec<(CompanyUuid, String)> {
+    let typed = local_model.company_name().read();
+    let list = global_model.list_of_companies();
+    if typed.is_empty() {
+        return list;
+    }
+    select_strings(list, typed, |a| a.1.as_str())
 }
 
 #[derive(Debug, Clone)]
 pub enum Change {
     ShowDialog(Dialog),
-    IsLoading(bool),
-    ListOfCompaniesToDisplay(Vec<(CompanyUuid, String)>),
-    CompanyNameError(String),
-    SelectedCompanyName(String),
-    SelectedCompanyUuid(Option<CompanyUuid>),
+    CompanyName(String),
     BranchName(String),
     Currency(Currency),
     Location(Location),
-    BranchNameError(Option<BranchNameError>),
-    LocationError(Option<LocationError>),
+    AsyncState(AsyncState),
 }
 
 #[derive(Debug, Clone)]
 pub enum Effect {
     Submit {
         process_id: ProcessId,
-        user_uuid: UserUuid,
-        company_belong: CompanyUuid,
-        branch_name: String,
-        currency: Currency,
-        location: Location,
+        async_input: AsyncInput,
     },
     Consent {
         process_id: ProcessId,
@@ -149,7 +229,7 @@ pub enum Intent {
 pub enum Observe {
     ShowDialog,
     HideDialog,
-    Result(MyResult),
+    Result(AsyncState),
 }
 
 #[derive(Debug, Clone)]
@@ -169,56 +249,47 @@ pub fn reduce(
     match msg {
         Message::Intent(intent) => match intent {
             Intent::Submit => {
-                // Check the typed company name against the filtered list.
-                let company_name = local_model.selected_company_name().read();
-                let list = local_model.list_of_companies_to_display().read();
-
-                let Some(first) = list.get(0) else {
-                    // No company to submit against; nothing to do.
+                if is_loading(local_model) {
                     return Ok((vec![], vec![]));
-                };
-
-                if !company_name.is_empty() && company_name != first.1 {
-                    let change = vec![Change::CompanyNameError(
-                        "please select company".to_string(),
-                    )];
-                    return Ok((change, vec![]));
                 }
-
-                // Resolve the company: local pick first, else global default.
-                let Some(company_belong) = local_model
-                    .selected_company_uuid()
-                    .read()
-                    .or_else(|| global_model.selected_company().read())
-                else {
-                    return Ok((vec![], vec![]));
-                };
 
                 let Some(user_uuid) = global_model.user_uuid() else {
                     return Ok((vec![], vec![]));
                 };
 
-                let change = vec![
-                    Change::IsLoading(true),
-                    Change::CompanyNameError(String::new()),
-                    Change::ShowDialog(Default::default()),
-                    Change::BranchNameError(None),
-                    Change::LocationError(None),
-                ];
-                let effect = vec![Effect::Submit {
-                    process_id,
+                let Some(company_belong) = resolved_company_uuid(local_model, global_model) else {
+                    return Ok((vec![], vec![]));
+                };
+
+                let async_input = AsyncInput {
                     user_uuid,
                     company_belong,
                     branch_name: local_model.branch_name().read(),
                     currency: local_model.currency().read(),
                     location: local_model.location().read(),
+                };
+
+                let change = vec![
+                    Change::AsyncState(AsyncState::Loading {
+                        input: async_input.clone(),
+                    }),
+                    Change::ShowDialog(Dialog::Hide),
+                ];
+
+                let effect = vec![Effect::Submit {
+                    process_id,
+                    async_input,
                 }];
+
                 Ok((change, effect))
             }
             Intent::Consent(v) => {
                 let change = match v {
                     UserConsent::CancelOperation => {
-                        vec![Change::ShowDialog(Dialog::Hide), Change::IsLoading(false)]
+                        vec![
+                            Change::ShowDialog(Dialog::Hide),
+                            Change::AsyncState(AsyncState::Idle),
+                        ]
                     }
                     _ => vec![Change::ShowDialog(Dialog::Hide)],
                 };
@@ -231,59 +302,47 @@ pub fn reduce(
             Intent::Clean => {
                 let change = vec![
                     Change::ShowDialog(Default::default()),
-                    Change::IsLoading(Default::default()),
-                    Change::ListOfCompaniesToDisplay(Default::default()),
-                    Change::CompanyNameError(Default::default()),
-                    Change::SelectedCompanyName(Default::default()),
-                    Change::SelectedCompanyUuid(Default::default()),
+                    Change::CompanyName(Default::default()),
                     Change::BranchName(Default::default()),
                     Change::Currency(Default::default()),
                     Change::Location(Default::default()),
-                    Change::BranchNameError(Default::default()),
-                    Change::LocationError(Default::default()),
+                    Change::AsyncState(AsyncState::Idle),
                 ];
                 Ok((change, vec![]))
             }
             Intent::CompanyName(v) => {
-                let list_of_companies = global_model.list_of_companies();
-                let filtered = select_strings(list_of_companies, v.clone(), |a| a.1.as_str());
-
-                let uuid = match filtered.get(0) {
-                    Some(a) if v == a.1 => Some(a.0.clone()),
-                    _ => None,
-                };
-
-                let change = vec![
-                    Change::SelectedCompanyName(v),
-                    Change::ListOfCompaniesToDisplay(filtered),
-                    Change::SelectedCompanyUuid(uuid),
-                ];
+                let change = vec![Change::CompanyName(v)];
                 Ok((change, vec![]))
             }
             Intent::SelectedCompany(idx) => {
-                let list = local_model.list_of_companies_to_display().read();
+                let list = list_of_companies_to_display(local_model, global_model);
                 match list.get(idx) {
                     Some(a) => {
-                        let change = vec![
-                            Change::SelectedCompanyName(a.1.clone()),
-                            Change::SelectedCompanyUuid(Some(a.0.clone())),
-                        ];
+                        let change = vec![Change::CompanyName(a.1.clone())];
                         Ok((change, vec![]))
                     }
                     None => Ok((vec![], vec![])),
                 }
             }
-            Intent::BranchName(v) => Ok((vec![Change::BranchName(v)], vec![])),
-            Intent::Currency(v) => Ok((vec![Change::Currency(v)], vec![])),
+            Intent::BranchName(v) => {
+                let change = vec![Change::BranchName(v)];
+                Ok((change, vec![]))
+            }
+            Intent::Currency(v) => {
+                let change = vec![Change::Currency(v)];
+                Ok((change, vec![]))
+            }
             Intent::Latitude(v) => {
                 let mut loc = local_model.location().read();
                 loc.latitude = v;
-                Ok((vec![Change::Location(loc)], vec![]))
+                let change = vec![Change::Location(loc)];
+                Ok((change, vec![]))
             }
             Intent::Longitude(v) => {
                 let mut loc = local_model.location().read();
                 loc.longitude = v;
-                Ok((vec![Change::Location(loc)], vec![]))
+                let change = vec![Change::Location(loc)];
+                Ok((change, vec![]))
             }
         },
         Message::Observe(observe) => match observe {
@@ -291,20 +350,19 @@ pub fn reduce(
             Observe::HideDialog => Ok((vec![Change::ShowDialog(Dialog::Hide)], vec![])),
             Observe::Result(result) => {
                 let change = match result {
-                    Ok(_) => vec![
+                    AsyncState::Success { .. } => {
+                        vec![
+                            Change::ShowDialog(Default::default()),
+                            Change::CompanyName(Default::default()),
+                            Change::BranchName(Default::default()),
+                            Change::Currency(Default::default()),
+                            Change::Location(Default::default()),
+                            Change::AsyncState(result),
+                        ]
+                    }
+                    _ => vec![
                         Change::ShowDialog(Default::default()),
-                        Change::IsLoading(Default::default()),
-                        Change::BranchName(Default::default()),
-                        Change::Currency(Default::default()),
-                        Change::Location(Default::default()),
-                        Change::BranchNameError(Default::default()),
-                        Change::LocationError(Default::default()),
-                    ],
-                    Err(a) => vec![
-                        Change::ShowDialog(Default::default()),
-                        Change::IsLoading(Default::default()),
-                        Change::BranchNameError(a.branch_name),
-                        Change::LocationError(a.location),
+                        Change::AsyncState(result),
                     ],
                 };
                 Ok((change, vec![]))
@@ -313,19 +371,14 @@ pub fn reduce(
     }
 }
 
-pub fn update(msg: Change, local_model: &impl LocalModel, global_model: &impl GlobalModel) {
+pub fn update(msg: Change, local_model: &impl LocalModel, _global_model: &impl GlobalModel) {
     match msg {
         Change::ShowDialog(i) => local_model.show_dialog().set(i),
-        Change::IsLoading(i) => local_model.is_loading().set(i),
-        Change::ListOfCompaniesToDisplay(i) => local_model.list_of_companies_to_display().set(i),
-        Change::CompanyNameError(i) => local_model.company_name_error().set(i),
-        Change::SelectedCompanyName(i) => local_model.selected_company_name().set(i),
-        Change::SelectedCompanyUuid(i) => local_model.selected_company_uuid().set(i),
+        Change::CompanyName(i) => local_model.company_name().set(i),
         Change::BranchName(i) => local_model.branch_name().set(i),
         Change::Currency(i) => local_model.currency().set(i),
         Change::Location(i) => local_model.location().set(i),
-        Change::BranchNameError(i) => local_model.branch_name_error().set(i),
-        Change::LocationError(i) => local_model.location_error().set(i),
+        Change::AsyncState(i) => local_model.async_state().set(i),
     }
 }
 
@@ -333,21 +386,9 @@ pub async fn effect(msg: Effect, mut context: UiContext) -> Result<()> {
     match msg {
         Effect::Submit {
             process_id,
-            user_uuid,
-            company_belong,
-            branch_name,
-            currency,
-            location,
+            async_input,
         } => {
-            let input = Input {
-                user_uuid,
-                new_uuid: BranchUuid::from(UuidType::from(Id::generate())),
-                company_belong,
-                branch_name,
-                currency,
-                location,
-            };
-            handle_submit(process_id, &input, context).await?;
+            handle_submit(process_id, async_input, context).await?;
         }
         Effect::Consent {
             process_id,
@@ -382,7 +423,7 @@ impl ProcessDialog for DialogDispatchAdapter {
     }
 }
 
-async fn handle_submit(process_id: ProcessId, input: &Input, context: UiContext) -> Result<()> {
+async fn handle_submit(process_id: ProcessId, input: AsyncInput, context: UiContext) -> Result<()> {
     let context1 = context.clone();
 
     let dialog_signal_adapter = Arc::new(DialogDispatchAdapter {
@@ -390,7 +431,16 @@ async fn handle_submit(process_id: ProcessId, input: &Input, context: UiContext)
         sender: context.sender_to_commander.clone(),
     });
 
-    let data: TypeOperationClientInput = Arc::new(input.clone());
+    let new_uuid = BranchUuid::from(UuidType::from(Id::generate()));
+
+    let data: TypeOperationClientInput = Arc::new(Input {
+        user_uuid: input.user_uuid.clone(),
+        new_uuid,
+        company_belong: input.company_belong.clone(),
+        branch_name: input.branch_name.clone(),
+        currency: input.currency.clone(),
+        location: input.location.clone(),
+    });
 
     handle_fall_back(
         context.sender_to_error,
@@ -415,9 +465,20 @@ async fn handle_submit(process_id: ProcessId, input: &Input, context: UiContext)
 
             let is_ok = result.is_ok();
 
+            let async_state = match result {
+                Ok(a) => AsyncState::Success {
+                    input: input.clone(),
+                    ok: a,
+                },
+                Err(a) => AsyncState::Failure {
+                    input: input.clone(),
+                    error: a,
+                },
+            };
+
             context1
                 .sender_to_commander
-                .send(process_id, Message::Observe(Observe::Result(result)));
+                .send(process_id, Message::Observe(Observe::Result(async_state)));
 
             Ok(is_ok)
         },

@@ -137,8 +137,8 @@ impl use_case_create_branch::client::GlobalModel for TypeModel {
         self.user_uuid()
     }
 
-    fn selected_company(&self) -> impl HashimSignal<Option<CompanyUuid>> {
-        self.selected_company_uuid.clone()
+    fn selected_company(&self) -> Option<CompanyUuid> {
+        self.selected_company_uuid.read()
     }
 }
 

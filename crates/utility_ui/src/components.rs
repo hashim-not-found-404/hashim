@@ -81,6 +81,7 @@ pub fn PasswordInput(
 
 #[component]
 pub fn ListInput<T: PartialEq + Clone + 'static>(
+    disabled: bool,
     placeholder: String,
     selected_item: String,
     on_input: EventHandler<String>,
@@ -93,6 +94,7 @@ pub fn ListInput<T: PartialEq + Clone + 'static>(
     rsx! {
         div {
             input {
+                disabled,
                 placeholder: "{placeholder}",
                 value: selected_item,
                 onfocus: move |_| is_open.set(true),
