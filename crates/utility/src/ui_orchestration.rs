@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 use crate::cache::CacheStruct;
 use crate::cache::CachingStrategy;
 use crate::cache::ResourceName;
@@ -26,6 +28,9 @@ use infrastructure::random_number::Rn;
 use infrastructure::runtime::JoinHandle;
 use infrastructure::runtime::Rt;
 use infrastructure::runtime::Runtime;
+use serde::Deserialize;
+use serde::Serialize;
+use serde::de::DeserializeOwned;
 
 pub async fn handle_fall_back(
     sender_to_error: MpscSender<Error>,
@@ -132,4 +137,41 @@ pub async fn spawn_listener(
 
     context.aborters.register(process_id, aborter);
     Ok(())
+}
+
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
+#[serde(bound(
+    deserialize = "Input: DeserializeOwned, Ok: DeserializeOwned, Error: DeserializeOwned",
+    serialize = "Input: Serialize, Ok: Serialize, Error: Serialize",
+))]
+pub enum GenricAsyncState<Input, Ok, Error>
+where
+    Input: Debug + Clone,
+    Ok: Debug + Clone,
+    Error: Debug + Clone,
+{
+    #[default]
+    Idle,
+    Loading {
+        input: Input,
+    },
+    Success {
+        input: Input,
+        ok: Ok,
+    },
+    Failure {
+        input: Input,
+        error: Error,
+    },
+}
+
+impl<Input, Ok, Error> GenricAsyncState<Input, Ok, Error>
+where
+    Input: Debug + Clone,
+    Ok: Debug + Clone,
+    Error: Debug + Clone,
+{
+    pub fn is_loading(&self) -> bool {
+        matches!(self, GenricAsyncState::Loading { .. })
+    }
 }

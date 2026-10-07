@@ -32,6 +32,7 @@ use utility::process_manager::UserConsent;
 use utility::ui_effect::Commander;
 use utility::ui_effect::MessageTrait;
 use utility::ui_effect::UiContext;
+use utility::ui_orchestration::GenricAsyncState;
 use utility::ui_orchestration::handle_fall_back;
 use utility_ui::domain::Dialog;
 use utility_ui::domain::HashimSignal;
@@ -95,6 +96,8 @@ pub async fn check_input<
     })))
 }
 
+pub(crate) type AsyncState = GenricAsyncState<AsyncInput, Ok, Error>;
+
 pub trait GlobalModel {
     fn user_id(&self) -> impl HashimSignal<String>;
     fn password(&self) -> impl HashimSignal<String>;
@@ -103,23 +106,6 @@ pub trait GlobalModel {
 pub trait LocalModel {
     fn show_dialog(&self) -> impl HashimSignal<Dialog>;
     fn async_state(&self) -> impl HashimSignal<AsyncState>;
-}
-
-#[derive(Debug, Clone, Default, Deserialize, Serialize)]
-pub enum AsyncState {
-    #[default]
-    Idle,
-    Loading {
-        input: AsyncInput,
-    },
-    Success {
-        input: AsyncInput,
-        ok: Ok,
-    },
-    Failure {
-        input: AsyncInput,
-        error: Error,
-    },
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

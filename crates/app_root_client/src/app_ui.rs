@@ -107,7 +107,7 @@ fn Home() -> Element {
         use_case_create_company::ui::Component {
             sender: move |i| send(process_id1, use_case_create_company::client::Message::Intent(i)),
             show_dialog: MODEL.page_create_company.show_dialog().read(),
-            is_loading: use_case_create_company::client::is_loading(MODEL.page_create_company.as_ref()),
+            is_loading: MODEL.page_create_company.as_ref().async_state().read().is_loading(),
             company_name: MODEL.page_create_company.company_name().read(),
             currency: MODEL.page_create_company.currency().read(),
             company_name_error: use_case_create_company::client::error_company_name(
@@ -118,7 +118,7 @@ fn Home() -> Element {
         use_case_create_branch::ui::Component {
             sender: move |i| send(process_id2, use_case_create_branch::client::Message::Intent(i)),
             show_dialog: MODEL.page_create_branch.show_dialog().read(),
-            is_loading: use_case_create_branch::client::is_loading(MODEL.page_create_branch.as_ref()),
+            is_loading: MODEL.page_create_branch.as_ref().async_state().read().is_loading(),
             company_name: MODEL.page_create_branch.company_name().read(),
             company_name_error: use_case_create_branch::client::company_name_error(
                 MODEL.page_create_branch.as_ref(),
@@ -147,7 +147,7 @@ fn Home() -> Element {
         use_case_create_account::ui::Component {
             sender: move |i| send(process_id3, use_case_create_account::client::Message::Intent(i)),
             show_dialog: MODEL.page_create_account.show_dialog().read(),
-            is_loading: use_case_create_account::client::is_loading(MODEL.page_create_account.as_ref()),
+            is_loading: MODEL.page_create_account.as_ref().async_state().read().is_loading(),
             is_debit: MODEL.page_create_account.is_debit().read(),
             is_permanent_account: MODEL.page_create_account.is_permanent_account().read(),
             account_name: MODEL.page_create_account.account_name().read(),

@@ -36,6 +36,7 @@ use utility::process_manager::UserConsent;
 use utility::ui_effect::Commander;
 use utility::ui_effect::MessageTrait;
 use utility::ui_effect::UiContext;
+use utility::ui_orchestration::GenricAsyncState;
 use utility::ui_orchestration::handle_fall_back;
 use utility_ui::domain::Dialog;
 use utility_ui::domain::HashimSignal;
@@ -81,6 +82,8 @@ pub trait GlobalModel {
     fn user_uuid(&self) -> Option<UserUuid>;
 }
 
+pub(crate) type AsyncState = GenricAsyncState<AsyncInput, Ok, Error>;
+
 pub trait LocalModel {
     fn show_dialog(&self) -> impl HashimSignal<Dialog>;
     fn company_name(&self) -> impl HashimSignal<String>;
@@ -88,32 +91,11 @@ pub trait LocalModel {
     fn async_state(&self) -> impl HashimSignal<AsyncState>;
 }
 
-#[derive(Debug, Clone, Default, Deserialize, Serialize)]
-pub enum AsyncState {
-    #[default]
-    Idle,
-    Loading {
-        input: AsyncInput,
-    },
-    Success {
-        input: AsyncInput,
-        ok: Ok,
-    },
-    Failure {
-        input: AsyncInput,
-        error: Error,
-    },
-}
-
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct AsyncInput {
     pub user_uuid: UserUuid,
     pub company_name: String,
     pub currency: Currency,
-}
-
-pub fn is_loading(local_model: &impl LocalModel) -> bool {
-    matches!(local_model.async_state().read(), AsyncState::Loading { .. })
 }
 
 pub fn error_company_name(local_model: &impl LocalModel) -> Option<CompanyNameError> {
@@ -209,7 +191,7 @@ pub fn reduce(
                 Ok((change, effect))
             }
             Intent::Submit => {
-                if is_loading(local_model) {
+                if local_model.async_state().read().is_loading() {
                     return Ok((vec![], vec![]));
                 }
 

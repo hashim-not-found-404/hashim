@@ -40,6 +40,7 @@ use utility::tools::select_strings;
 use utility::ui_effect::Commander;
 use utility::ui_effect::MessageTrait;
 use utility::ui_effect::UiContext;
+use utility::ui_orchestration::GenricAsyncState;
 use utility::ui_orchestration::handle_fall_back;
 use utility_ui::domain::Dialog;
 use utility_ui::domain::HashimSignal;
@@ -81,6 +82,8 @@ pub async fn check_input<
     Ok(Ok(Arc::new(state_less_operation)))
 }
 
+pub(crate) type AsyncState = GenricAsyncState<AsyncInput, Ok, Error>;
+
 pub trait GlobalModel {
     fn user_uuid(&self) -> Option<UserUuid>;
     fn selected_company(&self) -> Option<CompanyUuid>;
@@ -102,23 +105,6 @@ pub enum CompanyNameError {
     NotExist,
 }
 
-#[derive(Debug, Clone, Default, Deserialize, Serialize)]
-pub enum AsyncState {
-    #[default]
-    Idle,
-    Loading {
-        input: AsyncInput,
-    },
-    Success {
-        input: AsyncInput,
-        ok: Ok,
-    },
-    Failure {
-        input: AsyncInput,
-        error: Error,
-    },
-}
-
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct AsyncInput {
     pub user_uuid: UserUuid,
@@ -126,10 +112,6 @@ pub struct AsyncInput {
     pub branch_name: String,
     pub currency: Currency,
     pub location: Location,
-}
-
-pub fn is_loading(local_model: &impl LocalModel) -> bool {
-    matches!(local_model.async_state().read(), AsyncState::Loading { .. })
 }
 
 pub fn error_branch_name(local_model: &impl LocalModel) -> Option<BranchNameError> {
@@ -249,7 +231,7 @@ pub fn reduce(
     match msg {
         Message::Intent(intent) => match intent {
             Intent::Submit => {
-                if is_loading(local_model) {
+                if local_model.async_state().read().is_loading() {
                     return Ok((vec![], vec![]));
                 }
 

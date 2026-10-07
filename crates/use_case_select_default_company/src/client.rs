@@ -23,6 +23,7 @@ use utility::dtos::TxnNumber;
 use utility::process_manager::ProcessId;
 use utility::ui_effect::MessageTrait;
 use utility::ui_effect::UiContext;
+use utility::ui_orchestration::GenricAsyncState;
 use utility::ui_orchestration::spawn_listener;
 use utility_ui::domain::HashimSignal;
 
@@ -30,6 +31,8 @@ const RESOURCES_NAME_TO_LISTEN: &[ResourceName] = &[
     new_resource_name("companies"),
     new_resource_name("branches"),
 ];
+
+pub(crate) type AsyncState = GenricAsyncState<AsyncInput, Ok, Error>;
 
 pub trait GlobalModel {
     fn user_uuid(&self) -> Option<UserUuid>;
@@ -41,30 +44,9 @@ pub trait LocalModel {
     fn async_state(&self) -> impl HashimSignal<AsyncState>;
 }
 
-#[derive(Debug, Clone, Default, Deserialize, Serialize)]
-pub enum AsyncState {
-    #[default]
-    Idle,
-    Loading {
-        input: AsyncInput,
-    },
-    Success {
-        input: AsyncInput,
-        ok: Ok,
-    },
-    Failure {
-        input: AsyncInput,
-        error: Error,
-    },
-}
-
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct AsyncInput {
     pub user_uuid: UserUuid,
-}
-
-pub fn is_loading(local_model: &impl LocalModel) -> bool {
-    matches!(local_model.async_state().read(), AsyncState::Loading { .. })
 }
 
 pub fn list_of_companies_and_branches(local_model: &impl LocalModel) -> Vec<CompanyWithBranches> {
