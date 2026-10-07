@@ -1,7 +1,6 @@
 use crate::domain::CompanyNameError;
 use crate::domain::Error;
 use crate::domain::Input;
-use crate::domain::MyResult;
 use crate::domain::Ok;
 use crate::domain::ReadInput;
 use crate::domain::ReadOutput;
@@ -18,8 +17,9 @@ use kernel::new_types::UuidType;
 use kernel::types::Currency;
 use kernel::types::DatabaseRead;
 use kernel::types::MyErrorTrait;
+use serde::Deserialize;
+use serde::Serialize;
 use std::any::Any;
-use std::fmt::Debug;
 use std::ops::Deref;
 use std::sync::Arc;
 use utility::cache::ResourceName;
@@ -83,28 +83,59 @@ pub trait GlobalModel {
 
 pub trait LocalModel {
     fn show_dialog(&self) -> impl HashimSignal<Dialog>;
-    fn is_loading(&self) -> impl HashimSignal<bool>;
     fn company_name(&self) -> impl HashimSignal<String>;
     fn currency(&self) -> impl HashimSignal<Currency>;
-    fn company_name_error(&self) -> impl HashimSignal<Option<CompanyNameError>>;
+    fn async_state(&self) -> impl HashimSignal<AsyncState>;
+}
+
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
+pub enum AsyncState {
+    #[default]
+    Idle,
+    Loading {
+        input: AsyncInput,
+    },
+    Success {
+        input: AsyncInput,
+        ok: Ok,
+    },
+    Failure {
+        input: AsyncInput,
+        error: Error,
+    },
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct AsyncInput {
+    pub user_uuid: UserUuid,
+    pub company_name: String,
+    pub currency: Currency,
+}
+
+pub fn is_loading(local_model: &impl LocalModel) -> bool {
+    matches!(local_model.async_state().read(), AsyncState::Loading { .. })
+}
+
+pub fn error_company_name(local_model: &impl LocalModel) -> Option<CompanyNameError> {
+    match local_model.async_state().read() {
+        AsyncState::Failure { error, .. } => error.company_name,
+        _ => None,
+    }
 }
 
 #[derive(Debug, Clone)]
 pub enum Change {
     ShowDialog(Dialog),
-    IsLoading(bool),
     CompanyName(String),
     Currency(Currency),
-    CompanyNameError(Option<CompanyNameError>),
+    AsyncState(AsyncState),
 }
 
 #[derive(Debug, Clone)]
 pub enum Effect {
     Submit {
         process_id: ProcessId,
-        user_uuid: UserUuid,
-        company_name: String,
-        currency: Currency,
+        async_input: AsyncInput,
     },
     Consent {
         process_id: ProcessId,
@@ -125,7 +156,7 @@ pub enum Intent {
 pub enum Observe {
     ShowDialog,
     HideDialog,
-    Result(MyResult),
+    Result(AsyncState),
 }
 
 #[derive(Debug, Clone)]
@@ -147,23 +178,27 @@ pub fn reduce(
             Intent::Clean => {
                 let change = vec![
                     Change::ShowDialog(Default::default()),
-                    Change::IsLoading(Default::default()),
                     Change::CompanyName(Default::default()),
                     Change::Currency(Default::default()),
-                    Change::CompanyNameError(Default::default()),
+                    Change::AsyncState(AsyncState::Idle),
                 ];
-                let effect = vec![];
-                Ok((change, effect))
+                Ok((change, vec![]))
             }
             Intent::CompanyName(v) => {
                 let change = vec![Change::CompanyName(v)];
-                let effect = vec![];
-                Ok((change, effect))
+                Ok((change, vec![]))
+            }
+            Intent::Currency(v) => {
+                let change = vec![Change::Currency(v)];
+                Ok((change, vec![]))
             }
             Intent::Consent(v) => {
                 let change = match v {
                     UserConsent::CancelOperation => {
-                        vec![Change::ShowDialog(Dialog::Hide), Change::IsLoading(false)]
+                        vec![
+                            Change::ShowDialog(Dialog::Hide),
+                            Change::AsyncState(AsyncState::Idle),
+                        ]
                     }
                     _ => vec![Change::ShowDialog(Dialog::Hide)],
                 };
@@ -173,66 +208,66 @@ pub fn reduce(
                 }];
                 Ok((change, effect))
             }
-            Intent::Currency(v) => {
-                let change = vec![Change::Currency(v)];
-                let effect = vec![];
-                Ok((change, effect))
-            }
             Intent::Submit => {
-                let change = vec![Change::IsLoading(true)];
-                let effect = vec![Effect::Submit {
-                    process_id,
-                    user_uuid: global_model.user_uuid().context("user uuid not found")?,
+                if is_loading(local_model) {
+                    return Ok((vec![], vec![]));
+                }
+
+                let Some(user_uuid) = global_model.user_uuid() else {
+                    return Ok((vec![], vec![]));
+                };
+
+                let async_input = AsyncInput {
+                    user_uuid,
                     company_name: local_model.company_name().read(),
                     currency: local_model.currency().read(),
+                };
+
+                let change = vec![
+                    Change::AsyncState(AsyncState::Loading {
+                        input: async_input.clone(),
+                    }),
+                    Change::ShowDialog(Dialog::Hide),
+                ];
+
+                let effect = vec![Effect::Submit {
+                    process_id,
+                    async_input,
                 }];
+
                 Ok((change, effect))
             }
         },
         Message::Observe(observe) => match observe {
-            Observe::ShowDialog => {
-                let change = vec![Change::ShowDialog(Dialog::Show)];
-                let effect = vec![];
-                Ok((change, effect))
-            }
-            Observe::HideDialog => {
-                let change = vec![Change::ShowDialog(Dialog::Hide)];
-                let effect = vec![];
-                Ok((change, effect))
-            }
-            Observe::Result(v) => {
-                let change = match v {
-                    Ok(_) => {
+            Observe::ShowDialog => Ok((vec![Change::ShowDialog(Dialog::Show)], vec![])),
+            Observe::HideDialog => Ok((vec![Change::ShowDialog(Dialog::Hide)], vec![])),
+            Observe::Result(result) => {
+                let change = match result {
+                    AsyncState::Success { .. } => {
                         vec![
                             Change::ShowDialog(Default::default()),
-                            Change::IsLoading(Default::default()),
                             Change::CompanyName(Default::default()),
                             Change::Currency(Default::default()),
-                            Change::CompanyNameError(Default::default()),
+                            Change::AsyncState(result),
                         ]
                     }
-                    Err(a) => {
-                        vec![
-                            Change::ShowDialog(Default::default()),
-                            Change::IsLoading(Default::default()),
-                            Change::CompanyNameError(a.company_name),
-                        ]
-                    }
+                    _ => vec![
+                        Change::ShowDialog(Default::default()),
+                        Change::AsyncState(result),
+                    ],
                 };
-                let effect = vec![];
-                Ok((change, effect))
+                Ok((change, vec![]))
             }
         },
     }
 }
 
-pub fn update(msg: Change, local_model: &impl LocalModel, global_model: &impl GlobalModel) {
+pub fn update(msg: Change, local_model: &impl LocalModel, _global_model: &impl GlobalModel) {
     match msg {
         Change::ShowDialog(i) => local_model.show_dialog().set(i),
-        Change::IsLoading(i) => local_model.is_loading().set(i),
         Change::CompanyName(i) => local_model.company_name().set(i),
         Change::Currency(i) => local_model.currency().set(i),
-        Change::CompanyNameError(i) => local_model.company_name_error().set(i),
+        Change::AsyncState(i) => local_model.async_state().set(i),
     }
 }
 
@@ -240,21 +275,9 @@ pub async fn effect(msg: Effect, mut context: UiContext) -> Result<()> {
     match msg {
         Effect::Submit {
             process_id,
-            user_uuid,
-            company_name,
-            currency,
+            async_input,
         } => {
-            handle_submit(
-                process_id,
-                &Input {
-                    user_uuid,
-                    new_uuid: CompanyUuid::from(UuidType::from(Id::generate())),
-                    company_name,
-                    currency,
-                },
-                context,
-            )
-            .await?;
+            handle_submit(process_id, async_input, context).await?;
         }
         Effect::Consent {
             process_id,
@@ -263,22 +286,21 @@ pub async fn effect(msg: Effect, mut context: UiContext) -> Result<()> {
             context
                 .sender_to_process_manager
                 .send(MessageToProcessManager::FromUser {
-                    process_id: process_id,
+                    process_id,
                     consent: user_consent,
                 })
                 .await?;
         }
     }
-
     Ok(())
 }
 
-struct A {
+struct DialogDispatchAdapter {
     process_id: ProcessId,
     sender: Commander,
 }
 
-impl ProcessDialog for A {
+impl ProcessDialog for DialogDispatchAdapter {
     fn show(&self) {
         self.sender
             .send(self.process_id, Message::Observe(Observe::ShowDialog));
@@ -290,15 +312,22 @@ impl ProcessDialog for A {
     }
 }
 
-async fn handle_submit(process_id: ProcessId, input: &Input, context: UiContext) -> Result<()> {
+async fn handle_submit(process_id: ProcessId, input: AsyncInput, context: UiContext) -> Result<()> {
     let context1 = context.clone();
 
-    let dialog_signal_adapter = Arc::new(A {
+    let dialog_signal_adapter = Arc::new(DialogDispatchAdapter {
         process_id,
-        sender: context.sender_to_commander,
+        sender: context.sender_to_commander.clone(),
     });
 
-    let data: TypeOperationClientInput = Arc::new(input.clone());
+    let new_uuid = CompanyUuid::from(UuidType::from(Id::generate()));
+
+    let data: TypeOperationClientInput = Arc::new(Input {
+        user_uuid: input.user_uuid.clone(),
+        new_uuid,
+        company_name: input.company_name.clone(),
+        currency: input.currency.clone(),
+    });
 
     handle_fall_back(
         context.sender_to_error,
@@ -323,9 +352,20 @@ async fn handle_submit(process_id: ProcessId, input: &Input, context: UiContext)
 
             let is_ok = result.is_ok();
 
+            let async_state = match result {
+                Ok(a) => AsyncState::Success {
+                    input: input.clone(),
+                    ok: a,
+                },
+                Err(a) => AsyncState::Failure {
+                    input: input.clone(),
+                    error: a,
+                },
+            };
+
             context1
                 .sender_to_commander
-                .send(process_id, Message::Observe(Observe::Result(result)));
+                .send(process_id, Message::Observe(Observe::Result(async_state)));
 
             Ok(is_ok)
         },

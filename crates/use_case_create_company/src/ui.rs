@@ -1,6 +1,6 @@
+use crate::client::AsyncState;
 use crate::client::Intent;
 use crate::client::LocalModel;
-use crate::domain::CompanyNameError;
 use dioxus::prelude::*;
 use kernel::types::Currency;
 use serde::Deserialize;
@@ -14,20 +14,15 @@ use utility_ui::my_signal::MySignal;
 
 #[derive(Debug, Default, Deserialize, Serialize)]
 pub struct TypeLocalModel {
-    is_loading: MySignal<bool>,
     show_dialog: MySignal<Dialog>,
     company_name: MySignal<String>,
     currency: MySignal<Currency>,
-    company_name_error: MySignal<Option<CompanyNameError>>,
+    async_state: MySignal<AsyncState>,
 }
 
 impl LocalModel for TypeLocalModel {
     fn show_dialog(&self) -> impl HashimSignal<Dialog> {
         self.show_dialog.clone()
-    }
-
-    fn is_loading(&self) -> impl HashimSignal<bool> {
-        self.is_loading.clone()
     }
 
     fn company_name(&self) -> impl HashimSignal<String> {
@@ -38,8 +33,8 @@ impl LocalModel for TypeLocalModel {
         self.currency.clone()
     }
 
-    fn company_name_error(&self) -> impl HashimSignal<Option<CompanyNameError>> {
-        self.company_name_error.clone()
+    fn async_state(&self) -> impl HashimSignal<AsyncState> {
+        self.async_state.clone()
     }
 }
 
@@ -69,6 +64,7 @@ pub fn Component(
             }
 
             input {
+                disabled: is_loading,
                 placeholder: "Company Name",
                 oninput: move |event| {
                     sender(Intent::CompanyName(event.value()));
@@ -80,6 +76,7 @@ pub fn Component(
             }
 
             select {
+                disabled: is_loading,
                 value: currency.as_str(),
                 onchange: move |event| {
                     let c = Currency::from_str(&event.value()).unwrap_or_default();
@@ -97,6 +94,7 @@ pub fn Component(
                 "Create Company"
             }
             button {
+                disabled: is_loading,
                 onclick: move |_| {
                     sender(Intent::Clean);
                 },
