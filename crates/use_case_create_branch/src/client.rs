@@ -82,7 +82,7 @@ pub async fn check_input<
 }
 
 pub trait GlobalModel {
-    fn list_of_companies(&self) -> impl HashimSignal<Vec<(CompanyUuid, String)>>;
+    fn list_of_companies(&self) -> Vec<(CompanyUuid, String)>;
     fn user_uuid(&self) -> Option<UserUuid>;
     fn selected_company(&self) -> impl HashimSignal<Option<CompanyUuid>>;
 }
@@ -245,7 +245,7 @@ pub fn reduce(
                 Ok((change, vec![]))
             }
             Intent::CompanyName(v) => {
-                let list_of_companies = global_model.list_of_companies().read();
+                let list_of_companies = global_model.list_of_companies();
                 let filtered = select_strings(list_of_companies, v.clone(), |a| a.1.as_str());
 
                 let uuid = match filtered.get(0) {

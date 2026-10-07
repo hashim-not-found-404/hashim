@@ -1,4 +1,3 @@
-use crate::model::user_uuid;
 use crate::navigator::Intent as NavIntent;
 use crate::navigator::Message;
 use crate::navigator::Navigator;
@@ -12,7 +11,6 @@ use use_case_create_account::client::LocalModel as _;
 use use_case_create_branch::client::LocalModel as _;
 use use_case_create_company::client::LocalModel as _;
 use use_case_error_handler::client::LocalModel as _;
-use use_case_select_default_company::client::LocalModel as _;
 use use_case_sign_in::client::LocalModel as _;
 use use_case_sign_up::client::LocalModel as _;
 use utility::process_manager::ProcessId;
@@ -45,7 +43,7 @@ fn RootLayout() -> Element {
         }
     }
 
-    if user_uuid(&MODEL).is_some() {
+    if MODEL.user_uuid().is_some() {
         navigator().push(Route::Home {});
     }
 
@@ -78,22 +76,34 @@ fn Home() -> Element {
     let process_id3 = use_hook(ProcessId::default);
 
     rsx! {
-    use_case_select_default_company::ui::Component {
-        sender: move |i| send(
-            process_id,
-            use_case_select_default_company::client::Message::Intent(i),
-        ),
-        user_name: MODEL.user_name
-            .read()
-            .or_else(|| MODEL.user_id.read().into())
-            .unwrap_or_default(),
-        companies: MODEL.page_select_default_company.list_of_companies().read(),
-        branches: MODEL.page_select_default_company.list_of_branches().read(),
-        selected_company: MODEL.selected_company_uuid.read(),
-        selected_company_name: MODEL.selected_company_name.read(),
-        selected_branch: MODEL.selected_company_branch_uuid.read(),
-        selected_branch_name: MODEL.selected_company_branch_name.read(),
-    }
+        use_case_select_default_company::ui::Component {
+            sender: move |i| send(
+                process_id,
+                use_case_select_default_company::client::Message::Intent(i),
+            ),
+            user_name: MODEL
+                .user_name
+                .read()
+                .or_else(|| MODEL.user_id.read().into())
+                .unwrap_or_default(),
+            companies: use_case_select_default_company::client::list_of_companies(
+                MODEL.page_select_default_company.as_ref(),
+            ),
+            branches: use_case_select_default_company::client::list_of_branches(
+                MODEL.page_select_default_company.as_ref(),
+                MODEL.as_ref(),
+            ),
+            selected_company: MODEL.selected_company_uuid.read(),
+            selected_company_name: use_case_select_default_company::client::selected_company_name(
+                MODEL.page_select_default_company.as_ref(),
+                MODEL.as_ref(),
+            ),
+            selected_branch: MODEL.selected_company_branch_uuid.read(),
+            selected_branch_name: use_case_select_default_company::client::selected_company_branch_name(
+                MODEL.page_select_default_company.as_ref(),
+                MODEL.as_ref(),
+            ),
+        }
     use_case_create_company::ui::Component {
         sender: move |i| send(process_id1, use_case_create_company::client::Message::Intent(i)),
         show_dialog: MODEL.page_create_company.show_dialog().read(),

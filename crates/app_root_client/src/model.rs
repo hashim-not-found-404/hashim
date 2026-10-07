@@ -6,7 +6,6 @@ use serde::Deserialize;
 use serde::Serialize;
 use std::fmt::Debug;
 use std::sync::Arc;
-use use_case_select_default_company::client::LocalModel;
 use utility::ui_effect::Model;
 use utility_ui::domain::HashimSignal;
 use utility_ui::my_signal::MySignal;
@@ -50,28 +49,36 @@ pub(crate) struct FeatureStateAuth {
     pub(crate) is_loading: MySignal<bool>,
 }
 
-pub fn user_uuid(model: &TypeModel) -> Option<UserUuid> {
-    if let Some(a) = use_case_sign_in::client::user_uuid(model.page_sign_in.as_ref()) {
-        return Some(a);
-    }
-    if let Some(a) = use_case_sign_up::client::user_uuid(model.page_sign_up.as_ref()) {
-        return Some(a);
+impl TypeModel {
+    pub fn user_uuid(&self) -> Option<UserUuid> {
+        if let Some(a) = use_case_sign_in::client::user_uuid(self.page_sign_in.as_ref()) {
+            return Some(a);
+        }
+        if let Some(a) = use_case_sign_up::client::user_uuid(self.page_sign_up.as_ref()) {
+            return Some(a);
+        }
+
+        None
     }
 
-    None
+    fn list_of_companies(&self) -> Vec<(CompanyUuid, String)> {
+        use_case_select_default_company::client::list_of_companies(
+            self.page_select_default_company.as_ref(),
+        )
+    }
 }
 
 impl use_case_create_account::client::GlobalModel for TypeModel {
     fn user_uuid(&self) -> Option<UserUuid> {
-        user_uuid(self)
+        self.user_uuid()
     }
 
     fn selected_company(&self) -> impl HashimSignal<Option<CompanyUuid>> {
         self.selected_company_uuid.clone()
     }
 
-    fn list_of_companies(&self) -> impl HashimSignal<Vec<(CompanyUuid, String)>> {
-        self.page_select_default_company.list_of_companies()
+    fn list_of_companies(&self) -> Vec<(CompanyUuid, String)> {
+        self.list_of_companies()
     }
 }
 
@@ -103,39 +110,31 @@ impl use_case_sign_in::client::GlobalModel for TypeModel {
 
 impl use_case_create_company::client::GlobalModel for TypeModel {
     fn user_uuid(&self) -> Option<UserUuid> {
-        user_uuid(self)
+        self.user_uuid()
     }
 }
 
 impl use_case_select_default_company::client::GlobalModel for TypeModel {
     fn user_uuid(&self) -> Option<UserUuid> {
-        user_uuid(self)
+        self.user_uuid()
     }
 
     fn selected_company_uuid(&self) -> impl HashimSignal<Option<CompanyUuid>> {
         self.selected_company_uuid.clone()
     }
 
-    fn selected_company_name(&self) -> impl HashimSignal<Option<String>> {
-        self.selected_company_name.clone()
-    }
-
     fn selected_company_branch_uuid(&self) -> impl HashimSignal<Option<BranchUuid>> {
         self.selected_company_branch_uuid.clone()
-    }
-
-    fn selected_company_branch_name(&self) -> impl HashimSignal<Option<String>> {
-        self.selected_company_branch_name.clone()
     }
 }
 
 impl use_case_create_branch::client::GlobalModel for TypeModel {
-    fn list_of_companies(&self) -> impl HashimSignal<Vec<(CompanyUuid, String)>> {
-        self.page_select_default_company.list_of_companies()
+    fn list_of_companies(&self) -> Vec<(CompanyUuid, String)> {
+        self.list_of_companies()
     }
 
     fn user_uuid(&self) -> Option<UserUuid> {
-        user_uuid(self)
+        self.user_uuid()
     }
 
     fn selected_company(&self) -> impl HashimSignal<Option<CompanyUuid>> {
