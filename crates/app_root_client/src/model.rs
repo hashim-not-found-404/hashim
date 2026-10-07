@@ -90,18 +90,6 @@ impl use_case_sign_up::client::GlobalModel for TypeModel {
 }
 
 impl use_case_sign_in::client::GlobalModel for TypeModel {
-    fn is_auth_loading(&self) -> impl HashimSignal<bool> {
-        self.feature_state_auth.is_loading.clone()
-    }
-
-    fn user_uuid(&self) -> impl HashimSignal<Option<UserUuid>> {
-        self.user_uuid.clone()
-    }
-
-    fn user_name(&self) -> impl HashimSignal<Option<String>> {
-        self.user_name.clone()
-    }
-
     fn user_id(&self) -> impl HashimSignal<String> {
         self.user_id.clone()
     }

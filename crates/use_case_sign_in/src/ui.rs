@@ -1,7 +1,6 @@
+use crate::client::AsyncState;
 use crate::client::Intent;
 use crate::client::LocalModel;
-use crate::domain::PasswordError;
-use crate::domain::UserIdError;
 use dioxus::prelude::*;
 use serde::Deserialize;
 use serde::Serialize;
@@ -15,8 +14,7 @@ use utility_ui::my_signal::MySignal;
 #[derive(Debug, Default, Deserialize, Serialize)]
 pub struct TypeLocalModel {
     show_dialog: MySignal<Dialog>,
-    error_user_id: MySignal<Option<UserIdError>>,
-    error_password: MySignal<Option<PasswordError>>,
+    async_state: MySignal<AsyncState>,
 }
 
 impl LocalModel for TypeLocalModel {
@@ -24,12 +22,8 @@ impl LocalModel for TypeLocalModel {
         self.show_dialog.clone()
     }
 
-    fn error_user_id(&self) -> impl HashimSignal<Option<UserIdError>> {
-        self.error_user_id.clone()
-    }
-
-    fn error_password(&self) -> impl HashimSignal<Option<PasswordError>> {
-        self.error_password.clone()
+    fn async_state(&self) -> impl HashimSignal<AsyncState> {
+        self.async_state.clone()
     }
 }
 
@@ -42,6 +36,7 @@ pub fn Component(
     password: String,
     error_user_id: Option<String>,
     error_password: Option<String>,
+    is_loading: bool,
 ) -> Element {
     rsx! {
         div {
@@ -60,6 +55,7 @@ pub fn Component(
             }
 
             input {
+                disabled: is_loading,
                 placeholder: "User Id",
                 oninput: move |event| {
                     sender(Intent::UserId(event.value()));
@@ -71,6 +67,7 @@ pub fn Component(
             }
 
             PasswordInput {
+                disabled: is_loading,
                 password_callback: move |p| {
                     sender(Intent::Password(p));
                 },
@@ -81,12 +78,14 @@ pub fn Component(
             }
 
             button {
+                disabled: is_loading,
                 onclick: move |_| {
                     sender(Intent::Submit);
                 },
                 "Sign In"
             }
             button {
+                disabled: is_loading,
                 onclick: move |_| {
                     on_go_to_sign_up(());
                 },

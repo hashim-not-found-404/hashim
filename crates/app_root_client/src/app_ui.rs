@@ -6,6 +6,7 @@ use crate::utils::init_commander_and_model;
 use crate::utils::send;
 use cache::utils::MyUuidConverter;
 use dioxus::prelude::*;
+use std::ops::Deref;
 use use_case_create_account::client::LocalModel as _;
 use use_case_create_branch::client::LocalModel as _;
 use use_case_create_company::client::LocalModel as _;
@@ -178,16 +179,20 @@ fn SignIn() -> Element {
             show_dialog: MODEL.page_sign_in.show_dialog().read(),
             user_id: MODEL.user_id.read(),
             password: MODEL.feature_state_auth.user_password.read(),
-            error_user_id: MODEL
-                .page_sign_in
-                .error_user_id()
-                .read()
+            error_user_id: use_case_sign_in::client::error_user_id(
+                    MODEL.page_sign_in.deref(),
+                    MODEL.deref().deref(),
+                )
                 .map(|e| format!("{e:?}")),
-            error_password: MODEL
-                .page_sign_in
-                .error_password()
-                .read()
+            error_password: use_case_sign_in::client::error_password(
+                    MODEL.page_sign_in.deref(),
+                    MODEL.deref().deref(),
+                )
                 .map(|e| format!("{e:?}")),
+            is_loading: use_case_sign_in::client::is_auth_loading(
+                MODEL.page_sign_in.deref(),
+                MODEL.deref().deref(),
+            ),
         }
     }
 }

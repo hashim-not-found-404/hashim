@@ -83,6 +83,7 @@ pub fn Component(
             }
 
             PasswordInput {
+                disabled: false,
                 password_callback: move |p| {
                     sender(Intent::Password(p));
                 },

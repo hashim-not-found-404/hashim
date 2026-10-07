@@ -48,7 +48,11 @@ pub fn DialogComponent(
 }
 
 #[component]
-pub fn PasswordInput(password_callback: EventHandler<String>, password: String) -> Element {
+pub fn PasswordInput(
+    password_callback: EventHandler<String>,
+    disabled: bool,
+    password: String,
+) -> Element {
     let mut is_password_visible = use_signal(|| false);
 
     let (input_type, icon_type) = match *is_password_visible.read() {
@@ -59,6 +63,7 @@ pub fn PasswordInput(password_callback: EventHandler<String>, password: String) 
     rsx! {
         div {
             input {
+                disabled: disabled,
                 placeholder: "Password",
                 r#type: input_type,
                 oninput: move |event| password_callback(event.value()),

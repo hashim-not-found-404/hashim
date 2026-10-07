@@ -1,6 +1,5 @@
 use crate::domain::Error;
 use crate::domain::Input;
-use crate::domain::MyResult;
 use crate::domain::Ok;
 use crate::domain::PasswordError;
 use crate::domain::ReadInput;
@@ -12,8 +11,9 @@ use anyhow::anyhow;
 use infrastructure::actors::Sender;
 use infrastructure::jwt::JsonWebTokenType;
 use kernel::client::Cache;
-use kernel::new_types::UserUuid;
 use kernel::types::DatabaseRead;
+use serde::Deserialize;
+use serde::Serialize;
 use std::any::Any;
 use std::fmt::Debug;
 use std::sync::Arc;
@@ -95,37 +95,51 @@ pub async fn check_input<
 }
 
 pub trait GlobalModel {
-    fn is_auth_loading(&self) -> impl HashimSignal<bool>;
-    fn user_uuid(&self) -> impl HashimSignal<Option<UserUuid>>;
-    fn user_name(&self) -> impl HashimSignal<Option<String>>;
     fn user_id(&self) -> impl HashimSignal<String>;
     fn password(&self) -> impl HashimSignal<String>;
 }
 
 pub trait LocalModel {
     fn show_dialog(&self) -> impl HashimSignal<Dialog>;
-    fn error_user_id(&self) -> impl HashimSignal<Option<UserIdError>>;
-    fn error_password(&self) -> impl HashimSignal<Option<PasswordError>>;
+    fn async_state(&self) -> impl HashimSignal<AsyncState>;
+}
+
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
+pub enum AsyncState {
+    #[default]
+    Idle,
+    Loading {
+        input: AsyncInput,
+    },
+    Success {
+        input: AsyncInput,
+        ok: Ok,
+    },
+    Failure {
+        input: AsyncInput,
+        error: Error,
+    },
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct AsyncInput {
+    user_id: String,
+    password: String,
 }
 
 #[derive(Debug, Clone)]
 pub enum Change {
-    ErrorPassword(Option<PasswordError>),
-    ErrorUserId(Option<UserIdError>),
-    IsLoading(bool),
     Password(String),
     ShowDialog(Dialog),
     UserId(String),
-    UserName(Option<String>),
-    UserUuid(Option<UserUuid>),
+    AsyncState(AsyncState),
 }
 
 #[derive(Debug, Clone)]
 pub enum Effect {
     Submit {
         process_id: ProcessId,
-        user_id: String,
-        password: String,
+        async_input: AsyncInput,
     },
     Consent {
         process_id: ProcessId,
@@ -145,7 +159,7 @@ pub enum Intent {
 pub enum Observe {
     ShowDialog,
     HideDialog,
-    Result(MyResult),
+    Result(AsyncState),
 }
 
 #[derive(Debug, Clone)]
@@ -156,6 +170,40 @@ pub enum Message {
 
 impl MessageTrait for Message {}
 
+pub fn is_auth_loading(local_model: &impl LocalModel, global_model: &impl GlobalModel) -> bool {
+    let a = local_model.async_state().read();
+    match a {
+        AsyncState::Loading { .. } => true,
+        _ => false,
+    }
+}
+
+pub fn error_user_id(
+    local_model: &impl LocalModel,
+    global_model: &impl GlobalModel,
+) -> Option<UserIdError> {
+    let a = local_model.async_state().read();
+    match a {
+        AsyncState::Idle => None,
+        AsyncState::Loading { input } => None,
+        AsyncState::Success { input, ok } => None,
+        AsyncState::Failure { input, error } => error.user_id,
+    }
+}
+
+pub fn error_password(
+    local_model: &impl LocalModel,
+    global_model: &impl GlobalModel,
+) -> Option<PasswordError> {
+    let a = local_model.async_state().read();
+    match a {
+        AsyncState::Idle => None,
+        AsyncState::Loading { input } => None,
+        AsyncState::Success { input, ok } => None,
+        AsyncState::Failure { input, error } => error.password,
+    }
+}
+
 pub fn reduce(
     msg: Message,
     process_id: ProcessId,
@@ -165,26 +213,36 @@ pub fn reduce(
     match msg {
         Message::Intent(intent) => match intent {
             Intent::Submit => {
-                if global_model.is_auth_loading().read() {
+                if is_auth_loading(local_model, global_model) {
                     return Ok((vec![], vec![]));
                 }
-                let change = vec![
-                    Change::IsLoading(true),
-                    Change::ShowDialog(Default::default()),
-                    Change::ErrorUserId(Default::default()),
-                    Change::ErrorPassword(Default::default()),
-                ];
-                let effect = vec![Effect::Submit {
-                    process_id,
+
+                let async_input = AsyncInput {
                     user_id: global_model.user_id().read(),
                     password: global_model.password().read(),
+                };
+
+                let change = vec![
+                    Change::AsyncState(AsyncState::Loading {
+                        input: async_input.clone(),
+                    }),
+                    Change::ShowDialog(Dialog::Hide),
+                ];
+
+                let effect = vec![Effect::Submit {
+                    process_id,
+                    async_input,
                 }];
+
                 Ok((change, effect))
             }
             Intent::Consent(v) => {
                 let change = match v {
                     UserConsent::CancelOperation => {
-                        vec![Change::ShowDialog(Dialog::Hide), Change::IsLoading(false)]
+                        vec![
+                            Change::ShowDialog(Dialog::Hide),
+                            Change::AsyncState(AsyncState::Idle),
+                        ]
                     }
                     _ => vec![Change::ShowDialog(Dialog::Hide)],
                 };
@@ -209,20 +267,7 @@ pub fn reduce(
             Observe::ShowDialog => Ok((vec![Change::ShowDialog(Dialog::Show)], vec![])),
             Observe::HideDialog => Ok((vec![Change::ShowDialog(Dialog::Hide)], vec![])),
             Observe::Result(result) => {
-                let change = match result {
-                    Ok(ok) => vec![
-                        Change::IsLoading(false),
-                        Change::UserUuid(Some(ok.user_uuid.clone())),
-                        Change::UserName(ok.user_name.clone()),
-                        Change::ErrorUserId(None),
-                        Change::ErrorPassword(None),
-                    ],
-                    Err(a) => vec![
-                        Change::IsLoading(false),
-                        Change::ErrorUserId(a.user_id),
-                        Change::ErrorPassword(a.password),
-                    ],
-                };
+                let change = vec![Change::AsyncState(result)];
                 Ok((change, vec![]))
             }
         },
@@ -233,12 +278,8 @@ pub fn update(msg: Change, local_model: &impl LocalModel, global_model: &impl Gl
     match msg {
         Change::Password(i) => global_model.password().set(i),
         Change::ShowDialog(i) => local_model.show_dialog().set(i),
-        Change::IsLoading(i) => global_model.is_auth_loading().set(i),
-        Change::UserUuid(i) => global_model.user_uuid().set(i),
-        Change::UserName(i) => global_model.user_name().set(i),
-        Change::ErrorUserId(i) => local_model.error_user_id().set(i),
-        Change::ErrorPassword(i) => local_model.error_password().set(i),
         Change::UserId(i) => global_model.user_id().set(i),
+        Change::AsyncState(i) => local_model.async_state().set(i),
     }
 }
 
@@ -246,10 +287,9 @@ pub async fn effect(msg: Effect, mut context: UiContext) -> Result<()> {
     match msg {
         Effect::Submit {
             process_id,
-            user_id,
-            password,
+            async_input,
         } => {
-            handle_submit(process_id, &Input { user_id, password }, context).await?;
+            handle_submit(process_id, async_input, context).await?;
         }
         Effect::Consent {
             process_id,
@@ -284,7 +324,7 @@ impl ProcessDialog for DialogDispatchAdapter {
     }
 }
 
-async fn handle_submit(process_id: ProcessId, input: &Input, context: UiContext) -> Result<()> {
+async fn handle_submit(process_id: ProcessId, input: AsyncInput, context: UiContext) -> Result<()> {
     let context1 = context.clone();
 
     let dialog_signal_adapter = Arc::new(DialogDispatchAdapter {
@@ -292,7 +332,10 @@ async fn handle_submit(process_id: ProcessId, input: &Input, context: UiContext)
         sender: context.sender_to_commander.clone(),
     });
 
-    let data: TypeOperationClientInput = Arc::new(input.clone());
+    let data: TypeOperationClientInput = Arc::new(Input {
+        user_id: input.user_id.clone(),
+        password: input.password.clone(),
+    });
 
     handle_fall_back(
         context.sender_to_error,
@@ -317,9 +360,20 @@ async fn handle_submit(process_id: ProcessId, input: &Input, context: UiContext)
 
             let is_ok = result.is_ok();
 
+            let async_state = match result {
+                Ok(a) => AsyncState::Success {
+                    input: input.clone(),
+                    ok: a,
+                },
+                Err(a) => AsyncState::Failure {
+                    input: input.clone(),
+                    error: a,
+                },
+            };
+
             context1
                 .sender_to_commander
-                .send(process_id, Message::Observe(Observe::Result(result)));
+                .send(process_id, Message::Observe(Observe::Result(async_state)));
 
             Ok(is_ok)
         },
