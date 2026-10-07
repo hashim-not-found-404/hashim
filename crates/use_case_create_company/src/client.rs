@@ -7,6 +7,7 @@ use crate::domain::ReadOutput;
 use anyhow::Context;
 use anyhow::Result;
 use anyhow::anyhow;
+use infrastructure::actors::Receiver;
 use infrastructure::actors::Sender;
 use infrastructure::row_id::Id;
 use infrastructure::row_id::RowId;
@@ -22,13 +23,16 @@ use serde::Serialize;
 use std::any::Any;
 use std::ops::Deref;
 use std::sync::Arc;
+use utility::cache::CachingStrategy;
 use utility::cache::ResourceName;
+use utility::cache::Response;
 use utility::cache::TraitOperationClientError;
 use utility::cache::TraitOperationClientInput;
 use utility::cache::TraitOperationClientOk;
 use utility::cache::TypeOperationClientInput;
 use utility::cache::TypeOperationClientResult;
 use utility::cache::new_resource_name;
+use utility::dtos::TxnNumber;
 use utility::process_manager::MessageToProcessManager;
 use utility::process_manager::ProcessDialog;
 use utility::process_manager::ProcessId;
@@ -123,6 +127,10 @@ pub enum Effect {
         process_id: ProcessId,
         user_consent: UserConsent,
     },
+    Check {
+        process_id: ProcessId,
+        async_input: AsyncInput,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -148,6 +156,27 @@ pub enum Message {
 }
 
 impl MessageTrait for Message {}
+
+fn build_check_effect(
+    local_model: &impl LocalModel,
+    global_model: &impl GlobalModel,
+    process_id: ProcessId,
+    mutate: impl FnOnce(&mut AsyncInput),
+) -> Vec<Effect> {
+    let Some(user_uuid) = global_model.user_uuid() else {
+        return vec![];
+    };
+    let mut a = AsyncInput {
+        user_uuid,
+        company_name: local_model.company_name().read(),
+        currency: local_model.currency().read(),
+    };
+    mutate(&mut a);
+    vec![Effect::Check {
+        process_id,
+        async_input: a,
+    }]
+}
 
 pub fn reduce(
     msg: Message,
@@ -176,12 +205,18 @@ pub fn reduce(
                 Ok((change, vec![]))
             }
             Intent::CompanyName(v) => {
-                let change = vec![Change::CompanyName(v)];
-                Ok((change, vec![]))
+                let change = vec![Change::CompanyName(v.clone())];
+                let effect = build_check_effect(local_model, global_model, process_id, |a| {
+                    a.company_name = v;
+                });
+                Ok((change, effect))
             }
             Intent::Currency(v) => {
-                let change = vec![Change::Currency(v)];
-                Ok((change, vec![]))
+                let change = vec![Change::Currency(v.clone())];
+                let effect = build_check_effect(local_model, global_model, process_id, |a| {
+                    a.currency = v;
+                });
+                Ok((change, effect))
             }
             Intent::Consent(v) => {
                 let change = match v {
@@ -278,6 +313,12 @@ pub async fn effect(msg: Effect, mut context: UiContext) -> Result<()> {
                 })
                 .await?;
         }
+        Effect::Check {
+            process_id,
+            async_input,
+        } => {
+            handle_check(process_id, async_input, context).await?;
+        }
     }
     Ok(())
 }
@@ -358,6 +399,41 @@ async fn handle_submit(process_id: ProcessId, input: AsyncInput, context: UiCont
         },
     )
     .await?;
+
+    Ok(())
+}
+
+async fn handle_check(process_id: ProcessId, input: AsyncInput, context: UiContext) -> Result<()> {
+    let mut cache = context.cache.clone();
+    let sender_to_commander = context.sender_to_commander.clone();
+
+    let new_uuid = CompanyUuid::from(UuidType::from(Id::generate()));
+
+    let data: TypeOperationClientInput = Arc::new(Input {
+        user_uuid: input.user_uuid.clone(),
+        new_uuid,
+        company_name: input.company_name.clone(),
+        currency: input.currency.clone(),
+    });
+
+    let mut receiver_to_response = cache
+        .send_to_cache_actor(CachingStrategy::ReadCacheOnly, TxnNumber::default(), data)
+        .await?;
+
+    match receiver_to_response.recv().await? {
+        Response::CloseTheChannel | Response::ServerCannotBeReached => {}
+        Response::Data { data, .. } => {
+            let new_state = match data {
+                Ok(_) => AsyncState::Idle,
+                Err(err) => {
+                    let a: Box<dyn Any> = err;
+                    let a: Box<Error> = a.downcast().map_err(|_| anyhow!("downcast error"))?;
+                    AsyncState::Failure { input, error: *a }
+                }
+            };
+            sender_to_commander.send(process_id, Message::Observe(Observe::Result(new_state)));
+        }
+    }
 
     Ok(())
 }

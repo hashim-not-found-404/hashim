@@ -7,6 +7,7 @@ use crate::domain::ReadOutput;
 use anyhow::Context;
 use anyhow::Result;
 use anyhow::anyhow;
+use infrastructure::actors::Receiver;
 use infrastructure::actors::Sender;
 use infrastructure::row_id::Id;
 use infrastructure::row_id::RowId;
@@ -23,13 +24,16 @@ use serde::Serialize;
 use std::any::Any;
 use std::ops::Deref;
 use std::sync::Arc;
+use utility::cache::CachingStrategy;
 use utility::cache::ResourceName;
+use utility::cache::Response;
 use utility::cache::TraitOperationClientError;
 use utility::cache::TraitOperationClientInput;
 use utility::cache::TraitOperationClientOk;
 use utility::cache::TypeOperationClientInput;
 use utility::cache::TypeOperationClientResult;
 use utility::cache::new_resource_name;
+use utility::dtos::TxnNumber;
 use utility::process_manager::MessageToProcessManager;
 use utility::process_manager::ProcessDialog;
 use utility::process_manager::ProcessId;
@@ -195,6 +199,10 @@ pub enum Effect {
         process_id: ProcessId,
         user_consent: UserConsent,
     },
+    Check {
+        process_id: ProcessId,
+        async_input: AsyncInput,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -224,6 +232,36 @@ pub enum Message {
 }
 
 impl MessageTrait for Message {}
+
+fn build_check_effect(
+    local_model: &impl LocalModel,
+    global_model: &impl GlobalModel,
+    process_id: ProcessId,
+    override_company: Option<CompanyUuid>,
+    mutate: impl FnOnce(&mut AsyncInput),
+) -> Vec<Effect> {
+    let Some(user_uuid) = global_model.user_uuid() else {
+        return vec![];
+    };
+    let belong_to_company =
+        override_company.or_else(|| resolved_company_uuid(local_model, global_model));
+    let Some(belong_to_company) = belong_to_company else {
+        return vec![];
+    };
+    let mut a = AsyncInput {
+        user_uuid,
+        is_debit: local_model.is_debit().read(),
+        is_permanent_account: local_model.is_permanent_account().read(),
+        account_name: local_model.account_name().read(),
+        unit_of_measurement_of_quantity: local_model.unit_of_measurement_of_quantity().read(),
+        belong_to_company,
+    };
+    mutate(&mut a);
+    vec![Effect::Check {
+        process_id,
+        async_input: a,
+    }]
+}
 
 pub fn reduce(
     msg: Message,
@@ -305,19 +343,61 @@ pub fn reduce(
                 ];
                 Ok((change, vec![]))
             }
-            Intent::IsDebit(v) => Ok((vec![Change::IsDebit(v)], vec![])),
-            Intent::IsPermanentAccount(v) => Ok((vec![Change::IsPermanentAccount(v)], vec![])),
-            Intent::AccountName(v) => Ok((vec![Change::AccountName(v)], vec![])),
-            Intent::UnitOfMeasurementOfQuantity(v) => {
-                Ok((vec![Change::UnitOfMeasurementOfQuantity(v)], vec![]))
+            Intent::IsDebit(v) => {
+                let change = vec![Change::IsDebit(v)];
+                let effect = build_check_effect(local_model, global_model, process_id, None, |a| {
+                    a.is_debit = v;
+                });
+                Ok((change, effect))
             }
-            Intent::CompanyName(v) => Ok((vec![Change::SelectedCompanyName(v)], vec![])),
+            Intent::IsPermanentAccount(v) => {
+                let change = vec![Change::IsPermanentAccount(v)];
+                let effect = build_check_effect(local_model, global_model, process_id, None, |a| {
+                    a.is_permanent_account = v;
+                });
+                Ok((change, effect))
+            }
+            Intent::AccountName(v) => {
+                let change = vec![Change::AccountName(v.clone())];
+                let effect = build_check_effect(local_model, global_model, process_id, None, |a| {
+                    a.account_name = v;
+                });
+                Ok((change, effect))
+            }
+            Intent::UnitOfMeasurementOfQuantity(v) => {
+                let change = vec![Change::UnitOfMeasurementOfQuantity(v.clone())];
+                let effect = build_check_effect(local_model, global_model, process_id, None, |a| {
+                    a.unit_of_measurement_of_quantity = v;
+                });
+                Ok((change, effect))
+            }
+            Intent::CompanyName(v) => {
+                let change = vec![Change::SelectedCompanyName(v.clone())];
+                let resolved = if v.is_empty() {
+                    global_model.selected_company()
+                } else {
+                    global_model
+                        .list_of_companies()
+                        .into_iter()
+                        .find_map(|(uuid, name)| (name == v).then_some(uuid))
+                };
+                let effect =
+                    build_check_effect(local_model, global_model, process_id, resolved, |_| {});
+                Ok((change, effect))
+            }
             Intent::SelectedCompany(idx) => {
                 let list = list_of_companies_to_display(local_model, global_model);
                 match list.get(idx) {
-                    Some(a) => {
-                        let change = vec![Change::SelectedCompanyName(a.1.clone())];
-                        Ok((change, vec![]))
+                    Some((company_uuid, company_name)) => {
+                        let change = vec![Change::SelectedCompanyName(company_name.clone())];
+                        let effect = build_check_effect(
+                            local_model,
+                            global_model,
+                            process_id,
+                            Some(company_uuid.clone()),
+                            |_| {},
+                        );
+                        Ok((change, effect))
                     }
                     None => Ok((vec![], vec![])),
                 }
@@ -383,6 +463,12 @@ pub async fn effect(msg: Effect, mut context: UiContext) -> Result<()> {
                     consent: user_consent,
                 })
                 .await?;
+        }
+        Effect::Check {
+            process_id,
+            async_input,
+        } => {
+            handle_check(process_id, async_input, context).await?;
         }
     }
     Ok(())
@@ -467,6 +553,44 @@ async fn handle_submit(process_id: ProcessId, input: AsyncInput, context: UiCont
         },
     )
     .await?;
+
+    Ok(())
+}
+
+async fn handle_check(process_id: ProcessId, input: AsyncInput, context: UiContext) -> Result<()> {
+    let mut cache = context.cache.clone();
+    let sender_to_commander = context.sender_to_commander.clone();
+
+    let new_uuid = AccountUuid::from(UuidType::from(Id::generate()));
+
+    let data: TypeOperationClientInput = Arc::new(Input {
+        user_uuid: input.user_uuid.clone(),
+        new_uuid,
+        is_debit: input.is_debit,
+        is_permanent_account: input.is_permanent_account,
+        account_name: input.account_name.clone(),
+        unit_of_measurement_of_quantity: input.unit_of_measurement_of_quantity.clone(),
+        belong_to_company: input.belong_to_company.clone(),
+    });
+
+    let mut receiver_to_response = cache
+        .send_to_cache_actor(CachingStrategy::ReadCacheOnly, TxnNumber::default(), data)
+        .await?;
+
+    match receiver_to_response.recv().await? {
+        Response::CloseTheChannel | Response::ServerCannotBeReached => {}
+        Response::Data { data, .. } => {
+            let new_state = match data {
+                Ok(_) => AsyncState::Idle,
+                Err(err) => {
+                    let a: Box<dyn Any> = err;
+                    let a: Box<Error> = a.downcast().map_err(|_| anyhow!("downcast error"))?;
+                    AsyncState::Failure { input, error: *a }
+                }
+            };
+            sender_to_commander.send(process_id, Message::Observe(Observe::Result(new_state)));
+        }
+    }
 
     Ok(())
 }
