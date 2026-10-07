@@ -176,12 +176,12 @@ impl Commander {
     }
 }
 
-type ReturnType = Pin<Box<dyn Future<Output = Result<()>> + 'static>>;
+pub(crate) type AborterReturnType = Pin<Box<dyn Future<Output = Result<()>> + 'static>>;
 
-pub struct Aborter(Box<dyn FnOnce() -> ReturnType>);
+pub(crate) struct Aborter(Box<dyn FnOnce() -> AborterReturnType>);
 
 impl Aborter {
-    pub(crate) fn new(a: impl FnOnce() -> ReturnType + 'static) -> Self {
+    pub(crate) fn new(a: impl FnOnce() -> AborterReturnType + 'static) -> Self {
         Self(Box::new(a))
     }
 }
@@ -190,7 +190,7 @@ impl Aborter {
 pub struct Aborters(Arc<Mutex<HashMap<ProcessId, Aborter>>>);
 
 impl Aborters {
-    pub fn register(&self, process_id: ProcessId, aborter: Aborter) {
+    pub(crate) fn register(&self, process_id: ProcessId, aborter: Aborter) {
         let mut mutex_guard = self.0.lock().unwrap();
         mutex_guard.insert(process_id, aborter);
     }

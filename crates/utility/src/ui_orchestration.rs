@@ -12,6 +12,7 @@ use crate::process_manager::MessageToProcess;
 use crate::process_manager::MessageToProcessManager;
 use crate::process_manager::ProcessId;
 use crate::ui_effect::Aborter;
+use crate::ui_effect::AborterReturnType;
 use crate::ui_effect::MessageTrait;
 use crate::ui_effect::UiContext;
 use anyhow::Error;
@@ -30,7 +31,6 @@ use serde::Deserialize;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use std::fmt::Debug;
-use std::pin::Pin;
 
 pub async fn handle_fall_back(
     sender_to_error: MpscSender<Error>,
@@ -122,7 +122,7 @@ pub async fn spawn_listener(
         })
         .await?;
 
-    let a = move || -> Pin<Box<dyn Future<Output = Result<()>>>> {
+    let a = move || -> AborterReturnType {
         Box::pin(async move {
             context
                 .cache
