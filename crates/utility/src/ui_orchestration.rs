@@ -30,6 +30,7 @@ use serde::Deserialize;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use std::fmt::Debug;
+use std::pin::Pin;
 
 pub async fn handle_fall_back(
     sender_to_error: MpscSender<Error>,
@@ -121,18 +122,17 @@ pub async fn spawn_listener(
         })
         .await?;
 
-    let aborter = Aborter::new(move || {
-        Rt::spawn_local(async move {
-            handle_error_one_time(context.sender_to_error, async move || {
-                context
-                    .cache
-                    .send_unsubs_to_cache_actor(component_id)
-                    .await?;
-                Ok(())
-            })
-            .await;
-        });
-    });
+    let a = move || -> Pin<Box<dyn Future<Output = Result<()>>>> {
+        Box::pin(async move {
+            context
+                .cache
+                .send_unsubs_to_cache_actor(component_id)
+                .await?;
+
+            Ok(())
+        })
+    };
+    let aborter = Aborter::new(a);
 
     context.aborters.register(process_id, aborter);
     Ok(())

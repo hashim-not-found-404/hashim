@@ -176,10 +176,12 @@ impl Commander {
     }
 }
 
-pub struct Aborter(Box<dyn FnOnce()>);
+type ReturnType = Pin<Box<dyn Future<Output = Result<()>> + 'static>>;
+
+pub struct Aborter(Box<dyn FnOnce() -> ReturnType>);
 
 impl Aborter {
-    pub(crate) fn new(a: impl FnOnce() + 'static) -> Self {
+    pub(crate) fn new(a: impl FnOnce() -> ReturnType + 'static) -> Self {
         Self(Box::new(a))
     }
 }
@@ -193,10 +195,12 @@ impl Aborters {
         mutex_guard.insert(process_id, aborter);
     }
 
-    pub fn abort(&self, process_id: ProcessId) {
+    pub async fn abort(&self, process_id: ProcessId) -> Result<()> {
         let mut mutex_guard = self.0.lock().unwrap();
         if let Some(a) = mutex_guard.remove(&process_id) {
-            a.0();
+            a.0().await?;
         }
+
+        Ok(())
     }
 }

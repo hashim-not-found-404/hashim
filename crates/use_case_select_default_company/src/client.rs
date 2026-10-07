@@ -251,7 +251,7 @@ pub async fn effect(msg: Effect, context: UiContext) -> Result<()> {
             handle_subscribe(process_id, context).await?;
         }
         Effect::UnSubscribe { process_id } => {
-            context.aborters.abort(process_id);
+            context.aborters.abort(process_id).await?;
         }
         Effect::Refresh {
             process_id,
