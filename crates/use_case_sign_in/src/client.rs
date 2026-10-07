@@ -157,14 +157,6 @@ pub enum Message {
 
 impl MessageTrait for Message {}
 
-pub fn is_auth_loading(local_model: &impl LocalModel) -> bool {
-    let a = local_model.async_state().read();
-    match a {
-        AsyncState::Loading { .. } => true,
-        _ => false,
-    }
-}
-
 pub fn user_uuid(local_model: &impl LocalModel) -> Option<UserUuid> {
     match local_model.async_state().read() {
         AsyncState::Success { ok, .. } => Some(ok.user_uuid),
@@ -212,13 +204,18 @@ pub fn reduce(
     local_model: &impl LocalModel,
     global_model: &impl GlobalModel,
 ) -> Result<(Vec<Change>, Vec<Effect>)> {
+    if let Message::Intent(ref a) = msg {
+        if let Intent::Consent(_) = a {
+        } else {
+            if local_model.async_state().read().is_loading() {
+                return Ok((vec![], vec![]));
+            }
+        }
+    }
+
     match msg {
         Message::Intent(intent) => match intent {
             Intent::Submit => {
-                if is_auth_loading(local_model) {
-                    return Ok((vec![], vec![]));
-                }
-
                 let async_input = AsyncInput {
                     user_id: global_model.user_id().read(),
                     password: global_model.password().read(),

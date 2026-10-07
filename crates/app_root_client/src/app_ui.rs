@@ -197,7 +197,7 @@ fn SignIn() -> Element {
                 .map(|e| format!("{e:?}")),
             error_password: use_case_sign_in::client::error_password(MODEL.page_sign_in.deref())
                 .map(|e| format!("{e:?}")),
-            is_loading: use_case_sign_in::client::is_auth_loading(MODEL.page_sign_in.deref()),
+            is_loading: MODEL.page_sign_in.deref().async_state().read().is_loading(),
         }
     }
 }
@@ -219,7 +219,7 @@ fn SignUp() -> Element {
                 .map(|e| format!("{e:?}")),
             error_user_name: use_case_sign_up::client::error_user_name(MODEL.page_sign_up.deref())
                 .map(|e| format!("{e:?}")),
-            is_loading: use_case_sign_up::client::is_auth_loading(MODEL.page_sign_up.deref()),
+            is_loading: MODEL.page_sign_up.deref().async_state().read().is_loading(),
         }
     }
 }

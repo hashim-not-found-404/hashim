@@ -231,13 +231,18 @@ pub fn reduce(
     local_model: &impl LocalModel,
     global_model: &impl GlobalModel,
 ) -> Result<(Vec<Change>, Vec<Effect>)> {
+    if let Message::Intent(ref a) = msg {
+        if let Intent::Consent(_) = a {
+        } else {
+            if local_model.async_state().read().is_loading() {
+                return Ok((vec![], vec![]));
+            }
+        }
+    }
+
     match msg {
         Message::Intent(intent) => match intent {
             Intent::Submit => {
-                if local_model.async_state().read().is_loading() {
-                    return Ok((vec![], vec![]));
-                }
-
                 let Some(user_uuid) = global_model.user_uuid() else {
                     return Ok((vec![], vec![]));
                 };

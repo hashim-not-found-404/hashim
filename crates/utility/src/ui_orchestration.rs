@@ -1,5 +1,3 @@
-use std::fmt::Debug;
-
 use crate::cache::CacheStruct;
 use crate::cache::CachingStrategy;
 use crate::cache::ResourceName;
@@ -31,6 +29,7 @@ use infrastructure::runtime::Runtime;
 use serde::Deserialize;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
+use std::fmt::Debug;
 
 pub async fn handle_fall_back(
     sender_to_error: MpscSender<Error>,
