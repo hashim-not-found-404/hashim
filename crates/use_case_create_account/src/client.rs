@@ -1,14 +1,12 @@
 use crate::domain::AccountNameError;
 use crate::domain::Error;
 use crate::domain::Input;
-use crate::domain::MyResult;
 use crate::domain::Ok;
 use crate::domain::ReadInput;
 use crate::domain::ReadOutput;
 use anyhow::Context;
 use anyhow::Result;
 use anyhow::anyhow;
-use infrastructure::actors::Receiver;
 use infrastructure::actors::Sender;
 use infrastructure::row_id::Id;
 use infrastructure::row_id::RowId;
@@ -23,20 +21,15 @@ use kernel::types::RowIdError;
 use serde::Deserialize;
 use serde::Serialize;
 use std::any::Any;
-use std::fmt::Debug;
 use std::ops::Deref;
 use std::sync::Arc;
-use use_case_get_all_accounts::client::fetch;
-use utility::cache::CachingStrategy;
 use utility::cache::ResourceName;
-use utility::cache::Response;
 use utility::cache::TraitOperationClientError;
 use utility::cache::TraitOperationClientInput;
 use utility::cache::TraitOperationClientOk;
 use utility::cache::TypeOperationClientInput;
 use utility::cache::TypeOperationClientResult;
 use utility::cache::new_resource_name;
-use utility::dtos::TxnNumber;
 use utility::process_manager::MessageToProcessManager;
 use utility::process_manager::ProcessDialog;
 use utility::process_manager::ProcessId;
@@ -88,89 +81,142 @@ pub async fn check_input<
 
 pub trait GlobalModel {
     fn user_uuid(&self) -> Option<UserUuid>;
-    fn selected_company(&self) -> impl HashimSignal<Option<CompanyUuid>>;
+    fn selected_company(&self) -> Option<CompanyUuid>;
     fn list_of_companies(&self) -> Vec<(CompanyUuid, String)>;
 }
 
 pub trait LocalModel {
     fn show_dialog(&self) -> impl HashimSignal<Dialog>;
-    fn is_loading(&self) -> impl HashimSignal<bool>;
     fn is_debit(&self) -> impl HashimSignal<bool>;
     fn is_permanent_account(&self) -> impl HashimSignal<bool>;
     fn account_name(&self) -> impl HashimSignal<String>;
     fn unit_of_measurement_of_quantity(&self) -> impl HashimSignal<String>;
-    fn account_name_error(&self) -> impl HashimSignal<Option<AccountNameError>>;
     fn selected_company_name(&self) -> impl HashimSignal<String>;
-    fn selected_company_uuid(&self) -> impl HashimSignal<Option<CompanyUuid>>;
-    fn list_of_companies_to_display(&self) -> impl HashimSignal<Vec<(CompanyUuid, String)>>;
-    fn company_name_error(&self) -> impl HashimSignal<Option<CompanyNameError>>;
+    fn async_state(&self) -> impl HashimSignal<AsyncState>;
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub enum CompanyNameError {
     NotSelected,
     NotExist,
-    Invalid,
 }
 
-impl From<RowIdError> for CompanyNameError {
-    fn from(e: RowIdError) -> Self {
-        match e {
-            RowIdError::Invalid => CompanyNameError::Invalid,
-            RowIdError::NotExist => CompanyNameError::NotExist,
-            RowIdError::Duplicated => CompanyNameError::NotExist,
-        }
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
+pub enum AsyncState {
+    #[default]
+    Idle,
+    Loading {
+        input: AsyncInput,
+    },
+    Success {
+        input: AsyncInput,
+        ok: Ok,
+    },
+    Failure {
+        input: AsyncInput,
+        error: Error,
+    },
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct AsyncInput {
+    pub user_uuid: UserUuid,
+    pub is_debit: bool,
+    pub is_permanent_account: bool,
+    pub account_name: String,
+    pub unit_of_measurement_of_quantity: String,
+    pub belong_to_company: CompanyUuid,
+}
+
+pub fn is_loading(local_model: &impl LocalModel) -> bool {
+    matches!(local_model.async_state().read(), AsyncState::Loading { .. })
+}
+
+pub fn error_account_name(local_model: &impl LocalModel) -> Option<AccountNameError> {
+    match local_model.async_state().read() {
+        AsyncState::Failure { error, .. } => error.account_name,
+        _ => None,
     }
+}
+
+pub fn resolved_company_uuid(
+    local_model: &impl LocalModel,
+    global_model: &impl GlobalModel,
+) -> Option<CompanyUuid> {
+    let typed = local_model.selected_company_name().read();
+    if typed.is_empty() {
+        return global_model.selected_company();
+    }
+    global_model
+        .list_of_companies()
+        .into_iter()
+        .find_map(|(uuid, name)| (name == typed).then_some(uuid))
+}
+
+pub fn error_company_name(
+    local_model: &impl LocalModel,
+    global_model: &impl GlobalModel,
+) -> Option<CompanyNameError> {
+    if let AsyncState::Failure { error, .. } = local_model.async_state().read()
+        && let Some(e) = error.belong_to_company
+    {
+        return match e {
+            RowIdError::Invalid | RowIdError::NotExist => Some(CompanyNameError::NotExist),
+            RowIdError::Duplicated => None,
+        };
+    }
+
+    let typed = local_model.selected_company_name().read();
+    if typed.is_empty() {
+        if global_model.selected_company().is_none() {
+            return Some(CompanyNameError::NotSelected);
+        }
+        return None;
+    }
+    if resolved_company_uuid(local_model, global_model).is_some() {
+        None
+    } else {
+        Some(CompanyNameError::NotExist)
+    }
+}
+
+pub fn list_of_companies_to_display(
+    local_model: &impl LocalModel,
+    global_model: &impl GlobalModel,
+) -> Vec<(CompanyUuid, String)> {
+    let typed = local_model.selected_company_name().read();
+    let list = global_model.list_of_companies();
+    if typed.is_empty() {
+        return list;
+    }
+    select_strings(list, typed, |a| a.1.as_str())
 }
 
 #[derive(Debug, Clone)]
 pub enum Change {
     ShowDialog(Dialog),
-    IsLoading(bool),
     IsDebit(bool),
     IsPermanentAccount(bool),
     AccountName(String),
     UnitOfMeasurementOfQuantity(String),
-    AccountNameError(Option<AccountNameError>),
     SelectedCompanyName(String),
-    SelectedCompanyUuid(Option<CompanyUuid>),
-    ListOfCompaniesToDisplay(Vec<(CompanyUuid, String)>),
-    CompanyNameError(Option<CompanyNameError>),
+    AsyncState(AsyncState),
 }
 
 #[derive(Debug, Clone)]
 pub enum Effect {
     Submit {
         process_id: ProcessId,
-        user_uuid: UserUuid,
-        is_debit: bool,
-        is_permanent_account: bool,
-        account_name: String,
-        unit_of_measurement_of_quantity: String,
-        belong_to_company: CompanyUuid,
+        async_input: AsyncInput,
     },
     Consent {
         process_id: ProcessId,
         user_consent: UserConsent,
     },
-    Check {
-        process_id: ProcessId,
-        is_debit: bool,
-        is_permanent_account: bool,
-        account_name: String,
-        unit_of_measurement_of_quantity: String,
-        user_uuid: UserUuid,
-        belong_to_company: CompanyUuid,
-    },
-    Refresh {
-        user_uuid: UserUuid,
-        company_uuid: CompanyUuid,
-    },
 }
 
 #[derive(Debug, Clone)]
 pub enum Intent {
-    Subscribe,
     Submit,
     Consent(UserConsent),
     Clean,
@@ -186,8 +232,7 @@ pub enum Intent {
 pub enum Observe {
     ShowDialog,
     HideDialog,
-    SubmitResult(MyResult),
-    CheckResult(MyResult),
+    Result(AsyncState),
 }
 
 #[derive(Debug, Clone)]
@@ -206,51 +251,21 @@ pub fn reduce(
 ) -> Result<(Vec<Change>, Vec<Effect>)> {
     match msg {
         Message::Intent(intent) => match intent {
-            Intent::Subscribe => {
-                let Some(user_uuid) = global_model.user_uuid() else {
-                    return Ok((vec![], vec![]));
-                };
-                let Some(company_uuid) = global_model.selected_company().read() else {
-                    return Ok((vec![], vec![]));
-                };
-                let effect = vec![Effect::Refresh {
-                    user_uuid,
-                    company_uuid,
-                }];
-                Ok((vec![], effect))
-            }
             Intent::Submit => {
+                if is_loading(local_model) {
+                    return Ok((vec![], vec![]));
+                }
+
                 let Some(user_uuid) = global_model.user_uuid() else {
                     return Ok((vec![], vec![]));
                 };
 
-                let typed = local_model.selected_company_name().read();
-                let local_pick = local_model.selected_company_uuid().read();
-
-                let belong_to_company = local_pick.or_else(|| {
-                    if typed.is_empty() {
-                        global_model.selected_company().read()
-                    } else {
-                        None
-                    }
-                });
-
-                let Some(belong_to_company) = belong_to_company else {
-                    let err = if typed.is_empty() {
-                        CompanyNameError::NotSelected
-                    } else {
-                        CompanyNameError::NotExist
-                    };
-                    return Ok((vec![Change::CompanyNameError(Some(err))], vec![]));
+                let Some(belong_to_company) = resolved_company_uuid(local_model, global_model)
+                else {
+                    return Ok((vec![], vec![]));
                 };
 
-                let change = vec![
-                    Change::ShowDialog(Default::default()),
-                    Change::AccountNameError(None),
-                    Change::CompanyNameError(None),
-                ];
-                let effect = vec![Effect::Submit {
-                    process_id,
+                let async_input = AsyncInput {
                     user_uuid,
                     is_debit: local_model.is_debit().read(),
                     is_permanent_account: local_model.is_permanent_account().read(),
@@ -259,13 +274,29 @@ pub fn reduce(
                         .unit_of_measurement_of_quantity()
                         .read(),
                     belong_to_company,
+                };
+
+                let change = vec![
+                    Change::AsyncState(AsyncState::Loading {
+                        input: async_input.clone(),
+                    }),
+                    Change::ShowDialog(Dialog::Hide),
+                ];
+
+                let effect = vec![Effect::Submit {
+                    process_id,
+                    async_input,
                 }];
+
                 Ok((change, effect))
             }
             Intent::Consent(v) => {
                 let change = match v {
                     UserConsent::CancelOperation => {
-                        vec![Change::ShowDialog(Dialog::Hide), Change::IsLoading(false)]
+                        vec![
+                            Change::ShowDialog(Dialog::Hide),
+                            Change::AsyncState(AsyncState::Idle),
+                        ]
                     }
                     _ => vec![Change::ShowDialog(Dialog::Hide)],
                 };
@@ -277,76 +308,28 @@ pub fn reduce(
             }
             Intent::Clean => {
                 let change = vec![
-                    Change::AccountName(Default::default()),
+                    Change::ShowDialog(Default::default()),
                     Change::IsDebit(Default::default()),
                     Change::IsPermanentAccount(Default::default()),
+                    Change::AccountName(Default::default()),
                     Change::UnitOfMeasurementOfQuantity(Default::default()),
-                    Change::IsLoading(Default::default()),
-                    Change::AccountNameError(Default::default()),
                     Change::SelectedCompanyName(Default::default()),
-                    Change::SelectedCompanyUuid(Default::default()),
-                    Change::ListOfCompaniesToDisplay(Default::default()),
-                    Change::CompanyNameError(Default::default()),
+                    Change::AsyncState(AsyncState::Idle),
                 ];
                 Ok((change, vec![]))
             }
             Intent::IsDebit(v) => Ok((vec![Change::IsDebit(v)], vec![])),
             Intent::IsPermanentAccount(v) => Ok((vec![Change::IsPermanentAccount(v)], vec![])),
-            Intent::AccountName(v) => {
-                let Some(user_uuid) = global_model.user_uuid() else {
-                    return Ok((vec![Change::AccountName(v)], vec![]));
-                };
-                let Some(belong_to_company) = local_model
-                    .selected_company_uuid()
-                    .read()
-                    .or_else(|| global_model.selected_company().read())
-                else {
-                    return Ok((vec![Change::AccountName(v)], vec![]));
-                };
-
-                let change = vec![Change::AccountName(v.clone())];
-                let effect = vec![Effect::Check {
-                    process_id,
-                    is_debit: local_model.is_debit().read(),
-                    is_permanent_account: local_model.is_permanent_account().read(),
-                    account_name: v,
-                    unit_of_measurement_of_quantity: local_model
-                        .unit_of_measurement_of_quantity()
-                        .read(),
-                    user_uuid,
-                    belong_to_company,
-                }];
-                Ok((change, effect))
-            }
+            Intent::AccountName(v) => Ok((vec![Change::AccountName(v)], vec![])),
             Intent::UnitOfMeasurementOfQuantity(v) => {
                 Ok((vec![Change::UnitOfMeasurementOfQuantity(v)], vec![]))
             }
-            Intent::CompanyName(v) => {
-                let list_of_companies = global_model.list_of_companies();
-                let filtered = select_strings(list_of_companies, v.clone(), |a| a.1.as_str());
-
-                let uuid = match filtered.get(0) {
-                    Some(a) if v == a.1 => Some(a.0.clone()),
-                    _ => None,
-                };
-
-                let change = vec![
-                    Change::SelectedCompanyName(v),
-                    Change::ListOfCompaniesToDisplay(filtered),
-                    Change::SelectedCompanyUuid(uuid),
-                    Change::CompanyNameError(None),
-                ];
-                Ok((change, vec![]))
-            }
+            Intent::CompanyName(v) => Ok((vec![Change::SelectedCompanyName(v)], vec![])),
             Intent::SelectedCompany(idx) => {
-                let list = local_model.list_of_companies_to_display().read();
+                let list = list_of_companies_to_display(local_model, global_model);
                 match list.get(idx) {
                     Some(a) => {
-                        let change = vec![
-                            Change::SelectedCompanyName(a.1.clone()),
-                            Change::SelectedCompanyUuid(Some(a.0.clone())),
-                            Change::CompanyNameError(None),
-                        ];
+                        let change = vec![Change::SelectedCompanyName(a.1.clone())];
                         Ok((change, vec![]))
                     }
                     None => Ok((vec![], vec![])),
@@ -356,36 +339,22 @@ pub fn reduce(
         Message::Observe(observe) => match observe {
             Observe::ShowDialog => Ok((vec![Change::ShowDialog(Dialog::Show)], vec![])),
             Observe::HideDialog => Ok((vec![Change::ShowDialog(Dialog::Hide)], vec![])),
-            Observe::SubmitResult(result) => {
+            Observe::Result(result) => {
                 let change = match result {
-                    Ok(_) => vec![
+                    AsyncState::Success { .. } => {
+                        vec![
+                            Change::ShowDialog(Default::default()),
+                            Change::AccountName(Default::default()),
+                            Change::IsDebit(Default::default()),
+                            Change::IsPermanentAccount(Default::default()),
+                            Change::UnitOfMeasurementOfQuantity(Default::default()),
+                            Change::SelectedCompanyName(Default::default()),
+                            Change::AsyncState(result),
+                        ]
+                    }
+                    _ => vec![
                         Change::ShowDialog(Default::default()),
-                        Change::IsLoading(Default::default()),
-                        Change::AccountName(Default::default()),
-                        Change::IsDebit(Default::default()),
-                        Change::IsPermanentAccount(Default::default()),
-                        Change::UnitOfMeasurementOfQuantity(Default::default()),
-                        Change::AccountNameError(None),
-                        Change::CompanyNameError(None),
-                    ],
-                    Err(a) => vec![
-                        Change::ShowDialog(Default::default()),
-                        Change::IsLoading(Default::default()),
-                        Change::AccountNameError(a.account_name),
-                        Change::CompanyNameError(a.belong_to_company.map(CompanyNameError::from)),
-                    ],
-                };
-                Ok((change, vec![]))
-            }
-            Observe::CheckResult(result) => {
-                let change = match result {
-                    Ok(_) => vec![
-                        Change::AccountNameError(None),
-                        Change::CompanyNameError(None),
-                    ],
-                    Err(a) => vec![
-                        Change::AccountNameError(a.account_name),
-                        Change::CompanyNameError(a.belong_to_company.map(CompanyNameError::from)),
+                        Change::AsyncState(result),
                     ],
                 };
                 Ok((change, vec![]))
@@ -397,18 +366,14 @@ pub fn reduce(
 pub fn update(msg: Change, local_model: &impl LocalModel, _global_model: &impl GlobalModel) {
     match msg {
         Change::ShowDialog(i) => local_model.show_dialog().set(i),
-        Change::IsLoading(i) => local_model.is_loading().set(i),
         Change::IsDebit(i) => local_model.is_debit().set(i),
         Change::IsPermanentAccount(i) => local_model.is_permanent_account().set(i),
         Change::AccountName(i) => local_model.account_name().set(i),
         Change::UnitOfMeasurementOfQuantity(i) => {
             local_model.unit_of_measurement_of_quantity().set(i)
         }
-        Change::AccountNameError(i) => local_model.account_name_error().set(i),
         Change::SelectedCompanyName(i) => local_model.selected_company_name().set(i),
-        Change::SelectedCompanyUuid(i) => local_model.selected_company_uuid().set(i),
-        Change::ListOfCompaniesToDisplay(i) => local_model.list_of_companies_to_display().set(i),
-        Change::CompanyNameError(i) => local_model.company_name_error().set(i),
+        Change::AsyncState(i) => local_model.async_state().set(i),
     }
 }
 
@@ -416,25 +381,9 @@ pub async fn effect(msg: Effect, mut context: UiContext) -> Result<()> {
     match msg {
         Effect::Submit {
             process_id,
-            user_uuid,
-            is_debit,
-            is_permanent_account,
-            account_name,
-            unit_of_measurement_of_quantity,
-            belong_to_company,
+            async_input,
         } => {
-            let new_uuid = AccountUuid::from(UuidType::from(Id::generate()));
-
-            let input = Input {
-                user_uuid,
-                new_uuid,
-                is_debit,
-                is_permanent_account,
-                account_name,
-                unit_of_measurement_of_quantity,
-                belong_to_company,
-            };
-            handle_submit(process_id, &input, context).await?;
+            handle_submit(process_id, async_input, context).await?;
         }
         Effect::Consent {
             process_id,
@@ -447,34 +396,6 @@ pub async fn effect(msg: Effect, mut context: UiContext) -> Result<()> {
                     consent: user_consent,
                 })
                 .await?;
-        }
-        Effect::Check {
-            process_id,
-            is_debit,
-            is_permanent_account,
-            account_name,
-            unit_of_measurement_of_quantity,
-            user_uuid,
-            belong_to_company,
-        } => {
-            let new_uuid = AccountUuid::from(UuidType::from(Id::generate()));
-
-            let input = Input {
-                user_uuid,
-                new_uuid,
-                is_debit,
-                is_permanent_account,
-                account_name,
-                unit_of_measurement_of_quantity,
-                belong_to_company,
-            };
-            handle_check(process_id, input, context).await?;
-        }
-        Effect::Refresh {
-            user_uuid,
-            company_uuid,
-        } => {
-            fetch(company_uuid, user_uuid, context.cache).await?;
         }
     }
     Ok(())
@@ -497,7 +418,7 @@ impl ProcessDialog for DialogDispatchAdapter {
     }
 }
 
-async fn handle_submit(process_id: ProcessId, input: &Input, context: UiContext) -> Result<()> {
+async fn handle_submit(process_id: ProcessId, input: AsyncInput, context: UiContext) -> Result<()> {
     let context1 = context.clone();
 
     let dialog_signal_adapter = Arc::new(DialogDispatchAdapter {
@@ -505,7 +426,17 @@ async fn handle_submit(process_id: ProcessId, input: &Input, context: UiContext)
         sender: context.sender_to_commander.clone(),
     });
 
-    let data: TypeOperationClientInput = Arc::new(input.clone());
+    let new_uuid = AccountUuid::from(UuidType::from(Id::generate()));
+
+    let data: TypeOperationClientInput = Arc::new(Input {
+        user_uuid: input.user_uuid.clone(),
+        new_uuid,
+        is_debit: input.is_debit,
+        is_permanent_account: input.is_permanent_account,
+        account_name: input.account_name.clone(),
+        unit_of_measurement_of_quantity: input.unit_of_measurement_of_quantity.clone(),
+        belong_to_company: input.belong_to_company.clone(),
+    });
 
     handle_fall_back(
         context.sender_to_error,
@@ -530,51 +461,25 @@ async fn handle_submit(process_id: ProcessId, input: &Input, context: UiContext)
 
             let is_ok = result.is_ok();
 
+            let async_state = match result {
+                Ok(a) => AsyncState::Success {
+                    input: input.clone(),
+                    ok: a,
+                },
+                Err(a) => AsyncState::Failure {
+                    input: input.clone(),
+                    error: a,
+                },
+            };
+
             context1
                 .sender_to_commander
-                .send(process_id, Message::Observe(Observe::SubmitResult(result)));
+                .send(process_id, Message::Observe(Observe::Result(async_state)));
 
             Ok(is_ok)
         },
     )
     .await?;
-
-    Ok(())
-}
-
-async fn handle_check(process_id: ProcessId, input: Input, mut context: UiContext) -> Result<()> {
-    let data: TypeOperationClientInput = Arc::new(input);
-
-    let mut receiver_to_response = context
-        .cache
-        .send_to_cache_actor(CachingStrategy::ReadCacheOnly, TxnNumber::default(), data)
-        .await?;
-
-    match receiver_to_response.recv().await? {
-        Response::CloseTheChannel => {}
-        Response::ServerCannotBeReached => {}
-        Response::Data {
-            is_response_from_server: _,
-            data,
-        } => {
-            let result = match data {
-                Ok(ok) => {
-                    let a: Arc<dyn Any> = ok;
-                    let a: &Ok = a.downcast_ref().context("downcast error")?;
-                    Ok(a.clone())
-                }
-                Err(err) => {
-                    let a: Box<dyn Any> = err;
-                    let a: Box<Error> = a.downcast().map_err(|_| anyhow!("downcast error"))?;
-                    Err(*a)
-                }
-            };
-
-            context
-                .sender_to_commander
-                .send(process_id, Message::Observe(Observe::CheckResult(result)));
-        }
-    }
 
     Ok(())
 }

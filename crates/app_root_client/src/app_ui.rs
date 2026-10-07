@@ -155,7 +155,9 @@ fn Home() -> Element {
         use_case_create_account::ui::Component {
             sender: move |i| send(process_id3, use_case_create_account::client::Message::Intent(i)),
             show_dialog: MODEL.page_create_account.show_dialog().read(),
-            is_loading: MODEL.page_create_account.is_loading().read(),
+            is_loading: use_case_create_account::client::is_loading(
+                MODEL.page_create_account.as_ref(),
+            ),
             is_debit: MODEL.page_create_account.is_debit().read(),
             is_permanent_account: MODEL.page_create_account.is_permanent_account().read(),
             account_name: MODEL.page_create_account.account_name().read(),
@@ -163,23 +165,28 @@ fn Home() -> Element {
                 .page_create_account
                 .unit_of_measurement_of_quantity()
                 .read(),
-            account_name_error: MODEL
-                .page_create_account
-                .account_name_error()
-                .read()
-                .map(|e| format!("{e:?}")),
+            account_name_error: use_case_create_account::client::error_account_name(
+                MODEL.page_create_account.as_ref(),
+            )
+            .map(|e| format!("{e:?}")),
+            company_name_error: use_case_create_account::client::error_company_name(
+                MODEL.page_create_account.as_ref(),
+                MODEL.as_ref(),
+            )
+            .map(|e| format!("{e:?}")),
             selected_company_name: MODEL.page_create_account.selected_company_name().read(),
-            selected_company_uuid: MODEL
-                .page_create_account
-                .selected_company_uuid()
-                .read()
-                .map(|a| a.into_inner().to_string())
-                .unwrap_or_default(),
-            company_name_error: MODEL.page_create_account.company_name_error().read(),
-            list_of_company_name_and_uuid: MODEL
-                .page_create_account
-                .list_of_companies_to_display()
-                .read(),
+            resolved_company_uuid: use_case_create_account::client::resolved_company_uuid(
+                MODEL.page_create_account.as_ref(),
+                MODEL.as_ref(),
+            )
+            .map(|uuid| {
+                use cache::utils::MyUuidConverter;
+                uuid.to_string()
+            }),
+            list_of_company_name_and_uuid: use_case_create_account::client::list_of_companies_to_display(
+                MODEL.page_create_account.as_ref(),
+                MODEL.as_ref(),
+            ),
         }
     }
 }

@@ -1,7 +1,6 @@
-use crate::client::CompanyNameError;
+use crate::client::AsyncState;
 use crate::client::Intent;
 use crate::client::LocalModel;
-use crate::domain::AccountNameError;
 use dioxus::prelude::*;
 use kernel::new_types::CompanyUuid;
 use serde::Deserialize;
@@ -15,26 +14,18 @@ use utility_ui::my_signal::MySignal;
 
 #[derive(Debug, Default, Deserialize, Serialize)]
 pub struct TypeLocalModel {
-    is_loading: MySignal<bool>,
     show_dialog: MySignal<Dialog>,
     is_debit: MySignal<bool>,
     is_permanent_account: MySignal<bool>,
     account_name: MySignal<String>,
     unit_of_measurement_of_quantity: MySignal<String>,
-    account_name_error: MySignal<Option<AccountNameError>>,
     selected_company_name: MySignal<String>,
-    selected_company_uuid: MySignal<Option<CompanyUuid>>,
-    list_of_companies_to_display: MySignal<Vec<(CompanyUuid, String)>>,
-    company_name_error: MySignal<Option<CompanyNameError>>,
+    async_state: MySignal<AsyncState>,
 }
 
 impl LocalModel for TypeLocalModel {
     fn show_dialog(&self) -> impl HashimSignal<Dialog> {
         self.show_dialog.clone()
-    }
-
-    fn is_loading(&self) -> impl HashimSignal<bool> {
-        self.is_loading.clone()
     }
 
     fn is_debit(&self) -> impl HashimSignal<bool> {
@@ -53,24 +44,12 @@ impl LocalModel for TypeLocalModel {
         self.unit_of_measurement_of_quantity.clone()
     }
 
-    fn account_name_error(&self) -> impl HashimSignal<Option<AccountNameError>> {
-        self.account_name_error.clone()
-    }
-
     fn selected_company_name(&self) -> impl HashimSignal<String> {
         self.selected_company_name.clone()
     }
 
-    fn selected_company_uuid(&self) -> impl HashimSignal<Option<CompanyUuid>> {
-        self.selected_company_uuid.clone()
-    }
-
-    fn list_of_companies_to_display(&self) -> impl HashimSignal<Vec<(CompanyUuid, String)>> {
-        self.list_of_companies_to_display.clone()
-    }
-
-    fn company_name_error(&self) -> impl HashimSignal<Option<CompanyNameError>> {
-        self.company_name_error.clone()
+    fn async_state(&self) -> impl HashimSignal<AsyncState> {
+        self.async_state.clone()
     }
 }
 
@@ -84,15 +63,11 @@ pub fn Component(
     account_name: String,
     unit_of_measurement_of_quantity: String,
     account_name_error: Option<String>,
+    company_name_error: Option<String>,
     selected_company_name: String,
-    selected_company_uuid: String,
-    company_name_error: Option<CompanyNameError>,
+    resolved_company_uuid: Option<String>,
     list_of_company_name_and_uuid: Vec<(CompanyUuid, String)>,
 ) -> Element {
-    use_effect(move || {
-        sender(Intent::Subscribe);
-    });
-
     rsx! {
         div {
             DialogComponent {
@@ -118,38 +93,37 @@ pub fn Component(
                 list: list_of_company_name_and_uuid,
                 row_renderer: Callback::new(move |a: (CompanyUuid, String)| {
                     rsx! {
-                        button { "{a.1}" }
+                        button {
+                            disabled: is_loading,
+                            "{a.1}"
+                        }
                     }
                 }),
             }
-
-            div {
-                if !selected_company_uuid.is_empty() {
-                    label { "{selected_company_uuid}" }
-                }
+            if let Some(err) = company_name_error {
+                label { {err} }
             }
 
-            if let Some(err) = company_name_error {
-                // Translation hook: replace `format!("{err:?}")` with your
-                // translator once it exists, e.g.
-                //     label { {translate(err)} }
-                label { {format!("{err:?}")} }
+            if let Some(uuid) = resolved_company_uuid {
+                label { "{uuid}" }
             }
 
             input {
+                disabled: is_loading,
                 placeholder: "Account Name",
                 oninput: move |event| {
                     sender(Intent::AccountName(event.value()));
                 },
                 value: account_name,
             }
-            if let Some(account_name_error) = account_name_error {
-                label { {account_name_error} }
+            if let Some(err) = account_name_error {
+                label { {err} }
             }
 
             div {
                 label { "Is Debit" }
                 input {
+                    disabled: is_loading,
                     r#type: "checkbox",
                     checked: is_debit,
                     onchange: move |event| {
@@ -161,6 +135,7 @@ pub fn Component(
             div {
                 label { "Is Permanent Account" }
                 input {
+                    disabled: is_loading,
                     r#type: "checkbox",
                     checked: is_permanent_account,
                     onchange: move |event| {
@@ -170,6 +145,7 @@ pub fn Component(
             }
 
             input {
+                disabled: is_loading,
                 placeholder: "Unit of Measurement (e.g., kg, pcs)",
                 oninput: move |event| {
                     sender(Intent::UnitOfMeasurementOfQuantity(event.value()));
@@ -185,10 +161,11 @@ pub fn Component(
                 "Create Account"
             }
             button {
+                disabled: is_loading,
                 onclick: move |_| {
                     sender(Intent::Clean);
                 },
-                "clean"
+                "Clean"
             }
         }
     }
