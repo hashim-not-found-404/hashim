@@ -78,7 +78,7 @@ pub async fn check_input<
 }
 
 pub trait GlobalModel {
-    fn user_uuid(&self) -> impl HashimSignal<Option<UserUuid>>;
+    fn user_uuid(&self) -> Option<UserUuid>;
 }
 
 pub trait LocalModel {
@@ -182,10 +182,7 @@ pub fn reduce(
                 let change = vec![Change::IsLoading(true)];
                 let effect = vec![Effect::Submit {
                     process_id,
-                    user_uuid: global_model
-                        .user_uuid()
-                        .read()
-                        .context("user uuid not found")?,
+                    user_uuid: global_model.user_uuid().context("user uuid not found")?,
                     company_name: local_model.company_name().read(),
                     currency: local_model.currency().read(),
                 }];

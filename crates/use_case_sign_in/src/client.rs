@@ -11,6 +11,7 @@ use anyhow::anyhow;
 use infrastructure::actors::Sender;
 use infrastructure::jwt::JsonWebTokenType;
 use kernel::client::Cache;
+use kernel::new_types::UserUuid;
 use kernel::types::DatabaseRead;
 use serde::Deserialize;
 use serde::Serialize;
@@ -170,7 +171,7 @@ pub enum Message {
 
 impl MessageTrait for Message {}
 
-pub fn is_auth_loading(local_model: &impl LocalModel, global_model: &impl GlobalModel) -> bool {
+pub fn is_auth_loading(local_model: &impl LocalModel) -> bool {
     let a = local_model.async_state().read();
     match a {
         AsyncState::Loading { .. } => true,
@@ -178,29 +179,44 @@ pub fn is_auth_loading(local_model: &impl LocalModel, global_model: &impl Global
     }
 }
 
-pub fn error_user_id(
-    local_model: &impl LocalModel,
-    global_model: &impl GlobalModel,
-) -> Option<UserIdError> {
-    let a = local_model.async_state().read();
-    match a {
-        AsyncState::Idle => None,
-        AsyncState::Loading { input } => None,
-        AsyncState::Success { input, ok } => None,
-        AsyncState::Failure { input, error } => error.user_id,
+pub fn user_uuid(local_model: &impl LocalModel) -> Option<UserUuid> {
+    match local_model.async_state().read() {
+        AsyncState::Success { ok, .. } => Some(ok.user_uuid),
+        _ => None,
     }
 }
 
-pub fn error_password(
-    local_model: &impl LocalModel,
-    global_model: &impl GlobalModel,
-) -> Option<PasswordError> {
+pub fn user_id(local_model: &impl LocalModel) -> Option<String> {
+    match local_model.async_state().read() {
+        AsyncState::Success { ok, .. } => Some(ok.user_id),
+        _ => None,
+    }
+}
+
+pub fn user_name(local_model: &impl LocalModel) -> Option<String> {
+    match local_model.async_state().read() {
+        AsyncState::Success { ok, .. } => ok.user_name,
+        _ => None,
+    }
+}
+
+pub fn error_user_id(local_model: &impl LocalModel) -> Option<UserIdError> {
     let a = local_model.async_state().read();
     match a {
         AsyncState::Idle => None,
-        AsyncState::Loading { input } => None,
-        AsyncState::Success { input, ok } => None,
-        AsyncState::Failure { input, error } => error.password,
+        AsyncState::Loading { .. } => None,
+        AsyncState::Success { .. } => None,
+        AsyncState::Failure { error, .. } => error.user_id,
+    }
+}
+
+pub fn error_password(local_model: &impl LocalModel) -> Option<PasswordError> {
+    let a = local_model.async_state().read();
+    match a {
+        AsyncState::Idle => None,
+        AsyncState::Loading { .. } => None,
+        AsyncState::Success { .. } => None,
+        AsyncState::Failure { error, .. } => error.password,
     }
 }
 
@@ -213,7 +229,7 @@ pub fn reduce(
     match msg {
         Message::Intent(intent) => match intent {
             Intent::Submit => {
-                if is_auth_loading(local_model, global_model) {
+                if is_auth_loading(local_model) {
                     return Ok((vec![], vec![]));
                 }
 

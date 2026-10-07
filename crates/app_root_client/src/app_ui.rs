@@ -1,3 +1,4 @@
+use crate::model::user_uuid;
 use crate::navigator::Intent as NavIntent;
 use crate::navigator::Message;
 use crate::navigator::Navigator;
@@ -44,7 +45,7 @@ fn RootLayout() -> Element {
         }
     }
 
-    if MODEL.user_uuid.read().is_some() {
+    if user_uuid(&MODEL).is_some() {
         navigator().push(Route::Home {});
     }
 
@@ -181,17 +182,14 @@ fn SignIn() -> Element {
             password: MODEL.feature_state_auth.user_password.read(),
             error_user_id: use_case_sign_in::client::error_user_id(
                     MODEL.page_sign_in.deref(),
-                    MODEL.deref().deref(),
                 )
                 .map(|e| format!("{e:?}")),
             error_password: use_case_sign_in::client::error_password(
                     MODEL.page_sign_in.deref(),
-                    MODEL.deref().deref(),
                 )
                 .map(|e| format!("{e:?}")),
             is_loading: use_case_sign_in::client::is_auth_loading(
                 MODEL.page_sign_in.deref(),
-                MODEL.deref().deref(),
             ),
         }
     }
@@ -210,16 +208,17 @@ fn SignUp() -> Element {
             user_id: MODEL.user_id.read(),
             user_name: MODEL.user_name.read(),
             password: MODEL.feature_state_auth.user_password.read(),
-            error_user_id: MODEL
-                .page_sign_up
-                .error_user_id()
-                .read()
+            error_user_id: use_case_sign_up::client::error_user_id(
+                    MODEL.page_sign_up.deref(),
+                )
                 .map(|e| format!("{e:?}")),
-            error_user_name: MODEL
-                .page_sign_up
-                .error_user_name()
-                .read()
+            error_user_name: use_case_sign_up::client::error_user_name(
+                    MODEL.page_sign_up.deref(),
+                )
                 .map(|e| format!("{e:?}")),
+            is_loading: use_case_sign_up::client::is_auth_loading(
+                    MODEL.page_sign_up.deref(),
+                ),
         }
     }
 }

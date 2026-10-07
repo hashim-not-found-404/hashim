@@ -17,7 +17,6 @@ impl Model for TypeModel {}
 pub(crate) struct TypeModel {
     pub(crate) navigator: MySignal<Navigator>,
 
-    pub(crate) user_uuid: MySignal<Option<UserUuid>>,
     pub(crate) selected_company_uuid: MySignal<Option<CompanyUuid>>,
     pub(crate) selected_company_name: MySignal<Option<String>>,
     pub(crate) selected_company_branch_uuid: MySignal<Option<BranchUuid>>,
@@ -51,9 +50,20 @@ pub(crate) struct FeatureStateAuth {
     pub(crate) is_loading: MySignal<bool>,
 }
 
+pub fn user_uuid(model: &TypeModel) -> Option<UserUuid> {
+    if let Some(a) = use_case_sign_in::client::user_uuid(model.page_sign_in.as_ref()) {
+        return Some(a);
+    }
+    if let Some(a) = use_case_sign_up::client::user_uuid(model.page_sign_up.as_ref()) {
+        return Some(a);
+    }
+
+    None
+}
+
 impl use_case_create_account::client::GlobalModel for TypeModel {
-    fn user_uuid(&self) -> impl HashimSignal<Option<UserUuid>> {
-        self.user_uuid.clone()
+    fn user_uuid(&self) -> Option<UserUuid> {
+        user_uuid(self)
     }
 
     fn selected_company(&self) -> impl HashimSignal<Option<CompanyUuid>> {
@@ -68,14 +78,6 @@ impl use_case_create_account::client::GlobalModel for TypeModel {
 impl use_case_error_handler::client::GlobalModel for TypeModel {}
 
 impl use_case_sign_up::client::GlobalModel for TypeModel {
-    fn is_auth_loading(&self) -> impl HashimSignal<bool> {
-        self.feature_state_auth.is_loading.clone()
-    }
-
-    fn user_uuid(&self) -> impl HashimSignal<Option<UserUuid>> {
-        self.user_uuid.clone()
-    }
-
     fn user_name(&self) -> impl HashimSignal<Option<String>> {
         self.user_name.clone()
     }
@@ -100,14 +102,14 @@ impl use_case_sign_in::client::GlobalModel for TypeModel {
 }
 
 impl use_case_create_company::client::GlobalModel for TypeModel {
-    fn user_uuid(&self) -> impl HashimSignal<Option<UserUuid>> {
-        self.user_uuid.clone()
+    fn user_uuid(&self) -> Option<UserUuid> {
+        user_uuid(self)
     }
 }
 
 impl use_case_select_default_company::client::GlobalModel for TypeModel {
-    fn user_uuid(&self) -> impl HashimSignal<Option<UserUuid>> {
-        self.user_uuid.clone()
+    fn user_uuid(&self) -> Option<UserUuid> {
+        user_uuid(self)
     }
 
     fn selected_company_uuid(&self) -> impl HashimSignal<Option<CompanyUuid>> {
@@ -132,8 +134,8 @@ impl use_case_create_branch::client::GlobalModel for TypeModel {
         self.page_select_default_company.list_of_companies()
     }
 
-    fn user_uuid(&self) -> impl HashimSignal<Option<UserUuid>> {
-        self.user_uuid.clone()
+    fn user_uuid(&self) -> Option<UserUuid> {
+        user_uuid(self)
     }
 
     fn selected_company(&self) -> impl HashimSignal<Option<CompanyUuid>> {
@@ -142,10 +144,6 @@ impl use_case_create_branch::client::GlobalModel for TypeModel {
 }
 
 impl crate::navigator::GlobalModel for TypeModel {
-    fn is_auth_loading(&self) -> impl HashimSignal<bool> {
-        self.feature_state_auth.is_loading.clone()
-    }
-
     fn navigator(&self) -> impl HashimSignal<Navigator> {
         self.navigator.clone()
     }

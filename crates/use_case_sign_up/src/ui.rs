@@ -1,7 +1,6 @@
+use crate::client::AsyncState;
 use crate::client::Intent;
 use crate::client::LocalModel;
-use crate::domain::UserIdError;
-use crate::domain::UserNameError;
 use dioxus::prelude::*;
 use serde::Deserialize;
 use serde::Serialize;
@@ -15,8 +14,7 @@ use utility_ui::my_signal::MySignal;
 #[derive(Debug, Default, Deserialize, Serialize)]
 pub struct TypeLocalModel {
     show_dialog: MySignal<Dialog>,
-    error_user_id: MySignal<Option<UserIdError>>,
-    error_user_name: MySignal<Option<UserNameError>>,
+    async_state: MySignal<AsyncState>,
 }
 
 impl LocalModel for TypeLocalModel {
@@ -24,12 +22,8 @@ impl LocalModel for TypeLocalModel {
         self.show_dialog.clone()
     }
 
-    fn error_user_id(&self) -> impl HashimSignal<Option<UserIdError>> {
-        self.error_user_id.clone()
-    }
-
-    fn error_user_name(&self) -> impl HashimSignal<Option<UserNameError>> {
-        self.error_user_name.clone()
+    fn async_state(&self) -> impl HashimSignal<AsyncState> {
+        self.async_state.clone()
     }
 }
 
@@ -43,6 +37,7 @@ pub fn Component(
     password: String,
     error_user_id: Option<String>,
     error_user_name: Option<String>,
+    is_loading: bool,
 ) -> Element {
     rsx! {
         div {
@@ -61,6 +56,7 @@ pub fn Component(
             }
 
             input {
+                disabled: is_loading,
                 placeholder: "Name (Optional)",
                 oninput: move |event| {
                     sender(Intent::UserName(event.value()));
@@ -72,6 +68,7 @@ pub fn Component(
             }
 
             input {
+                disabled: is_loading,
                 placeholder: "User Id",
                 oninput: move |event| {
                     sender(Intent::UserId(event.value()));
@@ -83,7 +80,7 @@ pub fn Component(
             }
 
             PasswordInput {
-                disabled: false,
+                disabled: is_loading,
                 password_callback: move |p| {
                     sender(Intent::Password(p));
                 },
@@ -91,12 +88,14 @@ pub fn Component(
             }
 
             button {
+                disabled: is_loading,
                 onclick: move |_| {
                     sender(Intent::Submit);
                 },
                 "Sign Up"
             }
             button {
+                disabled: is_loading,
                 onclick: move |_| {
                     on_back(());
                 },

@@ -31,7 +31,7 @@ const RESOURCES_NAME_TO_LISTEN: &[ResourceName] = &[
 ];
 
 pub trait GlobalModel {
-    fn user_uuid(&self) -> impl HashimSignal<Option<UserUuid>>;
+    fn user_uuid(&self) -> Option<UserUuid>;
     fn selected_company_uuid(&self) -> impl HashimSignal<Option<CompanyUuid>>;
     fn selected_company_name(&self) -> impl HashimSignal<Option<String>>;
     fn selected_company_branch_uuid(&self) -> impl HashimSignal<Option<BranchUuid>>;
@@ -102,7 +102,7 @@ pub fn reduce(
     match msg {
         Message::Intent(intent) => match intent {
             Intent::Subscribe => {
-                let Some(user_uuid) = global_model.user_uuid().read() else {
+                let Some(user_uuid) = global_model.user_uuid() else {
                     return Ok((vec![], vec![]));
                 };
                 let change = vec![Change::IsLoading(true)];
@@ -192,7 +192,7 @@ pub fn reduce(
                 Ok((change, vec![]))
             }
             Observe::Refresh => {
-                let Some(user_uuid) = global_model.user_uuid().read() else {
+                let Some(user_uuid) = global_model.user_uuid() else {
                     return Ok((vec![], vec![]));
                 };
                 let change = vec![Change::IsLoading(true)];

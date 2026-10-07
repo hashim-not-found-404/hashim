@@ -83,7 +83,7 @@ pub async fn check_input<
 
 pub trait GlobalModel {
     fn list_of_companies(&self) -> impl HashimSignal<Vec<(CompanyUuid, String)>>;
-    fn user_uuid(&self) -> impl HashimSignal<Option<UserUuid>>;
+    fn user_uuid(&self) -> Option<UserUuid>;
     fn selected_company(&self) -> impl HashimSignal<Option<CompanyUuid>>;
 }
 
@@ -194,7 +194,7 @@ pub fn reduce(
                     return Ok((vec![], vec![]));
                 };
 
-                let Some(user_uuid) = global_model.user_uuid().read() else {
+                let Some(user_uuid) = global_model.user_uuid() else {
                     return Ok((vec![], vec![]));
                 };
 

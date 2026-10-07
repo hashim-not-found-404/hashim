@@ -87,7 +87,7 @@ pub async fn check_input<
 }
 
 pub trait GlobalModel {
-    fn user_uuid(&self) -> impl HashimSignal<Option<UserUuid>>;
+    fn user_uuid(&self) -> Option<UserUuid>;
     fn selected_company(&self) -> impl HashimSignal<Option<CompanyUuid>>;
     fn list_of_companies(&self) -> impl HashimSignal<Vec<(CompanyUuid, String)>>;
 }
@@ -207,7 +207,7 @@ pub fn reduce(
     match msg {
         Message::Intent(intent) => match intent {
             Intent::Subscribe => {
-                let Some(user_uuid) = global_model.user_uuid().read() else {
+                let Some(user_uuid) = global_model.user_uuid() else {
                     return Ok((vec![], vec![]));
                 };
                 let Some(company_uuid) = global_model.selected_company().read() else {
@@ -220,7 +220,7 @@ pub fn reduce(
                 Ok((vec![], effect))
             }
             Intent::Submit => {
-                let Some(user_uuid) = global_model.user_uuid().read() else {
+                let Some(user_uuid) = global_model.user_uuid() else {
                     return Ok((vec![], vec![]));
                 };
 
@@ -293,7 +293,7 @@ pub fn reduce(
             Intent::IsDebit(v) => Ok((vec![Change::IsDebit(v)], vec![])),
             Intent::IsPermanentAccount(v) => Ok((vec![Change::IsPermanentAccount(v)], vec![])),
             Intent::AccountName(v) => {
-                let Some(user_uuid) = global_model.user_uuid().read() else {
+                let Some(user_uuid) = global_model.user_uuid() else {
                     return Ok((vec![Change::AccountName(v)], vec![]));
                 };
                 let Some(belong_to_company) = local_model

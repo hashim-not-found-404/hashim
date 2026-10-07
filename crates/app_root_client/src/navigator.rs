@@ -38,7 +38,6 @@ pub(crate) enum Menu {
 }
 
 pub(crate) trait GlobalModel: Model + 'static {
-    fn is_auth_loading(&self) -> impl HashimSignal<bool>;
     fn navigator(&self) -> impl HashimSignal<Navigator>;
 }
 
@@ -74,18 +73,8 @@ pub(crate) fn reduce(
 ) -> Result<(Vec<Change>, Vec<Effect>)> {
     match msg {
         Message::Intent(intent) => match intent {
-            Intent::GoToSignIn => {
-                if global_model.is_auth_loading().read() {
-                    return Ok((vec![], vec![]));
-                }
-                Ok((vec![Change::Navigator(Navigator::SignIn)], vec![]))
-            }
-            Intent::GoToSignUp => {
-                if global_model.is_auth_loading().read() {
-                    return Ok((vec![], vec![]));
-                }
-                Ok((vec![Change::Navigator(Navigator::SignUp)], vec![]))
-            }
+            Intent::GoToSignIn => Ok((vec![Change::Navigator(Navigator::SignIn)], vec![])),
+            Intent::GoToSignUp => Ok((vec![Change::Navigator(Navigator::SignUp)], vec![])),
         },
         Message::Observe(observe) => match observe {},
     }
