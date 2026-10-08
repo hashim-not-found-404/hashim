@@ -126,6 +126,11 @@ pub fn process_manager_actor(
                         message,
                     } => match message {
                         MessageFromProcess::Subscribe { sender, dialog } => {
+                            if let Some(mut old) = process_states.remove(&process_id) {
+                                old.timer_handle.abort().await;
+                                let _ = old.sender.send(MessageToProcess::CancelOperation).await;
+                            }
+
                             let timer_handle = timer_handle(dialog.clone());
 
                             process_states.insert(
@@ -151,7 +156,7 @@ pub fn process_manager_actor(
                             table.is_ok = Some(is_response_ok);
                             table.is_response_from_server = Some(is_response_from_server);
 
-                            if is_response_from_server {
+                            if is_response_from_server || !is_response_ok {
                                 table.sender.send(MessageToProcess::CancelOperation).await?;
 
                                 process_states.remove(&process_id);
