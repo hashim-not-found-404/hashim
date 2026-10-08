@@ -46,10 +46,12 @@ use utility::ui_effect::MessageTrait;
 use utility::ui_effect::UiContext;
 use utility::ui_orchestration::GenricAsyncState;
 use utility::ui_orchestration::handle_fall_back;
+use utility::ui_orchestration::spawn_listener;
 use utility_ui::domain::Dialog;
 use utility_ui::domain::HashimSignal;
 
 const RESOURCES_NAME_TO_POKE: &[ResourceName] = &[new_resource_name("branches")];
+const RESOURCES_NAME_TO_LISTEN: &[ResourceName] = &[new_resource_name("branches")];
 
 impl TraitOperationClientOk for Ok {
     fn subs_to_poke(&self) -> &'static [ResourceName] {
@@ -200,6 +202,12 @@ pub enum Effect {
         process_id: ProcessId,
         async_input: AsyncInput,
     },
+    Subscribe {
+        process_id: ProcessId,
+    },
+    UnSubscribe {
+        process_id: ProcessId,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -213,6 +221,8 @@ pub enum Intent {
     Currency(Currency),
     Latitude(f64),
     Longitude(f64),
+    Subscribe,
+    UnSubscribe,
 }
 
 #[derive(Debug, Clone)]
@@ -220,6 +230,7 @@ pub enum Observe {
     ShowDialog,
     HideDialog,
     Result(AsyncState),
+    Refresh,
 }
 
 #[derive(Debug, Clone)]
@@ -266,10 +277,12 @@ pub fn reduce(
     global_model: &impl GlobalModel,
 ) -> Result<(Vec<Change>, Vec<Effect>)> {
     if let Message::Intent(ref a) = msg {
-        if let Intent::Consent(_) = a {
-        } else {
-            if local_model.async_state().read().is_loading() {
-                return Ok((vec![], vec![]));
+        match a {
+            Intent::Consent(_) | Intent::Subscribe | Intent::UnSubscribe => {}
+            _ => {
+                if local_model.async_state().read().is_loading() {
+                    return Ok((vec![], vec![]));
+                }
             }
         }
     }
@@ -399,6 +412,14 @@ pub fn reduce(
                 });
                 Ok((change, effect))
             }
+            Intent::Subscribe => {
+                let effect = vec![Effect::Subscribe { process_id }];
+                Ok((vec![], effect))
+            }
+            Intent::UnSubscribe => {
+                let effect = vec![Effect::UnSubscribe { process_id }];
+                Ok((vec![], effect))
+            }
         },
         Message::Observe(observe) => match observe {
             Observe::ShowDialog => Ok((vec![Change::ShowDialog(Dialog::Show)], vec![])),
@@ -421,6 +442,11 @@ pub fn reduce(
                     ],
                 };
                 Ok((change, vec![]))
+            }
+            Observe::Refresh => {
+                let effect =
+                    build_check_effect(local_model, global_model, process_id, None, |_| {});
+                Ok((vec![], effect))
             }
         },
     }
@@ -462,6 +488,12 @@ pub async fn effect(msg: Effect, mut context: UiContext) -> Result<()> {
             async_input,
         } => {
             handle_check(process_id, async_input, context).await?;
+        }
+        Effect::Subscribe { process_id } => {
+            handle_subscribe(process_id, context).await?;
+        }
+        Effect::UnSubscribe { process_id } => {
+            context.aborters.abort(process_id).await?;
         }
     }
     Ok(())
@@ -584,4 +616,14 @@ async fn handle_check(process_id: ProcessId, input: AsyncInput, context: UiConte
     }
 
     Ok(())
+}
+
+async fn handle_subscribe(process_id: ProcessId, context: UiContext) -> Result<()> {
+    spawn_listener(
+        context,
+        RESOURCES_NAME_TO_LISTEN,
+        process_id,
+        Message::Observe(Observe::Refresh),
+    )
+    .await
 }
