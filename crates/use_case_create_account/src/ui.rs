@@ -68,6 +68,14 @@ pub fn Component(
     resolved_company_uuid: Option<String>,
     list_of_company_name_and_uuid: Vec<(CompanyUuid, String)>,
 ) -> Element {
+    use_effect(move || {
+        sender(Intent::Subscribe);
+    });
+
+    use_drop(move || {
+        sender(Intent::UnSubscribe);
+    });
+
     rsx! {
         div {
             DialogComponent {

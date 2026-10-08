@@ -66,6 +66,14 @@ pub fn Component(
     location_error: Option<String>,
     list_of_company_name_and_uuid: Vec<(CompanyUuid, String)>,
 ) -> Element {
+    use_effect(move || {
+        sender(Intent::Subscribe);
+    });
+
+    use_drop(move || {
+        sender(Intent::UnSubscribe);
+    });
+
     rsx! {
         div {
             DialogComponent {

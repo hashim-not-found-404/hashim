@@ -146,6 +146,8 @@ impl Commander {
             handle_error::<(), _>(sender_to_error.clone(), async || {
                 loop {
                     let message = receiver.recv().await?;
+
+                    info!("###########################################################################");
                     info!(?message);
 
                     let msg = CasMsg::cast_message_to_reducer(message.inner)?;
