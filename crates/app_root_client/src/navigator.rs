@@ -69,7 +69,7 @@ impl MessageTrait for Message {}
 pub(crate) fn reduce(
     msg: Message,
     _: ProcessId,
-    global_model: &impl GlobalModel,
+    _: &impl GlobalModel,
 ) -> Result<(Vec<Change>, Vec<Effect>)> {
     match msg {
         Message::Intent(intent) => match intent {

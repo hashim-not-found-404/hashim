@@ -17,9 +17,7 @@ pub(crate) struct TypeModel {
     pub(crate) navigator: MySignal<Navigator>,
 
     pub(crate) selected_company_uuid: MySignal<Option<CompanyUuid>>,
-    pub(crate) selected_company_name: MySignal<Option<String>>,
     pub(crate) selected_company_branch_uuid: MySignal<Option<BranchUuid>>,
-    pub(crate) selected_company_branch_name: MySignal<Option<String>>,
 
     // global states
     pub(crate) page_error_handler: Arc<use_case_error_handler::ui::TypeLocalModel>,
