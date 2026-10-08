@@ -22,6 +22,7 @@ use utility::cache::ResourceName;
 use utility::cache::TraitOperationClientError;
 use utility::cache::TraitOperationClientInput;
 use utility::cache::TraitOperationClientOk;
+use utility::cache::TypeOperationClientError;
 use utility::cache::TypeOperationClientInput;
 use utility::cache::TypeOperationClientResult;
 use utility::cache::new_resource_name;
@@ -53,6 +54,10 @@ impl TraitOperationClientError for Error {
 
 impl TraitOperationClientInput for Input {
     fn user_uuid(&self) -> Option<[u8; 16]> {
+        None
+    }
+
+    fn state_less_check(&self) -> Option<TypeOperationClientError> {
         None
     }
 }

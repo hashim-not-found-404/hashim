@@ -74,6 +74,7 @@ pub trait CacheUtility: Sized + 'static {
 
 pub trait TraitOperationClientInput: TraitOperationDTOInput + DynClone {
     fn user_uuid(&self) -> Option<[u8; 16]>;
+    fn state_less_check(&self) -> Option<TypeOperationClientError>;
 }
 
 pub trait TraitOperationClientOk: TraitOperationDTOOk {
@@ -450,165 +451,180 @@ async fn message_handler<
                 mut sender,
                 txn_number,
                 data,
-            } => match strategy {
-                CachingStrategy::ReadCacheOnly => {
-                    let input = CasCh::cast_input(data)?;
-                    let result = input.check_input(cache.get_inner_cache()).await?;
+            } => {
+                let result = data.state_less_check();
 
+                if let Some(err) = result {
                     sender
                         .send(Response::Data {
                             is_response_from_server: false,
-                            data: result,
+                            data: Err(err),
                         })
                         .await?;
                     sender.send(Response::CloseTheChannel).await?;
+                    continue;
                 }
-                CachingStrategy::ReadCacheFirst => todo!(),
-                CachingStrategy::ReadCacheAndServer => {
-                    let input = CasCh::cast_input(data.clone())?;
-                    let result = input.check_input(cache.get_inner_cache()).await?;
 
-                    sender
-                        .send(Response::Data {
-                            is_response_from_server: false,
-                            data: result,
-                        })
-                        .await?;
+                match strategy {
+                    CachingStrategy::ReadCacheOnly => {
+                        let input = CasCh::cast_input(data)?;
+                        let result = input.check_input(cache.get_inner_cache()).await?;
 
-                    if is_online.read() {
-                        let data = cache
-                            .encode_the_inputs(vec![Txn {
-                                txn_number,
-                                operation: data,
-                            }])
+                        sender
+                            .send(Response::Data {
+                                is_response_from_server: false,
+                                data: result,
+                            })
                             .await?;
-
-                        sender_to_network.send(data).await?;
-
-                        pool_of_senders.insert(txn_number, sender);
-                    } else {
-                        sender.send(Response::ServerCannotBeReached).await?;
                         sender.send(Response::CloseTheChannel).await?;
                     }
-                }
-                CachingStrategy::ReadServerFirst => todo!(),
-                CachingStrategy::ReadServerOnly => {
-                    if is_online.read() {
-                        let data = cache
-                            .encode_the_inputs(vec![Txn {
-                                txn_number,
-                                operation: data,
-                            }])
+                    CachingStrategy::ReadCacheFirst => todo!(),
+                    CachingStrategy::ReadCacheAndServer => {
+                        let input = CasCh::cast_input(data.clone())?;
+                        let result = input.check_input(cache.get_inner_cache()).await?;
+
+                        sender
+                            .send(Response::Data {
+                                is_response_from_server: false,
+                                data: result,
+                            })
                             .await?;
 
-                        sender_to_network.send(data).await?;
+                        if is_online.read() {
+                            let data = cache
+                                .encode_the_inputs(vec![Txn {
+                                    txn_number,
+                                    operation: data,
+                                }])
+                                .await?;
 
-                        pool_of_senders.insert(txn_number, sender);
-                    } else {
-                        sender.send(Response::ServerCannotBeReached).await?;
-                        sender.send(Response::CloseTheChannel).await?;
-                    }
-                }
-                CachingStrategy::WriteCacheOnly => {
-                    let input = CasCh::cast_input(data.clone())?;
-                    let result = input.check_input(cache.get_inner_cache()).await?;
+                            sender_to_network.send(data).await?;
 
-                    let mut subs_to_poke = HashSet::new();
-
-                    match &result {
-                        Ok(ok) => {
-                            add_subs(&mut subs_to_poke, ok.subs_to_poke());
-                            let ok = CasCh::cast_ok(ok.clone())?;
-                            ok.apply_to_cache(cache.get_inner_cache()).await?;
-                        }
-                        Err(err) => {
-                            add_subs(&mut subs_to_poke, err.subs_to_poke());
+                            pool_of_senders.insert(txn_number, sender);
+                        } else {
+                            sender.send(Response::ServerCannotBeReached).await?;
+                            sender.send(Response::CloseTheChannel).await?;
                         }
                     }
-                    cache.write_input_to_cache(txn_number, data.clone()).await?;
+                    CachingStrategy::ReadServerFirst => todo!(),
+                    CachingStrategy::ReadServerOnly => {
+                        if is_online.read() {
+                            let data = cache
+                                .encode_the_inputs(vec![Txn {
+                                    txn_number,
+                                    operation: data,
+                                }])
+                                .await?;
 
-                    poke_the_subs::<ResourceName>(
-                        pool_of_pokers,
-                        &*pool_of_subscribes,
-                        &subs_to_poke,
-                    );
+                            sender_to_network.send(data).await?;
 
-                    sender
-                        .send(Response::Data {
-                            is_response_from_server: false,
-                            data: result,
-                        })
-                        .await?;
-
-                    sender.send(Response::CloseTheChannel).await?;
-                }
-                CachingStrategy::WriteCacheFirst => todo!(),
-                CachingStrategy::WriteCacheAndServer => {
-                    let input = CasCh::cast_input(data.clone())?;
-                    let result = input.check_input(cache.get_inner_cache()).await?;
-
-                    let mut subs_to_poke = HashSet::new();
-
-                    match &result {
-                        Ok(ok) => {
-                            add_subs(&mut subs_to_poke, ok.subs_to_poke());
-                            let ok = CasCh::cast_ok(ok.clone())?;
-                            ok.apply_to_cache(cache.get_inner_cache()).await?;
-                        }
-                        Err(err) => {
-                            add_subs(&mut subs_to_poke, err.subs_to_poke());
+                            pool_of_senders.insert(txn_number, sender);
+                        } else {
+                            sender.send(Response::ServerCannotBeReached).await?;
+                            sender.send(Response::CloseTheChannel).await?;
                         }
                     }
-                    cache.write_input_to_cache(txn_number, data.clone()).await?;
+                    CachingStrategy::WriteCacheOnly => {
+                        let input = CasCh::cast_input(data.clone())?;
+                        let result = input.check_input(cache.get_inner_cache()).await?;
 
-                    poke_the_subs::<ResourceName>(
-                        pool_of_pokers,
-                        &*pool_of_subscribes,
-                        &subs_to_poke,
-                    );
+                        let mut subs_to_poke = HashSet::new();
 
-                    sender
-                        .send(Response::Data {
-                            is_response_from_server: false,
-                            data: result,
-                        })
-                        .await?;
+                        match &result {
+                            Ok(ok) => {
+                                add_subs(&mut subs_to_poke, ok.subs_to_poke());
+                                let ok = CasCh::cast_ok(ok.clone())?;
+                                ok.apply_to_cache(cache.get_inner_cache()).await?;
+                            }
+                            Err(err) => {
+                                add_subs(&mut subs_to_poke, err.subs_to_poke());
+                            }
+                        }
+                        cache.write_input_to_cache(txn_number, data.clone()).await?;
 
-                    if is_online.read() {
-                        let data = cache
-                            .encode_the_inputs(vec![Txn {
-                                txn_number,
-                                operation: data,
-                            }])
+                        poke_the_subs::<ResourceName>(
+                            pool_of_pokers,
+                            &*pool_of_subscribes,
+                            &subs_to_poke,
+                        );
+
+                        sender
+                            .send(Response::Data {
+                                is_response_from_server: false,
+                                data: result,
+                            })
                             .await?;
 
-                        sender_to_network.send(data).await?;
-
-                        pool_of_senders.insert(txn_number, sender);
-                    } else {
-                        sender.send(Response::ServerCannotBeReached).await?;
                         sender.send(Response::CloseTheChannel).await?;
                     }
-                }
-                CachingStrategy::WriteServerFirst => todo!(),
-                CachingStrategy::WriteServerOnly => {
-                    if is_online.read() {
-                        let data = cache
-                            .encode_the_inputs(vec![Txn {
-                                txn_number,
-                                operation: data,
-                            }])
+                    CachingStrategy::WriteCacheFirst => todo!(),
+                    CachingStrategy::WriteCacheAndServer => {
+                        let input = CasCh::cast_input(data.clone())?;
+                        let result = input.check_input(cache.get_inner_cache()).await?;
+
+                        let mut subs_to_poke = HashSet::new();
+
+                        match &result {
+                            Ok(ok) => {
+                                add_subs(&mut subs_to_poke, ok.subs_to_poke());
+                                let ok = CasCh::cast_ok(ok.clone())?;
+                                ok.apply_to_cache(cache.get_inner_cache()).await?;
+                            }
+                            Err(err) => {
+                                add_subs(&mut subs_to_poke, err.subs_to_poke());
+                            }
+                        }
+                        cache.write_input_to_cache(txn_number, data.clone()).await?;
+
+                        poke_the_subs::<ResourceName>(
+                            pool_of_pokers,
+                            &*pool_of_subscribes,
+                            &subs_to_poke,
+                        );
+
+                        sender
+                            .send(Response::Data {
+                                is_response_from_server: false,
+                                data: result,
+                            })
                             .await?;
 
-                        sender_to_network.send(data).await?;
+                        if is_online.read() {
+                            let data = cache
+                                .encode_the_inputs(vec![Txn {
+                                    txn_number,
+                                    operation: data,
+                                }])
+                                .await?;
 
-                        pool_of_senders.insert(txn_number, sender);
-                    } else {
-                        sender.send(Response::ServerCannotBeReached).await?;
-                        sender.send(Response::CloseTheChannel).await?;
+                            sender_to_network.send(data).await?;
+
+                            pool_of_senders.insert(txn_number, sender);
+                        } else {
+                            sender.send(Response::ServerCannotBeReached).await?;
+                            sender.send(Response::CloseTheChannel).await?;
+                        }
+                    }
+                    CachingStrategy::WriteServerFirst => todo!(),
+                    CachingStrategy::WriteServerOnly => {
+                        if is_online.read() {
+                            let data = cache
+                                .encode_the_inputs(vec![Txn {
+                                    txn_number,
+                                    operation: data,
+                                }])
+                                .await?;
+
+                            sender_to_network.send(data).await?;
+
+                            pool_of_senders.insert(txn_number, sender);
+                        } else {
+                            sender.send(Response::ServerCannotBeReached).await?;
+                            sender.send(Response::CloseTheChannel).await?;
+                        }
                     }
                 }
-            },
+            }
         }
     }
 }

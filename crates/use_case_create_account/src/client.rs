@@ -30,6 +30,7 @@ use utility::cache::Response;
 use utility::cache::TraitOperationClientError;
 use utility::cache::TraitOperationClientInput;
 use utility::cache::TraitOperationClientOk;
+use utility::cache::TypeOperationClientError;
 use utility::cache::TypeOperationClientInput;
 use utility::cache::TypeOperationClientResult;
 use utility::cache::new_resource_name;
@@ -66,6 +67,15 @@ impl TraitOperationClientError for Error {
 impl TraitOperationClientInput for Input {
     fn user_uuid(&self) -> Option<[u8; 16]> {
         Some(*self.user_uuid.deref().deref())
+    }
+
+    fn state_less_check(&self) -> Option<TypeOperationClientError> {
+        let errr = self.state_less_check();
+        if errr.is_there_error() {
+            Some(Box::new(errr))
+        } else {
+            None
+        }
     }
 }
 
