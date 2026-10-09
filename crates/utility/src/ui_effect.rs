@@ -1,6 +1,5 @@
 use crate::cache::CacheStruct;
 use crate::handle_errors::handle_error;
-use crate::process_manager::MessageToProcessManager;
 use crate::process_manager::ProcessId;
 use anyhow::Error;
 use anyhow::Result;
@@ -36,7 +35,6 @@ pub struct MessageToCommander {
 #[derive(Clone)]
 pub struct UiContext {
     pub cache: CacheStruct,
-    pub sender_to_process_manager: MpscSender<MessageToProcessManager>,
     pub aborters: Aborters,
     pub sender_to_error: MpscSender<Error>,
     pub sender_to_commander: Commander,
@@ -81,7 +79,6 @@ pub struct Commander {
 impl Commander {
     pub fn new<Mdl, CasMsg>(
         sender_to_error: MpscSender<Error>,
-        sender_to_process_manager: MpscSender<MessageToProcessManager>,
         model: Arc<Mdl>,
         cache: CacheStruct,
     ) -> Self
@@ -98,7 +95,6 @@ impl Commander {
         commander.clone().commander_actor::<Mdl, CasMsg>(
             sender_to_error,
             receiver_to_commander,
-            sender_to_process_manager,
             model,
             cache,
         );
@@ -121,11 +117,25 @@ impl Commander {
         });
     }
 
+    pub async fn async_send<Msg>(&self, process_id: ProcessId, msg: Msg) -> Result<()>
+    where
+        Msg: MessageTrait,
+    {
+        let mut sender = self.sender.clone();
+        sender
+            .send(MessageToCommander {
+                process_id,
+                inner: Box::new(msg),
+            })
+            .await?;
+
+        Ok(())
+    }
+
     fn commander_actor<Mdl, CasMsg>(
         self,
         sender_to_error: MpscSender<Error>,
         mut receiver: MpscReceiver<MessageToCommander>,
-        sender_to_process_manager: MpscSender<MessageToProcessManager>,
         model: Arc<Mdl>,
         cache: CacheStruct,
     ) where
@@ -137,7 +147,6 @@ impl Commander {
 
             let context = UiContext {
                 cache,
-                sender_to_process_manager,
                 aborters,
                 sender_to_error: sender_to_error.clone(),
                 sender_to_commander: self,

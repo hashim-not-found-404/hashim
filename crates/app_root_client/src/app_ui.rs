@@ -38,9 +38,6 @@ fn RootLayout() -> Element {
         Navigator::SignUp => {
             navigator().push(Route::SignUp {});
         }
-        Navigator::GetCompaniesAndBranches(_) => {
-            // navigator().push(Route::GetCompaniesAndBranches {});
-        }
     }
 
     if MODEL.user_uuid().is_some() {

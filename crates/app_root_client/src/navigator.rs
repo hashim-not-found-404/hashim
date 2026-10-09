@@ -12,7 +12,6 @@ pub(crate) enum Navigator {
     #[default]
     SignIn,
     SignUp,
-    GetCompaniesAndBranches(GetCompaniesAndBranches),
     // Home(HomeNav),
 }
 

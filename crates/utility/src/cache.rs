@@ -7,10 +7,8 @@ use crate::handle_errors::handle_error;
 use crate::types::ReadAndSet;
 use anyhow::Result;
 use dyn_clone::DynClone;
-use infrastructure::actors::Mpsc;
 use infrastructure::actors::MpscReceiver;
 use infrastructure::actors::MpscSender;
-use infrastructure::actors::MultiProducerSingleConsumer;
 use infrastructure::actors::Receiver;
 use infrastructure::actors::Sender;
 use infrastructure::runtime::Rt;
@@ -116,12 +114,7 @@ pub type TypeOperationClientOk = Arc<dyn TraitOperationClientOk>;
 pub type TypeOperationClientError = Box<dyn TraitOperationClientError>;
 pub type TypeOperationClientResult = Result<TypeOperationClientOk, TypeOperationClientError>;
 
-impl Clone for TypeOperationClientError {
-    fn clone(&self) -> Self {
-        let clone_box = dyn_clone::clone_box(&**self);
-        clone_box
-    }
-}
+dyn_clone::clone_trait_object!(TraitOperationClientError);
 
 pub enum MessageFromServer {
     Error(anyhow::Error),
@@ -131,15 +124,12 @@ pub enum MessageFromServer {
 
 #[derive(Debug)]
 pub enum Response {
-    CloseTheChannel,
     ServerCannotBeReached,
-    Data {
-        is_response_from_server: bool,
-        data: TypeOperationClientResult,
-    },
+    Data { data: TypeOperationClientResult },
 }
 
 pub type PokeType = Box<dyn Fn() + 'static>;
+pub type ResponseFunction = Box<dyn Fn(Response) -> Pin<Box<dyn Future<Output = Result<()>>>>>;
 
 pub enum MessageToCache {
     WeAreBackOnline,
@@ -154,7 +144,7 @@ pub enum MessageToCache {
     },
     Query {
         strategy: CachingStrategy,
-        sender: MpscSender<Response>,
+        sender: ResponseFunction,
         txn_number: TxnNumber,
         data: TypeOperationClientInput,
     },
@@ -215,19 +205,18 @@ impl CacheStruct {
         strategy: CachingStrategy,
         txn_number: TxnNumber,
         data: TypeOperationClientInput,
-    ) -> Result<MpscReceiver<Response>> {
-        let (sender, receiver) = Mpsc::channel();
-
+        response_function: ResponseFunction,
+    ) -> Result<()> {
         self.sender
             .send(MessageToCache::Query {
                 strategy,
-                sender,
+                sender: response_function,
                 txn_number,
                 data,
             })
             .await?;
 
-        Ok(receiver)
+        Ok(())
     }
 
     pub async fn send_subs_to_cache_actor(
@@ -264,19 +253,16 @@ impl CacheStruct {
         is_online: Arc<RwLock<bool>>,
     ) {
         Rt::spawn_local(async move {
-            let mut pool_of_senders =
-                HashMap::<TxnNumber, MpscSender<Response>>::with_capacity(100);
+            let mut pool_of_senders = HashMap::<TxnNumber, ResponseFunction>::with_capacity(100);
             let mut pool_of_pokers = HashMap::<u16, PokeType>::with_capacity(10);
             let mut pool_of_subscribes = HashMap::<ResourceName, HashSet<u16>>::with_capacity(100);
 
             handle_error::<(), _>(sender_to_error.clone(), async || {
-                let mut cache = loop {
-                    match Cu::new().await {
-                        Ok(ok) => break ok,
-                        Err(err) => {
-                            Rt::sleep(Duration::from_millis(1000)).await;
-                            return Err(err);
-                        }
+                let mut cache = match Cu::new().await {
+                    Ok(ok) => ok,
+                    Err(err) => {
+                        Rt::sleep(Duration::from_millis(1000)).await;
+                        return Err(err);
                     }
                 };
 
@@ -308,7 +294,7 @@ async fn message_handler<
     sender_to_network: &mut MpscSender<Vec<u8>>,
     sender_to_error: &mut MpscSender<anyhow::Error>,
     is_online: &Arc<RwLock<bool>>,
-    pool_of_senders: &mut HashMap<TxnNumber, MpscSender<Response>>,
+    pool_of_senders: &mut HashMap<TxnNumber, ResponseFunction>,
     pool_of_pokers: &mut HashMap<u16, PokeType>,
     pool_of_subscribes: &mut HashMap<ResourceName, HashSet<u16>>,
     cache: &mut Cu,
@@ -363,14 +349,8 @@ async fn message_handler<
                             }
 
                             let sender = pool_of_senders.remove(&txn_number);
-                            if let Some(mut sender) = sender {
-                                let _ = sender
-                                    .send(Response::Data {
-                                        is_response_from_server: true,
-                                        data: operation,
-                                    })
-                                    .await;
-                                let _ = sender.send(Response::CloseTheChannel).await;
+                            if let Some(sender) = sender {
+                                let _ = sender(Response::Data { data: operation }).await;
                             }
                         }
 
@@ -448,20 +428,14 @@ async fn message_handler<
             }
             MessageToCache::Query {
                 strategy,
-                mut sender,
+                sender,
                 txn_number,
                 data,
             } => {
                 let result = data.state_less_check();
 
                 if let Some(err) = result {
-                    sender
-                        .send(Response::Data {
-                            is_response_from_server: false,
-                            data: Err(err),
-                        })
-                        .await?;
-                    sender.send(Response::CloseTheChannel).await?;
+                    sender(Response::Data { data: Err(err) }).await?;
                     continue;
                 }
 
@@ -470,25 +444,14 @@ async fn message_handler<
                         let input = CasCh::cast_input(data)?;
                         let result = input.check_input(cache.get_inner_cache()).await?;
 
-                        sender
-                            .send(Response::Data {
-                                is_response_from_server: false,
-                                data: result,
-                            })
-                            .await?;
-                        sender.send(Response::CloseTheChannel).await?;
+                        sender(Response::Data { data: result }).await?;
                     }
                     CachingStrategy::ReadCacheFirst => todo!(),
                     CachingStrategy::ReadCacheAndServer => {
                         let input = CasCh::cast_input(data.clone())?;
                         let result = input.check_input(cache.get_inner_cache()).await?;
 
-                        sender
-                            .send(Response::Data {
-                                is_response_from_server: false,
-                                data: result,
-                            })
-                            .await?;
+                        sender(Response::Data { data: result }).await?;
 
                         if is_online.read() {
                             let data = cache
@@ -502,8 +465,7 @@ async fn message_handler<
 
                             pool_of_senders.insert(txn_number, sender);
                         } else {
-                            sender.send(Response::ServerCannotBeReached).await?;
-                            sender.send(Response::CloseTheChannel).await?;
+                            sender(Response::ServerCannotBeReached).await?;
                         }
                     }
                     CachingStrategy::ReadServerFirst => todo!(),
@@ -520,8 +482,7 @@ async fn message_handler<
 
                             pool_of_senders.insert(txn_number, sender);
                         } else {
-                            sender.send(Response::ServerCannotBeReached).await?;
-                            sender.send(Response::CloseTheChannel).await?;
+                            sender(Response::ServerCannotBeReached).await?;
                         }
                     }
                     CachingStrategy::WriteCacheOnly => {
@@ -548,14 +509,7 @@ async fn message_handler<
                             &subs_to_poke,
                         );
 
-                        sender
-                            .send(Response::Data {
-                                is_response_from_server: false,
-                                data: result,
-                            })
-                            .await?;
-
-                        sender.send(Response::CloseTheChannel).await?;
+                        sender(Response::Data { data: result }).await?;
                     }
                     CachingStrategy::WriteCacheFirst => todo!(),
                     CachingStrategy::WriteCacheAndServer => {
@@ -582,12 +536,7 @@ async fn message_handler<
                             &subs_to_poke,
                         );
 
-                        sender
-                            .send(Response::Data {
-                                is_response_from_server: false,
-                                data: result,
-                            })
-                            .await?;
+                        sender(Response::Data { data: result }).await?;
 
                         if is_online.read() {
                             let data = cache
@@ -601,8 +550,7 @@ async fn message_handler<
 
                             pool_of_senders.insert(txn_number, sender);
                         } else {
-                            sender.send(Response::ServerCannotBeReached).await?;
-                            sender.send(Response::CloseTheChannel).await?;
+                            sender(Response::ServerCannotBeReached).await?;
                         }
                     }
                     CachingStrategy::WriteServerFirst => todo!(),
@@ -619,8 +567,7 @@ async fn message_handler<
 
                             pool_of_senders.insert(txn_number, sender);
                         } else {
-                            sender.send(Response::ServerCannotBeReached).await?;
-                            sender.send(Response::CloseTheChannel).await?;
+                            sender(Response::ServerCannotBeReached).await?;
                         }
                     }
                 }

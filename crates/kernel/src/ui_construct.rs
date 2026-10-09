@@ -32,7 +32,6 @@ use utility::dtos::TypeOperationDTOInput;
 use utility::dtos::TypeOperationDTOOk;
 use utility::network::Network;
 use utility::network::network_actor;
-use utility::process_manager::process_manager_actor;
 use utility::types::ReadAndSet;
 use utility::ui_effect::CastMessageToReducer;
 use utility::ui_effect::Commander;
@@ -72,9 +71,7 @@ where
         is_online,
     );
 
-    let sender_to_process_manager = process_manager_actor(sender_to_error.clone());
-
-    Commander::new::<Mdl, CasMsg>(sender_to_error, sender_to_process_manager, model, cache)
+    Commander::new::<Mdl, CasMsg>(sender_to_error, model, cache)
 }
 
 struct MyNetwork {
