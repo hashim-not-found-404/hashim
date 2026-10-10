@@ -1,5 +1,5 @@
+use crate::cache::ProcessId;
 use crate::cache::ResourceName;
-use crate::process_manager::ProcessId;
 use crate::ui_effect::MessageTrait;
 use crate::ui_effect::UiContext;
 use anyhow::Result;
@@ -7,6 +7,13 @@ use serde::Deserialize;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use std::fmt::Debug;
+
+#[derive(Debug, Clone, Copy)]
+pub enum UserConsent {
+    WaitForServerResponse,
+    DontWaitForServerResponse,
+    CancelOperation,
+}
 
 #[derive(Debug, Clone, Default, Deserialize, Serialize)]
 #[serde(bound(
@@ -119,8 +126,7 @@ pub async fn handle_submit<T: UseCaseClient>(
     context
         .cache
         .send_to_cache_actor(strategy, TxnNumber::default(), data, f)
-        .await?;
-    Ok(())
+        .await
 }
 
 pub async fn handle_check<T: UseCaseClient>(
@@ -161,8 +167,7 @@ pub async fn handle_check<T: UseCaseClient>(
             data,
             f,
         )
-        .await?;
-    Ok(())
+        .await
 }
 
 pub async fn handle_refresh<T: UseCaseClient>(
@@ -207,9 +212,7 @@ pub async fn handle_refresh<T: UseCaseClient>(
             data,
             f,
         )
-        .await?;
-
-    Ok(())
+        .await
 }
 
 pub async fn handle_subscribe<T: UseCaseClient>(
@@ -224,16 +227,12 @@ pub async fn handle_subscribe<T: UseCaseClient>(
                 .sender_to_commander
                 .send(process_id, T::msg_refresh());
         })
-        .await?;
-
-    Ok(())
+        .await
 }
 
 pub async fn handle_unsubscribe<T: UseCaseClient>(
     process_id: ProcessId,
     mut context: UiContext,
 ) -> Result<()> {
-    context.cache.send_unsubs_to_cache_actor(process_id).await?;
-
-    Ok(())
+    context.cache.send_unsubs_to_cache_actor(process_id).await
 }

@@ -1,7 +1,7 @@
 use anyhow::Result;
 use serde::Deserialize;
 use serde::Serialize;
-use utility::process_manager::ProcessId;
+use utility::cache::ProcessId;
 use utility::ui_effect::MessageTrait;
 use utility::ui_effect::Model;
 use utility::ui_effect::UiContext;
@@ -92,7 +92,7 @@ pub(crate) mod navigator_reducer {
     use crate::navigator::update;
     use anyhow::Result;
     use std::pin::Pin;
-    use utility::process_manager::ProcessId;
+    use utility::cache::ProcessId;
     use utility::ui_effect::ApplierTrait;
     use utility::ui_effect::EffectorTrait;
     use utility::ui_effect::UiContext;

@@ -8,7 +8,7 @@ use kernel::types::Location;
 use serde::Deserialize;
 use serde::Serialize;
 use std::str::FromStr;
-use utility::process_manager::UserConsent;
+use utility::ui_orchestration::UserConsent;
 use utility_ui::components::DialogComponent;
 use utility_ui::components::ListInput;
 use utility_ui::domain::Dialog;

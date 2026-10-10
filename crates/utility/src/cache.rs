@@ -4,7 +4,6 @@ use crate::dtos::TraitOperationDTOOk;
 use crate::dtos::Txn;
 use crate::dtos::TxnNumber;
 use crate::handle_errors::handle_error;
-use crate::process_manager::ProcessId;
 use crate::types::ReadAndSet;
 use anyhow::Result;
 use dyn_clone::DynClone;
@@ -12,8 +11,12 @@ use infrastructure::actors::MpscReceiver;
 use infrastructure::actors::MpscSender;
 use infrastructure::actors::Receiver;
 use infrastructure::actors::Sender;
+use infrastructure::random_number::RandomNumber;
+use infrastructure::random_number::Rn;
 use infrastructure::runtime::Rt;
 use infrastructure::runtime::Runtime;
+use serde::Deserialize;
+use serde::Serialize;
 use std::any::Any;
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -24,7 +27,14 @@ use std::sync::Arc;
 use std::sync::RwLock;
 use std::time::Duration;
 
-type ComponentIdType = ProcessId;
+#[derive(Debug, Clone, Copy, Eq, Hash, PartialEq, Deserialize, Serialize)]
+pub struct ProcessId(u32);
+
+impl Default for ProcessId {
+    fn default() -> Self {
+        ProcessId(Rn::generate() as u32)
+    }
+}
 
 #[derive(Debug, Clone, Copy, Eq, Hash, PartialEq)]
 pub struct ResourceName(&'static str);
@@ -138,12 +148,12 @@ pub enum MessageToCache {
     WeAreBackOnline,
     DataFromServer(Vec<u8>),
     Subscribe {
-        component_id: ComponentIdType,
+        component_id: ProcessId,
         list_of_subscribtion: &'static [ResourceName],
         sender: PokeType,
     },
     UnSubscribe {
-        component_id: ComponentIdType,
+        component_id: ProcessId,
     },
     Query {
         strategy: CachingStrategy,
@@ -224,7 +234,7 @@ impl CacheStruct {
 
     pub async fn send_subs_to_cache_actor(
         &mut self,
-        component_id: ComponentIdType,
+        component_id: ProcessId,
         list_of_subscribtion: &'static [ResourceName],
         poke: impl Fn() + 'static,
     ) -> Result<()> {
@@ -237,10 +247,7 @@ impl CacheStruct {
             .await
     }
 
-    pub async fn send_unsubs_to_cache_actor(
-        &mut self,
-        component_id: ComponentIdType,
-    ) -> Result<()> {
+    pub async fn send_unsubs_to_cache_actor(&mut self, component_id: ProcessId) -> Result<()> {
         self.sender
             .send(MessageToCache::UnSubscribe { component_id })
             .await?;
@@ -260,9 +267,9 @@ impl CacheStruct {
     ) {
         Rt::spawn_local(async move {
             let mut pool_of_senders = HashMap::<TxnNumber, ResponseFunction>::with_capacity(100);
-            let mut pool_of_pokers = HashMap::<ComponentIdType, PokeType>::with_capacity(10);
+            let mut pool_of_pokers = HashMap::<ProcessId, PokeType>::with_capacity(10);
             let mut pool_of_subscribes =
-                HashMap::<ResourceName, HashSet<ComponentIdType>>::with_capacity(100);
+                HashMap::<ResourceName, HashSet<ProcessId>>::with_capacity(100);
 
             handle_error::<(), _>(sender_to_error.clone(), async || {
                 let mut cache = match Cu::new().await {
@@ -302,8 +309,8 @@ async fn message_handler<
     sender_to_error: &mut MpscSender<anyhow::Error>,
     is_online: &Arc<RwLock<bool>>,
     pool_of_senders: &mut HashMap<TxnNumber, ResponseFunction>,
-    pool_of_pokers: &mut HashMap<ComponentIdType, PokeType>,
-    pool_of_subscribes: &mut HashMap<ResourceName, HashSet<ComponentIdType>>,
+    pool_of_pokers: &mut HashMap<ProcessId, PokeType>,
+    pool_of_subscribes: &mut HashMap<ResourceName, HashSet<ProcessId>>,
     cache: &mut Cu,
 ) -> Result<()> {
     loop {
@@ -584,8 +591,8 @@ async fn message_handler<
 }
 
 fn poke_the_subs<Subscribe: 'static + Hash + Eq>(
-    pool_of_pokers: &mut HashMap<ComponentIdType, PokeType>,
-    pool_of_subscribes: &HashMap<Subscribe, HashSet<ComponentIdType>>,
+    pool_of_pokers: &mut HashMap<ProcessId, PokeType>,
+    pool_of_subscribes: &HashMap<Subscribe, HashSet<ProcessId>>,
     subs_to_poke: &HashSet<Subscribe>,
 ) {
     let mut components_to_poke = HashSet::new();

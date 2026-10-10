@@ -21,7 +21,7 @@ pub fn my_macro(input: TokenStream) -> TokenStream {
             use #crate_name::client::apply;
             use #crate_name::client::effect;
             use #crate_name::client::update;
-            use utility::process_manager::ProcessId;
+            use utility::cache::ProcessId;
             use utility::ui_effect::EffectorTrait;
             use utility::ui_effect::UpdaterTrait;
             use utility::ui_effect::UiContext;
