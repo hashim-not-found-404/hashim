@@ -159,11 +159,8 @@ pub enum Change {
 
 #[derive(Debug, Clone)]
 pub enum Effect {
-    SpawnTimer {
-        process_id: ProcessId,
-    },
+    SpawnTimer,
     Submit {
-        process_id: ProcessId,
         async_input: AsyncInput,
         is_to_server: bool,
     },
@@ -194,7 +191,6 @@ impl MessageTrait for Message {}
 
 pub fn reduce(
     msg: Message,
-    process_id: ProcessId,
     local_model: &impl LocalModel,
     global_model: &impl GlobalModel,
 ) -> Result<(Vec<Change>, Vec<Effect>)> {
@@ -224,9 +220,8 @@ pub fn reduce(
                 ];
 
                 let effect = vec![
-                    Effect::SpawnTimer { process_id },
+                    Effect::SpawnTimer,
                     Effect::Submit {
-                        process_id,
                         async_input,
                         is_to_server: true,
                     },
@@ -245,7 +240,7 @@ pub fn reduce(
                     ),
                     UserConsent::WaitForServerResponse => (
                         vec![Change::ShowDialog(Dialog::Hide)],
-                        vec![Effect::SpawnTimer { process_id }],
+                        vec![Effect::SpawnTimer],
                     ),
                     UserConsent::DontWaitForServerResponse => {
                         let async_input = AsyncInput {
@@ -257,7 +252,6 @@ pub fn reduce(
                         (
                             vec![Change::ShowDialog(Dialog::Hide)],
                             vec![Effect::Submit {
-                                process_id,
                                 async_input,
                                 is_to_server: false,
                             }],
@@ -306,9 +300,9 @@ pub fn update(msg: Change, local_model: &impl LocalModel, global_model: &impl Gl
     }
 }
 
-pub async fn effect(msg: Effect, context: UiContext) -> Result<()> {
+pub async fn effect(msg: Effect, process_id: ProcessId, context: UiContext) -> Result<()> {
     match msg {
-        Effect::SpawnTimer { process_id } => {
+        Effect::SpawnTimer => {
             Rt::spawn_local(async move {
                 Rt::sleep(Duration::from_secs(5)).await;
                 let _ = context
@@ -318,7 +312,6 @@ pub async fn effect(msg: Effect, context: UiContext) -> Result<()> {
             });
         }
         Effect::Submit {
-            process_id,
             async_input,
             is_to_server,
         } => {

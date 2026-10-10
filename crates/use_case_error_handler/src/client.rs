@@ -100,7 +100,6 @@ impl MessageTrait for Message {}
 
 pub fn reduce(
     msg: Message,
-    _: ProcessId,
     local_model: &impl LocalModel,
     _: &impl GlobalModel,
 ) -> Result<(Vec<Change>, Vec<Effect>)> {
@@ -164,6 +163,6 @@ pub fn update(msg: Change, local_model: &impl LocalModel, _: &impl GlobalModel) 
     }
 }
 
-pub async fn effect(_: Effect, _: UiContext) -> Result<()> {
+pub async fn effect(_: Effect, _: ProcessId, _: UiContext) -> Result<()> {
     Ok(())
 }

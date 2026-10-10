@@ -26,7 +26,6 @@ pub fn my_macro(input: TokenStream) -> TokenStream {
             use utility::ui_effect::ReducerTrait;
             use utility::ui_effect::UiContext;
             use utility::ui_effect::UpdaterTrait;
-
             #[derive(Debug)]
             pub(crate) struct WrapperMessage(pub(crate) Message);
 
@@ -42,8 +41,7 @@ pub fn my_macro(input: TokenStream) -> TokenStream {
                 )> {
                     let local_model = model.#model_field_name.clone();
 
-                    let (changes, effects) =
-                        reduce(self.0.clone(), process_id, local_model.as_ref(), model)?;
+                    let (changes, effects) = reduce(self.0.clone(), local_model.as_ref(), model)?;
 
                     let updaters: Vec<Box<dyn UpdaterTrait<Mdl = TypeModel>>> = changes
                         .into_iter()
@@ -58,7 +56,6 @@ pub fn my_macro(input: TokenStream) -> TokenStream {
                     Ok((updaters, effectors))
                 }
             }
-
             #[derive(Debug)]
             pub(crate) struct WrapperChange(pub(crate) Change);
 
@@ -69,13 +66,16 @@ pub fn my_macro(input: TokenStream) -> TokenStream {
                     update(self.0.clone(), local_model.as_ref(), model);
                 }
             }
-
             #[derive(Debug)]
             pub(crate) struct WrapperEffect(pub(crate) Effect);
 
             impl EffectorTrait for WrapperEffect {
-                fn effect(&self, context: UiContext) -> Pin<Box<dyn Future<Output = Result<()>>>> {
-                    Box::pin(effect(self.0.clone(), context))
+                fn effect(
+                    &self,
+                    process_id: ProcessId,
+                    context: UiContext,
+                ) -> Pin<Box<dyn Future<Output = Result<()>>>> {
+                    Box::pin(effect(self.0.clone(), process_id, context))
                 }
             }
         }

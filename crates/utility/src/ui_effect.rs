@@ -60,7 +60,11 @@ pub trait UpdaterTrait: Debug {
 }
 
 pub trait EffectorTrait: Debug {
-    fn effect(&self, context: UiContext) -> Pin<Box<dyn Future<Output = Result<()>>>>;
+    fn effect(
+        &self,
+        process_id: ProcessId,
+        context: UiContext,
+    ) -> Pin<Box<dyn Future<Output = Result<()>>>>;
 }
 
 pub trait CastMessageToReducer {
@@ -172,14 +176,12 @@ impl Commander {
                     let context = context.clone();
                     let mut sender_to_error = sender_to_error.clone();
 
-                    Rt::spawn_local(async move {
                         for i in effect {
-                            let result = i.effect(context.clone()).await;
+                            let result = i.effect(message.process_id,context.clone()).await;
                             if let Err(err) = result {
                                 let _ = sender_to_error.send(err).await;
                             }
                         }
-                    });
                 }
             })
             .await;

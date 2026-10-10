@@ -130,16 +130,9 @@ pub enum Change {
 
 #[derive(Debug, Clone)]
 pub enum Effect {
-    Subscribe {
-        process_id: ProcessId,
-    },
-    UnSubscribe {
-        process_id: ProcessId,
-    },
-    Refresh {
-        process_id: ProcessId,
-        async_input: AsyncInput,
-    },
+    Subscribe,
+    UnSubscribe,
+    Refresh { async_input: AsyncInput },
 }
 
 #[derive(Debug, Clone)]
@@ -166,7 +159,6 @@ impl MessageTrait for Message {}
 
 pub fn reduce(
     msg: Message,
-    process_id: ProcessId,
     local_model: &impl LocalModel,
     global_model: &impl GlobalModel,
 ) -> Result<(Vec<Change>, Vec<Effect>)> {
@@ -181,17 +173,11 @@ pub fn reduce(
                 let change = vec![Change::AsyncState(AsyncState::Loading {
                     input: async_input.clone(),
                 })];
-                let effect = vec![
-                    Effect::Subscribe { process_id },
-                    Effect::Refresh {
-                        process_id,
-                        async_input,
-                    },
-                ];
+                let effect = vec![Effect::Subscribe, Effect::Refresh { async_input }];
                 Ok((change, effect))
             }
             Intent::UnSubscribe => {
-                let effect = vec![Effect::UnSubscribe { process_id }];
+                let effect = vec![Effect::UnSubscribe];
                 Ok((vec![], effect))
             }
             Intent::SelectCompany(uuid) => {
@@ -224,10 +210,7 @@ pub fn reduce(
                 let change = vec![Change::AsyncState(AsyncState::Loading {
                     input: async_input.clone(),
                 })];
-                let effect = vec![Effect::Refresh {
-                    process_id,
-                    async_input,
-                }];
+                let effect = vec![Effect::Refresh { async_input }];
                 Ok((change, effect))
             }
             Observe::Result(result) => {
@@ -246,18 +229,15 @@ pub fn update(msg: Change, local_model: &impl LocalModel, global_model: &impl Gl
     }
 }
 
-pub async fn effect(msg: Effect, context: UiContext) -> Result<()> {
+pub async fn effect(msg: Effect, process_id: ProcessId, context: UiContext) -> Result<()> {
     match msg {
-        Effect::Subscribe { process_id } => {
+        Effect::Subscribe => {
             handle_subscribe(process_id, context).await?;
         }
-        Effect::UnSubscribe { process_id } => {
+        Effect::UnSubscribe => {
             context.aborters.abort(process_id).await?;
         }
-        Effect::Refresh {
-            process_id,
-            async_input,
-        } => {
+        Effect::Refresh { async_input } => {
             handle_refresh(process_id, async_input, context).await?;
         }
     }

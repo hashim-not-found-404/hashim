@@ -141,7 +141,11 @@ pub(crate) mod navigator_reducer {
     pub(crate) struct WrapperEffect(pub(crate) Effect);
 
     impl EffectorTrait for WrapperEffect {
-        fn effect(&self, context: UiContext) -> Pin<Box<dyn Future<Output = Result<()>>>> {
+        fn effect(
+            &self,
+            process_id: ProcessId,
+            context: UiContext,
+        ) -> Pin<Box<dyn Future<Output = Result<()>>>> {
             Box::pin(effect(self.0.clone(), context))
         }
     }

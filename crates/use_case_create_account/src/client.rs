@@ -202,24 +202,16 @@ pub enum Change {
 
 #[derive(Debug, Clone)]
 pub enum Effect {
-    SpawnTimer {
-        process_id: ProcessId,
-    },
+    SpawnTimer,
     Submit {
-        process_id: ProcessId,
         async_input: AsyncInput,
         is_to_server: bool,
     },
     Check {
-        process_id: ProcessId,
         async_input: AsyncInput,
     },
-    Subscribe {
-        process_id: ProcessId,
-    },
-    UnSubscribe {
-        process_id: ProcessId,
-    },
+    Subscribe,
+    UnSubscribe,
 }
 
 #[derive(Debug, Clone)]
@@ -255,7 +247,6 @@ impl MessageTrait for Message {}
 fn build_check_effect(
     local_model: &impl LocalModel,
     global_model: &impl GlobalModel,
-    process_id: ProcessId,
     override_company: Option<CompanyUuid>,
     mutate: impl FnOnce(&mut AsyncInput),
 ) -> Vec<Effect> {
@@ -276,15 +267,11 @@ fn build_check_effect(
         belong_to_company,
     };
     mutate(&mut a);
-    vec![Effect::Check {
-        process_id,
-        async_input: a,
-    }]
+    vec![Effect::Check { async_input: a }]
 }
 
 pub fn reduce(
     msg: Message,
-    process_id: ProcessId,
     local_model: &impl LocalModel,
     global_model: &impl GlobalModel,
 ) -> Result<(Vec<Change>, Vec<Effect>)> {
@@ -330,9 +317,8 @@ pub fn reduce(
                 ];
 
                 let effect = vec![
-                    Effect::SpawnTimer { process_id },
+                    Effect::SpawnTimer,
                     Effect::Submit {
-                        process_id,
                         async_input,
                         is_to_server: true,
                     },
@@ -351,7 +337,7 @@ pub fn reduce(
                     ),
                     UserConsent::WaitForServerResponse => (
                         vec![Change::ShowDialog(Dialog::Hide)],
-                        vec![Effect::SpawnTimer { process_id }],
+                        vec![Effect::SpawnTimer],
                     ),
                     UserConsent::DontWaitForServerResponse => {
                         let Some(user_uuid) = global_model.user_uuid() else {
@@ -376,7 +362,6 @@ pub fn reduce(
                         (
                             vec![Change::ShowDialog(Dialog::Hide)],
                             vec![Effect::Submit {
-                                process_id,
                                 async_input,
                                 is_to_server: false,
                             }],
@@ -400,28 +385,28 @@ pub fn reduce(
             }
             Intent::IsDebit(v) => {
                 let change = vec![Change::IsDebit(v)];
-                let effect = build_check_effect(local_model, global_model, process_id, None, |a| {
+                let effect = build_check_effect(local_model, global_model, None, |a| {
                     a.is_debit = v;
                 });
                 Ok((change, effect))
             }
             Intent::IsPermanentAccount(v) => {
                 let change = vec![Change::IsPermanentAccount(v)];
-                let effect = build_check_effect(local_model, global_model, process_id, None, |a| {
+                let effect = build_check_effect(local_model, global_model, None, |a| {
                     a.is_permanent_account = v;
                 });
                 Ok((change, effect))
             }
             Intent::AccountName(v) => {
                 let change = vec![Change::AccountName(v.clone())];
-                let effect = build_check_effect(local_model, global_model, process_id, None, |a| {
+                let effect = build_check_effect(local_model, global_model, None, |a| {
                     a.account_name = v;
                 });
                 Ok((change, effect))
             }
             Intent::UnitOfMeasurementOfQuantity(v) => {
                 let change = vec![Change::UnitOfMeasurementOfQuantity(v.clone())];
-                let effect = build_check_effect(local_model, global_model, process_id, None, |a| {
+                let effect = build_check_effect(local_model, global_model, None, |a| {
                     a.unit_of_measurement_of_quantity = v;
                 });
                 Ok((change, effect))
@@ -436,8 +421,7 @@ pub fn reduce(
                         .into_iter()
                         .find_map(|(uuid, name)| (name == v).then_some(uuid))
                 };
-                let effect =
-                    build_check_effect(local_model, global_model, process_id, resolved, |_| {});
+                let effect = build_check_effect(local_model, global_model, resolved, |_| {});
                 Ok((change, effect))
             }
             Intent::SelectedCompany(idx) => {
@@ -448,7 +432,6 @@ pub fn reduce(
                         let effect = build_check_effect(
                             local_model,
                             global_model,
-                            process_id,
                             Some(company_uuid.clone()),
                             |_| {},
                         );
@@ -458,11 +441,11 @@ pub fn reduce(
                 }
             }
             Intent::Subscribe => {
-                let effect = vec![Effect::Subscribe { process_id }];
+                let effect = vec![Effect::Subscribe];
                 Ok((vec![], effect))
             }
             Intent::UnSubscribe => {
-                let effect = vec![Effect::UnSubscribe { process_id }];
+                let effect = vec![Effect::UnSubscribe];
                 Ok((vec![], effect))
             }
         },
@@ -495,8 +478,7 @@ pub fn reduce(
                 Ok((change, vec![]))
             }
             Observe::Refresh => {
-                let effect =
-                    build_check_effect(local_model, global_model, process_id, None, |_| {});
+                let effect = build_check_effect(local_model, global_model, None, |_| {});
                 Ok((vec![], effect))
             }
         },
@@ -517,9 +499,9 @@ pub fn update(msg: Change, local_model: &impl LocalModel, _global_model: &impl G
     }
 }
 
-pub async fn effect(msg: Effect, context: UiContext) -> Result<()> {
+pub async fn effect(msg: Effect, process_id: ProcessId, context: UiContext) -> Result<()> {
     match msg {
-        Effect::SpawnTimer { process_id } => {
+        Effect::SpawnTimer => {
             Rt::spawn_local(async move {
                 Rt::sleep(Duration::from_secs(5)).await;
                 let _ = context
@@ -529,22 +511,18 @@ pub async fn effect(msg: Effect, context: UiContext) -> Result<()> {
             });
         }
         Effect::Submit {
-            process_id,
             async_input,
             is_to_server,
         } => {
             handle_submit(process_id, async_input, context, is_to_server).await?;
         }
-        Effect::Check {
-            process_id,
-            async_input,
-        } => {
+        Effect::Check { async_input } => {
             handle_check(process_id, async_input, context).await?;
         }
-        Effect::Subscribe { process_id } => {
+        Effect::Subscribe => {
             handle_subscribe(process_id, context).await?;
         }
-        Effect::UnSubscribe { process_id } => {
+        Effect::UnSubscribe => {
             context.aborters.abort(process_id).await?;
         }
     }
