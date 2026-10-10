@@ -1,17 +1,8 @@
 [workspace]
 resolver = "3"
-members = [
-    # "old_crates/*",
-    "crates/*",
-]
+members = ["crates/*"]
 
 [workspace.dependencies]
-# accounting_engine = { path = "./old_crates/accounting_engine" }
-# adapters = { path = "./old_crates/adapters" }
-# cache = { path = "./old_crates/cache" }
-# database = { path = "./old_crates/database" }
-# my_core = { path = "./old_crates/my_core" }
-
 # app agnostic
 accounting_engine = { path = "./crates/accounting_engine" }
 infrastructure = { path = "./crates/infrastructure" }

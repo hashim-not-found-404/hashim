@@ -303,7 +303,6 @@ dependencies = [
  "serde",
  "tracing",
  "tracing-subscriber",
- "tracing-web",
  "use_case_create_account",
  "use_case_create_account_for_branch",
  "use_case_create_branch",
@@ -328,7 +327,6 @@ dependencies = [
  "database",
  "infrastructure",
  "kernel",
- "paste",
  "patterns",
  "server",
  "use_case_create_account",
@@ -2747,7 +2745,6 @@ dependencies = [
  "serde",
  "typetag",
  "utility",
- "utility_ui",
 ]
 
 [[package]]
@@ -3303,12 +3300,6 @@ dependencies = [
  "rand_core 0.6.4",
  "subtle",
 ]
-
-[[package]]
-name = "paste"
-version = "1.0.15"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
 
 [[package]]
 name = "patterns"
@@ -4755,19 +4746,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "tracing-web"
-version = "0.1.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b9e6a141feebd51f8d91ebfd785af50fca223c570b86852166caa3b141defe7c"
-dependencies = [
- "js-sys",
- "tracing-core",
- "tracing-subscriber",
- "wasm-bindgen",
- "web-sys",
-]
-
-[[package]]
 name = "try-lock"
 version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4936,7 +4914,6 @@ dependencies = [
  "serde",
  "tokio",
  "typetag",
- "use_case_get_all_accounts",
  "utility",
  "utility_ui",
 ]
@@ -5058,7 +5035,6 @@ dependencies = [
  "anyhow",
  "cache",
  "database",
- "dioxus",
  "infrastructure",
  "kernel",
  "rusqlite",
@@ -5067,7 +5043,6 @@ dependencies = [
  "tokio",
  "typetag",
  "utility",
- "utility_ui",
  "uuid",
 ]
 

@@ -12,7 +12,6 @@ use cache::cache_adapter;
 use cache::utils::MyUuidConverter;
 use cache::utils::MyUuidConverter1;
 use kernel::new_types::AccountForBranchUuid;
-use kernel::new_types::UuidType;
 use kernel::types::DatabaseRead;
 use kernel::types::DatabaseWrite;
 use kernel::types::Role;
