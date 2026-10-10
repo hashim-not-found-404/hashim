@@ -7,10 +7,10 @@ use crate::domain::ReadOutput;
 use anyhow::Context;
 use anyhow::Result;
 use anyhow::anyhow;
-use infrastructure::actors::Receiver;
-use infrastructure::actors::Sender;
 use infrastructure::row_id::Id;
 use infrastructure::row_id::RowId;
+use infrastructure::runtime::Rt;
+use infrastructure::runtime::Runtime;
 use kernel::client::Cache;
 use kernel::new_types::CompanyUuid;
 use kernel::new_types::UserUuid;
@@ -22,10 +22,13 @@ use serde::Deserialize;
 use serde::Serialize;
 use std::any::Any;
 use std::ops::Deref;
+use std::pin::Pin;
 use std::sync::Arc;
+use std::time::Duration;
 use utility::cache::CachingStrategy;
 use utility::cache::ResourceName;
 use utility::cache::Response;
+use utility::cache::ResponseFunction;
 use utility::cache::TraitOperationClientError;
 use utility::cache::TraitOperationClientInput;
 use utility::cache::TraitOperationClientOk;
@@ -34,15 +37,11 @@ use utility::cache::TypeOperationClientInput;
 use utility::cache::TypeOperationClientResult;
 use utility::cache::new_resource_name;
 use utility::dtos::TxnNumber;
-use utility::process_manager::MessageToProcessManager;
-use utility::process_manager::ProcessDialog;
 use utility::process_manager::ProcessId;
 use utility::process_manager::UserConsent;
-use utility::ui_effect::Commander;
 use utility::ui_effect::MessageTrait;
 use utility::ui_effect::UiContext;
 use utility::ui_orchestration::GenricAsyncState;
-use utility::ui_orchestration::handle_fall_back;
 use utility_ui::domain::Dialog;
 use utility_ui::domain::HashimSignal;
 
@@ -129,13 +128,13 @@ pub enum Change {
 
 #[derive(Debug, Clone)]
 pub enum Effect {
+    SpawnTimer {
+        process_id: ProcessId,
+    },
     Submit {
         process_id: ProcessId,
         async_input: AsyncInput,
-    },
-    Consent {
-        process_id: ProcessId,
-        user_consent: UserConsent,
+        is_to_server: bool,
     },
     Check {
         process_id: ProcessId,
@@ -154,8 +153,7 @@ pub enum Intent {
 
 #[derive(Debug, Clone)]
 pub enum Observe {
-    ShowDialog,
-    HideDialog,
+    Timeout,
     Result(AsyncState),
 }
 
@@ -229,19 +227,39 @@ pub fn reduce(
                 Ok((change, effect))
             }
             Intent::Consent(v) => {
-                let change = match v {
-                    UserConsent::CancelOperation => {
+                let (change, effect) = match v {
+                    UserConsent::CancelOperation => (
                         vec![
                             Change::ShowDialog(Dialog::Hide),
                             Change::AsyncState(AsyncState::Idle),
-                        ]
+                        ],
+                        vec![],
+                    ),
+                    UserConsent::WaitForServerResponse => (
+                        vec![Change::ShowDialog(Dialog::Hide)],
+                        vec![Effect::SpawnTimer { process_id }],
+                    ),
+                    UserConsent::DontWaitForServerResponse => {
+                        let Some(user_uuid) = global_model.user_uuid() else {
+                            return Ok((vec![], vec![]));
+                        };
+                        let async_input = AsyncInput {
+                            user_uuid,
+                            company_name: local_model.company_name().read(),
+                            currency: local_model.currency().read(),
+                        };
+
+                        (
+                            vec![Change::ShowDialog(Dialog::Hide)],
+                            vec![Effect::Submit {
+                                process_id,
+                                async_input,
+                                is_to_server: false,
+                            }],
+                        )
                     }
-                    _ => vec![Change::ShowDialog(Dialog::Hide)],
                 };
-                let effect = vec![Effect::Consent {
-                    process_id,
-                    user_consent: v,
-                }];
+
                 Ok((change, effect))
             }
             Intent::Submit => {
@@ -262,17 +280,26 @@ pub fn reduce(
                     Change::ShowDialog(Dialog::Hide),
                 ];
 
-                let effect = vec![Effect::Submit {
-                    process_id,
-                    async_input,
-                }];
+                let effect = vec![
+                    Effect::SpawnTimer { process_id },
+                    Effect::Submit {
+                        process_id,
+                        async_input,
+                        is_to_server: true,
+                    },
+                ];
 
                 Ok((change, effect))
             }
         },
         Message::Observe(observe) => match observe {
-            Observe::ShowDialog => Ok((vec![Change::ShowDialog(Dialog::Show)], vec![])),
-            Observe::HideDialog => Ok((vec![Change::ShowDialog(Dialog::Hide)], vec![])),
+            Observe::Timeout => {
+                let change = match local_model.async_state().read() {
+                    AsyncState::Loading { .. } => vec![Change::ShowDialog(Dialog::Show)],
+                    _ => vec![],
+                };
+                Ok((change, vec![]))
+            }
             Observe::Result(result) => {
                 let change = match result {
                     AsyncState::Success { .. } => {
@@ -303,25 +330,23 @@ pub fn update(msg: Change, local_model: &impl LocalModel, _global_model: &impl G
     }
 }
 
-pub async fn effect(msg: Effect, mut context: UiContext) -> Result<()> {
+pub async fn effect(msg: Effect, context: UiContext) -> Result<()> {
     match msg {
+        Effect::SpawnTimer { process_id } => {
+            Rt::spawn_local(async move {
+                Rt::sleep(Duration::from_secs(5)).await;
+                let _ = context
+                    .sender_to_commander
+                    .async_send(process_id, Message::Observe(Observe::Timeout))
+                    .await;
+            });
+        }
         Effect::Submit {
             process_id,
             async_input,
+            is_to_server,
         } => {
-            handle_submit(process_id, async_input, context).await?;
-        }
-        Effect::Consent {
-            process_id,
-            user_consent,
-        } => {
-            context
-                .sender_to_process_manager
-                .send(MessageToProcessManager::FromUser {
-                    process_id,
-                    consent: user_consent,
-                })
-                .await?;
+            handle_submit(process_id, async_input, context, is_to_server).await?;
         }
         Effect::Check {
             process_id,
@@ -333,31 +358,12 @@ pub async fn effect(msg: Effect, mut context: UiContext) -> Result<()> {
     Ok(())
 }
 
-struct DialogDispatchAdapter {
+async fn handle_submit(
     process_id: ProcessId,
-    sender: Commander,
-}
-
-impl ProcessDialog for DialogDispatchAdapter {
-    fn show(&self) {
-        self.sender
-            .send(self.process_id, Message::Observe(Observe::ShowDialog));
-    }
-
-    fn hide(&self) {
-        self.sender
-            .send(self.process_id, Message::Observe(Observe::HideDialog));
-    }
-}
-
-async fn handle_submit(process_id: ProcessId, input: AsyncInput, context: UiContext) -> Result<()> {
-    let context1 = context.clone();
-
-    let dialog_signal_adapter = Arc::new(DialogDispatchAdapter {
-        process_id,
-        sender: context.sender_to_commander.clone(),
-    });
-
+    input: AsyncInput,
+    mut context: UiContext,
+    is_to_server: bool,
+) -> Result<()> {
     let new_uuid = CompanyUuid::from(UuidType::from(Id::generate()));
 
     let data: TypeOperationClientInput = Arc::new(Input {
@@ -367,56 +373,62 @@ async fn handle_submit(process_id: ProcessId, input: AsyncInput, context: UiCont
         currency: input.currency.clone(),
     });
 
-    handle_fall_back(
-        context.sender_to_error,
-        context.cache,
-        context.sender_to_process_manager,
-        dialog_signal_adapter,
-        process_id,
-        data,
-        move |data| {
-            let result = match data {
-                Ok(ok) => {
-                    let a: Arc<dyn Any> = ok;
-                    let a: &Ok = a.downcast_ref().context("downcast error")?;
-                    Ok(a.clone())
-                }
-                Err(err) => {
-                    let a: Box<dyn Any> = err;
-                    let a: Box<Error> = a.downcast().map_err(|_| anyhow!("downcast error"))?;
-                    Err(*a)
-                }
-            };
+    let f: ResponseFunction = Box::new(move |a| -> Pin<Box<dyn Future<Output = Result<()>>>> {
+        Box::pin({
+            let sender = context.sender_to_commander.clone();
+            let input = input.clone();
 
-            let is_ok = result.is_ok();
+            async move {
+                let observe = match a {
+                    Response::ServerCannotBeReached => Observe::Timeout,
+                    Response::Data { data } => match data {
+                        Ok(ok) => {
+                            let a: Arc<dyn Any> = ok;
+                            let a: &Ok = a.downcast_ref().context("downcast error")?;
 
-            let async_state = match result {
-                Ok(a) => AsyncState::Success {
-                    input: input.clone(),
-                    ok: a,
-                },
-                Err(a) => AsyncState::Failure {
-                    input: input.clone(),
-                    error: a,
-                },
-            };
+                            Observe::Result(AsyncState::Success {
+                                input: input.clone(),
+                                ok: a.clone(),
+                            })
+                        }
+                        Err(err) => {
+                            let a: Box<dyn Any> = err;
+                            let a: Box<Error> =
+                                a.downcast().map_err(|_| anyhow!("downcast error"))?;
 
-            context1
-                .sender_to_commander
-                .send(process_id, Message::Observe(Observe::Result(async_state)));
+                            Observe::Result(AsyncState::Failure { input, error: *a })
+                        }
+                    },
+                };
 
-            Ok(is_ok)
-        },
-    )
-    .await?;
+                sender
+                    .async_send(process_id.clone(), Message::Observe(observe))
+                    .await?;
+
+                Ok(())
+            }
+        })
+    });
+
+    let strategy = if is_to_server {
+        CachingStrategy::WriteServerOnly
+    } else {
+        CachingStrategy::WriteCacheOnly
+    };
+
+    context
+        .cache
+        .send_to_cache_actor(strategy, TxnNumber::default(), data, f)
+        .await?;
 
     Ok(())
 }
 
-async fn handle_check(process_id: ProcessId, input: AsyncInput, context: UiContext) -> Result<()> {
-    let mut cache = context.cache.clone();
-    let sender_to_commander = context.sender_to_commander.clone();
-
+async fn handle_check(
+    process_id: ProcessId,
+    input: AsyncInput,
+    mut context: UiContext,
+) -> Result<()> {
     let new_uuid = CompanyUuid::from(UuidType::from(Id::generate()));
 
     let data: TypeOperationClientInput = Arc::new(Input {
@@ -426,24 +438,45 @@ async fn handle_check(process_id: ProcessId, input: AsyncInput, context: UiConte
         currency: input.currency.clone(),
     });
 
-    let mut receiver_to_response = cache
-        .send_to_cache_actor(CachingStrategy::ReadCacheOnly, TxnNumber::default(), data)
-        .await?;
+    let f: ResponseFunction = Box::new(move |a| -> Pin<Box<dyn Future<Output = Result<()>>>> {
+        Box::pin({
+            let sender = context.sender_to_commander.clone();
+            let input = input.clone();
 
-    match receiver_to_response.recv().await? {
-        Response::CloseTheChannel | Response::ServerCannotBeReached => {}
-        Response::Data { data, .. } => {
-            let new_state = match data {
-                Ok(_) => AsyncState::Idle,
-                Err(err) => {
-                    let a: Box<dyn Any> = err;
-                    let a: Box<Error> = a.downcast().map_err(|_| anyhow!("downcast error"))?;
-                    AsyncState::Failure { input, error: *a }
+            async move {
+                if let Response::Data { data } = a {
+                    let new_state = match data {
+                        Ok(_) => AsyncState::Idle,
+                        Err(err) => {
+                            let a: Box<dyn Any> = err;
+                            let a: Box<Error> =
+                                a.downcast().map_err(|_| anyhow!("downcast error"))?;
+                            AsyncState::Failure { input, error: *a }
+                        }
+                    };
+
+                    sender
+                        .async_send(
+                            process_id.clone(),
+                            Message::Observe(Observe::Result(new_state)),
+                        )
+                        .await?;
                 }
-            };
-            sender_to_commander.send(process_id, Message::Observe(Observe::Result(new_state)));
-        }
-    }
+
+                Ok(())
+            }
+        })
+    });
+
+    context
+        .cache
+        .send_to_cache_actor(
+            CachingStrategy::ReadCacheOnly,
+            TxnNumber::default(),
+            data,
+            f,
+        )
+        .await?;
 
     Ok(())
 }

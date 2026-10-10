@@ -16,13 +16,6 @@ pub(crate) enum Navigator {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Deserialize, Serialize)]
-pub(crate) enum GetCompaniesAndBranches {
-    None,
-    CreateCompany,
-    CreateCompanyBranch,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Deserialize, Serialize)]
 pub(crate) struct HomeNav {
     pub(crate) show_menu: bool,
     pub(crate) page_to_present: Menu,

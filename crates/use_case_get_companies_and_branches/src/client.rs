@@ -9,10 +9,13 @@ use kernel::new_types::UserUuid;
 use kernel::types::DatabaseRead;
 use kernel::types::MyErrorTrait;
 use std::ops::Deref;
+use std::pin::Pin;
 use std::sync::Arc;
 use utility::cache::CacheStruct;
 use utility::cache::CachingStrategy;
 use utility::cache::ResourceName;
+use utility::cache::Response;
+use utility::cache::ResponseFunction;
 use utility::cache::TraitOperationClientError;
 use utility::cache::TraitOperationClientInput;
 use utility::cache::TraitOperationClientOk;
@@ -75,8 +78,18 @@ pub async fn check_input<
 pub async fn fetch(mut cache: CacheStruct, user_uuid: UserUuid) -> Result<()> {
     let input: TypeOperationClientInput = Arc::new(Input { user_uuid });
 
+    let f: ResponseFunction =
+        Box::new(|_: Response| -> Pin<Box<dyn Future<Output = Result<()>>>> {
+            Box::pin(async { Ok(()) })
+        });
+
     cache
-        .send_to_cache_actor(CachingStrategy::ReadServerOnly, TxnNumber::default(), input)
+        .send_to_cache_actor(
+            CachingStrategy::ReadServerOnly,
+            TxnNumber::default(),
+            input,
+            f,
+        )
         .await?;
 
     Ok(())

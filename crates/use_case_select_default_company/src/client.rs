@@ -1,7 +1,6 @@
 use anyhow::Context;
 use anyhow::Result;
 use anyhow::anyhow;
-use infrastructure::actors::Receiver;
 use kernel::new_types::BranchUuid;
 use kernel::new_types::CompanyUuid;
 use kernel::new_types::UserUuid;
@@ -9,6 +8,7 @@ use serde::Deserialize;
 use serde::Serialize;
 use std::any::Any;
 use std::fmt::Debug;
+use std::pin::Pin;
 use std::sync::Arc;
 use use_case_get_companies_and_branches::domain::CompanyWithBranches;
 use use_case_get_companies_and_branches::domain::Error;
@@ -17,6 +17,7 @@ use use_case_get_companies_and_branches::domain::Ok;
 use utility::cache::CachingStrategy;
 use utility::cache::ResourceName;
 use utility::cache::Response;
+use utility::cache::ResponseFunction;
 use utility::cache::TypeOperationClientInput;
 use utility::cache::new_resource_name;
 use utility::dtos::TxnNumber;
@@ -266,50 +267,63 @@ pub async fn effect(msg: Effect, context: UiContext) -> Result<()> {
 async fn handle_refresh(
     process_id: ProcessId,
     async_input: AsyncInput,
-    context: UiContext,
+    mut context: UiContext,
 ) -> Result<()> {
-    let sender_to_commander = context.sender_to_commander.clone();
-    let mut cache = context.cache.clone();
-
-    let input: TypeOperationClientInput = Arc::new(Input {
+    let data: TypeOperationClientInput = Arc::new(Input {
         user_uuid: async_input.user_uuid.clone(),
     });
 
-    let mut receiver_to_response = cache
-        .send_to_cache_actor(CachingStrategy::ReadCacheOnly, TxnNumber::default(), input)
+    let f: ResponseFunction = Box::new(move |a| -> Pin<Box<dyn Future<Output = Result<()>>>> {
+        Box::pin({
+            let sender = context.sender_to_commander.clone();
+            let async_input = async_input.clone();
+
+            async move {
+                if let Response::Data { data } = a {
+                    let result = match data {
+                        Ok(ok) => {
+                            let a: Arc<dyn Any> = ok;
+                            let a: &Ok = a.downcast_ref().context("downcast error")?;
+                            Ok(a.clone())
+                        }
+                        Err(err) => {
+                            let a: Box<dyn Any> = err;
+                            let a: Box<Error> =
+                                a.downcast().map_err(|_| anyhow!("downcast error"))?;
+                            Err(*a)
+                        }
+                    };
+
+                    let async_state = match result {
+                        Ok(a) => AsyncState::Success {
+                            input: async_input,
+                            ok: a,
+                        },
+                        Err(a) => AsyncState::Failure {
+                            input: async_input,
+                            error: a,
+                        },
+                    };
+
+                    sender
+                        .async_send(process_id, Message::Observe(Observe::Result(async_state)))
+                        .await?;
+                }
+
+                Ok(())
+            }
+        })
+    });
+
+    context
+        .cache
+        .send_to_cache_actor(
+            CachingStrategy::ReadCacheOnly,
+            TxnNumber::default(),
+            data,
+            f,
+        )
         .await?;
-
-    match receiver_to_response.recv().await? {
-        Response::CloseTheChannel => {}
-        Response::ServerCannotBeReached => {}
-        Response::Data { data, .. } => {
-            let result = match data {
-                Ok(ok) => {
-                    let a: Arc<dyn Any> = ok;
-                    let a: &Ok = a.downcast_ref().context("downcast error")?;
-                    Ok(a.clone())
-                }
-                Err(err) => {
-                    let a: Box<dyn Any> = err;
-                    let a: Box<Error> = a.downcast().map_err(|_| anyhow!("downcast error"))?;
-                    Err(*a)
-                }
-            };
-
-            let async_state = match result {
-                Ok(a) => AsyncState::Success {
-                    input: async_input,
-                    ok: a,
-                },
-                Err(a) => AsyncState::Failure {
-                    input: async_input,
-                    error: a,
-                },
-            };
-
-            sender_to_commander.send(process_id, Message::Observe(Observe::Result(async_state)));
-        }
-    }
 
     Ok(())
 }
