@@ -1,0 +1,71 @@
+[package]
+name = "app_root_client"
+version = "0.1.0"
+edition = "2024"
+
+[features]
+default = ["web"]
+web = ["dioxus/web"]
+# desktop = ["dioxus/desktop"]
+# mobile = ["dioxus/mobile"]
+
+[dependencies]
+cache = { workspace = true }
+infrastructure = { workspace = true }
+kernel = { workspace = true }
+patterns = { workspace = true }
+utility = { workspace = true }
+utility_ui = { workspace = true, features = ["ui"] }
+
+use_case_create_account = { workspace = true, features = [
+    "client",
+    "cache",
+    "ui",
+] }
+use_case_create_account_for_branch = { workspace = true, features = [
+    "client",
+    "cache",
+    "ui",
+] }
+use_case_create_branch = { workspace = true, features = [
+    "client",
+    "cache",
+    "ui",
+] }
+use_case_create_company = { workspace = true, features = [
+    "client",
+    "cache",
+    "ui",
+] }
+use_case_create_journal_entry = { workspace = true, features = [
+    "client",
+    "cache",
+    "ui",
+] }
+use_case_error_handler = { workspace = true, features = ["client", "ui"] }
+use_case_get_all_accounts = { workspace = true, features = [
+    "client",
+    "cache",
+    "ui",
+] }
+use_case_get_companies_and_branches = { workspace = true, features = [
+    "client",
+    "cache",
+    "ui",
+] }
+use_case_select_default_company = { workspace = true, features = [
+    "client",
+    "cache",
+    "ui",
+] }
+use_case_sign_in = { workspace = true, features = ["client", "cache", "ui"] }
+use_case_sign_up = { workspace = true, features = ["client", "cache", "ui"] }
+
+anyhow = { workspace = true }
+serde = { workspace = true }
+tracing = { workspace = true }
+
+console_error_panic_hook = { workspace = true }
+dioxus = { workspace = true }
+dioxus-logger = { workspace = true }
+tracing-subscriber = { workspace = true }

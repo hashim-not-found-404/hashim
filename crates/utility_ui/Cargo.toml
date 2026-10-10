@@ -1,0 +1,12 @@
+[package]
+name = "utility_ui"
+version = "0.1.0"
+edition = "2024"
+
+[features]
+ui = ["dioxus"]
+
+[dependencies]
+serde = { workspace = true }
+
+dioxus = { workspace = true, optional = true }

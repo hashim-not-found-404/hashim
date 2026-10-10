@@ -1,0 +1,498 @@
+use crate::new_types::UserUuid;
+use crate::new_types::UuidType;
+use crate::request_response::FromServer;
+use crate::request_response::Input;
+use crate::request_response::MyResult;
+use crate::server::CastDTOToServer;
+use crate::server::DBClient;
+use crate::server::Database;
+use crate::server::ListOfResources;
+use crate::server::SideEffects;
+use crate::server::WSMessage;
+use crate::server::WSServer;
+use crate::types::HashimError;
+use crate::types::JWTError;
+use crate::types::NonceError;
+use anyhow::Result;
+use infrastructure::actors::Mpsc;
+use infrastructure::actors::MpscReceiver;
+use infrastructure::actors::MpscSender;
+use infrastructure::actors::MultiProducerSingleConsumer;
+use infrastructure::actors::Receiver;
+use infrastructure::actors::Sender;
+use infrastructure::encode_decode::Coding;
+use infrastructure::encode_decode::Ed;
+use infrastructure::jwt::JWT;
+use infrastructure::random_number::RandomNumber;
+use infrastructure::random_number::Rn;
+use infrastructure::row_id::Id;
+use infrastructure::row_id::RowId;
+use infrastructure::runtime::Either;
+use infrastructure::runtime::Rt;
+use infrastructure::runtime::Runtime;
+use std::collections::HashMap;
+use std::collections::HashSet;
+use std::sync::Arc;
+use std::time::SystemTime;
+use std::time::UNIX_EPOCH;
+use utility::dtos::Txn;
+use utility::dtos::TypeOperationDTOResource;
+use utility::types::HashMapWithHashMapValue;
+use utility::types::LogError;
+
+pub struct ServerMethods<Jwt: JWT<UserUuid>, Db: Database> {
+    database: Db,
+    jwt: Jwt,
+    sender_to_broker: MpscSender<MessageToBroker>,
+}
+
+impl<Jwt: JWT<UserUuid>, Db: Database<Client = Cli>, Cli: DBClient> ServerMethods<Jwt, Db> {
+    pub async fn new() -> Result<Self> {
+        let (sender_to_broker, receiver_to_broker) = Mpsc::channel();
+        Self::broker_actor(receiver_to_broker);
+
+        Ok(Self {
+            database: Db::new().await?,
+            jwt: Jwt::new(),
+            sender_to_broker,
+        })
+    }
+
+    pub fn server_actor<Ws: WSServer, Cas: CastDTOToServer<Cli = Cli, Jwt = Jwt>>(
+        self: Arc<Self>,
+        mut session: Ws,
+    ) {
+        Rt::spawn_local(async move {
+            let mut sender_to_broker = self.sender_to_broker.clone();
+            let (sender_to_server, mut receiver_to_server) =
+                Mpsc::channel::<Vec<TypeOperationDTOResource>>();
+            let connection_id = Rn::generate();
+
+            loop {
+                let result = Rt::select(session.receive(), receiver_to_server.recv()).await;
+                match result {
+                    Either::One(msg) => {
+                        let Ok(msg) = msg else {
+                            break;
+                        };
+
+                        match msg {
+                            WSMessage::Close => break,
+                            WSMessage::Binary(received_data) => {
+                                dbg!("received_data");
+                                let Ok(input) = Ed::decode::<Input>(&received_data) else {
+                                    if session
+                                        .send_bin(Ed::encode(&FromServer::Error(
+                                            HashimError::InvalidDataFormatCameFromClient,
+                                        )))
+                                        .await
+                                        .is_err()
+                                    {
+                                        break;
+                                    }
+                                    continue;
+                                };
+
+                                dbg!("decode is ok");
+
+                                let Ok(mut client) = self.database.get_client().await else {
+                                    if session
+                                        .send_bin(Ed::encode(&FromServer::Error(
+                                            HashimError::InternalServerError,
+                                        )))
+                                        .await
+                                        .is_err()
+                                    {
+                                        break;
+                                    }
+                                    continue;
+                                };
+
+                                dbg!(&input);
+                                let mut side_effects = SideEffects::new(&mut client, &self.jwt);
+                                let output =
+                                    push_data::<Jwt, Cli, Cas>(input, &mut side_effects).await;
+
+                                dbg!(&output);
+                                match output {
+                                    Ok(ok) => {
+                                        if session
+                                            .send_bin(Ed::encode(&FromServer::PushData(ok)))
+                                            .await
+                                            .is_err()
+                                        {
+                                            break;
+                                        }
+                                    }
+                                    Err(_) => {
+                                        if session
+                                            .send_bin(Ed::encode(&FromServer::Error(
+                                                HashimError::InternalServerError,
+                                            )))
+                                            .await
+                                            .is_err()
+                                        {
+                                            break;
+                                        }
+                                    }
+                                }
+
+                                if !side_effects.users_to_resubscribe.is_empty() {
+                                    let Ok(subs) = get_table_of_subscribed_data::<Cli>(
+                                        side_effects.client,
+                                        &side_effects.users_to_resubscribe,
+                                    )
+                                    .await
+                                    else {
+                                        if session
+                                            .send_bin(Ed::encode(&FromServer::Error(
+                                                HashimError::InternalServerError,
+                                            )))
+                                            .await
+                                            .is_err()
+                                        {
+                                            break;
+                                        }
+                                        continue;
+                                    };
+
+                                    if sender_to_broker
+                                        .send(MessageToBroker::Subscribe {
+                                            connection_id,
+                                            list_of_subscribtion: subs,
+                                            users_uuids: side_effects.users_to_resubscribe,
+                                            sender_to_server: sender_to_server.clone(),
+                                        })
+                                        .await
+                                        .log()
+                                        .is_err()
+                                    {
+                                        break;
+                                    }
+                                }
+
+                                if !side_effects.resource_to_broadcast_for_branch.is_empty()
+                                    && sender_to_broker
+                                        .send(MessageToBroker::Publish {
+                                            connection_id,
+                                            list_of_resources_for_branch: side_effects
+                                                .resource_to_broadcast_for_branch,
+                                        })
+                                        .await
+                                        .log()
+                                        .is_err()
+                                {
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    Either::Two(wraped_resource) => {
+                        let resource = wraped_resource.unwrap();
+                        if session
+                            .send_bin(Ed::encode(&FromServer::Resources(resource)))
+                            .await
+                            .is_err()
+                        {
+                            break;
+                        }
+                    }
+                }
+            }
+
+            session.close().await.unwrap();
+
+            sender_to_broker
+                .send(MessageToBroker::Unsubscribe { connection_id })
+                .await
+                .unwrap();
+        });
+    }
+
+    pub(crate) fn broker_actor(mut receiver_to_broker: MpscReceiver<MessageToBroker>) {
+        Rt::spawn_local(async move {
+            let mut pool_of_pubsub_for_branch: broker_functions::UserSubscribes =
+                HashMap::with_capacity(10000);
+            let mut pool_of_server_facad_channels: UserSenders = HashMap::with_capacity(10000);
+
+            loop {
+                let message = receiver_to_broker.recv().await.unwrap();
+                match message {
+                    MessageToBroker::Subscribe {
+                        connection_id,
+                        list_of_subscribtion,
+                        users_uuids,
+                        sender_to_server,
+                    } => {
+                        for user_uuid in users_uuids {
+                            pool_of_server_facad_channels.nested_insert(
+                                user_uuid,
+                                connection_id,
+                                sender_to_server.clone(),
+                            );
+                        }
+
+                        broker_functions::merge_subscribes(
+                            &mut pool_of_pubsub_for_branch,
+                            list_of_subscribtion.branches,
+                        );
+                    }
+                    MessageToBroker::Unsubscribe { connection_id } => {
+                        let mut user_to_remove = Vec::new();
+
+                        for (user_uuid, inner) in &mut pool_of_server_facad_channels {
+                            if inner.remove(&connection_id).is_some() && inner.is_empty() {
+                                user_to_remove.push(user_uuid.clone());
+                            }
+                        }
+
+                        for user_uuid in user_to_remove {
+                            pool_of_server_facad_channels.remove(&user_uuid);
+                            broker_functions::unsubscribe(
+                                &mut pool_of_pubsub_for_branch,
+                                &user_uuid,
+                            );
+                        }
+                    }
+                    MessageToBroker::Publish {
+                        connection_id,
+                        list_of_resources_for_branch,
+                    } => {
+                        let mut resource_to_send: HashMap<UserUuid, Vec<TypeOperationDTOResource>> =
+                            HashMap::new();
+
+                        broker_functions::map_resource_to_subscribes(
+                            &pool_of_pubsub_for_branch,
+                            &list_of_resources_for_branch,
+                            &mut resource_to_send,
+                        );
+
+                        for (user_uuid, resource) in resource_to_send {
+                            let channels = pool_of_server_facad_channels.get_mut(&user_uuid);
+
+                            if let Some(channels) = channels {
+                                for (connection_id1, mut sender) in channels.clone() {
+                                    if connection_id == connection_id1 {
+                                        continue;
+                                    }
+                                    if sender.send(resource.clone()).await.is_err() {
+                                        channels.remove(&connection_id1);
+                                    }
+                                }
+                                if channels.is_empty() {
+                                    pool_of_server_facad_channels.remove(&user_uuid);
+                                }
+                            } else {
+                                dbg!("there is some problem here this should not happen");
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+}
+
+async fn push_data<
+    'a,
+    Jwt: JWT<UserUuid>,
+    Cli: DBClient,
+    Cas: CastDTOToServer<Cli = Cli, Jwt = Jwt>,
+>(
+    input: Input,
+    side_effects: &mut SideEffects<'a, Cli, Jwt>,
+) -> Result<MyResult> {
+    let mut the_return_result = MyResult {
+        jwts: Vec::with_capacity(input.jwts.len()),
+        nonce: Ok(()),
+        operations: Vec::with_capacity(input.operations.len()),
+    };
+
+    let mut is_there_error = false;
+
+    for jwt_value in &input.jwts {
+        if let Some(user_uuid) = side_effects.jwt.validate(jwt_value.clone()) {
+            side_effects.authenticated_users.insert(user_uuid);
+        } else {
+            the_return_result.jwts.push(Err(JWTError::Invalid));
+            is_there_error = true;
+        }
+    }
+
+    if !Id::validate(&input.nonce) {
+        the_return_result.nonce = Err(NonceError::Invalid);
+        return Ok(the_return_result);
+    }
+
+    let is_nonce_used = side_effects
+        .client
+        .write_nonce_if_not_used_and_return_is_nonce_used(&input.nonce)
+        .await?;
+
+    if !check_nonce_if_valid(&input.nonce, is_nonce_used) {
+        the_return_result.nonce = Err(NonceError::Invalid);
+    }
+
+    if is_there_error {
+        return Ok(the_return_result);
+    }
+
+    for transaction in input.operations {
+        let input = Cas::cast_input(transaction.operation)?;
+        let result = input.handle_operation(side_effects).await?;
+
+        the_return_result.operations.push(Txn {
+            txn_number: transaction.txn_number,
+            operation: result,
+        });
+    }
+
+    Ok(the_return_result)
+}
+
+fn check_nonce_if_valid(nonce: &UuidType, is_used: bool) -> bool {
+    if is_used {
+        return false;
+    }
+
+    let Some(nonce) = Id::get_time_as_seconds(nonce) else {
+        return false;
+    };
+
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+
+    let max_future = 5;
+
+    if nonce > now + max_future {
+        return false;
+    }
+
+    let max_age = 300;
+
+    if now.saturating_sub(nonce) > max_age {
+        return false;
+    }
+
+    true
+}
+
+async fn get_table_of_subscribed_data<Cli: DBClient>(
+    client: &mut Cli,
+    users_uuids: &HashSet<UserUuid>,
+) -> Result<AllSubscribes> {
+    let the_companies_and_branches_he_in = client.read_roles_for_user(users_uuids).await?;
+
+    let mut subs = AllSubscribes {
+        branches: HashMap::new(),
+    };
+
+    for (user, companies) in the_companies_and_branches_he_in.companies {
+        for company in companies {
+            let Some(branches) = the_companies_and_branches_he_in
+                .branches_of_each_company
+                .get(&company)
+            else {
+                continue;
+            };
+
+            for branch in branches {
+                subs.branches
+                    .entry(branch.clone())
+                    .or_default()
+                    .insert(user.clone());
+            }
+        }
+    }
+
+    for (user, branches) in the_companies_and_branches_he_in.branches {
+        for branch in branches {
+            subs.branches
+                .entry(branch.clone())
+                .or_default()
+                .insert(user.clone());
+        }
+    }
+
+    Ok(subs)
+}
+
+mod broker_functions {
+    use crate::new_types::BranchUuid;
+    use crate::new_types::UserUuid;
+    use crate::server::ListOfResources;
+    use std::collections::HashMap;
+    use std::collections::HashSet;
+    use utility::dtos::TypeOperationDTOResource;
+
+    pub(crate) type UserSubscribes = HashMap<BranchUuid, HashSet<UserUuid>>;
+
+    pub(crate) fn map_resource_to_subscribes(
+        pool_of_pubsub: &UserSubscribes,
+        list_of_resources: &ListOfResources,
+        resource_to_send: &mut HashMap<UserUuid, Vec<TypeOperationDTOResource>>,
+    ) {
+        for (branch, resources_for_branch) in list_of_resources {
+            let Some(users) = pool_of_pubsub.get(&branch) else {
+                dbg!("there is some problem here this should not happen");
+                continue;
+            };
+
+            for user_uuid in users {
+                let user_resource = resource_to_send.entry(user_uuid.clone()).or_default();
+
+                for resource in resources_for_branch {
+                    user_resource.push(resource.clone());
+                }
+            }
+        }
+    }
+
+    pub(crate) fn unsubscribe(pool_of_pubsub: &mut UserSubscribes, user_uuid: &UserUuid) {
+        pool_of_pubsub.retain(|_, users_and_subs| {
+            users_and_subs.remove(user_uuid);
+            !users_and_subs.is_empty()
+        });
+    }
+
+    pub(crate) fn merge_subscribes(
+        pool_of_pubsub: &mut UserSubscribes,
+        list_of_subscribtion: UserSubscribes,
+    ) {
+        for (branch, users_subscribes) in list_of_subscribtion {
+            for user_uuid in users_subscribes {
+                pool_of_pubsub
+                    .entry(branch.clone())
+                    .or_default()
+                    .insert(user_uuid);
+            }
+        }
+    }
+}
+
+pub(crate) struct AllSubscribes {
+    pub(crate) branches: broker_functions::UserSubscribes,
+}
+
+type UserSenders = HashMap<
+    UserUuid,
+    HashMap<u64, MpscSender<Vec<TypeOperationDTOResource>>>, // because user may have multiple web socket connection
+>;
+
+pub(crate) enum MessageToBroker {
+    Subscribe {
+        connection_id: u64,
+        list_of_subscribtion: AllSubscribes,
+        users_uuids: HashSet<UserUuid>,
+        sender_to_server: MpscSender<Vec<TypeOperationDTOResource>>,
+    },
+    Unsubscribe {
+        connection_id: u64,
+    },
+    Publish {
+        connection_id: u64,
+        list_of_resources_for_branch: ListOfResources,
+    },
+}

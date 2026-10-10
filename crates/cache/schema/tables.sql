@@ -49,7 +49,6 @@ CREATE TABLE IF NOT EXISTS account(
     is_debit                                    BOOLEAN,
     is_permanent_account                        BOOLEAN,
     name                                        TEXT,
-    notes                                       TEXT,
     unit_of_measurement_of_quantity             TEXT,
     belong_to_company                           TEXT REFERENCES company(rowid) ON DELETE CASCADE
 

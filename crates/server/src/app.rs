@@ -1,4 +1,4 @@
-use crate::web_socket_server;
+use actix_cors::Cors;
 use actix_web::App;
 use actix_web::HttpRequest;
 use actix_web::HttpResponse;
@@ -6,49 +6,56 @@ use actix_web::HttpServer;
 use actix_web::web;
 use actix_web::web::Data;
 use actix_web::web::Payload;
-use adapters::actors;
-use adapters::authentication;
-use adapters::encode_decode;
-use adapters::functions;
-use adapters::jwt;
-use adapters::random_number;
-use adapters::row_id;
-use adapters::runtime;
-use adapters::time;
-use database::db_bundle;
-use database::utility::db;
-use my_core::domain::utility::types::HOST;
-use my_core::domain::utility::types::PORT;
-use my_core::server::server_methods;
+use actix_ws::AggregatedMessage;
+use actix_ws::AggregatedMessageStream;
+use actix_ws::Session;
+use actix_ws::handle;
+use anyhow::Result;
+use anyhow::bail;
+use database::db;
+use database::db_client;
+use futures_util::StreamExt;
+use infrastructure::jwt::Jwt;
+use kernel::server::CastDTOToServer;
+use kernel::server::WSMessage;
+use kernel::server::WSServer;
+use kernel::server_methods::ServerMethods;
+use kernel::types::HOST;
+use kernel::types::PORT;
+use utility::types::LogError;
 
-type ServerMethodsType = server_methods::ServerMethods<actors::target::S, jwt::target::S, db::S>;
+type ServerMethodsType = ServerMethods<Jwt, db::S>;
 
-pub(crate) async fn main() {
+pub async fn main<Cas: CastDTOToServer<Cli = db_client::S, Jwt = Jwt> + 'static>() -> Result<()> {
     println!("started server");
-    let actions = Data::new(ServerMethodsType::new::<runtime::target::S>().await);
+
+    let actions = Data::new(ServerMethodsType::new().await?);
 
     HttpServer::new(move || {
-        let cors = actix_cors::Cors::default()
+        let cors = Cors::default()
             .allow_any_origin()
             .allow_any_method()
             .allow_any_header()
             .max_age(3600);
 
         App::new()
-            .wrap(cors)
             .app_data(actions.clone())
-            .route("/ws", web::get().to(ws_handler))
+            .wrap(cors)
+            .route("/ws", web::get().to(ws_handler::<Cas>))
     })
     // .bind_rustls_0_23((HOST, PORT), get_tls_config())
-    .bind((HOST, PORT))
-    .unwrap()
+    .bind((HOST, PORT))?
     .run()
-    .await
-    .unwrap()
+    .await?;
+
+    Ok(())
 }
 
-async fn ws_handler(req: HttpRequest, stream: Payload) -> HttpResponse {
-    let (response, session, stream) = match actix_ws::handle(&req, stream) {
+async fn ws_handler<Cas: CastDTOToServer<Cli = db_client::S, Jwt = Jwt>>(
+    req: HttpRequest,
+    stream: Payload,
+) -> HttpResponse {
+    let (response, session, stream) = match handle(&req, stream) {
         Ok(result) => result,
         Err(e) => {
             eprintln!("Error upgrading to WebSocket: {}", e);
@@ -56,23 +63,65 @@ async fn ws_handler(req: HttpRequest, stream: Payload) -> HttpResponse {
         }
     };
 
-    let stream = stream.aggregate_continuations().max_continuation_size(2_usize.pow(16));
+    let stream = stream
+        .aggregate_continuations()
+        .max_continuation_size(2_usize.pow(16));
 
-    let session = web_socket_server::S::new(session, stream);
+    let session = WsType::new(session, stream);
     let state = req.app_data::<Data<ServerMethodsType>>().unwrap();
     state
         .clone()
         .into_inner()
-        .server_actor::<runtime::target::S, web_socket_server::S, random_number::target::S,encode_decode::target::S,row_id::target::S,        time::target::S,functions::target::S,authentication::target::S,db_bundle::S>(
-            session,
-        );
+        .server_actor::<WsType, Cas>(session);
 
     response
 }
 
+struct WsType {
+    session: Session,
+    stream: AggregatedMessageStream,
+}
+
+impl WsType {
+    fn new(session: Session, stream: AggregatedMessageStream) -> Self {
+        Self { session, stream }
+    }
+}
+
+impl WSServer for WsType {
+    async fn send_bin(&mut self, bin: Vec<u8>) -> Result<()> {
+        self.session.binary(bin).await.log()?;
+        Ok(())
+    }
+
+    async fn receive(&mut self) -> Result<WSMessage> {
+        match self.stream.next().await {
+            Some(msg) => match msg.log()? {
+                AggregatedMessage::Binary(data) => Ok(WSMessage::Binary(data.to_vec())),
+                AggregatedMessage::Text(_) => bail!("we dont use text"),
+                AggregatedMessage::Ping(_) => {
+                    todo!()
+                }
+                AggregatedMessage::Pong(_) => {
+                    todo!()
+                }
+                AggregatedMessage::Close(_) => Ok(WSMessage::Close),
+            },
+            None => bail!("WebSocket connection closed"),
+        }
+    }
+
+    async fn close(self) -> Result<()> {
+        self.session.clone().close(None).await.log()?;
+        Ok(())
+    }
+}
+
 #[allow(dead_code)]
 fn get_tls_config() -> rustls::ServerConfig {
-    rustls::crypto::aws_lc_rs::default_provider().install_default().unwrap();
+    rustls::crypto::aws_lc_rs::default_provider()
+        .install_default()
+        .unwrap();
 
     const CERT_PEM: &[u8] = include_bytes!("../../../privet/cert.pem");
     const KEY_PEM: &[u8] = include_bytes!("../../../privet/key.pem");
@@ -85,8 +134,13 @@ fn get_tls_config() -> rustls::ServerConfig {
     // load TLS certs and key
     // to create a self-signed temporary cert for testing:
     // `openssl req -x509 -newkey rsa:4096 -nodes -keyout key.pem -out cert.pem -days 365 -subj '/CN=localhost'`
-    let tls_certs = rustls_pemfile::certs(&mut certs_file).collect::<Result<_, _>>().unwrap();
-    let tls_key = rustls_pemfile::pkcs8_private_keys(&mut key_file).next().unwrap().unwrap();
+    let tls_certs = rustls_pemfile::certs(&mut certs_file)
+        .collect::<Result<_, _>>()
+        .unwrap();
+    let tls_key = rustls_pemfile::pkcs8_private_keys(&mut key_file)
+        .next()
+        .unwrap()
+        .unwrap();
 
     // set up TLS config options
     rustls::ServerConfig::builder()

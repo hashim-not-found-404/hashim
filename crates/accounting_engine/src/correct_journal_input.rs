@@ -64,10 +64,10 @@ pub trait AccountInfoProvider {
 }
 
 pub struct AccountInfo<I> {
-    pub is_debit:      bool,
-    pub in_flow_type:  InFlowType,
+    pub is_debit: bool,
+    pub in_flow_type: InFlowType,
     pub out_flow_type: OutFlowType,
-    pub inventory:     I,
+    pub inventory: I,
 }
 
 fn reset_all_inferred_values<C, AId>(entry: &mut C)
@@ -239,8 +239,10 @@ fn horizontal_infer_for_amount_from_quantity<C, A, AId>(
                     continue;
                 };
 
-                let total_quantity_in_inventory =
-                    info.inventory.iter1().fold(0.0, |total, record| total + record.quantity);
+                let total_quantity_in_inventory = info
+                    .inventory
+                    .iter1()
+                    .fold(0.0, |total, record| total + record.quantity);
 
                 inferred_quantity = total_quantity_in_inventory.min(inferred_quantity);
 
@@ -262,8 +264,10 @@ fn horizontal_infer_for_amount_from_quantity<C, A, AId>(
                         }
                     }
                     OutFlowType::QuantityEqualAmount => {
-                        let total_amount_in_inventory =
-                            info.inventory.iter1().fold(0.0, |total, record| total + record.amount);
+                        let total_amount_in_inventory = info
+                            .inventory
+                            .iter1()
+                            .fold(0.0, |total, record| total + record.amount);
 
                         let inferred_amount = total_amount_in_inventory.min(inferred_quantity);
 
@@ -346,13 +350,14 @@ where
             &mut new_double,
             |single| Num(single.get_inferred_amount().unwrap_or_default()),
             |single| {
-                single.get_inferred_is_debit().map_or(Side::Unknown, |is_debit| {
-                    if is_debit {
-                        Side::Rhs
-                    } else {
-                        Side::Lhs
-                    }
-                })
+                single
+                    .get_inferred_is_debit()
+                    .map_or(
+                        Side::Unknown,
+                        |is_debit| {
+                            if is_debit { Side::Rhs } else { Side::Lhs }
+                        },
+                    )
             },
             |single, b| single.set_inferred_is_debit(Some(b == Side::Rhs)),
         );
@@ -524,8 +529,10 @@ fn horizontal_infer_for_quantity_from_amount<C, A, AId>(
                     continue;
                 };
 
-                let total_amount_in_inventory =
-                    info.inventory.iter1().fold(0.0, |total, record| total + record.amount);
+                let total_amount_in_inventory = info
+                    .inventory
+                    .iter1()
+                    .fold(0.0, |total, record| total + record.amount);
 
                 let inferred_amount = total_amount_in_inventory.min(amount);
 
@@ -541,11 +548,14 @@ fn horizontal_infer_for_quantity_from_amount<C, A, AId>(
                             .iter1()
                             .fold(0.0, |total, record| total + record.quantity);
 
-                        let total_amount_in_inventory =
-                            info.inventory.iter1().fold(0.0, |total, record| total + record.amount);
+                        let total_amount_in_inventory = info
+                            .inventory
+                            .iter1()
+                            .fold(0.0, |total, record| total + record.amount);
 
-                        let inferred_quantity =
-                            total_quantity_in_inventory.min(total_amount_in_inventory).min(amount);
+                        let inferred_quantity = total_quantity_in_inventory
+                            .min(total_amount_in_inventory)
+                            .min(amount);
 
                         single.set_inferred_quantity(Some(inferred_quantity));
                         single.set_inferred_amount(Some(inferred_quantity));
@@ -659,18 +669,18 @@ mod tests {
     pub struct MockSingle {
         pub user_input_account_id: String,
 
-        pub user_input_is_debit:     Option<bool>,
-        pub user_input_is_inflow:    Option<bool>,
-        pub user_input_quantity:     Option<f64>,
-        pub user_input_amount:       Option<f64>,
-        pub user_input_inflow_type:  Option<InFlowType>,
+        pub user_input_is_debit: Option<bool>,
+        pub user_input_is_inflow: Option<bool>,
+        pub user_input_quantity: Option<f64>,
+        pub user_input_amount: Option<f64>,
+        pub user_input_inflow_type: Option<InFlowType>,
         pub user_input_outflow_type: Option<OutFlowType>,
 
-        pub inferred_is_debit:     Option<bool>,
-        pub inferred_is_inflow:    Option<bool>,
-        pub inferred_quantity:     Option<f64>,
-        pub inferred_amount:       Option<f64>,
-        pub inferred_inflow_type:  Option<InFlowType>,
+        pub inferred_is_debit: Option<bool>,
+        pub inferred_is_inflow: Option<bool>,
+        pub inferred_quantity: Option<f64>,
+        pub inferred_amount: Option<f64>,
+        pub inferred_inflow_type: Option<InFlowType>,
         pub inferred_outflow_type: Option<OutFlowType>,
     }
 
@@ -865,10 +875,10 @@ mod tests {
     }
 
     struct MockAccountInfoProvider {
-        is_debit:     bool,
-        inflow_type:  InFlowType,
+        is_debit: bool,
+        inflow_type: InFlowType,
         outflow_type: OutFlowType,
-        inventory:    Vec<InventoryRecord>,
+        inventory: Vec<InventoryRecord>,
     }
 
     fn new_account_info_provider() -> HashMap<String, MockAccountInfoProvider> {
@@ -883,13 +893,11 @@ mod tests {
             &'a self,
             id: &Self::AccountId,
         ) -> Option<AccountInfo<&'a Self::Inventory>> {
-            self.get(id).map(|a| {
-                AccountInfo {
-                    is_debit:      a.is_debit,
-                    in_flow_type:  a.inflow_type.clone(),
-                    out_flow_type: a.outflow_type.clone(),
-                    inventory:     &a.inventory,
-                }
+            self.get(id).map(|a| AccountInfo {
+                is_debit: a.is_debit,
+                in_flow_type: a.inflow_type.clone(),
+                out_flow_type: a.outflow_type.clone(),
+                inventory: &a.inventory,
             })
         }
 
@@ -897,13 +905,11 @@ mod tests {
             &'a mut self,
             id: &Self::AccountId,
         ) -> Option<AccountInfo<&'a mut Self::Inventory>> {
-            self.get_mut(id).map(|a| {
-                AccountInfo {
-                    is_debit:      a.is_debit,
-                    in_flow_type:  a.inflow_type.clone(),
-                    out_flow_type: a.outflow_type.clone(),
-                    inventory:     &mut a.inventory,
-                }
+            self.get_mut(id).map(|a| AccountInfo {
+                is_debit: a.is_debit,
+                in_flow_type: a.inflow_type.clone(),
+                out_flow_type: a.outflow_type.clone(),
+                inventory: &mut a.inventory,
             })
         }
     }
@@ -963,25 +969,33 @@ mod tests {
         };
 
         let double = MockDouble {
-            singles: vec![single1, single2, single3, single4, single5, single6, single7, single8],
+            singles: vec![
+                single1, single2, single3, single4, single5, single6, single7, single8,
+            ],
         };
         let mut container = MockEntryContainer {
             doubles: vec![double],
         };
 
         let mut provider = new_account_info_provider();
-        provider.insert("1".to_string(), MockAccountInfoProvider {
-            is_debit:     true,
-            inflow_type:  InFlowType::Manual,
-            outflow_type: OutFlowType::Manual,
-            inventory:    Vec::new(),
-        });
-        provider.insert("2".to_string(), MockAccountInfoProvider {
-            is_debit:     true,
-            inflow_type:  InFlowType::Manual,
-            outflow_type: OutFlowType::Manual,
-            inventory:    Vec::new(),
-        });
+        provider.insert(
+            "1".to_string(),
+            MockAccountInfoProvider {
+                is_debit: true,
+                inflow_type: InFlowType::Manual,
+                outflow_type: OutFlowType::Manual,
+                inventory: Vec::new(),
+            },
+        );
+        provider.insert(
+            "2".to_string(),
+            MockAccountInfoProvider {
+                is_debit: true,
+                inflow_type: InFlowType::Manual,
+                outflow_type: OutFlowType::Manual,
+                inventory: Vec::new(),
+            },
+        );
 
         reset_all_inferred_values(&mut container);
         horizontal_infer_for_is_debit(&mut container, &mut provider);
@@ -990,14 +1004,38 @@ mod tests {
 
         let updated_double = &container.doubles[0];
 
-        assert_eq!(updated_double.singles[0].get_from_user_input_is_inflow(), None);
-        assert_eq!(updated_double.singles[1].get_from_user_input_is_inflow(), Some(true));
-        assert_eq!(updated_double.singles[2].get_from_user_input_is_inflow(), Some(true));
-        assert_eq!(updated_double.singles[3].get_from_user_input_is_inflow(), Some(false));
-        assert_eq!(updated_double.singles[4].get_from_user_input_is_inflow(), Some(false));
-        assert_eq!(updated_double.singles[5].get_from_user_input_is_inflow(), Some(false));
-        assert_eq!(updated_double.singles[6].get_from_user_input_is_inflow(), Some(false));
-        assert_eq!(updated_double.singles[7].get_from_user_input_is_inflow(), None);
+        assert_eq!(
+            updated_double.singles[0].get_from_user_input_is_inflow(),
+            None
+        );
+        assert_eq!(
+            updated_double.singles[1].get_from_user_input_is_inflow(),
+            Some(true)
+        );
+        assert_eq!(
+            updated_double.singles[2].get_from_user_input_is_inflow(),
+            Some(true)
+        );
+        assert_eq!(
+            updated_double.singles[3].get_from_user_input_is_inflow(),
+            Some(false)
+        );
+        assert_eq!(
+            updated_double.singles[4].get_from_user_input_is_inflow(),
+            Some(false)
+        );
+        assert_eq!(
+            updated_double.singles[5].get_from_user_input_is_inflow(),
+            Some(false)
+        );
+        assert_eq!(
+            updated_double.singles[6].get_from_user_input_is_inflow(),
+            Some(false)
+        );
+        assert_eq!(
+            updated_double.singles[7].get_from_user_input_is_inflow(),
+            None
+        );
     }
 
     #[test]
@@ -1040,31 +1078,43 @@ mod tests {
         };
 
         let mut provider = new_account_info_provider();
-        provider.insert("1".to_string(), MockAccountInfoProvider {
-            is_debit:     true,
-            inflow_type:  InFlowType::QuantityEqualZero,
-            outflow_type: OutFlowType::Manual,
-            inventory:    Vec::new(),
-        });
-        provider.insert("2".to_string(), MockAccountInfoProvider {
-            is_debit:     true,
-            inflow_type:  InFlowType::QuantityEqualAmount,
-            outflow_type: OutFlowType::Manual,
-            inventory:    Vec::new(),
-        });
-        provider.insert("3".to_string(), MockAccountInfoProvider {
-            is_debit:     true,
-            inflow_type:  InFlowType::QuantityEqualZero,
-            outflow_type: OutFlowType::Manual,
-            inventory:    Vec::new(),
-        });
+        provider.insert(
+            "1".to_string(),
+            MockAccountInfoProvider {
+                is_debit: true,
+                inflow_type: InFlowType::QuantityEqualZero,
+                outflow_type: OutFlowType::Manual,
+                inventory: Vec::new(),
+            },
+        );
+        provider.insert(
+            "2".to_string(),
+            MockAccountInfoProvider {
+                is_debit: true,
+                inflow_type: InFlowType::QuantityEqualAmount,
+                outflow_type: OutFlowType::Manual,
+                inventory: Vec::new(),
+            },
+        );
+        provider.insert(
+            "3".to_string(),
+            MockAccountInfoProvider {
+                is_debit: true,
+                inflow_type: InFlowType::QuantityEqualZero,
+                outflow_type: OutFlowType::Manual,
+                inventory: Vec::new(),
+            },
+        );
 
         reset_all_inferred_values(&mut container);
         horizontal_infer_for_inflow_type(&mut container, &mut provider);
 
         let updated_double = &container.doubles[0];
 
-        assert_eq!(updated_double.singles[0].get_inferred_inflow_type(), Some(InFlowType::Manual));
+        assert_eq!(
+            updated_double.singles[0].get_inferred_inflow_type(),
+            Some(InFlowType::Manual)
+        );
         assert_eq!(
             updated_double.singles[1].get_inferred_inflow_type(),
             Some(InFlowType::QuantityEqualAmount)
@@ -1074,7 +1124,10 @@ mod tests {
             Some(InFlowType::QuantityEqualZero)
         );
         assert_eq!(updated_double.singles[3].get_inferred_inflow_type(), None);
-        assert_eq!(updated_double.singles[4].get_inferred_inflow_type(), Some(InFlowType::Manual));
+        assert_eq!(
+            updated_double.singles[4].get_inferred_inflow_type(),
+            Some(InFlowType::Manual)
+        );
     }
 
     #[test]
@@ -1117,24 +1170,33 @@ mod tests {
         };
 
         let mut provider = new_account_info_provider();
-        provider.insert("1".to_string(), MockAccountInfoProvider {
-            is_debit:     true,
-            inflow_type:  InFlowType::QuantityEqualZero,
-            outflow_type: OutFlowType::Manual,
-            inventory:    Vec::new(),
-        });
-        provider.insert("2".to_string(), MockAccountInfoProvider {
-            is_debit:     true,
-            inflow_type:  InFlowType::QuantityEqualAmount,
-            outflow_type: OutFlowType::Manual,
-            inventory:    Vec::new(),
-        });
-        provider.insert("3".to_string(), MockAccountInfoProvider {
-            is_debit:     true,
-            inflow_type:  InFlowType::QuantityEqualZero,
-            outflow_type: OutFlowType::QuantityEqualZero,
-            inventory:    Vec::new(),
-        });
+        provider.insert(
+            "1".to_string(),
+            MockAccountInfoProvider {
+                is_debit: true,
+                inflow_type: InFlowType::QuantityEqualZero,
+                outflow_type: OutFlowType::Manual,
+                inventory: Vec::new(),
+            },
+        );
+        provider.insert(
+            "2".to_string(),
+            MockAccountInfoProvider {
+                is_debit: true,
+                inflow_type: InFlowType::QuantityEqualAmount,
+                outflow_type: OutFlowType::Manual,
+                inventory: Vec::new(),
+            },
+        );
+        provider.insert(
+            "3".to_string(),
+            MockAccountInfoProvider {
+                is_debit: true,
+                inflow_type: InFlowType::QuantityEqualZero,
+                outflow_type: OutFlowType::QuantityEqualZero,
+                inventory: Vec::new(),
+            },
+        );
 
         reset_all_inferred_values(&mut container);
         horizontal_infer_for_outflow_type(&mut container, &mut provider);
@@ -1234,12 +1296,15 @@ mod tests {
         };
 
         let mut provider = new_account_info_provider();
-        provider.insert("1".to_string(), MockAccountInfoProvider {
-            is_debit:     true,
-            inflow_type:  InFlowType::Manual,
-            outflow_type: OutFlowType::Manual,
-            inventory:    Vec::new(),
-        });
+        provider.insert(
+            "1".to_string(),
+            MockAccountInfoProvider {
+                is_debit: true,
+                inflow_type: InFlowType::Manual,
+                outflow_type: OutFlowType::Manual,
+                inventory: Vec::new(),
+            },
+        );
 
         horizontal_infer_for_amount_from_quantity(100, &mut container, provider);
 
@@ -1266,12 +1331,15 @@ mod tests {
         };
 
         let mut provider = new_account_info_provider();
-        provider.insert("1".to_string(), MockAccountInfoProvider {
-            is_debit:     true,
-            inflow_type:  InFlowType::Manual,
-            outflow_type: OutFlowType::Manual,
-            inventory:    Vec::new(),
-        });
+        provider.insert(
+            "1".to_string(),
+            MockAccountInfoProvider {
+                is_debit: true,
+                inflow_type: InFlowType::Manual,
+                outflow_type: OutFlowType::Manual,
+                inventory: Vec::new(),
+            },
+        );
 
         reset_all_inferred_values(&mut container);
         horizontal_infer_for_amount_from_quantity(100, &mut container, provider);
@@ -1299,12 +1367,15 @@ mod tests {
         };
 
         let mut provider = new_account_info_provider();
-        provider.insert("1".to_string(), MockAccountInfoProvider {
-            is_debit:     true,
-            inflow_type:  InFlowType::Manual,
-            outflow_type: OutFlowType::Manual,
-            inventory:    Vec::new(),
-        });
+        provider.insert(
+            "1".to_string(),
+            MockAccountInfoProvider {
+                is_debit: true,
+                inflow_type: InFlowType::Manual,
+                outflow_type: OutFlowType::Manual,
+                inventory: Vec::new(),
+            },
+        );
 
         reset_all_inferred_values(&mut container);
         horizontal_infer_for_amount_from_quantity(100, &mut container, provider);
@@ -1332,23 +1403,26 @@ mod tests {
         };
 
         let mut provider = new_account_info_provider();
-        provider.insert("1".to_string(), MockAccountInfoProvider {
-            is_debit:     true,
-            inflow_type:  InFlowType::Manual,
-            outflow_type: OutFlowType::Manual,
-            inventory:    vec![
-                InventoryRecord {
-                    time_unix: 1,
-                    quantity:  2.0,
-                    amount:    20.0,
-                },
-                InventoryRecord {
-                    time_unix: 2,
-                    quantity:  3.0,
-                    amount:    30.0,
-                },
-            ],
-        });
+        provider.insert(
+            "1".to_string(),
+            MockAccountInfoProvider {
+                is_debit: true,
+                inflow_type: InFlowType::Manual,
+                outflow_type: OutFlowType::Manual,
+                inventory: vec![
+                    InventoryRecord {
+                        time_unix: 1,
+                        quantity: 2.0,
+                        amount: 20.0,
+                    },
+                    InventoryRecord {
+                        time_unix: 2,
+                        quantity: 3.0,
+                        amount: 30.0,
+                    },
+                ],
+            },
+        );
 
         reset_all_inferred_values(&mut container);
         horizontal_infer_for_amount_from_quantity(100, &mut container, provider);
@@ -1470,9 +1544,7 @@ mod tests {
             singles: vec![single1.clone(), single1.clone(), single1.clone(), single1],
         };
         let mut container = MockEntryContainer {
-            doubles: vec![double, MockDouble {
-                singles: vec![],
-            }],
+            doubles: vec![double, MockDouble { singles: vec![] }],
         };
 
         vertical_correct_to_remove_empty_double_entry(&mut container);
@@ -1725,7 +1797,11 @@ mod tests {
         vertical_infer_for_amount(&mut container);
 
         let updated_double = &container.doubles[0];
-        let c2 = updated_double.singles.iter().find(|s| s.user_input_account_id == "C2").unwrap();
+        let c2 = updated_double
+            .singles
+            .iter()
+            .find(|s| s.user_input_account_id == "C2")
+            .unwrap();
         assert_eq!(c2.inferred_amount, Some(25.0));
         let total_debit: f64 = updated_double
             .singles
@@ -1808,7 +1884,11 @@ mod tests {
         vertical_infer_for_amount(&mut container);
 
         let updated = &container.doubles[0];
-        let d2 = updated.singles.iter().find(|s| s.user_input_account_id == "D2").unwrap();
+        let d2 = updated
+            .singles
+            .iter()
+            .find(|s| s.user_input_account_id == "D2")
+            .unwrap();
         assert_eq!(d2.inferred_amount, Some(20.0));
         let total_debit: f64 = updated
             .singles
@@ -1868,8 +1948,16 @@ mod tests {
         vertical_infer_for_amount(&mut container);
 
         let updated = &container.doubles[0];
-        let d2 = updated.singles.iter().find(|s| s.user_input_account_id == "D2").unwrap();
-        let d3 = updated.singles.iter().find(|s| s.user_input_account_id == "D3").unwrap();
+        let d2 = updated
+            .singles
+            .iter()
+            .find(|s| s.user_input_account_id == "D2")
+            .unwrap();
+        let d3 = updated
+            .singles
+            .iter()
+            .find(|s| s.user_input_account_id == "D3")
+            .unwrap();
         assert_eq!(d2.inferred_amount, None);
         assert_eq!(d3.inferred_amount, None);
         let total_debit: f64 = updated
@@ -1910,16 +1998,19 @@ mod tests {
         };
 
         let mut provider = new_account_info_provider();
-        provider.insert("1".to_string(), MockAccountInfoProvider {
-            is_debit:     true,
-            inflow_type:  InFlowType::Manual,
-            outflow_type: OutFlowType::Manual,
-            inventory:    vec![InventoryRecord {
-                time_unix: 1,
-                quantity:  10.0,
-                amount:    20.0,
-            }],
-        });
+        provider.insert(
+            "1".to_string(),
+            MockAccountInfoProvider {
+                is_debit: true,
+                inflow_type: InFlowType::Manual,
+                outflow_type: OutFlowType::Manual,
+                inventory: vec![InventoryRecord {
+                    time_unix: 1,
+                    quantity: 10.0,
+                    amount: 20.0,
+                }],
+            },
+        );
 
         horizontal_infer_for_quantity_from_amount(100, &mut container, provider);
 
@@ -1950,16 +2041,19 @@ mod tests {
         };
 
         let mut provider = new_account_info_provider();
-        provider.insert("1".to_string(), MockAccountInfoProvider {
-            is_debit:     true,
-            inflow_type:  InFlowType::QuantityEqualAmount,
-            outflow_type: OutFlowType::Manual,
-            inventory:    vec![InventoryRecord {
-                time_unix: 1,
-                quantity:  10.0,
-                amount:    20.0,
-            }],
-        });
+        provider.insert(
+            "1".to_string(),
+            MockAccountInfoProvider {
+                is_debit: true,
+                inflow_type: InFlowType::QuantityEqualAmount,
+                outflow_type: OutFlowType::Manual,
+                inventory: vec![InventoryRecord {
+                    time_unix: 1,
+                    quantity: 10.0,
+                    amount: 20.0,
+                }],
+            },
+        );
 
         horizontal_infer_for_quantity_from_amount(100, &mut container, provider);
 
@@ -1990,16 +2084,19 @@ mod tests {
         };
 
         let mut provider = new_account_info_provider();
-        provider.insert("1".to_string(), MockAccountInfoProvider {
-            is_debit:     true,
-            inflow_type:  InFlowType::QuantityEqualZero,
-            outflow_type: OutFlowType::Manual,
-            inventory:    vec![InventoryRecord {
-                time_unix: 1,
-                quantity:  10.0,
-                amount:    20.0,
-            }],
-        });
+        provider.insert(
+            "1".to_string(),
+            MockAccountInfoProvider {
+                is_debit: true,
+                inflow_type: InFlowType::QuantityEqualZero,
+                outflow_type: OutFlowType::Manual,
+                inventory: vec![InventoryRecord {
+                    time_unix: 1,
+                    quantity: 10.0,
+                    amount: 20.0,
+                }],
+            },
+        );
 
         horizontal_infer_for_quantity_from_amount(100, &mut container, provider);
 
@@ -2031,16 +2128,19 @@ mod tests {
         };
 
         let mut provider = new_account_info_provider();
-        provider.insert("1".to_string(), MockAccountInfoProvider {
-            is_debit:     true,
-            inflow_type:  InFlowType::Manual,
-            outflow_type: OutFlowType::Manual,
-            inventory:    vec![InventoryRecord {
-                time_unix: 1,
-                quantity:  10.0,
-                amount:    20.0,
-            }],
-        });
+        provider.insert(
+            "1".to_string(),
+            MockAccountInfoProvider {
+                is_debit: true,
+                inflow_type: InFlowType::Manual,
+                outflow_type: OutFlowType::Manual,
+                inventory: vec![InventoryRecord {
+                    time_unix: 1,
+                    quantity: 10.0,
+                    amount: 20.0,
+                }],
+            },
+        );
 
         horizontal_infer_for_quantity_from_amount(100, &mut container, provider);
 
@@ -2071,16 +2171,19 @@ mod tests {
         };
 
         let mut provider = new_account_info_provider();
-        provider.insert("1".to_string(), MockAccountInfoProvider {
-            is_debit:     true,
-            inflow_type:  InFlowType::Manual,
-            outflow_type: OutFlowType::QuantityEqualAmount,
-            inventory:    vec![InventoryRecord {
-                time_unix: 1,
-                quantity:  10.0,
-                amount:    20.0,
-            }],
-        });
+        provider.insert(
+            "1".to_string(),
+            MockAccountInfoProvider {
+                is_debit: true,
+                inflow_type: InFlowType::Manual,
+                outflow_type: OutFlowType::QuantityEqualAmount,
+                inventory: vec![InventoryRecord {
+                    time_unix: 1,
+                    quantity: 10.0,
+                    amount: 20.0,
+                }],
+            },
+        );
 
         horizontal_infer_for_quantity_from_amount(100, &mut container, provider);
 
@@ -2111,16 +2214,19 @@ mod tests {
         };
 
         let mut provider = new_account_info_provider();
-        provider.insert("1".to_string(), MockAccountInfoProvider {
-            is_debit:     true,
-            inflow_type:  InFlowType::Manual,
-            outflow_type: OutFlowType::QuantityEqualZero,
-            inventory:    vec![InventoryRecord {
-                time_unix: 1,
-                quantity:  10.0,
-                amount:    20.0,
-            }],
-        });
+        provider.insert(
+            "1".to_string(),
+            MockAccountInfoProvider {
+                is_debit: true,
+                inflow_type: InFlowType::Manual,
+                outflow_type: OutFlowType::QuantityEqualZero,
+                inventory: vec![InventoryRecord {
+                    time_unix: 1,
+                    quantity: 10.0,
+                    amount: 20.0,
+                }],
+            },
+        );
 
         horizontal_infer_for_quantity_from_amount(100, &mut container, provider);
 
@@ -2160,23 +2266,26 @@ mod tests {
             };
 
             let mut provider = new_account_info_provider();
-            provider.insert("1".to_string(), MockAccountInfoProvider {
-                is_debit:     true,
-                inflow_type:  InFlowType::Manual,
-                outflow_type: flow.clone(),
-                inventory:    vec![
-                    InventoryRecord {
-                        time_unix: 1,
-                        quantity:  6.0,
-                        amount:    12.0,
-                    },
-                    InventoryRecord {
-                        time_unix: 2,
-                        quantity:  4.0,
-                        amount:    8.0,
-                    },
-                ],
-            });
+            provider.insert(
+                "1".to_string(),
+                MockAccountInfoProvider {
+                    is_debit: true,
+                    inflow_type: InFlowType::Manual,
+                    outflow_type: flow.clone(),
+                    inventory: vec![
+                        InventoryRecord {
+                            time_unix: 1,
+                            quantity: 6.0,
+                            amount: 12.0,
+                        },
+                        InventoryRecord {
+                            time_unix: 2,
+                            quantity: 4.0,
+                            amount: 8.0,
+                        },
+                    ],
+                },
+            );
 
             horizontal_infer_for_quantity_from_amount(100, &mut container, provider);
 
@@ -2201,24 +2310,30 @@ mod tests {
             doubles: vec![double],
         };
         let mut provider = new_account_info_provider();
-        provider.insert("1".to_string(), MockAccountInfoProvider {
-            is_debit:     true,
-            inflow_type:  InFlowType::Manual,
-            outflow_type: OutFlowType::Manual,
-            inventory:    vec![],
-        });
+        provider.insert(
+            "1".to_string(),
+            MockAccountInfoProvider {
+                is_debit: true,
+                inflow_type: InFlowType::Manual,
+                outflow_type: OutFlowType::Manual,
+                inventory: vec![],
+            },
+        );
         horizontal_infer_for_quantity_from_amount(100, &mut container, provider);
         let updated = &container.doubles[0].singles[0];
         assert_eq!(updated.get_inferred_quantity(), None);
         assert_eq!(updated.get_inferred_amount(), None);
 
         let mut provider = new_account_info_provider();
-        provider.insert("1".to_string(), MockAccountInfoProvider {
-            is_debit:     true,
-            inflow_type:  InFlowType::Manual,
-            outflow_type: OutFlowType::Manual,
-            inventory:    vec![],
-        });
+        provider.insert(
+            "1".to_string(),
+            MockAccountInfoProvider {
+                is_debit: true,
+                inflow_type: InFlowType::Manual,
+                outflow_type: OutFlowType::Manual,
+                inventory: vec![],
+            },
+        );
         let single2 = MockSingle {
             user_input_account_id: "1".to_string(),
             inferred_amount: Some(10.0),
@@ -2255,16 +2370,19 @@ mod tests {
         };
 
         let mut provider = new_account_info_provider();
-        provider.insert("1".to_string(), MockAccountInfoProvider {
-            is_debit:     true,
-            inflow_type:  InFlowType::QuantityEqualAmount,
-            outflow_type: OutFlowType::Manual,
-            inventory:    vec![InventoryRecord {
-                time_unix: 1,
-                quantity:  10.0,
-                amount:    20.0,
-            }],
-        });
+        provider.insert(
+            "1".to_string(),
+            MockAccountInfoProvider {
+                is_debit: true,
+                inflow_type: InFlowType::QuantityEqualAmount,
+                outflow_type: OutFlowType::Manual,
+                inventory: vec![InventoryRecord {
+                    time_unix: 1,
+                    quantity: 10.0,
+                    amount: 20.0,
+                }],
+            },
+        );
 
         horizontal_infer_for_quantity_from_amount(100, &mut container, provider);
         let updated = &container.doubles[0].singles[0];
@@ -2289,12 +2407,15 @@ mod tests {
         };
 
         let mut provider = new_account_info_provider();
-        provider.insert("1".to_string(), MockAccountInfoProvider {
-            is_debit:     true,
-            inflow_type:  InFlowType::Manual,
-            outflow_type: OutFlowType::Manual,
-            inventory:    vec![],
-        });
+        provider.insert(
+            "1".to_string(),
+            MockAccountInfoProvider {
+                is_debit: true,
+                inflow_type: InFlowType::Manual,
+                outflow_type: OutFlowType::Manual,
+                inventory: vec![],
+            },
+        );
 
         horizontal_infer_for_quantity_from_amount(100, &mut container, provider);
 
@@ -2326,16 +2447,19 @@ mod tests {
         };
 
         let mut provider = new_account_info_provider();
-        provider.insert("1".to_string(), MockAccountInfoProvider {
-            is_debit:     true,
-            inflow_type:  InFlowType::Manual,
-            outflow_type: OutFlowType::Manual,
-            inventory:    vec![InventoryRecord {
-                time_unix: 1,
-                quantity:  10.0,
-                amount:    20.0,
-            }],
-        });
+        provider.insert(
+            "1".to_string(),
+            MockAccountInfoProvider {
+                is_debit: true,
+                inflow_type: InFlowType::Manual,
+                outflow_type: OutFlowType::Manual,
+                inventory: vec![InventoryRecord {
+                    time_unix: 1,
+                    quantity: 10.0,
+                    amount: 20.0,
+                }],
+            },
+        );
 
         horizontal_infer_for_quantity_from_amount(100, &mut container, provider);
 
@@ -2367,16 +2491,19 @@ mod tests {
         };
 
         let mut provider = new_account_info_provider();
-        provider.insert("1".to_string(), MockAccountInfoProvider {
-            is_debit:     true,
-            inflow_type:  InFlowType::Manual,
-            outflow_type: OutFlowType::Fifo,
-            inventory:    vec![InventoryRecord {
-                time_unix: 1,
-                quantity:  5.0,
-                amount:    10.0,
-            }],
-        });
+        provider.insert(
+            "1".to_string(),
+            MockAccountInfoProvider {
+                is_debit: true,
+                inflow_type: InFlowType::Manual,
+                outflow_type: OutFlowType::Fifo,
+                inventory: vec![InventoryRecord {
+                    time_unix: 1,
+                    quantity: 5.0,
+                    amount: 10.0,
+                }],
+            },
+        );
 
         sort_inventory(
             OutFlowType::Fifo,

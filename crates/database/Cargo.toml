@@ -4,16 +4,14 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-accounting_engine = { workspace = true }
-my_core = { workspace = true }
+kernel = { workspace = true }
+utility = { workspace = true }
+
+anyhow = { workspace = true }
+serde = { workspace = true }
 
 deadpool-postgres = { workspace = true }
-rust_decimal = { workspace = true }
-serde = { workspace = true }
 serde_json = { workspace = true }
 tokio = { workspace = true }
 tokio-postgres = { workspace = true }
 uuid = { workspace = true }
-
-[dev-dependencies]
-tokio = { workspace = true }

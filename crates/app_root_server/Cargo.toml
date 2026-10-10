@@ -1,0 +1,44 @@
+[package]
+name = "app_root_server"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+database = { workspace = true }
+infrastructure = { workspace = true }
+kernel = { workspace = true }
+patterns = { workspace = true }
+server = { workspace = true }
+utility = { workspace = true }
+
+use_case_create_account = { workspace = true, features = [
+    "server",
+    "database",
+] }
+use_case_create_account_for_branch = { workspace = true, features = [
+    "server",
+    "database",
+] }
+use_case_create_branch = { workspace = true, features = ["server", "database"] }
+use_case_create_company = { workspace = true, features = [
+    "server",
+    "database",
+] }
+use_case_create_journal_entry = { workspace = true, features = [
+    "server",
+    "database",
+] }
+use_case_get_all_accounts = { workspace = true, features = [
+    "server",
+    "database",
+] }
+use_case_get_companies_and_branches = { workspace = true, features = [
+    "server",
+    "database",
+] }
+use_case_sign_in = { workspace = true, features = ["server", "database"] }
+use_case_sign_up = { workspace = true, features = ["server", "database"] }
+
+anyhow = { workspace = true }
+
+actix-web = { workspace = true }

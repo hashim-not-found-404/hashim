@@ -1,0 +1,34 @@
+[package]
+name = "use_case_create_journal_entry"
+version = "0.1.0"
+edition = "2024"
+
+[features]
+ui = ["dioxus"]
+cache = ["dep:cache", "rusqlite", "dep:serde_json"]
+database = ["dep:database", "dep:serde_json", "dep:uuid", "dep:tokio-postgres"]
+client = []
+server = []
+
+[dependencies]
+accounting_engine = { workspace = true }
+infrastructure = { workspace = true }
+kernel = { workspace = true }
+utility = { workspace = true }
+utility_ui = { workspace = true }
+
+cache = { workspace = true, optional = true }
+database = { workspace = true, optional = true }
+
+anyhow = { workspace = true }
+serde = { workspace = true }
+typetag = { workspace = true }
+
+dioxus = { workspace = true, optional = true }
+rusqlite = { workspace = true, optional = true }
+serde_json = { workspace = true, optional = true }
+tokio-postgres = { workspace = true, optional = true }
+uuid = { workspace = true, optional = true }
+
+[dev-dependencies]
+tokio = { workspace = true }

@@ -3,40 +3,82 @@ resolver = "3"
 members = ["crates/*"]
 
 [workspace.dependencies]
+# app agnostic
 accounting_engine = { path = "./crates/accounting_engine" }
-adapters = { path = "./crates/adapters" }
+infrastructure = { path = "./crates/infrastructure" }
+utility = { path = "./crates/utility" }
+utility_ui = { path = "./crates/utility_ui" }
+
+# internal use cases agnostic
 cache = { path = "./crates/cache" }
 database = { path = "./crates/database" }
-my_core = { path = "./crates/my_core" }
+kernel = { path = "./crates/kernel" }
+patterns = { path = "./crates/patterns" }
+server = { path = "./crates/server" }
 
-actix-cors = "0.7.1"
-actix-web = { version = "4.14.0", features = ["rustls-0_23"] }
-actix-ws = "0.4.0"
-argon2 = "0.5.3"
-chrono = "0.4.45"
-deadpool-postgres = "0.14.1"
+# use cases
+use_case_create_account = { path = "./crates/use_case_create_account" }
+use_case_create_account_for_branch = { path = "./crates/use_case_create_account_for_branch" }
+use_case_create_branch = { path = "./crates/use_case_create_branch" }
+use_case_create_company = { path = "./crates/use_case_create_company" }
+use_case_create_journal_entry = { path = "./crates/use_case_create_journal_entry" }
+use_case_error_handler = { path = "./crates/use_case_error_handler" }
+use_case_get_all_accounts = { path = "./crates/use_case_get_all_accounts" }
+use_case_get_companies_and_branches = { path = "./crates/use_case_get_companies_and_branches" }
+use_case_select_default_company = { path = "./crates/use_case_select_default_company" }
+use_case_sign_in = { path = "./crates/use_case_sign_in" }
+use_case_sign_up = { path = "./crates/use_case_sign_up" }
+
+# external in the domain
+anyhow = { version = "1.0.104" }
+dyn-clone = { version = "1.0.20" }
+heck = { version = "0.5.0" }
+paste = { version = "1.0.15" }
+proc-macro2 = { version = "1.0.107" }
+quote = { version = "1.0.47" }
+serde = { version = "1.0.229", features = ["derive"] }
+syn = { version = "3.0.6" }
+typetag = { version = "0.2.23" }
+
+# external out the domain
+actix-cors = { version = "0.7.2" }
+actix-web = { version = "4.15.0", features = ["rustls-0_23"] }
+actix-ws = { version = "0.4.0" }
+argon2 = { version = "0.5.3" }
+chrono = { version = "0.4.45" }
+console_error_panic_hook = { version = "0.1.7" }
+deadpool-postgres = { version = "0.14.2" }
 derive_more = { version = "2.1.1", features = ["full"] }
-dioxus = { version = "0.7.9", features = ["router"] }
-dioxus-logger = "0.7.9"
-futures = "0.3.32"
-futures-util = "0.3.32"
+dioxus = { version = "0.7.10", features = ["router"] }
+dioxus-logger = { version = "0.7.10" }
+futures = { version = "0.3.34" }
+futures-util = { version = "0.3.34" }
 getrandom = { version = "0.4.3", features = ["wasm_js"] }
-gloo-net = "0.7.0"
+gloo-net = { version = "0.7.0" }
 gloo-timers = { version = "0.4.0", features = ["futures"] }
 jsonwebtoken = { version = "10.4.0", features = ["rust_crypto"] }
 postcard = { version = "1.1.3", features = ["alloc"] }
-regex = "1.13.1"
-rusqlite = { version = "0.40.1", features = ["bundled"] }
-rust_decimal = { version = "1.42.1", features = ["db-tokio-postgres"] }
-rustls = "0.23.42"
-rustls-pemfile = "2.2.0"
-serde = { version = "1.0.228", features = ["derive"] }
-serde_json = "1.0.150"
-tokio = { version = "1.53.0", features = ["macros", "rt"] }
-tokio-postgres = { version = "0.7.18", features = ["with-uuid-1", "with-serde_json-1"] }
-tokio-tungstenite = "0.29.0"
-uuid = { version = "1.24.0", features = ["v7", "serde", "js"] }
-wasm-bindgen-futures = "0.4.76"
+regex = { version = "1.13.1" }
+rusqlite = { version = "0.40.2", features = ["bundled"] }
+rust_decimal = { version = "1.43.0", features = ["db-tokio-postgres"] }
+rustls = { version = "0.23.45" }
+rustls-pemfile = { version = "2.2.0" }
+serde_json = { version = "1.0.151" }
+tokio = { version = "1.53.1", features = ["macros", "rt"] }
+tokio-postgres = { version = "0.7.18", features = [
+    "with-uuid-1",
+    "with-serde_json-1",
+] }
+tokio-tungstenite = { version = "0.29.0" }
+tracing = { version = "0.1.44" }
+tracing-subscriber = { version = "0.3.23" }
+tracing-web = "0.1.3"
+uuid = { version = "1.26.1", features = ["v7", "serde", "js"] }
+wasm-bindgen-futures = { version = "0.4.78" }
 
-[profile.dev]
+[profile.dev.package."*"]
+opt-level = 0
+debug = true
+
+[profile.test.package."*"]
 opt-level = 0

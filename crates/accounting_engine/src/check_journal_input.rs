@@ -223,7 +223,7 @@ mod tests {
 
     #[derive(Debug, Clone, Default, PartialEq)]
     pub(crate) struct DebitNotEqualCreditError {
-        total_debit:  f64,
+        total_debit: f64,
         total_credit: f64,
     }
 
@@ -341,23 +341,23 @@ mod tests {
 
     #[derive(Debug, Clone, Default, PartialEq)]
     struct TestSingleEntry {
-        account:  AccountId,
-        debit:    bool,
-        qty:      f64,
-        amt:      f64,
-        in_flow:  InFlowType,
+        account: AccountId,
+        debit: bool,
+        qty: f64,
+        amt: f64,
+        in_flow: InFlowType,
         out_flow: OutFlowType,
 
-        quantity_and_amount_are_zero:       bool,
-        duplicate_account_in_entry:         bool,
-        inventory_is_empty:                 bool,
-        the_amount_should_be_positive:      bool,
-        the_quantity_should_be_positive:    bool,
-        quantity_not_equal_amount:          bool,
-        quantity_not_equal_zero:            bool,
+        quantity_and_amount_are_zero: bool,
+        duplicate_account_in_entry: bool,
+        inventory_is_empty: bool,
+        the_amount_should_be_positive: bool,
+        the_quantity_should_be_positive: bool,
+        quantity_not_equal_amount: bool,
+        quantity_not_equal_zero: bool,
         insufficient_quantity_in_inventory: Option<f64>,
-        amount_mismatch:                    Option<f64>,
-        insufficient_amount_in_inventory:   Option<f64>,
+        amount_mismatch: Option<f64>,
+        insufficient_amount_in_inventory: Option<f64>,
     }
 
     impl SingleEntry for TestSingleEntry {
@@ -392,9 +392,9 @@ mod tests {
     struct TestDoubleEntry {
         lines: Vec<TestSingleEntry>,
 
-        entry_is_empty:              bool,
+        entry_is_empty: bool,
         you_need_to_split_the_entry: bool,
-        debit_not_equal_credit:      Option<DebitNotEqualCreditError>,
+        debit_not_equal_credit: Option<DebitNotEqualCreditError>,
     }
 
     impl DoubleEntry for TestDoubleEntry {
@@ -483,21 +483,23 @@ mod tests {
     type TestInventory = Vec<InventoryRecord>;
 
     struct TestAccountInfoProvider {
-        natures:     HashMap<AccountId, bool>,
+        natures: HashMap<AccountId, bool>,
         inventories: HashMap<AccountId, TestInventory>,
     }
 
     impl TestAccountInfoProvider {
         fn new() -> Self {
             Self {
-                natures:     HashMap::new(),
+                natures: HashMap::new(),
                 inventories: HashMap::new(),
             }
         }
 
         fn add_account(&mut self, id: AccountId, is_debit_nature: bool) {
             self.natures.insert(id.clone(), is_debit_nature);
-            self.inventories.entry(id).or_insert_with(TestInventory::default);
+            self.inventories
+                .entry(id)
+                .or_insert_with(TestInventory::default);
         }
     }
 
@@ -510,7 +512,9 @@ mod tests {
         }
 
         fn get_or_create_inventory(&mut self, id: &Self::AccountId) -> &mut Self::Inventory {
-            self.inventories.entry(id.clone()).or_insert_with(TestInventory::default)
+            self.inventories
+                .entry(id.clone())
+                .or_insert_with(TestInventory::default)
         }
     }
 
@@ -534,7 +538,14 @@ mod tests {
     }
 
     fn simple_entry(account: &str, debit: bool, qty: f64, amt: f64) -> TestSingleEntry {
-        entry(account, debit, qty, amt, InFlowType::Manual, OutFlowType::Manual)
+        entry(
+            account,
+            debit,
+            qty,
+            amt,
+            InFlowType::Manual,
+            OutFlowType::Manual,
+        )
     }
 
     #[test]
@@ -628,9 +639,30 @@ mod tests {
         let d1 = entry("A", true, 1.0, 1.0, InFlowType::Manual, OutFlowType::Manual);
         let d2 = entry("D", true, 1.0, 4.0, InFlowType::Manual, OutFlowType::Manual);
         let d3 = entry("E", true, 1.0, 5.0, InFlowType::Manual, OutFlowType::Manual);
-        let c1 = entry("B", false, 1.0, 2.0, InFlowType::Manual, OutFlowType::Manual);
-        let c2 = entry("C", false, 1.0, 3.0, InFlowType::Manual, OutFlowType::Manual);
-        let c3 = entry("F", false, 1.0, 5.0, InFlowType::Manual, OutFlowType::Manual);
+        let c1 = entry(
+            "B",
+            false,
+            1.0,
+            2.0,
+            InFlowType::Manual,
+            OutFlowType::Manual,
+        );
+        let c2 = entry(
+            "C",
+            false,
+            1.0,
+            3.0,
+            InFlowType::Manual,
+            OutFlowType::Manual,
+        );
+        let c3 = entry(
+            "F",
+            false,
+            1.0,
+            5.0,
+            InFlowType::Manual,
+            OutFlowType::Manual,
+        );
         let double = TestDoubleEntry {
             lines: vec![d1, d2, d3, c1, c2, c3],
             ..Default::default()
@@ -699,12 +731,18 @@ mod tests {
         let inv = provider.get_or_create_inventory(&AccountId("A".to_string()));
         inv.push(InventoryRecord {
             time_unix: 1,
-            quantity:  10.0,
-            amount:    100.0,
+            quantity: 10.0,
+            amount: 100.0,
         });
 
-        let single =
-            entry("A", true, 5.0, 5.0, InFlowType::QuantityEqualAmount, OutFlowType::Manual);
+        let single = entry(
+            "A",
+            true,
+            5.0,
+            5.0,
+            InFlowType::QuantityEqualAmount,
+            OutFlowType::Manual,
+        );
         let double = TestDoubleEntry {
             lines: vec![single],
             ..Default::default()
@@ -724,12 +762,18 @@ mod tests {
         let inv = provider.get_or_create_inventory(&AccountId("A".to_string()));
         inv.push(InventoryRecord {
             time_unix: 1,
-            quantity:  10.0,
-            amount:    100.0,
+            quantity: 10.0,
+            amount: 100.0,
         });
 
-        let single =
-            entry("A", true, 5.0, 4.0, InFlowType::QuantityEqualAmount, OutFlowType::Manual);
+        let single = entry(
+            "A",
+            true,
+            5.0,
+            4.0,
+            InFlowType::QuantityEqualAmount,
+            OutFlowType::Manual,
+        );
         let double = TestDoubleEntry {
             lines: vec![single],
             ..Default::default()
@@ -749,12 +793,18 @@ mod tests {
         let inv = provider.get_or_create_inventory(&AccountId("A".to_string()));
         inv.push(InventoryRecord {
             time_unix: 1,
-            quantity:  10.0,
-            amount:    100.0,
+            quantity: 10.0,
+            amount: 100.0,
         });
 
-        let single =
-            entry("A", true, 0.0, 10.0, InFlowType::QuantityEqualZero, OutFlowType::Manual);
+        let single = entry(
+            "A",
+            true,
+            0.0,
+            10.0,
+            InFlowType::QuantityEqualZero,
+            OutFlowType::Manual,
+        );
         let double = TestDoubleEntry {
             lines: vec![single],
             ..Default::default()
@@ -774,12 +824,18 @@ mod tests {
         let inv = provider.get_or_create_inventory(&AccountId("A".to_string()));
         inv.push(InventoryRecord {
             time_unix: 1,
-            quantity:  10.0,
-            amount:    100.0,
+            quantity: 10.0,
+            amount: 100.0,
         });
 
-        let single =
-            entry("A", true, 1.0, 10.0, InFlowType::QuantityEqualZero, OutFlowType::Manual);
+        let single = entry(
+            "A",
+            true,
+            1.0,
+            10.0,
+            InFlowType::QuantityEqualZero,
+            OutFlowType::Manual,
+        );
         let double = TestDoubleEntry {
             lines: vec![single],
             ..Default::default()
@@ -799,11 +855,18 @@ mod tests {
         let inv = provider.get_or_create_inventory(&AccountId("A".to_string()));
         inv.push(InventoryRecord {
             time_unix: 1,
-            quantity:  5.0,
-            amount:    10.0,
+            quantity: 5.0,
+            amount: 10.0,
         });
 
-        let single = entry("A", false, 5.0, 20.0, InFlowType::Manual, OutFlowType::Manual);
+        let single = entry(
+            "A",
+            false,
+            5.0,
+            20.0,
+            InFlowType::Manual,
+            OutFlowType::Manual,
+        );
         let double = TestDoubleEntry {
             lines: vec![single],
             ..Default::default()
@@ -825,11 +888,18 @@ mod tests {
         let inv = provider.get_or_create_inventory(&AccountId("A".to_string()));
         inv.push(InventoryRecord {
             time_unix: 1,
-            quantity:  2.0,
-            amount:    10.0,
+            quantity: 2.0,
+            amount: 10.0,
         });
 
-        let single = entry("A", false, 5.0, 20.0, InFlowType::Manual, OutFlowType::Manual);
+        let single = entry(
+            "A",
+            false,
+            5.0,
+            20.0,
+            InFlowType::Manual,
+            OutFlowType::Manual,
+        );
         let double = TestDoubleEntry {
             lines: vec![single],
             ..Default::default()
@@ -851,8 +921,8 @@ mod tests {
         let inv = provider.get_or_create_inventory(&AccountId("A".to_string()));
         inv.push(InventoryRecord {
             time_unix: 1,
-            quantity:  10.0,
-            amount:    100.0,
+            quantity: 10.0,
+            amount: 100.0,
         });
 
         let single = entry("A", false, 2.0, 25.0, InFlowType::Manual, OutFlowType::Wac);
@@ -877,13 +947,13 @@ mod tests {
         let inv = provider.get_or_create_inventory(&AccountId("A".to_string()));
         inv.push(InventoryRecord {
             time_unix: 1,
-            quantity:  5.0,
-            amount:    20.0,
+            quantity: 5.0,
+            amount: 20.0,
         });
         inv.push(InventoryRecord {
             time_unix: 2,
-            quantity:  3.0,
-            amount:    15.0,
+            quantity: 3.0,
+            amount: 15.0,
         });
 
         let single = entry("A", false, 4.0, 20.0, InFlowType::Manual, OutFlowType::Fifo);
@@ -908,12 +978,18 @@ mod tests {
         let inv = provider.get_or_create_inventory(&AccountId("A".to_string()));
         inv.push(InventoryRecord {
             time_unix: 1,
-            quantity:  10.0,
-            amount:    20.0,
+            quantity: 10.0,
+            amount: 20.0,
         });
 
-        let single =
-            entry("A", false, 2.0, 2.0, InFlowType::Manual, OutFlowType::QuantityEqualAmount);
+        let single = entry(
+            "A",
+            false,
+            2.0,
+            2.0,
+            InFlowType::Manual,
+            OutFlowType::QuantityEqualAmount,
+        );
         let double = TestDoubleEntry {
             lines: vec![single],
             ..Default::default()
@@ -933,12 +1009,18 @@ mod tests {
         let inv = provider.get_or_create_inventory(&AccountId("A".to_string()));
         inv.push(InventoryRecord {
             time_unix: 1,
-            quantity:  10.0,
-            amount:    20.0,
+            quantity: 10.0,
+            amount: 20.0,
         });
 
-        let single =
-            entry("A", false, 2.0, 3.0, InFlowType::Manual, OutFlowType::QuantityEqualAmount);
+        let single = entry(
+            "A",
+            false,
+            2.0,
+            3.0,
+            InFlowType::Manual,
+            OutFlowType::QuantityEqualAmount,
+        );
         let double = TestDoubleEntry {
             lines: vec![single],
             ..Default::default()
@@ -958,12 +1040,18 @@ mod tests {
         let inv = provider.get_or_create_inventory(&AccountId("A".to_string()));
         inv.push(InventoryRecord {
             time_unix: 1,
-            quantity:  10.0,
-            amount:    20.0,
+            quantity: 10.0,
+            amount: 20.0,
         });
 
-        let single =
-            entry("A", false, 0.0, 5.0, InFlowType::Manual, OutFlowType::QuantityEqualZero);
+        let single = entry(
+            "A",
+            false,
+            0.0,
+            5.0,
+            InFlowType::Manual,
+            OutFlowType::QuantityEqualZero,
+        );
         let double = TestDoubleEntry {
             lines: vec![single],
             ..Default::default()
@@ -983,12 +1071,18 @@ mod tests {
         let inv = provider.get_or_create_inventory(&AccountId("A".to_string()));
         inv.push(InventoryRecord {
             time_unix: 1,
-            quantity:  10.0,
-            amount:    20.0,
+            quantity: 10.0,
+            amount: 20.0,
         });
 
-        let single =
-            entry("A", false, 1.0, 5.0, InFlowType::Manual, OutFlowType::QuantityEqualZero);
+        let single = entry(
+            "A",
+            false,
+            1.0,
+            5.0,
+            InFlowType::Manual,
+            OutFlowType::QuantityEqualZero,
+        );
         let double = TestDoubleEntry {
             lines: vec![single],
             ..Default::default()
@@ -1025,11 +1119,18 @@ mod tests {
         let inv = provider.get_or_create_inventory(&AccountId("A".to_string()));
         inv.push(InventoryRecord {
             time_unix: 1,
-            quantity:  5.0,
-            amount:    10.0,
+            quantity: 5.0,
+            amount: 10.0,
         });
 
-        let single = entry("A", false, 5.0, 20.0, InFlowType::Manual, OutFlowType::Manual);
+        let single = entry(
+            "A",
+            false,
+            5.0,
+            20.0,
+            InFlowType::Manual,
+            OutFlowType::Manual,
+        );
         let mut entry = TestEntryContainer {
             groups: vec![TestDoubleEntry {
                 lines: vec![single],
@@ -1120,13 +1221,13 @@ mod tests {
         let inv = provider.get_or_create_inventory(&AccountId("A".to_string()));
         inv.push(InventoryRecord {
             time_unix: 1,
-            quantity:  5.0,
-            amount:    10.0,
+            quantity: 5.0,
+            amount: 10.0,
         });
         inv.push(InventoryRecord {
             time_unix: 2,
-            quantity:  3.0,
-            amount:    6.0,
+            quantity: 3.0,
+            amount: 6.0,
         });
         let single = entry("A", false, 10.0, 20.0, InFlowType::Manual, OutFlowType::Wac);
         let double = TestDoubleEntry {
@@ -1155,16 +1256,23 @@ mod tests {
         let inv = provider.get_or_create_inventory(&AccountId("A".to_string()));
         inv.push(InventoryRecord {
             time_unix: 1,
-            quantity:  5.0,
-            amount:    10.0,
+            quantity: 5.0,
+            amount: 10.0,
         });
         inv.push(InventoryRecord {
             time_unix: 2,
-            quantity:  3.0,
-            amount:    6.0,
+            quantity: 3.0,
+            amount: 6.0,
         });
 
-        let single = entry("A", false, 4.0, 8.0, InFlowType::Manual, OutFlowType::Manual);
+        let single = entry(
+            "A",
+            false,
+            4.0,
+            8.0,
+            InFlowType::Manual,
+            OutFlowType::Manual,
+        );
         let double = TestDoubleEntry {
             lines: vec![single],
             ..Default::default()
@@ -1189,13 +1297,13 @@ mod tests {
         let inv = provider.get_or_create_inventory(&AccountId("A".to_string()));
         inv.push(InventoryRecord {
             time_unix: 1,
-            quantity:  5.0,
-            amount:    10.0,
+            quantity: 5.0,
+            amount: 10.0,
         });
         inv.push(InventoryRecord {
             time_unix: 2,
-            quantity:  3.0,
-            amount:    9.0,
+            quantity: 3.0,
+            amount: 9.0,
         });
 
         sort_inventory(OutFlowType::Fifo, inv);
@@ -1211,13 +1319,13 @@ mod tests {
         let inv = provider.get_or_create_inventory(&AccountId("A".to_string()));
         inv.push(InventoryRecord {
             time_unix: 1,
-            quantity:  5.0,
-            amount:    10.0,
+            quantity: 5.0,
+            amount: 10.0,
         });
         inv.push(InventoryRecord {
             time_unix: 2,
-            quantity:  3.0,
-            amount:    9.0,
+            quantity: 3.0,
+            amount: 9.0,
         });
 
         sort_inventory(OutFlowType::Lifo, inv);
@@ -1231,18 +1339,18 @@ mod tests {
         let inv = provider.get_or_create_inventory(&AccountId("A".to_string()));
         inv.push(InventoryRecord {
             time_unix: 1,
-            quantity:  5.0,
-            amount:    10.0,
+            quantity: 5.0,
+            amount: 10.0,
         });
         inv.push(InventoryRecord {
             time_unix: 2,
-            quantity:  3.0,
-            amount:    9.0,
+            quantity: 3.0,
+            amount: 9.0,
         });
         inv.push(InventoryRecord {
             time_unix: 3,
-            quantity:  2.0,
-            amount:    8.0,
+            quantity: 2.0,
+            amount: 8.0,
         });
 
         sort_inventory(OutFlowType::Hifo, inv);
@@ -1256,18 +1364,18 @@ mod tests {
         let inv = provider.get_or_create_inventory(&AccountId("A".to_string()));
         inv.push(InventoryRecord {
             time_unix: 1,
-            quantity:  5.0,
-            amount:    10.0,
+            quantity: 5.0,
+            amount: 10.0,
         });
         inv.push(InventoryRecord {
             time_unix: 2,
-            quantity:  3.0,
-            amount:    9.0,
+            quantity: 3.0,
+            amount: 9.0,
         });
         inv.push(InventoryRecord {
             time_unix: 3,
-            quantity:  2.0,
-            amount:    8.0,
+            quantity: 2.0,
+            amount: 8.0,
         });
 
         sort_inventory(OutFlowType::Lofo, inv);
@@ -1281,13 +1389,13 @@ mod tests {
         let inv = provider.get_or_create_inventory(&AccountId("A".to_string()));
         inv.push(InventoryRecord {
             time_unix: 1,
-            quantity:  5.0,
-            amount:    10.0,
+            quantity: 5.0,
+            amount: 10.0,
         });
         inv.push(InventoryRecord {
             time_unix: 2,
-            quantity:  3.0,
-            amount:    9.0,
+            quantity: 3.0,
+            amount: 9.0,
         });
 
         sort_inventory(OutFlowType::Wac, inv);
@@ -1302,8 +1410,8 @@ mod tests {
         let inv = provider.get_or_create_inventory(&AccountId("A".to_string()));
         inv.push(InventoryRecord {
             time_unix: 1,
-            quantity:  5.0,
-            amount:    10.0,
+            quantity: 5.0,
+            amount: 10.0,
         });
         let amt = get_amount(0.0, inv);
         assert_eq!(amt, 0.0);
@@ -1325,8 +1433,8 @@ mod tests {
         let mut inv = TestInventory::default();
         inv.push(InventoryRecord {
             time_unix: 1,
-            quantity:  10.0,
-            amount:    30.0,
+            quantity: 10.0,
+            amount: 30.0,
         });
         apply_entry_on_inventory(200, 30.0, 10.0, false, true, &mut inv);
         assert!(inv.is_empty());
@@ -1337,8 +1445,8 @@ mod tests {
         let mut inv = TestInventory::default();
         inv.push(InventoryRecord {
             time_unix: 1,
-            quantity:  5.0,
-            amount:    10.0,
+            quantity: 5.0,
+            amount: 10.0,
         });
         apply_entry_on_inventory(300, 3.0, 0.0, true, true, &mut inv);
         let (qty, amt) = sum_inventory(&inv);
@@ -1356,8 +1464,8 @@ mod tests {
         let mut inv = TestInventory::default();
         inv.push(InventoryRecord {
             time_unix: 1,
-            quantity:  5.0,
-            amount:    10.0,
+            quantity: 5.0,
+            amount: 10.0,
         });
         apply_entry_on_inventory(400, 0.0, 2.0, true, true, &mut inv);
         let (qty, amt) = sum_inventory(&inv);
@@ -1374,8 +1482,8 @@ mod tests {
         let mut inv = TestInventory::default();
         inv.push(InventoryRecord {
             time_unix: 1,
-            quantity:  5.0,
-            amount:    10.0,
+            quantity: 5.0,
+            amount: 10.0,
         });
         apply_entry_on_inventory(500, 0.0, 2.0, false, true, &mut inv);
         let (qty, amt) = sum_inventory(&inv);
@@ -1392,8 +1500,8 @@ mod tests {
         let mut inv = TestInventory::default();
         inv.push(InventoryRecord {
             time_unix: 1,
-            quantity:  5.0,
-            amount:    10.0,
+            quantity: 5.0,
+            amount: 10.0,
         });
         apply_entry_on_inventory(600, 5.0, 0.0, false, true, &mut inv);
         let (qty, amt) = sum_inventory(&inv);
@@ -1431,13 +1539,13 @@ mod tests {
         let inv = provider.get_or_create_inventory(&AccountId("A".to_string()));
         inv.push(InventoryRecord {
             time_unix: 1,
-            quantity:  5.0,
-            amount:    10.0,
+            quantity: 5.0,
+            amount: 10.0,
         });
         inv.push(InventoryRecord {
             time_unix: 2,
-            quantity:  3.0,
-            amount:    9.0,
+            quantity: 3.0,
+            amount: 9.0,
         });
 
         let single = entry("A", false, 4.0, 15.0, InFlowType::Manual, OutFlowType::Lifo);
@@ -1462,18 +1570,18 @@ mod tests {
         let inv = provider.get_or_create_inventory(&AccountId("A".to_string()));
         inv.push(InventoryRecord {
             time_unix: 1,
-            quantity:  5.0,
-            amount:    10.0,
+            quantity: 5.0,
+            amount: 10.0,
         });
         inv.push(InventoryRecord {
             time_unix: 2,
-            quantity:  2.0,
-            amount:    8.0,
+            quantity: 2.0,
+            amount: 8.0,
         });
         inv.push(InventoryRecord {
             time_unix: 3,
-            quantity:  3.0,
-            amount:    9.0,
+            quantity: 3.0,
+            amount: 9.0,
         });
 
         let single = entry("A", false, 3.0, 12.0, InFlowType::Manual, OutFlowType::Hifo);
@@ -1498,18 +1606,18 @@ mod tests {
         let inv = provider.get_or_create_inventory(&AccountId("A".to_string()));
         inv.push(InventoryRecord {
             time_unix: 1,
-            quantity:  5.0,
-            amount:    10.0,
+            quantity: 5.0,
+            amount: 10.0,
         });
         inv.push(InventoryRecord {
             time_unix: 2,
-            quantity:  2.0,
-            amount:    8.0,
+            quantity: 2.0,
+            amount: 8.0,
         });
         inv.push(InventoryRecord {
             time_unix: 3,
-            quantity:  3.0,
-            amount:    9.0,
+            quantity: 3.0,
+            amount: 9.0,
         });
 
         let single = entry("A", false, 6.0, 14.0, InFlowType::Manual, OutFlowType::Lofo);
@@ -1534,11 +1642,18 @@ mod tests {
         let inv = provider.get_or_create_inventory(&AccountId("G".to_string()));
         inv.push(InventoryRecord {
             time_unix: 1,
-            quantity:  5.0,
-            amount:    10.0,
+            quantity: 5.0,
+            amount: 10.0,
         });
 
-        let single = entry("G", false, 2.0, 10.0, InFlowType::Manual, OutFlowType::Manual);
+        let single = entry(
+            "G",
+            false,
+            2.0,
+            10.0,
+            InFlowType::Manual,
+            OutFlowType::Manual,
+        );
         let double = TestDoubleEntry {
             lines: vec![single],
             ..Default::default()
@@ -1560,8 +1675,8 @@ mod tests {
         let inv = provider.get_or_create_inventory(&AccountId("G".to_string()));
         inv.push(InventoryRecord {
             time_unix: 1,
-            quantity:  5.0,
-            amount:    10.0,
+            quantity: 5.0,
+            amount: 10.0,
         });
 
         let single = entry("G", true, 2.0, 4.0, InFlowType::Manual, OutFlowType::Manual);
@@ -1586,12 +1701,26 @@ mod tests {
         let inv = provider.get_or_create_inventory(&AccountId("A".to_string()));
         inv.push(InventoryRecord {
             time_unix: 1,
-            quantity:  5.0,
-            amount:    10.0,
+            quantity: 5.0,
+            amount: 10.0,
         });
 
-        let e1 = entry("A", false, 5.0, 20.0, InFlowType::Manual, OutFlowType::Manual);
-        let e2 = entry("A", true, 3.0, 15.0, InFlowType::Manual, OutFlowType::Manual);
+        let e1 = entry(
+            "A",
+            false,
+            5.0,
+            20.0,
+            InFlowType::Manual,
+            OutFlowType::Manual,
+        );
+        let e2 = entry(
+            "A",
+            true,
+            3.0,
+            15.0,
+            InFlowType::Manual,
+            OutFlowType::Manual,
+        );
         let double = TestDoubleEntry {
             lines: vec![e1, e2],
             ..Default::default()
@@ -1602,7 +1731,11 @@ mod tests {
         };
         state_full_check_for_entry(100, &mut entry, &mut provider);
 
-        assert!(&entry.groups[0].lines[0].insufficient_amount_in_inventory.is_some());
+        assert!(
+            &entry.groups[0].lines[0]
+                .insufficient_amount_in_inventory
+                .is_some()
+        );
         assert!(!&entry.groups[0].lines[1].is_there_error());
 
         let (qty, amt) = sum_inventory(&provider.inventories[&AccountId("A".to_string())]);
@@ -1624,7 +1757,7 @@ mod tests {
 
         de.you_need_to_split_the_entry = false;
         de.debit_not_equal_credit = Some(DebitNotEqualCreditError {
-            total_debit:  1.0,
+            total_debit: 1.0,
             total_credit: 2.0,
         });
         assert!(de.is_there_error());
@@ -1643,13 +1776,13 @@ mod tests {
         let mut inv = TestInventory::default();
         inv.push(InventoryRecord {
             time_unix: 1,
-            quantity:  2.0,
-            amount:    5.0,
+            quantity: 2.0,
+            amount: 5.0,
         });
         inv.push(InventoryRecord {
             time_unix: 2,
-            quantity:  3.0,
-            amount:    7.0,
+            quantity: 3.0,
+            amount: 7.0,
         });
         let (q, a) = sum_inventory(&inv);
         assert_eq!(q, 5.0);
@@ -1661,8 +1794,8 @@ mod tests {
         let mut inv = TestInventory::default();
         inv.push(InventoryRecord {
             time_unix: 1,
-            quantity:  5.0,
-            amount:    10.0,
+            quantity: 5.0,
+            amount: 10.0,
         });
         apply_entry_on_inventory(200, 0.0, 5.0, false, true, &mut inv);
         assert_eq!(inv[0].quantity, 0.0);
@@ -1674,8 +1807,8 @@ mod tests {
         let mut inv = TestInventory::default();
         inv.push(InventoryRecord {
             time_unix: 1,
-            quantity:  5.0,
-            amount:    10.0,
+            quantity: 5.0,
+            amount: 10.0,
         });
         apply_entry_on_inventory(300, 10.0, 0.0, false, true, &mut inv);
         assert_eq!(inv[0].quantity, 5.0);
@@ -1688,8 +1821,8 @@ mod tests {
         let inv = provider.get_or_create_inventory(&AccountId("A".to_string()));
         inv.push(InventoryRecord {
             time_unix: 1,
-            quantity:  5.0,
-            amount:    10.0,
+            quantity: 5.0,
+            amount: 10.0,
         });
 
         let single = entry("A", true, 0.0, 3.0, InFlowType::Manual, OutFlowType::Manual);
@@ -1714,8 +1847,8 @@ mod tests {
         let inv = provider.get_or_create_inventory(&AccountId("A".to_string()));
         inv.push(InventoryRecord {
             time_unix: 1,
-            quantity:  5.0,
-            amount:    10.0,
+            quantity: 5.0,
+            amount: 10.0,
         });
 
         let single = entry("A", true, 2.0, 0.0, InFlowType::Manual, OutFlowType::Manual);
@@ -1740,11 +1873,18 @@ mod tests {
         let inv = provider.get_or_create_inventory(&AccountId("A".to_string()));
         inv.push(InventoryRecord {
             time_unix: 1,
-            quantity:  5.0,
-            amount:    10.0,
+            quantity: 5.0,
+            amount: 10.0,
         });
 
-        let single = entry("A", false, 0.0, 5.0, InFlowType::Manual, OutFlowType::Manual);
+        let single = entry(
+            "A",
+            false,
+            0.0,
+            5.0,
+            InFlowType::Manual,
+            OutFlowType::Manual,
+        );
         let double = TestDoubleEntry {
             lines: vec![single],
             ..Default::default()
@@ -1766,11 +1906,18 @@ mod tests {
         let inv = provider.get_or_create_inventory(&AccountId("A".to_string()));
         inv.push(InventoryRecord {
             time_unix: 1,
-            quantity:  5.0,
-            amount:    10.0,
+            quantity: 5.0,
+            amount: 10.0,
         });
 
-        let single = entry("A", false, 2.0, 0.0, InFlowType::Manual, OutFlowType::Manual);
+        let single = entry(
+            "A",
+            false,
+            2.0,
+            0.0,
+            InFlowType::Manual,
+            OutFlowType::Manual,
+        );
         let double = TestDoubleEntry {
             lines: vec![single],
             ..Default::default()
@@ -1791,18 +1938,18 @@ mod tests {
         let mut inv = TestInventory::default();
         inv.push(InventoryRecord {
             time_unix: 1,
-            quantity:  5.0,
-            amount:    10.0,
+            quantity: 5.0,
+            amount: 10.0,
         });
         inv.push(InventoryRecord {
             time_unix: 2,
-            quantity:  3.0,
-            amount:    9.0,
+            quantity: 3.0,
+            amount: 9.0,
         });
         inv.push(InventoryRecord {
             time_unix: 3,
-            quantity:  2.0,
-            amount:    8.0,
+            quantity: 2.0,
+            amount: 8.0,
         });
         sort_inventory(OutFlowType::Hifo, &mut inv);
         let prices: Vec<f64> = inv.iter1().map(|r| r.amount / r.quantity).collect();
@@ -1814,18 +1961,18 @@ mod tests {
         let mut inv = TestInventory::default();
         inv.push(InventoryRecord {
             time_unix: 1,
-            quantity:  5.0,
-            amount:    10.0,
+            quantity: 5.0,
+            amount: 10.0,
         });
         inv.push(InventoryRecord {
             time_unix: 2,
-            quantity:  3.0,
-            amount:    9.0,
+            quantity: 3.0,
+            amount: 9.0,
         });
         inv.push(InventoryRecord {
             time_unix: 3,
-            quantity:  2.0,
-            amount:    8.0,
+            quantity: 2.0,
+            amount: 8.0,
         });
         sort_inventory(OutFlowType::Lofo, &mut inv);
         let prices: Vec<f64> = inv.iter1().map(|r| r.amount / r.quantity).collect();
@@ -1838,11 +1985,18 @@ mod tests {
         let inv = provider.get_or_create_inventory(&AccountId("A".to_string()));
         inv.push(InventoryRecord {
             time_unix: 1,
-            quantity:  5.0,
-            amount:    10.0,
+            quantity: 5.0,
+            amount: 10.0,
         });
 
-        let single = entry("A", false, 2.0, 10.0, InFlowType::Manual, OutFlowType::Manual);
+        let single = entry(
+            "A",
+            false,
+            2.0,
+            10.0,
+            InFlowType::Manual,
+            OutFlowType::Manual,
+        );
         let double = TestDoubleEntry {
             lines: vec![single],
             ..Default::default()
@@ -1866,11 +2020,18 @@ mod tests {
         let inv = provider.get_or_create_inventory(&AccountId("A".to_string()));
         inv.push(InventoryRecord {
             time_unix: 1,
-            quantity:  5.0,
-            amount:    10.0,
+            quantity: 5.0,
+            amount: 10.0,
         });
 
-        let single = entry("A", false, 2.0, 11.0, InFlowType::Manual, OutFlowType::Manual);
+        let single = entry(
+            "A",
+            false,
+            2.0,
+            11.0,
+            InFlowType::Manual,
+            OutFlowType::Manual,
+        );
         let double = TestDoubleEntry {
             lines: vec![single],
             ..Default::default()
@@ -1893,8 +2054,8 @@ mod tests {
         let mut inv = TestInventory::default();
         inv.push(InventoryRecord {
             time_unix: 1,
-            quantity:  5.0,
-            amount:    10.0,
+            quantity: 5.0,
+            amount: 10.0,
         });
         apply_entry_on_inventory(100, 3.0, 2.0, false, false, &mut inv);
         let (qty, amt) = sum_inventory(&inv);
