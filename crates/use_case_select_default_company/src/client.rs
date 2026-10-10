@@ -157,7 +157,7 @@ pub enum Message {
 
 impl MessageTrait for Message {}
 
-pub fn reduce(
+pub fn update(
     msg: Message,
     local_model: &impl LocalModel,
     global_model: &impl GlobalModel,
@@ -221,7 +221,7 @@ pub fn reduce(
     }
 }
 
-pub fn update(msg: Change, local_model: &impl LocalModel, global_model: &impl GlobalModel) {
+pub fn apply(msg: Change, local_model: &impl LocalModel, global_model: &impl GlobalModel) {
     match msg {
         Change::AsyncState(i) => local_model.async_state().set(i),
         Change::SelectedCompanyUuid(i) => global_model.selected_company_uuid().set(i),

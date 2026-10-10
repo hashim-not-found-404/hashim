@@ -196,7 +196,7 @@ pub enum Message {
 
 impl MessageTrait for Message {}
 
-pub fn reduce(
+pub fn update(
     msg: Message,
     local_model: &impl LocalModel,
     global_model: &impl GlobalModel,
@@ -291,7 +291,7 @@ pub fn reduce(
     }
 }
 
-pub fn update(msg: Change, local_model: &impl LocalModel, global_model: &impl GlobalModel) {
+pub fn apply(msg: Change, local_model: &impl LocalModel, global_model: &impl GlobalModel) {
     match msg {
         Change::Password(i) => global_model.password().set(i),
         Change::ShowDialog(i) => local_model.show_dialog().set(i),

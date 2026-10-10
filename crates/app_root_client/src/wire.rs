@@ -50,7 +50,7 @@ use utility::dtos::TypeOperationDTOInput;
 use utility::dtos::TypeOperationDTOOk;
 use utility::ui_effect::CastMessageToReducer;
 use utility::ui_effect::MessageTrait;
-use utility::ui_effect::ReducerTrait;
+use utility::ui_effect::UpdaterTrait;
 
 pub(crate) struct MyCaster;
 
@@ -59,7 +59,7 @@ impl CastMessageToReducer for MyCaster {
 
     fn cast_message_to_reducer(
         v: Box<dyn MessageTrait>,
-    ) -> Result<Box<dyn ReducerTrait<Mdl = Self::Mdl>>> {
+    ) -> Result<Box<dyn UpdaterTrait<Mdl = Self::Mdl>>> {
         let v: Box<dyn Any> = v;
 
         if let Some(v) = v.downcast_ref::<crate::navigator::Message>() {

@@ -98,7 +98,7 @@ pub enum Message {
 
 impl MessageTrait for Message {}
 
-pub fn reduce(
+pub fn update(
     msg: Message,
     local_model: &impl LocalModel,
     _: &impl GlobalModel,
@@ -156,7 +156,7 @@ pub fn reduce(
     }
 }
 
-pub fn update(msg: Change, local_model: &impl LocalModel, _: &impl GlobalModel) {
+pub fn apply(msg: Change, local_model: &impl LocalModel, _: &impl GlobalModel) {
     match msg {
         Change::IsExpandAll(i) => local_model.is_expand_all().set(i),
         Change::Errors(i) => local_model.errors().set(i),

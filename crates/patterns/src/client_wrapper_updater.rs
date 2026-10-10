@@ -18,34 +18,34 @@ pub fn my_macro(input: TokenStream) -> TokenStream {
             use #crate_name::client::Change;
             use #crate_name::client::Effect;
             use #crate_name::client::Message;
+            use #crate_name::client::apply;
             use #crate_name::client::effect;
-            use #crate_name::client::reduce;
             use #crate_name::client::update;
             use utility::process_manager::ProcessId;
             use utility::ui_effect::EffectorTrait;
-            use utility::ui_effect::ReducerTrait;
-            use utility::ui_effect::UiContext;
             use utility::ui_effect::UpdaterTrait;
+            use utility::ui_effect::UiContext;
+            use utility::ui_effect::ApplierTrait;
             #[derive(Debug)]
             pub(crate) struct WrapperMessage(pub(crate) Message);
 
-            impl ReducerTrait for WrapperMessage {
+            impl UpdaterTrait for WrapperMessage {
                 type Mdl = TypeModel;
-                fn reduce(
+                fn update(
                     &self,
                     model: &Self::Mdl,
                     process_id: ProcessId,
                 ) -> (
-                    Vec<Box<dyn UpdaterTrait<Mdl = TypeModel>>>,
+                    Vec<Box<dyn ApplierTrait<Mdl = TypeModel>>>,
                     Vec<Box<dyn EffectorTrait>>,
                 ) {
                     let local_model = model.#model_field_name.clone();
 
-                    let (changes, effects) = reduce(self.0.clone(), local_model.as_ref(), model);
+                    let (changes, effects) = update(self.0.clone(), local_model.as_ref(), model);
 
-                    let updaters: Vec<Box<dyn UpdaterTrait<Mdl = TypeModel>>> = changes
+                    let appliers: Vec<Box<dyn ApplierTrait<Mdl = TypeModel>>> = changes
                         .into_iter()
-                        .map(|c| Box::new(WrapperChange(c)) as Box<dyn UpdaterTrait<Mdl = TypeModel>>)
+                        .map(|c| Box::new(WrapperChange(c)) as Box<dyn ApplierTrait<Mdl = TypeModel>>)
                         .collect();
 
                     let effectors: Vec<Box<dyn EffectorTrait>> = effects
@@ -53,17 +53,17 @@ pub fn my_macro(input: TokenStream) -> TokenStream {
                         .map(|e| Box::new(WrapperEffect(e)) as Box<dyn EffectorTrait>)
                         .collect();
 
-                    (updaters, effectors)
+                    (appliers, effectors)
                 }
             }
             #[derive(Debug)]
             pub(crate) struct WrapperChange(pub(crate) Change);
 
-            impl UpdaterTrait for WrapperChange {
+            impl ApplierTrait for WrapperChange {
                 type Mdl = TypeModel;
-                fn update(&self, model: &Self::Mdl, process_id: ProcessId) {
+                fn apply(&self, model: &Self::Mdl, process_id: ProcessId) {
                     let local_model = model.#model_field_name.clone();
-                    update(self.0.clone(), local_model.as_ref(), model);
+                    apply(self.0.clone(), local_model.as_ref(), model);
                 }
             }
             #[derive(Debug)]

@@ -266,7 +266,7 @@ fn build_check_effect(
     vec![Effect::Check { async_input: a }]
 }
 
-pub fn reduce(
+pub fn update(
     msg: Message,
     local_model: &impl LocalModel,
     global_model: &impl GlobalModel,
@@ -477,7 +477,7 @@ pub fn reduce(
     }
 }
 
-pub fn update(msg: Change, local_model: &impl LocalModel, _global_model: &impl GlobalModel) {
+pub fn apply(msg: Change, local_model: &impl LocalModel, _global_model: &impl GlobalModel) {
     match msg {
         Change::ShowDialog(i) => local_model.show_dialog().set(i),
         Change::CompanyName(i) => local_model.company_name().set(i),

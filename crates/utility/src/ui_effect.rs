@@ -40,23 +40,23 @@ pub struct UiContext {
     pub sender_to_commander: Commander,
 }
 
-pub trait ReducerTrait: Debug {
+pub trait UpdaterTrait: Debug {
     type Mdl: Model;
 
-    fn reduce(
+    fn update(
         &self,
         model: &Self::Mdl,
         process_id: ProcessId,
     ) -> (
-        Vec<Box<dyn UpdaterTrait<Mdl = Self::Mdl>>>,
+        Vec<Box<dyn ApplierTrait<Mdl = Self::Mdl>>>,
         Vec<Box<dyn EffectorTrait>>,
     );
 }
 
-pub trait UpdaterTrait: Debug {
+pub trait ApplierTrait: Debug {
     type Mdl: Model;
 
-    fn update(&self, model: &Self::Mdl, process_id: ProcessId);
+    fn apply(&self, model: &Self::Mdl, process_id: ProcessId);
 }
 
 pub trait EffectorTrait: Debug {
@@ -72,7 +72,7 @@ pub trait CastMessageToReducer {
 
     fn cast_message_to_reducer(
         v: Box<dyn MessageTrait>,
-    ) -> Result<Box<dyn ReducerTrait<Mdl = Self::Mdl>>>;
+    ) -> Result<Box<dyn UpdaterTrait<Mdl = Self::Mdl>>>;
 }
 
 #[derive(Clone)]
@@ -164,13 +164,13 @@ impl Commander {
                     info!(?message);
 
                     let msg = CasMsg::cast_message_to_reducer(message.inner)?;
-                    let (change, effect) = msg.reduce(&model, message.process_id);
+                    let (change, effect) = msg.update(&model, message.process_id);
 
                     info!(?change);
                     info!(?effect);
 
                     for i in change {
-                        i.update(&model, message.process_id);
+                        i.apply(&model, message.process_id);
                     }
 
                     let context = context.clone();

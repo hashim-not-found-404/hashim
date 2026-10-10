@@ -58,7 +58,7 @@ pub(crate) enum Message {
 
 impl MessageTrait for Message {}
 
-pub(crate) fn reduce(
+pub(crate) fn update(
     msg: Message,
     _: ProcessId,
     _: &impl GlobalModel,
@@ -72,7 +72,7 @@ pub(crate) fn reduce(
     }
 }
 
-pub(crate) fn update(msg: Change, global_model: &impl GlobalModel) {
+pub(crate) fn apply(msg: Change, global_model: &impl GlobalModel) {
     match msg {
         Change::Navigator(i) => global_model.navigator().set(i),
     }
@@ -87,35 +87,35 @@ pub(crate) mod navigator_reducer {
     use crate::navigator::Change;
     use crate::navigator::Effect;
     use crate::navigator::Message;
+    use crate::navigator::apply;
     use crate::navigator::effect;
-    use crate::navigator::reduce;
     use crate::navigator::update;
     use anyhow::Result;
     use std::pin::Pin;
     use utility::process_manager::ProcessId;
+    use utility::ui_effect::ApplierTrait;
     use utility::ui_effect::EffectorTrait;
-    use utility::ui_effect::ReducerTrait;
     use utility::ui_effect::UiContext;
     use utility::ui_effect::UpdaterTrait;
 
     #[derive(Debug)]
     pub(crate) struct WrapperMessage(pub(crate) Message);
 
-    impl ReducerTrait for WrapperMessage {
+    impl UpdaterTrait for WrapperMessage {
         type Mdl = TypeModel;
-        fn reduce(
+        fn update(
             &self,
             model: &Self::Mdl,
             process_id: ProcessId,
         ) -> (
-            Vec<Box<dyn UpdaterTrait<Mdl = TypeModel>>>,
+            Vec<Box<dyn ApplierTrait<Mdl = TypeModel>>>,
             Vec<Box<dyn EffectorTrait>>,
         ) {
-            let (changes, effects) = reduce(self.0.clone(), process_id, model);
+            let (changes, effects) = update(self.0.clone(), process_id, model);
 
-            let updaters: Vec<Box<dyn UpdaterTrait<Mdl = TypeModel>>> = changes
+            let updaters: Vec<Box<dyn ApplierTrait<Mdl = TypeModel>>> = changes
                 .into_iter()
-                .map(|c| Box::new(WrapperChange(c)) as Box<dyn UpdaterTrait<Mdl = TypeModel>>)
+                .map(|c| Box::new(WrapperChange(c)) as Box<dyn ApplierTrait<Mdl = TypeModel>>)
                 .collect();
 
             let effectors: Vec<Box<dyn EffectorTrait>> = effects
@@ -130,10 +130,10 @@ pub(crate) mod navigator_reducer {
     #[derive(Debug)]
     pub(crate) struct WrapperChange(pub(crate) Change);
 
-    impl UpdaterTrait for WrapperChange {
+    impl ApplierTrait for WrapperChange {
         type Mdl = TypeModel;
-        fn update(&self, model: &Self::Mdl, _: ProcessId) {
-            update(self.0.clone(), model);
+        fn apply(&self, model: &Self::Mdl, _: ProcessId) {
+            apply(self.0.clone(), model);
         }
     }
 
