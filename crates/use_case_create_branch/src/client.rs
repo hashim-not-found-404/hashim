@@ -5,9 +5,7 @@ use crate::domain::LocationError;
 use crate::domain::Ok;
 use crate::domain::ReadInput;
 use crate::domain::ReadOutput;
-use anyhow::Context;
 use anyhow::Result;
-use anyhow::anyhow;
 use infrastructure::row_id::Id;
 use infrastructure::row_id::RowId;
 use infrastructure::runtime::Rt;
@@ -23,29 +21,25 @@ use kernel::types::Location;
 use kernel::types::MyErrorTrait;
 use serde::Deserialize;
 use serde::Serialize;
-use std::any::Any;
 use std::ops::Deref;
-use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
-use utility::cache::CachingStrategy;
 use utility::cache::ResourceName;
-use utility::cache::Response;
-use utility::cache::ResponseFunction;
 use utility::cache::TraitOperationClientError;
 use utility::cache::TraitOperationClientInput;
 use utility::cache::TraitOperationClientOk;
 use utility::cache::TypeOperationClientError;
-use utility::cache::TypeOperationClientInput;
 use utility::cache::TypeOperationClientResult;
 use utility::cache::new_resource_name;
-use utility::dtos::TxnNumber;
 use utility::process_manager::ProcessId;
 use utility::process_manager::UserConsent;
 use utility::tools::select_strings;
 use utility::ui_effect::MessageTrait;
 use utility::ui_effect::UiContext;
 use utility::ui_orchestration::GenricAsyncState;
+use utility::ui_orchestration::UseCaseClient;
+use utility::ui_orchestration::handle_check;
+use utility::ui_orchestration::handle_submit;
 use utility::ui_orchestration::spawn_listener;
 use utility_ui::domain::Dialog;
 use utility_ui::domain::HashimSignal;
@@ -503,10 +497,10 @@ pub async fn effect(msg: Effect, process_id: ProcessId, context: UiContext) -> R
             async_input,
             is_to_server,
         } => {
-            handle_submit(process_id, async_input, context, is_to_server).await?;
+            handle_submit::<Wire>(process_id, async_input, context, is_to_server).await?;
         }
         Effect::Check { async_input } => {
-            handle_check(process_id, async_input, context).await?;
+            handle_check::<Wire>(process_id, async_input, context).await?;
         }
         Effect::Subscribe => {
             handle_subscribe(process_id, context).await?;
@@ -518,133 +512,6 @@ pub async fn effect(msg: Effect, process_id: ProcessId, context: UiContext) -> R
     Ok(())
 }
 
-async fn handle_submit(
-    process_id: ProcessId,
-    input: AsyncInput,
-    mut context: UiContext,
-    is_to_server: bool,
-) -> Result<()> {
-    let new_uuid = BranchUuid::from(UuidType::from(Id::generate()));
-
-    let data: TypeOperationClientInput = Arc::new(Input {
-        user_uuid: input.user_uuid.clone(),
-        new_uuid,
-        company_belong: input.company_belong.clone(),
-        branch_name: input.branch_name.clone(),
-        currency: input.currency.clone(),
-        location: input.location.clone(),
-    });
-
-    let f: ResponseFunction = Box::new(move |a| -> Pin<Box<dyn Future<Output = Result<()>>>> {
-        Box::pin({
-            let sender = context.sender_to_commander.clone();
-            let input = input.clone();
-
-            async move {
-                let observe = match a {
-                    Response::ServerCannotBeReached => Observe::Timeout,
-                    Response::Data { data } => match data {
-                        Ok(ok) => {
-                            let a: Arc<dyn Any> = ok;
-                            let a: &Ok = a.downcast_ref().context("downcast error")?;
-
-                            Observe::Result(AsyncState::Success {
-                                input: input.clone(),
-                                ok: a.clone(),
-                            })
-                        }
-                        Err(err) => {
-                            let a: Box<dyn Any> = err;
-                            let a: Box<Error> =
-                                a.downcast().map_err(|_| anyhow!("downcast error"))?;
-
-                            Observe::Result(AsyncState::Failure { input, error: *a })
-                        }
-                    },
-                };
-
-                sender
-                    .async_send(process_id.clone(), Message::Observe(observe))
-                    .await?;
-
-                Ok(())
-            }
-        })
-    });
-
-    let strategy = if is_to_server {
-        CachingStrategy::WriteServerOnly
-    } else {
-        CachingStrategy::WriteCacheOnly
-    };
-
-    context
-        .cache
-        .send_to_cache_actor(strategy, TxnNumber::default(), data, f)
-        .await?;
-
-    Ok(())
-}
-
-async fn handle_check(
-    process_id: ProcessId,
-    input: AsyncInput,
-    mut context: UiContext,
-) -> Result<()> {
-    let new_uuid = BranchUuid::from(UuidType::from(Id::generate()));
-
-    let data: TypeOperationClientInput = Arc::new(Input {
-        user_uuid: input.user_uuid.clone(),
-        new_uuid,
-        company_belong: input.company_belong.clone(),
-        branch_name: input.branch_name.clone(),
-        currency: input.currency.clone(),
-        location: input.location.clone(),
-    });
-
-    let f: ResponseFunction = Box::new(move |a| -> Pin<Box<dyn Future<Output = Result<()>>>> {
-        Box::pin({
-            let sender = context.sender_to_commander.clone();
-            let input = input.clone();
-
-            async move {
-                if let Response::Data { data } = a {
-                    let new_state = match data {
-                        Ok(_) => AsyncState::Idle,
-                        Err(err) => {
-                            let a: Box<dyn Any> = err;
-                            let a: Box<Error> =
-                                a.downcast().map_err(|_| anyhow!("downcast error"))?;
-                            AsyncState::Failure { input, error: *a }
-                        }
-                    };
-
-                    sender
-                        .async_send(
-                            process_id.clone(),
-                            Message::Observe(Observe::Result(new_state)),
-                        )
-                        .await?;
-                }
-
-                Ok(())
-            }
-        })
-    });
-
-    context
-        .cache
-        .send_to_cache_actor(
-            CachingStrategy::ReadCacheOnly,
-            TxnNumber::default(),
-            data,
-            f,
-        )
-        .await?;
-
-    Ok(())
-}
-
 async fn handle_subscribe(process_id: ProcessId, context: UiContext) -> Result<()> {
     spawn_listener(
         context,
@@ -653,4 +520,41 @@ async fn handle_subscribe(process_id: ProcessId, context: UiContext) -> Result<(
         Message::Observe(Observe::Refresh),
     )
     .await
+}
+
+pub struct Wire;
+
+impl UseCaseClient for Wire {
+    type Input = Input;
+    type AsyncInput = AsyncInput;
+    type Ok = Ok;
+    type Error = Error;
+    type Message = Message;
+
+    fn build_input(input: &Self::AsyncInput) -> Self::Input {
+        Input {
+            user_uuid: input.user_uuid.clone(),
+            new_uuid: BranchUuid::from(UuidType::from(Id::generate())),
+            company_belong: input.company_belong.clone(),
+            branch_name: input.branch_name.clone(),
+            currency: input.currency.clone(),
+            location: input.location.clone(),
+        }
+    }
+
+    fn msg_success_submit(input: Self::AsyncInput, ok: Self::Ok) -> Self::Message {
+        Message::Observe(Observe::Result(AsyncState::Success { input, ok }))
+    }
+
+    fn msg_failure(input: Self::AsyncInput, error: Self::Error) -> Self::Message {
+        Message::Observe(Observe::Result(AsyncState::Failure { input, error }))
+    }
+
+    fn msg_timeout() -> Self::Message {
+        Message::Observe(Observe::Timeout)
+    }
+
+    fn msg_success_check() -> Self::Message {
+        Message::Observe(Observe::Result(AsyncState::Idle))
+    }
 }

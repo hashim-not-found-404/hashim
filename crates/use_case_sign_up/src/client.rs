@@ -5,9 +5,7 @@ use crate::domain::ReadInput;
 use crate::domain::ReadOutput;
 use crate::domain::UserIdError;
 use crate::domain::UserNameError;
-use anyhow::Context;
 use anyhow::Result;
-use anyhow::anyhow;
 use infrastructure::jwt::JsonWebTokenType;
 use infrastructure::row_id::Id;
 use infrastructure::row_id::RowId;
@@ -20,30 +18,25 @@ use kernel::types::DatabaseRead;
 use kernel::types::MyErrorTrait;
 use serde::Deserialize;
 use serde::Serialize;
-use std::any::Any;
 use std::fmt::Debug;
 use std::ops::Deref;
-use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
-use utility::cache::CachingStrategy;
 use utility::cache::ResourceName;
-use utility::cache::Response;
-use utility::cache::ResponseFunction;
 use utility::cache::TraitOperationClientError;
 use utility::cache::TraitOperationClientInput;
 use utility::cache::TraitOperationClientOk;
 use utility::cache::TypeOperationClientError;
-use utility::cache::TypeOperationClientInput;
 use utility::cache::TypeOperationClientResult;
 use utility::cache::new_resource_name;
-use utility::dtos::TxnNumber;
 use utility::process_manager::ProcessId;
 use utility::process_manager::UserConsent;
 use utility::types::MakeOptionIfEmpty;
 use utility::ui_effect::MessageTrait;
 use utility::ui_effect::UiContext;
 use utility::ui_orchestration::GenricAsyncState;
+use utility::ui_orchestration::UseCaseClient;
+use utility::ui_orchestration::handle_submit;
 use utility_ui::domain::Dialog;
 use utility_ui::domain::HashimSignal;
 
@@ -315,72 +308,43 @@ pub async fn effect(msg: Effect, process_id: ProcessId, context: UiContext) -> R
             async_input,
             is_to_server,
         } => {
-            handle_submit(process_id, async_input, context, is_to_server).await?;
+            handle_submit::<Wire>(process_id, async_input, context, is_to_server).await?;
         }
     }
     Ok(())
 }
 
-async fn handle_submit(
-    process_id: ProcessId,
-    input: AsyncInput,
-    mut context: UiContext,
-    is_to_server: bool,
-) -> Result<()> {
-    let data: TypeOperationClientInput = Arc::new(Input {
-        user_uuid: UserUuid::from(UuidType::from(Id::generate())),
-        name: input.name.clone(),
-        user_id: input.user_id.clone(),
-        password: input.password.clone(),
-    });
+pub struct Wire;
 
-    let f: ResponseFunction = Box::new(move |a| -> Pin<Box<dyn Future<Output = Result<()>>>> {
-        Box::pin({
-            let sender = context.sender_to_commander.clone();
-            let input = input.clone();
+impl UseCaseClient for Wire {
+    type Input = Input;
+    type AsyncInput = AsyncInput;
+    type Ok = Ok;
+    type Error = Error;
+    type Message = Message;
 
-            async move {
-                let observe = match a {
-                    Response::ServerCannotBeReached => Observe::Timeout,
-                    Response::Data { data } => match data {
-                        Ok(ok) => {
-                            let a: Arc<dyn Any> = ok;
-                            let a: &Ok = a.downcast_ref().context("downcast error")?;
+    fn build_input(input: &Self::AsyncInput) -> Self::Input {
+        Input {
+            user_uuid: UserUuid::from(UuidType::from(Id::generate())),
+            name: input.name.clone(),
+            user_id: input.user_id.clone(),
+            password: input.password.clone(),
+        }
+    }
 
-                            Observe::Result(AsyncState::Success {
-                                input: input.clone(),
-                                ok: a.clone(),
-                            })
-                        }
-                        Err(err) => {
-                            let a: Box<dyn Any> = err;
-                            let a: Box<Error> =
-                                a.downcast().map_err(|_| anyhow!("downcast error"))?;
+    fn msg_success_submit(input: Self::AsyncInput, ok: Self::Ok) -> Self::Message {
+        Message::Observe(Observe::Result(AsyncState::Success { input, ok }))
+    }
 
-                            Observe::Result(AsyncState::Failure { input, error: *a })
-                        }
-                    },
-                };
+    fn msg_failure(input: Self::AsyncInput, error: Self::Error) -> Self::Message {
+        Message::Observe(Observe::Result(AsyncState::Failure { input, error }))
+    }
 
-                sender
-                    .async_send(process_id.clone(), Message::Observe(observe))
-                    .await?;
+    fn msg_timeout() -> Self::Message {
+        Message::Observe(Observe::Timeout)
+    }
 
-                Ok(())
-            }
-        })
-    });
-
-    let strategy = if is_to_server {
-        CachingStrategy::WriteServerOnly
-    } else {
-        CachingStrategy::WriteCacheOnly
-    };
-
-    context
-        .cache
-        .send_to_cache_actor(strategy, TxnNumber::default(), data, f)
-        .await?;
-
-    Ok(())
+    fn msg_success_check() -> Self::Message {
+        Message::Observe(Observe::Result(AsyncState::Idle))
+    }
 }
