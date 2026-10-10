@@ -8,6 +8,7 @@ make_server_wrapper_read!(sign_in);
 make_server_wrapper_write!(create_company);
 make_server_wrapper_read!(get_companies_and_branches);
 make_server_wrapper_write!(create_branch);
+make_server_wrapper_write!(create_account_for_branch);
 
 use anyhow::Result;
 use anyhow::bail;

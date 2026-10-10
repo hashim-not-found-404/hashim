@@ -27,6 +27,7 @@ server = { path = "./crates/server" }
 
 # use cases
 use_case_create_account = { path = "./crates/use_case_create_account" }
+use_case_create_account_for_branch = { path = "./crates/use_case_create_account_for_branch" }
 use_case_create_branch = { path = "./crates/use_case_create_branch" }
 use_case_create_company = { path = "./crates/use_case_create_company" }
 use_case_error_handler = { path = "./crates/use_case_error_handler" }

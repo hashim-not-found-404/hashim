@@ -31,6 +31,10 @@ make_client_wrapper_updater!(create_branch);
 make_client_wrapper_cache_check!(create_branch);
 make_client_wrapper_cache_write!(create_branch);
 
+make_client_wrapper_updater!(create_account_for_branch);
+make_client_wrapper_cache_check!(create_account_for_branch);
+make_client_wrapper_cache_write!(create_account_for_branch);
+
 use crate::model::TypeModel;
 use crate::navigator::navigator_reducer;
 use anyhow::Result;
@@ -101,6 +105,11 @@ impl CastMessageToReducer for MyCaster {
                 v.clone(),
             )));
         };
+        if let Some(v) = v.downcast_ref::<use_case_create_account_for_branch::client::Message>() {
+            return Ok(Box::new(
+                updater_use_case_create_account_for_branch::WrapperMessage(v.clone()),
+            ));
+        };
 
         bail!("downcast error")
     }
@@ -145,6 +154,11 @@ impl CastClientToCache for MyCaster {
                 v.clone(),
             )));
         };
+        if let Some(v) = v.downcast_ref::<use_case_create_account_for_branch::domain::Input>() {
+            return Ok(Box::new(
+                cache_check_use_case_create_account_for_branch::Wrapper(v.clone()),
+            ));
+        };
 
         bail!("downcast error")
     }
@@ -185,6 +199,11 @@ impl CastClientToCache for MyCaster {
                 v.clone(),
             )));
         };
+        if let Some(v) = v.downcast_ref::<use_case_create_account_for_branch::domain::Ok>() {
+            return Ok(Box::new(
+                cache_write_use_case_create_account_for_branch::Wrapper(v.clone()),
+            ));
+        };
 
         bail!("downcast error")
     }
@@ -215,6 +234,9 @@ impl CastDTOToClient for MyCaster {
         if let Some(v) = v.downcast_ref::<use_case_create_branch::domain::Input>() {
             return Ok(Arc::new(v.clone()));
         };
+        if let Some(v) = v.downcast_ref::<use_case_create_account_for_branch::domain::Input>() {
+            return Ok(Arc::new(v.clone()));
+        };
 
         bail!("downcast error")
     }
@@ -243,6 +265,9 @@ impl CastDTOToClient for MyCaster {
         if let Some(v) = v.downcast_ref::<use_case_create_branch::domain::Ok>() {
             return Ok(Arc::new(v.clone()));
         };
+        if let Some(v) = v.downcast_ref::<use_case_create_account_for_branch::domain::Ok>() {
+            return Ok(Arc::new(v.clone()));
+        };
 
         bail!("downcast error")
     }
@@ -269,6 +294,9 @@ impl CastDTOToClient for MyCaster {
             return Ok(Box::new(v.clone()));
         };
         if let Some(v) = v.downcast_ref::<use_case_create_branch::domain::Error>() {
+            return Ok(Box::new(v.clone()));
+        };
+        if let Some(v) = v.downcast_ref::<use_case_create_account_for_branch::domain::Error>() {
             return Ok(Box::new(v.clone()));
         };
 

@@ -1,4 +1,5 @@
 use crate::navigator::Navigator;
+use kernel::new_types::AccountUuid;
 use kernel::new_types::BranchUuid;
 use kernel::new_types::CompanyUuid;
 use kernel::new_types::UserUuid;
@@ -33,12 +34,10 @@ pub(crate) struct TypeModel {
     pub(crate) page_select_default_company:
         Arc<use_case_select_default_company::ui::TypeLocalModel>,
     pub(crate) page_create_branch: Arc<use_case_create_branch::ui::TypeLocalModel>,
-    // pub(crate) page_company_branch_selection: Arc<use_case_company_branch_selection::ui::TypeLocalModel>,
     pub(crate) page_create_company: Arc<use_case_create_company::ui::TypeLocalModel>,
-    // pub(crate) page_create_company_branch: Arc<use_case_create_company_branch::ui::TypeLocalModel>,
     pub(crate) page_create_account: Arc<use_case_create_account::ui::TypeLocalModel>,
-    // pub(crate) page_create_account_for_branch: Arc<use_case_create_account_for_branch::ui::TypeLocalModel>,
-    // pub(crate) page_create_journal_entry: Arc<use_case_create_journal_entry::ui::TypeLocalModel>,
+    pub(crate) page_create_account_for_branch:
+        Arc<use_case_create_account_for_branch::ui::TypeLocalModel>,
 }
 
 #[derive(Debug, Default, Deserialize, Serialize)]
@@ -143,5 +142,19 @@ impl use_case_create_branch::client::GlobalModel for TypeModel {
 impl crate::navigator::GlobalModel for TypeModel {
     fn navigator(&self) -> impl HashimSignal<Navigator> {
         self.navigator.clone()
+    }
+}
+
+impl use_case_create_account_for_branch::client::GlobalModel for TypeModel {
+    fn user_uuid(&self) -> Option<UserUuid> {
+        self.user_uuid()
+    }
+
+    fn selected_company_branch(&self) -> Option<BranchUuid> {
+        self.selected_company_branch_uuid.read()
+    }
+
+    fn list_of_accounts(&self) -> Vec<(AccountUuid, String)> {
+        Vec::new()
     }
 }

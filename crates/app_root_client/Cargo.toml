@@ -22,6 +22,11 @@ use_case_create_account = { workspace = true, features = [
     "cache",
     "ui",
 ] }
+use_case_create_account_for_branch = { workspace = true, features = [
+    "client",
+    "cache",
+    "ui",
+] }
 use_case_create_branch = { workspace = true, features = [
     "client",
     "cache",

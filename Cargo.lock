@@ -304,6 +304,7 @@ dependencies = [
  "tracing-subscriber",
  "tracing-web",
  "use_case_create_account",
+ "use_case_create_account_for_branch",
  "use_case_create_branch",
  "use_case_create_company",
  "use_case_error_handler",
@@ -329,6 +330,7 @@ dependencies = [
  "patterns",
  "server",
  "use_case_create_account",
+ "use_case_create_account_for_branch",
  "use_case_create_branch",
  "use_case_create_company",
  "use_case_get_all_accounts",
@@ -4932,6 +4934,25 @@ dependencies = [
  "tokio",
  "typetag",
  "use_case_get_all_accounts",
+ "utility",
+ "utility_ui",
+]
+
+[[package]]
+name = "use_case_create_account_for_branch"
+version = "0.1.0"
+dependencies = [
+ "accounting_engine",
+ "anyhow",
+ "cache",
+ "database",
+ "dioxus",
+ "infrastructure",
+ "kernel",
+ "rusqlite",
+ "serde",
+ "tokio",
+ "typetag",
  "utility",
  "utility_ui",
 ]
