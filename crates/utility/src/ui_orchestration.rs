@@ -73,12 +73,16 @@ pub trait UseCaseClient: 'static {
     type Error: TraitOperationClientError + 'static;
     type Message: MessageTrait;
 
-    fn build_input(input: &Self::AsyncInput) -> Self::Input;
     fn msg_success_submit(input: Self::AsyncInput, ok: Self::Ok) -> Self::Message;
     fn msg_failure(input: Self::AsyncInput, error: Self::Error) -> Self::Message;
-    fn msg_timeout() -> Self::Message;
     fn msg_success_check() -> Self::Message;
-    fn msg_refresh() -> Self::Message;
+    fn msg_timeout() -> Self::Message {
+        unreachable!()
+    }
+    fn msg_refresh() -> Self::Message {
+        unreachable!()
+    }
+    fn build_input(input: &Self::AsyncInput) -> Self::Input;
 }
 
 pub async fn handle_submit<T: UseCaseClient>(

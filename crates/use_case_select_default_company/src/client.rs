@@ -246,12 +246,6 @@ impl UseCaseClient for Wire {
     type Error = Error;
     type Message = Message;
 
-    fn build_input(input: &Self::AsyncInput) -> Self::Input {
-        Input {
-            user_uuid: input.user_uuid.clone(),
-        }
-    }
-
     fn msg_success_submit(input: Self::AsyncInput, ok: Self::Ok) -> Self::Message {
         Message::Observe(Observe::Result(AsyncState::Success { input, ok }))
     }
@@ -260,15 +254,17 @@ impl UseCaseClient for Wire {
         Message::Observe(Observe::Result(AsyncState::Failure { input, error }))
     }
 
-    fn msg_timeout() -> Self::Message {
-        unreachable!()
-    }
-
     fn msg_success_check() -> Self::Message {
         Message::Observe(Observe::Result(AsyncState::Idle))
     }
 
     fn msg_refresh() -> Self::Message {
         Message::Observe(Observe::Refresh)
+    }
+
+    fn build_input(input: &Self::AsyncInput) -> Self::Input {
+        Input {
+            user_uuid: input.user_uuid.clone(),
+        }
     }
 }

@@ -522,6 +522,26 @@ impl UseCaseClient for Wire {
     type Error = Error;
     type Message = Message;
 
+    fn msg_success_submit(input: Self::AsyncInput, ok: Self::Ok) -> Self::Message {
+        Message::Observe(Observe::Result(AsyncState::Success { input, ok }))
+    }
+
+    fn msg_failure(input: Self::AsyncInput, error: Self::Error) -> Self::Message {
+        Message::Observe(Observe::Result(AsyncState::Failure { input, error }))
+    }
+
+    fn msg_success_check() -> Self::Message {
+        Message::Observe(Observe::Result(AsyncState::Idle))
+    }
+
+    fn msg_timeout() -> Self::Message {
+        Message::Observe(Observe::Timeout)
+    }
+
+    fn msg_refresh() -> Self::Message {
+        Message::Observe(Observe::Refresh)
+    }
+
     fn build_input(input: &Self::AsyncInput) -> Self::Input {
         Input {
             user_uuid: input.user_uuid.clone(),
@@ -531,25 +551,5 @@ impl UseCaseClient for Wire {
             currency: input.currency.clone(),
             location: input.location.clone(),
         }
-    }
-
-    fn msg_success_submit(input: Self::AsyncInput, ok: Self::Ok) -> Self::Message {
-        Message::Observe(Observe::Result(AsyncState::Success { input, ok }))
-    }
-
-    fn msg_failure(input: Self::AsyncInput, error: Self::Error) -> Self::Message {
-        Message::Observe(Observe::Result(AsyncState::Failure { input, error }))
-    }
-
-    fn msg_timeout() -> Self::Message {
-        Message::Observe(Observe::Timeout)
-    }
-
-    fn msg_success_check() -> Self::Message {
-        Message::Observe(Observe::Result(AsyncState::Idle))
-    }
-
-    fn msg_refresh() -> Self::Message {
-        Message::Observe(Observe::Refresh)
     }
 }
