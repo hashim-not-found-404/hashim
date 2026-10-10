@@ -1,12 +1,8 @@
 use crate::cache::ResourceName;
 use crate::process_manager::ProcessId;
-use crate::ui_effect::Aborter;
-use crate::ui_effect::AborterReturnType;
 use crate::ui_effect::MessageTrait;
 use crate::ui_effect::UiContext;
 use anyhow::Result;
-use infrastructure::random_number::RandomNumber;
-use infrastructure::random_number::Rn;
 use serde::Deserialize;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -75,6 +71,7 @@ pub trait UseCaseClient: 'static {
     fn msg_failure(input: Self::AsyncInput, error: Self::Error) -> Self::Message;
     fn msg_timeout() -> Self::Message;
     fn msg_success_check() -> Self::Message;
+    fn msg_refresh() -> Self::Message;
 }
 
 pub async fn handle_submit<T: UseCaseClient>(
@@ -215,33 +212,28 @@ pub async fn handle_refresh<T: UseCaseClient>(
     Ok(())
 }
 
-pub async fn spawn_listener(
+pub async fn handle_subscribe<T: UseCaseClient>(
+    process_id: ProcessId,
     mut context: UiContext,
     list_of_subscribtion: &'static [ResourceName],
-    process_id: ProcessId,
-    msg: impl MessageTrait + Clone,
 ) -> Result<()> {
-    let component_id = Rn::generate() as u16;
-
     context
         .cache
-        .send_subs_to_cache_actor(component_id, list_of_subscribtion, move || {
-            context.sender_to_commander.send(process_id, msg.clone());
+        .send_subs_to_cache_actor(process_id, list_of_subscribtion, move || {
+            context
+                .sender_to_commander
+                .send(process_id, T::msg_refresh());
         })
         .await?;
 
-    let a = move || -> AborterReturnType {
-        Box::pin(async move {
-            context
-                .cache
-                .send_unsubs_to_cache_actor(component_id)
-                .await?;
+    Ok(())
+}
 
-            Ok(())
-        })
-    };
-    let aborter = Aborter::new(a);
+pub async fn handle_unsubscribe<T: UseCaseClient>(
+    process_id: ProcessId,
+    mut context: UiContext,
+) -> Result<()> {
+    context.cache.send_unsubs_to_cache_actor(process_id).await?;
 
-    context.aborters.register(process_id, aborter);
     Ok(())
 }

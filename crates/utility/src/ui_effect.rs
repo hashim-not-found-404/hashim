@@ -13,11 +13,9 @@ use infrastructure::actors::Sender;
 use infrastructure::runtime::Rt;
 use infrastructure::runtime::Runtime;
 use std::any::Any;
-use std::collections::HashMap;
 use std::fmt::Debug;
 use std::pin::Pin;
 use std::sync::Arc;
-use std::sync::Mutex;
 use tracing::info;
 
 pub trait Model: 'static {}
@@ -35,7 +33,6 @@ pub struct MessageToCommander {
 #[derive(Clone)]
 pub struct UiContext {
     pub cache: CacheStruct,
-    pub aborters: Aborters,
     pub sender_to_error: MpscSender<Error>,
     pub sender_to_commander: Commander,
 }
@@ -138,7 +135,7 @@ impl Commander {
 
     fn commander_actor<Mdl, CasMsg>(
         self,
-        sender_to_error: MpscSender<Error>,
+        mut sender_to_error: MpscSender<Error>,
         mut receiver: MpscReceiver<MessageToCommander>,
         model: Arc<Mdl>,
         cache: CacheStruct,
@@ -147,11 +144,8 @@ impl Commander {
         CasMsg: CastMessageToReducer<Mdl = Mdl>,
     {
         Rt::spawn_local(async move {
-            let aborters = Aborters::default();
-
             let context = UiContext {
                 cache,
-                aborters,
                 sender_to_error: sender_to_error.clone(),
                 sender_to_commander: self,
             };
@@ -173,9 +167,6 @@ impl Commander {
                         i.apply(&model, message.process_id);
                     }
 
-                    let context = context.clone();
-                    let mut sender_to_error = sender_to_error.clone();
-
                     for i in effect {
                         let result = i.effect(message.process_id,context.clone()).await;
                         if let Err(err) = result {
@@ -186,34 +177,5 @@ impl Commander {
             })
             .await;
         });
-    }
-}
-
-pub(crate) type AborterReturnType = Pin<Box<dyn Future<Output = Result<()>> + 'static>>;
-
-pub(crate) struct Aborter(Box<dyn FnOnce() -> AborterReturnType>);
-
-impl Aborter {
-    pub(crate) fn new(a: impl FnOnce() -> AborterReturnType + 'static) -> Self {
-        Self(Box::new(a))
-    }
-}
-
-#[derive(Clone, Default)]
-pub struct Aborters(Arc<Mutex<HashMap<ProcessId, Aborter>>>);
-
-impl Aborters {
-    pub(crate) fn register(&self, process_id: ProcessId, aborter: Aborter) {
-        let mut mutex_guard = self.0.lock().unwrap();
-        mutex_guard.insert(process_id, aborter);
-    }
-
-    pub async fn abort(&self, process_id: ProcessId) -> Result<()> {
-        let mut mutex_guard = self.0.lock().unwrap();
-        if let Some(a) = mutex_guard.remove(&process_id) {
-            a.0().await?;
-        }
-
-        Ok(())
     }
 }

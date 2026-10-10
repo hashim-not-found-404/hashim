@@ -370,4 +370,8 @@ impl UseCaseClient for Wire {
     fn msg_success_check() -> Self::Message {
         Message::Observe(Observe::Result(AsyncState::Idle))
     }
+
+    fn msg_refresh() -> Self::Message {
+        unreachable!()
+    }
 }

@@ -17,7 +17,8 @@ use utility::ui_effect::UiContext;
 use utility::ui_orchestration::GenricAsyncState;
 use utility::ui_orchestration::UseCaseClient;
 use utility::ui_orchestration::handle_refresh;
-use utility::ui_orchestration::spawn_listener;
+use utility::ui_orchestration::handle_subscribe;
+use utility::ui_orchestration::handle_unsubscribe;
 use utility_ui::domain::HashimSignal;
 
 const RESOURCES_NAME_TO_LISTEN: &[ResourceName] = &[
@@ -224,26 +225,16 @@ pub fn apply(msg: Change, local_model: &impl LocalModel, global_model: &impl Glo
 pub async fn effect(msg: Effect, process_id: ProcessId, context: UiContext) -> Result<()> {
     match msg {
         Effect::Subscribe => {
-            handle_subscribe(process_id, context).await?;
+            handle_subscribe::<Wire>(process_id, context, RESOURCES_NAME_TO_LISTEN).await?;
         }
         Effect::UnSubscribe => {
-            context.aborters.abort(process_id).await?;
+            handle_unsubscribe::<Wire>(process_id, context).await?;
         }
         Effect::Refresh { async_input } => {
             handle_refresh::<Wire>(process_id, async_input, context).await?;
         }
     }
     Ok(())
-}
-
-async fn handle_subscribe(process_id: ProcessId, context: UiContext) -> Result<()> {
-    spawn_listener(
-        context,
-        RESOURCES_NAME_TO_LISTEN,
-        process_id,
-        Message::Observe(Observe::Refresh),
-    )
-    .await
 }
 
 pub struct Wire;
@@ -275,5 +266,9 @@ impl UseCaseClient for Wire {
 
     fn msg_success_check() -> Self::Message {
         Message::Observe(Observe::Result(AsyncState::Idle))
+    }
+
+    fn msg_refresh() -> Self::Message {
+        Message::Observe(Observe::Refresh)
     }
 }

@@ -4,6 +4,7 @@ use crate::dtos::TraitOperationDTOOk;
 use crate::dtos::Txn;
 use crate::dtos::TxnNumber;
 use crate::handle_errors::handle_error;
+use crate::process_manager::ProcessId;
 use crate::types::ReadAndSet;
 use anyhow::Result;
 use dyn_clone::DynClone;
@@ -23,7 +24,7 @@ use std::sync::Arc;
 use std::sync::RwLock;
 use std::time::Duration;
 
-type ComponentIdType = u16;
+type ComponentIdType = ProcessId;
 
 #[derive(Debug, Clone, Copy, Eq, Hash, PartialEq)]
 pub struct ResourceName(&'static str);
