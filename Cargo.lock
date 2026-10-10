@@ -6,6 +6,7 @@ version = 4
 name = "accounting_engine"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "serde",
 ]
 
@@ -307,6 +308,7 @@ dependencies = [
  "use_case_create_account_for_branch",
  "use_case_create_branch",
  "use_case_create_company",
+ "use_case_create_journal_entry",
  "use_case_error_handler",
  "use_case_get_all_accounts",
  "use_case_get_companies_and_branches",
@@ -333,6 +335,7 @@ dependencies = [
  "use_case_create_account_for_branch",
  "use_case_create_branch",
  "use_case_create_company",
+ "use_case_create_journal_entry",
  "use_case_get_all_accounts",
  "use_case_get_companies_and_branches",
  "use_case_sign_in",
@@ -4992,6 +4995,28 @@ dependencies = [
  "typetag",
  "utility",
  "utility_ui",
+]
+
+[[package]]
+name = "use_case_create_journal_entry"
+version = "0.1.0"
+dependencies = [
+ "accounting_engine",
+ "anyhow",
+ "cache",
+ "database",
+ "dioxus",
+ "infrastructure",
+ "kernel",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tokio-postgres",
+ "typetag",
+ "utility",
+ "utility_ui",
+ "uuid",
 ]
 
 [[package]]

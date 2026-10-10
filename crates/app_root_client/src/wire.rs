@@ -1,3 +1,9 @@
+use crate::model::TypeModel;
+use crate::navigator::navigator_reducer;
+use anyhow::Result;
+use anyhow::bail;
+use cache::cache_adapter;
+use kernel::ui_construct::CastDTOToClient;
 use patterns::cast_error_to_client_case;
 use patterns::cast_input_to_cache_check_case;
 use patterns::cast_input_to_client_case;
@@ -7,6 +13,20 @@ use patterns::cast_ok_to_client_case;
 use patterns::make_client_wrapper_cache_check;
 use patterns::make_client_wrapper_cache_write;
 use patterns::make_client_wrapper_updater;
+use std::any::Any;
+use std::sync::Arc;
+use utility::cache::CastClientToCache;
+use utility::cache::TraitOperationCacheInput;
+use utility::cache::TraitOperationCacheOk;
+use utility::cache::TypeOperationClientError;
+use utility::cache::TypeOperationClientInput;
+use utility::cache::TypeOperationClientOk;
+use utility::dtos::TypeOperationDTOError;
+use utility::dtos::TypeOperationDTOInput;
+use utility::dtos::TypeOperationDTOOk;
+use utility::ui_effect::CastMessageToReducer;
+use utility::ui_effect::MessageTrait;
+use utility::ui_effect::UpdaterTrait;
 
 make_client_wrapper_updater!(create_account);
 make_client_wrapper_cache_check!(create_account);
@@ -41,26 +61,9 @@ make_client_wrapper_updater!(create_account_for_branch);
 make_client_wrapper_cache_check!(create_account_for_branch);
 make_client_wrapper_cache_write!(create_account_for_branch);
 
-use crate::model::TypeModel;
-use crate::navigator::navigator_reducer;
-use anyhow::Result;
-use anyhow::bail;
-use cache::cache_adapter;
-use kernel::ui_construct::CastDTOToClient;
-use std::any::Any;
-use std::sync::Arc;
-use utility::cache::CastClientToCache;
-use utility::cache::TraitOperationCacheInput;
-use utility::cache::TraitOperationCacheOk;
-use utility::cache::TypeOperationClientError;
-use utility::cache::TypeOperationClientInput;
-use utility::cache::TypeOperationClientOk;
-use utility::dtos::TypeOperationDTOError;
-use utility::dtos::TypeOperationDTOInput;
-use utility::dtos::TypeOperationDTOOk;
-use utility::ui_effect::CastMessageToReducer;
-use utility::ui_effect::MessageTrait;
-use utility::ui_effect::UpdaterTrait;
+make_client_wrapper_updater!(create_journal_entry);
+make_client_wrapper_cache_check!(create_journal_entry);
+make_client_wrapper_cache_write!(create_journal_entry);
 
 pub(crate) struct MyCaster;
 
@@ -84,6 +87,7 @@ impl CastMessageToReducer for MyCaster {
         cast_message_to_reducer_case!(select_default_company);
         cast_message_to_reducer_case!(create_branch);
         cast_message_to_reducer_case!(create_account_for_branch);
+        cast_message_to_reducer_case!(create_journal_entry);
 
         bail!("downcast error")
     }
@@ -105,6 +109,7 @@ impl CastClientToCache for MyCaster {
         cast_input_to_cache_check_case!(get_companies_and_branches);
         cast_input_to_cache_check_case!(create_branch);
         cast_input_to_cache_check_case!(create_account_for_branch);
+        cast_input_to_cache_check_case!(create_journal_entry);
 
         bail!("downcast error")
     }
@@ -122,6 +127,7 @@ impl CastClientToCache for MyCaster {
         cast_ok_to_cache_write_case!(get_companies_and_branches);
         cast_ok_to_cache_write_case!(create_branch);
         cast_ok_to_cache_write_case!(create_account_for_branch);
+        cast_ok_to_cache_write_case!(create_journal_entry);
 
         bail!("downcast error")
     }
@@ -139,6 +145,7 @@ impl CastDTOToClient for MyCaster {
         cast_input_to_client_case!(get_companies_and_branches);
         cast_input_to_client_case!(create_branch);
         cast_input_to_client_case!(create_account_for_branch);
+        cast_input_to_client_case!(create_journal_entry);
 
         bail!("downcast error")
     }
@@ -154,6 +161,7 @@ impl CastDTOToClient for MyCaster {
         cast_ok_to_client_case!(get_companies_and_branches);
         cast_ok_to_client_case!(create_branch);
         cast_ok_to_client_case!(create_account_for_branch);
+        cast_ok_to_client_case!(create_journal_entry);
 
         bail!("downcast error")
     }
@@ -169,6 +177,7 @@ impl CastDTOToClient for MyCaster {
         cast_error_to_client_case!(get_companies_and_branches);
         cast_error_to_client_case!(create_branch);
         cast_error_to_client_case!(create_account_for_branch);
+        cast_error_to_client_case!(create_journal_entry);
 
         bail!("downcast error")
     }

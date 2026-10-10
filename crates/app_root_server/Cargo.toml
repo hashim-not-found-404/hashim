@@ -24,6 +24,10 @@ use_case_create_company = { workspace = true, features = [
     "server",
     "database",
 ] }
+use_case_create_journal_entry = { workspace = true, features = [
+    "server",
+    "database",
+] }
 use_case_get_all_accounts = { workspace = true, features = [
     "server",
     "database",

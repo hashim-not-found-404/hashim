@@ -38,6 +38,7 @@ pub(crate) struct TypeModel {
     pub(crate) page_create_account: Arc<use_case_create_account::ui::TypeLocalModel>,
     pub(crate) page_create_account_for_branch:
         Arc<use_case_create_account_for_branch::ui::TypeLocalModel>,
+    pub(crate) page_create_journal_entry: Arc<use_case_create_journal_entry::ui::TypeLocalModel>,
 }
 
 #[derive(Debug, Default, Deserialize, Serialize)]
@@ -156,5 +157,14 @@ impl use_case_create_account_for_branch::client::GlobalModel for TypeModel {
 
     fn list_of_accounts(&self) -> Vec<(AccountUuid, String)> {
         Vec::new()
+    }
+}
+
+impl use_case_create_journal_entry::client::GlobalModel for TypeModel {
+    fn user_uuid(&self) -> Option<UserUuid> {
+        self.user_uuid()
+    }
+    fn selected_company_branch(&self) -> Option<BranchUuid> {
+        self.selected_company_branch_uuid.read()
     }
 }

@@ -10,6 +10,7 @@ amount <  0 && quantity == 0 : rare       : but it cuse to adjust the inventory:
 amount <  0 && quantity <  0 : normal     : this is normal like the outflow to the account
 */
 
+use anyhow::bail;
 use serde::Deserialize;
 use serde::Serialize;
 use std::cmp::Ordering;
@@ -44,7 +45,7 @@ impl OutFlowType {
 }
 
 impl FromStr for OutFlowType {
-    type Err = String;
+    type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
@@ -56,7 +57,7 @@ impl FromStr for OutFlowType {
             "Lifo" => Ok(OutFlowType::Lifo),
             "Hifo" => Ok(OutFlowType::Hifo),
             "Lofo" => Ok(OutFlowType::Lofo),
-            _ => Err("unknown OutFlowType".into()),
+            _ => bail!("unknown OutFlowType"),
         }
     }
 }
@@ -80,14 +81,14 @@ impl InFlowType {
 }
 
 impl FromStr for InFlowType {
-    type Err = String;
+    type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "Manual" => Ok(InFlowType::Manual),
             "QuantityEqualAmount" => Ok(InFlowType::QuantityEqualAmount),
             "QuantityEqualZero" => Ok(InFlowType::QuantityEqualZero),
-            _ => Err("unknown InFlowType".into()),
+            _ => bail!("unknown InFlowType"),
         }
     }
 }

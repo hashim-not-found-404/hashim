@@ -11,6 +11,7 @@ use use_case_create_account::client::LocalModel as _;
 use use_case_create_account_for_branch::client::LocalModel as _;
 use use_case_create_branch::client::LocalModel as _;
 use use_case_create_company::client::LocalModel as _;
+use use_case_create_journal_entry::client::LocalModel as _;
 use use_case_error_handler::client::LocalModel as _;
 use use_case_sign_in::client::LocalModel as _;
 use use_case_sign_up::client::LocalModel as _;
@@ -73,6 +74,7 @@ fn Home() -> Element {
     let process_id2 = use_hook(ProcessId::default);
     let process_id3 = use_hook(ProcessId::default);
     let process_id4 = use_hook(ProcessId::default);
+    let process_id5 = use_hook(ProcessId::default);
 
     rsx! {
         use_case_select_default_company::ui::Component {
@@ -197,6 +199,14 @@ fn Home() -> Element {
                     MODEL.page_create_account_for_branch.as_ref(),
                     MODEL.as_ref(),
                 ),
+        }
+        use_case_create_journal_entry::ui::Component {
+            sender: move |i| send(
+                process_id5,
+                use_case_create_journal_entry::client::Message::Intent(i),
+            ),
+            show_dialog: MODEL.page_create_journal_entry.show_dialog().read(),
+            is_loading: MODEL.page_create_journal_entry.is_loading().read(),
         }
     }
 }

@@ -1,0 +1,55 @@
+use crate::domain::Input;
+use crate::domain::MyResult;
+use crate::domain::Ok;
+use crate::domain::ReadInput;
+use crate::domain::ReadOutput;
+use anyhow::Result;
+use infrastructure::jwt::JWT;
+use kernel::make_auth_check;
+use kernel::new_types::UserUuid;
+use kernel::server::DBClient;
+use kernel::server::DBTransaction;
+use kernel::server::SideEffects;
+use kernel::types::DatabaseRead;
+use kernel::types::DatabaseWrite;
+use kernel::types::MyErrorTrait;
+use kernel::types::UserUuidError;
+
+pub async fn handle_operation_generic<
+    Cli: DBClient,
+    DBReader: for<'a> DatabaseRead<Db<'a> = Cli::Txn<'a>, Input = ReadInput, Output = ReadOutput>,
+    DBWrite: for<'a> DatabaseWrite<Db<'a> = Cli::Txn<'a>, Input = Ok>,
+    Jwt: JWT<UserUuid>,
+>(
+    input: &Input,
+    side_effects: &mut SideEffects<'_, Cli, Jwt>,
+) -> Result<MyResult> {
+    let mut errr = input.state_less_check();
+    make_auth_check!(side_effects, input, errr);
+
+    if errr.is_there_error() {
+        return Ok(Err(errr));
+    }
+
+    let mut txn = side_effects.client.begin_transaction().await?;
+
+    let result: Result<MyResult> = async {
+        let result = input.state_full_check::<DBReader>(&mut txn).await?;
+        let Ok(ok) = result else {
+            return Ok(Err(errr));
+        };
+        DBWrite::write(&mut txn, &ok).await?;
+        Ok(Ok(ok))
+    }
+    .await;
+
+    if let Ok(a) = &result {
+        if a.is_ok() {
+            let _ = txn.commit_transaction().await?;
+        }
+    } else {
+        txn.rollback_transaction().await?;
+    }
+
+    result
+}
