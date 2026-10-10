@@ -193,12 +193,12 @@ pub fn reduce(
     msg: Message,
     local_model: &impl LocalModel,
     global_model: &impl GlobalModel,
-) -> Result<(Vec<Change>, Vec<Effect>)> {
+) -> (Vec<Change>, Vec<Effect>) {
     if let Message::Intent(ref a) = msg {
         if let Intent::Consent(_) = a {
         } else {
             if local_model.async_state().read().is_loading() {
-                return Ok((vec![], vec![]));
+                return (vec![], vec![]);
             }
         }
     }
@@ -227,7 +227,7 @@ pub fn reduce(
                     },
                 ];
 
-                Ok((change, effect))
+                (change, effect)
             }
             Intent::Consent(v) => {
                 let (change, effect) = match v {
@@ -259,19 +259,19 @@ pub fn reduce(
                     }
                 };
 
-                Ok((change, effect))
+                (change, effect)
             }
             Intent::UserName(v) => {
                 let change = vec![Change::UserName(v.none_if_empty())];
-                Ok((change, vec![]))
+                (change, vec![])
             }
             Intent::UserId(v) => {
                 let change = vec![Change::UserId(v)];
-                Ok((change, vec![]))
+                (change, vec![])
             }
             Intent::Password(v) => {
                 let change = vec![Change::Password(v)];
-                Ok((change, vec![]))
+                (change, vec![])
             }
         },
         Message::Observe(observe) => match observe {
@@ -280,11 +280,11 @@ pub fn reduce(
                     AsyncState::Loading { .. } => vec![Change::ShowDialog(Dialog::Show)],
                     _ => vec![],
                 };
-                Ok((change, vec![]))
+                (change, vec![])
             }
             Observe::Result(result) => {
                 let change = vec![Change::AsyncState(result)];
-                Ok((change, vec![]))
+                (change, vec![])
             }
         },
     }

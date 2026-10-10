@@ -62,11 +62,11 @@ pub(crate) fn reduce(
     msg: Message,
     _: ProcessId,
     _: &impl GlobalModel,
-) -> Result<(Vec<Change>, Vec<Effect>)> {
+) -> (Vec<Change>, Vec<Effect>) {
     match msg {
         Message::Intent(intent) => match intent {
-            Intent::GoToSignIn => Ok((vec![Change::Navigator(Navigator::SignIn)], vec![])),
-            Intent::GoToSignUp => Ok((vec![Change::Navigator(Navigator::SignUp)], vec![])),
+            Intent::GoToSignIn => (vec![Change::Navigator(Navigator::SignIn)], vec![]),
+            Intent::GoToSignUp => (vec![Change::Navigator(Navigator::SignUp)], vec![]),
         },
         Message::Observe(observe) => match observe {},
     }
@@ -107,11 +107,11 @@ pub(crate) mod navigator_reducer {
             &self,
             model: &Self::Mdl,
             process_id: ProcessId,
-        ) -> Result<(
+        ) -> (
             Vec<Box<dyn UpdaterTrait<Mdl = TypeModel>>>,
             Vec<Box<dyn EffectorTrait>>,
-        )> {
-            let (changes, effects) = reduce(self.0.clone(), process_id, model)?;
+        ) {
+            let (changes, effects) = reduce(self.0.clone(), process_id, model);
 
             let updaters: Vec<Box<dyn UpdaterTrait<Mdl = TypeModel>>> = changes
                 .into_iter()
@@ -123,7 +123,7 @@ pub(crate) mod navigator_reducer {
                 .map(|e| Box::new(WrapperEffect(e)) as Box<dyn EffectorTrait>)
                 .collect();
 
-            Ok((updaters, effectors))
+            (updaters, effectors)
         }
     }
 

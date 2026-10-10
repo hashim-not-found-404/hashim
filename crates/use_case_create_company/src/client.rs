@@ -182,12 +182,12 @@ pub fn reduce(
     msg: Message,
     local_model: &impl LocalModel,
     global_model: &impl GlobalModel,
-) -> Result<(Vec<Change>, Vec<Effect>)> {
+) -> (Vec<Change>, Vec<Effect>) {
     if let Message::Intent(ref a) = msg {
         if let Intent::Consent(_) = a {
         } else {
             if local_model.async_state().read().is_loading() {
-                return Ok((vec![], vec![]));
+                return (vec![], vec![]);
             }
         }
     }
@@ -201,21 +201,21 @@ pub fn reduce(
                     Change::Currency(Default::default()),
                     Change::AsyncState(AsyncState::Idle),
                 ];
-                Ok((change, vec![]))
+                (change, vec![])
             }
             Intent::CompanyName(v) => {
                 let change = vec![Change::CompanyName(v.clone())];
                 let effect = build_check_effect(local_model, global_model, |a| {
                     a.company_name = v;
                 });
-                Ok((change, effect))
+                (change, effect)
             }
             Intent::Currency(v) => {
                 let change = vec![Change::Currency(v.clone())];
                 let effect = build_check_effect(local_model, global_model, |a| {
                     a.currency = v;
                 });
-                Ok((change, effect))
+                (change, effect)
             }
             Intent::Consent(v) => {
                 let (change, effect) = match v {
@@ -232,7 +232,7 @@ pub fn reduce(
                     ),
                     UserConsent::DontWaitForServerResponse => {
                         let Some(user_uuid) = global_model.user_uuid() else {
-                            return Ok((vec![], vec![]));
+                            return (vec![], vec![]);
                         };
                         let async_input = AsyncInput {
                             user_uuid,
@@ -250,11 +250,11 @@ pub fn reduce(
                     }
                 };
 
-                Ok((change, effect))
+                (change, effect)
             }
             Intent::Submit => {
                 let Some(user_uuid) = global_model.user_uuid() else {
-                    return Ok((vec![], vec![]));
+                    return (vec![], vec![]);
                 };
 
                 let async_input = AsyncInput {
@@ -278,7 +278,7 @@ pub fn reduce(
                     },
                 ];
 
-                Ok((change, effect))
+                (change, effect)
             }
         },
         Message::Observe(observe) => match observe {
@@ -287,7 +287,7 @@ pub fn reduce(
                     AsyncState::Loading { .. } => vec![Change::ShowDialog(Dialog::Show)],
                     _ => vec![],
                 };
-                Ok((change, vec![]))
+                (change, vec![])
             }
             Observe::Result(result) => {
                 let change = match result {
@@ -304,7 +304,7 @@ pub fn reduce(
                         Change::AsyncState(result),
                     ],
                 };
-                Ok((change, vec![]))
+                (change, vec![])
             }
         },
     }

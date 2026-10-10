@@ -35,13 +35,13 @@ pub fn my_macro(input: TokenStream) -> TokenStream {
                     &self,
                     model: &Self::Mdl,
                     process_id: ProcessId,
-                ) -> Result<(
+                ) -> (
                     Vec<Box<dyn UpdaterTrait<Mdl = TypeModel>>>,
                     Vec<Box<dyn EffectorTrait>>,
-                )> {
+                ) {
                     let local_model = model.#model_field_name.clone();
 
-                    let (changes, effects) = reduce(self.0.clone(), local_model.as_ref(), model)?;
+                    let (changes, effects) = reduce(self.0.clone(), local_model.as_ref(), model);
 
                     let updaters: Vec<Box<dyn UpdaterTrait<Mdl = TypeModel>>> = changes
                         .into_iter()
@@ -53,7 +53,7 @@ pub fn my_macro(input: TokenStream) -> TokenStream {
                         .map(|e| Box::new(WrapperEffect(e)) as Box<dyn EffectorTrait>)
                         .collect();
 
-                    Ok((updaters, effectors))
+                    (updaters, effectors)
                 }
             }
             #[derive(Debug)]

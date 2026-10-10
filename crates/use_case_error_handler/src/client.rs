@@ -102,26 +102,26 @@ pub fn reduce(
     msg: Message,
     local_model: &impl LocalModel,
     _: &impl GlobalModel,
-) -> Result<(Vec<Change>, Vec<Effect>)> {
+) -> (Vec<Change>, Vec<Effect>) {
     match msg {
         Message::Intent(intent) => match intent {
             Intent::DeleteOne(i) => {
                 let mut err = local_model.errors().read();
                 err.0.remove(i);
-                Ok((vec![Change::Errors(err)], vec![]))
+                (vec![Change::Errors(err)], vec![])
             }
-            Intent::DeleteAll => Ok((vec![Change::Errors(ErrorList::default())], vec![])),
+            Intent::DeleteAll => (vec![Change::Errors(ErrorList::default())], vec![]),
             Intent::ExpandOrCollapseAll => {
                 let a = local_model.is_expand_all().read();
-                Ok((vec![Change::IsExpandAll(a ^ true)], vec![]))
+                (vec![Change::IsExpandAll(a ^ true)], vec![])
             }
             Intent::ExpandOrCollapseOne(i) => {
                 let mut err = local_model.errors().read();
                 let Some(entry) = err.0.get_mut(i) else {
-                    return Ok((vec![], vec![]));
+                    return (vec![], vec![]);
                 };
                 entry.is_expand ^= true;
-                Ok((vec![Change::Errors(err)], vec![]))
+                (vec![Change::Errors(err)], vec![])
             }
         },
         Message::Observe(observe) => match observe {
@@ -150,7 +150,7 @@ pub fn reduce(
                     }
                 }
                 errors.0.sort_by_key(|e| e.time_unix_ms);
-                Ok((vec![Change::Errors(errors)], vec![]))
+                (vec![Change::Errors(errors)], vec![])
             }
         },
     }

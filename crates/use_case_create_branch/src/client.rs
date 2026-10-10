@@ -270,13 +270,13 @@ pub fn reduce(
     msg: Message,
     local_model: &impl LocalModel,
     global_model: &impl GlobalModel,
-) -> Result<(Vec<Change>, Vec<Effect>)> {
+) -> (Vec<Change>, Vec<Effect>) {
     if let Message::Intent(ref a) = msg {
         match a {
             Intent::Consent(_) | Intent::Subscribe | Intent::UnSubscribe => {}
             _ => {
                 if local_model.async_state().read().is_loading() {
-                    return Ok((vec![], vec![]));
+                    return (vec![], vec![]);
                 }
             }
         }
@@ -286,11 +286,11 @@ pub fn reduce(
         Message::Intent(intent) => match intent {
             Intent::Submit => {
                 let Some(user_uuid) = global_model.user_uuid() else {
-                    return Ok((vec![], vec![]));
+                    return (vec![], vec![]);
                 };
 
                 let Some(company_belong) = resolved_company_uuid(local_model, global_model) else {
-                    return Ok((vec![], vec![]));
+                    return (vec![], vec![]);
                 };
 
                 let async_input = AsyncInput {
@@ -316,7 +316,7 @@ pub fn reduce(
                     },
                 ];
 
-                Ok((change, effect))
+                (change, effect)
             }
             Intent::Consent(v) => {
                 let (change, effect) = match v {
@@ -333,11 +333,11 @@ pub fn reduce(
                     ),
                     UserConsent::DontWaitForServerResponse => {
                         let Some(user_uuid) = global_model.user_uuid() else {
-                            return Ok((vec![], vec![]));
+                            return (vec![], vec![]);
                         };
                         let Some(company_belong) = resolved_company_uuid(local_model, global_model)
                         else {
-                            return Ok((vec![], vec![]));
+                            return (vec![], vec![]);
                         };
                         let async_input = AsyncInput {
                             user_uuid,
@@ -357,7 +357,7 @@ pub fn reduce(
                     }
                 };
 
-                Ok((change, effect))
+                (change, effect)
             }
             Intent::Clean => {
                 let change = vec![
@@ -368,7 +368,7 @@ pub fn reduce(
                     Change::Location(Default::default()),
                     Change::AsyncState(AsyncState::Idle),
                 ];
-                Ok((change, vec![]))
+                (change, vec![])
             }
             Intent::CompanyName(v) => {
                 let change = vec![Change::CompanyName(v.clone())];
@@ -381,7 +381,7 @@ pub fn reduce(
                         .find_map(|(uuid, name)| (name == v).then_some(uuid))
                 };
                 let effect = build_check_effect(local_model, global_model, resolved, |_| {});
-                Ok((change, effect))
+                (change, effect)
             }
             Intent::SelectedCompany(idx) => {
                 let list = list_of_companies_to_display(local_model, global_model);
@@ -394,9 +394,9 @@ pub fn reduce(
                             Some(company_uuid.clone()),
                             |_| {},
                         );
-                        Ok((change, effect))
+                        (change, effect)
                     }
-                    None => Ok((vec![], vec![])),
+                    None => (vec![], vec![]),
                 }
             }
             Intent::BranchName(v) => {
@@ -404,14 +404,14 @@ pub fn reduce(
                 let effect = build_check_effect(local_model, global_model, None, |a| {
                     a.branch_name = v;
                 });
-                Ok((change, effect))
+                (change, effect)
             }
             Intent::Currency(v) => {
                 let change = vec![Change::Currency(v.clone())];
                 let effect = build_check_effect(local_model, global_model, None, |a| {
                     a.currency = v;
                 });
-                Ok((change, effect))
+                (change, effect)
             }
             Intent::Latitude(v) => {
                 let mut loc = local_model.location().read();
@@ -421,7 +421,7 @@ pub fn reduce(
                 let effect = build_check_effect(local_model, global_model, None, |a| {
                     a.location = loc_for_effect;
                 });
-                Ok((change, effect))
+                (change, effect)
             }
             Intent::Longitude(v) => {
                 let mut loc = local_model.location().read();
@@ -431,15 +431,15 @@ pub fn reduce(
                 let effect = build_check_effect(local_model, global_model, None, |a| {
                     a.location = loc_for_effect;
                 });
-                Ok((change, effect))
+                (change, effect)
             }
             Intent::Subscribe => {
                 let effect = vec![Effect::Subscribe];
-                Ok((vec![], effect))
+                (vec![], effect)
             }
             Intent::UnSubscribe => {
                 let effect = vec![Effect::UnSubscribe];
-                Ok((vec![], effect))
+                (vec![], effect)
             }
         },
         Message::Observe(observe) => match observe {
@@ -448,7 +448,7 @@ pub fn reduce(
                     AsyncState::Loading { .. } => vec![Change::ShowDialog(Dialog::Show)],
                     _ => vec![],
                 };
-                Ok((change, vec![]))
+                (change, vec![])
             }
             Observe::Result(result) => {
                 let change = match result {
@@ -467,11 +467,11 @@ pub fn reduce(
                         Change::AsyncState(result),
                     ],
                 };
-                Ok((change, vec![]))
+                (change, vec![])
             }
             Observe::Refresh => {
                 let effect = build_check_effect(local_model, global_model, None, |_| {});
-                Ok((vec![], effect))
+                (vec![], effect)
             }
         },
     }

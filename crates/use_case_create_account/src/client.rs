@@ -274,13 +274,13 @@ pub fn reduce(
     msg: Message,
     local_model: &impl LocalModel,
     global_model: &impl GlobalModel,
-) -> Result<(Vec<Change>, Vec<Effect>)> {
+) -> (Vec<Change>, Vec<Effect>) {
     if let Message::Intent(ref a) = msg {
         match a {
             Intent::Consent(_) | Intent::Subscribe | Intent::UnSubscribe => {}
             _ => {
                 if local_model.async_state().read().is_loading() {
-                    return Ok((vec![], vec![]));
+                    return (vec![], vec![]);
                 }
             }
         }
@@ -290,12 +290,12 @@ pub fn reduce(
         Message::Intent(intent) => match intent {
             Intent::Submit => {
                 let Some(user_uuid) = global_model.user_uuid() else {
-                    return Ok((vec![], vec![]));
+                    return (vec![], vec![]);
                 };
 
                 let Some(belong_to_company) = resolved_company_uuid(local_model, global_model)
                 else {
-                    return Ok((vec![], vec![]));
+                    return (vec![], vec![]);
                 };
 
                 let async_input = AsyncInput {
@@ -324,7 +324,7 @@ pub fn reduce(
                     },
                 ];
 
-                Ok((change, effect))
+                (change, effect)
             }
             Intent::Consent(v) => {
                 let (change, effect) = match v {
@@ -341,12 +341,12 @@ pub fn reduce(
                     ),
                     UserConsent::DontWaitForServerResponse => {
                         let Some(user_uuid) = global_model.user_uuid() else {
-                            return Ok((vec![], vec![]));
+                            return (vec![], vec![]);
                         };
                         let Some(belong_to_company) =
                             resolved_company_uuid(local_model, global_model)
                         else {
-                            return Ok((vec![], vec![]));
+                            return (vec![], vec![]);
                         };
                         let async_input = AsyncInput {
                             user_uuid,
@@ -369,7 +369,7 @@ pub fn reduce(
                     }
                 };
 
-                Ok((change, effect))
+                (change, effect)
             }
             Intent::Clean => {
                 let change = vec![
@@ -381,35 +381,35 @@ pub fn reduce(
                     Change::SelectedCompanyName(Default::default()),
                     Change::AsyncState(AsyncState::Idle),
                 ];
-                Ok((change, vec![]))
+                (change, vec![])
             }
             Intent::IsDebit(v) => {
                 let change = vec![Change::IsDebit(v)];
                 let effect = build_check_effect(local_model, global_model, None, |a| {
                     a.is_debit = v;
                 });
-                Ok((change, effect))
+                (change, effect)
             }
             Intent::IsPermanentAccount(v) => {
                 let change = vec![Change::IsPermanentAccount(v)];
                 let effect = build_check_effect(local_model, global_model, None, |a| {
                     a.is_permanent_account = v;
                 });
-                Ok((change, effect))
+                (change, effect)
             }
             Intent::AccountName(v) => {
                 let change = vec![Change::AccountName(v.clone())];
                 let effect = build_check_effect(local_model, global_model, None, |a| {
                     a.account_name = v;
                 });
-                Ok((change, effect))
+                (change, effect)
             }
             Intent::UnitOfMeasurementOfQuantity(v) => {
                 let change = vec![Change::UnitOfMeasurementOfQuantity(v.clone())];
                 let effect = build_check_effect(local_model, global_model, None, |a| {
                     a.unit_of_measurement_of_quantity = v;
                 });
-                Ok((change, effect))
+                (change, effect)
             }
             Intent::CompanyName(v) => {
                 let change = vec![Change::SelectedCompanyName(v.clone())];
@@ -422,7 +422,7 @@ pub fn reduce(
                         .find_map(|(uuid, name)| (name == v).then_some(uuid))
                 };
                 let effect = build_check_effect(local_model, global_model, resolved, |_| {});
-                Ok((change, effect))
+                (change, effect)
             }
             Intent::SelectedCompany(idx) => {
                 let list = list_of_companies_to_display(local_model, global_model);
@@ -435,18 +435,18 @@ pub fn reduce(
                             Some(company_uuid.clone()),
                             |_| {},
                         );
-                        Ok((change, effect))
+                        (change, effect)
                     }
-                    None => Ok((vec![], vec![])),
+                    None => (vec![], vec![]),
                 }
             }
             Intent::Subscribe => {
                 let effect = vec![Effect::Subscribe];
-                Ok((vec![], effect))
+                (vec![], effect)
             }
             Intent::UnSubscribe => {
                 let effect = vec![Effect::UnSubscribe];
-                Ok((vec![], effect))
+                (vec![], effect)
             }
         },
         Message::Observe(observe) => match observe {
@@ -455,7 +455,7 @@ pub fn reduce(
                     AsyncState::Loading { .. } => vec![Change::ShowDialog(Dialog::Show)],
                     _ => vec![],
                 };
-                Ok((change, vec![]))
+                (change, vec![])
             }
             Observe::Result(result) => {
                 let change = match result {
@@ -475,11 +475,11 @@ pub fn reduce(
                         Change::AsyncState(result),
                     ],
                 };
-                Ok((change, vec![]))
+                (change, vec![])
             }
             Observe::Refresh => {
                 let effect = build_check_effect(local_model, global_model, None, |_| {});
-                Ok((vec![], effect))
+                (vec![], effect)
             }
         },
     }

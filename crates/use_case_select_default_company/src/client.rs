@@ -161,12 +161,12 @@ pub fn reduce(
     msg: Message,
     local_model: &impl LocalModel,
     global_model: &impl GlobalModel,
-) -> Result<(Vec<Change>, Vec<Effect>)> {
+) -> (Vec<Change>, Vec<Effect>) {
     match msg {
         Message::Intent(intent) => match intent {
             Intent::Subscribe => {
                 let Some(user_uuid) = global_model.user_uuid() else {
-                    return Ok((vec![], vec![]));
+                    return (vec![], vec![]);
                 };
                 let async_input = AsyncInput { user_uuid };
 
@@ -174,36 +174,36 @@ pub fn reduce(
                     input: async_input.clone(),
                 })];
                 let effect = vec![Effect::Subscribe, Effect::Refresh { async_input }];
-                Ok((change, effect))
+                (change, effect)
             }
             Intent::UnSubscribe => {
                 let effect = vec![Effect::UnSubscribe];
-                Ok((vec![], effect))
+                (vec![], effect)
             }
             Intent::SelectCompany(uuid) => {
                 if global_model.selected_company_uuid().read().as_ref() == Some(&uuid) {
-                    return Ok((vec![], vec![]));
+                    return (vec![], vec![]);
                 }
 
                 let change = vec![
                     Change::SelectedCompanyUuid(Some(uuid)),
                     Change::SelectedCompanyBranchUuid(None),
                 ];
-                Ok((change, vec![]))
+                (change, vec![])
             }
             Intent::SelectBranch(uuid) => {
                 if global_model.selected_company_branch_uuid().read().as_ref() == Some(&uuid) {
-                    return Ok((vec![], vec![]));
+                    return (vec![], vec![]);
                 }
 
                 let change = vec![Change::SelectedCompanyBranchUuid(Some(uuid))];
-                Ok((change, vec![]))
+                (change, vec![])
             }
         },
         Message::Observe(observe) => match observe {
             Observe::Refresh => {
                 let Some(user_uuid) = global_model.user_uuid() else {
-                    return Ok((vec![], vec![]));
+                    return (vec![], vec![]);
                 };
                 let async_input = AsyncInput { user_uuid };
 
@@ -211,11 +211,11 @@ pub fn reduce(
                     input: async_input.clone(),
                 })];
                 let effect = vec![Effect::Refresh { async_input }];
-                Ok((change, effect))
+                (change, effect)
             }
             Observe::Result(result) => {
                 let change = vec![Change::AsyncState(result)];
-                Ok((change, vec![]))
+                (change, vec![])
             }
         },
     }

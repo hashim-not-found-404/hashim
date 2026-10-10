@@ -47,10 +47,10 @@ pub trait ReducerTrait: Debug {
         &self,
         model: &Self::Mdl,
         process_id: ProcessId,
-    ) -> Result<(
+    ) -> (
         Vec<Box<dyn UpdaterTrait<Mdl = Self::Mdl>>>,
         Vec<Box<dyn EffectorTrait>>,
-    )>;
+    );
 }
 
 pub trait UpdaterTrait: Debug {
@@ -164,7 +164,7 @@ impl Commander {
                     info!(?message);
 
                     let msg = CasMsg::cast_message_to_reducer(message.inner)?;
-                    let (change, effect) = msg.reduce(&model, message.process_id)?;
+                    let (change, effect) = msg.reduce(&model, message.process_id);
 
                     info!(?change);
                     info!(?effect);
@@ -176,12 +176,12 @@ impl Commander {
                     let context = context.clone();
                     let mut sender_to_error = sender_to_error.clone();
 
-                        for i in effect {
-                            let result = i.effect(message.process_id,context.clone()).await;
-                            if let Err(err) = result {
-                                let _ = sender_to_error.send(err).await;
-                            }
+                    for i in effect {
+                        let result = i.effect(message.process_id,context.clone()).await;
+                        if let Err(err) = result {
+                            let _ = sender_to_error.send(err).await;
                         }
+                    }
                 }
             })
             .await;
