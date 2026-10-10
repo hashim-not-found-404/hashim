@@ -1,3 +1,9 @@
+use patterns::cast_error_to_client_case;
+use patterns::cast_input_to_cache_check_case;
+use patterns::cast_input_to_client_case;
+use patterns::cast_message_to_reducer_case;
+use patterns::cast_ok_to_cache_write_case;
+use patterns::cast_ok_to_client_case;
 use patterns::make_client_wrapper_cache_check;
 use patterns::make_client_wrapper_cache_write;
 use patterns::make_client_wrapper_updater;
@@ -70,46 +76,14 @@ impl CastMessageToReducer for MyCaster {
             return Ok(Box::new(navigator_reducer::WrapperMessage(v.clone())));
         }
 
-        if let Some(v) = v.downcast_ref::<use_case_create_account::client::Message>() {
-            return Ok(Box::new(updater_use_case_create_account::WrapperMessage(
-                v.clone(),
-            )));
-        };
-        if let Some(v) = v.downcast_ref::<use_case_error_handler::client::Message>() {
-            return Ok(Box::new(updater_use_case_error_handler::WrapperMessage(
-                v.clone(),
-            )));
-        };
-        if let Some(v) = v.downcast_ref::<use_case_sign_in::client::Message>() {
-            return Ok(Box::new(updater_use_case_sign_in::WrapperMessage(
-                v.clone(),
-            )));
-        };
-        if let Some(v) = v.downcast_ref::<use_case_sign_up::client::Message>() {
-            return Ok(Box::new(updater_use_case_sign_up::WrapperMessage(
-                v.clone(),
-            )));
-        };
-        if let Some(v) = v.downcast_ref::<use_case_create_company::client::Message>() {
-            return Ok(Box::new(updater_use_case_create_company::WrapperMessage(
-                v.clone(),
-            )));
-        };
-        if let Some(v) = v.downcast_ref::<use_case_select_default_company::client::Message>() {
-            return Ok(Box::new(
-                updater_use_case_select_default_company::WrapperMessage(v.clone()),
-            ));
-        };
-        if let Some(v) = v.downcast_ref::<use_case_create_branch::client::Message>() {
-            return Ok(Box::new(updater_use_case_create_branch::WrapperMessage(
-                v.clone(),
-            )));
-        };
-        if let Some(v) = v.downcast_ref::<use_case_create_account_for_branch::client::Message>() {
-            return Ok(Box::new(
-                updater_use_case_create_account_for_branch::WrapperMessage(v.clone()),
-            ));
-        };
+        cast_message_to_reducer_case!(create_account);
+        cast_message_to_reducer_case!(error_handler);
+        cast_message_to_reducer_case!(sign_in);
+        cast_message_to_reducer_case!(sign_up);
+        cast_message_to_reducer_case!(create_company);
+        cast_message_to_reducer_case!(select_default_company);
+        cast_message_to_reducer_case!(create_branch);
+        cast_message_to_reducer_case!(create_account_for_branch);
 
         bail!("downcast error")
     }
@@ -123,42 +97,14 @@ impl CastClientToCache for MyCaster {
     ) -> Result<Box<dyn TraitOperationCacheInput<Cache = Self::Cache>>> {
         let v: Arc<dyn Any> = v;
 
-        if let Some(v) = v.downcast_ref::<use_case_create_account::domain::Input>() {
-            return Ok(Box::new(cache_check_use_case_create_account::Wrapper(
-                v.clone(),
-            )));
-        };
-        if let Some(v) = v.downcast_ref::<use_case_get_all_accounts::domain::Input>() {
-            return Ok(Box::new(cache_check_use_case_get_all_accounts::Wrapper(
-                v.clone(),
-            )));
-        };
-        if let Some(v) = v.downcast_ref::<use_case_sign_in::domain::Input>() {
-            return Ok(Box::new(cache_check_use_case_sign_in::Wrapper(v.clone())));
-        };
-        if let Some(v) = v.downcast_ref::<use_case_sign_up::domain::Input>() {
-            return Ok(Box::new(cache_check_use_case_sign_up::Wrapper(v.clone())));
-        };
-        if let Some(v) = v.downcast_ref::<use_case_create_company::domain::Input>() {
-            return Ok(Box::new(cache_check_use_case_create_company::Wrapper(
-                v.clone(),
-            )));
-        };
-        if let Some(v) = v.downcast_ref::<use_case_get_companies_and_branches::domain::Input>() {
-            return Ok(Box::new(
-                cache_check_use_case_get_companies_and_branches::Wrapper(v.clone()),
-            ));
-        };
-        if let Some(v) = v.downcast_ref::<use_case_create_branch::domain::Input>() {
-            return Ok(Box::new(cache_check_use_case_create_branch::Wrapper(
-                v.clone(),
-            )));
-        };
-        if let Some(v) = v.downcast_ref::<use_case_create_account_for_branch::domain::Input>() {
-            return Ok(Box::new(
-                cache_check_use_case_create_account_for_branch::Wrapper(v.clone()),
-            ));
-        };
+        cast_input_to_cache_check_case!(create_account);
+        cast_input_to_cache_check_case!(get_all_accounts);
+        cast_input_to_cache_check_case!(sign_in);
+        cast_input_to_cache_check_case!(sign_up);
+        cast_input_to_cache_check_case!(create_company);
+        cast_input_to_cache_check_case!(get_companies_and_branches);
+        cast_input_to_cache_check_case!(create_branch);
+        cast_input_to_cache_check_case!(create_account_for_branch);
 
         bail!("downcast error")
     }
@@ -168,42 +114,14 @@ impl CastClientToCache for MyCaster {
     ) -> Result<Box<dyn TraitOperationCacheOk<Cache = Self::Cache>>> {
         let v: Arc<dyn Any> = v;
 
-        if let Some(v) = v.downcast_ref::<use_case_create_account::domain::Ok>() {
-            return Ok(Box::new(cache_write_use_case_create_account::Wrapper(
-                v.clone(),
-            )));
-        };
-        if let Some(v) = v.downcast_ref::<use_case_get_all_accounts::domain::Ok>() {
-            return Ok(Box::new(cache_write_use_case_get_all_accounts::Wrapper(
-                v.clone(),
-            )));
-        };
-        if let Some(v) = v.downcast_ref::<use_case_sign_in::domain::Ok>() {
-            return Ok(Box::new(cache_write_use_case_sign_in::Wrapper(v.clone())));
-        };
-        if let Some(v) = v.downcast_ref::<use_case_sign_up::domain::Ok>() {
-            return Ok(Box::new(cache_write_use_case_sign_up::Wrapper(v.clone())));
-        };
-        if let Some(v) = v.downcast_ref::<use_case_create_company::domain::Ok>() {
-            return Ok(Box::new(cache_write_use_case_create_company::Wrapper(
-                v.clone(),
-            )));
-        };
-        if let Some(v) = v.downcast_ref::<use_case_get_companies_and_branches::domain::Ok>() {
-            return Ok(Box::new(
-                cache_write_use_case_get_companies_and_branches::Wrapper(v.clone()),
-            ));
-        };
-        if let Some(v) = v.downcast_ref::<use_case_create_branch::domain::Ok>() {
-            return Ok(Box::new(cache_write_use_case_create_branch::Wrapper(
-                v.clone(),
-            )));
-        };
-        if let Some(v) = v.downcast_ref::<use_case_create_account_for_branch::domain::Ok>() {
-            return Ok(Box::new(
-                cache_write_use_case_create_account_for_branch::Wrapper(v.clone()),
-            ));
-        };
+        cast_ok_to_cache_write_case!(create_account);
+        cast_ok_to_cache_write_case!(get_all_accounts);
+        cast_ok_to_cache_write_case!(sign_in);
+        cast_ok_to_cache_write_case!(sign_up);
+        cast_ok_to_cache_write_case!(create_company);
+        cast_ok_to_cache_write_case!(get_companies_and_branches);
+        cast_ok_to_cache_write_case!(create_branch);
+        cast_ok_to_cache_write_case!(create_account_for_branch);
 
         bail!("downcast error")
     }
@@ -213,30 +131,14 @@ impl CastDTOToClient for MyCaster {
     fn cast_input(v: TypeOperationDTOInput) -> Result<TypeOperationClientInput> {
         let v: Box<dyn Any> = v;
 
-        if let Some(v) = v.downcast_ref::<use_case_create_account::domain::Input>() {
-            return Ok(Arc::new(v.clone()));
-        };
-        if let Some(v) = v.downcast_ref::<use_case_get_all_accounts::domain::Input>() {
-            return Ok(Arc::new(v.clone()));
-        };
-        if let Some(v) = v.downcast_ref::<use_case_sign_in::domain::Input>() {
-            return Ok(Arc::new(v.clone()));
-        };
-        if let Some(v) = v.downcast_ref::<use_case_sign_up::domain::Input>() {
-            return Ok(Arc::new(v.clone()));
-        };
-        if let Some(v) = v.downcast_ref::<use_case_create_company::domain::Input>() {
-            return Ok(Arc::new(v.clone()));
-        };
-        if let Some(v) = v.downcast_ref::<use_case_get_companies_and_branches::domain::Input>() {
-            return Ok(Arc::new(v.clone()));
-        };
-        if let Some(v) = v.downcast_ref::<use_case_create_branch::domain::Input>() {
-            return Ok(Arc::new(v.clone()));
-        };
-        if let Some(v) = v.downcast_ref::<use_case_create_account_for_branch::domain::Input>() {
-            return Ok(Arc::new(v.clone()));
-        };
+        cast_input_to_client_case!(create_account);
+        cast_input_to_client_case!(get_all_accounts);
+        cast_input_to_client_case!(sign_in);
+        cast_input_to_client_case!(sign_up);
+        cast_input_to_client_case!(create_company);
+        cast_input_to_client_case!(get_companies_and_branches);
+        cast_input_to_client_case!(create_branch);
+        cast_input_to_client_case!(create_account_for_branch);
 
         bail!("downcast error")
     }
@@ -244,30 +146,14 @@ impl CastDTOToClient for MyCaster {
     fn cast_ok(v: TypeOperationDTOOk) -> Result<TypeOperationClientOk> {
         let v: Box<dyn Any> = v;
 
-        if let Some(v) = v.downcast_ref::<use_case_create_account::domain::Ok>() {
-            return Ok(Arc::new(v.clone()));
-        };
-        if let Some(v) = v.downcast_ref::<use_case_get_all_accounts::domain::Ok>() {
-            return Ok(Arc::new(v.clone()));
-        };
-        if let Some(v) = v.downcast_ref::<use_case_sign_in::domain::Ok>() {
-            return Ok(Arc::new(v.clone()));
-        };
-        if let Some(v) = v.downcast_ref::<use_case_sign_up::domain::Ok>() {
-            return Ok(Arc::new(v.clone()));
-        };
-        if let Some(v) = v.downcast_ref::<use_case_create_company::domain::Ok>() {
-            return Ok(Arc::new(v.clone()));
-        };
-        if let Some(v) = v.downcast_ref::<use_case_get_companies_and_branches::domain::Ok>() {
-            return Ok(Arc::new(v.clone()));
-        };
-        if let Some(v) = v.downcast_ref::<use_case_create_branch::domain::Ok>() {
-            return Ok(Arc::new(v.clone()));
-        };
-        if let Some(v) = v.downcast_ref::<use_case_create_account_for_branch::domain::Ok>() {
-            return Ok(Arc::new(v.clone()));
-        };
+        cast_ok_to_client_case!(create_account);
+        cast_ok_to_client_case!(get_all_accounts);
+        cast_ok_to_client_case!(sign_in);
+        cast_ok_to_client_case!(sign_up);
+        cast_ok_to_client_case!(create_company);
+        cast_ok_to_client_case!(get_companies_and_branches);
+        cast_ok_to_client_case!(create_branch);
+        cast_ok_to_client_case!(create_account_for_branch);
 
         bail!("downcast error")
     }
@@ -275,30 +161,14 @@ impl CastDTOToClient for MyCaster {
     fn cast_error(v: TypeOperationDTOError) -> Result<TypeOperationClientError> {
         let v: Box<dyn Any> = v;
 
-        if let Some(v) = v.downcast_ref::<use_case_create_account::domain::Error>() {
-            return Ok(Box::new(v.clone()));
-        };
-        if let Some(v) = v.downcast_ref::<use_case_get_all_accounts::domain::Error>() {
-            return Ok(Box::new(v.clone()));
-        };
-        if let Some(v) = v.downcast_ref::<use_case_sign_in::domain::Error>() {
-            return Ok(Box::new(v.clone()));
-        };
-        if let Some(v) = v.downcast_ref::<use_case_sign_up::domain::Error>() {
-            return Ok(Box::new(v.clone()));
-        };
-        if let Some(v) = v.downcast_ref::<use_case_create_company::domain::Error>() {
-            return Ok(Box::new(v.clone()));
-        };
-        if let Some(v) = v.downcast_ref::<use_case_get_companies_and_branches::domain::Error>() {
-            return Ok(Box::new(v.clone()));
-        };
-        if let Some(v) = v.downcast_ref::<use_case_create_branch::domain::Error>() {
-            return Ok(Box::new(v.clone()));
-        };
-        if let Some(v) = v.downcast_ref::<use_case_create_account_for_branch::domain::Error>() {
-            return Ok(Box::new(v.clone()));
-        };
+        cast_error_to_client_case!(create_account);
+        cast_error_to_client_case!(get_all_accounts);
+        cast_error_to_client_case!(sign_in);
+        cast_error_to_client_case!(sign_up);
+        cast_error_to_client_case!(create_company);
+        cast_error_to_client_case!(get_companies_and_branches);
+        cast_error_to_client_case!(create_branch);
+        cast_error_to_client_case!(create_account_for_branch);
 
         bail!("downcast error")
     }
