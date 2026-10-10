@@ -163,7 +163,7 @@ pub fn Component(
                 onclick: move |_| {
                     sender(Intent::Submit);
                 },
-                "Create Account"
+                "Submit"
             }
             button {
                 disabled: is_loading,

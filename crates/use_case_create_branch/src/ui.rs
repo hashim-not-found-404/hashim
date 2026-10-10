@@ -159,7 +159,7 @@ pub fn Component(
                 onclick: move |_| {
                     sender(Intent::Submit);
                 },
-                "Create Branch"
+                "Submit"
             }
             button {
                 disabled: is_loading,
