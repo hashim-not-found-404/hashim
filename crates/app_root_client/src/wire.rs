@@ -1,5 +1,6 @@
 use crate::model::TypeGlobalModel;
 use crate::use_case_home;
+use crate::use_case_navigator;
 use anyhow::Result;
 use anyhow::bail;
 use cache::cache_adapter;
@@ -31,12 +32,12 @@ use utility::ui_effect::UpdaterTrait;
 
 mod updater_use_case_navigator {
     use crate::model::TypeGlobalModel;
-    use crate::navigator::Change;
-    use crate::navigator::Effect;
-    use crate::navigator::Message;
-    use crate::navigator::apply;
-    use crate::navigator::effect;
-    use crate::navigator::update;
+    use crate::use_case_navigator::client::Change;
+    use crate::use_case_navigator::client::Effect;
+    use crate::use_case_navigator::client::Message;
+    use crate::use_case_navigator::client::apply;
+    use crate::use_case_navigator::client::effect;
+    use crate::use_case_navigator::client::update;
     use anyhow::Result;
     use std::pin::Pin;
     use utility::cache::ProcessId;
@@ -59,31 +60,26 @@ mod updater_use_case_navigator {
             Vec<Box<dyn EffectorTrait>>,
         ) {
             let (changes, effects) = update(self.0.clone(), model);
-
-            let updaters: Vec<Box<dyn ApplierTrait<Mdl = TypeGlobalModel>>> = changes
+            let appliers: Vec<Box<dyn ApplierTrait<Mdl = TypeGlobalModel>>> = changes
                 .into_iter()
                 .map(|c| Box::new(WrapperChange(c)) as Box<dyn ApplierTrait<Mdl = TypeGlobalModel>>)
                 .collect();
-
             let effectors: Vec<Box<dyn EffectorTrait>> = effects
                 .into_iter()
                 .map(|e| Box::new(WrapperEffect(e)) as Box<dyn EffectorTrait>)
                 .collect();
-
-            (updaters, effectors)
+            (appliers, effectors)
         }
     }
-
     #[derive(Debug)]
     pub(crate) struct WrapperChange(pub(crate) Change);
 
     impl ApplierTrait for WrapperChange {
         type Mdl = TypeGlobalModel;
-        fn apply(&self, model: &Self::Mdl, _: ProcessId) {
+        fn apply(&self, model: &Self::Mdl, process_id: ProcessId) {
             apply(self.0.clone(), model);
         }
     }
-
     #[derive(Debug)]
     pub(crate) struct WrapperEffect(pub(crate) Effect);
 
@@ -93,7 +89,7 @@ mod updater_use_case_navigator {
             process_id: ProcessId,
             context: UiContext,
         ) -> Pin<Box<dyn Future<Output = Result<()>>>> {
-            Box::pin(effect(self.0.clone(), context))
+            Box::pin(effect(self.0.clone(), process_id, context))
         }
     }
 }
@@ -208,12 +204,7 @@ impl CastMessageToReducer for MyCaster {
     ) -> Result<Box<dyn UpdaterTrait<Mdl = Self::Mdl>>> {
         let v: Box<dyn Any> = v;
 
-        if let Some(v) = v.downcast_ref::<crate::navigator::Message>() {
-            return Ok(Box::new(updater_use_case_navigator::WrapperMessage(
-                v.clone(),
-            )));
-        }
-
+        cast_message_to_reducer_case!(navigator);
         cast_message_to_reducer_case!(home);
         cast_message_to_reducer_case!(create_account);
         cast_message_to_reducer_case!(error_handler);

@@ -1,7 +1,7 @@
-use crate::navigator::Intent as NavIntent;
-use crate::navigator::Message;
-use crate::navigator::Navigator;
 use crate::use_case_home;
+use crate::use_case_navigator::client::Intent as NavIntent;
+use crate::use_case_navigator::client::Message;
+use crate::use_case_navigator::client::Navigator;
 use crate::utils::MODEL;
 use crate::utils::init_commander_and_model;
 use crate::utils::send;
