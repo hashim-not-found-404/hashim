@@ -1,7 +1,6 @@
 use anyhow::Result;
 use serde::Deserialize;
 use serde::Serialize;
-use utility::cache::ProcessId;
 use utility::ui_effect::MessageTrait;
 use utility::ui_effect::Model;
 use utility::ui_effect::UiContext;
@@ -12,24 +11,9 @@ pub(crate) enum Navigator {
     #[default]
     SignIn,
     SignUp,
-    // Home(HomeNav),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Deserialize, Serialize)]
-pub(crate) struct HomeNav {
-    pub(crate) show_menu: bool,
-    pub(crate) page_to_present: Menu,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Deserialize, Serialize)]
-pub(crate) enum Menu {
-    Dashboard,
-    CreateAccount,
-    CreateAccountForBranch,
-    CreateJournalEntry,
-}
-
-pub(crate) trait GlobalModel: Model + 'static {
+pub(crate) trait GlobalModel: Model {
     fn navigator(&self) -> impl HashimSignal<Navigator>;
 }
 
@@ -58,11 +42,7 @@ pub(crate) enum Message {
 
 impl MessageTrait for Message {}
 
-pub(crate) fn update(
-    msg: Message,
-    _: ProcessId,
-    _: &impl GlobalModel,
-) -> (Vec<Change>, Vec<Effect>) {
+pub(crate) fn update(msg: Message, _: &impl GlobalModel) -> (Vec<Change>, Vec<Effect>) {
     match msg {
         Message::Intent(intent) => match intent {
             Intent::GoToSignIn => (vec![Change::Navigator(Navigator::SignIn)], vec![]),
@@ -111,7 +91,7 @@ pub(crate) mod navigator_reducer {
             Vec<Box<dyn ApplierTrait<Mdl = TypeModel>>>,
             Vec<Box<dyn EffectorTrait>>,
         ) {
-            let (changes, effects) = update(self.0.clone(), process_id, model);
+            let (changes, effects) = update(self.0.clone(), model);
 
             let updaters: Vec<Box<dyn ApplierTrait<Mdl = TypeModel>>> = changes
                 .into_iter()

@@ -25,8 +25,6 @@ pub(crate) enum Route {
     SignIn {},
     #[route("/sign_up")]
     SignUp {},
-    // #[route("/get_companies_and_branches")]
-    // GetCompaniesAndBranches {},
     #[route("/home")]
     Home {},
 }
@@ -171,7 +169,6 @@ fn Home() -> Element {
                 MODEL.as_ref(),
             )
             .map(|uuid| {
-                use cache::utils::MyUuidConverter;
                 uuid.to_string()
             }),
             list_of_company_name_and_uuid: use_case_create_account::client::list_of_companies_to_display(
