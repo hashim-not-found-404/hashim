@@ -1,3 +1,4 @@
+use crate::home::Form;
 use crate::navigator::Navigator;
 use kernel::new_types::AccountUuid;
 use kernel::new_types::BranchUuid;
@@ -28,16 +29,10 @@ pub(crate) struct TypeModel {
     pub(crate) feature_state_auth: FeatureStateAuth,
 
     // pages
-    // pub(crate) forms: Vec<Form>,
     pub(crate) page_sign_up: use_case_sign_up::ui::TypeLocalModel,
     pub(crate) page_sign_in: use_case_sign_in::ui::TypeLocalModel,
     pub(crate) page_select_default_company: use_case_select_default_company::ui::TypeLocalModel,
-    pub(crate) page_create_branch: use_case_create_branch::ui::TypeLocalModel,
-    pub(crate) page_create_company: use_case_create_company::ui::TypeLocalModel,
-    pub(crate) page_create_account: use_case_create_account::ui::TypeLocalModel,
-    pub(crate) page_create_account_for_branch:
-        use_case_create_account_for_branch::ui::TypeLocalModel,
-    pub(crate) page_create_journal_entry: use_case_create_journal_entry::ui::TypeLocalModel,
+    pub(crate) forms: Vec<Form>,
 }
 
 #[derive(Debug, Default, Deserialize, Serialize)]

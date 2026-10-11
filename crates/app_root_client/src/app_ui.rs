@@ -1,3 +1,6 @@
+use crate::home::Form;
+use crate::home::FormVariants;
+use crate::home::FormsToAdd;
 use crate::navigator::Intent as NavIntent;
 use crate::navigator::Message;
 use crate::navigator::Navigator;
@@ -66,17 +69,15 @@ pub(crate) fn App() -> Element {
 
 #[component]
 fn Home() -> Element {
-    let process_id = use_hook(ProcessId::default);
-    let process_id1 = use_hook(ProcessId::default);
-    let process_id2 = use_hook(ProcessId::default);
-    let process_id3 = use_hook(ProcessId::default);
-    let process_id4 = use_hook(ProcessId::default);
-    let process_id5 = use_hook(ProcessId::default);
+    let select_company_process_id = use_hook(ProcessId::default);
+    let home_process_id = use_hook(ProcessId::default);
+
+    let forms = &MODEL.forms;
 
     rsx! {
         use_case_select_default_company::ui::Component {
             sender: move |i| send(
-                process_id,
+                select_company_process_id,
                 use_case_select_default_company::client::Message::Intent(i),
             ),
             user_name: MODEL
@@ -102,106 +103,223 @@ fn Home() -> Element {
                 MODEL.as_ref(),
             ),
         }
-        use_case_create_company::ui::Component {
-            sender: move |i| send(process_id1, use_case_create_company::client::Message::Intent(i)),
-            show_dialog: MODEL.page_create_company.show_dialog().read(),
-            is_loading: MODEL.page_create_company.async_state().read().is_loading(),
-            company_name: MODEL.page_create_company.company_name().read(),
-            currency: MODEL.page_create_company.currency().read(),
-            company_name_error: use_case_create_company::client::error_company_name(
-                &MODEL.page_create_company,
+
+        div {
+            button {
+                onclick: move |_| send(home_process_id, crate::home::Message::Intent(
+                    crate::home::Intent::AddForm(FormsToAdd::CreateAccount),
+                )),
+                "+ Account"
+            }
+            button {
+                onclick: move |_| send(home_process_id, crate::home::Message::Intent(
+                    crate::home::Intent::AddForm(FormsToAdd::CreateBranch),
+                )),
+                "+ Branch"
+            }
+            button {
+                onclick: move |_| send(home_process_id, crate::home::Message::Intent(
+                    crate::home::Intent::AddForm(FormsToAdd::CreateCompany),
+                )),
+                "+ Company"
+            }
+            button {
+                onclick: move |_| send(home_process_id, crate::home::Message::Intent(
+                    crate::home::Intent::AddForm(FormsToAdd::CreateAccountForBranch),
+                )),
+                "+ Account for Branch"
+            }
+            button {
+                onclick: move |_| send(home_process_id, crate::home::Message::Intent(
+                    crate::home::Intent::AddForm(FormsToAdd::CreateJournalEntry),
+                )),
+                "+ Journal Entry"
+            }
+        }
+
+        for (index, form) in forms.iter().enumerate() {
+            FormInstance {
+                key: "{index}",
+                index,
+                process_id: form.process_id,
+                form: form.form.clone(),
+                home_process_id,
+            }
+        }
+    }
+}
+
+#[component]
+fn FormInstance(
+    index: usize,
+    process_id: ProcessId,
+    form: FormVariants,
+    home_process_id: ProcessId,
+) -> Element {
+    rsx! {
+        div {
+            button {
+                onclick: move |_| send(home_process_id, crate::home::Message::Intent(
+                    crate::home::Intent::CopyForm(index),
+                )),
+                "Copy"
+            }
+            button {
+                onclick: move |_| send(home_process_id, crate::home::Message::Intent(
+                    crate::home::Intent::DeleteForm(index),
+                )),
+                "X"
+            }
+
+            {
+                match form {
+                    FormVariants::CreateAccount(lm) => rsx! {
+                        CreateAccountForm { process_id, lm }
+                    },
+                    FormVariants::CreateBranch(lm) => rsx! {
+                        CreateBranchForm { process_id, lm }
+                    },
+                    FormVariants::CreateCompany(lm) => rsx! {
+                        CreateCompanyForm { process_id, lm }
+                    },
+                    FormVariants::CreateAccountForBranch(lm) => rsx! {
+                        CreateAccountForBranchForm { process_id, lm }
+                    },
+                    FormVariants::CreateJournalEntry(lm) => rsx! {
+                        CreateJournalEntryForm { process_id, lm }
+                    },
+                }
+            }
+        }
+    }
+}
+
+#[component]
+fn CreateAccountForm(
+    process_id: ProcessId,
+    lm: use_case_create_account::ui::TypeLocalModel,
+) -> Element {
+    rsx! {
+        use_case_create_account::ui::Component {
+            sender: move |i| send(process_id, use_case_create_account::client::Message::Intent(i)),
+            show_dialog: lm.show_dialog().read(),
+            is_loading: lm.async_state().read().is_loading(),
+            is_debit: lm.is_debit().read(),
+            is_permanent_account: lm.is_permanent_account().read(),
+            account_name: lm.account_name().read(),
+            unit_of_measurement_of_quantity: lm.unit_of_measurement_of_quantity().read(),
+            account_name_error: use_case_create_account::client::error_account_name(&lm)
+                .map(|e| format!("{e:?}")),
+            company_name_error: use_case_create_account::client::error_company_name(
+                &lm,
+                MODEL.as_ref(),
             )
             .map(|e| format!("{e:?}")),
+            selected_company_name: lm.selected_company_name().read(),
+            resolved_company_uuid: use_case_create_account::client::resolved_company_uuid(
+                &lm,
+                MODEL.as_ref(),
+            )
+            .map(|uuid| uuid.to_string()),
+            list_of_company_name_and_uuid: use_case_create_account::client::list_of_companies_to_display(
+                &lm,
+                MODEL.as_ref(),
+            ),
         }
+    }
+}
+
+#[component]
+fn CreateBranchForm(
+    process_id: ProcessId,
+    lm: use_case_create_branch::ui::TypeLocalModel,
+) -> Element {
+    rsx! {
         use_case_create_branch::ui::Component {
-            sender: move |i| send(process_id2, use_case_create_branch::client::Message::Intent(i)),
-            show_dialog: MODEL.page_create_branch.show_dialog().read(),
-            is_loading: MODEL.page_create_branch.async_state().read().is_loading(),
-            company_name: MODEL.page_create_branch.company_name().read(),
+            sender: move |i| send(process_id, use_case_create_branch::client::Message::Intent(i)),
+            show_dialog: lm.show_dialog().read(),
+            is_loading: lm.async_state().read().is_loading(),
+            company_name: lm.company_name().read(),
             company_name_error: use_case_create_branch::client::company_name_error(
-                &MODEL.page_create_branch,
+                &lm,
                 MODEL.as_ref(),
             )
             .map(|e| format!("{e:?}")),
             resolved_company_uuid: use_case_create_branch::client::resolved_company_uuid(
-                &MODEL.page_create_branch,
+                &lm,
                 MODEL.as_ref(),
             )
-            .map(|uuid| {
-                uuid.to_string()
-            }),
-            branch_name: MODEL.page_create_branch.branch_name().read(),
-            currency: MODEL.page_create_branch.currency().read(),
-            location: MODEL.page_create_branch.location().read(),
-            branch_name_error: use_case_create_branch::client::error_branch_name(&MODEL.page_create_branch)
+            .map(|uuid| uuid.to_string()),
+            branch_name: lm.branch_name().read(),
+            currency: lm.currency().read(),
+            location: lm.location().read(),
+            branch_name_error: use_case_create_branch::client::error_branch_name(&lm)
                 .map(|e| format!("{e:?}")),
-            location_error: use_case_create_branch::client::error_location(&MODEL.page_create_branch)
+            location_error: use_case_create_branch::client::error_location(&lm)
                 .map(|e| format!("{e:?}")),
             list_of_company_name_and_uuid: use_case_create_branch::client::list_of_companies_to_display(
-                &MODEL.page_create_branch,
+                &lm,
                 MODEL.as_ref(),
             ),
         }
-        use_case_create_account::ui::Component {
-            sender: move |i| send(process_id3, use_case_create_account::client::Message::Intent(i)),
-            show_dialog: MODEL.page_create_account.show_dialog().read(),
-            is_loading: MODEL.page_create_account.async_state().read().is_loading(),
-            is_debit: MODEL.page_create_account.is_debit().read(),
-            is_permanent_account: MODEL.page_create_account.is_permanent_account().read(),
-            account_name: MODEL.page_create_account.account_name().read(),
-            unit_of_measurement_of_quantity: MODEL
-                .page_create_account
-                .unit_of_measurement_of_quantity()
-                .read(),
-            account_name_error: use_case_create_account::client::error_account_name(
-                &MODEL.page_create_account,
-            )
-            .map(|e| format!("{e:?}")),
-            company_name_error: use_case_create_account::client::error_company_name(
-                &MODEL.page_create_account,
-                MODEL.as_ref(),
-            )
-            .map(|e| format!("{e:?}")),
-            selected_company_name: MODEL.page_create_account.selected_company_name().read(),
-            resolved_company_uuid: use_case_create_account::client::resolved_company_uuid(
-                &MODEL.page_create_account,
-                MODEL.as_ref(),
-            )
-            .map(|uuid| {
-                uuid.to_string()
-            }),
-            list_of_company_name_and_uuid: use_case_create_account::client::list_of_companies_to_display(
-                &MODEL.page_create_account,
-                MODEL.as_ref(),
-            ),
+    }
+}
+
+#[component]
+fn CreateCompanyForm(
+    process_id: ProcessId,
+    lm: use_case_create_company::ui::TypeLocalModel,
+) -> Element {
+    rsx! {
+        use_case_create_company::ui::Component {
+            sender: move |i| send(process_id, use_case_create_company::client::Message::Intent(i)),
+            show_dialog: lm.show_dialog().read(),
+            is_loading: lm.async_state().read().is_loading(),
+            company_name: lm.company_name().read(),
+            currency: lm.currency().read(),
+            company_name_error: use_case_create_company::client::error_company_name(&lm)
+                .map(|e| format!("{e:?}")),
         }
+    }
+}
+
+#[component]
+fn CreateAccountForBranchForm(
+    process_id: ProcessId,
+    lm: use_case_create_account_for_branch::ui::TypeLocalModel,
+) -> Element {
+    rsx! {
         use_case_create_account_for_branch::ui::Component {
             sender: move |i| send(
-                process_id4,
+                process_id,
                 use_case_create_account_for_branch::client::Message::Intent(i),
             ),
-            show_dialog: MODEL.page_create_account_for_branch.show_dialog().read(),
-            is_loading: MODEL
-                .page_create_account_for_branch
-                .async_state()
-                .read()
-                .is_loading(),
-            account_name: MODEL.page_create_account_for_branch.account_name().read(),
-            outflow_type: MODEL.page_create_account_for_branch.outflow_type().read(),
-            inflow_type: MODEL.page_create_account_for_branch.inflow_type().read(),
-            list_of_account_name_and_uuid:
-                use_case_create_account_for_branch::client::list_of_accounts_to_display(
-                    &MODEL.page_create_account_for_branch,
-                    MODEL.as_ref(),
-                ),
+            show_dialog: lm.show_dialog().read(),
+            is_loading: lm.async_state().read().is_loading(),
+            account_name: lm.account_name().read(),
+            outflow_type: lm.outflow_type().read(),
+            inflow_type: lm.inflow_type().read(),
+            list_of_account_name_and_uuid: use_case_create_account_for_branch::client::list_of_accounts_to_display(
+                &lm,
+                MODEL.as_ref(),
+            ),
         }
+    }
+}
+
+#[component]
+fn CreateJournalEntryForm(
+    process_id: ProcessId,
+    lm: use_case_create_journal_entry::ui::TypeLocalModel,
+) -> Element {
+    rsx! {
         use_case_create_journal_entry::ui::Component {
             sender: move |i| send(
-                process_id5,
+                process_id,
                 use_case_create_journal_entry::client::Message::Intent(i),
             ),
-            show_dialog: MODEL.page_create_journal_entry.show_dialog().read(),
-            is_loading: MODEL.page_create_journal_entry.is_loading().read(),
+            show_dialog: lm.show_dialog().read(),
+            is_loading: lm.is_loading().read(),
         }
     }
 }

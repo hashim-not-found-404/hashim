@@ -1,4 +1,5 @@
 mod app_ui;
+mod home;
 mod model;
 mod navigator;
 mod utils;

@@ -13,7 +13,7 @@ pub(crate) enum Navigator {
     SignUp,
 }
 
-pub(crate) trait GlobalModel: Model {
+pub(crate) trait GlobalModel {
     fn navigator(&self) -> impl HashimSignal<Navigator>;
 }
 

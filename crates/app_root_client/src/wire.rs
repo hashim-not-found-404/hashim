@@ -13,6 +13,7 @@ use patterns::cast_ok_to_client_case;
 use patterns::make_client_wrapper_cache_check;
 use patterns::make_client_wrapper_cache_write;
 use patterns::make_client_wrapper_updater;
+use patterns::make_client_wrapper_updater_form;
 use std::any::Any;
 use std::sync::Arc;
 use utility::cache::CastClientToCache;
@@ -28,7 +29,7 @@ use utility::ui_effect::CastMessageToReducer;
 use utility::ui_effect::MessageTrait;
 use utility::ui_effect::UpdaterTrait;
 
-make_client_wrapper_updater!(create_account);
+make_client_wrapper_updater_form!(create_account);
 make_client_wrapper_cache_check!(create_account);
 make_client_wrapper_cache_write!(create_account);
 
@@ -45,7 +46,7 @@ make_client_wrapper_updater!(sign_in);
 make_client_wrapper_cache_check!(sign_in);
 make_client_wrapper_cache_write!(sign_in);
 
-make_client_wrapper_updater!(create_company);
+make_client_wrapper_updater_form!(create_company);
 make_client_wrapper_cache_check!(create_company);
 make_client_wrapper_cache_write!(create_company);
 
@@ -53,15 +54,15 @@ make_client_wrapper_updater!(select_default_company);
 make_client_wrapper_cache_check!(get_companies_and_branches);
 make_client_wrapper_cache_write!(get_companies_and_branches);
 
-make_client_wrapper_updater!(create_branch);
+make_client_wrapper_updater_form!(create_branch);
 make_client_wrapper_cache_check!(create_branch);
 make_client_wrapper_cache_write!(create_branch);
 
-make_client_wrapper_updater!(create_account_for_branch);
+make_client_wrapper_updater_form!(create_account_for_branch);
 make_client_wrapper_cache_check!(create_account_for_branch);
 make_client_wrapper_cache_write!(create_account_for_branch);
 
-make_client_wrapper_updater!(create_journal_entry);
+make_client_wrapper_updater_form!(create_journal_entry);
 make_client_wrapper_cache_check!(create_journal_entry);
 make_client_wrapper_cache_write!(create_journal_entry);
 

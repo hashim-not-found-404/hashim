@@ -11,7 +11,7 @@ use utility_ui::domain::Dialog;
 use utility_ui::domain::HashimSignal;
 use utility_ui::my_signal::MySignal;
 
-#[derive(Debug, Default, Deserialize, Serialize)]
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
 pub struct TypeLocalModel {
     show_dialog: MySignal<Dialog>,
     async_state: MySignal<AsyncState>,
