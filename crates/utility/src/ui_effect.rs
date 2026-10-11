@@ -33,7 +33,6 @@ pub struct MessageToCommander {
 #[derive(Clone)]
 pub struct UiContext {
     pub cache: CacheStruct,
-    pub sender_to_error: MpscSender<Error>,
     pub sender_to_commander: Commander,
 }
 
@@ -146,7 +145,6 @@ impl Commander {
         Rt::spawn_local(async move {
             let context = UiContext {
                 cache,
-                sender_to_error: sender_to_error.clone(),
                 sender_to_commander: self,
             };
 
