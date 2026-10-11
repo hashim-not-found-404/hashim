@@ -8,7 +8,6 @@ fmt:
 
 stat:
     git ls-files "crates/*.rs" | xargs wc -l | tail -1
-    git ls-files "*.rs" | xargs wc -l | tail -1
     git ls-files | xargs wc -l | tail -1
     git ls-files "crates/*" | xargs wc -l | awk '$2 != "total" { split($2,p,"/"); d=p[1]"/"p[2]; s[d]+=$1 } END { for (k in s) print k, s[k] }' | sort
     git rev-list --count HEAD
