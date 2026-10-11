@@ -1,4 +1,4 @@
-use crate::model::TypeModel;
+use crate::model::TypeGlobalModel;
 use crate::wire::MyCaster;
 use cache::cache_adapter;
 use infrastructure::actors::Mpsc;
@@ -11,16 +11,18 @@ use utility::cache::ProcessId;
 use utility::ui_effect::Commander;
 use utility::ui_effect::MessageTrait;
 
-pub(crate) static MODEL: LazyLock<Arc<TypeModel>> =
-    LazyLock::new(|| -> Arc<TypeModel> { Arc::new(TypeModel::default()) });
+pub(crate) static MODEL: LazyLock<Arc<TypeGlobalModel>> =
+    LazyLock::new(|| -> Arc<TypeGlobalModel> { Arc::new(TypeGlobalModel::default()) });
 
 static COMMANDER: LazyLock<Commander> = LazyLock::new(|| {
     let (sender_to_error, receiver_to_error) = Mpsc::channel();
 
     let model = MODEL.to_owned();
 
-    let commander =
-        new::<cache_adapter::S, TypeModel, MyCaster, MyCaster, MyCaster>(model, sender_to_error);
+    let commander = new::<cache_adapter::S, TypeGlobalModel, MyCaster, MyCaster, MyCaster>(
+        model,
+        sender_to_error,
+    );
 
     spawn_listener(receiver_to_error, commander.clone());
 

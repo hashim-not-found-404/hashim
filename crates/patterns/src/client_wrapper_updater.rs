@@ -12,7 +12,7 @@ pub fn my_macro(input: TokenStream) -> TokenStream {
 
     quote! {
         mod #mod_name {
-            use crate::model::TypeModel;
+            use crate::model::TypeGlobalModel;
             use anyhow::Result;
             use std::pin::Pin;
             use #crate_name::client::Change;
@@ -30,20 +30,20 @@ pub fn my_macro(input: TokenStream) -> TokenStream {
             pub(crate) struct WrapperMessage(pub(crate) Message);
 
             impl UpdaterTrait for WrapperMessage {
-                type Mdl = TypeModel;
+                type Mdl = TypeGlobalModel;
                 fn update(
                     &self,
                     model: &Self::Mdl,
                     process_id: ProcessId,
                 ) -> (
-                    Vec<Box<dyn ApplierTrait<Mdl = TypeModel>>>,
+                    Vec<Box<dyn ApplierTrait<Mdl = TypeGlobalModel>>>,
                     Vec<Box<dyn EffectorTrait>>,
                 ) {
                     let (changes, effects) = update(self.0.clone(), &model.#model_field_name, model);
 
-                    let appliers: Vec<Box<dyn ApplierTrait<Mdl = TypeModel>>> = changes
+                    let appliers: Vec<Box<dyn ApplierTrait<Mdl = TypeGlobalModel>>> = changes
                         .into_iter()
-                        .map(|c| Box::new(WrapperChange(c)) as Box<dyn ApplierTrait<Mdl = TypeModel>>)
+                        .map(|c| Box::new(WrapperChange(c)) as Box<dyn ApplierTrait<Mdl = TypeGlobalModel>>)
                         .collect();
 
                     let effectors: Vec<Box<dyn EffectorTrait>> = effects
@@ -58,7 +58,7 @@ pub fn my_macro(input: TokenStream) -> TokenStream {
             pub(crate) struct WrapperChange(pub(crate) Change);
 
             impl ApplierTrait for WrapperChange {
-                type Mdl = TypeModel;
+                type Mdl = TypeGlobalModel;
                 fn apply(&self, model: &Self::Mdl, process_id: ProcessId) {
                     apply(self.0.clone(), &model.#model_field_name, model);
                 }

@@ -1,8 +1,7 @@
-use crate::home::FormVariants;
-use crate::home::FormsToAdd;
 use crate::navigator::Intent as NavIntent;
 use crate::navigator::Message;
 use crate::navigator::Navigator;
+use crate::use_case_home;
 use crate::utils::MODEL;
 use crate::utils::init_commander_and_model;
 use crate::utils::send;
@@ -14,6 +13,8 @@ use use_case_create_branch::client::LocalModel as _;
 use use_case_create_company::client::LocalModel as _;
 use use_case_create_journal_entry::client::LocalModel as _;
 use use_case_error_handler::client::LocalModel as _;
+use use_case_home::client::FormVariants;
+use use_case_home::client::FormsToAdd;
 use use_case_sign_in::client::LocalModel as _;
 use use_case_sign_up::client::LocalModel as _;
 use utility::cache::ProcessId;
@@ -105,32 +106,32 @@ fn Home() -> Element {
 
         div {
             button {
-                onclick: move |_| send(home_process_id, crate::home::Message::Intent(
-                    crate::home::Intent::AddForm(FormsToAdd::CreateAccount),
+                onclick: move |_| send(home_process_id, use_case_home::client::Message::Intent(
+                    use_case_home::client::Intent::AddForm(FormsToAdd::CreateAccount),
                 )),
                 "+ Account"
             }
             button {
-                onclick: move |_| send(home_process_id, crate::home::Message::Intent(
-                    crate::home::Intent::AddForm(FormsToAdd::CreateBranch),
+                onclick: move |_| send(home_process_id, use_case_home::client::Message::Intent(
+                    use_case_home::client::Intent::AddForm(FormsToAdd::CreateBranch),
                 )),
                 "+ Branch"
             }
             button {
-                onclick: move |_| send(home_process_id, crate::home::Message::Intent(
-                    crate::home::Intent::AddForm(FormsToAdd::CreateCompany),
+                onclick: move |_| send(home_process_id, use_case_home::client::Message::Intent(
+                    use_case_home::client::Intent::AddForm(FormsToAdd::CreateCompany),
                 )),
                 "+ Company"
             }
             button {
-                onclick: move |_| send(home_process_id, crate::home::Message::Intent(
-                    crate::home::Intent::AddForm(FormsToAdd::CreateAccountForBranch),
+                onclick: move |_| send(home_process_id, use_case_home::client::Message::Intent(
+                    use_case_home::client::Intent::AddForm(FormsToAdd::CreateAccountForBranch),
                 )),
                 "+ Account for Branch"
             }
             button {
-                onclick: move |_| send(home_process_id, crate::home::Message::Intent(
-                    crate::home::Intent::AddForm(FormsToAdd::CreateJournalEntry),
+                onclick: move |_| send(home_process_id, use_case_home::client::Message::Intent(
+                    use_case_home::client::Intent::AddForm(FormsToAdd::CreateJournalEntry),
                 )),
                 "+ Journal Entry"
             }
@@ -158,14 +159,14 @@ fn FormInstance(
     rsx! {
         div {
             button {
-                onclick: move |_| send(home_process_id, crate::home::Message::Intent(
-                    crate::home::Intent::CopyForm(index),
+                onclick: move |_| send(home_process_id, use_case_home::client::Message::Intent(
+                    use_case_home::client::Intent::CopyForm(index),
                 )),
                 "Copy"
             }
             button {
-                onclick: move |_| send(home_process_id, crate::home::Message::Intent(
-                    crate::home::Intent::DeleteForm(index),
+                onclick: move |_| send(home_process_id, use_case_home::client::Message::Intent(
+                    use_case_home::client::Intent::DeleteForm(index),
                 )),
                 "X"
             }
