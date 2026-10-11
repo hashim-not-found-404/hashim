@@ -6,7 +6,6 @@ use crate::utils::init_commander_and_model;
 use crate::utils::send;
 use cache::utils::MyUuidConverter;
 use dioxus::prelude::*;
-use std::ops::Deref;
 use use_case_create_account::client::LocalModel as _;
 use use_case_create_account_for_branch::client::LocalModel as _;
 use use_case_create_branch::client::LocalModel as _;
@@ -86,46 +85,46 @@ fn Home() -> Element {
                 .or_else(|| MODEL.user_id.read().into())
                 .unwrap_or_default(),
             companies: use_case_select_default_company::client::list_of_companies(
-                MODEL.page_select_default_company.as_ref(),
+                &MODEL.page_select_default_company,
             ),
             branches: use_case_select_default_company::client::list_of_branches(
-                MODEL.page_select_default_company.as_ref(),
+                &MODEL.page_select_default_company,
                 MODEL.as_ref(),
             ),
             selected_company: MODEL.selected_company_uuid.read(),
             selected_company_name: use_case_select_default_company::client::selected_company_name(
-                MODEL.page_select_default_company.as_ref(),
+                &MODEL.page_select_default_company,
                 MODEL.as_ref(),
             ),
             selected_branch: MODEL.selected_company_branch_uuid.read(),
             selected_branch_name: use_case_select_default_company::client::selected_company_branch_name(
-                MODEL.page_select_default_company.as_ref(),
+                &MODEL.page_select_default_company,
                 MODEL.as_ref(),
             ),
         }
         use_case_create_company::ui::Component {
             sender: move |i| send(process_id1, use_case_create_company::client::Message::Intent(i)),
             show_dialog: MODEL.page_create_company.show_dialog().read(),
-            is_loading: MODEL.page_create_company.as_ref().async_state().read().is_loading(),
+            is_loading: MODEL.page_create_company.async_state().read().is_loading(),
             company_name: MODEL.page_create_company.company_name().read(),
             currency: MODEL.page_create_company.currency().read(),
             company_name_error: use_case_create_company::client::error_company_name(
-                MODEL.page_create_company.as_ref(),
+                &MODEL.page_create_company,
             )
             .map(|e| format!("{e:?}")),
         }
         use_case_create_branch::ui::Component {
             sender: move |i| send(process_id2, use_case_create_branch::client::Message::Intent(i)),
             show_dialog: MODEL.page_create_branch.show_dialog().read(),
-            is_loading: MODEL.page_create_branch.as_ref().async_state().read().is_loading(),
+            is_loading: MODEL.page_create_branch.async_state().read().is_loading(),
             company_name: MODEL.page_create_branch.company_name().read(),
             company_name_error: use_case_create_branch::client::company_name_error(
-                MODEL.page_create_branch.as_ref(),
+                &MODEL.page_create_branch,
                 MODEL.as_ref(),
             )
             .map(|e| format!("{e:?}")),
             resolved_company_uuid: use_case_create_branch::client::resolved_company_uuid(
-                MODEL.page_create_branch.as_ref(),
+                &MODEL.page_create_branch,
                 MODEL.as_ref(),
             )
             .map(|uuid| {
@@ -134,19 +133,19 @@ fn Home() -> Element {
             branch_name: MODEL.page_create_branch.branch_name().read(),
             currency: MODEL.page_create_branch.currency().read(),
             location: MODEL.page_create_branch.location().read(),
-            branch_name_error: use_case_create_branch::client::error_branch_name(MODEL.page_create_branch.as_ref())
+            branch_name_error: use_case_create_branch::client::error_branch_name(&MODEL.page_create_branch)
                 .map(|e| format!("{e:?}")),
-            location_error: use_case_create_branch::client::error_location(MODEL.page_create_branch.as_ref())
+            location_error: use_case_create_branch::client::error_location(&MODEL.page_create_branch)
                 .map(|e| format!("{e:?}")),
             list_of_company_name_and_uuid: use_case_create_branch::client::list_of_companies_to_display(
-                MODEL.page_create_branch.as_ref(),
+                &MODEL.page_create_branch,
                 MODEL.as_ref(),
             ),
         }
         use_case_create_account::ui::Component {
             sender: move |i| send(process_id3, use_case_create_account::client::Message::Intent(i)),
             show_dialog: MODEL.page_create_account.show_dialog().read(),
-            is_loading: MODEL.page_create_account.as_ref().async_state().read().is_loading(),
+            is_loading: MODEL.page_create_account.async_state().read().is_loading(),
             is_debit: MODEL.page_create_account.is_debit().read(),
             is_permanent_account: MODEL.page_create_account.is_permanent_account().read(),
             account_name: MODEL.page_create_account.account_name().read(),
@@ -155,24 +154,24 @@ fn Home() -> Element {
                 .unit_of_measurement_of_quantity()
                 .read(),
             account_name_error: use_case_create_account::client::error_account_name(
-                MODEL.page_create_account.as_ref(),
+                &MODEL.page_create_account,
             )
             .map(|e| format!("{e:?}")),
             company_name_error: use_case_create_account::client::error_company_name(
-                MODEL.page_create_account.as_ref(),
+                &MODEL.page_create_account,
                 MODEL.as_ref(),
             )
             .map(|e| format!("{e:?}")),
             selected_company_name: MODEL.page_create_account.selected_company_name().read(),
             resolved_company_uuid: use_case_create_account::client::resolved_company_uuid(
-                MODEL.page_create_account.as_ref(),
+                &MODEL.page_create_account,
                 MODEL.as_ref(),
             )
             .map(|uuid| {
                 uuid.to_string()
             }),
             list_of_company_name_and_uuid: use_case_create_account::client::list_of_companies_to_display(
-                MODEL.page_create_account.as_ref(),
+                &MODEL.page_create_account,
                 MODEL.as_ref(),
             ),
         }
@@ -184,7 +183,6 @@ fn Home() -> Element {
             show_dialog: MODEL.page_create_account_for_branch.show_dialog().read(),
             is_loading: MODEL
                 .page_create_account_for_branch
-                .as_ref()
                 .async_state()
                 .read()
                 .is_loading(),
@@ -193,7 +191,7 @@ fn Home() -> Element {
             inflow_type: MODEL.page_create_account_for_branch.inflow_type().read(),
             list_of_account_name_and_uuid:
                 use_case_create_account_for_branch::client::list_of_accounts_to_display(
-                    MODEL.page_create_account_for_branch.as_ref(),
+                    &MODEL.page_create_account_for_branch,
                     MODEL.as_ref(),
                 ),
         }
@@ -220,11 +218,11 @@ fn SignIn() -> Element {
             show_dialog: MODEL.page_sign_in.show_dialog().read(),
             user_id: MODEL.user_id.read(),
             password: MODEL.feature_state_auth.user_password.read(),
-            error_user_id: use_case_sign_in::client::error_user_id(MODEL.page_sign_in.deref())
+            error_user_id: use_case_sign_in::client::error_user_id(&MODEL.page_sign_in)
                 .map(|e| format!("{e:?}")),
-            error_password: use_case_sign_in::client::error_password(MODEL.page_sign_in.deref())
+            error_password: use_case_sign_in::client::error_password(&MODEL.page_sign_in)
                 .map(|e| format!("{e:?}")),
-            is_loading: MODEL.page_sign_in.deref().async_state().read().is_loading(),
+            is_loading: MODEL.page_sign_in.async_state().read().is_loading(),
         }
     }
 }
@@ -242,11 +240,11 @@ fn SignUp() -> Element {
             user_id: MODEL.user_id.read(),
             user_name: MODEL.user_name.read(),
             password: MODEL.feature_state_auth.user_password.read(),
-            error_user_id: use_case_sign_up::client::error_user_id(MODEL.page_sign_up.deref())
+            error_user_id: use_case_sign_up::client::error_user_id(&MODEL.page_sign_up)
                 .map(|e| format!("{e:?}")),
-            error_user_name: use_case_sign_up::client::error_user_name(MODEL.page_sign_up.deref())
+            error_user_name: use_case_sign_up::client::error_user_name(&MODEL.page_sign_up)
                 .map(|e| format!("{e:?}")),
-            is_loading: MODEL.page_sign_up.deref().async_state().read().is_loading(),
+            is_loading: MODEL.page_sign_up.async_state().read().is_loading(),
         }
     }
 }

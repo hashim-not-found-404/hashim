@@ -39,9 +39,7 @@ pub fn my_macro(input: TokenStream) -> TokenStream {
                     Vec<Box<dyn ApplierTrait<Mdl = TypeModel>>>,
                     Vec<Box<dyn EffectorTrait>>,
                 ) {
-                    let local_model = model.#model_field_name.clone();
-
-                    let (changes, effects) = update(self.0.clone(), local_model.as_ref(), model);
+                    let (changes, effects) = update(self.0.clone(), &model.#model_field_name, model);
 
                     let appliers: Vec<Box<dyn ApplierTrait<Mdl = TypeModel>>> = changes
                         .into_iter()
@@ -62,8 +60,7 @@ pub fn my_macro(input: TokenStream) -> TokenStream {
             impl ApplierTrait for WrapperChange {
                 type Mdl = TypeModel;
                 fn apply(&self, model: &Self::Mdl, process_id: ProcessId) {
-                    let local_model = model.#model_field_name.clone();
-                    apply(self.0.clone(), local_model.as_ref(), model);
+                    apply(self.0.clone(), &model.#model_field_name, model);
                 }
             }
             #[derive(Debug)]

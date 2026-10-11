@@ -6,14 +6,13 @@ use kernel::new_types::UserUuid;
 use serde::Deserialize;
 use serde::Serialize;
 use std::fmt::Debug;
-use std::sync::Arc;
 use utility::ui_effect::Model;
 use utility_ui::domain::HashimSignal;
 use utility_ui::my_signal::MySignal;
 
 impl Model for TypeModel {}
 
-#[derive(Default)]
+#[derive(Default, Deserialize, Serialize)]
 pub(crate) struct TypeModel {
     pub(crate) navigator: MySignal<Navigator>,
 
@@ -21,7 +20,7 @@ pub(crate) struct TypeModel {
     pub(crate) selected_company_branch_uuid: MySignal<Option<BranchUuid>>,
 
     // global states
-    pub(crate) page_error_handler: Arc<use_case_error_handler::ui::TypeLocalModel>,
+    pub(crate) page_error_handler: use_case_error_handler::ui::TypeLocalModel,
     pub(crate) user_id: MySignal<String>,
     pub(crate) user_name: MySignal<Option<String>>,
 
@@ -29,16 +28,16 @@ pub(crate) struct TypeModel {
     pub(crate) feature_state_auth: FeatureStateAuth,
 
     // pages
-    pub(crate) page_sign_up: Arc<use_case_sign_up::ui::TypeLocalModel>,
-    pub(crate) page_sign_in: Arc<use_case_sign_in::ui::TypeLocalModel>,
-    pub(crate) page_select_default_company:
-        Arc<use_case_select_default_company::ui::TypeLocalModel>,
-    pub(crate) page_create_branch: Arc<use_case_create_branch::ui::TypeLocalModel>,
-    pub(crate) page_create_company: Arc<use_case_create_company::ui::TypeLocalModel>,
-    pub(crate) page_create_account: Arc<use_case_create_account::ui::TypeLocalModel>,
+    // pub(crate) forms: Vec<Form>,
+    pub(crate) page_sign_up: use_case_sign_up::ui::TypeLocalModel,
+    pub(crate) page_sign_in: use_case_sign_in::ui::TypeLocalModel,
+    pub(crate) page_select_default_company: use_case_select_default_company::ui::TypeLocalModel,
+    pub(crate) page_create_branch: use_case_create_branch::ui::TypeLocalModel,
+    pub(crate) page_create_company: use_case_create_company::ui::TypeLocalModel,
+    pub(crate) page_create_account: use_case_create_account::ui::TypeLocalModel,
     pub(crate) page_create_account_for_branch:
-        Arc<use_case_create_account_for_branch::ui::TypeLocalModel>,
-    pub(crate) page_create_journal_entry: Arc<use_case_create_journal_entry::ui::TypeLocalModel>,
+        use_case_create_account_for_branch::ui::TypeLocalModel,
+    pub(crate) page_create_journal_entry: use_case_create_journal_entry::ui::TypeLocalModel,
 }
 
 #[derive(Debug, Default, Deserialize, Serialize)]
@@ -49,10 +48,10 @@ pub(crate) struct FeatureStateAuth {
 
 impl TypeModel {
     pub fn user_uuid(&self) -> Option<UserUuid> {
-        if let Some(a) = use_case_sign_in::client::user_uuid(self.page_sign_in.as_ref()) {
+        if let Some(a) = use_case_sign_in::client::user_uuid(&self.page_sign_in) {
             return Some(a);
         }
-        if let Some(a) = use_case_sign_up::client::user_uuid(self.page_sign_up.as_ref()) {
+        if let Some(a) = use_case_sign_up::client::user_uuid(&self.page_sign_up) {
             return Some(a);
         }
 
@@ -61,7 +60,7 @@ impl TypeModel {
 
     fn list_of_companies(&self) -> Vec<(CompanyUuid, String)> {
         use_case_select_default_company::client::list_of_companies(
-            self.page_select_default_company.as_ref(),
+            &self.page_select_default_company,
         )
     }
 }
