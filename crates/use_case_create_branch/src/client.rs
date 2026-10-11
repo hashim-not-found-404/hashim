@@ -115,7 +115,7 @@ pub enum CompanyNameError {
     NotExist,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct AsyncInput {
     pub user_uuid: UserUuid,
     pub company_belong: CompanyUuid,

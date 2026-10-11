@@ -1,3 +1,4 @@
+use crate::home::home_reducer;
 use crate::model::TypeModel;
 use crate::navigator::navigator_reducer;
 use anyhow::Result;
@@ -29,7 +30,84 @@ use utility::ui_effect::CastMessageToReducer;
 use utility::ui_effect::MessageTrait;
 use utility::ui_effect::UpdaterTrait;
 
-make_client_wrapper_updater_form!(create_account);
+mod updater_use_case_create_account {
+    use crate::home::FormVariants;
+    use crate::model::TypeModel;
+    use anyhow::Result;
+    use std::pin::Pin;
+    use use_case_create_account::client::Change;
+    use use_case_create_account::client::Effect;
+    use use_case_create_account::client::Message;
+    use use_case_create_account::client::apply;
+    use use_case_create_account::client::effect;
+    use use_case_create_account::client::update;
+    use utility::cache::ProcessId;
+    use utility::ui_effect::ApplierTrait;
+    use utility::ui_effect::EffectorTrait;
+    use utility::ui_effect::UiContext;
+    use utility::ui_effect::UpdaterTrait;
+    use utility_ui::domain::HashimSignal;
+    #[derive(Debug)]
+    pub(crate) struct WrapperMessage(pub(crate) Message);
+
+    impl UpdaterTrait for WrapperMessage {
+        type Mdl = TypeModel;
+        fn update(
+            &self,
+            model: &Self::Mdl,
+            process_id: ProcessId,
+        ) -> (
+            Vec<Box<dyn ApplierTrait<Mdl = TypeModel>>>,
+            Vec<Box<dyn EffectorTrait>>,
+        ) {
+            let forms = model.page_home.forms.read();
+            let Some(form) = forms.iter().find(|f| f.process_id == process_id) else {
+                return (vec![], vec![]);
+            };
+            let FormVariants::CreateAccount(local_model) = &form.form else {
+                return (vec![], vec![]);
+            };
+            let (changes, effects) = update(self.0.clone(), local_model, model);
+            let appliers: Vec<Box<dyn ApplierTrait<Mdl = TypeModel>>> = changes
+                .into_iter()
+                .map(|c| Box::new(WrapperChange(c)) as Box<dyn ApplierTrait<Mdl = TypeModel>>)
+                .collect();
+            let effectors: Vec<Box<dyn EffectorTrait>> = effects
+                .into_iter()
+                .map(|e| Box::new(WrapperEffect(e)) as Box<dyn EffectorTrait>)
+                .collect();
+            (appliers, effectors)
+        }
+    }
+    #[derive(Debug)]
+    pub(crate) struct WrapperChange(pub(crate) Change);
+
+    impl ApplierTrait for WrapperChange {
+        type Mdl = TypeModel;
+        fn apply(&self, model: &Self::Mdl, process_id: ProcessId) {
+            let forms = &model.page_home.forms.read();
+            let Some(form) = forms.iter().find(|f| f.process_id == process_id) else {
+                return;
+            };
+            let FormVariants::CreateAccount(local_model) = &form.form else {
+                return;
+            };
+            apply(self.0.clone(), local_model, model);
+        }
+    }
+    #[derive(Debug)]
+    pub(crate) struct WrapperEffect(pub(crate) Effect);
+
+    impl EffectorTrait for WrapperEffect {
+        fn effect(
+            &self,
+            process_id: ProcessId,
+            context: UiContext,
+        ) -> Pin<Box<dyn Future<Output = Result<()>>>> {
+            Box::pin(effect(self.0.clone(), process_id, context))
+        }
+    }
+}
 make_client_wrapper_cache_check!(create_account);
 make_client_wrapper_cache_write!(create_account);
 
@@ -78,6 +156,9 @@ impl CastMessageToReducer for MyCaster {
 
         if let Some(v) = v.downcast_ref::<crate::navigator::Message>() {
             return Ok(Box::new(navigator_reducer::WrapperMessage(v.clone())));
+        }
+        if let Some(v) = v.downcast_ref::<crate::home::Message>() {
+            return Ok(Box::new(home_reducer::WrapperMessage(v.clone())));
         }
 
         cast_message_to_reducer_case!(create_account);

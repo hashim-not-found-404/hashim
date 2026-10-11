@@ -32,7 +32,7 @@ pub struct Input {
     pub user_uuid: UserUuid,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct Ok {
     pub user_uuid: UserUuid,
     pub companies: Vec<CompanyWithBranches>,

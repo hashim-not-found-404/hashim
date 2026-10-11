@@ -35,7 +35,7 @@ pub struct Input {
     pub currency: Currency,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct Ok {
     pub new_uuid: CompanyUuid,
     pub company_name: String,

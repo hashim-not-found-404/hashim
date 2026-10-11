@@ -40,7 +40,7 @@ pub struct Input {
     pub inflow_type: InFlowType,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct Ok {
     pub new_uuid: AccountForBranchUuid,
     pub belong_to_account: AccountUuid,

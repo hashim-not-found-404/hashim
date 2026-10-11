@@ -5,14 +5,15 @@ use utility::cache::ProcessId;
 use utility::ui_effect::MessageTrait;
 use utility::ui_effect::UiContext;
 use utility_ui::domain::HashimSignal;
+use utility_ui::my_signal::MySignal;
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub(crate) struct Form {
     pub(crate) process_id: ProcessId,
     pub(crate) form: FormVariants,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub(crate) enum FormVariants {
     CreateBranch(use_case_create_branch::ui::TypeLocalModel),
     CreateCompany(use_case_create_company::ui::TypeLocalModel),
@@ -145,4 +146,89 @@ fn get_model(forms: Vec<Form>, process_id: ProcessId) -> Option<FormVariants> {
     }
 
     None
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
+pub(crate) struct TypeLocalModel {
+    pub(crate) forms: MySignal<Vec<Form>>,
+}
+
+impl LocalModel for TypeLocalModel {
+    fn forms(&self) -> impl HashimSignal<Vec<Form>> {
+        self.forms.clone()
+    }
+}
+
+pub(crate) mod home_reducer {
+    use crate::home::Change;
+    use crate::home::Effect;
+    use crate::home::Message;
+    use crate::home::apply;
+    use crate::home::effect;
+    use crate::home::update;
+    use crate::model::TypeModel;
+    use anyhow::Result;
+    use std::pin::Pin;
+    use utility::cache::ProcessId;
+    use utility::ui_effect::ApplierTrait;
+    use utility::ui_effect::EffectorTrait;
+    use utility::ui_effect::UiContext;
+    use utility::ui_effect::UpdaterTrait;
+    use utility_ui::domain::HashimSignal;
+
+    #[derive(Debug)]
+    pub(crate) struct WrapperMessage(pub(crate) Message);
+
+    impl UpdaterTrait for WrapperMessage {
+        type Mdl = TypeModel;
+
+        fn update(
+            &self,
+            model: &Self::Mdl,
+            process_id: ProcessId,
+        ) -> (
+            Vec<Box<dyn ApplierTrait<Mdl = TypeModel>>>,
+            Vec<Box<dyn EffectorTrait>>,
+        ) {
+            // `home` owns its local model on TypeModel as `forms`.
+            let local_model = &model.page_home;
+            let (changes, effects) = update(self.0.clone(), local_model, model);
+
+            let appliers: Vec<Box<dyn ApplierTrait<Mdl = TypeModel>>> = changes
+                .into_iter()
+                .map(|c| Box::new(WrapperChange(c)) as Box<dyn ApplierTrait<Mdl = TypeModel>>)
+                .collect();
+
+            let effectors: Vec<Box<dyn EffectorTrait>> = effects
+                .into_iter()
+                .map(|e| Box::new(WrapperEffect(e)) as Box<dyn EffectorTrait>)
+                .collect();
+
+            (appliers, effectors)
+        }
+    }
+
+    #[derive(Debug)]
+    pub(crate) struct WrapperChange(pub(crate) Change);
+
+    impl ApplierTrait for WrapperChange {
+        type Mdl = TypeModel;
+        fn apply(&self, model: &Self::Mdl, _: ProcessId) {
+            let local_model = &model.page_home;
+            apply(self.0.clone(), local_model, model);
+        }
+    }
+
+    #[derive(Debug)]
+    pub(crate) struct WrapperEffect(pub(crate) Effect);
+
+    impl EffectorTrait for WrapperEffect {
+        fn effect(
+            &self,
+            process_id: ProcessId,
+            context: UiContext,
+        ) -> Pin<Box<dyn Future<Output = Result<()>>>> {
+            Box::pin(effect(self.0.clone(), process_id, context))
+        }
+    }
 }

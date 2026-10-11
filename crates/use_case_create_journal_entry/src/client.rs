@@ -59,7 +59,7 @@ pub struct Account {
     pub unit_of_measurement_of_quantity: String,
 }
 
-#[derive(Debug, Clone, Default, Deserialize, Serialize)]
+#[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
 pub struct DoubleEntry {
     pub entry_is_empty: bool,
     pub you_need_to_split_the_entry: bool,
@@ -67,7 +67,7 @@ pub struct DoubleEntry {
     pub singles: Vec<SingleEntry>,
 }
 
-#[derive(Debug, Clone, Default, Deserialize, Serialize)]
+#[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
 pub struct SingleEntry {
     pub user_input_account_name: String,
     pub inferred_account_id: Option<AccountForBranchUuid>,
@@ -193,7 +193,7 @@ pub trait LocalModel {
     fn list_of_available_account(&self) -> impl HashimSignal<Vec<Account>>;
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct AsyncInput {
     pub new_uuid: UuidType,
     pub user_uuid: UserUuid,
@@ -202,7 +202,7 @@ pub struct AsyncInput {
     pub double_entries: Vec<SingleEntryAsync>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct SingleEntryAsync {
     pub new_uuid: UuidType,
     pub account: AccountForBranchUuid,

@@ -106,7 +106,7 @@ pub trait LocalModel {
     fn async_state(&self) -> impl HashimSignal<AsyncState>;
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct AsyncInput {
     pub name: Option<String>,
     pub user_id: String,

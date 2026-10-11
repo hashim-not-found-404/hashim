@@ -1,4 +1,3 @@
-use crate::home::Form;
 use crate::home::FormVariants;
 use crate::home::FormsToAdd;
 use crate::navigator::Intent as NavIntent;
@@ -72,7 +71,7 @@ fn Home() -> Element {
     let select_company_process_id = use_hook(ProcessId::default);
     let home_process_id = use_hook(ProcessId::default);
 
-    let forms = &MODEL.forms;
+    let forms = &MODEL.page_home.forms;
 
     rsx! {
         use_case_select_default_company::ui::Component {
@@ -137,7 +136,7 @@ fn Home() -> Element {
             }
         }
 
-        for (index, form) in forms.iter().enumerate() {
+        for (index, form) in forms.read().iter().enumerate() {
             FormInstance {
                 key: "{index}",
                 index,

@@ -38,7 +38,7 @@ pub struct Input {
     pub belong_to_company: CompanyUuid,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct Ok {
     pub new_uuid: AccountUuid,
     pub is_debit: bool,

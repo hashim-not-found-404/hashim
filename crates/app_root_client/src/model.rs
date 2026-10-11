@@ -32,7 +32,7 @@ pub(crate) struct TypeModel {
     pub(crate) page_sign_up: use_case_sign_up::ui::TypeLocalModel,
     pub(crate) page_sign_in: use_case_sign_in::ui::TypeLocalModel,
     pub(crate) page_select_default_company: use_case_select_default_company::ui::TypeLocalModel,
-    pub(crate) forms: Vec<Form>,
+    pub(crate) page_home: crate::home::TypeLocalModel,
 }
 
 #[derive(Debug, Default, Deserialize, Serialize)]
@@ -162,3 +162,5 @@ impl use_case_create_journal_entry::client::GlobalModel for TypeModel {
         self.selected_company_branch_uuid.read()
     }
 }
+
+impl crate::home::GlobalModel for TypeModel {}

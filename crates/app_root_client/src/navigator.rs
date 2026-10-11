@@ -2,7 +2,6 @@ use anyhow::Result;
 use serde::Deserialize;
 use serde::Serialize;
 use utility::ui_effect::MessageTrait;
-use utility::ui_effect::Model;
 use utility::ui_effect::UiContext;
 use utility_ui::domain::HashimSignal;
 

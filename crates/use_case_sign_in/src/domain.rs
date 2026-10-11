@@ -29,7 +29,7 @@ pub struct Input {
     pub(crate) password: String,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct Ok {
     pub user_uuid: UserUuid,
     pub user_id: String,

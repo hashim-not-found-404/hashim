@@ -12,7 +12,7 @@ use utility_ui::domain::Dialog;
 use utility_ui::domain::HashimSignal;
 use utility_ui::my_signal::MySignal;
 
-#[derive(Debug, Clone, Default, Deserialize, Serialize)]
+#[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
 pub struct TypeLocalModel {
     show_dialog: MySignal<Dialog>,
     is_loading: MySignal<bool>,

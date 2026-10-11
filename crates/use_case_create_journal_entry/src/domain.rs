@@ -85,7 +85,7 @@ pub struct SingleEntryInput {
 // Ok DTOs
 // -----------------------------------------------------------------------------
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct Ok {
     pub new_uuid: UuidType,
     pub user_uuid: UserUuid,
@@ -95,7 +95,7 @@ pub struct Ok {
     pub inventory: HashMap<AccountForBranchUuid, InventoryWrapper>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct SingleEntryOk {
     pub new_uuid: UuidType,
     pub double_entry_number: u32,
@@ -217,7 +217,7 @@ pub struct ContainerView {
 // AccountInfoProvider / Inventory
 // -----------------------------------------------------------------------------
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct InventoryWrapper(pub Vec<InventoryRecord>);
 
 impl DerefMut for InventoryWrapper {

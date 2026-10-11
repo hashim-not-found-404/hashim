@@ -28,6 +28,7 @@ pub fn my_macro(input: TokenStream) -> TokenStream {
             use utility::ui_effect::EffectorTrait;
             use utility::ui_effect::UiContext;
             use utility::ui_effect::UpdaterTrait;
+            use utility_ui::domain::HashimSignal;
 
             #[derive(Debug)]
             pub(crate) struct WrapperMessage(pub(crate) Message);
@@ -42,7 +43,7 @@ pub fn my_macro(input: TokenStream) -> TokenStream {
                     Vec<Box<dyn ApplierTrait<Mdl = TypeModel>>>,
                     Vec<Box<dyn EffectorTrait>>,
                 ) {
-                    let forms = &model.forms;
+                    let forms = model.page_home.forms.read();
                     let Some(form) = forms.iter().find(|f| f.process_id == process_id) else {
                         return (vec![], vec![]);
                     };
@@ -72,7 +73,7 @@ pub fn my_macro(input: TokenStream) -> TokenStream {
             impl ApplierTrait for WrapperChange {
                 type Mdl = TypeModel;
                 fn apply(&self, model: &Self::Mdl, process_id: ProcessId) {
-                    let forms = &model.forms;
+                    let forms = &model.page_home.forms.read();
                     let Some(form) = forms.iter().find(|f| f.process_id == process_id) else {
                         return;
                     };

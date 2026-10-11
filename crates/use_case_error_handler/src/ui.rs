@@ -8,7 +8,7 @@ use serde::Serialize;
 use utility_ui::domain::HashimSignal;
 use utility_ui::my_signal::MySignal;
 
-#[derive(Debug, Clone, Default, Deserialize, Serialize)]
+#[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
 pub struct TypeLocalModel {
     is_expand_all: MySignal<bool>,
     errors: MySignal<ErrorList>,
