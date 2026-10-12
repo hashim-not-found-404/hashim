@@ -96,14 +96,19 @@ pub async fn check_input<
 pub(crate) type AsyncState = GenricAsyncState<AsyncInput, Ok, Error>;
 
 pub trait GlobalModel {
-    fn user_name(&self) -> impl HashimSignal<Option<String>>;
-    fn user_id(&self) -> impl HashimSignal<String>;
-    fn password(&self) -> impl HashimSignal<String>;
+    fn user_name(&self) -> Option<String>;
+    fn user_id(&self) -> String;
+    fn password(&self) -> String;
+
+    fn set_user_name(&mut self, v: Option<String>);
+    fn set_user_id(&mut self, v: String);
+    fn set_password(&mut self, v: String);
 }
 
-pub trait LocalModel {
-    fn show_dialog(&self) -> impl HashimSignal<Dialog>;
-    fn async_state(&self) -> impl HashimSignal<AsyncState>;
+#[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
+pub struct LocalModel {
+    pub show_dialog: Dialog,
+    pub async_state: AsyncState,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
@@ -113,41 +118,45 @@ pub struct AsyncInput {
     pub password: String,
 }
 
-pub fn user_uuid(local_model: &impl LocalModel) -> Option<UserUuid> {
-    match local_model.async_state().read() {
+pub fn user_uuid(local_model: &LocalModel) -> Option<UserUuid> {
+    match local_model.async_state.clone() {
         AsyncState::Success { ok, .. } => Some(ok.new_uuid),
         _ => None,
     }
 }
 
-pub fn user_name(local_model: &impl LocalModel) -> Option<String> {
-    match local_model.async_state().read() {
+pub fn user_name(local_model: &LocalModel) -> Option<String> {
+    match local_model.async_state.clone() {
         AsyncState::Success { ok, .. } => ok.user_name,
         _ => None,
     }
 }
 
-pub fn error_user_id(local_model: &impl LocalModel) -> Option<UserIdError> {
-    match local_model.async_state().read() {
+pub fn error_user_id(local_model: &LocalModel) -> Option<UserIdError> {
+    match local_model.async_state.clone() {
         AsyncState::Failure { error, .. } => error.user_id,
         _ => None,
     }
 }
 
-pub fn error_user_name(local_model: &impl LocalModel) -> Option<UserNameError> {
-    match local_model.async_state().read() {
+pub fn error_user_name(local_model: &LocalModel) -> Option<UserNameError> {
+    match local_model.async_state.clone() {
         AsyncState::Failure { error, .. } => error.name,
         _ => None,
     }
 }
 
 #[derive(Debug, Clone)]
-pub enum Change {
+pub enum LocalChange {
     ShowDialog(Dialog),
+    AsyncState(AsyncState),
+}
+
+#[derive(Debug, Clone)]
+pub enum GlobalChange {
     UserName(Option<String>),
     UserId(String),
     Password(String),
-    AsyncState(AsyncState),
 }
 
 #[derive(Debug, Clone)]
@@ -184,14 +193,14 @@ impl MessageTrait for Message {}
 
 pub fn update(
     msg: Message,
-    local_model: &impl LocalModel,
+    local_model: &LocalModel,
     global_model: &impl GlobalModel,
-) -> (Vec<Change>, Vec<Effect>) {
+) -> (Vec<LocalChange>, Vec<GlobalChange>, Vec<Effect>) {
     if let Message::Intent(ref a) = msg {
         if let Intent::Consent(_) = a {
         } else {
-            if local_model.async_state().read().is_loading() {
-                return (vec![], vec![]);
+            if local_model.async_state.clone().is_loading() {
+                return (vec![], vec![], vec![]);
             }
         }
     }
@@ -200,16 +209,16 @@ pub fn update(
         Message::Intent(intent) => match intent {
             Intent::Submit => {
                 let async_input = AsyncInput {
-                    name: global_model.user_name().read(),
-                    user_id: global_model.user_id().read(),
-                    password: global_model.password().read(),
+                    name: global_model.user_name(),
+                    user_id: global_model.user_id(),
+                    password: global_model.password(),
                 };
 
-                let change = vec![
-                    Change::AsyncState(AsyncState::Loading {
+                let local_change = vec![
+                    LocalChange::AsyncState(AsyncState::Loading {
                         input: async_input.clone(),
                     }),
-                    Change::ShowDialog(Dialog::Hide),
+                    LocalChange::ShowDialog(Dialog::Hide),
                 ];
 
                 let effect = vec![
@@ -220,30 +229,30 @@ pub fn update(
                     },
                 ];
 
-                (change, effect)
+                (local_change, vec![], effect)
             }
             Intent::Consent(v) => {
-                let (change, effect) = match v {
+                let (local_change, effect) = match v {
                     UserConsent::CancelOperation => (
                         vec![
-                            Change::ShowDialog(Dialog::Hide),
-                            Change::AsyncState(AsyncState::Idle),
+                            LocalChange::ShowDialog(Dialog::Hide),
+                            LocalChange::AsyncState(AsyncState::Idle),
                         ],
                         vec![],
                     ),
                     UserConsent::WaitForServerResponse => (
-                        vec![Change::ShowDialog(Dialog::Hide)],
+                        vec![LocalChange::ShowDialog(Dialog::Hide)],
                         vec![Effect::SpawnTimer],
                     ),
                     UserConsent::DontWaitForServerResponse => {
                         let async_input = AsyncInput {
-                            name: global_model.user_name().read(),
-                            user_id: global_model.user_id().read(),
-                            password: global_model.password().read(),
+                            name: global_model.user_name(),
+                            user_id: global_model.user_id(),
+                            password: global_model.password(),
                         };
 
                         (
-                            vec![Change::ShowDialog(Dialog::Hide)],
+                            vec![LocalChange::ShowDialog(Dialog::Hide)],
                             vec![Effect::Submit {
                                 async_input,
                                 is_to_server: false,
@@ -252,44 +261,49 @@ pub fn update(
                     }
                 };
 
-                (change, effect)
+                (local_change, vec![], effect)
             }
             Intent::UserName(v) => {
-                let change = vec![Change::UserName(v.none_if_empty())];
-                (change, vec![])
+                let global_change = vec![GlobalChange::UserName(v.none_if_empty())];
+                (vec![], global_change, vec![])
             }
             Intent::UserId(v) => {
-                let change = vec![Change::UserId(v)];
-                (change, vec![])
+                let global_change = vec![GlobalChange::UserId(v)];
+                (vec![], global_change, vec![])
             }
             Intent::Password(v) => {
-                let change = vec![Change::Password(v)];
-                (change, vec![])
+                let global_change = vec![GlobalChange::Password(v)];
+                (vec![], global_change, vec![])
             }
         },
         Message::Observe(observe) => match observe {
             Observe::Timeout => {
-                let change = match local_model.async_state().read() {
-                    AsyncState::Loading { .. } => vec![Change::ShowDialog(Dialog::Show)],
+                let local_change = match local_model.async_state.clone() {
+                    AsyncState::Loading { .. } => vec![LocalChange::ShowDialog(Dialog::Show)],
                     _ => vec![],
                 };
-                (change, vec![])
+                (local_change, vec![], vec![])
             }
             Observe::Result(result) => {
-                let change = vec![Change::AsyncState(result)];
-                (change, vec![])
+                let local_change = vec![LocalChange::AsyncState(result)];
+                (local_change, vec![], vec![])
             }
         },
     }
 }
 
-pub fn apply(msg: Change, local_model: &impl LocalModel, global_model: &impl GlobalModel) {
+pub fn local_apply(msg: LocalChange, local_model: &mut LocalModel) {
     match msg {
-        Change::ShowDialog(i) => local_model.show_dialog().set(i),
-        Change::UserName(i) => global_model.user_name().set(i),
-        Change::UserId(i) => global_model.user_id().set(i),
-        Change::Password(i) => global_model.password().set(i),
-        Change::AsyncState(i) => local_model.async_state().set(i),
+        LocalChange::ShowDialog(i) => local_model.show_dialog = i,
+        LocalChange::AsyncState(i) => local_model.async_state = i,
+    }
+}
+
+pub fn global_apply(msg: GlobalChange, global_model: &mut impl GlobalModel) {
+    match msg {
+        GlobalChange::Password(i) => global_model.set_password(i),
+        GlobalChange::UserId(i) => global_model.set_user_id(i),
+        GlobalChange::UserName(i) => global_model.set_user_name(i),
     }
 }
 

@@ -15,11 +15,12 @@ pub(crate) mod client {
     }
 
     pub(crate) trait GlobalModel {
-        fn navigator(&self) -> impl HashimSignal<Navigator>;
+        fn navigator(&self) -> Navigator;
+        fn set_navigator(&mut self, v: Navigator);
     }
 
     #[derive(Debug, Clone)]
-    pub(crate) enum Change {
+    pub(crate) enum GlobalChange {
         Navigator(Navigator),
     }
 
@@ -43,19 +44,19 @@ pub(crate) mod client {
 
     impl MessageTrait for Message {}
 
-    pub(crate) fn update(msg: Message, _: &impl GlobalModel) -> (Vec<Change>, Vec<Effect>) {
+    pub(crate) fn update(msg: Message, _: &impl GlobalModel) -> (Vec<GlobalChange>, Vec<Effect>) {
         match msg {
             Message::Intent(intent) => match intent {
-                Intent::GoToSignIn => (vec![Change::Navigator(Navigator::SignIn)], vec![]),
-                Intent::GoToSignUp => (vec![Change::Navigator(Navigator::SignUp)], vec![]),
+                Intent::GoToSignIn => (vec![GlobalChange::Navigator(Navigator::SignIn)], vec![]),
+                Intent::GoToSignUp => (vec![GlobalChange::Navigator(Navigator::SignUp)], vec![]),
             },
             Message::Observe(observe) => match observe {},
         }
     }
 
-    pub(crate) fn apply(msg: Change, global_model: &impl GlobalModel) {
+    pub(crate) fn global_apply(msg: GlobalChange, global_model: &mut impl GlobalModel) {
         match msg {
-            Change::Navigator(i) => global_model.navigator().set(i),
+            GlobalChange::Navigator(i) => global_model.set_navigator(i),
         }
     }
 

@@ -17,24 +17,26 @@ pub fn my_macro(input: TokenStream) -> TokenStream {
             use crate::model::TypeGlobalModel;
             use anyhow::Result;
             use std::pin::Pin;
-            use #crate_name::client::Change;
             use #crate_name::client::Effect;
+            use #crate_name::client::GlobalChange;
+            use #crate_name::client::LocalChange;
             use #crate_name::client::Message;
-            use #crate_name::client::apply;
             use #crate_name::client::effect;
+            use #crate_name::client::global_apply;
+            use #crate_name::client::local_apply;
             use #crate_name::client::update;
             use utility::cache::ProcessId;
             use utility::ui_effect::ApplierTrait;
             use utility::ui_effect::EffectorTrait;
             use utility::ui_effect::UiContext;
             use utility::ui_effect::UpdaterTrait;
-            use utility_ui::domain::HashimSignal;
 
             #[derive(Debug)]
             pub(crate) struct WrapperMessage(pub(crate) Message);
 
             impl UpdaterTrait for WrapperMessage {
                 type Mdl = TypeGlobalModel;
+
                 fn update(
                     &self,
                     model: &Self::Mdl,
@@ -43,20 +45,34 @@ pub fn my_macro(input: TokenStream) -> TokenStream {
                     Vec<Box<dyn ApplierTrait<Mdl = TypeGlobalModel>>>,
                     Vec<Box<dyn EffectorTrait>>,
                 ) {
-                    let forms = model.page_home.forms.read();
-                    let Some(form) = forms.iter().find(|f| f.process_id == process_id) else {
+                    let Some(form) = model
+                        .page_home
+                        .forms
+                        .iter()
+                        .find(|f| f.process_id == process_id)
+                    else {
                         return (vec![], vec![]);
                     };
+
                     let FormVariants::#variant_name(local_model) = &form.form else {
                         return (vec![], vec![]);
                     };
 
-                    let (changes, effects) = update(self.0.clone(), local_model, model);
+                    let (local_changes, global_changes, effects) =
+                        update(self.0.clone(), local_model, model);
 
-                    let appliers: Vec<Box<dyn ApplierTrait<Mdl = TypeGlobalModel>>> = changes
-                        .into_iter()
-                        .map(|c| Box::new(WrapperChange(c)) as Box<dyn ApplierTrait<Mdl = TypeGlobalModel>>)
-                        .collect();
+                    let mut appliers: Vec<Box<dyn ApplierTrait<Mdl = TypeGlobalModel>>> =
+                        Vec::new();
+
+                    appliers.extend(local_changes.into_iter().map(|c| {
+                        Box::new(WrapperLocalChange(c))
+                            as Box<dyn ApplierTrait<Mdl = TypeGlobalModel>>
+                    }));
+
+                    appliers.extend(global_changes.into_iter().map(|c| {
+                        Box::new(WrapperGlobalChange(c))
+                            as Box<dyn ApplierTrait<Mdl = TypeGlobalModel>>
+                    }));
 
                     let effectors: Vec<Box<dyn EffectorTrait>> = effects
                         .into_iter()
@@ -68,19 +84,37 @@ pub fn my_macro(input: TokenStream) -> TokenStream {
             }
 
             #[derive(Debug)]
-            pub(crate) struct WrapperChange(pub(crate) Change);
+            pub(crate) struct WrapperLocalChange(pub(crate) LocalChange);
 
-            impl ApplierTrait for WrapperChange {
+            impl ApplierTrait for WrapperLocalChange {
                 type Mdl = TypeGlobalModel;
-                fn apply(&self, model: &Self::Mdl, process_id: ProcessId) {
-                    let forms = &model.page_home.forms.read();
-                    let Some(form) = forms.iter().find(|f| f.process_id == process_id) else {
+
+                fn apply(&self, model: &mut Self::Mdl, process_id: ProcessId) {
+                    let Some(form) = model
+                        .page_home
+                        .forms
+                        .iter_mut()
+                        .find(|f| f.process_id == process_id)
+                    else {
                         return;
                     };
-                    let FormVariants::#variant_name(local_model) = &form.form else {
+
+                    let FormVariants::#variant_name(local_model) = &mut form.form else {
                         return;
                     };
-                    apply(self.0.clone(), local_model, model);
+
+                    local_apply(self.0.clone(), local_model);
+                }
+            }
+
+            #[derive(Debug)]
+            pub(crate) struct WrapperGlobalChange(pub(crate) GlobalChange);
+
+            impl ApplierTrait for WrapperGlobalChange {
+                type Mdl = TypeGlobalModel;
+
+                fn apply(&self, model: &mut Self::Mdl, _process_id: ProcessId) {
+                    global_apply(self.0.clone(), model);
                 }
             }
 

@@ -15,42 +15,6 @@ use utility_ui::domain::Dialog;
 use utility_ui::domain::HashimSignal;
 use utility_ui::my_signal::MySignal;
 
-#[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
-pub struct TypeLocalModel {
-    show_dialog: MySignal<Dialog>,
-    company_name: MySignal<String>,
-    branch_name: MySignal<String>,
-    currency: MySignal<Currency>,
-    location: MySignal<Location>,
-    async_state: MySignal<AsyncState>,
-}
-
-impl LocalModel for TypeLocalModel {
-    fn show_dialog(&self) -> impl HashimSignal<Dialog> {
-        self.show_dialog.clone()
-    }
-
-    fn company_name(&self) -> impl HashimSignal<String> {
-        self.company_name.clone()
-    }
-
-    fn branch_name(&self) -> impl HashimSignal<String> {
-        self.branch_name.clone()
-    }
-
-    fn currency(&self) -> impl HashimSignal<Currency> {
-        self.currency.clone()
-    }
-
-    fn location(&self) -> impl HashimSignal<Location> {
-        self.location.clone()
-    }
-
-    fn async_state(&self) -> impl HashimSignal<AsyncState> {
-        self.async_state.clone()
-    }
-}
-
 #[component]
 pub fn Component(
     sender: EventHandler<Intent>,

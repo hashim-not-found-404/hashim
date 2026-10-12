@@ -12,47 +12,6 @@ use utility_ui::domain::Dialog;
 use utility_ui::domain::HashimSignal;
 use utility_ui::my_signal::MySignal;
 
-#[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
-pub struct TypeLocalModel {
-    show_dialog: MySignal<Dialog>,
-    is_debit: MySignal<bool>,
-    is_permanent_account: MySignal<bool>,
-    account_name: MySignal<String>,
-    unit_of_measurement_of_quantity: MySignal<String>,
-    selected_company_name: MySignal<String>,
-    async_state: MySignal<AsyncState>,
-}
-
-impl LocalModel for TypeLocalModel {
-    fn show_dialog(&self) -> impl HashimSignal<Dialog> {
-        self.show_dialog.clone()
-    }
-
-    fn is_debit(&self) -> impl HashimSignal<bool> {
-        self.is_debit.clone()
-    }
-
-    fn is_permanent_account(&self) -> impl HashimSignal<bool> {
-        self.is_permanent_account.clone()
-    }
-
-    fn account_name(&self) -> impl HashimSignal<String> {
-        self.account_name.clone()
-    }
-
-    fn unit_of_measurement_of_quantity(&self) -> impl HashimSignal<String> {
-        self.unit_of_measurement_of_quantity.clone()
-    }
-
-    fn selected_company_name(&self) -> impl HashimSignal<String> {
-        self.selected_company_name.clone()
-    }
-
-    fn async_state(&self) -> impl HashimSignal<AsyncState> {
-        self.async_state.clone()
-    }
-}
-
 #[component]
 pub fn Component(
     sender: EventHandler<Intent>,

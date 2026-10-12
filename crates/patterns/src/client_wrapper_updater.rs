@@ -15,22 +15,26 @@ pub fn my_macro(input: TokenStream) -> TokenStream {
             use crate::model::TypeGlobalModel;
             use anyhow::Result;
             use std::pin::Pin;
-            use #crate_name::client::Change;
             use #crate_name::client::Effect;
+            use #crate_name::client::GlobalChange;
+            use #crate_name::client::LocalChange;
             use #crate_name::client::Message;
-            use #crate_name::client::apply;
             use #crate_name::client::effect;
+            use #crate_name::client::global_apply;
+            use #crate_name::client::local_apply;
             use #crate_name::client::update;
             use utility::cache::ProcessId;
-            use utility::ui_effect::EffectorTrait;
-            use utility::ui_effect::UpdaterTrait;
-            use utility::ui_effect::UiContext;
             use utility::ui_effect::ApplierTrait;
+            use utility::ui_effect::EffectorTrait;
+            use utility::ui_effect::UiContext;
+            use utility::ui_effect::UpdaterTrait;
+
             #[derive(Debug)]
             pub(crate) struct WrapperMessage(pub(crate) Message);
 
             impl UpdaterTrait for WrapperMessage {
                 type Mdl = TypeGlobalModel;
+
                 fn update(
                     &self,
                     model: &Self::Mdl,
@@ -39,12 +43,21 @@ pub fn my_macro(input: TokenStream) -> TokenStream {
                     Vec<Box<dyn ApplierTrait<Mdl = TypeGlobalModel>>>,
                     Vec<Box<dyn EffectorTrait>>,
                 ) {
-                    let (changes, effects) = update(self.0.clone(), &model.#model_field_name, model);
+                    let (local_changes, global_changes, effects) =
+                        update(self.0.clone(), &model.#model_field_name, model);
 
-                    let appliers: Vec<Box<dyn ApplierTrait<Mdl = TypeGlobalModel>>> = changes
-                        .into_iter()
-                        .map(|c| Box::new(WrapperChange(c)) as Box<dyn ApplierTrait<Mdl = TypeGlobalModel>>)
-                        .collect();
+                    let mut appliers: Vec<Box<dyn ApplierTrait<Mdl = TypeGlobalModel>>> =
+                        Vec::new();
+
+                    appliers.extend(local_changes.into_iter().map(|c| {
+                        Box::new(WrapperLocalChange(c))
+                            as Box<dyn ApplierTrait<Mdl = TypeGlobalModel>>
+                    }));
+
+                    appliers.extend(global_changes.into_iter().map(|c| {
+                        Box::new(WrapperGlobalChange(c))
+                            as Box<dyn ApplierTrait<Mdl = TypeGlobalModel>>
+                    }));
 
                     let effectors: Vec<Box<dyn EffectorTrait>> = effects
                         .into_iter()
@@ -54,15 +67,29 @@ pub fn my_macro(input: TokenStream) -> TokenStream {
                     (appliers, effectors)
                 }
             }
-            #[derive(Debug)]
-            pub(crate) struct WrapperChange(pub(crate) Change);
 
-            impl ApplierTrait for WrapperChange {
+            #[derive(Debug)]
+            pub(crate) struct WrapperLocalChange(pub(crate) LocalChange);
+
+            impl ApplierTrait for WrapperLocalChange {
                 type Mdl = TypeGlobalModel;
-                fn apply(&self, model: &Self::Mdl, process_id: ProcessId) {
-                    apply(self.0.clone(), &model.#model_field_name, model);
+
+                fn apply(&self, model: &mut Self::Mdl, _process_id: ProcessId) {
+                    local_apply(self.0.clone(), &mut model.#model_field_name);
                 }
             }
+
+            #[derive(Debug)]
+            pub(crate) struct WrapperGlobalChange(pub(crate) GlobalChange);
+
+            impl ApplierTrait for WrapperGlobalChange {
+                type Mdl = TypeGlobalModel;
+
+                fn apply(&self, model: &mut Self::Mdl, _process_id: ProcessId) {
+                    global_apply(self.0.clone(), model);
+                }
+            }
+
             #[derive(Debug)]
             pub(crate) struct WrapperEffect(pub(crate) Effect);
 

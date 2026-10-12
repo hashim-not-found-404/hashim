@@ -15,8 +15,11 @@ use infrastructure::runtime::Runtime;
 use std::any::Any;
 use std::fmt::Debug;
 use std::pin::Pin;
-use std::sync::Arc;
 use tracing::info;
+
+pub trait SigNaaaaaaaaaaaaaaaaal<T>: 'static {
+    fn with_mut<R>(&self, f: impl FnOnce(&mut T) -> R) -> R;
+}
 
 pub trait Model: 'static {}
 
@@ -52,7 +55,7 @@ pub trait UpdaterTrait: Debug {
 pub trait ApplierTrait: Debug {
     type Mdl: Model;
 
-    fn apply(&self, model: &Self::Mdl, process_id: ProcessId);
+    fn apply(&self, model: &mut Self::Mdl, process_id: ProcessId);
 }
 
 pub trait EffectorTrait: Debug {
@@ -79,7 +82,7 @@ pub struct Commander {
 impl Commander {
     pub fn new<Mdl, CasMsg>(
         sender_to_error: MpscSender<Error>,
-        model: Arc<Mdl>,
+        model: impl SigNaaaaaaaaaaaaaaaaal<Mdl>,
         cache: CacheStruct,
     ) -> Self
     where
@@ -136,7 +139,7 @@ impl Commander {
         self,
         mut sender_to_error: MpscSender<Error>,
         mut receiver: MpscReceiver<MessageToCommander>,
-        model: Arc<Mdl>,
+        model: impl SigNaaaaaaaaaaaaaaaaal<Mdl>,
         cache: CacheStruct,
     ) where
         Mdl: Model,
@@ -156,14 +159,21 @@ impl Commander {
                     info!(?message);
 
                     let msg = CasMsg::cast_message_to_reducer(message.inner)?;
-                    let (change, effect) = msg.update(&model, message.process_id);
 
-                    info!(?change);
-                    info!(?effect);
+                    let effect=model.with_mut(|model|{
+                        let (change, effect) = msg.update(&model, message.process_id);
 
-                    for i in change {
-                        i.apply(&model, message.process_id);
-                    }
+                        info!(?change);
+                        info!(?effect);
+
+                        for i in change {
+                            i.apply(model, message.process_id);
+                        }
+
+                        effect
+
+                    });
+
 
                     for i in effect {
                         let result = i.effect(message.process_id,context.clone()).await;

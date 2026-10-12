@@ -181,16 +181,17 @@ pub trait GlobalModel {
     fn selected_company_branch(&self) -> Option<kernel::new_types::BranchUuid>;
 }
 
-pub trait LocalModel {
-    fn show_dialog(&self) -> impl HashimSignal<Dialog>;
-    fn is_loading(&self) -> impl HashimSignal<bool>;
-    fn shared_entry_id(&self) -> impl HashimSignal<String>;
-    fn some_account_are_not_inferred(&self) -> impl HashimSignal<bool>;
-    fn error_container_is_empty(&self) -> impl HashimSignal<bool>;
-    fn not_all_entry_inferred(&self) -> impl HashimSignal<bool>;
-    fn double_entries(&self) -> impl HashimSignal<Vec<DoubleEntry>>;
-    fn filtered_list(&self) -> impl HashimSignal<Vec<Account>>;
-    fn list_of_available_account(&self) -> impl HashimSignal<Vec<Account>>;
+#[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
+pub struct LocalModel {
+    pub show_dialog: Dialog,
+    pub is_loading: bool,
+    pub shared_entry_id: String,
+    pub some_account_are_not_inferred: bool,
+    pub error_container_is_empty: bool,
+    pub not_all_entry_inferred: bool,
+    pub double_entries: Vec<DoubleEntry>,
+    pub filtered_list: Vec<Account>,
+    pub list_of_available_account: Vec<Account>,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
@@ -219,7 +220,7 @@ pub struct SingleEntryAsync {
 // -----------------------------------------------------------------------------
 
 #[derive(Debug, Clone)]
-pub enum Change {
+pub enum LocalChange {
     ShowDialog(Dialog),
     IsLoading(bool),
     SharedEntryId(String),
@@ -231,6 +232,9 @@ pub enum Change {
     AsyncState(AsyncState),
     AccountsList(Vec<Account>),
 }
+
+#[derive(Debug, Clone)]
+pub enum GlobalChange {}
 
 #[derive(Debug, Clone)]
 pub enum Effect {
@@ -288,15 +292,15 @@ impl MessageTrait for Message {}
 
 pub fn update(
     msg: Message,
-    local_model: &impl LocalModel,
+    local_model: &LocalModel,
     global_model: &impl GlobalModel,
-) -> (Vec<Change>, Vec<Effect>) {
+) -> (Vec<LocalChange>, Vec<GlobalChange>, Vec<Effect>) {
     if let Message::Intent(ref a) = msg {
         match a {
             Intent::Consent(_) | Intent::Subscribe | Intent::UnSubscribe => {}
             _ => {
-                if local_model.is_loading().read() {
-                    return (vec![], vec![]);
+                if local_model.is_loading.clone() {
+                    return (vec![], vec![], vec![]);
                 }
             }
         }
@@ -306,20 +310,24 @@ pub fn update(
         Message::Intent(intent) => match intent {
             Intent::Submit => {
                 let Some(user_uuid) = global_model.user_uuid() else {
-                    return (vec![], vec![]);
+                    return (vec![], vec![], vec![]);
                 };
                 let Some(belong_to_company_branch) = global_model.selected_company_branch() else {
-                    return (vec![], vec![]);
+                    return (vec![], vec![], vec![]);
                 };
 
-                let ui_entries = local_model.double_entries().read();
+                let ui_entries = local_model.double_entries.clone();
 
                 let mut double_entries_async = Vec::with_capacity(ui_entries.len());
                 for double in &ui_entries {
                     let mut singles = Vec::with_capacity(double.singles.len());
                     for single in &double.singles {
                         let Some(account) = single.inferred_account_id.clone() else {
-                            return (vec![Change::SomeAccountAreNotInferred(true)], vec![]);
+                            return (
+                                vec![LocalChange::SomeAccountAreNotInferred(true)],
+                                vec![],
+                                vec![],
+                            );
                         };
                         singles.push(SingleEntryAsync {
                             new_uuid: UuidType::from(Id::generate()),
@@ -341,7 +349,7 @@ pub fn update(
                 let flat_single: Vec<SingleEntryAsync> =
                     double_entries_async.into_iter().flatten().collect();
 
-                let shared_entry_id = Id::parse(local_model.shared_entry_id().read())
+                let shared_entry_id = Id::parse(local_model.shared_entry_id.clone())
                     .map(|a| SharedEntryUuid::from(UuidType::from(a)));
 
                 let async_input = AsyncInput {
@@ -352,7 +360,10 @@ pub fn update(
                     double_entries: flat_single,
                 };
 
-                let change = vec![Change::IsLoading(true), Change::ShowDialog(Dialog::Hide)];
+                let local_change = vec![
+                    LocalChange::IsLoading(true),
+                    LocalChange::ShowDialog(Dialog::Hide),
+                ];
                 let effect = vec![
                     Effect::SpawnTimer,
                     Effect::Submit {
@@ -360,101 +371,105 @@ pub fn update(
                         is_to_server: true,
                     },
                 ];
-                (change, effect)
+                (local_change, vec![], effect)
             }
             Intent::Consent(v) => {
-                let (change, effect) = match v {
+                let (local_change, effect) = match v {
                     UserConsent::CancelOperation => (
-                        vec![Change::ShowDialog(Dialog::Hide), Change::IsLoading(false)],
+                        vec![
+                            LocalChange::ShowDialog(Dialog::Hide),
+                            LocalChange::IsLoading(false),
+                        ],
                         vec![],
                     ),
                     UserConsent::WaitForServerResponse => (
-                        vec![Change::ShowDialog(Dialog::Hide)],
+                        vec![LocalChange::ShowDialog(Dialog::Hide)],
                         vec![Effect::SpawnTimer],
                     ),
                     UserConsent::DontWaitForServerResponse => {
                         // Client-only fallback path is not wired yet.
-                        (vec![Change::ShowDialog(Dialog::Hide)], vec![])
+                        (vec![LocalChange::ShowDialog(Dialog::Hide)], vec![])
                     }
                 };
-                (change, effect)
+                (local_change, vec![], effect)
             }
             Intent::Clean => {
-                let change = vec![
-                    Change::ShowDialog(Default::default()),
-                    Change::IsLoading(false),
-                    Change::SharedEntryId(Default::default()),
-                    Change::SomeAccountAreNotInferred(false),
-                    Change::ErrorContainerIsEmpty(false),
-                    Change::NotAllEntryInferred(false),
-                    Change::DoubleEntries(Default::default()),
-                    Change::FilteredList(Default::default()),
+                let local_change = vec![
+                    LocalChange::ShowDialog(Default::default()),
+                    LocalChange::IsLoading(false),
+                    LocalChange::SharedEntryId(Default::default()),
+                    LocalChange::SomeAccountAreNotInferred(false),
+                    LocalChange::ErrorContainerIsEmpty(false),
+                    LocalChange::NotAllEntryInferred(false),
+                    LocalChange::DoubleEntries(Default::default()),
+                    LocalChange::FilteredList(Default::default()),
                 ];
-                (change, vec![])
+                (local_change, vec![], vec![])
             }
             Intent::Subscribe => {
                 let effect = vec![Effect::Subscribe, Effect::FetchAccountsForBranch];
-                (vec![], effect)
+                (vec![], vec![], effect)
             }
             Intent::UnSubscribe => {
                 let effect = vec![Effect::UnSubscribe];
-                (vec![], effect)
+                (vec![], vec![], effect)
             }
             Intent::AddSingleEntry { double_index } => {
-                let mut entries = local_model.double_entries().read();
+                let mut entries = local_model.double_entries.clone();
                 if let Some(double) = entries.get_mut(double_index) {
                     double.singles.push(SingleEntry::default());
-                    return (vec![Change::DoubleEntries(entries)], vec![]);
+                    return (vec![LocalChange::DoubleEntries(entries)], vec![], vec![]);
                 }
-                (vec![], vec![])
+                (vec![], vec![], vec![])
             }
             Intent::RemoveSingleEntry {
                 double_index,
                 single_index,
             } => {
-                let mut entries = local_model.double_entries().read();
+                let mut entries = local_model.double_entries.clone();
                 if let Some(double) = entries.get_mut(double_index)
                     && single_index < double.singles.len()
                 {
                     double.singles.remove(single_index);
-                    return (vec![Change::DoubleEntries(entries)], vec![]);
+                    return (vec![LocalChange::DoubleEntries(entries)], vec![], vec![]);
                 }
-                (vec![], vec![])
+                (vec![], vec![], vec![])
             }
             Intent::AddDoubleEntry => {
-                let mut entries = local_model.double_entries().read();
+                let mut entries = local_model.double_entries.clone();
                 entries.push(DoubleEntry::default());
-                (vec![Change::DoubleEntries(entries)], vec![])
+                (vec![LocalChange::DoubleEntries(entries)], vec![], vec![])
             }
             Intent::RemoveDoubleEntry { double_index } => {
-                let mut entries = local_model.double_entries().read();
+                let mut entries = local_model.double_entries.clone();
                 if double_index < entries.len() {
                     entries.remove(double_index);
-                    return (vec![Change::DoubleEntries(entries)], vec![]);
+                    return (vec![LocalChange::DoubleEntries(entries)], vec![], vec![]);
                 }
-                (vec![], vec![])
+                (vec![], vec![], vec![])
             }
             Intent::UpdateSingleEntry {
                 double_index,
                 single_index,
                 value,
             } => {
-                let mut entries = local_model.double_entries().read();
+                let mut entries = local_model.double_entries.clone();
                 if let Some(double) = entries.get_mut(double_index)
                     && let Some(single) = double.singles.get_mut(single_index)
                 {
                     match value {
                         SingleEntryField::Account(name) => {
-                            let master = local_model.list_of_available_account().read();
+                            let master = local_model.list_of_available_account.clone();
                             let filtered =
                                 select_strings(master, &name, |a| a.account_name.as_str());
                             single.user_input_account_name = name;
                             single.inferred_account_id = None;
                             return (
                                 vec![
-                                    Change::FilteredList(filtered),
-                                    Change::DoubleEntries(entries),
+                                    LocalChange::FilteredList(filtered),
+                                    LocalChange::DoubleEntries(entries),
                                 ],
+                                vec![],
                                 vec![],
                             );
                         }
@@ -467,69 +482,76 @@ pub fn update(
                         SingleEntryField::Amount(f) => single.user_input_amount = Some(f),
                         SingleEntryField::Quantity(f) => single.user_input_quantity = Some(f),
                     }
-                    return (vec![Change::DoubleEntries(entries)], vec![]);
+                    return (vec![LocalChange::DoubleEntries(entries)], vec![], vec![]);
                 }
-                (vec![], vec![])
+                (vec![], vec![], vec![])
             }
-            Intent::SetSharedEntryId(uuid_type) => (vec![Change::SharedEntryId(uuid_type)], vec![]),
+            Intent::SetSharedEntryId(uuid_type) => {
+                (vec![LocalChange::SharedEntryId(uuid_type)], vec![], vec![])
+            }
         },
         Message::Observe(observe) => match observe {
             Observe::Timeout => {
-                let change = if local_model.is_loading().read() {
-                    vec![Change::ShowDialog(Dialog::Show)]
+                let local_change = if local_model.is_loading.clone() {
+                    vec![LocalChange::ShowDialog(Dialog::Show)]
                 } else {
                     vec![]
                 };
-                (change, vec![])
+                (local_change, vec![], vec![])
             }
             Observe::Result(result) => match result {
                 AsyncState::Success { .. } => {
-                    let change = vec![
-                        Change::ShowDialog(Default::default()),
-                        Change::IsLoading(false),
-                        Change::DoubleEntries(Default::default()),
-                        Change::SomeAccountAreNotInferred(false),
-                        Change::FilteredList(Default::default()),
-                        Change::AsyncState(result),
+                    let local_change = vec![
+                        LocalChange::ShowDialog(Default::default()),
+                        LocalChange::IsLoading(false),
+                        LocalChange::DoubleEntries(Default::default()),
+                        LocalChange::SomeAccountAreNotInferred(false),
+                        LocalChange::FilteredList(Default::default()),
+                        LocalChange::AsyncState(result),
                     ];
-                    (change, vec![])
+                    (local_change, vec![], vec![])
                 }
                 _ => {
-                    let change = vec![
-                        Change::ShowDialog(Default::default()),
-                        Change::IsLoading(false),
-                        Change::AsyncState(result),
+                    let local_change = vec![
+                        LocalChange::ShowDialog(Default::default()),
+                        LocalChange::IsLoading(false),
+                        LocalChange::AsyncState(result),
                     ];
-                    (change, vec![])
+                    (local_change, vec![], vec![])
                 }
             },
-            Observe::Refresh => (vec![], vec![Effect::FetchAccountsForBranch]),
+            Observe::Refresh => (vec![], vec![], vec![Effect::FetchAccountsForBranch]),
             Observe::AccountsFetched(accounts) => (
                 vec![
-                    Change::AccountsList(accounts.clone()),
-                    Change::FilteredList(accounts),
+                    LocalChange::AccountsList(accounts.clone()),
+                    LocalChange::FilteredList(accounts),
                 ],
+                vec![],
                 vec![],
             ),
         },
     }
 }
 
-pub fn apply(msg: Change, local_model: &impl LocalModel, _: &impl GlobalModel) {
+pub fn local_apply(msg: LocalChange, local_model: &mut LocalModel) {
     match msg {
-        Change::ShowDialog(i) => local_model.show_dialog().set(i),
-        Change::IsLoading(i) => local_model.is_loading().set(i),
-        Change::SharedEntryId(i) => local_model.shared_entry_id().set(i),
-        Change::SomeAccountAreNotInferred(i) => local_model.some_account_are_not_inferred().set(i),
-        Change::ErrorContainerIsEmpty(i) => local_model.error_container_is_empty().set(i),
-        Change::NotAllEntryInferred(i) => local_model.not_all_entry_inferred().set(i),
-        Change::DoubleEntries(i) => local_model.double_entries().set(i),
-        Change::FilteredList(i) => local_model.filtered_list().set(i),
-        Change::AsyncState(i) => {
+        LocalChange::ShowDialog(i) => local_model.show_dialog = i,
+        LocalChange::IsLoading(i) => local_model.is_loading = i,
+        LocalChange::SharedEntryId(i) => local_model.shared_entry_id = i,
+        LocalChange::SomeAccountAreNotInferred(i) => local_model.some_account_are_not_inferred = i,
+        LocalChange::ErrorContainerIsEmpty(i) => local_model.error_container_is_empty = i,
+        LocalChange::NotAllEntryInferred(i) => local_model.not_all_entry_inferred = i,
+        LocalChange::DoubleEntries(i) => local_model.double_entries = i,
+        LocalChange::FilteredList(i) => local_model.filtered_list = i,
+        LocalChange::AsyncState(i) => {
             let _ = i;
         }
-        Change::AccountsList(i) => local_model.list_of_available_account().set(i),
+        LocalChange::AccountsList(i) => local_model.list_of_available_account = i,
     }
+}
+
+pub fn global_apply(msg: GlobalChange, _: &mut impl GlobalModel) {
+    match msg {}
 }
 
 pub async fn effect(msg: Effect, process_id: ProcessId, context: UiContext) -> Result<()> {

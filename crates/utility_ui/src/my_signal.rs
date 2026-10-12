@@ -66,24 +66,56 @@ impl<T: PartialEq + Clone> PartialEq for MySignal<T> {
     }
 }
 
-impl<T: 'static + Clone + Default + DeserializeOwned + Serialize> HashimSignal<T> for MySignal<T> {
-    fn read(&self) -> T {
-        // Subscribe the context observing the signal (if any) to updates of its value.
+impl<T> MySignal<T> {
+    /// Register the current reactive context (if any) as a subscriber.
+    /// Safe to call outside a render: it just no-ops.
+    pub fn subscribe(&self) {
         if let Some(reactive_context) = ReactiveContext::current() {
             reactive_context.subscribe(self.subscribers.clone());
         }
+    }
 
-        self.value.lock().unwrap().clone()
+    /// Read the value through a shared borrow, without cloning.
+    /// Subscribes the current reactive context if there is one.
+    pub fn with_ref<R>(&self, f: impl FnOnce(&T) -> R) -> R {
+        self.subscribe();
+        let guard = self.value.lock().unwrap();
+        f(&guard)
+    }
+
+    /// Mutate the value through a unique borrow, without cloning.
+    /// Any subscribers are marked dirty afterwards, so the components
+    /// that read this signal re-render. Does not subscribe the caller
+    /// (mutations should go through the actor, not through a render).
+    pub fn with_mut<R>(&self, f: impl FnOnce(&mut T) -> R) -> R {
+        let result = {
+            let mut guard = self.value.lock().unwrap();
+            f(&mut guard)
+        };
+
+        let mut subscribers = take(&mut *self.subscribers.lock().unwrap());
+        subscribers.retain(|reactive_context| reactive_context.mark_dirty());
+        self.subscribers.lock().unwrap().extend(subscribers);
+
+        result
+    }
+}
+
+impl<T: 'static + Clone + Default + DeserializeOwned + Serialize> HashimSignal<T> for MySignal<T> {
+    fn read(&self) -> T {
+        self.with_ref(T::clone)
     }
 
     fn set(&self, value: T) {
-        // Update the state
-        *self.value.lock().unwrap() = value;
-        // Trigger a re-render of the components that observed the signal's previous value
-        let mut subscribers = take(&mut *self.subscribers.lock().unwrap());
-        subscribers.retain(|reactive_context| reactive_context.mark_dirty());
-        // Extend the subscribers list instead of overwriting it in case a subscriber is added while reactive contexts are marked dirty
-        self.subscribers.lock().unwrap().extend(subscribers);
+        self.with_mut(|v| *v = value);
+    }
+
+    fn with_ref<R>(&self, f: impl FnOnce(&T) -> R) -> R {
+        MySignal::with_ref(self, f)
+    }
+
+    fn with_mut<R>(&self, f: impl FnOnce(&mut T) -> R) -> R {
+        MySignal::with_mut(self, f)
     }
 }
 

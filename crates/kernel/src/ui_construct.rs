@@ -16,6 +16,7 @@ use infrastructure::row_id::Id;
 use infrastructure::row_id::RowId;
 use std::marker::PhantomData;
 use std::sync::Arc;
+use std::sync::Mutex;
 use std::sync::RwLock;
 use utility::cache::CacheStruct;
 use utility::cache::CacheUtility;
@@ -36,9 +37,10 @@ use utility::types::ReadAndSet;
 use utility::ui_effect::CastMessageToReducer;
 use utility::ui_effect::Commander;
 use utility::ui_effect::Model;
+use utility::ui_effect::SigNaaaaaaaaaaaaaaaaal;
 
 pub fn new<Ch, Mdl, CasDC, CasMsg, CasCh>(
-    model: Arc<Mdl>,
+    model: impl SigNaaaaaaaaaaaaaaaaal<Mdl>,
     sender_to_error: MpscSender<anyhow::Error>,
 ) -> Commander
 where

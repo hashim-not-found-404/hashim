@@ -30,12 +30,16 @@ pub(crate) type AsyncState = GenricAsyncState<AsyncInput, Ok, Error>;
 
 pub trait GlobalModel {
     fn user_uuid(&self) -> Option<UserUuid>;
-    fn selected_company_uuid(&self) -> impl HashimSignal<Option<CompanyUuid>>;
-    fn selected_company_branch_uuid(&self) -> impl HashimSignal<Option<BranchUuid>>;
+    fn selected_company_uuid(&self) -> Option<CompanyUuid>;
+    fn selected_company_branch_uuid(&self) -> Option<BranchUuid>;
+
+    fn set_selected_company_uuid(&mut self, v: Option<CompanyUuid>);
+    fn set_selected_company_branch_uuid(&mut self, v: Option<BranchUuid>);
 }
 
-pub trait LocalModel {
-    fn async_state(&self) -> impl HashimSignal<AsyncState>;
+#[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
+pub struct LocalModel {
+    pub async_state: AsyncState,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
@@ -43,48 +47,48 @@ pub struct AsyncInput {
     pub user_uuid: UserUuid,
 }
 
-pub fn list_of_companies_and_branches(local_model: &impl LocalModel) -> Vec<CompanyWithBranches> {
-    match local_model.async_state().read() {
+pub fn list_of_companies_and_branches(local_model: &LocalModel) -> Vec<CompanyWithBranches> {
+    match local_model.async_state.clone() {
         AsyncState::Success { ok, .. } => ok.companies,
         _ => Vec::new(),
     }
 }
 
-pub fn list_of_companies(local_model: &impl LocalModel) -> Vec<(CompanyUuid, String)> {
-    match local_model.async_state().read() {
+pub fn list_of_companies(local_model: &LocalModel) -> Vec<(CompanyUuid, String)> {
+    match local_model.async_state.clone() {
         AsyncState::Success { ok, .. } => flat_companies(&ok.companies),
         _ => Vec::new(),
     }
 }
 
 pub fn list_of_branches(
-    local_model: &impl LocalModel,
+    local_model: &LocalModel,
     global_model: &impl GlobalModel,
 ) -> Vec<(BranchUuid, String)> {
-    let Some(company_uuid) = global_model.selected_company_uuid().read() else {
+    let Some(company_uuid) = global_model.selected_company_uuid() else {
         return Vec::new();
     };
-    match local_model.async_state().read() {
+    match local_model.async_state.clone() {
         AsyncState::Success { ok, .. } => flat_branches_for(&ok.companies, &company_uuid),
         _ => Vec::new(),
     }
 }
 
 pub fn selected_company_name(
-    local_model: &impl LocalModel,
+    local_model: &LocalModel,
     global_model: &impl GlobalModel,
 ) -> Option<String> {
-    let uuid = global_model.selected_company_uuid().read()?;
+    let uuid = global_model.selected_company_uuid()?;
     list_of_companies(local_model)
         .into_iter()
         .find_map(|(c_uuid, c_name)| (c_uuid == uuid).then_some(c_name))
 }
 
 pub fn selected_company_branch_name(
-    local_model: &impl LocalModel,
+    local_model: &LocalModel,
     global_model: &impl GlobalModel,
 ) -> Option<String> {
-    let selected_company_branch_uuid = global_model.selected_company_branch_uuid().read();
+    let selected_company_branch_uuid = global_model.selected_company_branch_uuid();
     let uuid = selected_company_branch_uuid?;
     list_of_branches(local_model, global_model)
         .into_iter()
@@ -115,8 +119,12 @@ fn flat_branches_for(
 }
 
 #[derive(Debug, Clone)]
-pub enum Change {
+pub enum LocalChange {
     AsyncState(AsyncState),
+}
+
+#[derive(Debug, Clone)]
+pub enum GlobalChange {
     SelectedCompanyUuid(Option<CompanyUuid>),
     SelectedCompanyBranchUuid(Option<BranchUuid>),
 }
@@ -152,73 +160,80 @@ impl MessageTrait for Message {}
 
 pub fn update(
     msg: Message,
-    local_model: &impl LocalModel,
+    local_model: &LocalModel,
     global_model: &impl GlobalModel,
-) -> (Vec<Change>, Vec<Effect>) {
+) -> (Vec<LocalChange>, Vec<GlobalChange>, Vec<Effect>) {
     match msg {
         Message::Intent(intent) => match intent {
             Intent::Subscribe => {
                 let Some(user_uuid) = global_model.user_uuid() else {
-                    return (vec![], vec![]);
+                    return (vec![], vec![], vec![]);
                 };
                 let async_input = AsyncInput { user_uuid };
 
-                let change = vec![Change::AsyncState(AsyncState::Loading {
+                let local_change = vec![LocalChange::AsyncState(AsyncState::Loading {
                     input: async_input.clone(),
                 })];
                 let effect = vec![Effect::Subscribe, Effect::Refresh { async_input }];
-                (change, effect)
+                (local_change, vec![], effect)
             }
             Intent::UnSubscribe => {
                 let effect = vec![Effect::UnSubscribe];
-                (vec![], effect)
+                (vec![], vec![], effect)
             }
             Intent::SelectCompany(uuid) => {
-                if global_model.selected_company_uuid().read().as_ref() == Some(&uuid) {
-                    return (vec![], vec![]);
+                if global_model.selected_company_uuid().as_ref() == Some(&uuid) {
+                    return (vec![], vec![], vec![]);
                 }
 
-                let change = vec![
-                    Change::SelectedCompanyUuid(Some(uuid)),
-                    Change::SelectedCompanyBranchUuid(None),
+                let global_change = vec![
+                    GlobalChange::SelectedCompanyUuid(Some(uuid)),
+                    GlobalChange::SelectedCompanyBranchUuid(None),
                 ];
-                (change, vec![])
+                (vec![], global_change, vec![])
             }
             Intent::SelectBranch(uuid) => {
-                if global_model.selected_company_branch_uuid().read().as_ref() == Some(&uuid) {
-                    return (vec![], vec![]);
+                if global_model.selected_company_branch_uuid().as_ref() == Some(&uuid) {
+                    return (vec![], vec![], vec![]);
                 }
 
-                let change = vec![Change::SelectedCompanyBranchUuid(Some(uuid))];
-                (change, vec![])
+                let global_change = vec![GlobalChange::SelectedCompanyBranchUuid(Some(uuid))];
+                (vec![], global_change, vec![])
             }
         },
         Message::Observe(observe) => match observe {
             Observe::Refresh => {
                 let Some(user_uuid) = global_model.user_uuid() else {
-                    return (vec![], vec![]);
+                    return (vec![], vec![], vec![]);
                 };
                 let async_input = AsyncInput { user_uuid };
 
-                let change = vec![Change::AsyncState(AsyncState::Loading {
+                let local_change = vec![LocalChange::AsyncState(AsyncState::Loading {
                     input: async_input.clone(),
                 })];
                 let effect = vec![Effect::Refresh { async_input }];
-                (change, effect)
+                (local_change, vec![], effect)
             }
             Observe::Result(result) => {
-                let change = vec![Change::AsyncState(result)];
-                (change, vec![])
+                let local_change = vec![LocalChange::AsyncState(result)];
+                (local_change, vec![], vec![])
             }
         },
     }
 }
 
-pub fn apply(msg: Change, local_model: &impl LocalModel, global_model: &impl GlobalModel) {
+pub fn local_apply(msg: LocalChange, local_model: &mut LocalModel) {
     match msg {
-        Change::AsyncState(i) => local_model.async_state().set(i),
-        Change::SelectedCompanyUuid(i) => global_model.selected_company_uuid().set(i),
-        Change::SelectedCompanyBranchUuid(i) => global_model.selected_company_branch_uuid().set(i),
+        LocalChange::AsyncState(i) => local_model.async_state = i,
+    }
+}
+
+pub fn global_apply(msg: GlobalChange, global_model: &mut impl GlobalModel) {
+    match msg {
+        GlobalChange::SelectedCompanyUuid(i) => global_model.set_selected_company_uuid(i),
+        GlobalChange::SelectedCompanyBranchUuid(i) => {
+            global_model.set_selected_company_branch_uuid(i)
+        }
     }
 }
 

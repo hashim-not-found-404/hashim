@@ -32,11 +32,11 @@ use utility::ui_effect::UpdaterTrait;
 
 mod updater_use_case_navigator {
     use crate::model::TypeGlobalModel;
-    use crate::use_case_navigator::client::Change;
     use crate::use_case_navigator::client::Effect;
+    use crate::use_case_navigator::client::GlobalChange;
     use crate::use_case_navigator::client::Message;
-    use crate::use_case_navigator::client::apply;
     use crate::use_case_navigator::client::effect;
+    use crate::use_case_navigator::client::global_apply;
     use crate::use_case_navigator::client::update;
     use anyhow::Result;
     use std::pin::Pin;
@@ -72,12 +72,12 @@ mod updater_use_case_navigator {
         }
     }
     #[derive(Debug)]
-    pub(crate) struct WrapperChange(pub(crate) Change);
+    pub(crate) struct WrapperChange(pub(crate) GlobalChange);
 
     impl ApplierTrait for WrapperChange {
         type Mdl = TypeGlobalModel;
-        fn apply(&self, model: &Self::Mdl, process_id: ProcessId) {
-            apply(self.0.clone(), model);
+        fn apply(&self, model: &mut Self::Mdl, _process_id: ProcessId) {
+            global_apply(self.0.clone(), model);
         }
     }
     #[derive(Debug)]
@@ -96,11 +96,11 @@ mod updater_use_case_navigator {
 
 mod updater_use_case_home {
     use crate::model::TypeGlobalModel;
-    use crate::use_case_home::client::Change;
     use crate::use_case_home::client::Effect;
+    use crate::use_case_home::client::LocalChange;
     use crate::use_case_home::client::Message;
-    use crate::use_case_home::client::apply;
     use crate::use_case_home::client::effect;
+    use crate::use_case_home::client::local_apply;
     use crate::use_case_home::client::update;
     use anyhow::Result;
     use std::pin::Pin;
@@ -135,12 +135,12 @@ mod updater_use_case_home {
         }
     }
     #[derive(Debug)]
-    pub(crate) struct WrapperChange(pub(crate) Change);
+    pub(crate) struct WrapperChange(pub(crate) LocalChange);
 
     impl ApplierTrait for WrapperChange {
         type Mdl = TypeGlobalModel;
-        fn apply(&self, model: &Self::Mdl, process_id: ProcessId) {
-            apply(self.0.clone(), &model.page_home, model);
+        fn apply(&self, model: &mut Self::Mdl, _process_id: ProcessId) {
+            local_apply(self.0.clone(), &mut model.page_home);
         }
     }
     #[derive(Debug)]
