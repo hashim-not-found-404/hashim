@@ -1,5 +1,6 @@
-use crate::model::TypeModel;
-use crate::navigator::navigator_reducer;
+use crate::model::TypeGlobalModel;
+use crate::use_case_home;
+use crate::use_case_navigator;
 use anyhow::Result;
 use anyhow::bail;
 use cache::cache_adapter;
@@ -13,6 +14,7 @@ use patterns::cast_ok_to_client_case;
 use patterns::make_client_wrapper_cache_check;
 use patterns::make_client_wrapper_cache_write;
 use patterns::make_client_wrapper_updater;
+use patterns::make_client_wrapper_updater_form;
 use std::any::Any;
 use std::sync::Arc;
 use utility::cache::CastClientToCache;
@@ -28,7 +30,134 @@ use utility::ui_effect::CastMessageToReducer;
 use utility::ui_effect::MessageTrait;
 use utility::ui_effect::UpdaterTrait;
 
-make_client_wrapper_updater!(create_account);
+mod updater_use_case_navigator {
+    use crate::model::TypeGlobalModel;
+    use crate::use_case_navigator::client::Effect;
+    use crate::use_case_navigator::client::GlobalChange;
+    use crate::use_case_navigator::client::Message;
+    use crate::use_case_navigator::client::effect;
+    use crate::use_case_navigator::client::global_apply;
+    use crate::use_case_navigator::client::update;
+    use anyhow::Result;
+    use std::pin::Pin;
+    use utility::cache::ProcessId;
+    use utility::ui_effect::ApplierTrait;
+    use utility::ui_effect::EffectorTrait;
+    use utility::ui_effect::UiContext;
+    use utility::ui_effect::UpdaterTrait;
+
+    #[derive(Debug)]
+    pub(crate) struct WrapperMessage(pub(crate) Message);
+
+    impl UpdaterTrait for WrapperMessage {
+        type Mdl = TypeGlobalModel;
+        fn update(
+            &self,
+            model: &Self::Mdl,
+            process_id: ProcessId,
+        ) -> (
+            Vec<Box<dyn ApplierTrait<Mdl = TypeGlobalModel>>>,
+            Vec<Box<dyn EffectorTrait>>,
+        ) {
+            let (changes, effects) = update(self.0.clone(), model);
+            let appliers: Vec<Box<dyn ApplierTrait<Mdl = TypeGlobalModel>>> = changes
+                .into_iter()
+                .map(|c| Box::new(WrapperChange(c)) as Box<dyn ApplierTrait<Mdl = TypeGlobalModel>>)
+                .collect();
+            let effectors: Vec<Box<dyn EffectorTrait>> = effects
+                .into_iter()
+                .map(|e| Box::new(WrapperEffect(e)) as Box<dyn EffectorTrait>)
+                .collect();
+            (appliers, effectors)
+        }
+    }
+    #[derive(Debug)]
+    pub(crate) struct WrapperChange(pub(crate) GlobalChange);
+
+    impl ApplierTrait for WrapperChange {
+        type Mdl = TypeGlobalModel;
+        fn apply(&self, model: &mut Self::Mdl, _process_id: ProcessId) {
+            global_apply(self.0.clone(), model);
+        }
+    }
+    #[derive(Debug)]
+    pub(crate) struct WrapperEffect(pub(crate) Effect);
+
+    impl EffectorTrait for WrapperEffect {
+        fn effect(
+            &self,
+            process_id: ProcessId,
+            context: UiContext,
+        ) -> Pin<Box<dyn Future<Output = Result<()>>>> {
+            Box::pin(effect(self.0.clone(), process_id, context))
+        }
+    }
+}
+
+mod updater_use_case_home {
+    use crate::model::TypeGlobalModel;
+    use crate::use_case_home::client::Effect;
+    use crate::use_case_home::client::LocalChange;
+    use crate::use_case_home::client::Message;
+    use crate::use_case_home::client::effect;
+    use crate::use_case_home::client::local_apply;
+    use crate::use_case_home::client::update;
+    use anyhow::Result;
+    use std::pin::Pin;
+    use utility::cache::ProcessId;
+    use utility::ui_effect::ApplierTrait;
+    use utility::ui_effect::EffectorTrait;
+    use utility::ui_effect::UiContext;
+    use utility::ui_effect::UpdaterTrait;
+    #[derive(Debug)]
+    pub(crate) struct WrapperMessage(pub(crate) Message);
+
+    impl UpdaterTrait for WrapperMessage {
+        type Mdl = TypeGlobalModel;
+        fn update(
+            &self,
+            model: &Self::Mdl,
+            process_id: ProcessId,
+        ) -> (
+            Vec<Box<dyn ApplierTrait<Mdl = TypeGlobalModel>>>,
+            Vec<Box<dyn EffectorTrait>>,
+        ) {
+            let (changes, effects) = update(self.0.clone(), &model.page_home, model);
+            let appliers: Vec<Box<dyn ApplierTrait<Mdl = TypeGlobalModel>>> = changes
+                .into_iter()
+                .map(|c| Box::new(WrapperChange(c)) as Box<dyn ApplierTrait<Mdl = TypeGlobalModel>>)
+                .collect();
+            let effectors: Vec<Box<dyn EffectorTrait>> = effects
+                .into_iter()
+                .map(|e| Box::new(WrapperEffect(e)) as Box<dyn EffectorTrait>)
+                .collect();
+            (appliers, effectors)
+        }
+    }
+    #[derive(Debug)]
+    pub(crate) struct WrapperChange(pub(crate) LocalChange);
+
+    impl ApplierTrait for WrapperChange {
+        type Mdl = TypeGlobalModel;
+        fn apply(&self, model: &mut Self::Mdl, _process_id: ProcessId) {
+            local_apply(self.0.clone(), &mut model.page_home);
+        }
+    }
+    #[derive(Debug)]
+    pub(crate) struct WrapperEffect(pub(crate) Effect);
+
+    impl EffectorTrait for WrapperEffect {
+        fn effect(
+            &self,
+            process_id: ProcessId,
+            context: UiContext,
+        ) -> Pin<Box<dyn Future<Output = Result<()>>>> {
+            Box::pin(effect(self.0.clone(), process_id, context))
+        }
+    }
+}
+
+make_client_wrapper_updater_form!(create_account);
 make_client_wrapper_cache_check!(create_account);
 make_client_wrapper_cache_write!(create_account);
 
@@ -45,7 +174,7 @@ make_client_wrapper_updater!(sign_in);
 make_client_wrapper_cache_check!(sign_in);
 make_client_wrapper_cache_write!(sign_in);
 
-make_client_wrapper_updater!(create_company);
+make_client_wrapper_updater_form!(create_company);
 make_client_wrapper_cache_check!(create_company);
 make_client_wrapper_cache_write!(create_company);
 
@@ -53,32 +182,30 @@ make_client_wrapper_updater!(select_default_company);
 make_client_wrapper_cache_check!(get_companies_and_branches);
 make_client_wrapper_cache_write!(get_companies_and_branches);
 
-make_client_wrapper_updater!(create_branch);
+make_client_wrapper_updater_form!(create_branch);
 make_client_wrapper_cache_check!(create_branch);
 make_client_wrapper_cache_write!(create_branch);
 
-make_client_wrapper_updater!(create_account_for_branch);
+make_client_wrapper_updater_form!(create_account_for_branch);
 make_client_wrapper_cache_check!(create_account_for_branch);
 make_client_wrapper_cache_write!(create_account_for_branch);
 
-make_client_wrapper_updater!(create_journal_entry);
+make_client_wrapper_updater_form!(create_journal_entry);
 make_client_wrapper_cache_check!(create_journal_entry);
 make_client_wrapper_cache_write!(create_journal_entry);
 
 pub(crate) struct MyCaster;
 
 impl CastMessageToReducer for MyCaster {
-    type Mdl = TypeModel;
+    type Mdl = TypeGlobalModel;
 
     fn cast_message_to_reducer(
         v: Box<dyn MessageTrait>,
     ) -> Result<Box<dyn UpdaterTrait<Mdl = Self::Mdl>>> {
         let v: Box<dyn Any> = v;
 
-        if let Some(v) = v.downcast_ref::<crate::navigator::Message>() {
-            return Ok(Box::new(navigator_reducer::WrapperMessage(v.clone())));
-        }
-
+        cast_message_to_reducer_case!(navigator);
+        cast_message_to_reducer_case!(home);
         cast_message_to_reducer_case!(create_account);
         cast_message_to_reducer_case!(error_handler);
         cast_message_to_reducer_case!(sign_in);

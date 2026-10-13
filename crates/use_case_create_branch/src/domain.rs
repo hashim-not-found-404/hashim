@@ -39,7 +39,7 @@ pub struct Input {
     pub location: Location,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct Ok {
     pub new_uuid: BranchUuid,
     pub company_belong: CompanyUuid,

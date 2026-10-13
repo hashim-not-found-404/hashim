@@ -41,7 +41,6 @@ use utility::ui_orchestration::handle_submit;
 use utility::ui_orchestration::handle_subscribe;
 use utility::ui_orchestration::handle_unsubscribe;
 use utility_ui::domain::Dialog;
-use utility_ui::domain::HashimSignal;
 
 const RESOURCES_NAME_TO_POKE: &[ResourceName] = &[new_resource_name("accounts")];
 const RESOURCES_NAME_TO_LISTEN: &[ResourceName] = &[new_resource_name("accounts")];
@@ -98,14 +97,15 @@ pub trait GlobalModel {
     fn list_of_companies(&self) -> Vec<(CompanyUuid, String)>;
 }
 
-pub trait LocalModel {
-    fn show_dialog(&self) -> impl HashimSignal<Dialog>;
-    fn is_debit(&self) -> impl HashimSignal<bool>;
-    fn is_permanent_account(&self) -> impl HashimSignal<bool>;
-    fn account_name(&self) -> impl HashimSignal<String>;
-    fn unit_of_measurement_of_quantity(&self) -> impl HashimSignal<String>;
-    fn selected_company_name(&self) -> impl HashimSignal<String>;
-    fn async_state(&self) -> impl HashimSignal<AsyncState>;
+#[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
+pub struct LocalModel {
+    pub show_dialog: Dialog,
+    pub is_debit: bool,
+    pub is_permanent_account: bool,
+    pub account_name: String,
+    pub unit_of_measurement_of_quantity: String,
+    pub selected_company_name: String,
+    pub async_state: AsyncState,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
@@ -114,7 +114,7 @@ pub enum CompanyNameError {
     NotExist,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct AsyncInput {
     pub user_uuid: UserUuid,
     pub is_debit: bool,
@@ -124,18 +124,18 @@ pub struct AsyncInput {
     pub belong_to_company: CompanyUuid,
 }
 
-pub fn error_account_name(local_model: &impl LocalModel) -> Option<AccountNameError> {
-    match local_model.async_state().read() {
+pub fn error_account_name(local_model: &LocalModel) -> Option<AccountNameError> {
+    match local_model.async_state.clone() {
         AsyncState::Failure { error, .. } => error.account_name,
         _ => None,
     }
 }
 
 pub fn resolved_company_uuid(
-    local_model: &impl LocalModel,
+    local_model: &LocalModel,
     global_model: &impl GlobalModel,
 ) -> Option<CompanyUuid> {
-    let typed = local_model.selected_company_name().read();
+    let typed = local_model.selected_company_name.clone();
     if typed.is_empty() {
         return global_model.selected_company();
     }
@@ -146,10 +146,10 @@ pub fn resolved_company_uuid(
 }
 
 pub fn error_company_name(
-    local_model: &impl LocalModel,
+    local_model: &LocalModel,
     global_model: &impl GlobalModel,
 ) -> Option<CompanyNameError> {
-    if let AsyncState::Failure { error, .. } = local_model.async_state().read()
+    if let AsyncState::Failure { error, .. } = local_model.async_state.clone()
         && let Some(e) = error.belong_to_company
     {
         return match e {
@@ -158,7 +158,7 @@ pub fn error_company_name(
         };
     }
 
-    let typed = local_model.selected_company_name().read();
+    let typed = local_model.selected_company_name.clone();
     if typed.is_empty() {
         if global_model.selected_company().is_none() {
             return Some(CompanyNameError::NotSelected);
@@ -173,10 +173,10 @@ pub fn error_company_name(
 }
 
 pub fn list_of_companies_to_display(
-    local_model: &impl LocalModel,
+    local_model: &LocalModel,
     global_model: &impl GlobalModel,
 ) -> Vec<(CompanyUuid, String)> {
-    let typed = local_model.selected_company_name().read();
+    let typed = local_model.selected_company_name.clone();
     let list = global_model.list_of_companies();
     if typed.is_empty() {
         return list;
@@ -185,7 +185,7 @@ pub fn list_of_companies_to_display(
 }
 
 #[derive(Debug, Clone)]
-pub enum Change {
+pub enum LocalChange {
     ShowDialog(Dialog),
     IsDebit(bool),
     IsPermanentAccount(bool),
@@ -194,6 +194,9 @@ pub enum Change {
     SelectedCompanyName(String),
     AsyncState(AsyncState),
 }
+
+#[derive(Debug, Clone)]
+pub enum GlobalChange {}
 
 #[derive(Debug, Clone)]
 pub enum Effect {
@@ -240,7 +243,7 @@ pub enum Message {
 impl MessageTrait for Message {}
 
 fn build_check_effect(
-    local_model: &impl LocalModel,
+    local_model: &LocalModel,
     global_model: &impl GlobalModel,
     override_company: Option<CompanyUuid>,
     mutate: impl FnOnce(&mut AsyncInput),
@@ -255,10 +258,10 @@ fn build_check_effect(
     };
     let mut a = AsyncInput {
         user_uuid,
-        is_debit: local_model.is_debit().read(),
-        is_permanent_account: local_model.is_permanent_account().read(),
-        account_name: local_model.account_name().read(),
-        unit_of_measurement_of_quantity: local_model.unit_of_measurement_of_quantity().read(),
+        is_debit: local_model.is_debit.clone(),
+        is_permanent_account: local_model.is_permanent_account.clone(),
+        account_name: local_model.account_name.clone(),
+        unit_of_measurement_of_quantity: local_model.unit_of_measurement_of_quantity.clone(),
         belong_to_company,
     };
     mutate(&mut a);
@@ -267,15 +270,15 @@ fn build_check_effect(
 
 pub fn update(
     msg: Message,
-    local_model: &impl LocalModel,
+    local_model: &LocalModel,
     global_model: &impl GlobalModel,
-) -> (Vec<Change>, Vec<Effect>) {
+) -> (Vec<LocalChange>, Vec<GlobalChange>, Vec<Effect>) {
     if let Message::Intent(ref a) = msg {
         match a {
             Intent::Consent(_) | Intent::Subscribe | Intent::UnSubscribe => {}
             _ => {
-                if local_model.async_state().read().is_loading() {
-                    return (vec![], vec![]);
+                if local_model.async_state.clone().is_loading() {
+                    return (vec![], vec![], vec![]);
                 }
             }
         }
@@ -285,30 +288,30 @@ pub fn update(
         Message::Intent(intent) => match intent {
             Intent::Submit => {
                 let Some(user_uuid) = global_model.user_uuid() else {
-                    return (vec![], vec![]);
+                    return (vec![], vec![], vec![]);
                 };
 
                 let Some(belong_to_company) = resolved_company_uuid(local_model, global_model)
                 else {
-                    return (vec![], vec![]);
+                    return (vec![], vec![], vec![]);
                 };
 
                 let async_input = AsyncInput {
                     user_uuid,
-                    is_debit: local_model.is_debit().read(),
-                    is_permanent_account: local_model.is_permanent_account().read(),
-                    account_name: local_model.account_name().read(),
+                    is_debit: local_model.is_debit.clone(),
+                    is_permanent_account: local_model.is_permanent_account.clone(),
+                    account_name: local_model.account_name.clone(),
                     unit_of_measurement_of_quantity: local_model
-                        .unit_of_measurement_of_quantity()
-                        .read(),
+                        .unit_of_measurement_of_quantity
+                        .clone(),
                     belong_to_company,
                 };
 
-                let change = vec![
-                    Change::AsyncState(AsyncState::Loading {
+                let local_change = vec![
+                    LocalChange::AsyncState(AsyncState::Loading {
                         input: async_input.clone(),
                     }),
-                    Change::ShowDialog(Dialog::Hide),
+                    LocalChange::ShowDialog(Dialog::Hide),
                 ];
 
                 let effect = vec![
@@ -319,43 +322,43 @@ pub fn update(
                     },
                 ];
 
-                (change, effect)
+                (local_change, vec![], effect)
             }
             Intent::Consent(v) => {
-                let (change, effect) = match v {
+                let (local_change, effect) = match v {
                     UserConsent::CancelOperation => (
                         vec![
-                            Change::ShowDialog(Dialog::Hide),
-                            Change::AsyncState(AsyncState::Idle),
+                            LocalChange::ShowDialog(Dialog::Hide),
+                            LocalChange::AsyncState(AsyncState::Idle),
                         ],
                         vec![],
                     ),
                     UserConsent::WaitForServerResponse => (
-                        vec![Change::ShowDialog(Dialog::Hide)],
+                        vec![LocalChange::ShowDialog(Dialog::Hide)],
                         vec![Effect::SpawnTimer],
                     ),
                     UserConsent::DontWaitForServerResponse => {
                         let Some(user_uuid) = global_model.user_uuid() else {
-                            return (vec![], vec![]);
+                            return (vec![], vec![], vec![]);
                         };
                         let Some(belong_to_company) =
                             resolved_company_uuid(local_model, global_model)
                         else {
-                            return (vec![], vec![]);
+                            return (vec![], vec![], vec![]);
                         };
                         let async_input = AsyncInput {
                             user_uuid,
-                            is_debit: local_model.is_debit().read(),
-                            is_permanent_account: local_model.is_permanent_account().read(),
-                            account_name: local_model.account_name().read(),
+                            is_debit: local_model.is_debit.clone(),
+                            is_permanent_account: local_model.is_permanent_account.clone(),
+                            account_name: local_model.account_name.clone(),
                             unit_of_measurement_of_quantity: local_model
-                                .unit_of_measurement_of_quantity()
-                                .read(),
+                                .unit_of_measurement_of_quantity
+                                .clone(),
                             belong_to_company,
                         };
 
                         (
-                            vec![Change::ShowDialog(Dialog::Hide)],
+                            vec![LocalChange::ShowDialog(Dialog::Hide)],
                             vec![Effect::Submit {
                                 async_input,
                                 is_to_server: false,
@@ -364,50 +367,50 @@ pub fn update(
                     }
                 };
 
-                (change, effect)
+                (local_change, vec![], effect)
             }
             Intent::Clean => {
-                let change = vec![
-                    Change::ShowDialog(Default::default()),
-                    Change::IsDebit(Default::default()),
-                    Change::IsPermanentAccount(Default::default()),
-                    Change::AccountName(Default::default()),
-                    Change::UnitOfMeasurementOfQuantity(Default::default()),
-                    Change::SelectedCompanyName(Default::default()),
-                    Change::AsyncState(AsyncState::Idle),
+                let local_change = vec![
+                    LocalChange::ShowDialog(Default::default()),
+                    LocalChange::IsDebit(Default::default()),
+                    LocalChange::IsPermanentAccount(Default::default()),
+                    LocalChange::AccountName(Default::default()),
+                    LocalChange::UnitOfMeasurementOfQuantity(Default::default()),
+                    LocalChange::SelectedCompanyName(Default::default()),
+                    LocalChange::AsyncState(AsyncState::Idle),
                 ];
-                (change, vec![])
+                (local_change, vec![], vec![])
             }
             Intent::IsDebit(v) => {
-                let change = vec![Change::IsDebit(v)];
+                let local_change = vec![LocalChange::IsDebit(v)];
                 let effect = build_check_effect(local_model, global_model, None, |a| {
                     a.is_debit = v;
                 });
-                (change, effect)
+                (local_change, vec![], effect)
             }
             Intent::IsPermanentAccount(v) => {
-                let change = vec![Change::IsPermanentAccount(v)];
+                let local_change = vec![LocalChange::IsPermanentAccount(v)];
                 let effect = build_check_effect(local_model, global_model, None, |a| {
                     a.is_permanent_account = v;
                 });
-                (change, effect)
+                (local_change, vec![], effect)
             }
             Intent::AccountName(v) => {
-                let change = vec![Change::AccountName(v.clone())];
+                let local_change = vec![LocalChange::AccountName(v.clone())];
                 let effect = build_check_effect(local_model, global_model, None, |a| {
                     a.account_name = v;
                 });
-                (change, effect)
+                (local_change, vec![], effect)
             }
             Intent::UnitOfMeasurementOfQuantity(v) => {
-                let change = vec![Change::UnitOfMeasurementOfQuantity(v.clone())];
+                let local_change = vec![LocalChange::UnitOfMeasurementOfQuantity(v.clone())];
                 let effect = build_check_effect(local_model, global_model, None, |a| {
                     a.unit_of_measurement_of_quantity = v;
                 });
-                (change, effect)
+                (local_change, vec![], effect)
             }
             Intent::CompanyName(v) => {
-                let change = vec![Change::SelectedCompanyName(v.clone())];
+                let local_change = vec![LocalChange::SelectedCompanyName(v.clone())];
                 let resolved = if v.is_empty() {
                     global_model.selected_company()
                 } else {
@@ -417,81 +420,86 @@ pub fn update(
                         .find_map(|(uuid, name)| (name == v).then_some(uuid))
                 };
                 let effect = build_check_effect(local_model, global_model, resolved, |_| {});
-                (change, effect)
+                (local_change, vec![], effect)
             }
             Intent::SelectedCompany(idx) => {
                 let list = list_of_companies_to_display(local_model, global_model);
                 match list.get(idx) {
                     Some((company_uuid, company_name)) => {
-                        let change = vec![Change::SelectedCompanyName(company_name.clone())];
+                        let local_change =
+                            vec![LocalChange::SelectedCompanyName(company_name.clone())];
                         let effect = build_check_effect(
                             local_model,
                             global_model,
                             Some(company_uuid.clone()),
                             |_| {},
                         );
-                        (change, effect)
+                        (local_change, vec![], effect)
                     }
-                    None => (vec![], vec![]),
+                    None => (vec![], vec![], vec![]),
                 }
             }
             Intent::Subscribe => {
                 let effect = vec![Effect::Subscribe];
-                (vec![], effect)
+                (vec![], vec![], effect)
             }
             Intent::UnSubscribe => {
                 let effect = vec![Effect::UnSubscribe];
-                (vec![], effect)
+                (vec![], vec![], effect)
             }
         },
         Message::Observe(observe) => match observe {
             Observe::Timeout => {
-                let change = match local_model.async_state().read() {
-                    AsyncState::Loading { .. } => vec![Change::ShowDialog(Dialog::Show)],
+                let change = match local_model.async_state.clone() {
+                    AsyncState::Loading { .. } => vec![LocalChange::ShowDialog(Dialog::Show)],
                     _ => vec![],
                 };
-                (change, vec![])
+                (change, vec![], vec![])
             }
             Observe::Result(result) => {
                 let change = match result {
                     AsyncState::Success { .. } => {
                         vec![
-                            Change::ShowDialog(Default::default()),
-                            Change::AccountName(Default::default()),
-                            Change::IsDebit(Default::default()),
-                            Change::IsPermanentAccount(Default::default()),
-                            Change::UnitOfMeasurementOfQuantity(Default::default()),
-                            Change::SelectedCompanyName(Default::default()),
-                            Change::AsyncState(result),
+                            LocalChange::ShowDialog(Default::default()),
+                            LocalChange::AccountName(Default::default()),
+                            LocalChange::IsDebit(Default::default()),
+                            LocalChange::IsPermanentAccount(Default::default()),
+                            LocalChange::UnitOfMeasurementOfQuantity(Default::default()),
+                            LocalChange::SelectedCompanyName(Default::default()),
+                            LocalChange::AsyncState(result),
                         ]
                     }
                     _ => vec![
-                        Change::ShowDialog(Default::default()),
-                        Change::AsyncState(result),
+                        LocalChange::ShowDialog(Default::default()),
+                        LocalChange::AsyncState(result),
                     ],
                 };
-                (change, vec![])
+                (change, vec![], vec![])
             }
             Observe::Refresh => {
                 let effect = build_check_effect(local_model, global_model, None, |_| {});
-                (vec![], effect)
+                (vec![], vec![], effect)
             }
         },
     }
 }
 
-pub fn apply(msg: Change, local_model: &impl LocalModel, _global_model: &impl GlobalModel) {
+pub fn local_apply(msg: LocalChange, local_model: &mut LocalModel) {
     match msg {
-        Change::ShowDialog(i) => local_model.show_dialog().set(i),
-        Change::IsDebit(i) => local_model.is_debit().set(i),
-        Change::IsPermanentAccount(i) => local_model.is_permanent_account().set(i),
-        Change::AccountName(i) => local_model.account_name().set(i),
-        Change::UnitOfMeasurementOfQuantity(i) => {
-            local_model.unit_of_measurement_of_quantity().set(i)
+        LocalChange::ShowDialog(i) => local_model.show_dialog = i,
+        LocalChange::IsDebit(i) => local_model.is_debit = i,
+        LocalChange::IsPermanentAccount(i) => local_model.is_permanent_account = i,
+        LocalChange::AccountName(i) => local_model.account_name = i,
+        LocalChange::UnitOfMeasurementOfQuantity(i) => {
+            local_model.unit_of_measurement_of_quantity = i
         }
-        Change::SelectedCompanyName(i) => local_model.selected_company_name().set(i),
-        Change::AsyncState(i) => local_model.async_state().set(i),
+        LocalChange::SelectedCompanyName(i) => local_model.selected_company_name = i,
+        LocalChange::AsyncState(i) => local_model.async_state = i,
     }
+}
+
+pub fn global_apply(msg: GlobalChange, global_model: &mut impl GlobalModel) {
+    match msg {}
 }
 
 pub async fn effect(msg: Effect, process_id: ProcessId, context: UiContext) -> Result<()> {

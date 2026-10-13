@@ -43,7 +43,6 @@ use utility::ui_orchestration::handle_submit;
 use utility::ui_orchestration::handle_subscribe;
 use utility::ui_orchestration::handle_unsubscribe;
 use utility_ui::domain::Dialog;
-use utility_ui::domain::HashimSignal;
 
 const RESOURCES_NAME_TO_POKE: &[ResourceName] = &[new_resource_name("branches")];
 const RESOURCES_NAME_TO_LISTEN: &[ResourceName] = &[new_resource_name("branches")];
@@ -100,13 +99,14 @@ pub trait GlobalModel {
     fn list_of_companies(&self) -> Vec<(CompanyUuid, String)>;
 }
 
-pub trait LocalModel {
-    fn show_dialog(&self) -> impl HashimSignal<Dialog>;
-    fn company_name(&self) -> impl HashimSignal<String>;
-    fn branch_name(&self) -> impl HashimSignal<String>;
-    fn currency(&self) -> impl HashimSignal<Currency>;
-    fn location(&self) -> impl HashimSignal<Location>;
-    fn async_state(&self) -> impl HashimSignal<AsyncState>;
+#[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
+pub struct LocalModel {
+    pub show_dialog: Dialog,
+    pub company_name: String,
+    pub branch_name: String,
+    pub currency: Currency,
+    pub location: Location,
+    pub async_state: AsyncState,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
@@ -115,7 +115,7 @@ pub enum CompanyNameError {
     NotExist,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct AsyncInput {
     pub user_uuid: UserUuid,
     pub company_belong: CompanyUuid,
@@ -124,25 +124,25 @@ pub struct AsyncInput {
     pub location: Location,
 }
 
-pub fn error_branch_name(local_model: &impl LocalModel) -> Option<BranchNameError> {
-    match local_model.async_state().read() {
+pub fn error_branch_name(local_model: &LocalModel) -> Option<BranchNameError> {
+    match local_model.async_state.clone() {
         AsyncState::Failure { error, .. } => error.branch_name,
         _ => None,
     }
 }
 
-pub fn error_location(local_model: &impl LocalModel) -> Option<LocationError> {
-    match local_model.async_state().read() {
+pub fn error_location(local_model: &LocalModel) -> Option<LocationError> {
+    match local_model.async_state.clone() {
         AsyncState::Failure { error, .. } => error.location,
         _ => None,
     }
 }
 
 pub fn resolved_company_uuid(
-    local_model: &impl LocalModel,
+    local_model: &LocalModel,
     global_model: &impl GlobalModel,
 ) -> Option<CompanyUuid> {
-    let typed = local_model.company_name().read();
+    let typed = local_model.company_name.clone();
     if typed.is_empty() {
         return global_model.selected_company();
     }
@@ -153,10 +153,10 @@ pub fn resolved_company_uuid(
 }
 
 pub fn company_name_error(
-    local_model: &impl LocalModel,
+    local_model: &LocalModel,
     global_model: &impl GlobalModel,
 ) -> Option<CompanyNameError> {
-    let typed = local_model.company_name().read();
+    let typed = local_model.company_name.clone();
     if typed.is_empty() {
         if global_model.selected_company().is_none() {
             return Some(CompanyNameError::NotSelected);
@@ -171,10 +171,10 @@ pub fn company_name_error(
 }
 
 pub fn list_of_companies_to_display(
-    local_model: &impl LocalModel,
+    local_model: &LocalModel,
     global_model: &impl GlobalModel,
 ) -> Vec<(CompanyUuid, String)> {
-    let typed = local_model.company_name().read();
+    let typed = local_model.company_name.clone();
     let list = global_model.list_of_companies();
     if typed.is_empty() {
         return list;
@@ -183,7 +183,7 @@ pub fn list_of_companies_to_display(
 }
 
 #[derive(Debug, Clone)]
-pub enum Change {
+pub enum LocalChange {
     ShowDialog(Dialog),
     CompanyName(String),
     BranchName(String),
@@ -191,6 +191,9 @@ pub enum Change {
     Location(Location),
     AsyncState(AsyncState),
 }
+
+#[derive(Debug, Clone)]
+pub enum GlobalChange {}
 
 #[derive(Debug, Clone)]
 pub enum Effect {
@@ -237,7 +240,7 @@ pub enum Message {
 impl MessageTrait for Message {}
 
 fn build_check_effect(
-    local_model: &impl LocalModel,
+    local_model: &LocalModel,
     global_model: &impl GlobalModel,
     override_company: Option<CompanyUuid>,
     mutate: impl FnOnce(&mut AsyncInput),
@@ -253,9 +256,9 @@ fn build_check_effect(
     let mut a = AsyncInput {
         user_uuid,
         company_belong,
-        branch_name: local_model.branch_name().read(),
-        currency: local_model.currency().read(),
-        location: local_model.location().read(),
+        branch_name: local_model.branch_name.clone(),
+        currency: local_model.currency.clone(),
+        location: local_model.location.clone(),
     };
     mutate(&mut a);
     vec![Effect::Check { async_input: a }]
@@ -263,15 +266,15 @@ fn build_check_effect(
 
 pub fn update(
     msg: Message,
-    local_model: &impl LocalModel,
+    local_model: &LocalModel,
     global_model: &impl GlobalModel,
-) -> (Vec<Change>, Vec<Effect>) {
+) -> (Vec<LocalChange>, Vec<GlobalChange>, Vec<Effect>) {
     if let Message::Intent(ref a) = msg {
         match a {
             Intent::Consent(_) | Intent::Subscribe | Intent::UnSubscribe => {}
             _ => {
-                if local_model.async_state().read().is_loading() {
-                    return (vec![], vec![]);
+                if local_model.async_state.clone().is_loading() {
+                    return (vec![], vec![], vec![]);
                 }
             }
         }
@@ -281,26 +284,26 @@ pub fn update(
         Message::Intent(intent) => match intent {
             Intent::Submit => {
                 let Some(user_uuid) = global_model.user_uuid() else {
-                    return (vec![], vec![]);
+                    return (vec![], vec![], vec![]);
                 };
 
                 let Some(company_belong) = resolved_company_uuid(local_model, global_model) else {
-                    return (vec![], vec![]);
+                    return (vec![], vec![], vec![]);
                 };
 
                 let async_input = AsyncInput {
                     user_uuid,
                     company_belong,
-                    branch_name: local_model.branch_name().read(),
-                    currency: local_model.currency().read(),
-                    location: local_model.location().read(),
+                    branch_name: local_model.branch_name.clone(),
+                    currency: local_model.currency.clone(),
+                    location: local_model.location.clone(),
                 };
 
-                let change = vec![
-                    Change::AsyncState(AsyncState::Loading {
+                let local_change = vec![
+                    LocalChange::AsyncState(AsyncState::Loading {
                         input: async_input.clone(),
                     }),
-                    Change::ShowDialog(Dialog::Hide),
+                    LocalChange::ShowDialog(Dialog::Hide),
                 ];
 
                 let effect = vec![
@@ -311,39 +314,39 @@ pub fn update(
                     },
                 ];
 
-                (change, effect)
+                (local_change, vec![], effect)
             }
             Intent::Consent(v) => {
-                let (change, effect) = match v {
+                let (local_change, effect) = match v {
                     UserConsent::CancelOperation => (
                         vec![
-                            Change::ShowDialog(Dialog::Hide),
-                            Change::AsyncState(AsyncState::Idle),
+                            LocalChange::ShowDialog(Dialog::Hide),
+                            LocalChange::AsyncState(AsyncState::Idle),
                         ],
                         vec![],
                     ),
                     UserConsent::WaitForServerResponse => (
-                        vec![Change::ShowDialog(Dialog::Hide)],
+                        vec![LocalChange::ShowDialog(Dialog::Hide)],
                         vec![Effect::SpawnTimer],
                     ),
                     UserConsent::DontWaitForServerResponse => {
                         let Some(user_uuid) = global_model.user_uuid() else {
-                            return (vec![], vec![]);
+                            return (vec![], vec![], vec![]);
                         };
                         let Some(company_belong) = resolved_company_uuid(local_model, global_model)
                         else {
-                            return (vec![], vec![]);
+                            return (vec![], vec![], vec![]);
                         };
                         let async_input = AsyncInput {
                             user_uuid,
                             company_belong,
-                            branch_name: local_model.branch_name().read(),
-                            currency: local_model.currency().read(),
-                            location: local_model.location().read(),
+                            branch_name: local_model.branch_name.clone(),
+                            currency: local_model.currency.clone(),
+                            location: local_model.location.clone(),
                         };
 
                         (
-                            vec![Change::ShowDialog(Dialog::Hide)],
+                            vec![LocalChange::ShowDialog(Dialog::Hide)],
                             vec![Effect::Submit {
                                 async_input,
                                 is_to_server: false,
@@ -352,21 +355,21 @@ pub fn update(
                     }
                 };
 
-                (change, effect)
+                (local_change, vec![], effect)
             }
             Intent::Clean => {
-                let change = vec![
-                    Change::ShowDialog(Default::default()),
-                    Change::CompanyName(Default::default()),
-                    Change::BranchName(Default::default()),
-                    Change::Currency(Default::default()),
-                    Change::Location(Default::default()),
-                    Change::AsyncState(AsyncState::Idle),
+                let local_change = vec![
+                    LocalChange::ShowDialog(Default::default()),
+                    LocalChange::CompanyName(Default::default()),
+                    LocalChange::BranchName(Default::default()),
+                    LocalChange::Currency(Default::default()),
+                    LocalChange::Location(Default::default()),
+                    LocalChange::AsyncState(AsyncState::Idle),
                 ];
-                (change, vec![])
+                (local_change, vec![], vec![])
             }
             Intent::CompanyName(v) => {
-                let change = vec![Change::CompanyName(v.clone())];
+                let local_change = vec![LocalChange::CompanyName(v.clone())];
                 let resolved = if v.is_empty() {
                     global_model.selected_company()
                 } else {
@@ -376,111 +379,115 @@ pub fn update(
                         .find_map(|(uuid, name)| (name == v).then_some(uuid))
                 };
                 let effect = build_check_effect(local_model, global_model, resolved, |_| {});
-                (change, effect)
+                (local_change, vec![], effect)
             }
             Intent::SelectedCompany(idx) => {
                 let list = list_of_companies_to_display(local_model, global_model);
                 match list.get(idx) {
                     Some((company_uuid, company_name)) => {
-                        let change = vec![Change::CompanyName(company_name.clone())];
+                        let local_change = vec![LocalChange::CompanyName(company_name.clone())];
                         let effect = build_check_effect(
                             local_model,
                             global_model,
                             Some(company_uuid.clone()),
                             |_| {},
                         );
-                        (change, effect)
+                        (local_change, vec![], effect)
                     }
-                    None => (vec![], vec![]),
+                    None => (vec![], vec![], vec![]),
                 }
             }
             Intent::BranchName(v) => {
-                let change = vec![Change::BranchName(v.clone())];
+                let local_change = vec![LocalChange::BranchName(v.clone())];
                 let effect = build_check_effect(local_model, global_model, None, |a| {
                     a.branch_name = v;
                 });
-                (change, effect)
+                (local_change, vec![], effect)
             }
             Intent::Currency(v) => {
-                let change = vec![Change::Currency(v.clone())];
+                let local_change = vec![LocalChange::Currency(v.clone())];
                 let effect = build_check_effect(local_model, global_model, None, |a| {
                     a.currency = v;
                 });
-                (change, effect)
+                (local_change, vec![], effect)
             }
             Intent::Latitude(v) => {
-                let mut loc = local_model.location().read();
+                let mut loc = local_model.location.clone();
                 loc.latitude = v;
                 let loc_for_effect = loc.clone();
-                let change = vec![Change::Location(loc)];
+                let local_change = vec![LocalChange::Location(loc)];
                 let effect = build_check_effect(local_model, global_model, None, |a| {
                     a.location = loc_for_effect;
                 });
-                (change, effect)
+                (local_change, vec![], effect)
             }
             Intent::Longitude(v) => {
-                let mut loc = local_model.location().read();
+                let mut loc = local_model.location.clone();
                 loc.longitude = v;
                 let loc_for_effect = loc.clone();
-                let change = vec![Change::Location(loc)];
+                let local_change = vec![LocalChange::Location(loc)];
                 let effect = build_check_effect(local_model, global_model, None, |a| {
                     a.location = loc_for_effect;
                 });
-                (change, effect)
+                (local_change, vec![], effect)
             }
             Intent::Subscribe => {
                 let effect = vec![Effect::Subscribe];
-                (vec![], effect)
+                (vec![], vec![], effect)
             }
             Intent::UnSubscribe => {
                 let effect = vec![Effect::UnSubscribe];
-                (vec![], effect)
+                (vec![], vec![], effect)
             }
         },
         Message::Observe(observe) => match observe {
             Observe::Timeout => {
-                let change = match local_model.async_state().read() {
-                    AsyncState::Loading { .. } => vec![Change::ShowDialog(Dialog::Show)],
+                let local_change = match local_model.async_state.clone() {
+                    AsyncState::Loading { .. } => vec![LocalChange::ShowDialog(Dialog::Show)],
                     _ => vec![],
                 };
-                (change, vec![])
+                (local_change, vec![], vec![])
             }
             Observe::Result(result) => {
-                let change = match result {
+                let local_change = match result {
                     AsyncState::Success { .. } => {
                         vec![
-                            Change::ShowDialog(Default::default()),
-                            Change::CompanyName(Default::default()),
-                            Change::BranchName(Default::default()),
-                            Change::Currency(Default::default()),
-                            Change::Location(Default::default()),
-                            Change::AsyncState(result),
+                            LocalChange::ShowDialog(Default::default()),
+                            LocalChange::CompanyName(Default::default()),
+                            LocalChange::BranchName(Default::default()),
+                            LocalChange::Currency(Default::default()),
+                            LocalChange::Location(Default::default()),
+                            LocalChange::AsyncState(result),
                         ]
                     }
                     _ => vec![
-                        Change::ShowDialog(Default::default()),
-                        Change::AsyncState(result),
+                        LocalChange::ShowDialog(Default::default()),
+                        LocalChange::AsyncState(result),
                     ],
                 };
-                (change, vec![])
+                (local_change, vec![], vec![])
             }
             Observe::Refresh => {
                 let effect = build_check_effect(local_model, global_model, None, |_| {});
-                (vec![], effect)
+                (vec![], vec![], effect)
             }
         },
     }
 }
 
-pub fn apply(msg: Change, local_model: &impl LocalModel, _global_model: &impl GlobalModel) {
+pub fn local_apply(msg: LocalChange, local_model: &mut LocalModel) {
     match msg {
-        Change::ShowDialog(i) => local_model.show_dialog().set(i),
-        Change::CompanyName(i) => local_model.company_name().set(i),
-        Change::BranchName(i) => local_model.branch_name().set(i),
-        Change::Currency(i) => local_model.currency().set(i),
-        Change::Location(i) => local_model.location().set(i),
-        Change::AsyncState(i) => local_model.async_state().set(i),
+        LocalChange::ShowDialog(i) => local_model.show_dialog = i,
+        LocalChange::CompanyName(i) => local_model.company_name = i,
+        LocalChange::BranchName(i) => local_model.branch_name = i,
+        LocalChange::Currency(i) => local_model.currency = i,
+        LocalChange::Location(i) => local_model.location = i,
+        LocalChange::AsyncState(i) => local_model.async_state = i,
     }
+}
+
+pub fn global_apply(msg: GlobalChange, global_model: &mut impl GlobalModel) {
+    match msg {}
 }
 
 pub async fn effect(msg: Effect, process_id: ProcessId, context: UiContext) -> Result<()> {

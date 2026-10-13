@@ -1,24 +1,7 @@
-use crate::client::AsyncState;
 use crate::client::Intent;
-use crate::client::LocalModel;
 use dioxus::prelude::*;
 use kernel::new_types::BranchUuid;
 use kernel::new_types::CompanyUuid;
-use serde::Deserialize;
-use serde::Serialize;
-use utility_ui::domain::HashimSignal;
-use utility_ui::my_signal::MySignal;
-
-#[derive(Debug, Default, Deserialize, Serialize)]
-pub struct TypeLocalModel {
-    async_state: MySignal<AsyncState>,
-}
-
-impl LocalModel for TypeLocalModel {
-    fn async_state(&self) -> impl HashimSignal<AsyncState> {
-        self.async_state.clone()
-    }
-}
 
 #[component]
 pub fn Component(

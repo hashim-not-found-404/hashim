@@ -15,6 +15,8 @@ pub trait HashimSignal<T: Clone + Default + DeserializeOwned + Serialize + 'stat
     }
     fn read(&self) -> T;
     fn set(&self, v: T);
+    fn with_ref<R>(&self, f: impl FnOnce(&T) -> R) -> R;
+    fn with_mut<R>(&self, f: impl FnOnce(&mut T) -> R) -> R;
 }
 
 #[derive(Debug, Default)]

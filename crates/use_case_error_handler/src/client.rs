@@ -14,7 +14,6 @@ use utility::cache::ProcessId;
 use utility::ui_effect::Commander;
 use utility::ui_effect::MessageTrait;
 use utility::ui_effect::UiContext;
-use utility_ui::domain::HashimSignal;
 
 pub fn spawn_listener(mut receiver_to_error: MpscReceiver<anyhow::Error>, commander: Commander) {
     Rt::spawn_local(async move {
@@ -59,16 +58,20 @@ pub struct ErrorList(pub Vec<ErrorInfo>);
 
 pub trait GlobalModel {}
 
-pub trait LocalModel {
-    fn is_expand_all(&self) -> impl HashimSignal<bool>;
-    fn errors(&self) -> impl HashimSignal<ErrorList>;
+#[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
+pub struct LocalModel {
+    pub is_expand_all: bool,
+    pub errors: ErrorList,
 }
 
 #[derive(Debug, Clone)]
-pub enum Change {
+pub enum LocalChange {
     IsExpandAll(bool),
     Errors(ErrorList),
 }
+
+#[derive(Debug, Clone)]
+pub enum GlobalChange {}
 
 #[derive(Debug, Clone)]
 pub enum Effect {}
@@ -100,28 +103,32 @@ impl MessageTrait for Message {}
 
 pub fn update(
     msg: Message,
-    local_model: &impl LocalModel,
+    local_model: &LocalModel,
     _: &impl GlobalModel,
-) -> (Vec<Change>, Vec<Effect>) {
+) -> (Vec<LocalChange>, Vec<GlobalChange>, Vec<Effect>) {
     match msg {
         Message::Intent(intent) => match intent {
             Intent::DeleteOne(i) => {
-                let mut err = local_model.errors().read();
+                let mut err = local_model.errors.clone();
                 err.0.remove(i);
-                (vec![Change::Errors(err)], vec![])
+                (vec![LocalChange::Errors(err)], vec![], vec![])
             }
-            Intent::DeleteAll => (vec![Change::Errors(ErrorList::default())], vec![]),
+            Intent::DeleteAll => (
+                vec![LocalChange::Errors(ErrorList::default())],
+                vec![],
+                vec![],
+            ),
             Intent::ExpandOrCollapseAll => {
-                let a = local_model.is_expand_all().read();
-                (vec![Change::IsExpandAll(a ^ true)], vec![])
+                let a = local_model.is_expand_all.clone();
+                (vec![LocalChange::IsExpandAll(a ^ true)], vec![], vec![])
             }
             Intent::ExpandOrCollapseOne(i) => {
-                let mut err = local_model.errors().read();
+                let mut err = local_model.errors.clone();
                 let Some(entry) = err.0.get_mut(i) else {
-                    return (vec![], vec![]);
+                    return (vec![], vec![], vec![]);
                 };
                 entry.is_expand ^= true;
-                (vec![Change::Errors(err)], vec![])
+                (vec![LocalChange::Errors(err)], vec![], vec![])
             }
         },
         Message::Observe(observe) => match observe {
@@ -130,7 +137,7 @@ pub fn update(
                 time_unix_ms,
                 back_trace,
             } => {
-                let mut errors = local_model.errors().read();
+                let mut errors = local_model.errors.clone();
                 match errors.0.iter_mut().find(|e| e.name == name) {
                     Some(entry) => {
                         if entry.back_trace.is_none() {
@@ -150,17 +157,21 @@ pub fn update(
                     }
                 }
                 errors.0.sort_by_key(|e| e.time_unix_ms);
-                (vec![Change::Errors(errors)], vec![])
+                (vec![LocalChange::Errors(errors)], vec![], vec![])
             }
         },
     }
 }
 
-pub fn apply(msg: Change, local_model: &impl LocalModel, _: &impl GlobalModel) {
+pub fn local_apply(msg: LocalChange, local_model: &mut LocalModel) {
     match msg {
-        Change::IsExpandAll(i) => local_model.is_expand_all().set(i),
-        Change::Errors(i) => local_model.errors().set(i),
+        LocalChange::IsExpandAll(i) => local_model.is_expand_all = i,
+        LocalChange::Errors(i) => local_model.errors = i,
     }
+}
+
+pub fn global_apply(msg: GlobalChange, _: &mut impl GlobalModel) {
+    match msg {}
 }
 
 pub async fn effect(_: Effect, _: ProcessId, _: UiContext) -> Result<()> {

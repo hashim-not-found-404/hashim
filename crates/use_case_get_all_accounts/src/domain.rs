@@ -32,13 +32,13 @@ pub struct Input {
     pub(crate) company_uuid: CompanyUuid,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct Ok {
     pub(crate) company_uuid: CompanyUuid,
     pub(crate) data: Vec<Data>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct Data {
     pub row_uuid: AccountUuid,
     pub is_debit: bool,

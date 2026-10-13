@@ -1,28 +1,7 @@
 use crate::client::ErrorList;
 use crate::client::Intent;
-use crate::client::LocalModel;
 use chrono::DateTime;
 use dioxus::prelude::*;
-use serde::Deserialize;
-use serde::Serialize;
-use utility_ui::domain::HashimSignal;
-use utility_ui::my_signal::MySignal;
-
-#[derive(Debug, Default, Deserialize, Serialize)]
-pub struct TypeLocalModel {
-    is_expand_all: MySignal<bool>,
-    errors: MySignal<ErrorList>,
-}
-
-impl LocalModel for TypeLocalModel {
-    fn is_expand_all(&self) -> impl HashimSignal<bool> {
-        self.is_expand_all.clone()
-    }
-
-    fn errors(&self) -> impl HashimSignal<ErrorList> {
-        self.errors.clone()
-    }
-}
 
 #[component]
 pub fn Component(sender: EventHandler<Intent>, is_expand_all: bool, errors: ErrorList) -> Element {

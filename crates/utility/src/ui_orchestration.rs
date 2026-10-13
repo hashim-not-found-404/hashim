@@ -15,16 +15,16 @@ pub enum UserConsent {
     CancelOperation,
 }
 
-#[derive(Debug, Clone, Default, Deserialize, Serialize)]
+#[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
 #[serde(bound(
     deserialize = "Input: DeserializeOwned, Ok: DeserializeOwned, Error: DeserializeOwned",
     serialize = "Input: Serialize, Ok: Serialize, Error: Serialize",
 ))]
 pub enum GenricAsyncState<Input, Ok, Error>
 where
-    Input: Debug + Clone,
-    Ok: Debug + Clone,
-    Error: Debug + Clone,
+    Input: Debug + Clone + PartialEq,
+    Ok: Debug + Clone + PartialEq,
+    Error: Debug + Clone + PartialEq,
 {
     #[default]
     Idle,
@@ -43,9 +43,9 @@ where
 
 impl<Input, Ok, Error> GenricAsyncState<Input, Ok, Error>
 where
-    Input: Debug + Clone,
-    Ok: Debug + Clone,
-    Error: Debug + Clone,
+    Input: Debug + Clone + PartialEq,
+    Ok: Debug + Clone + PartialEq,
+    Error: Debug + Clone + PartialEq,
 {
     pub fn is_loading(&self) -> bool {
         matches!(self, GenricAsyncState::Loading { .. })
