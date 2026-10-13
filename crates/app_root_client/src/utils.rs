@@ -1,16 +1,20 @@
 use crate::model::TypeGlobalModel;
 use crate::wire::MyCaster;
+use anyhow::Result;
 use cache::cache_adapter;
 use infrastructure::actors::Mpsc;
 use infrastructure::actors::MultiProducerSingleConsumer;
 use kernel::ui_construct::new;
 use std::ops::Deref;
+use std::pin::Pin;
+use std::sync::Arc;
 use std::sync::LazyLock;
 use use_case_error_handler::client::spawn_listener;
-use utility::cache::ProcessId;
 use utility::ui_effect::Commander;
 use utility::ui_effect::MessageTrait;
+use utility::ui_effect::Replier;
 use utility::ui_effect::SigNaaaaaaaaaaaaaaaaal;
+use utility::ui_effect::new_replier;
 use utility_ui::my_signal::MySignal;
 
 pub(crate) static MODEL: LazyLock<NewType> =
@@ -45,8 +49,16 @@ static COMMANDER: LazyLock<Commander> = LazyLock::new(|| {
     commander
 });
 
-pub(crate) fn send<Msg: MessageTrait>(process_id: ProcessId, msg: Msg) {
-    COMMANDER.send(process_id, msg);
+pub(crate) fn send(replier: Replier, msg: impl MessageTrait) {
+    COMMANDER.send(replier, msg);
+}
+
+pub(crate) async fn async_send(msg: Box<dyn MessageTrait>) -> Result<()> {
+    COMMANDER.async_send_box(no_reply(), msg).await
+}
+
+fn no_reply() -> Replier {
+    new_replier(async |a| -> Result<()> { Ok(()) })
 }
 
 pub(crate) fn init_commander_and_model() {

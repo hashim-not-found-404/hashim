@@ -12,7 +12,6 @@ use std::backtrace::BacktraceStatus;
 use std::fmt::Debug;
 use std::pin::Pin;
 use std::sync::Arc;
-use utility::cache::ProcessId;
 use utility::ui_effect::Commander;
 use utility::ui_effect::MessageTrait;
 use utility::ui_effect::Replier;
@@ -182,6 +181,6 @@ pub fn global_apply(msg: GlobalChange, _: &mut impl GlobalModel) {
     match msg {}
 }
 
-pub async fn effect(_: Effect, _: ProcessId, _: UiContext) -> Result<()> {
+pub async fn effect(_: Effect, _: Replier, _: UiContext) -> Result<()> {
     Ok(())
 }

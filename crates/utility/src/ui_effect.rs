@@ -3,6 +3,7 @@ use crate::handle_errors::handle_error;
 use anyhow::Error;
 use anyhow::Result;
 use dyn_clone::DynClone;
+use dyn_clone::clone_trait_object;
 use infrastructure::actors::Mpsc;
 use infrastructure::actors::MpscReceiver;
 use infrastructure::actors::MpscSender;
@@ -27,7 +28,22 @@ pub trait MessageTrait: Any + Debug + 'static + Send + DynClone {
     // here it should have method that return serializable dyn trait for the intent to store it
 }
 
-pub type Replier = Arc<dyn Fn(Box<dyn MessageTrait>) -> Pin<Box<dyn Future<Output = Result<()>>>>>;
+clone_trait_object!(MessageTrait);
+
+pub type Replier =
+    Arc<dyn Fn(Box<dyn MessageTrait>) -> Pin<Box<dyn Future<Output = Result<()>>>> + Send + Sync>;
+
+pub fn new_replier<F, Fut>(a: F) -> Replier
+where
+    F: Fn(Box<dyn MessageTrait>) -> Fut + Send + Sync + 'static,
+    Fut: Future<Output = Result<()>> + 'static,
+{
+    Arc::new(
+        move |msg: Box<dyn MessageTrait>| -> Pin<Box<dyn Future<Output = Result<()>>>> {
+            Box::pin(a(msg))
+        },
+    )
+}
 
 pub struct MessageToCommander {
     pub replier: Replier,
@@ -136,6 +152,18 @@ impl Commander {
             .send(MessageToCommander {
                 replier,
                 inner: Box::new(msg),
+            })
+            .await?;
+
+        Ok(())
+    }
+
+    pub async fn async_send_box(&self, replier: Replier, msg: Box<dyn MessageTrait>) -> Result<()> {
+        let mut sender = self.sender.clone();
+        sender
+            .send(MessageToCommander {
+                replier,
+                inner: msg,
             })
             .await?;
 

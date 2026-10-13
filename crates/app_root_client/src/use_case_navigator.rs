@@ -2,8 +2,8 @@ pub(crate) mod client {
     use anyhow::Result;
     use serde::Deserialize;
     use serde::Serialize;
-    use utility::cache::ProcessId;
     use utility::ui_effect::MessageTrait;
+    use utility::ui_effect::Replier;
     use utility::ui_effect::UiContext;
 
     #[derive(Debug, Clone, Copy, Default, PartialEq, Deserialize, Serialize)]
@@ -58,11 +58,7 @@ pub(crate) mod client {
         }
     }
 
-    pub(crate) async fn effect(
-        msg: Effect,
-        process_id: ProcessId,
-        context: UiContext,
-    ) -> Result<()> {
+    pub(crate) async fn effect(msg: Effect, replier: Replier, context: UiContext) -> Result<()> {
         Ok(())
     }
 }

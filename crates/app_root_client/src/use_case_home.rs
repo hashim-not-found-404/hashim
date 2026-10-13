@@ -2,24 +2,34 @@ pub(crate) mod client {
     use anyhow::Result;
     use serde::Deserialize;
     use serde::Serialize;
-    use utility::cache::ProcessId;
     use utility::ui_effect::MessageTrait;
     use utility::ui_effect::Replier;
     use utility::ui_effect::UiContext;
 
-    #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
-    pub(crate) struct Form {
-        pub(crate) process_id: ProcessId,
-        pub(crate) form: FormVariants,
-    }
+    // =====================================================================
+    // Form data — one variant per form type
+    // =====================================================================
 
     #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
-    pub(crate) enum FormVariants {
+    pub(crate) enum FormLocalModel {
         CreateBranch(use_case_create_branch::client::LocalModel),
         CreateCompany(use_case_create_company::client::LocalModel),
         CreateAccount(use_case_create_account::client::LocalModel),
         CreateAccountForBranch(use_case_create_account_for_branch::client::LocalModel),
         CreateJournalEntry(use_case_create_journal_entry::client::LocalModel),
+    }
+
+    // =====================================================================
+    // Form messages — one variant per form type
+    // =====================================================================
+
+    #[derive(Debug, Clone)]
+    pub(crate) enum FormMessage {
+        CreateBranch(use_case_create_branch::client::Message),
+        CreateCompany(use_case_create_company::client::Message),
+        CreateAccount(use_case_create_account::client::Message),
+        CreateAccountForBranch(use_case_create_account_for_branch::client::Message),
+        CreateJournalEntry(use_case_create_journal_entry::client::Message),
     }
 
     #[derive(Debug, Clone)]
@@ -31,15 +41,30 @@ pub(crate) mod client {
         CreateJournalEntry,
     }
 
-    pub(crate) trait GlobalModel {}
+    pub(crate) trait GlobalModel:
+        use_case_create_branch::client::GlobalModel
+        + use_case_create_company::client::GlobalModel
+        + use_case_create_account::client::GlobalModel
+        + use_case_create_account_for_branch::client::GlobalModel
+        + use_case_create_journal_entry::client::GlobalModel
+    {
+    }
 
     #[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
     pub(crate) struct LocalModel {
-        pub(crate) forms: Vec<Form>,
+        pub(crate) forms: Vec<FormLocalModel>,
     }
+
+    // =====================================================================
+    // Home message / intent / observe
+    // =====================================================================
 
     #[derive(Debug, Clone)]
     pub(crate) enum Message {
+        FormRelated {
+            form_index: usize,
+            message: FormMessage,
+        },
         Intent(Intent),
         Observe(Observe),
     }
@@ -54,68 +79,170 @@ pub(crate) mod client {
     #[derive(Debug, Clone)]
     pub(crate) enum Observe {}
 
+    // =====================================================================
+    // Home change / global change / effect
+    // =====================================================================
+
     #[derive(Debug, Clone)]
     pub(crate) enum LocalChange {
-        Forms(Vec<Form>),
+        Forms(Vec<FormLocalModel>),
     }
 
     #[derive(Debug, Clone)]
-    pub(crate) enum Effect {}
+    pub(crate) enum GlobalChange {
+        CreateBranch(use_case_create_branch::client::GlobalChange),
+        CreateCompany(use_case_create_company::client::GlobalChange),
+        CreateAccount(use_case_create_account::client::GlobalChange),
+        CreateAccountForBranch(use_case_create_account_for_branch::client::GlobalChange),
+        CreateJournalEntry(use_case_create_journal_entry::client::GlobalChange),
+    }
+
+    #[derive(Debug, Clone)]
+    pub(crate) enum Effect {
+        CreateBranch(use_case_create_branch::client::Effect),
+        CreateCompany(use_case_create_company::client::Effect),
+        CreateAccount(use_case_create_account::client::Effect),
+        CreateAccountForBranch(use_case_create_account_for_branch::client::Effect),
+        CreateJournalEntry(use_case_create_journal_entry::client::Effect),
+    }
 
     impl MessageTrait for Message {}
+
+    // =====================================================================
+    // update
+    // =====================================================================
 
     pub fn update(
         msg: Message,
         local_model: &LocalModel,
         global_model: &impl GlobalModel,
-    ) -> (Vec<LocalChange>, Vec<Effect>) {
+    ) -> (Vec<LocalChange>, Vec<GlobalChange>, Vec<Effect>) {
         match msg {
-            Message::Intent(intent) => match intent {
-                Intent::AddForm(forms_to_add) => {
-                    let mut forms = local_model.forms.clone();
+            // -------------------------------------------------------------
+            // Form management
+            // -------------------------------------------------------------
+            Message::Intent(intent) => {
+                let change = match intent {
+                    Intent::AddForm(forms_to_add) => {
+                        let mut forms = local_model.forms.clone();
+                        forms.push(map_form_command_to_value(forms_to_add));
+                        LocalChange::Forms(forms)
+                    }
+                    Intent::CopyForm(v) => {
+                        let mut forms = local_model.forms.clone();
+                        let Some(form) = forms.get(v).cloned() else {
+                            return (vec![], vec![], vec![]);
+                        };
+                        forms.insert(v, form);
+                        LocalChange::Forms(forms)
+                    }
+                    Intent::DeleteForm(v) => {
+                        let mut forms = local_model.forms.clone();
+                        if v >= forms.len() {
+                            return (vec![], vec![], vec![]);
+                        }
+                        forms.remove(v);
+                        LocalChange::Forms(forms)
+                    }
+                };
+                (vec![change], vec![], vec![])
+            }
 
-                    let form = map_form_command_to_value(forms_to_add);
+            Message::Observe(observe) => match observe {},
 
-                    forms.push(Form {
-                        process_id: Default::default(),
-                        form,
-                    });
+            // -------------------------------------------------------------
+            // Form-related message: dispatch to the right sub-reducer
+            // -------------------------------------------------------------
+            Message::FormRelated {
+                form_index,
+                message,
+            } => {
+                let Some(form_local_model) = local_model.forms.get(form_index) else {
+                    return (vec![], vec![], vec![]);
+                };
 
-                    let change = vec![LocalChange::Forms(forms)];
+                // Static dispatch. The types of `sub_local`, `sub_global`
+                // and `sub_effect` differ per arm, so we do everything in
+                // one match: run the sub-reducer, apply the sub-local
+                // changes to a clone, wrap the sub-global/effects.
+                let mut new_forms = local_model.forms.clone();
 
-                    (change, vec![])
+                macro_rules! dispatch {
+                    ($variant:ident, $sub:ident, $global:ident, $effect:ident) => {{
+                        let (FormLocalModel::$variant(lm), FormMessage::$variant(m)) =
+                            (form_local_model, message)
+                        else {
+                            return (vec![], vec![], vec![]);
+                        };
+
+                        let (sub_local, sub_global, sub_effect) =
+                            $sub::client::update(m, lm, global_model);
+
+                        let FormLocalModel::$variant(lm) = &mut new_forms[form_index] else {
+                            unreachable!()
+                        };
+                        for c in sub_local {
+                            $sub::client::local_apply(c, lm);
+                        }
+
+                        let sub_global: Vec<GlobalChange> =
+                            sub_global.into_iter().map(GlobalChange::$global).collect();
+                        let sub_effect: Vec<Effect> =
+                            sub_effect.into_iter().map(Effect::$effect).collect();
+
+                        (vec![LocalChange::Forms(new_forms)], sub_global, sub_effect)
+                    }};
                 }
-                Intent::CopyForm(v) => {
-                    let mut forms = local_model.forms.clone();
 
-                    let Some(form) = forms.get(v) else {
-                        return (vec![], vec![]);
-                    };
-
-                    forms.insert(
-                        v,
-                        Form {
-                            process_id: Default::default(),
-                            form: form.form.clone(),
-                        },
-                    );
-
-                    let change = vec![LocalChange::Forms(forms)];
-
-                    (change, vec![])
+                match form_local_model {
+                    FormLocalModel::CreateBranch(_) => {
+                        dispatch!(
+                            CreateBranch,
+                            use_case_create_branch,
+                            CreateBranch,
+                            CreateBranch
+                        )
+                    }
+                    FormLocalModel::CreateCompany(_) => {
+                        dispatch!(
+                            CreateCompany,
+                            use_case_create_company,
+                            CreateCompany,
+                            CreateCompany
+                        )
+                    }
+                    FormLocalModel::CreateAccount(_) => {
+                        dispatch!(
+                            CreateAccount,
+                            use_case_create_account,
+                            CreateAccount,
+                            CreateAccount
+                        )
+                    }
+                    FormLocalModel::CreateAccountForBranch(_) => {
+                        dispatch!(
+                            CreateAccountForBranch,
+                            use_case_create_account_for_branch,
+                            CreateAccountForBranch,
+                            CreateAccountForBranch
+                        )
+                    }
+                    FormLocalModel::CreateJournalEntry(_) => {
+                        dispatch!(
+                            CreateJournalEntry,
+                            use_case_create_journal_entry,
+                            CreateJournalEntry,
+                            CreateJournalEntry
+                        )
+                    }
                 }
-                Intent::DeleteForm(v) => {
-                    let mut forms = local_model.forms.clone();
-                    forms.remove(v);
-
-                    let change = vec![LocalChange::Forms(forms)];
-
-                    (change, vec![])
-                }
-            },
-            Message::Observe(observe) => todo!(),
+            }
         }
     }
+
+    // =====================================================================
+    // local_apply / global_apply / effect
+    // =====================================================================
 
     pub fn local_apply(msg: LocalChange, local_model: &mut LocalModel) {
         match msg {
@@ -123,19 +250,62 @@ pub(crate) mod client {
         }
     }
 
+    pub fn global_apply(msg: GlobalChange, global_model: &mut impl GlobalModel) {
+        match msg {
+            GlobalChange::CreateBranch(c) => {
+                use_case_create_branch::client::global_apply(c, global_model)
+            }
+            GlobalChange::CreateCompany(c) => {
+                use_case_create_company::client::global_apply(c, global_model)
+            }
+            GlobalChange::CreateAccount(c) => {
+                use_case_create_account::client::global_apply(c, global_model)
+            }
+            GlobalChange::CreateAccountForBranch(c) => {
+                use_case_create_account_for_branch::client::global_apply(c, global_model)
+            }
+            GlobalChange::CreateJournalEntry(c) => {
+                use_case_create_journal_entry::client::global_apply(c, global_model)
+            }
+        }
+    }
+
     pub async fn effect(msg: Effect, replier: Replier, context: UiContext) -> Result<()> {
+        match msg {
+            Effect::CreateBranch(e) => {
+                use_case_create_branch::client::effect(e, replier, context).await?
+            }
+            Effect::CreateCompany(e) => {
+                use_case_create_company::client::effect(e, replier, context).await?
+            }
+            Effect::CreateAccount(e) => {
+                use_case_create_account::client::effect(e, replier, context).await?
+            }
+            Effect::CreateAccountForBranch(e) => {
+                use_case_create_account_for_branch::client::effect(e, replier, context).await?
+            }
+            Effect::CreateJournalEntry(e) => {
+                use_case_create_journal_entry::client::effect(e, replier, context).await?
+            }
+        }
         Ok(())
     }
 
-    fn map_form_command_to_value(forms_to_add: FormsToAdd) -> FormVariants {
+    // =====================================================================
+    // Helpers
+    // =====================================================================
+
+    fn map_form_command_to_value(forms_to_add: FormsToAdd) -> FormLocalModel {
         match forms_to_add {
-            FormsToAdd::CreateBranch => FormVariants::CreateBranch(Default::default()),
-            FormsToAdd::CreateCompany => FormVariants::CreateCompany(Default::default()),
-            FormsToAdd::CreateAccount => FormVariants::CreateAccount(Default::default()),
+            FormsToAdd::CreateBranch => FormLocalModel::CreateBranch(Default::default()),
+            FormsToAdd::CreateCompany => FormLocalModel::CreateCompany(Default::default()),
+            FormsToAdd::CreateAccount => FormLocalModel::CreateAccount(Default::default()),
             FormsToAdd::CreateAccountForBranch => {
-                FormVariants::CreateAccountForBranch(Default::default())
+                FormLocalModel::CreateAccountForBranch(Default::default())
             }
-            FormsToAdd::CreateJournalEntry => FormVariants::CreateJournalEntry(Default::default()),
+            FormsToAdd::CreateJournalEntry => {
+                FormLocalModel::CreateJournalEntry(Default::default())
+            }
         }
     }
 }
