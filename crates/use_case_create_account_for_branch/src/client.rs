@@ -41,7 +41,6 @@ use utility::ui_orchestration::handle_submit;
 use utility::ui_orchestration::handle_subscribe;
 use utility::ui_orchestration::handle_unsubscribe;
 use utility_ui::domain::Dialog;
-use utility_ui::domain::HashimSignal;
 
 const RESOURCES_NAME_TO_POKE: &[ResourceName] = &[new_resource_name("accounts_for_branch")];
 const RESOURCES_NAME_TO_LISTEN: &[ResourceName] = &[

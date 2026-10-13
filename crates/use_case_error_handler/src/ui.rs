@@ -1,12 +1,7 @@
 use crate::client::ErrorList;
 use crate::client::Intent;
-use crate::client::LocalModel;
 use chrono::DateTime;
 use dioxus::prelude::*;
-use serde::Deserialize;
-use serde::Serialize;
-use utility_ui::domain::HashimSignal;
-use utility_ui::my_signal::MySignal;
 
 #[component]
 pub fn Component(sender: EventHandler<Intent>, is_expand_all: bool, errors: ErrorList) -> Element {

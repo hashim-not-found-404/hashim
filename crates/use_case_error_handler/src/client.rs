@@ -14,7 +14,6 @@ use utility::cache::ProcessId;
 use utility::ui_effect::Commander;
 use utility::ui_effect::MessageTrait;
 use utility::ui_effect::UiContext;
-use utility_ui::domain::HashimSignal;
 
 pub fn spawn_listener(mut receiver_to_error: MpscReceiver<anyhow::Error>, commander: Commander) {
     Rt::spawn_local(async move {

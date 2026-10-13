@@ -5,7 +5,6 @@ pub(crate) mod client {
     use utility::cache::ProcessId;
     use utility::ui_effect::MessageTrait;
     use utility::ui_effect::UiContext;
-    use utility_ui::domain::HashimSignal;
 
     #[derive(Debug, Clone, Copy, Default, PartialEq, Deserialize, Serialize)]
     pub(crate) enum Navigator {
@@ -15,7 +14,6 @@ pub(crate) mod client {
     }
 
     pub(crate) trait GlobalModel {
-        fn navigator(&self) -> Navigator;
         fn set_navigator(&mut self, v: Navigator);
     }
 

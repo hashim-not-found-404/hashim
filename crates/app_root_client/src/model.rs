@@ -8,8 +8,6 @@ use serde::Deserialize;
 use serde::Serialize;
 use std::fmt::Debug;
 use utility::ui_effect::Model;
-use utility_ui::domain::HashimSignal;
-use utility_ui::my_signal::MySignal;
 
 impl Model for TypeGlobalModel {}
 
@@ -161,10 +159,6 @@ impl use_case_create_branch::client::GlobalModel for TypeGlobalModel {
 }
 
 impl crate::use_case_navigator::client::GlobalModel for TypeGlobalModel {
-    fn navigator(&self) -> Navigator {
-        self.navigator.clone()
-    }
-
     fn set_navigator(&mut self, v: Navigator) {
         self.navigator = v
     }

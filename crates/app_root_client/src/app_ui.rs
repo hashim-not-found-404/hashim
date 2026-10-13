@@ -7,18 +7,9 @@ use crate::utils::send;
 use crate::utils::with_model;
 use cache::utils::MyUuidConverter;
 use dioxus::prelude::*;
-use use_case_create_account::client::LocalModel as _;
-use use_case_create_account_for_branch::client::LocalModel as _;
-use use_case_create_branch::client::LocalModel as _;
-use use_case_create_company::client::LocalModel as _;
-use use_case_create_journal_entry::client::LocalModel as _;
-use use_case_error_handler::client::LocalModel as _;
 use use_case_home::client::FormVariants;
 use use_case_home::client::FormsToAdd;
-use use_case_sign_in::client::LocalModel as _;
-use use_case_sign_up::client::LocalModel as _;
 use utility::cache::ProcessId;
-use utility_ui::domain::HashimSignal;
 
 #[derive(Debug, Clone, PartialEq, Routable)]
 pub(crate) enum Route {
@@ -33,21 +24,22 @@ pub(crate) enum Route {
 
 #[component]
 fn RootLayout() -> Element {
-    let (navigator_state, has_user) =
-        with_model(|m| (m.navigator.clone(), m.user_uuid().is_some()));
+    let desired_route = use_memo(move || {
+        with_model(|m| {
+            if m.user_uuid().is_some() {
+                Route::Home {}
+            } else {
+                match m.navigator {
+                    Navigator::SignIn => Route::SignIn {},
+                    Navigator::SignUp => Route::SignUp {},
+                }
+            }
+        })
+    });
 
-    match navigator_state {
-        Navigator::SignIn => {
-            navigator().push(Route::SignIn {});
-        }
-        Navigator::SignUp => {
-            navigator().push(Route::SignUp {});
-        }
-    }
-
-    if has_user {
-        navigator().push(Route::Home {});
-    }
+    use_effect(move || {
+        navigator().push(desired_route());
+    });
 
     rsx! {
         Outlet::<Route> {}

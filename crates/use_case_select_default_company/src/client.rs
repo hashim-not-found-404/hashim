@@ -19,7 +19,6 @@ use utility::ui_orchestration::UseCaseClient;
 use utility::ui_orchestration::handle_refresh;
 use utility::ui_orchestration::handle_subscribe;
 use utility::ui_orchestration::handle_unsubscribe;
-use utility_ui::domain::HashimSignal;
 
 const RESOURCES_NAME_TO_LISTEN: &[ResourceName] = &[
     new_resource_name("companies"),

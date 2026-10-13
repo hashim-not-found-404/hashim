@@ -37,7 +37,6 @@ use utility::ui_orchestration::UserConsent;
 use utility::ui_orchestration::handle_check;
 use utility::ui_orchestration::handle_submit;
 use utility_ui::domain::Dialog;
-use utility_ui::domain::HashimSignal;
 
 const RESOURCES_NAME_TO_POKE: &[ResourceName] = &[new_resource_name("companies")];
 

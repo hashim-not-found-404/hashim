@@ -16,7 +16,6 @@ use infrastructure::row_id::Id;
 use infrastructure::row_id::RowId;
 use std::marker::PhantomData;
 use std::sync::Arc;
-use std::sync::Mutex;
 use std::sync::RwLock;
 use utility::cache::CacheStruct;
 use utility::cache::CacheUtility;

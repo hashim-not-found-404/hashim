@@ -1,16 +1,8 @@
-use crate::client::Account;
-use crate::client::AsyncState;
-use crate::client::DoubleEntry;
 use crate::client::Intent;
-use crate::client::LocalModel;
 use dioxus::prelude::*;
-use serde::Deserialize;
-use serde::Serialize;
 use utility::ui_orchestration::UserConsent;
 use utility_ui::components::DialogComponent;
 use utility_ui::domain::Dialog;
-use utility_ui::domain::HashimSignal;
-use utility_ui::my_signal::MySignal;
 
 #[component]
 pub fn Component(sender: EventHandler<Intent>, show_dialog: Dialog, is_loading: bool) -> Element {

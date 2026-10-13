@@ -5,7 +5,6 @@ pub(crate) mod client {
     use utility::cache::ProcessId;
     use utility::ui_effect::MessageTrait;
     use utility::ui_effect::UiContext;
-    use utility_ui::domain::HashimSignal;
 
     #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
     pub(crate) struct Form {
@@ -137,16 +136,6 @@ pub(crate) mod client {
             }
             FormsToAdd::CreateJournalEntry => FormVariants::CreateJournalEntry(Default::default()),
         }
-    }
-
-    fn get_model(forms: Vec<Form>, process_id: ProcessId) -> Option<FormVariants> {
-        for i in forms {
-            if i.process_id == process_id {
-                return Some(i.form);
-            }
-        }
-
-        None
     }
 }
 
