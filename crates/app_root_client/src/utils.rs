@@ -4,6 +4,7 @@ use cache::cache_adapter;
 use infrastructure::actors::Mpsc;
 use infrastructure::actors::MultiProducerSingleConsumer;
 use kernel::ui_construct::new;
+use std::ops::Deref;
 use std::sync::Arc;
 use std::sync::LazyLock;
 use std::sync::Mutex;
@@ -17,7 +18,8 @@ use utility_ui::my_signal::MySignal;
 pub(crate) static MODEL: LazyLock<NewType> =
     LazyLock::new(|| -> NewType { NewType(Default::default()) });
 
-struct NewType(MySignal<TypeGlobalModel>);
+#[derive(Clone)]
+pub(crate) struct NewType(MySignal<TypeGlobalModel>);
 
 impl SigNaaaaaaaaaaaaaaaaal<TypeGlobalModel> for NewType {
     fn with_mut<R>(&self, f: impl FnOnce(&mut TypeGlobalModel) -> R) -> R {
@@ -33,7 +35,7 @@ pub(crate) fn with_model<T>(f: impl FnOnce(&TypeGlobalModel) -> T) -> T {
 static COMMANDER: LazyLock<Commander> = LazyLock::new(|| {
     let (sender_to_error, receiver_to_error) = Mpsc::channel();
 
-    let model = MODEL;
+    let model = MODEL.deref().clone();
 
     let commander = new::<cache_adapter::S, TypeGlobalModel, MyCaster, MyCaster, MyCaster>(
         model,
