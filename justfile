@@ -84,3 +84,43 @@ run_db:
 
 push_schema:
     cockroach sql --file crates/app_root_server/schema/tables.sql --insecure
+
+###################################################################################################
+# branch workflow
+###################################################################################################
+
+# Create a new branch off the current HEAD and push it to origin.
+# Usage: just new_branch my_feature
+new_branch branch_name:
+    git checkout -b {{branch_name}}
+    git push -u origin {{branch_name}}
+
+# Merge the current branch into `target` with a merge bubble, push, and
+# return to the branch you started on.
+# Usage (while on `home_forms`): just merge_branch main
+merge_branch target:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    source="$(git rev-parse --abbrev-ref HEAD)"
+    if [ "$source" = "{{target}}" ]; then
+        echo "error: already on '{{target}}'; nothing to merge" >&2
+        exit 1
+    fi
+    git fetch origin
+    git checkout "{{target}}"
+    git pull --ff-only origin "{{target}}"
+    git merge --no-ff "$source" -m "Merge branch '$source'"
+    git push origin "{{target}}"
+    git checkout "$source"
+    echo "merged '$source' into '{{target}}' and pushed"
+
+# Delete a branch locally and on origin. Safe: uses `-d`, which refuses
+# to delete a branch that hasn't been merged.
+# Usage: just delete_branch my_feature
+delete_branch branch_name:
+    git branch -d {{branch_name}}
+    git push origin --delete {{branch_name}}
+
+# Show local branches with their upstream tracking state.
+branches:
+    git branch -vv
