@@ -13,6 +13,7 @@ use utility::cache::ProcessId;
 use utility::cache::ResourceName;
 use utility::cache::new_resource_name;
 use utility::ui_effect::MessageTrait;
+use utility::ui_effect::Replier;
 use utility::ui_effect::UiContext;
 use utility::ui_orchestration::GenricAsyncState;
 use utility::ui_orchestration::UseCaseClient;
@@ -38,6 +39,8 @@ pub trait GlobalModel {
 
 #[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
 pub struct LocalModel {
+    process_id: ProcessId,
+
     pub async_state: AsyncState,
 }
 
@@ -119,6 +122,7 @@ fn flat_branches_for(
 
 #[derive(Debug, Clone)]
 pub enum LocalChange {
+    ProcessId(ProcessId),
     AsyncState(AsyncState),
 }
 
@@ -130,8 +134,8 @@ pub enum GlobalChange {
 
 #[derive(Debug, Clone)]
 pub enum Effect {
-    Subscribe,
-    UnSubscribe,
+    Subscribe(ProcessId),
+    UnSubscribe(ProcessId),
     Refresh { async_input: AsyncInput },
 }
 
@@ -170,14 +174,23 @@ pub fn update(
                 };
                 let async_input = AsyncInput { user_uuid };
 
-                let local_change = vec![LocalChange::AsyncState(AsyncState::Loading {
-                    input: async_input.clone(),
-                })];
-                let effect = vec![Effect::Subscribe, Effect::Refresh { async_input }];
+                let process_id = ProcessId::default();
+
+                let local_change = vec![
+                    LocalChange::ProcessId(process_id),
+                    LocalChange::AsyncState(AsyncState::Loading {
+                        input: async_input.clone(),
+                    }),
+                ];
+
+                let effect = vec![
+                    Effect::Subscribe(process_id),
+                    Effect::Refresh { async_input },
+                ];
                 (local_change, vec![], effect)
             }
             Intent::UnSubscribe => {
-                let effect = vec![Effect::UnSubscribe];
+                let effect = vec![Effect::UnSubscribe(local_model.process_id)];
                 (vec![], vec![], effect)
             }
             Intent::SelectCompany(uuid) => {
@@ -224,6 +237,7 @@ pub fn update(
 pub fn local_apply(msg: LocalChange, local_model: &mut LocalModel) {
     match msg {
         LocalChange::AsyncState(i) => local_model.async_state = i,
+        LocalChange::ProcessId(i) => local_model.process_id = i,
     }
 }
 
@@ -236,16 +250,17 @@ pub fn global_apply(msg: GlobalChange, global_model: &mut impl GlobalModel) {
     }
 }
 
-pub async fn effect(msg: Effect, process_id: ProcessId, context: UiContext) -> Result<()> {
+pub async fn effect(msg: Effect, replier: Replier, context: UiContext) -> Result<()> {
     match msg {
-        Effect::Subscribe => {
-            handle_subscribe::<Wire>(process_id, context, RESOURCES_NAME_TO_LISTEN).await?;
+        Effect::Subscribe(process_id) => {
+            handle_subscribe::<Wire>(replier, process_id, context, RESOURCES_NAME_TO_LISTEN)
+                .await?;
         }
-        Effect::UnSubscribe => {
+        Effect::UnSubscribe(process_id) => {
             handle_unsubscribe::<Wire>(process_id, context).await?;
         }
         Effect::Refresh { async_input } => {
-            handle_refresh::<Wire>(process_id, async_input, context).await?;
+            handle_refresh::<Wire>(replier, async_input, context).await?;
         }
     }
     Ok(())

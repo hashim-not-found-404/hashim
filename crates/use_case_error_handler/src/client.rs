@@ -10,9 +10,12 @@ use serde::Deserialize;
 use serde::Serialize;
 use std::backtrace::BacktraceStatus;
 use std::fmt::Debug;
+use std::pin::Pin;
+use std::sync::Arc;
 use utility::cache::ProcessId;
 use utility::ui_effect::Commander;
 use utility::ui_effect::MessageTrait;
+use utility::ui_effect::Replier;
 use utility::ui_effect::UiContext;
 
 pub fn spawn_listener(mut receiver_to_error: MpscReceiver<anyhow::Error>, commander: Commander) {
@@ -39,7 +42,12 @@ pub fn spawn_listener(mut receiver_to_error: MpscReceiver<anyhow::Error>, comman
                 back_trace,
             };
 
-            commander.send(ProcessId::default(), Message::Observe(info));
+            let replier: Replier = Arc::new(
+                |_: Box<dyn MessageTrait + 'static>| -> Pin<Box<dyn Future<Output = Result<()>>>> {
+                    Box::pin(async { Ok(()) })
+                },
+            );
+            commander.send(replier, Message::Observe(info));
         }
     });
 }

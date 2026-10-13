@@ -1,5 +1,4 @@
 use crate::cache::CacheStruct;
-use crate::cache::ProcessId;
 use crate::handle_errors::handle_error;
 use anyhow::Error;
 use anyhow::Result;
@@ -15,6 +14,7 @@ use infrastructure::runtime::Runtime;
 use std::any::Any;
 use std::fmt::Debug;
 use std::pin::Pin;
+use std::sync::Arc;
 use tracing::info;
 
 pub trait SigNaaaaaaaaaaaaaaaaal<T>: 'static {
@@ -27,16 +27,24 @@ pub trait MessageTrait: Any + Debug + 'static + Send + DynClone {
     // here it should have method that return serializable dyn trait for the intent to store it
 }
 
-#[derive(Debug)]
+pub type Replier = Arc<dyn Fn(Box<dyn MessageTrait>) -> Pin<Box<dyn Future<Output = Result<()>>>>>;
+
 pub struct MessageToCommander {
-    pub process_id: ProcessId,
+    pub replier: Replier,
     pub inner: Box<dyn MessageTrait>,
+}
+
+impl Debug for MessageToCommander {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("MessageToCommander")
+            .field("inner", &self.inner)
+            .finish()
+    }
 }
 
 #[derive(Clone)]
 pub struct UiContext {
     pub cache: CacheStruct,
-    pub sender_to_commander: Commander,
 }
 
 pub trait UpdaterTrait: Debug {
@@ -45,7 +53,6 @@ pub trait UpdaterTrait: Debug {
     fn update(
         &self,
         model: &Self::Mdl,
-        process_id: ProcessId,
     ) -> (
         Vec<Box<dyn ApplierTrait<Mdl = Self::Mdl>>>,
         Vec<Box<dyn EffectorTrait>>,
@@ -55,13 +62,13 @@ pub trait UpdaterTrait: Debug {
 pub trait ApplierTrait: Debug {
     type Mdl: Model;
 
-    fn apply(&self, model: &mut Self::Mdl, process_id: ProcessId);
+    fn apply(&self, model: &mut Self::Mdl);
 }
 
 pub trait EffectorTrait: Debug {
     fn effect(
         &self,
-        process_id: ProcessId,
+        replier: Replier,
         context: UiContext,
     ) -> Pin<Box<dyn Future<Output = Result<()>>>>;
 }
@@ -105,7 +112,7 @@ impl Commander {
         commander
     }
 
-    pub fn send<Msg>(&self, process_id: ProcessId, msg: Msg)
+    pub fn send<Msg>(&self, replier: Replier, msg: Msg)
     where
         Msg: MessageTrait,
     {
@@ -113,21 +120,21 @@ impl Commander {
         Rt::spawn_local(async move {
             let _ = sender
                 .send(MessageToCommander {
-                    process_id,
+                    replier,
                     inner: Box::new(msg),
                 })
                 .await;
         });
     }
 
-    pub async fn async_send<Msg>(&self, process_id: ProcessId, msg: Msg) -> Result<()>
+    pub async fn async_send<Msg>(&self, replier: Replier, msg: Msg) -> Result<()>
     where
         Msg: MessageTrait,
     {
         let mut sender = self.sender.clone();
         sender
             .send(MessageToCommander {
-                process_id,
+                replier,
                 inner: Box::new(msg),
             })
             .await?;
@@ -146,10 +153,7 @@ impl Commander {
         CasMsg: CastMessageToReducer<Mdl = Mdl>,
     {
         Rt::spawn_local(async move {
-            let context = UiContext {
-                cache,
-                sender_to_commander: self,
-            };
+            let context = UiContext { cache };
 
             handle_error::<(), _>(sender_to_error.clone(), async || {
                 loop {
@@ -161,13 +165,13 @@ impl Commander {
                     let msg = CasMsg::cast_message_to_reducer(message.inner)?;
 
                     let effect=model.with_mut(|model|{
-                        let (change, effect) = msg.update(&model, message.process_id);
+                        let (change, effect) = msg.update(&model);
 
                         info!(?change);
                         info!(?effect);
 
                         for i in change {
-                            i.apply(model, message.process_id);
+                            i.apply(model);
                         }
 
                         effect
@@ -176,7 +180,7 @@ impl Commander {
 
 
                     for i in effect {
-                        let result = i.effect(message.process_id,context.clone()).await;
+                        let result = i.effect(message.replier.clone(),context.clone()).await;
                         if let Err(err) = result {
                             let _ = sender_to_error.send(err).await;
                         }

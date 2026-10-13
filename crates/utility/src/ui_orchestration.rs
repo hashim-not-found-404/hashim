@@ -1,12 +1,26 @@
+use crate::cache::CachingStrategy;
 use crate::cache::ProcessId;
 use crate::cache::ResourceName;
+use crate::cache::Response;
+use crate::cache::ResponseFunction;
+use crate::cache::TraitOperationClientError;
+use crate::cache::TraitOperationClientInput;
+use crate::cache::TraitOperationClientOk;
+use crate::cache::TypeOperationClientInput;
+use crate::dtos::TxnNumber;
 use crate::ui_effect::MessageTrait;
+use crate::ui_effect::Replier;
 use crate::ui_effect::UiContext;
+use anyhow::Context;
 use anyhow::Result;
+use anyhow::anyhow;
 use serde::Deserialize;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
+use std::any::Any;
 use std::fmt::Debug;
+use std::pin::Pin;
+use std::sync::Arc;
 
 #[derive(Debug, Clone, Copy)]
 pub enum UserConsent {
@@ -52,20 +66,6 @@ where
     }
 }
 
-use crate::cache::CachingStrategy;
-use crate::cache::Response;
-use crate::cache::ResponseFunction;
-use crate::cache::TraitOperationClientError;
-use crate::cache::TraitOperationClientInput;
-use crate::cache::TraitOperationClientOk;
-use crate::cache::TypeOperationClientInput;
-use crate::dtos::TxnNumber;
-use anyhow::Context;
-use anyhow::anyhow;
-use std::any::Any;
-use std::pin::Pin;
-use std::sync::Arc;
-
 pub trait UseCaseClient: 'static {
     type Input: TraitOperationClientInput + 'static;
     type AsyncInput: Clone + 'static;
@@ -86,17 +86,17 @@ pub trait UseCaseClient: 'static {
 }
 
 pub async fn handle_submit<T: UseCaseClient>(
-    process_id: ProcessId,
+    replier: Replier,
     input: T::AsyncInput,
     mut context: UiContext,
     is_to_server: bool,
 ) -> Result<()> {
     let data: TypeOperationClientInput = Arc::new(T::build_input(&input));
-    let sender = context.sender_to_commander.clone();
+    let replier = replier.clone();
 
     let f: ResponseFunction = Box::new(move |a| -> Pin<Box<dyn Future<Output = Result<()>>>> {
         Box::pin({
-            let sender = sender.clone();
+            let replier = replier.clone();
             let input = input.clone();
             async move {
                 let msg = match a {
@@ -115,7 +115,7 @@ pub async fn handle_submit<T: UseCaseClient>(
                         }
                     },
                 };
-                sender.async_send(process_id, msg).await?;
+                replier(Box::new(msg)).await?;
                 Ok(())
             }
         })
@@ -134,16 +134,16 @@ pub async fn handle_submit<T: UseCaseClient>(
 }
 
 pub async fn handle_check<T: UseCaseClient>(
-    process_id: ProcessId,
+    replier: Replier,
     input: T::AsyncInput,
     mut context: UiContext,
 ) -> Result<()> {
     let data: TypeOperationClientInput = Arc::new(T::build_input(&input));
-    let sender = context.sender_to_commander.clone();
+    let replier = replier.clone();
 
     let f: ResponseFunction = Box::new(move |a| -> Pin<Box<dyn Future<Output = Result<()>>>> {
         Box::pin({
-            let sender = sender.clone();
+            let replier = replier.clone();
             let input = input.clone();
             async move {
                 if let Response::Data { data } = a {
@@ -156,7 +156,7 @@ pub async fn handle_check<T: UseCaseClient>(
                             T::msg_failure(input, *a)
                         }
                     };
-                    sender.async_send(process_id, msg).await?;
+                    replier(Box::new(msg)).await?;
                 }
                 Ok(())
             }
@@ -175,16 +175,16 @@ pub async fn handle_check<T: UseCaseClient>(
 }
 
 pub async fn handle_refresh<T: UseCaseClient>(
-    process_id: ProcessId,
+    replier: Replier,
     input: T::AsyncInput,
     mut context: UiContext,
 ) -> Result<()> {
     let data: TypeOperationClientInput = Arc::new(T::build_input(&input));
-    let sender = context.sender_to_commander.clone();
+    let replier = replier.clone();
 
     let f: ResponseFunction = Box::new(move |a| -> Pin<Box<dyn Future<Output = Result<()>>>> {
         Box::pin({
-            let sender = sender.clone();
+            let replier = replier.clone();
             let input = input.clone();
             async move {
                 if let Response::Data { data } = a {
@@ -201,7 +201,7 @@ pub async fn handle_refresh<T: UseCaseClient>(
                             T::msg_failure(input, *a)
                         }
                     };
-                    sender.async_send(process_id, msg).await?;
+                    replier(Box::new(msg)).await?;
                 }
                 Ok(())
             }
@@ -220,17 +220,23 @@ pub async fn handle_refresh<T: UseCaseClient>(
 }
 
 pub async fn handle_subscribe<T: UseCaseClient>(
+    replier: Replier,
     process_id: ProcessId,
     mut context: UiContext,
     list_of_subscribtion: &'static [ResourceName],
 ) -> Result<()> {
     context
         .cache
-        .send_subs_to_cache_actor(process_id, list_of_subscribtion, move || {
-            context
-                .sender_to_commander
-                .send(process_id, T::msg_refresh());
-        })
+        .send_subs_to_cache_actor(
+            process_id,
+            list_of_subscribtion,
+            move || -> Pin<Box<dyn Future<Output = Result<()>>>> {
+                Box::pin({
+                    let value = replier.clone();
+                    async move { value(Box::new(T::msg_refresh())).await }
+                })
+            },
+        )
         .await
 }
 
