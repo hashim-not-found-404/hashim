@@ -217,7 +217,6 @@ pub struct AsyncInput {
 
 #[derive(Debug, Clone)]
 pub enum LocalChange {
-    ProcessId(ProcessId),
     ShowDialog(Dialog),
     IsDebit(bool),
     IsPermanentAccount(bool),
@@ -520,11 +519,8 @@ pub fn update(
                 }
             }
             Intent::Subscribe => {
-                let process_id = ProcessId::default();
-
-                let local_change = vec![LocalChange::ProcessId(process_id)];
-                let effect = vec![Effect::Subscribe(process_id)];
-                (local_change, vec![], effect)
+                let effect = vec![Effect::Subscribe(local_model.process_id)];
+                (vec![], vec![], effect)
             }
             Intent::UnSubscribe => {
                 let effect = vec![Effect::UnSubscribe(local_model.process_id)];
@@ -587,7 +583,6 @@ pub fn local_apply(msg: LocalChange, local_model: &mut LocalModel) {
         LocalChange::SelectedCompanyName(i) => local_model.selected_company_name = i,
         LocalChange::CheckState(i) => local_model.check_state = i,
         LocalChange::AsyncState(i) => local_model.async_state = i,
-        LocalChange::ProcessId(i) => local_model.process_id = i,
     }
 }
 

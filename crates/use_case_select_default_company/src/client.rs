@@ -115,7 +115,6 @@ fn flat_branches_for(
 
 #[derive(Debug, Clone)]
 pub enum LocalChange {
-    ProcessId(ProcessId),
     AsyncState(AsyncState),
 }
 
@@ -167,17 +166,12 @@ pub fn update(
                 };
                 let async_input = AsyncInput { user_uuid };
 
-                let process_id = ProcessId::default();
-
-                let local_change = vec![
-                    LocalChange::ProcessId(process_id),
-                    LocalChange::AsyncState(AsyncState::Loading {
-                        input: async_input.clone(),
-                    }),
-                ];
+                let local_change = vec![LocalChange::AsyncState(AsyncState::Loading {
+                    input: async_input.clone(),
+                })];
 
                 let effect = vec![
-                    Effect::Subscribe(process_id),
+                    Effect::Subscribe(local_model.process_id),
                     Effect::Refresh { async_input },
                 ];
                 (local_change, vec![], effect)
@@ -230,7 +224,6 @@ pub fn update(
 pub fn local_apply(msg: LocalChange, local_model: &mut LocalModel) {
     match msg {
         LocalChange::AsyncState(i) => local_model.async_state = i,
-        LocalChange::ProcessId(i) => local_model.process_id = i,
     }
 }
 
