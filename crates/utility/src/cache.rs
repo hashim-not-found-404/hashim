@@ -141,7 +141,7 @@ pub enum Response {
     Data { data: TypeOperationClientResult },
 }
 
-pub type PokeType = Box<dyn Fn() + 'static>;
+pub type PokeType = Box<dyn Fn() -> Pin<Box<dyn Future<Output = Result<()>>>>>;
 pub type ResponseFunction = Box<dyn Fn(Response) -> Pin<Box<dyn Future<Output = Result<()>>>>>;
 
 pub enum MessageToCache {
@@ -236,7 +236,7 @@ impl CacheStruct {
         &mut self,
         component_id: ProcessId,
         list_of_subscribtion: &'static [ResourceName],
-        poke: impl Fn() + 'static,
+        poke: impl Fn() -> Pin<Box<dyn Future<Output = Result<()>>>> + 'static,
     ) -> Result<()> {
         self.sender
             .send(MessageToCache::Subscribe {
@@ -385,7 +385,8 @@ async fn message_handler<
                             pool_of_pokers,
                             &*pool_of_subscribes,
                             &subs_to_poke,
-                        );
+                        )
+                        .await?;
                     }
                     MessageFromServer::Resources(resources) => {
                         cache.clear_pending_txn_state().await?;
@@ -401,7 +402,8 @@ async fn message_handler<
                             pool_of_pokers,
                             &*pool_of_subscribes,
                             &subs_to_poke,
-                        );
+                        )
+                        .await?;
 
                         cache.start_pending_txn_state().await?;
                         let txns = cache.get_all_pending_txn().await?;
@@ -521,7 +523,8 @@ async fn message_handler<
                             pool_of_pokers,
                             &*pool_of_subscribes,
                             &subs_to_poke,
-                        );
+                        )
+                        .await?;
 
                         sender(Response::Data { data: result }).await?;
                     }
@@ -548,7 +551,8 @@ async fn message_handler<
                             pool_of_pokers,
                             &*pool_of_subscribes,
                             &subs_to_poke,
-                        );
+                        )
+                        .await?;
 
                         sender(Response::Data { data: result }).await?;
 
@@ -590,11 +594,11 @@ async fn message_handler<
     }
 }
 
-fn poke_the_subs<Subscribe: 'static + Hash + Eq>(
+async fn poke_the_subs<Subscribe: 'static + Hash + Eq>(
     pool_of_pokers: &mut HashMap<ProcessId, PokeType>,
     pool_of_subscribes: &HashMap<Subscribe, HashSet<ProcessId>>,
     subs_to_poke: &HashSet<Subscribe>,
-) {
+) -> Result<()> {
     let mut components_to_poke = HashSet::new();
 
     for one_sub in subs_to_poke {
@@ -609,9 +613,11 @@ fn poke_the_subs<Subscribe: 'static + Hash + Eq>(
 
     for i in components_to_poke {
         if let Some(sender) = pool_of_pokers.get_mut(i) {
-            let _ = sender();
+            let _ = sender().await?;
         }
     }
+
+    Ok(())
 }
 
 fn add_subs(subs_to_poke: &mut HashSet<ResourceName>, subs: &[ResourceName]) {

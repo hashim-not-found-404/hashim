@@ -23,9 +23,9 @@ pub fn my_macro(input: TokenStream) -> TokenStream {
             use #crate_name::client::global_apply;
             use #crate_name::client::local_apply;
             use #crate_name::client::update;
-            use utility::cache::ProcessId;
             use utility::ui_effect::ApplierTrait;
             use utility::ui_effect::EffectorTrait;
+            use utility::ui_effect::Replier;
             use utility::ui_effect::UiContext;
             use utility::ui_effect::UpdaterTrait;
 
@@ -38,7 +38,6 @@ pub fn my_macro(input: TokenStream) -> TokenStream {
                 fn update(
                     &self,
                     model: &Self::Mdl,
-                    process_id: ProcessId,
                 ) -> (
                     Vec<Box<dyn ApplierTrait<Mdl = TypeGlobalModel>>>,
                     Vec<Box<dyn EffectorTrait>>,
@@ -74,7 +73,7 @@ pub fn my_macro(input: TokenStream) -> TokenStream {
             impl ApplierTrait for WrapperLocalChange {
                 type Mdl = TypeGlobalModel;
 
-                fn apply(&self, model: &mut Self::Mdl, _process_id: ProcessId) {
+                fn apply(&self, model: &mut Self::Mdl) {
                     local_apply(self.0.clone(), &mut model.#model_field_name);
                 }
             }
@@ -85,7 +84,7 @@ pub fn my_macro(input: TokenStream) -> TokenStream {
             impl ApplierTrait for WrapperGlobalChange {
                 type Mdl = TypeGlobalModel;
 
-                fn apply(&self, model: &mut Self::Mdl, _process_id: ProcessId) {
+                fn apply(&self, model: &mut Self::Mdl) {
                     global_apply(self.0.clone(), model);
                 }
             }
@@ -96,10 +95,10 @@ pub fn my_macro(input: TokenStream) -> TokenStream {
             impl EffectorTrait for WrapperEffect {
                 fn effect(
                     &self,
-                    process_id: ProcessId,
+                    replier: Replier,
                     context: UiContext,
                 ) -> Pin<Box<dyn Future<Output = Result<()>>>> {
-                    Box::pin(effect(self.0.clone(), process_id, context))
+                    Box::pin(effect(self.0.clone(), replier, context))
                 }
             }
         }

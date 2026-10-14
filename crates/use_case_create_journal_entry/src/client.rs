@@ -33,6 +33,7 @@ use utility::cache::TypeOperationClientResult;
 use utility::cache::new_resource_name;
 use utility::tools::select_strings;
 use utility::ui_effect::MessageTrait;
+use utility::ui_effect::Replier;
 use utility::ui_effect::UiContext;
 use utility::ui_orchestration::GenricAsyncState;
 use utility::ui_orchestration::UseCaseClient;
@@ -182,6 +183,8 @@ pub trait GlobalModel {
 
 #[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
 pub struct LocalModel {
+    process_id: ProcessId,
+
     pub show_dialog: Dialog,
     pub is_loading: bool,
     pub shared_entry_id: String,
@@ -220,6 +223,7 @@ pub struct SingleEntryAsync {
 
 #[derive(Debug, Clone)]
 pub enum LocalChange {
+    ProcessId(ProcessId),
     ShowDialog(Dialog),
     IsLoading(bool),
     SharedEntryId(String),
@@ -242,8 +246,8 @@ pub enum Effect {
         async_input: AsyncInput,
         is_to_server: bool,
     },
-    Subscribe,
-    UnSubscribe,
+    Subscribe(ProcessId),
+    UnSubscribe(ProcessId),
     FetchAccountsForBranch,
 }
 
@@ -406,11 +410,18 @@ pub fn update(
                 (local_change, vec![], vec![])
             }
             Intent::Subscribe => {
-                let effect = vec![Effect::Subscribe, Effect::FetchAccountsForBranch];
-                (vec![], vec![], effect)
+                let process_id = ProcessId::default();
+
+                let local_change = vec![LocalChange::ProcessId(process_id)];
+
+                let effect = vec![
+                    Effect::Subscribe(process_id),
+                    Effect::FetchAccountsForBranch,
+                ];
+                (local_change, vec![], effect)
             }
             Intent::UnSubscribe => {
-                let effect = vec![Effect::UnSubscribe];
+                let effect = vec![Effect::UnSubscribe(local_model.process_id)];
                 (vec![], vec![], effect)
             }
             Intent::AddSingleEntry { double_index } => {
@@ -546,6 +557,7 @@ pub fn local_apply(msg: LocalChange, local_model: &mut LocalModel) {
             let _ = i;
         }
         LocalChange::AccountsList(i) => local_model.list_of_available_account = i,
+        LocalChange::ProcessId(i) => local_model.process_id = i,
     }
 }
 
@@ -553,27 +565,25 @@ pub fn global_apply(msg: GlobalChange, _: &mut impl GlobalModel) {
     match msg {}
 }
 
-pub async fn effect(msg: Effect, process_id: ProcessId, context: UiContext) -> Result<()> {
+pub async fn effect(msg: Effect, replier: Replier, context: UiContext) -> Result<()> {
     match msg {
         Effect::SpawnTimer => {
             Rt::spawn_local(async move {
                 Rt::sleep(Duration::from_secs(5)).await;
-                let _ = context
-                    .sender_to_commander
-                    .async_send(process_id, Message::Observe(Observe::Timeout))
-                    .await;
+                let _ = replier(Box::new(Message::Observe(Observe::Timeout))).await;
             });
         }
         Effect::Submit {
             async_input,
             is_to_server,
         } => {
-            handle_submit::<Wire>(process_id, async_input, context, is_to_server).await?;
+            handle_submit::<Wire>(replier, async_input, context, is_to_server).await?;
         }
-        Effect::Subscribe => {
-            handle_subscribe::<Wire>(process_id, context, RESOURCES_NAME_TO_LISTEN).await?;
+        Effect::Subscribe(process_id) => {
+            handle_subscribe::<Wire>(replier, process_id, context, RESOURCES_NAME_TO_LISTEN)
+                .await?;
         }
-        Effect::UnSubscribe => {
+        Effect::UnSubscribe(process_id) => {
             handle_unsubscribe::<Wire>(process_id, context).await?;
         }
         Effect::FetchAccountsForBranch => {
