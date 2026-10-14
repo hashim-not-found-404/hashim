@@ -1,5 +1,4 @@
 use crate::domain::BranchNameError;
-use crate::domain::CompanyBelongError;
 use crate::domain::Error;
 use crate::domain::Input;
 use crate::domain::LocationError;
@@ -128,6 +127,10 @@ impl LocalModel {
         }
     }
 
+    pub fn is_submit_ok(&self) -> bool {
+        matches!(self.async_state, AsyncState::Success { .. })
+    }
+
     pub fn error_branch_name(&self) -> Option<BranchNameError> {
         if let CheckState::Failure { error, .. } = &self.check_state
             && let Some(e) = &error.branch_name
@@ -172,14 +175,14 @@ impl LocalModel {
             && let Some(e) = &error.company_belong
         {
             return Some(match e {
-                CompanyBelongError::NotExist => CompanyNameError::NotExist,
+                crate::domain::CompanyBelongError::NotExist => CompanyNameError::NotExist,
             });
         }
         if let AsyncState::Failure { error, .. } = &self.async_state
             && let Some(e) = &error.company_belong
         {
             return Some(match e {
-                CompanyBelongError::NotExist => CompanyNameError::NotExist,
+                crate::domain::CompanyBelongError::NotExist => CompanyNameError::NotExist,
             });
         }
 
@@ -227,7 +230,6 @@ pub struct AsyncInput {
 
 #[derive(Debug, Clone)]
 pub enum LocalChange {
-    ProcessId(ProcessId),
     ShowDialog(Dialog),
     CompanyName(String),
     BranchName(String),
@@ -524,11 +526,8 @@ pub fn update(
                 (local_change, vec![], effect)
             }
             Intent::Subscribe => {
-                let process_id = ProcessId::default();
-
-                let local_change = vec![LocalChange::ProcessId(process_id)];
-                let effect = vec![Effect::Subscribe(process_id)];
-                (local_change, vec![], effect)
+                let effect = vec![Effect::Subscribe(local_model.process_id)];
+                (vec![], vec![], effect)
             }
             Intent::UnSubscribe => {
                 let effect = vec![Effect::UnSubscribe(local_model.process_id)];
@@ -543,26 +542,27 @@ pub fn update(
                 };
                 (local_change, vec![], vec![])
             }
-            Observe::Result(result) => {
-                let local_change = match result {
-                    AsyncState::Success { .. } => {
-                        vec![
-                            LocalChange::ShowDialog(Default::default()),
-                            LocalChange::CompanyName(Default::default()),
-                            LocalChange::BranchName(Default::default()),
-                            LocalChange::Currency(Default::default()),
-                            LocalChange::Location(Default::default()),
-                            LocalChange::CheckState(CheckState::Idle),
-                            LocalChange::AsyncState(result),
-                        ]
-                    }
-                    _ => vec![
+            Observe::Result(result) => match result {
+                AsyncState::Success { .. } => {
+                    let local_change = vec![
+                        LocalChange::ShowDialog(Default::default()),
+                        LocalChange::CompanyName(Default::default()),
+                        LocalChange::BranchName(Default::default()),
+                        LocalChange::Currency(Default::default()),
+                        LocalChange::Location(Default::default()),
+                        LocalChange::CheckState(CheckState::Idle),
+                        LocalChange::AsyncState(result),
+                    ];
+                    (local_change, vec![], vec![])
+                }
+                _ => {
+                    let local_change = vec![
                         LocalChange::ShowDialog(Default::default()),
                         LocalChange::AsyncState(result),
-                    ],
-                };
-                (local_change, vec![], vec![])
-            }
+                    ];
+                    (local_change, vec![], vec![])
+                }
+            },
             Observe::CheckResult(result) => {
                 if is_check_stale(&result, local_model, global_model) {
                     return (vec![], vec![], vec![]);
@@ -586,7 +586,6 @@ pub fn local_apply(msg: LocalChange, local_model: &mut LocalModel) {
         LocalChange::Location(i) => local_model.location = i,
         LocalChange::CheckState(i) => local_model.check_state = i,
         LocalChange::AsyncState(i) => local_model.async_state = i,
-        LocalChange::ProcessId(i) => local_model.process_id = i,
     }
 }
 

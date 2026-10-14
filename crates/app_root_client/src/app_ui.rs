@@ -9,6 +9,8 @@ use crate::utils::with_model;
 use anyhow::Result;
 use cache::utils::MyUuidConverter;
 use dioxus::prelude::*;
+use use_case_home::client::FormEntry;
+use use_case_home::client::FormId;
 use use_case_home::client::FormLocalModel;
 use use_case_home::client::FormsToAdd;
 use utility::ui_effect::Replier;
@@ -168,18 +170,25 @@ fn Home() -> Element {
             }
         }
 
-        for (index, form) in forms.iter().enumerate() {
+        for (index, entry) in forms.iter().enumerate() {
             FormInstance {
-                key: "{index}",
+                key: "{entry.id:?}",
                 index,
-                form: form.clone(),
+                entry: entry.clone(),
             }
         }
     }
 }
 
 #[component]
-fn FormInstance(index: usize, form: FormLocalModel) -> Element {
+fn FormInstance(index: usize, entry: FormEntry) -> Element {
+    let form_id: FormId = entry.id;
+    let form = entry.form;
+
+    // `Copy` and `Delete` are driven by a synchronous click, so `index`
+    // is always current for these two. The sub-form repliers below use
+    // `form_id` instead, since they may fire later than the click (the
+    // 5-second submit timer is the case that motivated this change).
     let replier: Replier = new_replier(async |msg| -> Result<()> { async_send(msg).await });
     let replier1 = replier.clone();
 
@@ -205,19 +214,19 @@ fn FormInstance(index: usize, form: FormLocalModel) -> Element {
             {
                 match form {
                     FormLocalModel::CreateAccount(lm) => rsx! {
-                        CreateAccountForm { index, lm }
+                        CreateAccountForm { form_id, lm }
                     },
                     FormLocalModel::CreateBranch(lm) => rsx! {
-                        CreateBranchForm { index, lm }
+                        CreateBranchForm { form_id, lm }
                     },
                     FormLocalModel::CreateCompany(lm) => rsx! {
-                        CreateCompanyForm { index, lm }
+                        CreateCompanyForm { form_id, lm }
                     },
                     FormLocalModel::CreateAccountForBranch(lm) => rsx! {
-                        CreateAccountForBranchForm { index, lm }
+                        CreateAccountForBranchForm { form_id, lm }
                     },
                     FormLocalModel::CreateJournalEntry(lm) => rsx! {
-                        CreateJournalEntryForm { index, lm }
+                        CreateJournalEntryForm { form_id, lm }
                     },
                 }
             }
@@ -226,7 +235,7 @@ fn FormInstance(index: usize, form: FormLocalModel) -> Element {
 }
 
 #[component]
-fn CreateAccountForm(index: usize, lm: use_case_create_account::client::LocalModel) -> Element {
+fn CreateAccountForm(form_id: FormId, lm: use_case_create_account::client::LocalModel) -> Element {
     let (
         account_name_error,
         company_name_error,
@@ -243,7 +252,7 @@ fn CreateAccountForm(index: usize, lm: use_case_create_account::client::LocalMod
 
     let replier: Replier = new_replier(move |msg| async move {
         async_send(Box::new(use_case_home::client::Message::FormRelated {
-            form_index: index,
+            form_id,
             message: msg,
         }))
         .await
@@ -254,7 +263,7 @@ fn CreateAccountForm(index: usize, lm: use_case_create_account::client::LocalMod
             sender: move |i| send(
                 replier.clone(),
                 use_case_home::client::Message::FormRelated {
-                    form_index: index,
+                    form_id,
                     message: Box::new(use_case_create_account::client::Message::Intent(i)),
                 },
             ),
@@ -274,7 +283,7 @@ fn CreateAccountForm(index: usize, lm: use_case_create_account::client::LocalMod
 }
 
 #[component]
-fn CreateBranchForm(index: usize, lm: use_case_create_branch::client::LocalModel) -> Element {
+fn CreateBranchForm(form_id: FormId, lm: use_case_create_branch::client::LocalModel) -> Element {
     let (company_name_error, resolved_company_uuid, list_of_company_name_and_uuid) =
         with_model(|m| {
             (
@@ -286,7 +295,7 @@ fn CreateBranchForm(index: usize, lm: use_case_create_branch::client::LocalModel
 
     let replier: Replier = new_replier(move |msg| async move {
         async_send(Box::new(use_case_home::client::Message::FormRelated {
-            form_index: index,
+            form_id,
             message: msg,
         }))
         .await
@@ -297,7 +306,7 @@ fn CreateBranchForm(index: usize, lm: use_case_create_branch::client::LocalModel
             sender: move |i| send(
                 replier.clone(),
                 use_case_home::client::Message::FormRelated {
-                    form_index: index,
+                    form_id,
                     message: Box::new(use_case_create_branch::client::Message::Intent(i)),
                 },
             ),
@@ -317,10 +326,10 @@ fn CreateBranchForm(index: usize, lm: use_case_create_branch::client::LocalModel
 }
 
 #[component]
-fn CreateCompanyForm(index: usize, lm: use_case_create_company::client::LocalModel) -> Element {
+fn CreateCompanyForm(form_id: FormId, lm: use_case_create_company::client::LocalModel) -> Element {
     let replier: Replier = new_replier(move |msg| async move {
         async_send(Box::new(use_case_home::client::Message::FormRelated {
-            form_index: index,
+            form_id,
             message: msg,
         }))
         .await
@@ -331,7 +340,7 @@ fn CreateCompanyForm(index: usize, lm: use_case_create_company::client::LocalMod
             sender: move |i| send(
                 replier.clone(),
                 use_case_home::client::Message::FormRelated {
-                    form_index: index,
+                    form_id,
                     message: Box::new(use_case_create_company::client::Message::Intent(i)),
                 },
             ),
@@ -346,14 +355,14 @@ fn CreateCompanyForm(index: usize, lm: use_case_create_company::client::LocalMod
 
 #[component]
 fn CreateAccountForBranchForm(
-    index: usize,
+    form_id: FormId,
     lm: use_case_create_account_for_branch::client::LocalModel,
 ) -> Element {
     let list_of_account_name_and_uuid = with_model(|m| lm.list_of_accounts_to_display(m));
 
     let replier: Replier = new_replier(move |msg| async move {
         async_send(Box::new(use_case_home::client::Message::FormRelated {
-            form_index: index,
+            form_id,
             message: msg,
         }))
         .await
@@ -364,15 +373,15 @@ fn CreateAccountForBranchForm(
             sender: move |i| send(
                 replier.clone(),
                 use_case_home::client::Message::FormRelated {
-                    form_index: index,
+                    form_id,
                     message: Box::new(use_case_create_account_for_branch::client::Message::Intent(i)),
                 },
             ),
             show_dialog: lm.show_dialog.clone(),
             is_loading: lm.async_state.clone().is_loading(),
             account_name: lm.account_name.clone(),
-            outflow_type: lm.outflow_type.clone(),
-            inflow_type: lm.inflow_type.clone(),
+            outflow_type: lm.outflow_type,
+            inflow_type: lm.inflow_type,
             list_of_account_name_and_uuid,
         }
     }
@@ -380,12 +389,12 @@ fn CreateAccountForBranchForm(
 
 #[component]
 fn CreateJournalEntryForm(
-    index: usize,
+    form_id: FormId,
     lm: use_case_create_journal_entry::client::LocalModel,
 ) -> Element {
     let replier: Replier = new_replier(move |msg| async move {
         async_send(Box::new(use_case_home::client::Message::FormRelated {
-            form_index: index,
+            form_id,
             message: msg,
         }))
         .await
@@ -396,12 +405,12 @@ fn CreateJournalEntryForm(
             sender: move |i| send(
                 replier.clone(),
                 use_case_home::client::Message::FormRelated {
-                    form_index: index,
+                    form_id,
                     message: Box::new(use_case_create_journal_entry::client::Message::Intent(i)),
                 },
             ),
             show_dialog: lm.show_dialog.clone(),
-            is_loading: lm.is_loading.clone(),
+            is_loading: lm.is_loading,
         }
     }
 }

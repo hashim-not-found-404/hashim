@@ -117,10 +117,14 @@ impl LocalModel {
     pub fn clone_user_input(&self) -> Self {
         Self {
             account_name: self.account_name.clone(),
-            outflow_type: self.outflow_type.clone(),
-            inflow_type: self.inflow_type.clone(),
+            outflow_type: self.outflow_type,
+            inflow_type: self.inflow_type,
             ..Default::default()
         }
+    }
+
+    pub fn is_submit_ok(&self) -> bool {
+        matches!(self.async_state, AsyncState::Success { .. })
     }
 
     pub fn resolved_account_uuid(&self, global_model: &impl GlobalModel) -> Option<AccountUuid> {
@@ -158,7 +162,6 @@ pub struct AsyncInput {
 
 #[derive(Debug, Clone)]
 pub enum LocalChange {
-    ProcessId(ProcessId),
     ShowDialog(Dialog),
     AccountName(String),
     OutflowType(OutFlowType),
@@ -343,11 +346,8 @@ pub fn update(
                 (local_change, vec![], vec![])
             }
             Intent::Subscribe => {
-                let process_id = ProcessId::default();
-
-                let local_change = vec![LocalChange::ProcessId(process_id)];
-                let effect = vec![Effect::Subscribe(process_id)];
-                (local_change, vec![], effect)
+                let effect = vec![Effect::Subscribe(local_model.process_id)];
+                (vec![], vec![], effect)
             }
             Intent::UnSubscribe => {
                 let effect = vec![Effect::UnSubscribe(local_model.process_id)];
@@ -362,22 +362,25 @@ pub fn update(
                 };
                 (local_change, vec![], vec![])
             }
-            Observe::Result(result) => {
-                let local_change = match result {
-                    AsyncState::Success { .. } => vec![
+            Observe::Result(result) => match result {
+                AsyncState::Success { .. } => {
+                    let local_change = vec![
                         LocalChange::ShowDialog(Default::default()),
                         LocalChange::AccountName(Default::default()),
                         LocalChange::OutflowType(Default::default()),
                         LocalChange::InflowType(Default::default()),
                         LocalChange::AsyncState(result),
-                    ],
-                    _ => vec![
+                    ];
+                    (local_change, vec![], vec![])
+                }
+                _ => {
+                    let local_change = vec![
                         LocalChange::ShowDialog(Default::default()),
                         LocalChange::AsyncState(result),
-                    ],
-                };
-                (local_change, vec![], vec![])
-            }
+                    ];
+                    (local_change, vec![], vec![])
+                }
+            },
             Observe::Refresh => (vec![], vec![], vec![]),
         },
     }
@@ -390,7 +393,6 @@ pub fn local_apply(msg: LocalChange, local_model: &mut LocalModel) {
         LocalChange::OutflowType(i) => local_model.outflow_type = i,
         LocalChange::InflowType(i) => local_model.inflow_type = i,
         LocalChange::AsyncState(i) => local_model.async_state = i,
-        LocalChange::ProcessId(i) => local_model.process_id = i,
     }
 }
 

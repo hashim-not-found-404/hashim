@@ -200,6 +200,10 @@ impl LocalModel {
     pub fn clone_user_input(&self) -> Self {
         todo!();
     }
+
+    pub fn is_submit_ok(&self) -> bool {
+        todo!();
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
@@ -229,7 +233,6 @@ pub struct SingleEntryAsync {
 
 #[derive(Debug, Clone)]
 pub enum LocalChange {
-    ProcessId(ProcessId),
     ShowDialog(Dialog),
     IsLoading(bool),
     SharedEntryId(String),
@@ -416,15 +419,11 @@ pub fn update(
                 (local_change, vec![], vec![])
             }
             Intent::Subscribe => {
-                let process_id = ProcessId::default();
-
-                let local_change = vec![LocalChange::ProcessId(process_id)];
-
                 let effect = vec![
-                    Effect::Subscribe(process_id),
+                    Effect::Subscribe(local_model.process_id),
                     Effect::FetchAccountsForBranch,
                 ];
-                (local_change, vec![], effect)
+                (vec![], vec![], effect)
             }
             Intent::UnSubscribe => {
                 let effect = vec![Effect::UnSubscribe(local_model.process_id)];
@@ -563,7 +562,6 @@ pub fn local_apply(msg: LocalChange, local_model: &mut LocalModel) {
             let _ = i;
         }
         LocalChange::AccountsList(i) => local_model.list_of_available_account = i,
-        LocalChange::ProcessId(i) => local_model.process_id = i,
     }
 }
 

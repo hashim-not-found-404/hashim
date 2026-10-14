@@ -111,6 +111,10 @@ impl LocalModel {
         }
     }
 
+    pub fn is_submit_ok(&self) -> bool {
+        matches!(self.async_state, AsyncState::Success { .. })
+    }
+
     pub fn error_company_name(&self) -> Option<CompanyNameError> {
         if let CheckState::Failure { error, .. } = &self.check_state
             && let Some(e) = &error.company_name
@@ -335,24 +339,25 @@ pub fn update(
                 };
                 (local_change, vec![], vec![])
             }
-            Observe::Result(result) => {
-                let local_change = match result {
-                    AsyncState::Success { .. } => {
-                        vec![
-                            LocalChange::ShowDialog(Default::default()),
-                            LocalChange::CompanyName(Default::default()),
-                            LocalChange::Currency(Default::default()),
-                            LocalChange::CheckState(CheckState::Idle),
-                            LocalChange::AsyncState(result),
-                        ]
-                    }
-                    _ => vec![
+            Observe::Result(result) => match result {
+                AsyncState::Success { .. } => {
+                    let local_change = vec![
+                        LocalChange::ShowDialog(Default::default()),
+                        LocalChange::CompanyName(Default::default()),
+                        LocalChange::Currency(Default::default()),
+                        LocalChange::CheckState(CheckState::Idle),
+                        LocalChange::AsyncState(result),
+                    ];
+                    (local_change, vec![], vec![])
+                }
+                _ => {
+                    let local_change = vec![
                         LocalChange::ShowDialog(Default::default()),
                         LocalChange::AsyncState(result),
-                    ],
-                };
-                (local_change, vec![], vec![])
-            }
+                    ];
+                    (local_change, vec![], vec![])
+                }
+            },
             Observe::CheckResult(result) => {
                 if is_check_stale(&result, local_model, global_model) {
                     return (vec![], vec![], vec![]);

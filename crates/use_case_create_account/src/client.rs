@@ -127,6 +127,10 @@ impl LocalModel {
         }
     }
 
+    pub fn is_submit_ok(&self) -> bool {
+        matches!(self.async_state, AsyncState::Success { .. })
+    }
+
     pub fn error_account_name(&self) -> Option<AccountNameError> {
         if let CheckState::Failure { error, .. } = &self.check_state
             && let Some(e) = &error.account_name
@@ -213,7 +217,6 @@ pub struct AsyncInput {
 
 #[derive(Debug, Clone)]
 pub enum LocalChange {
-    ProcessId(ProcessId),
     ShowDialog(Dialog),
     IsDebit(bool),
     IsPermanentAccount(bool),
@@ -516,11 +519,8 @@ pub fn update(
                 }
             }
             Intent::Subscribe => {
-                let process_id = ProcessId::default();
-
-                let local_change = vec![LocalChange::ProcessId(process_id)];
-                let effect = vec![Effect::Subscribe(process_id)];
-                (local_change, vec![], effect)
+                let effect = vec![Effect::Subscribe(local_model.process_id)];
+                (vec![], vec![], effect)
             }
             Intent::UnSubscribe => {
                 let effect = vec![Effect::UnSubscribe(local_model.process_id)];
@@ -535,27 +535,28 @@ pub fn update(
                 };
                 (change, vec![], vec![])
             }
-            Observe::Result(result) => {
-                let change = match result {
-                    AsyncState::Success { .. } => {
-                        vec![
-                            LocalChange::ShowDialog(Default::default()),
-                            LocalChange::AccountName(Default::default()),
-                            LocalChange::IsDebit(Default::default()),
-                            LocalChange::IsPermanentAccount(Default::default()),
-                            LocalChange::UnitOfMeasurementOfQuantity(Default::default()),
-                            LocalChange::SelectedCompanyName(Default::default()),
-                            LocalChange::CheckState(CheckState::Idle),
-                            LocalChange::AsyncState(result),
-                        ]
-                    }
-                    _ => vec![
+            Observe::Result(result) => match result {
+                AsyncState::Success { .. } => {
+                    let change = vec![
+                        LocalChange::ShowDialog(Default::default()),
+                        LocalChange::AccountName(Default::default()),
+                        LocalChange::IsDebit(Default::default()),
+                        LocalChange::IsPermanentAccount(Default::default()),
+                        LocalChange::UnitOfMeasurementOfQuantity(Default::default()),
+                        LocalChange::SelectedCompanyName(Default::default()),
+                        LocalChange::CheckState(CheckState::Idle),
+                        LocalChange::AsyncState(result),
+                    ];
+                    (change, vec![], vec![])
+                }
+                _ => {
+                    let change = vec![
                         LocalChange::ShowDialog(Default::default()),
                         LocalChange::AsyncState(result),
-                    ],
-                };
-                (change, vec![], vec![])
-            }
+                    ];
+                    (change, vec![], vec![])
+                }
+            },
             Observe::CheckResult(result) => {
                 if is_check_stale(&result, local_model, global_model) {
                     return (vec![], vec![], vec![]);
@@ -582,7 +583,6 @@ pub fn local_apply(msg: LocalChange, local_model: &mut LocalModel) {
         LocalChange::SelectedCompanyName(i) => local_model.selected_company_name = i,
         LocalChange::CheckState(i) => local_model.check_state = i,
         LocalChange::AsyncState(i) => local_model.async_state = i,
-        LocalChange::ProcessId(i) => local_model.process_id = i,
     }
 }
 
