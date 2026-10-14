@@ -93,9 +93,10 @@ pub(crate) type AsyncState = GenricAsyncState<AsyncInput, Ok, Error>;
 #[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
 pub struct LocalModel {
     pub show_dialog: Dialog,
+    pub async_state: AsyncState,
+
     pub company_name: String,
     pub currency: Currency,
-    pub async_state: AsyncState,
 }
 
 impl LocalModel {
