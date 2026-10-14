@@ -44,57 +44,50 @@ pub struct LocalModel {
     pub async_state: AsyncState,
 }
 
+impl LocalModel {
+    pub fn list_of_companies_and_branches(&self) -> Vec<CompanyWithBranches> {
+        match self.async_state.clone() {
+            AsyncState::Success { ok, .. } => ok.companies,
+            _ => Vec::new(),
+        }
+    }
+
+    pub fn list_of_companies(&self) -> Vec<(CompanyUuid, String)> {
+        match self.async_state.clone() {
+            AsyncState::Success { ok, .. } => flat_companies(&ok.companies),
+            _ => Vec::new(),
+        }
+    }
+
+    pub fn list_of_branches(&self, global_model: &impl GlobalModel) -> Vec<(BranchUuid, String)> {
+        let Some(company_uuid) = global_model.selected_company_uuid() else {
+            return Vec::new();
+        };
+        match self.async_state.clone() {
+            AsyncState::Success { ok, .. } => flat_branches_for(&ok.companies, &company_uuid),
+            _ => Vec::new(),
+        }
+    }
+
+    pub fn selected_company_name(&self, global_model: &impl GlobalModel) -> Option<String> {
+        let uuid = global_model.selected_company_uuid()?;
+        self.list_of_companies()
+            .into_iter()
+            .find_map(|(c_uuid, c_name)| (c_uuid == uuid).then_some(c_name))
+    }
+
+    pub fn selected_company_branch_name(&self, global_model: &impl GlobalModel) -> Option<String> {
+        let selected_company_branch_uuid = global_model.selected_company_branch_uuid();
+        let uuid = selected_company_branch_uuid?;
+        self.list_of_branches(global_model)
+            .into_iter()
+            .find_map(|(b_uuid, b_name)| (b_uuid == uuid).then_some(b_name))
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct AsyncInput {
     pub user_uuid: UserUuid,
-}
-
-pub fn list_of_companies_and_branches(local_model: &LocalModel) -> Vec<CompanyWithBranches> {
-    match local_model.async_state.clone() {
-        AsyncState::Success { ok, .. } => ok.companies,
-        _ => Vec::new(),
-    }
-}
-
-pub fn list_of_companies(local_model: &LocalModel) -> Vec<(CompanyUuid, String)> {
-    match local_model.async_state.clone() {
-        AsyncState::Success { ok, .. } => flat_companies(&ok.companies),
-        _ => Vec::new(),
-    }
-}
-
-pub fn list_of_branches(
-    local_model: &LocalModel,
-    global_model: &impl GlobalModel,
-) -> Vec<(BranchUuid, String)> {
-    let Some(company_uuid) = global_model.selected_company_uuid() else {
-        return Vec::new();
-    };
-    match local_model.async_state.clone() {
-        AsyncState::Success { ok, .. } => flat_branches_for(&ok.companies, &company_uuid),
-        _ => Vec::new(),
-    }
-}
-
-pub fn selected_company_name(
-    local_model: &LocalModel,
-    global_model: &impl GlobalModel,
-) -> Option<String> {
-    let uuid = global_model.selected_company_uuid()?;
-    list_of_companies(local_model)
-        .into_iter()
-        .find_map(|(c_uuid, c_name)| (c_uuid == uuid).then_some(c_name))
-}
-
-pub fn selected_company_branch_name(
-    local_model: &LocalModel,
-    global_model: &impl GlobalModel,
-) -> Option<String> {
-    let selected_company_branch_uuid = global_model.selected_company_branch_uuid();
-    let uuid = selected_company_branch_uuid?;
-    list_of_branches(local_model, global_model)
-        .into_iter()
-        .find_map(|(b_uuid, b_name)| (b_uuid == uuid).then_some(b_name))
 }
 
 fn flat_companies(companies: &[CompanyWithBranches]) -> Vec<(CompanyUuid, String)> {
@@ -279,12 +272,8 @@ impl UseCaseClient for Wire {
         Message::Observe(Observe::Result(AsyncState::Success { input, ok }))
     }
 
-    fn msg_failure(input: Self::AsyncInput, error: Self::Error) -> Self::Message {
+    fn msg_failure_submit(input: Self::AsyncInput, error: Self::Error) -> Self::Message {
         Message::Observe(Observe::Result(AsyncState::Failure { input, error }))
-    }
-
-    fn msg_success_check() -> Self::Message {
-        Message::Observe(Observe::Result(AsyncState::Idle))
     }
 
     fn msg_refresh() -> Self::Message {

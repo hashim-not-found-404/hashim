@@ -110,39 +110,41 @@ pub struct LocalModel {
     pub async_state: AsyncState,
 }
 
+impl LocalModel {
+    pub fn user_uuid(&self) -> Option<UserUuid> {
+        match self.async_state.clone() {
+            AsyncState::Success { ok, .. } => Some(ok.new_uuid),
+            _ => None,
+        }
+    }
+
+    pub fn user_name(&self) -> Option<String> {
+        match self.async_state.clone() {
+            AsyncState::Success { ok, .. } => ok.user_name,
+            _ => None,
+        }
+    }
+
+    pub fn error_user_id(&self) -> Option<UserIdError> {
+        match self.async_state.clone() {
+            AsyncState::Failure { error, .. } => error.user_id,
+            _ => None,
+        }
+    }
+
+    pub fn error_user_name(&self) -> Option<UserNameError> {
+        match self.async_state.clone() {
+            AsyncState::Failure { error, .. } => error.name,
+            _ => None,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct AsyncInput {
     pub name: Option<String>,
     pub user_id: String,
     pub password: String,
-}
-
-pub fn user_uuid(local_model: &LocalModel) -> Option<UserUuid> {
-    match local_model.async_state.clone() {
-        AsyncState::Success { ok, .. } => Some(ok.new_uuid),
-        _ => None,
-    }
-}
-
-pub fn user_name(local_model: &LocalModel) -> Option<String> {
-    match local_model.async_state.clone() {
-        AsyncState::Success { ok, .. } => ok.user_name,
-        _ => None,
-    }
-}
-
-pub fn error_user_id(local_model: &LocalModel) -> Option<UserIdError> {
-    match local_model.async_state.clone() {
-        AsyncState::Failure { error, .. } => error.user_id,
-        _ => None,
-    }
-}
-
-pub fn error_user_name(local_model: &LocalModel) -> Option<UserNameError> {
-    match local_model.async_state.clone() {
-        AsyncState::Failure { error, .. } => error.name,
-        _ => None,
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -337,12 +339,8 @@ impl UseCaseClient for Wire {
         Message::Observe(Observe::Result(AsyncState::Success { input, ok }))
     }
 
-    fn msg_failure(input: Self::AsyncInput, error: Self::Error) -> Self::Message {
+    fn msg_failure_submit(input: Self::AsyncInput, error: Self::Error) -> Self::Message {
         Message::Observe(Observe::Result(AsyncState::Failure { input, error }))
-    }
-
-    fn msg_success_check() -> Self::Message {
-        Message::Observe(Observe::Result(AsyncState::Idle))
     }
 
     fn msg_timeout() -> Self::Message {

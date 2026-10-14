@@ -199,9 +199,6 @@ pub struct LocalModel {
 impl LocalModel {
     pub fn clone_user_input(&self) -> Self {
         todo!();
-        Self {
-            ..Default::default()
-        }
     }
 }
 
@@ -311,7 +308,7 @@ pub fn update(
         match a {
             Intent::Consent(_) | Intent::Subscribe | Intent::UnSubscribe => {}
             _ => {
-                if local_model.is_loading.clone() {
+                if local_model.is_loading {
                     return (vec![], vec![], vec![]);
                 }
             }
@@ -511,7 +508,7 @@ pub fn update(
         },
         Message::Observe(observe) => match observe {
             Observe::Timeout => {
-                let local_change = if local_model.is_loading.clone() {
+                let local_change = if local_model.is_loading {
                     vec![LocalChange::ShowDialog(Dialog::Show)]
                 } else {
                     vec![]
@@ -617,12 +614,8 @@ impl UseCaseClient for Wire {
         Message::Observe(Observe::Result(AsyncState::Success { input, ok }))
     }
 
-    fn msg_failure(input: Self::AsyncInput, error: Self::Error) -> Self::Message {
+    fn msg_failure_submit(input: Self::AsyncInput, error: Self::Error) -> Self::Message {
         Message::Observe(Observe::Result(AsyncState::Failure { input, error }))
-    }
-
-    fn msg_success_check() -> Self::Message {
-        Message::Observe(Observe::Result(AsyncState::Idle))
     }
 
     fn msg_timeout() -> Self::Message {

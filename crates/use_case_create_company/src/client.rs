@@ -31,6 +31,7 @@ use utility::cache::new_resource_name;
 use utility::ui_effect::MessageTrait;
 use utility::ui_effect::Replier;
 use utility::ui_effect::UiContext;
+use utility::ui_orchestration::CheckState;
 use utility::ui_orchestration::GenricAsyncState;
 use utility::ui_orchestration::UseCaseClient;
 use utility::ui_orchestration::UserConsent;
@@ -89,10 +90,12 @@ pub trait GlobalModel {
 }
 
 pub(crate) type AsyncState = GenricAsyncState<AsyncInput, Ok, Error>;
+pub(crate) type CheckStateLocal = CheckState<AsyncInput, Ok, Error>;
 
 #[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
 pub struct LocalModel {
     pub show_dialog: Dialog,
+    pub check_state: CheckStateLocal,
     pub async_state: AsyncState,
 
     pub company_name: String,
@@ -107,6 +110,20 @@ impl LocalModel {
             ..Default::default()
         }
     }
+
+    pub fn error_company_name(&self) -> Option<CompanyNameError> {
+        if let CheckState::Failure { error, .. } = &self.check_state
+            && let Some(e) = &error.company_name
+        {
+            return Some(e.clone());
+        }
+        if let AsyncState::Failure { error, .. } = &self.async_state
+            && let Some(e) = &error.company_name
+        {
+            return Some(e.clone());
+        }
+        None
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
@@ -116,18 +133,12 @@ pub struct AsyncInput {
     pub currency: Currency,
 }
 
-pub fn error_company_name(local_model: &LocalModel) -> Option<CompanyNameError> {
-    match local_model.async_state.clone() {
-        AsyncState::Failure { error, .. } => error.company_name,
-        _ => None,
-    }
-}
-
 #[derive(Debug, Clone)]
 pub enum LocalChange {
     ShowDialog(Dialog),
     CompanyName(String),
     Currency(Currency),
+    CheckState(CheckStateLocal),
     AsyncState(AsyncState),
 }
 
@@ -159,6 +170,7 @@ pub enum Intent {
 pub enum Observe {
     Timeout,
     Result(AsyncState),
+    CheckResult(CheckStateLocal),
 }
 
 #[derive(Debug, Clone)]
@@ -169,21 +181,40 @@ pub enum Message {
 
 impl MessageTrait for Message {}
 
+fn current_check_input(
+    local_model: &LocalModel,
+    global_model: &impl GlobalModel,
+) -> Option<AsyncInput> {
+    let user_uuid = global_model.user_uuid()?;
+    Some(AsyncInput {
+        user_uuid,
+        company_name: local_model.company_name.clone(),
+        currency: local_model.currency.clone(),
+    })
+}
+
 fn build_check_effect(
     local_model: &LocalModel,
     global_model: &impl GlobalModel,
     mutate: impl FnOnce(&mut AsyncInput),
 ) -> Vec<Effect> {
-    let Some(user_uuid) = global_model.user_uuid() else {
+    let Some(mut a) = current_check_input(local_model, global_model) else {
         return vec![];
-    };
-    let mut a = AsyncInput {
-        user_uuid,
-        company_name: local_model.company_name.clone(),
-        currency: local_model.currency.clone(),
     };
     mutate(&mut a);
     vec![Effect::Check { async_input: a }]
+}
+
+fn is_check_stale(
+    result: &CheckStateLocal,
+    local_model: &LocalModel,
+    global_model: &impl GlobalModel,
+) -> bool {
+    let input = match result {
+        CheckState::Idle => return false,
+        CheckState::Success { input, .. } | CheckState::Failure { input, .. } => input,
+    };
+    current_check_input(local_model, global_model).as_ref() != Some(input)
 }
 
 pub fn update(
@@ -207,19 +238,26 @@ pub fn update(
                     LocalChange::ShowDialog(Default::default()),
                     LocalChange::CompanyName(Default::default()),
                     LocalChange::Currency(Default::default()),
+                    LocalChange::CheckState(CheckState::Idle),
                     LocalChange::AsyncState(AsyncState::Idle),
                 ];
                 (local_change, vec![], vec![])
             }
             Intent::CompanyName(v) => {
-                let local_change = vec![LocalChange::CompanyName(v.clone())];
+                let local_change = vec![
+                    LocalChange::CompanyName(v.clone()),
+                    LocalChange::CheckState(CheckState::Idle),
+                ];
                 let effect = build_check_effect(local_model, global_model, |a| {
                     a.company_name = v;
                 });
                 (local_change, vec![], effect)
             }
             Intent::Currency(v) => {
-                let local_change = vec![LocalChange::Currency(v.clone())];
+                let local_change = vec![
+                    LocalChange::Currency(v.clone()),
+                    LocalChange::CheckState(CheckState::Idle),
+                ];
                 let effect = build_check_effect(local_model, global_model, |a| {
                     a.currency = v;
                 });
@@ -304,6 +342,7 @@ pub fn update(
                             LocalChange::ShowDialog(Default::default()),
                             LocalChange::CompanyName(Default::default()),
                             LocalChange::Currency(Default::default()),
+                            LocalChange::CheckState(CheckState::Idle),
                             LocalChange::AsyncState(result),
                         ]
                     }
@@ -314,6 +353,12 @@ pub fn update(
                 };
                 (local_change, vec![], vec![])
             }
+            Observe::CheckResult(result) => {
+                if is_check_stale(&result, local_model, global_model) {
+                    return (vec![], vec![], vec![]);
+                }
+                (vec![LocalChange::CheckState(result)], vec![], vec![])
+            }
         },
     }
 }
@@ -323,6 +368,7 @@ pub fn local_apply(msg: LocalChange, local_model: &mut LocalModel) {
         LocalChange::ShowDialog(i) => local_model.show_dialog = i,
         LocalChange::CompanyName(i) => local_model.company_name = i,
         LocalChange::Currency(i) => local_model.currency = i,
+        LocalChange::CheckState(i) => local_model.check_state = i,
         LocalChange::AsyncState(i) => local_model.async_state = i,
     }
 }
@@ -365,12 +411,16 @@ impl UseCaseClient for Wire {
         Message::Observe(Observe::Result(AsyncState::Success { input, ok }))
     }
 
-    fn msg_failure(input: Self::AsyncInput, error: Self::Error) -> Self::Message {
+    fn msg_failure_submit(input: Self::AsyncInput, error: Self::Error) -> Self::Message {
         Message::Observe(Observe::Result(AsyncState::Failure { input, error }))
     }
 
-    fn msg_success_check() -> Self::Message {
-        Message::Observe(Observe::Result(AsyncState::Idle))
+    fn msg_success_check(input: Self::AsyncInput, ok: Self::Ok) -> Self::Message {
+        Message::Observe(Observe::CheckResult(CheckState::Success { input, ok }))
+    }
+
+    fn msg_failure_check(input: Self::AsyncInput, error: Self::Error) -> Self::Message {
+        Message::Observe(Observe::CheckResult(CheckState::Failure { input, error }))
     }
 
     fn msg_timeout() -> Self::Message {
