@@ -200,6 +200,10 @@ impl LocalModel {
     pub fn clone_user_input(&self) -> Self {
         todo!();
     }
+
+    pub fn is_submit_ok(&self) -> bool {
+        todo!();
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]

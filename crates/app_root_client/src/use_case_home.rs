@@ -114,6 +114,16 @@ pub(crate) mod client {
     // update
     // =====================================================================
 
+    fn form_is_submit_ok(form: &FormLocalModel) -> bool {
+        match form {
+            FormLocalModel::CreateBranch(lm) => lm.is_submit_ok(),
+            FormLocalModel::CreateCompany(lm) => lm.is_submit_ok(),
+            FormLocalModel::CreateAccount(lm) => lm.is_submit_ok(),
+            FormLocalModel::CreateAccountForBranch(lm) => lm.is_submit_ok(),
+            FormLocalModel::CreateJournalEntry(lm) => lm.is_submit_ok(),
+        }
+    }
+
     pub fn update(
         msg: Message,
         local_model: &LocalModel,
@@ -135,7 +145,6 @@ pub(crate) mod client {
                         let Some(form) = forms.get(v).cloned() else {
                             return (vec![], vec![], vec![]);
                         };
-
                         let form = reset_transient_state(form);
                         forms.insert(v + 1, form);
                         LocalChange::Forms(forms)
@@ -183,6 +192,8 @@ pub(crate) mod client {
                             return (vec![], vec![], vec![]);
                         };
 
+                        let was_ok_before = form_is_submit_ok(&new_forms[form_index]);
+
                         let (sub_local, sub_global, sub_effect) =
                             $sub::client::update(m, lm, global_model);
 
@@ -191,6 +202,11 @@ pub(crate) mod client {
                         };
                         for c in sub_local {
                             $sub::client::local_apply(c, lm);
+                        }
+
+                        let is_ok_after = form_is_submit_ok(&new_forms[form_index]);
+                        if !was_ok_before && is_ok_after {
+                            new_forms.remove(form_index);
                         }
 
                         let sub_global: Vec<GlobalChange> =

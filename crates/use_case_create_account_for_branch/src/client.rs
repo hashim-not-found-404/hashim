@@ -117,10 +117,14 @@ impl LocalModel {
     pub fn clone_user_input(&self) -> Self {
         Self {
             account_name: self.account_name.clone(),
-            outflow_type: self.outflow_type.clone(),
-            inflow_type: self.inflow_type.clone(),
+            outflow_type: self.outflow_type,
+            inflow_type: self.inflow_type,
             ..Default::default()
         }
+    }
+
+    pub fn is_submit_ok(&self) -> bool {
+        matches!(self.async_state, AsyncState::Success { .. })
     }
 
     pub fn resolved_account_uuid(&self, global_model: &impl GlobalModel) -> Option<AccountUuid> {
@@ -362,22 +366,26 @@ pub fn update(
                 };
                 (local_change, vec![], vec![])
             }
-            Observe::Result(result) => {
-                let local_change = match result {
-                    AsyncState::Success { .. } => vec![
+            Observe::Result(result) => match result {
+                AsyncState::Success { .. } => {
+                    let local_change = vec![
                         LocalChange::ShowDialog(Default::default()),
                         LocalChange::AccountName(Default::default()),
                         LocalChange::OutflowType(Default::default()),
                         LocalChange::InflowType(Default::default()),
                         LocalChange::AsyncState(result),
-                    ],
-                    _ => vec![
+                    ];
+                    let effect = vec![Effect::UnSubscribe(local_model.process_id)];
+                    (local_change, vec![], effect)
+                }
+                _ => {
+                    let local_change = vec![
                         LocalChange::ShowDialog(Default::default()),
                         LocalChange::AsyncState(result),
-                    ],
-                };
-                (local_change, vec![], vec![])
-            }
+                    ];
+                    (local_change, vec![], vec![])
+                }
+            },
             Observe::Refresh => (vec![], vec![], vec![]),
         },
     }
