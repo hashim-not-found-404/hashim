@@ -1,12 +1,35 @@
 pub(crate) mod client {
     use anyhow::Result;
     use dioxus::core::bail;
+    use infrastructure::random_number::RandomNumber;
+    use infrastructure::random_number::Rn;
     use serde::Deserialize;
     use serde::Serialize;
     use std::any::Any;
     use utility::ui_effect::MessageTrait;
     use utility::ui_effect::Replier;
     use utility::ui_effect::UiContext;
+
+    // =====================================================================
+    // Form id — home-owned identity for a live form instance
+    // =====================================================================
+
+    /// Stable identity for one live form instance.
+    ///
+    /// The home assigns it when a form is created and keeps it for the
+    /// form’s whole life. It is *not* the subscription’s `ProcessId` and
+    /// it is not visible to any use case. It exists so that messages
+    /// which fire asynchronously — e.g. a 5-second submit timer — can be
+    /// routed back to the correct form even if other forms have been
+    /// added, removed, or reordered in the meantime.
+    #[derive(Debug, Clone, Copy, Eq, Hash, PartialEq, Deserialize, Serialize)]
+    pub(crate) struct FormId(u32);
+
+    impl Default for FormId {
+        fn default() -> Self {
+            FormId(Rn::generate() as u32)
+        }
+    }
 
     // =====================================================================
     // Form data — one variant per form type
@@ -19,6 +42,26 @@ pub(crate) mod client {
         CreateAccount(use_case_create_account::client::LocalModel),
         CreateAccountForBranch(use_case_create_account_for_branch::client::LocalModel),
         CreateJournalEntry(use_case_create_journal_entry::client::LocalModel),
+    }
+
+    /// A form together with the home-owned id that identifies it.
+    ///
+    /// `forms` stores these instead of bare `FormLocalModel`s so that any
+    /// message addressed by `FormId` can find its form regardless of how
+    /// the list has shifted since the message was dispatched.
+    #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+    pub(crate) struct FormEntry {
+        pub(crate) id: FormId,
+        pub(crate) form: FormLocalModel,
+    }
+
+    impl FormEntry {
+        pub(crate) fn new(form: FormLocalModel) -> Self {
+            Self {
+                id: FormId::default(),
+                form,
+            }
+        }
     }
 
     // =====================================================================
@@ -54,7 +97,7 @@ pub(crate) mod client {
 
     #[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
     pub(crate) struct LocalModel {
-        pub(crate) forms: Vec<FormLocalModel>,
+        pub(crate) forms: Vec<FormEntry>,
     }
 
     // =====================================================================
@@ -64,7 +107,7 @@ pub(crate) mod client {
     #[derive(Debug, Clone)]
     pub(crate) enum Message {
         FormRelated {
-            form_index: usize,
+            form_id: FormId,
             message: Box<dyn MessageTrait>,
         },
         Intent(Intent),
@@ -87,7 +130,7 @@ pub(crate) mod client {
 
     #[derive(Debug, Clone)]
     pub(crate) enum LocalChange {
-        Forms(Vec<FormLocalModel>),
+        Forms(Vec<FormEntry>),
     }
 
     #[derive(Debug, Clone)]
@@ -232,16 +275,22 @@ pub(crate) mod client {
         bail!("downcast error")
     }
 
-    fn map_form_command_to_value(forms_to_add: FormsToAdd) -> FormLocalModel {
+    fn map_form_command_to_value(forms_to_add: FormsToAdd) -> FormEntry {
         match forms_to_add {
-            FormsToAdd::CreateBranch => FormLocalModel::CreateBranch(Default::default()),
-            FormsToAdd::CreateCompany => FormLocalModel::CreateCompany(Default::default()),
-            FormsToAdd::CreateAccount => FormLocalModel::CreateAccount(Default::default()),
+            FormsToAdd::CreateBranch => {
+                FormEntry::new(FormLocalModel::CreateBranch(Default::default()))
+            }
+            FormsToAdd::CreateCompany => {
+                FormEntry::new(FormLocalModel::CreateCompany(Default::default()))
+            }
+            FormsToAdd::CreateAccount => {
+                FormEntry::new(FormLocalModel::CreateAccount(Default::default()))
+            }
             FormsToAdd::CreateAccountForBranch => {
-                FormLocalModel::CreateAccountForBranch(Default::default())
+                FormEntry::new(FormLocalModel::CreateAccountForBranch(Default::default()))
             }
             FormsToAdd::CreateJournalEntry => {
-                FormLocalModel::CreateJournalEntry(Default::default())
+                FormEntry::new(FormLocalModel::CreateJournalEntry(Default::default()))
             }
         }
     }
@@ -257,7 +306,7 @@ pub(crate) mod client {
     ) -> (Vec<LocalChange>, Vec<GlobalChange>, Vec<Effect>) {
         match msg {
             // -------------------------------------------------------------
-            // Form management
+            // Form management (index-based — driven by synchronous clicks)
             // -------------------------------------------------------------
             Message::Intent(intent) => {
                 let (change, effect) = match intent {
@@ -268,11 +317,13 @@ pub(crate) mod client {
                     }
                     Intent::CopyForm(v) => {
                         let mut forms = local_model.forms.clone();
-                        let Some(form) = forms.get(v).cloned() else {
+                        let Some(entry) = forms.get(v).cloned() else {
                             return (vec![], vec![], vec![]);
                         };
-                        let form = reset_transient_state(form);
-                        forms.insert(v + 1, form);
+                        let fresh_form = reset_transient_state(entry.form);
+                        // Fresh `FormEntry::new` gives the copy its own
+                        // brand-new `FormId` — the two forms never collide.
+                        forms.insert(v + 1, FormEntry::new(fresh_form));
                         (LocalChange::Forms(forms), vec![])
                     }
                     Intent::DeleteForm(v) => {
@@ -281,7 +332,7 @@ pub(crate) mod client {
                             return (vec![], vec![], vec![]);
                         }
                         let removed = forms.remove(v);
-                        let effect = teardown_effects(&removed, global_model);
+                        let effect = teardown_effects(&removed.form, global_model);
                         (LocalChange::Forms(forms), effect)
                     }
                 };
@@ -291,15 +342,19 @@ pub(crate) mod client {
             Message::Observe(observe) => match observe {},
 
             // -------------------------------------------------------------
-            // Form-related message: dispatch to the right sub-reducer
+            // Form-related message: routed by `FormId`, not by position.
             // -------------------------------------------------------------
-            Message::FormRelated {
-                form_index,
-                message,
-            } => {
-                let Some(form_local_model) = local_model.forms.get(form_index) else {
+            Message::FormRelated { form_id, message } => {
+                // Find the *current* position of the form with this id.
+                // If the form has been removed (or the id never existed),
+                // the message is dropped — a stale message for a real
+                // removal, not a spurious drop caused by reordering.
+                let Some(form_index) = local_model.forms.iter().position(|e| e.id == form_id)
+                else {
                     return (vec![], vec![], vec![]);
                 };
+
+                let form_local_model = &local_model.forms[form_index].form;
 
                 let Ok(message) = downcast_message(message) else {
                     return (vec![], vec![], vec![]);
@@ -325,19 +380,19 @@ pub(crate) mod client {
                         // one that completed the submit → the home removes
                         // the form and asks the use case for the teardown
                         // effect.
-                        let was_ok_before = form_is_submit_ok(&new_forms[form_index]);
+                        let was_ok_before = form_is_submit_ok(&new_forms[form_index].form);
 
                         let (sub_local, sub_global, sub_effect) =
                             $sub::client::update(m, lm, global_model);
 
-                        let FormLocalModel::$variant(lm) = &mut new_forms[form_index] else {
+                        let FormLocalModel::$variant(lm) = &mut new_forms[form_index].form else {
                             unreachable!()
                         };
                         for c in sub_local {
                             $sub::client::local_apply(c, lm);
                         }
 
-                        let is_ok_after = form_is_submit_ok(&new_forms[form_index]);
+                        let is_ok_after = form_is_submit_ok(&new_forms[form_index].form);
 
                         let sub_global: Vec<GlobalChange> =
                             sub_global.into_iter().map(GlobalChange::$global).collect();
@@ -346,7 +401,7 @@ pub(crate) mod client {
 
                         if !was_ok_before && is_ok_after {
                             let removed = new_forms.remove(form_index);
-                            sub_effect.extend(teardown_effects(&removed, global_model));
+                            sub_effect.extend(teardown_effects(&removed.form, global_model));
                         }
 
                         (vec![LocalChange::Forms(new_forms)], sub_global, sub_effect)
