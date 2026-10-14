@@ -375,8 +375,7 @@ pub fn update(
                         LocalChange::InflowType(Default::default()),
                         LocalChange::AsyncState(result),
                     ];
-                    let effect = vec![Effect::UnSubscribe(local_model.process_id)];
-                    (local_change, vec![], effect)
+                    (local_change, vec![], vec![])
                 }
                 _ => {
                     let local_change = vec![

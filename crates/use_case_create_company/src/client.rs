@@ -348,8 +348,7 @@ pub fn update(
                         LocalChange::CheckState(CheckState::Idle),
                         LocalChange::AsyncState(result),
                     ];
-                    let effect = vec![];
-                    (local_change, vec![], effect)
+                    (local_change, vec![], vec![])
                 }
                 _ => {
                     let local_change = vec![

@@ -1,5 +1,4 @@
 use crate::domain::BranchNameError;
-use crate::domain::CompanyBelongError;
 use crate::domain::Error;
 use crate::domain::Input;
 use crate::domain::LocationError;
@@ -176,14 +175,14 @@ impl LocalModel {
             && let Some(e) = &error.company_belong
         {
             return Some(match e {
-                CompanyBelongError::NotExist => CompanyNameError::NotExist,
+                crate::domain::CompanyBelongError::NotExist => CompanyNameError::NotExist,
             });
         }
         if let AsyncState::Failure { error, .. } = &self.async_state
             && let Some(e) = &error.company_belong
         {
             return Some(match e {
-                CompanyBelongError::NotExist => CompanyNameError::NotExist,
+                crate::domain::CompanyBelongError::NotExist => CompanyNameError::NotExist,
             });
         }
 
@@ -558,8 +557,7 @@ pub fn update(
                         LocalChange::CheckState(CheckState::Idle),
                         LocalChange::AsyncState(result),
                     ];
-                    let effect = vec![Effect::UnSubscribe(local_model.process_id)];
-                    (local_change, vec![], effect)
+                    (local_change, vec![], vec![])
                 }
                 _ => {
                     let local_change = vec![

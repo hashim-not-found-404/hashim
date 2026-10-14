@@ -551,8 +551,7 @@ pub fn update(
                         LocalChange::CheckState(CheckState::Idle),
                         LocalChange::AsyncState(result),
                     ];
-                    let effect = vec![Effect::UnSubscribe(local_model.process_id)];
-                    (change, vec![], effect)
+                    (change, vec![], vec![])
                 }
                 _ => {
                     let change = vec![
