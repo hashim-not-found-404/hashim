@@ -54,11 +54,11 @@ pub(crate) fn send(replier: Replier, msg: impl MessageTrait) {
 }
 
 pub(crate) async fn async_send(msg: Box<dyn MessageTrait>) -> Result<()> {
-    COMMANDER.async_send_box(no_reply(), msg).await
+    COMMANDER.async_send_box(forward_to_commander(), msg).await
 }
 
-fn no_reply() -> Replier {
-    new_replier(async |a| -> Result<()> { Ok(()) })
+fn forward_to_commander() -> Replier {
+    new_replier(async |msg| COMMANDER.async_send_box(forward_to_commander(), msg).await)
 }
 
 pub(crate) fn init_commander_and_model() {
