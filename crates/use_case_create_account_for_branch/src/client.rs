@@ -122,6 +122,29 @@ impl LocalModel {
             ..Default::default()
         }
     }
+
+    pub fn resolved_account_uuid(&self, global_model: &impl GlobalModel) -> Option<AccountUuid> {
+        let typed = self.account_name.clone();
+        if typed.is_empty() {
+            return None;
+        }
+        global_model
+            .list_of_accounts()
+            .into_iter()
+            .find_map(|(uuid, name)| (name == typed).then_some(uuid))
+    }
+
+    pub fn list_of_accounts_to_display(
+        &self,
+        global_model: &impl GlobalModel,
+    ) -> Vec<(AccountUuid, String)> {
+        let typed = self.account_name.clone();
+        let list = global_model.list_of_accounts();
+        if typed.is_empty() {
+            return list;
+        }
+        select_strings(list, typed, |a| a.1.as_str())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
@@ -131,32 +154,6 @@ pub struct AsyncInput {
     pub belong_to_company_branch: BranchUuid,
     pub outflow_type: OutFlowType,
     pub inflow_type: InFlowType,
-}
-
-pub fn resolved_account_uuid(
-    local_model: &LocalModel,
-    global_model: &impl GlobalModel,
-) -> Option<AccountUuid> {
-    let typed = local_model.account_name.clone();
-    if typed.is_empty() {
-        return None;
-    }
-    global_model
-        .list_of_accounts()
-        .into_iter()
-        .find_map(|(uuid, name)| (name == typed).then_some(uuid))
-}
-
-pub fn list_of_accounts_to_display(
-    local_model: &LocalModel,
-    global_model: &impl GlobalModel,
-) -> Vec<(AccountUuid, String)> {
-    let typed = local_model.account_name.clone();
-    let list = global_model.list_of_accounts();
-    if typed.is_empty() {
-        return list;
-    }
-    select_strings(list, typed, |a| a.1.as_str())
 }
 
 #[derive(Debug, Clone)]
@@ -238,7 +235,7 @@ pub fn update(
                     return (vec![], vec![], vec![]);
                 };
 
-                let Some(belong_to_account) = resolved_account_uuid(local_model, global_model)
+                let Some(belong_to_account) = local_model.resolved_account_uuid(global_model)
                 else {
                     return (vec![], vec![], vec![]);
                 };
@@ -290,7 +287,7 @@ pub fn update(
                             return (vec![], vec![], vec![]);
                         };
                         let Some(belong_to_account) =
-                            resolved_account_uuid(local_model, global_model)
+                            local_model.resolved_account_uuid(global_model)
                         else {
                             return (vec![], vec![], vec![]);
                         };
@@ -329,7 +326,7 @@ pub fn update(
                 (local_change, vec![], vec![])
             }
             Intent::SelectedAccount(idx) => {
-                let list = list_of_accounts_to_display(local_model, global_model);
+                let list = local_model.list_of_accounts_to_display(global_model);
                 match list.get(idx) {
                     Some((_, name)) => {
                         (vec![LocalChange::AccountName(name.clone())], vec![], vec![])

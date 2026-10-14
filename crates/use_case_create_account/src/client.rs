@@ -123,6 +123,60 @@ impl LocalModel {
             ..Default::default()
         }
     }
+
+    pub fn error_account_name(&self) -> Option<AccountNameError> {
+        match self.async_state.clone() {
+            AsyncState::Failure { error, .. } => error.account_name,
+            _ => None,
+        }
+    }
+
+    pub fn resolved_company_uuid(&self, global_model: &impl GlobalModel) -> Option<CompanyUuid> {
+        let typed = self.selected_company_name.clone();
+        if typed.is_empty() {
+            return global_model.selected_company();
+        }
+        global_model
+            .list_of_companies()
+            .into_iter()
+            .find_map(|(uuid, name)| (name == typed).then_some(uuid))
+    }
+
+    pub fn error_company_name(&self, global_model: &impl GlobalModel) -> Option<CompanyNameError> {
+        if let AsyncState::Failure { error, .. } = self.async_state.clone()
+            && let Some(e) = error.belong_to_company
+        {
+            return match e {
+                RowIdError::Invalid | RowIdError::NotExist => Some(CompanyNameError::NotExist),
+                RowIdError::Duplicated => None,
+            };
+        }
+
+        let typed = self.selected_company_name.clone();
+        if typed.is_empty() {
+            if global_model.selected_company().is_none() {
+                return Some(CompanyNameError::NotSelected);
+            }
+            return None;
+        }
+        if self.resolved_company_uuid(global_model).is_some() {
+            None
+        } else {
+            Some(CompanyNameError::NotExist)
+        }
+    }
+
+    pub fn list_of_companies_to_display(
+        &self,
+        global_model: &impl GlobalModel,
+    ) -> Vec<(CompanyUuid, String)> {
+        let typed = self.selected_company_name.clone();
+        let list = global_model.list_of_companies();
+        if typed.is_empty() {
+            return list;
+        }
+        select_strings(list, typed, |a| a.1.as_str())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
@@ -139,66 +193,6 @@ pub struct AsyncInput {
     pub account_name: String,
     pub unit_of_measurement_of_quantity: String,
     pub belong_to_company: CompanyUuid,
-}
-
-pub fn error_account_name(local_model: &LocalModel) -> Option<AccountNameError> {
-    match local_model.async_state.clone() {
-        AsyncState::Failure { error, .. } => error.account_name,
-        _ => None,
-    }
-}
-
-pub fn resolved_company_uuid(
-    local_model: &LocalModel,
-    global_model: &impl GlobalModel,
-) -> Option<CompanyUuid> {
-    let typed = local_model.selected_company_name.clone();
-    if typed.is_empty() {
-        return global_model.selected_company();
-    }
-    global_model
-        .list_of_companies()
-        .into_iter()
-        .find_map(|(uuid, name)| (name == typed).then_some(uuid))
-}
-
-pub fn error_company_name(
-    local_model: &LocalModel,
-    global_model: &impl GlobalModel,
-) -> Option<CompanyNameError> {
-    if let AsyncState::Failure { error, .. } = local_model.async_state.clone()
-        && let Some(e) = error.belong_to_company
-    {
-        return match e {
-            RowIdError::Invalid | RowIdError::NotExist => Some(CompanyNameError::NotExist),
-            RowIdError::Duplicated => None,
-        };
-    }
-
-    let typed = local_model.selected_company_name.clone();
-    if typed.is_empty() {
-        if global_model.selected_company().is_none() {
-            return Some(CompanyNameError::NotSelected);
-        }
-        return None;
-    }
-    if resolved_company_uuid(local_model, global_model).is_some() {
-        None
-    } else {
-        Some(CompanyNameError::NotExist)
-    }
-}
-
-pub fn list_of_companies_to_display(
-    local_model: &LocalModel,
-    global_model: &impl GlobalModel,
-) -> Vec<(CompanyUuid, String)> {
-    let typed = local_model.selected_company_name.clone();
-    let list = global_model.list_of_companies();
-    if typed.is_empty() {
-        return list;
-    }
-    select_strings(list, typed, |a| a.1.as_str())
 }
 
 #[derive(Debug, Clone)]
@@ -270,7 +264,7 @@ fn build_check_effect(
         return vec![];
     };
     let belong_to_company =
-        override_company.or_else(|| resolved_company_uuid(local_model, global_model));
+        override_company.or_else(|| local_model.resolved_company_uuid(global_model));
     let Some(belong_to_company) = belong_to_company else {
         return vec![];
     };
@@ -309,7 +303,7 @@ pub fn update(
                     return (vec![], vec![], vec![]);
                 };
 
-                let Some(belong_to_company) = resolved_company_uuid(local_model, global_model)
+                let Some(belong_to_company) = local_model.resolved_company_uuid(global_model)
                 else {
                     return (vec![], vec![], vec![]);
                 };
@@ -360,7 +354,7 @@ pub fn update(
                             return (vec![], vec![], vec![]);
                         };
                         let Some(belong_to_company) =
-                            resolved_company_uuid(local_model, global_model)
+                            local_model.resolved_company_uuid(global_model)
                         else {
                             return (vec![], vec![], vec![]);
                         };
@@ -441,7 +435,7 @@ pub fn update(
                 (local_change, vec![], effect)
             }
             Intent::SelectedCompany(idx) => {
-                let list = list_of_companies_to_display(local_model, global_model);
+                let list = local_model.list_of_companies_to_display(global_model);
                 match list.get(idx) {
                     Some((company_uuid, company_name)) => {
                         let local_change =

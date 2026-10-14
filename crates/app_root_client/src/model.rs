@@ -39,10 +39,10 @@ pub(crate) struct FeatureStateAuth {
 
 impl TypeGlobalModel {
     pub fn user_uuid(&self) -> Option<UserUuid> {
-        if let Some(a) = use_case_sign_in::client::user_uuid(&self.page_sign_in) {
+        if let Some(a) = self.page_sign_in.user_uuid() {
             return Some(a);
         }
-        if let Some(a) = use_case_sign_up::client::user_uuid(&self.page_sign_up) {
+        if let Some(a) = self.page_sign_up.user_uuid() {
             return Some(a);
         }
 
@@ -50,9 +50,7 @@ impl TypeGlobalModel {
     }
 
     fn list_of_companies(&self) -> Vec<(CompanyUuid, String)> {
-        use_case_select_default_company::client::list_of_companies(
-            &self.page_select_default_company,
-        )
+        self.page_select_default_company.list_of_companies()
     }
 }
 

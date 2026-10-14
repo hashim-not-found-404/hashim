@@ -107,6 +107,13 @@ impl LocalModel {
             ..Default::default()
         }
     }
+
+    pub fn error_company_name(&self) -> Option<CompanyNameError> {
+        match self.async_state.clone() {
+            AsyncState::Failure { error, .. } => error.company_name,
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
@@ -114,13 +121,6 @@ pub struct AsyncInput {
     pub user_uuid: UserUuid,
     pub company_name: String,
     pub currency: Currency,
-}
-
-pub fn error_company_name(local_model: &LocalModel) -> Option<CompanyNameError> {
-    match local_model.async_state.clone() {
-        AsyncState::Failure { error, .. } => error.company_name,
-        _ => None,
-    }
 }
 
 #[derive(Debug, Clone)]

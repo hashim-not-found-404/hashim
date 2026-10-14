@@ -112,45 +112,47 @@ pub struct LocalModel {
     pub async_state: AsyncState,
 }
 
+impl LocalModel {
+    pub fn user_uuid(&self) -> Option<UserUuid> {
+        match self.async_state.clone() {
+            AsyncState::Success { ok, .. } => Some(ok.user_uuid),
+            _ => None,
+        }
+    }
+
+    pub fn user_id(&self) -> Option<String> {
+        match self.async_state.clone() {
+            AsyncState::Success { ok, .. } => Some(ok.user_id),
+            _ => None,
+        }
+    }
+
+    pub fn user_name(&self) -> Option<String> {
+        match self.async_state.clone() {
+            AsyncState::Success { ok, .. } => ok.user_name,
+            _ => None,
+        }
+    }
+
+    pub fn error_user_id(&self) -> Option<UserIdError> {
+        match self.async_state.clone() {
+            AsyncState::Failure { error, .. } => error.user_id,
+            _ => None,
+        }
+    }
+
+    pub fn error_password(&self) -> Option<PasswordError> {
+        match self.async_state.clone() {
+            AsyncState::Failure { error, .. } => error.password,
+            _ => None,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct AsyncInput {
     pub user_id: String,
     pub password: String,
-}
-
-pub fn user_uuid(local_model: &LocalModel) -> Option<UserUuid> {
-    match local_model.async_state.clone() {
-        AsyncState::Success { ok, .. } => Some(ok.user_uuid),
-        _ => None,
-    }
-}
-
-pub fn user_id(local_model: &LocalModel) -> Option<String> {
-    match local_model.async_state.clone() {
-        AsyncState::Success { ok, .. } => Some(ok.user_id),
-        _ => None,
-    }
-}
-
-pub fn user_name(local_model: &LocalModel) -> Option<String> {
-    match local_model.async_state.clone() {
-        AsyncState::Success { ok, .. } => ok.user_name,
-        _ => None,
-    }
-}
-
-pub fn error_user_id(local_model: &LocalModel) -> Option<UserIdError> {
-    match local_model.async_state.clone() {
-        AsyncState::Failure { error, .. } => error.user_id,
-        _ => None,
-    }
-}
-
-pub fn error_password(local_model: &LocalModel) -> Option<PasswordError> {
-    match local_model.async_state.clone() {
-        AsyncState::Failure { error, .. } => error.password,
-        _ => None,
-    }
 }
 
 #[derive(Debug, Clone)]

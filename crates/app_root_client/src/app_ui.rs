@@ -93,12 +93,12 @@ fn Home() -> Element {
                 .clone()
                 .or_else(|| Some(m.user_id.clone()))
                 .unwrap_or_default(),
-            use_case_select_default_company::client::list_of_companies(page),
-            use_case_select_default_company::client::list_of_branches(page, m),
+            page.list_of_companies(),
+            page.list_of_branches(m),
             m.selected_company_uuid.clone(),
-            use_case_select_default_company::client::selected_company_name(page, m),
+            page.selected_company_name(m),
             m.selected_company_branch_uuid.clone(),
-            use_case_select_default_company::client::selected_company_branch_name(page, m),
+            page.selected_company_branch_name(m),
             m.page_home.forms.clone(),
         )
     });
@@ -234,11 +234,10 @@ fn CreateAccountForm(index: usize, lm: use_case_create_account::client::LocalMod
         list_of_company_name_and_uuid,
     ) = with_model(|m| {
         (
-            use_case_create_account::client::error_account_name(&lm).map(|e| format!("{e:?}")),
-            use_case_create_account::client::error_company_name(&lm, m).map(|e| format!("{e:?}")),
-            use_case_create_account::client::resolved_company_uuid(&lm, m)
-                .map(|uuid| uuid.to_string()),
-            use_case_create_account::client::list_of_companies_to_display(&lm, m),
+            lm.error_account_name().map(|e| format!("{e:?}")),
+            lm.error_company_name(m).map(|e| format!("{e:?}")),
+            lm.resolved_company_uuid(m).map(|uuid| uuid.to_string()),
+            lm.list_of_companies_to_display(m),
         )
     });
 
@@ -279,11 +278,9 @@ fn CreateBranchForm(index: usize, lm: use_case_create_branch::client::LocalModel
     let (company_name_error, resolved_company_uuid, list_of_company_name_and_uuid) =
         with_model(|m| {
             (
-                use_case_create_branch::client::company_name_error(&lm, m)
-                    .map(|e| format!("{e:?}")),
-                use_case_create_branch::client::resolved_company_uuid(&lm, m)
-                    .map(|uuid| uuid.to_string()),
-                use_case_create_branch::client::list_of_companies_to_display(&lm, m),
+                lm.company_name_error(m).map(|e| format!("{e:?}")),
+                lm.resolved_company_uuid(m).map(|uuid| uuid.to_string()),
+                lm.list_of_companies_to_display(m),
             )
         });
 
@@ -312,10 +309,8 @@ fn CreateBranchForm(index: usize, lm: use_case_create_branch::client::LocalModel
             branch_name: lm.branch_name.clone(),
             currency: lm.currency.clone(),
             location: lm.location.clone(),
-            branch_name_error: use_case_create_branch::client::error_branch_name(&lm)
-                .map(|e| format!("{e:?}")),
-            location_error: use_case_create_branch::client::error_location(&lm)
-                .map(|e| format!("{e:?}")),
+            branch_name_error: lm.error_branch_name().map(|e| format!("{e:?}")),
+            location_error: lm.error_location().map(|e| format!("{e:?}")),
             list_of_company_name_and_uuid,
         }
     }
@@ -344,8 +339,7 @@ fn CreateCompanyForm(index: usize, lm: use_case_create_company::client::LocalMod
             is_loading: lm.async_state.clone().is_loading(),
             company_name: lm.company_name.clone(),
             currency: lm.currency.clone(),
-            company_name_error: use_case_create_company::client::error_company_name(&lm)
-                .map(|e| format!("{e:?}")),
+            company_name_error: lm.error_company_name().map(|e| format!("{e:?}")),
         }
     }
 }
@@ -355,9 +349,7 @@ fn CreateAccountForBranchForm(
     index: usize,
     lm: use_case_create_account_for_branch::client::LocalModel,
 ) -> Element {
-    let list_of_account_name_and_uuid = with_model(|m| {
-        use_case_create_account_for_branch::client::list_of_accounts_to_display(&lm, m)
-    });
+    let list_of_account_name_and_uuid = with_model(|m| lm.list_of_accounts_to_display(m));
 
     let replier: Replier = new_replier(move |msg| async move {
         async_send(Box::new(use_case_home::client::Message::FormRelated {
@@ -423,8 +415,8 @@ fn SignIn() -> Element {
                 page.show_dialog.clone(),
                 m.user_id.clone(),
                 m.feature_state_auth.user_password.clone(),
-                use_case_sign_in::client::error_user_id(page).map(|e| format!("{e:?}")),
-                use_case_sign_in::client::error_password(page).map(|e| format!("{e:?}")),
+                page.error_user_id().map(|e| format!("{e:?}")),
+                page.error_password().map(|e| format!("{e:?}")),
                 page.async_state.clone().is_loading(),
             )
         });
@@ -456,8 +448,8 @@ fn SignUp() -> Element {
                 m.user_id.clone(),
                 m.user_name.clone(),
                 m.feature_state_auth.user_password.clone(),
-                use_case_sign_up::client::error_user_id(page).map(|e| format!("{e:?}")),
-                use_case_sign_up::client::error_user_name(page).map(|e| format!("{e:?}")),
+                page.error_user_id().map(|e| format!("{e:?}")),
+                page.error_user_name().map(|e| format!("{e:?}")),
                 page.async_state.clone().is_loading(),
             )
         });
