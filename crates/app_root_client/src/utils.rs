@@ -6,8 +6,6 @@ use infrastructure::actors::Mpsc;
 use infrastructure::actors::MultiProducerSingleConsumer;
 use kernel::ui_construct::new;
 use std::ops::Deref;
-use std::pin::Pin;
-use std::sync::Arc;
 use std::sync::LazyLock;
 use use_case_error_handler::client::spawn_listener;
 use utility::ui_effect::Commander;

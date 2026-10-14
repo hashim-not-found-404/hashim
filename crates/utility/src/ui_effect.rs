@@ -128,10 +128,7 @@ impl Commander {
         commander
     }
 
-    pub fn send<Msg>(&self, replier: Replier, msg: Msg)
-    where
-        Msg: MessageTrait,
-    {
+    pub fn send(&self, replier: Replier, msg: impl MessageTrait) {
         let mut sender = self.sender.clone();
         Rt::spawn_local(async move {
             let _ = sender
@@ -141,21 +138,6 @@ impl Commander {
                 })
                 .await;
         });
-    }
-
-    pub async fn async_send<Msg>(&self, replier: Replier, msg: Msg) -> Result<()>
-    where
-        Msg: MessageTrait,
-    {
-        let mut sender = self.sender.clone();
-        sender
-            .send(MessageToCommander {
-                replier,
-                inner: Box::new(msg),
-            })
-            .await?;
-
-        Ok(())
     }
 
     pub async fn async_send_box(&self, replier: Replier, msg: Box<dyn MessageTrait>) -> Result<()> {

@@ -17,7 +17,6 @@ use serde::Serialize;
 use std::fmt::Debug;
 use std::sync::Arc;
 use std::time::Duration;
-use utility::cache::ProcessId;
 use utility::cache::ResourceName;
 use utility::cache::TraitOperationClientError;
 use utility::cache::TraitOperationClientInput;

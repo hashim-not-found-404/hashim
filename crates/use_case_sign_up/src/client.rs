@@ -22,7 +22,6 @@ use std::fmt::Debug;
 use std::ops::Deref;
 use std::sync::Arc;
 use std::time::Duration;
-use utility::cache::ProcessId;
 use utility::cache::ResourceName;
 use utility::cache::TraitOperationClientError;
 use utility::cache::TraitOperationClientInput;

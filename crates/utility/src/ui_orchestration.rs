@@ -232,8 +232,8 @@ pub async fn handle_subscribe<T: UseCaseClient>(
             list_of_subscribtion,
             move || -> Pin<Box<dyn Future<Output = Result<()>>>> {
                 Box::pin({
-                    let value = replier.clone();
-                    async move { value(Box::new(T::msg_refresh())).await }
+                    let replier = replier.clone();
+                    async move { replier(Box::new(T::msg_refresh())).await }
                 })
             },
         )
