@@ -136,7 +136,9 @@ pub(crate) mod client {
                         let Some(form) = forms.get(v).cloned() else {
                             return (vec![], vec![], vec![]);
                         };
-                        forms.insert(v, form);
+
+                        let form = reset_transient_state(form);
+                        forms.insert(v + 1, form);
                         LocalChange::Forms(forms)
                     }
                     Intent::DeleteForm(v) => {
@@ -245,6 +247,31 @@ pub(crate) mod client {
                 }
             }
         }
+    }
+
+    fn reset_transient_state(mut form: FormLocalModel) -> FormLocalModel {
+        match &mut form {
+            FormLocalModel::CreateBranch(lm) => {
+                lm.show_dialog = Default::default();
+                lm.async_state = Default::default();
+            }
+            FormLocalModel::CreateCompany(lm) => {
+                lm.show_dialog = Default::default();
+                lm.async_state = Default::default();
+            }
+            FormLocalModel::CreateAccount(lm) => {
+                lm.show_dialog = Default::default();
+                lm.async_state = Default::default();
+            }
+            FormLocalModel::CreateAccountForBranch(lm) => {
+                lm.show_dialog = Default::default();
+                lm.async_state = Default::default();
+            }
+            FormLocalModel::CreateJournalEntry(lm) => {
+                lm.show_dialog = Default::default();
+            }
+        }
+        form
     }
 
     fn downcast_message(message: Box<dyn MessageTrait + 'static>) -> Result<FormMessage> {
