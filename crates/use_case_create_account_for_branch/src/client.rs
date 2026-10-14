@@ -106,10 +106,22 @@ pub struct LocalModel {
     process_id: ProcessId,
 
     pub show_dialog: Dialog,
+    pub async_state: AsyncState,
+
     pub account_name: String,
     pub outflow_type: OutFlowType,
     pub inflow_type: InFlowType,
-    pub async_state: AsyncState,
+}
+
+impl LocalModel {
+    pub fn clone_user_input(&self) -> Self {
+        Self {
+            account_name: self.account_name.clone(),
+            outflow_type: self.outflow_type.clone(),
+            inflow_type: self.inflow_type.clone(),
+            ..Default::default()
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]

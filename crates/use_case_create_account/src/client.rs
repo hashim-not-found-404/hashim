@@ -103,12 +103,26 @@ pub struct LocalModel {
     process_id: ProcessId,
 
     pub show_dialog: Dialog,
+    pub async_state: AsyncState,
+
     pub is_debit: bool,
     pub is_permanent_account: bool,
     pub account_name: String,
     pub unit_of_measurement_of_quantity: String,
     pub selected_company_name: String,
-    pub async_state: AsyncState,
+}
+
+impl LocalModel {
+    pub fn clone_user_input(&self) -> Self {
+        Self {
+            is_debit: self.is_debit.clone(),
+            is_permanent_account: self.is_permanent_account.clone(),
+            account_name: self.account_name.clone(),
+            unit_of_measurement_of_quantity: self.unit_of_measurement_of_quantity.clone(),
+            selected_company_name: self.selected_company_name.clone(),
+            ..Default::default()
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]

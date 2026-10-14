@@ -249,29 +249,22 @@ pub(crate) mod client {
         }
     }
 
-    fn reset_transient_state(mut form: FormLocalModel) -> FormLocalModel {
-        match &mut form {
-            FormLocalModel::CreateBranch(lm) => {
-                lm.show_dialog = Default::default();
-                lm.async_state = Default::default();
-            }
+    fn reset_transient_state(form: FormLocalModel) -> FormLocalModel {
+        match form {
+            FormLocalModel::CreateBranch(lm) => FormLocalModel::CreateBranch(lm.clone_user_input()),
             FormLocalModel::CreateCompany(lm) => {
-                lm.show_dialog = Default::default();
-                lm.async_state = Default::default();
+                FormLocalModel::CreateCompany(lm.clone_user_input())
             }
             FormLocalModel::CreateAccount(lm) => {
-                lm.show_dialog = Default::default();
-                lm.async_state = Default::default();
+                FormLocalModel::CreateAccount(lm.clone_user_input())
             }
             FormLocalModel::CreateAccountForBranch(lm) => {
-                lm.show_dialog = Default::default();
-                lm.async_state = Default::default();
+                FormLocalModel::CreateAccountForBranch(lm.clone_user_input())
             }
             FormLocalModel::CreateJournalEntry(lm) => {
-                lm.show_dialog = Default::default();
+                FormLocalModel::CreateJournalEntry(lm.clone_user_input())
             }
         }
-        form
     }
 
     fn downcast_message(message: Box<dyn MessageTrait + 'static>) -> Result<FormMessage> {

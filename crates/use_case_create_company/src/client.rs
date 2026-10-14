@@ -98,6 +98,16 @@ pub struct LocalModel {
     pub async_state: AsyncState,
 }
 
+impl LocalModel {
+    pub fn clone_user_input(&self) -> Self {
+        Self {
+            company_name: self.company_name.clone(),
+            currency: self.currency.clone(),
+            ..Default::default()
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct AsyncInput {
     pub user_uuid: UserUuid,

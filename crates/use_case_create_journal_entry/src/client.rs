@@ -196,6 +196,15 @@ pub struct LocalModel {
     pub list_of_available_account: Vec<Account>,
 }
 
+impl LocalModel {
+    pub fn clone_user_input(&self) -> Self {
+        todo!();
+        Self {
+            ..Default::default()
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct AsyncInput {
     pub new_uuid: UuidType,

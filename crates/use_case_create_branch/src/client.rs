@@ -105,11 +105,24 @@ pub struct LocalModel {
     process_id: ProcessId,
 
     pub show_dialog: Dialog,
+    pub async_state: AsyncState,
+
     pub company_name: String,
     pub branch_name: String,
     pub currency: Currency,
     pub location: Location,
-    pub async_state: AsyncState,
+}
+
+impl LocalModel {
+    pub fn clone_user_input(&self) -> Self {
+        Self {
+            company_name: self.company_name.clone(),
+            branch_name: self.branch_name.clone(),
+            currency: self.currency.clone(),
+            location: self.location.clone(),
+            ..Default::default()
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
