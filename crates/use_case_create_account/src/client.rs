@@ -34,6 +34,7 @@ use utility::tools::select_strings;
 use utility::ui_effect::MessageTrait;
 use utility::ui_effect::Replier;
 use utility::ui_effect::UiContext;
+use utility::ui_orchestration::CheckState;
 use utility::ui_orchestration::GenricAsyncState;
 use utility::ui_orchestration::UseCaseClient;
 use utility::ui_orchestration::UserConsent;
@@ -91,6 +92,7 @@ pub async fn check_input<
 }
 
 pub(crate) type AsyncState = GenricAsyncState<AsyncInput, Ok, Error>;
+pub(crate) type CheckStateLocal = CheckState<AsyncInput, Ok, Error>;
 
 pub trait GlobalModel {
     fn user_uuid(&self) -> Option<UserUuid>;
@@ -103,6 +105,7 @@ pub struct LocalModel {
     process_id: ProcessId,
 
     pub show_dialog: Dialog,
+    pub check_state: CheckStateLocal,
     pub async_state: AsyncState,
 
     pub is_debit: bool,
@@ -115,8 +118,8 @@ pub struct LocalModel {
 impl LocalModel {
     pub fn clone_user_input(&self) -> Self {
         Self {
-            is_debit: self.is_debit.clone(),
-            is_permanent_account: self.is_permanent_account.clone(),
+            is_debit: self.is_debit,
+            is_permanent_account: self.is_permanent_account,
             account_name: self.account_name.clone(),
             unit_of_measurement_of_quantity: self.unit_of_measurement_of_quantity.clone(),
             selected_company_name: self.selected_company_name.clone(),
@@ -125,10 +128,17 @@ impl LocalModel {
     }
 
     pub fn error_account_name(&self) -> Option<AccountNameError> {
-        match self.async_state.clone() {
-            AsyncState::Failure { error, .. } => error.account_name,
-            _ => None,
+        if let CheckState::Failure { error, .. } = &self.check_state
+            && let Some(e) = &error.account_name
+        {
+            return Some(e.clone());
         }
+        if let AsyncState::Failure { error, .. } = &self.async_state
+            && let Some(e) = &error.account_name
+        {
+            return Some(e.clone());
+        }
+        None
     }
 
     pub fn resolved_company_uuid(&self, global_model: &impl GlobalModel) -> Option<CompanyUuid> {
@@ -143,9 +153,15 @@ impl LocalModel {
     }
 
     pub fn error_company_name(&self, global_model: &impl GlobalModel) -> Option<CompanyNameError> {
-        if let AsyncState::Failure { error, .. } = self.async_state.clone()
-            && let Some(e) = error.belong_to_company
-        {
+        let belong_to_company_err = match &self.check_state {
+            CheckState::Failure { error, .. } => error.belong_to_company.clone(),
+            _ => match &self.async_state {
+                AsyncState::Failure { error, .. } => error.belong_to_company.clone(),
+                _ => None,
+            },
+        };
+
+        if let Some(e) = belong_to_company_err {
             return match e {
                 RowIdError::Invalid | RowIdError::NotExist => Some(CompanyNameError::NotExist),
                 RowIdError::Duplicated => None,
@@ -204,6 +220,7 @@ pub enum LocalChange {
     AccountName(String),
     UnitOfMeasurementOfQuantity(String),
     SelectedCompanyName(String),
+    CheckState(CheckStateLocal),
     AsyncState(AsyncState),
 }
 
@@ -243,6 +260,7 @@ pub enum Intent {
 pub enum Observe {
     Timeout,
     Result(AsyncState),
+    CheckResult(CheckStateLocal),
     Refresh,
 }
 
@@ -253,6 +271,22 @@ pub enum Message {
 }
 
 impl MessageTrait for Message {}
+
+fn current_check_input(
+    local_model: &LocalModel,
+    global_model: &impl GlobalModel,
+) -> Option<AsyncInput> {
+    let user_uuid = global_model.user_uuid()?;
+    let belong_to_company = local_model.resolved_company_uuid(global_model)?;
+    Some(AsyncInput {
+        user_uuid,
+        is_debit: local_model.is_debit,
+        is_permanent_account: local_model.is_permanent_account,
+        account_name: local_model.account_name.clone(),
+        unit_of_measurement_of_quantity: local_model.unit_of_measurement_of_quantity.clone(),
+        belong_to_company,
+    })
+}
 
 fn build_check_effect(
     local_model: &LocalModel,
@@ -270,14 +304,26 @@ fn build_check_effect(
     };
     let mut a = AsyncInput {
         user_uuid,
-        is_debit: local_model.is_debit.clone(),
-        is_permanent_account: local_model.is_permanent_account.clone(),
+        is_debit: local_model.is_debit,
+        is_permanent_account: local_model.is_permanent_account,
         account_name: local_model.account_name.clone(),
         unit_of_measurement_of_quantity: local_model.unit_of_measurement_of_quantity.clone(),
         belong_to_company,
     };
     mutate(&mut a);
     vec![Effect::Check { async_input: a }]
+}
+
+fn is_check_stale(
+    result: &CheckStateLocal,
+    local_model: &LocalModel,
+    global_model: &impl GlobalModel,
+) -> bool {
+    let input = match result {
+        CheckState::Idle => return false,
+        CheckState::Success { input, .. } | CheckState::Failure { input, .. } => input,
+    };
+    current_check_input(local_model, global_model).as_ref() != Some(input)
 }
 
 pub fn update(
@@ -310,8 +356,8 @@ pub fn update(
 
                 let async_input = AsyncInput {
                     user_uuid,
-                    is_debit: local_model.is_debit.clone(),
-                    is_permanent_account: local_model.is_permanent_account.clone(),
+                    is_debit: local_model.is_debit,
+                    is_permanent_account: local_model.is_permanent_account,
                     account_name: local_model.account_name.clone(),
                     unit_of_measurement_of_quantity: local_model
                         .unit_of_measurement_of_quantity
@@ -360,8 +406,8 @@ pub fn update(
                         };
                         let async_input = AsyncInput {
                             user_uuid,
-                            is_debit: local_model.is_debit.clone(),
-                            is_permanent_account: local_model.is_permanent_account.clone(),
+                            is_debit: local_model.is_debit,
+                            is_permanent_account: local_model.is_permanent_account,
                             account_name: local_model.account_name.clone(),
                             unit_of_measurement_of_quantity: local_model
                                 .unit_of_measurement_of_quantity
@@ -389,40 +435,56 @@ pub fn update(
                     LocalChange::AccountName(Default::default()),
                     LocalChange::UnitOfMeasurementOfQuantity(Default::default()),
                     LocalChange::SelectedCompanyName(Default::default()),
+                    LocalChange::CheckState(CheckState::Idle),
                     LocalChange::AsyncState(AsyncState::Idle),
                 ];
                 (local_change, vec![], vec![])
             }
             Intent::IsDebit(v) => {
-                let local_change = vec![LocalChange::IsDebit(v)];
+                let local_change = vec![
+                    LocalChange::IsDebit(v),
+                    LocalChange::CheckState(CheckState::Idle),
+                ];
                 let effect = build_check_effect(local_model, global_model, None, |a| {
                     a.is_debit = v;
                 });
                 (local_change, vec![], effect)
             }
             Intent::IsPermanentAccount(v) => {
-                let local_change = vec![LocalChange::IsPermanentAccount(v)];
+                let local_change = vec![
+                    LocalChange::IsPermanentAccount(v),
+                    LocalChange::CheckState(CheckState::Idle),
+                ];
                 let effect = build_check_effect(local_model, global_model, None, |a| {
                     a.is_permanent_account = v;
                 });
                 (local_change, vec![], effect)
             }
             Intent::AccountName(v) => {
-                let local_change = vec![LocalChange::AccountName(v.clone())];
+                let local_change = vec![
+                    LocalChange::AccountName(v.clone()),
+                    LocalChange::CheckState(CheckState::Idle),
+                ];
                 let effect = build_check_effect(local_model, global_model, None, |a| {
                     a.account_name = v;
                 });
                 (local_change, vec![], effect)
             }
             Intent::UnitOfMeasurementOfQuantity(v) => {
-                let local_change = vec![LocalChange::UnitOfMeasurementOfQuantity(v.clone())];
+                let local_change = vec![
+                    LocalChange::UnitOfMeasurementOfQuantity(v.clone()),
+                    LocalChange::CheckState(CheckState::Idle),
+                ];
                 let effect = build_check_effect(local_model, global_model, None, |a| {
                     a.unit_of_measurement_of_quantity = v;
                 });
                 (local_change, vec![], effect)
             }
             Intent::CompanyName(v) => {
-                let local_change = vec![LocalChange::SelectedCompanyName(v.clone())];
+                let local_change = vec![
+                    LocalChange::SelectedCompanyName(v.clone()),
+                    LocalChange::CheckState(CheckState::Idle),
+                ];
                 let resolved = if v.is_empty() {
                     global_model.selected_company()
                 } else {
@@ -438,8 +500,10 @@ pub fn update(
                 let list = local_model.list_of_companies_to_display(global_model);
                 match list.get(idx) {
                     Some((company_uuid, company_name)) => {
-                        let local_change =
-                            vec![LocalChange::SelectedCompanyName(company_name.clone())];
+                        let local_change = vec![
+                            LocalChange::SelectedCompanyName(company_name.clone()),
+                            LocalChange::CheckState(CheckState::Idle),
+                        ];
                         let effect = build_check_effect(
                             local_model,
                             global_model,
@@ -481,6 +545,7 @@ pub fn update(
                             LocalChange::IsPermanentAccount(Default::default()),
                             LocalChange::UnitOfMeasurementOfQuantity(Default::default()),
                             LocalChange::SelectedCompanyName(Default::default()),
+                            LocalChange::CheckState(CheckState::Idle),
                             LocalChange::AsyncState(result),
                         ]
                     }
@@ -490,6 +555,12 @@ pub fn update(
                     ],
                 };
                 (change, vec![], vec![])
+            }
+            Observe::CheckResult(result) => {
+                if is_check_stale(&result, local_model, global_model) {
+                    return (vec![], vec![], vec![]);
+                }
+                (vec![LocalChange::CheckState(result)], vec![], vec![])
             }
             Observe::Refresh => {
                 let effect = build_check_effect(local_model, global_model, None, |_| {});
@@ -509,6 +580,7 @@ pub fn local_apply(msg: LocalChange, local_model: &mut LocalModel) {
             local_model.unit_of_measurement_of_quantity = i
         }
         LocalChange::SelectedCompanyName(i) => local_model.selected_company_name = i,
+        LocalChange::CheckState(i) => local_model.check_state = i,
         LocalChange::AsyncState(i) => local_model.async_state = i,
         LocalChange::ProcessId(i) => local_model.process_id = i,
     }
@@ -559,12 +631,16 @@ impl UseCaseClient for Wire {
         Message::Observe(Observe::Result(AsyncState::Success { input, ok }))
     }
 
-    fn msg_failure(input: Self::AsyncInput, error: Self::Error) -> Self::Message {
+    fn msg_failure_submit(input: Self::AsyncInput, error: Self::Error) -> Self::Message {
         Message::Observe(Observe::Result(AsyncState::Failure { input, error }))
     }
 
-    fn msg_success_check() -> Self::Message {
-        Message::Observe(Observe::Result(AsyncState::Idle))
+    fn msg_success_check(input: Self::AsyncInput, ok: Self::Ok) -> Self::Message {
+        Message::Observe(Observe::CheckResult(CheckState::Success { input, ok }))
+    }
+
+    fn msg_failure_check(input: Self::AsyncInput, error: Self::Error) -> Self::Message {
+        Message::Observe(Observe::CheckResult(CheckState::Failure { input, error }))
     }
 
     fn msg_timeout() -> Self::Message {

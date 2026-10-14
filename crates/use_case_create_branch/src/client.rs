@@ -1,4 +1,5 @@
 use crate::domain::BranchNameError;
+use crate::domain::CompanyBelongError;
 use crate::domain::Error;
 use crate::domain::Input;
 use crate::domain::LocationError;
@@ -36,6 +37,7 @@ use utility::tools::select_strings;
 use utility::ui_effect::MessageTrait;
 use utility::ui_effect::Replier;
 use utility::ui_effect::UiContext;
+use utility::ui_orchestration::CheckState;
 use utility::ui_orchestration::GenricAsyncState;
 use utility::ui_orchestration::UseCaseClient;
 use utility::ui_orchestration::UserConsent;
@@ -93,6 +95,7 @@ pub async fn check_input<
 }
 
 pub(crate) type AsyncState = GenricAsyncState<AsyncInput, Ok, Error>;
+pub(crate) type CheckStateLocal = CheckState<AsyncInput, Ok, Error>;
 
 pub trait GlobalModel {
     fn user_uuid(&self) -> Option<UserUuid>;
@@ -105,6 +108,7 @@ pub struct LocalModel {
     process_id: ProcessId,
 
     pub show_dialog: Dialog,
+    pub check_state: CheckStateLocal,
     pub async_state: AsyncState,
 
     pub company_name: String,
@@ -125,17 +129,31 @@ impl LocalModel {
     }
 
     pub fn error_branch_name(&self) -> Option<BranchNameError> {
-        match self.async_state.clone() {
-            AsyncState::Failure { error, .. } => error.branch_name,
-            _ => None,
+        if let CheckState::Failure { error, .. } = &self.check_state
+            && let Some(e) = &error.branch_name
+        {
+            return Some(e.clone());
         }
+        if let AsyncState::Failure { error, .. } = &self.async_state
+            && let Some(e) = &error.branch_name
+        {
+            return Some(e.clone());
+        }
+        None
     }
 
     pub fn error_location(&self) -> Option<LocationError> {
-        match self.async_state.clone() {
-            AsyncState::Failure { error, .. } => error.location,
-            _ => None,
+        if let CheckState::Failure { error, .. } = &self.check_state
+            && let Some(e) = &error.location
+        {
+            return Some(e.clone());
         }
+        if let AsyncState::Failure { error, .. } = &self.async_state
+            && let Some(e) = &error.location
+        {
+            return Some(e.clone());
+        }
+        None
     }
 
     pub fn resolved_company_uuid(&self, global_model: &impl GlobalModel) -> Option<CompanyUuid> {
@@ -150,6 +168,21 @@ impl LocalModel {
     }
 
     pub fn company_name_error(&self, global_model: &impl GlobalModel) -> Option<CompanyNameError> {
+        if let CheckState::Failure { error, .. } = &self.check_state
+            && let Some(e) = &error.company_belong
+        {
+            return Some(match e {
+                CompanyBelongError::NotExist => CompanyNameError::NotExist,
+            });
+        }
+        if let AsyncState::Failure { error, .. } = &self.async_state
+            && let Some(e) = &error.company_belong
+        {
+            return Some(match e {
+                CompanyBelongError::NotExist => CompanyNameError::NotExist,
+            });
+        }
+
         let typed = self.company_name.clone();
         if typed.is_empty() {
             if global_model.selected_company().is_none() {
@@ -200,6 +233,7 @@ pub enum LocalChange {
     BranchName(String),
     Currency(Currency),
     Location(Location),
+    CheckState(CheckStateLocal),
     AsyncState(AsyncState),
 }
 
@@ -239,6 +273,7 @@ pub enum Intent {
 pub enum Observe {
     Timeout,
     Result(AsyncState),
+    CheckResult(CheckStateLocal),
     Refresh,
 }
 
@@ -249,6 +284,21 @@ pub enum Message {
 }
 
 impl MessageTrait for Message {}
+
+fn current_check_input(
+    local_model: &LocalModel,
+    global_model: &impl GlobalModel,
+) -> Option<AsyncInput> {
+    let user_uuid = global_model.user_uuid()?;
+    let company_belong = local_model.resolved_company_uuid(global_model)?;
+    Some(AsyncInput {
+        user_uuid,
+        company_belong,
+        branch_name: local_model.branch_name.clone(),
+        currency: local_model.currency.clone(),
+        location: local_model.location.clone(),
+    })
+}
 
 fn build_check_effect(
     local_model: &LocalModel,
@@ -273,6 +323,18 @@ fn build_check_effect(
     };
     mutate(&mut a);
     vec![Effect::Check { async_input: a }]
+}
+
+fn is_check_stale(
+    result: &CheckStateLocal,
+    local_model: &LocalModel,
+    global_model: &impl GlobalModel,
+) -> bool {
+    let input = match result {
+        CheckState::Idle => return false,
+        CheckState::Success { input, .. } | CheckState::Failure { input, .. } => input,
+    };
+    current_check_input(local_model, global_model).as_ref() != Some(input)
 }
 
 pub fn update(
@@ -375,12 +437,16 @@ pub fn update(
                     LocalChange::BranchName(Default::default()),
                     LocalChange::Currency(Default::default()),
                     LocalChange::Location(Default::default()),
+                    LocalChange::CheckState(CheckState::Idle),
                     LocalChange::AsyncState(AsyncState::Idle),
                 ];
                 (local_change, vec![], vec![])
             }
             Intent::CompanyName(v) => {
-                let local_change = vec![LocalChange::CompanyName(v.clone())];
+                let local_change = vec![
+                    LocalChange::CompanyName(v.clone()),
+                    LocalChange::CheckState(CheckState::Idle),
+                ];
                 let resolved = if v.is_empty() {
                     global_model.selected_company()
                 } else {
@@ -396,7 +462,10 @@ pub fn update(
                 let list = local_model.list_of_companies_to_display(global_model);
                 match list.get(idx) {
                     Some((company_uuid, company_name)) => {
-                        let local_change = vec![LocalChange::CompanyName(company_name.clone())];
+                        let local_change = vec![
+                            LocalChange::CompanyName(company_name.clone()),
+                            LocalChange::CheckState(CheckState::Idle),
+                        ];
                         let effect = build_check_effect(
                             local_model,
                             global_model,
@@ -409,14 +478,20 @@ pub fn update(
                 }
             }
             Intent::BranchName(v) => {
-                let local_change = vec![LocalChange::BranchName(v.clone())];
+                let local_change = vec![
+                    LocalChange::BranchName(v.clone()),
+                    LocalChange::CheckState(CheckState::Idle),
+                ];
                 let effect = build_check_effect(local_model, global_model, None, |a| {
                     a.branch_name = v;
                 });
                 (local_change, vec![], effect)
             }
             Intent::Currency(v) => {
-                let local_change = vec![LocalChange::Currency(v.clone())];
+                let local_change = vec![
+                    LocalChange::Currency(v.clone()),
+                    LocalChange::CheckState(CheckState::Idle),
+                ];
                 let effect = build_check_effect(local_model, global_model, None, |a| {
                     a.currency = v;
                 });
@@ -426,7 +501,10 @@ pub fn update(
                 let mut loc = local_model.location.clone();
                 loc.latitude = v;
                 let loc_for_effect = loc.clone();
-                let local_change = vec![LocalChange::Location(loc)];
+                let local_change = vec![
+                    LocalChange::Location(loc),
+                    LocalChange::CheckState(CheckState::Idle),
+                ];
                 let effect = build_check_effect(local_model, global_model, None, |a| {
                     a.location = loc_for_effect;
                 });
@@ -436,7 +514,10 @@ pub fn update(
                 let mut loc = local_model.location.clone();
                 loc.longitude = v;
                 let loc_for_effect = loc.clone();
-                let local_change = vec![LocalChange::Location(loc)];
+                let local_change = vec![
+                    LocalChange::Location(loc),
+                    LocalChange::CheckState(CheckState::Idle),
+                ];
                 let effect = build_check_effect(local_model, global_model, None, |a| {
                     a.location = loc_for_effect;
                 });
@@ -471,6 +552,7 @@ pub fn update(
                             LocalChange::BranchName(Default::default()),
                             LocalChange::Currency(Default::default()),
                             LocalChange::Location(Default::default()),
+                            LocalChange::CheckState(CheckState::Idle),
                             LocalChange::AsyncState(result),
                         ]
                     }
@@ -480,6 +562,12 @@ pub fn update(
                     ],
                 };
                 (local_change, vec![], vec![])
+            }
+            Observe::CheckResult(result) => {
+                if is_check_stale(&result, local_model, global_model) {
+                    return (vec![], vec![], vec![]);
+                }
+                (vec![LocalChange::CheckState(result)], vec![], vec![])
             }
             Observe::Refresh => {
                 let effect = build_check_effect(local_model, global_model, None, |_| {});
@@ -496,6 +584,7 @@ pub fn local_apply(msg: LocalChange, local_model: &mut LocalModel) {
         LocalChange::BranchName(i) => local_model.branch_name = i,
         LocalChange::Currency(i) => local_model.currency = i,
         LocalChange::Location(i) => local_model.location = i,
+        LocalChange::CheckState(i) => local_model.check_state = i,
         LocalChange::AsyncState(i) => local_model.async_state = i,
         LocalChange::ProcessId(i) => local_model.process_id = i,
     }
@@ -546,12 +635,16 @@ impl UseCaseClient for Wire {
         Message::Observe(Observe::Result(AsyncState::Success { input, ok }))
     }
 
-    fn msg_failure(input: Self::AsyncInput, error: Self::Error) -> Self::Message {
+    fn msg_failure_submit(input: Self::AsyncInput, error: Self::Error) -> Self::Message {
         Message::Observe(Observe::Result(AsyncState::Failure { input, error }))
     }
 
-    fn msg_success_check() -> Self::Message {
-        Message::Observe(Observe::Result(AsyncState::Idle))
+    fn msg_success_check(input: Self::AsyncInput, ok: Self::Ok) -> Self::Message {
+        Message::Observe(Observe::CheckResult(CheckState::Success { input, ok }))
+    }
+
+    fn msg_failure_check(input: Self::AsyncInput, error: Self::Error) -> Self::Message {
+        Message::Observe(Observe::CheckResult(CheckState::Failure { input, error }))
     }
 
     fn msg_timeout() -> Self::Message {

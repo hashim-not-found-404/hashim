@@ -244,8 +244,8 @@ pub fn update(
                     user_uuid,
                     belong_to_account,
                     belong_to_company_branch,
-                    outflow_type: local_model.outflow_type.clone(),
-                    inflow_type: local_model.inflow_type.clone(),
+                    outflow_type: local_model.outflow_type,
+                    inflow_type: local_model.inflow_type,
                 };
 
                 let local_change = vec![
@@ -295,8 +295,8 @@ pub fn update(
                             user_uuid,
                             belong_to_account,
                             belong_to_company_branch,
-                            outflow_type: local_model.outflow_type.clone(),
-                            inflow_type: local_model.inflow_type.clone(),
+                            outflow_type: local_model.outflow_type,
+                            inflow_type: local_model.inflow_type,
                         };
 
                         (
@@ -436,12 +436,8 @@ impl UseCaseClient for Wire {
         Message::Observe(Observe::Result(AsyncState::Success { input, ok }))
     }
 
-    fn msg_failure(input: Self::AsyncInput, error: Self::Error) -> Self::Message {
+    fn msg_failure_submit(input: Self::AsyncInput, error: Self::Error) -> Self::Message {
         Message::Observe(Observe::Result(AsyncState::Failure { input, error }))
-    }
-
-    fn msg_success_check() -> Self::Message {
-        Message::Observe(Observe::Result(AsyncState::Idle))
     }
 
     fn msg_timeout() -> Self::Message {

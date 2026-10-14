@@ -66,6 +66,37 @@ where
     }
 }
 
+/// Result of a validation check.
+///
+/// Same shape as [`GenricAsyncState`] minus `Loading` — checks are silent
+/// background validations and never block the UI. Because the user can
+/// keep typing while a check is in flight, every `Success` / `Failure`
+/// carries the `input` it was computed for; the reducer compares that
+/// `input` against the current model and discards the result if the user
+/// has since changed it.
+#[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
+#[serde(bound(
+    deserialize = "Input: DeserializeOwned, Ok: DeserializeOwned, Error: DeserializeOwned",
+    serialize = "Input: Serialize, Ok: Serialize, Error: Serialize",
+))]
+pub enum CheckState<Input, Ok, Error>
+where
+    Input: Debug + Clone + PartialEq,
+    Ok: Debug + Clone + PartialEq,
+    Error: Debug + Clone + PartialEq,
+{
+    #[default]
+    Idle,
+    Success {
+        input: Input,
+        ok: Ok,
+    },
+    Failure {
+        input: Input,
+        error: Error,
+    },
+}
+
 pub trait UseCaseClient: 'static {
     type Input: TraitOperationClientInput + 'static;
     type AsyncInput: Clone + 'static;
@@ -74,14 +105,21 @@ pub trait UseCaseClient: 'static {
     type Message: MessageTrait;
 
     fn msg_success_submit(input: Self::AsyncInput, ok: Self::Ok) -> Self::Message;
-    fn msg_failure(input: Self::AsyncInput, error: Self::Error) -> Self::Message;
-    fn msg_success_check() -> Self::Message;
+    fn msg_failure_submit(input: Self::AsyncInput, error: Self::Error) -> Self::Message;
+
+    fn msg_success_check(_input: Self::AsyncInput, _ok: Self::Ok) -> Self::Message {
+        unreachable!()
+    }
+    fn msg_failure_check(_input: Self::AsyncInput, _error: Self::Error) -> Self::Message {
+        unreachable!()
+    }
     fn msg_timeout() -> Self::Message {
         unreachable!()
     }
     fn msg_refresh() -> Self::Message {
         unreachable!()
     }
+
     fn build_input(input: &Self::AsyncInput) -> Self::Input;
 }
 
@@ -111,7 +149,7 @@ pub async fn handle_submit<T: UseCaseClient>(
                             let a: Box<dyn Any> = err;
                             let a: Box<T::Error> =
                                 a.downcast().map_err(|_| anyhow!("downcast error"))?;
-                            T::msg_failure(input, *a)
+                            T::msg_failure_submit(input, *a)
                         }
                     },
                 };
@@ -148,12 +186,16 @@ pub async fn handle_check<T: UseCaseClient>(
             async move {
                 if let Response::Data { data } = a {
                     let msg = match data {
-                        Ok(_) => T::msg_success_check(),
+                        Ok(ok) => {
+                            let a: &dyn Any = &*ok;
+                            let a: &T::Ok = a.downcast_ref().context("downcast error")?;
+                            T::msg_success_check(input, a.clone())
+                        }
                         Err(err) => {
                             let a: Box<dyn Any> = err;
                             let a: Box<T::Error> =
                                 a.downcast().map_err(|_| anyhow!("downcast error"))?;
-                            T::msg_failure(input, *a)
+                            T::msg_failure_check(input, *a)
                         }
                     };
                     replier(Box::new(msg)).await?;
@@ -198,7 +240,7 @@ pub async fn handle_refresh<T: UseCaseClient>(
                             let a: Box<dyn Any> = err;
                             let a: Box<T::Error> =
                                 a.downcast().map_err(|_| anyhow!("downcast error"))?;
-                            T::msg_failure(input, *a)
+                            T::msg_failure_submit(input, *a)
                         }
                     };
                     replier(Box::new(msg)).await?;
