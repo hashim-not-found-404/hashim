@@ -1,5 +1,8 @@
 pub(crate) mod client {
+    use std::any::Any;
+
     use anyhow::Result;
+    use dioxus::core::bail;
     use serde::Deserialize;
     use serde::Serialize;
     use utility::ui_effect::MessageTrait;
@@ -63,7 +66,7 @@ pub(crate) mod client {
     pub(crate) enum Message {
         FormRelated {
             form_index: usize,
-            message: FormMessage,
+            message: Box<dyn MessageTrait>,
         },
         Intent(Intent),
         Observe(Observe),
@@ -161,6 +164,10 @@ pub(crate) mod client {
                     return (vec![], vec![], vec![]);
                 };
 
+                let Ok(message) = downcast_message(message) else {
+                    return (vec![], vec![], vec![]);
+                };
+
                 // Static dispatch. The types of `sub_local`, `sub_global`
                 // and `sub_effect` differ per arm, so we do everything in
                 // one match: run the sub-reducer, apply the sub-local
@@ -238,6 +245,33 @@ pub(crate) mod client {
                 }
             }
         }
+    }
+
+    fn downcast_message(message: Box<dyn MessageTrait + 'static>) -> Result<FormMessage> {
+        let message: Box<dyn Any> = message;
+        if let Some(v) = message.downcast_ref::<use_case_create_account::client::Message>() {
+            return Ok(FormMessage::CreateAccount(v.clone()));
+        }
+
+        if let Some(v) =
+            message.downcast_ref::<use_case_create_account_for_branch::client::Message>()
+        {
+            return Ok(FormMessage::CreateAccountForBranch(v.clone()));
+        }
+
+        if let Some(v) = message.downcast_ref::<use_case_create_branch::client::Message>() {
+            return Ok(FormMessage::CreateBranch(v.clone()));
+        }
+
+        if let Some(v) = message.downcast_ref::<use_case_create_company::client::Message>() {
+            return Ok(FormMessage::CreateCompany(v.clone()));
+        }
+
+        if let Some(v) = message.downcast_ref::<use_case_create_journal_entry::client::Message>() {
+            return Ok(FormMessage::CreateJournalEntry(v.clone()));
+        }
+
+        bail!("downcast error")
     }
 
     // =====================================================================

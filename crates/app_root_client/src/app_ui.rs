@@ -7,12 +7,9 @@ use crate::utils::init_commander_and_model;
 use crate::utils::send;
 use crate::utils::with_model;
 use anyhow::Result;
-use anyhow::anyhow;
 use cache::utils::MyUuidConverter;
 use dioxus::prelude::*;
-use std::any::Any;
 use use_case_home::client::FormLocalModel;
-use use_case_home::client::FormMessage;
 use use_case_home::client::FormsToAdd;
 use utility::ui_effect::Replier;
 use utility::ui_effect::new_replier;
@@ -246,13 +243,9 @@ fn CreateAccountForm(index: usize, lm: use_case_create_account::client::LocalMod
     });
 
     let replier: Replier = new_replier(move |msg| async move {
-        let msg: Box<dyn Any> = msg;
-        let msg: Box<use_case_create_account::client::Message> =
-            msg.downcast().map_err(|_| anyhow!("downcast error"))?;
-
         async_send(Box::new(use_case_home::client::Message::FormRelated {
             form_index: index,
-            message: use_case_home::client::FormMessage::CreateAccount((*msg).clone()),
+            message: msg,
         }))
         .await
     });
@@ -263,9 +256,7 @@ fn CreateAccountForm(index: usize, lm: use_case_create_account::client::LocalMod
                 replier.clone(),
                 use_case_home::client::Message::FormRelated {
                     form_index: index,
-                    message: FormMessage::CreateAccount(
-                        use_case_create_account::client::Message::Intent(i),
-                    ),
+                    message: Box::new(use_case_create_account::client::Message::Intent(i)),
                 },
             ),
             show_dialog: lm.show_dialog.clone(),
@@ -297,13 +288,9 @@ fn CreateBranchForm(index: usize, lm: use_case_create_branch::client::LocalModel
         });
 
     let replier: Replier = new_replier(move |msg| async move {
-        let msg: Box<dyn Any> = msg;
-        let msg: Box<use_case_create_branch::client::Message> =
-            msg.downcast().map_err(|_| anyhow!("downcast error"))?;
-
         async_send(Box::new(use_case_home::client::Message::FormRelated {
             form_index: index,
-            message: use_case_home::client::FormMessage::CreateBranch((*msg).clone()),
+            message: msg,
         }))
         .await
     });
@@ -314,9 +301,7 @@ fn CreateBranchForm(index: usize, lm: use_case_create_branch::client::LocalModel
                 replier.clone(),
                 use_case_home::client::Message::FormRelated {
                     form_index: index,
-                    message: FormMessage::CreateBranch(
-                        use_case_create_branch::client::Message::Intent(i),
-                    ),
+                    message: Box::new(use_case_create_branch::client::Message::Intent(i)),
                 },
             ),
             show_dialog: lm.show_dialog.clone(),
@@ -339,13 +324,9 @@ fn CreateBranchForm(index: usize, lm: use_case_create_branch::client::LocalModel
 #[component]
 fn CreateCompanyForm(index: usize, lm: use_case_create_company::client::LocalModel) -> Element {
     let replier: Replier = new_replier(move |msg| async move {
-        let msg: Box<dyn Any> = msg;
-        let msg: Box<use_case_create_company::client::Message> =
-            msg.downcast().map_err(|_| anyhow!("downcast error"))?;
-
         async_send(Box::new(use_case_home::client::Message::FormRelated {
             form_index: index,
-            message: use_case_home::client::FormMessage::CreateCompany((*msg).clone()),
+            message: msg,
         }))
         .await
     });
@@ -356,9 +337,7 @@ fn CreateCompanyForm(index: usize, lm: use_case_create_company::client::LocalMod
                 replier.clone(),
                 use_case_home::client::Message::FormRelated {
                     form_index: index,
-                    message: FormMessage::CreateCompany(
-                        use_case_create_company::client::Message::Intent(i),
-                    ),
+                    message: Box::new(use_case_create_company::client::Message::Intent(i)),
                 },
             ),
             show_dialog: lm.show_dialog.clone(),
@@ -381,13 +360,9 @@ fn CreateAccountForBranchForm(
     });
 
     let replier: Replier = new_replier(move |msg| async move {
-        let msg: Box<dyn Any> = msg;
-        let msg: Box<use_case_create_account_for_branch::client::Message> =
-            msg.downcast().map_err(|_| anyhow!("downcast error"))?;
-
         async_send(Box::new(use_case_home::client::Message::FormRelated {
             form_index: index,
-            message: use_case_home::client::FormMessage::CreateAccountForBranch((*msg).clone()),
+            message: msg,
         }))
         .await
     });
@@ -398,9 +373,7 @@ fn CreateAccountForBranchForm(
                 replier.clone(),
                 use_case_home::client::Message::FormRelated {
                     form_index: index,
-                    message: FormMessage::CreateAccountForBranch(
-                        use_case_create_account_for_branch::client::Message::Intent(i),
-                    ),
+                    message: Box::new(use_case_create_account_for_branch::client::Message::Intent(i)),
                 },
             ),
             show_dialog: lm.show_dialog.clone(),
@@ -419,13 +392,9 @@ fn CreateJournalEntryForm(
     lm: use_case_create_journal_entry::client::LocalModel,
 ) -> Element {
     let replier: Replier = new_replier(move |msg| async move {
-        let msg: Box<dyn Any> = msg;
-        let msg: Box<use_case_create_journal_entry::client::Message> =
-            msg.downcast().map_err(|_| anyhow!("downcast error"))?;
-
         async_send(Box::new(use_case_home::client::Message::FormRelated {
             form_index: index,
-            message: use_case_home::client::FormMessage::CreateJournalEntry((*msg).clone()),
+            message: msg,
         }))
         .await
     });
@@ -436,9 +405,7 @@ fn CreateJournalEntryForm(
                 replier.clone(),
                 use_case_home::client::Message::FormRelated {
                     form_index: index,
-                    message: FormMessage::CreateJournalEntry(
-                        use_case_create_journal_entry::client::Message::Intent(i),
-                    ),
+                    message: Box::new(use_case_create_journal_entry::client::Message::Intent(i)),
                 },
             ),
             show_dialog: lm.show_dialog.clone(),
