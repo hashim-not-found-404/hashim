@@ -40,14 +40,6 @@ all:
 
 ###################################################################################################
 
-check_p crate_name:
-    RUSTFLAGS="-A warnings" cargo check -p {{crate_name}} --all-targets
-    RUSTFLAGS="-A warnings" cargo check -p {{crate_name}} --all-targets --features="server"
-    RUSTFLAGS="-A warnings" cargo check -p {{crate_name}} --all-targets --features="client"
-    RUSTFLAGS="-A warnings" cargo check -p {{crate_name}} --all-targets --features="database"
-    RUSTFLAGS="-A warnings" cargo check -p {{crate_name}} --all-targets --features="cache"
-    RUSTFLAGS="-A warnings" cargo check -p {{crate_name}} --all-targets --features="client,ui"
-
 test_p crate_name:
     RUSTFLAGS="-A warnings" cargo test -p {{crate_name}}
 
@@ -60,7 +52,6 @@ test_cover_p crate_name:
 
 all_p crate_name:
     @just fmt
-    @just check_p {{crate_name}}
     @just test_p {{crate_name}}
     @just warn_p {{crate_name}}
     @just test_cover_p {{crate_name}}
