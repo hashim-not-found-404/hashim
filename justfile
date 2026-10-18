@@ -24,6 +24,7 @@ check:
     RUSTFLAGS="-A warnings" cargo check --all-targets --features="database"
     RUSTFLAGS="-A warnings" cargo check --all-targets --features="cache"
     RUSTFLAGS="-A warnings" cargo check --all-targets --features="client,ui"
+    RUSTFLAGS="-A warnings" cargo check -p app_root_client --target wasm32-unknown-unknown
 
 test:
     RUSTFLAGS="-A warnings" cargo test
