@@ -37,37 +37,100 @@ pub trait Runtime: 'static {
 pub type Rt = target::S;
 pub type Jh<T> = join_handle::S<T>;
 
+// ============================================================================
+// NATIVE (non-wasm) — dedicated LocalSet thread
+// ============================================================================
+
 #[cfg(not(target_arch = "wasm32"))]
-mod target {
+pub mod target {
     use super::Either;
     use super::Runtime;
     use anyhow::Result;
+    use std::sync::LazyLock;
     use std::time::Duration;
-    use tokio;
-    use tokio::task::spawn_local;
+    use tokio::sync::mpsc;
+
+    type Job = Box<dyn FnOnce() + Send + 'static>;
+
+    struct Executor {
+        tx: mpsc::UnboundedSender<Job>,
+    }
+
+    impl Executor {
+        fn new() -> Self {
+            let (tx, mut rx) = mpsc::unbounded_channel::<Job>();
+            std::thread::Builder::new()
+                .name("local-executor".into())
+                .spawn(move || {
+                    let rt = tokio::runtime::Builder::new_current_thread()
+                        .enable_all()
+                        .build()
+                        .expect("local-executor: build runtime");
+                    let local = tokio::task::LocalSet::new();
+                    local.block_on(&rt, async move {
+                        while let Some(job) = rx.recv().await {
+                            job();
+                        }
+                    });
+                })
+                .expect("local-executor: spawn thread");
+            Self { tx }
+        }
+
+        fn submit<F: FnOnce() + Send + 'static>(&self, f: F) {
+            let _ = self.tx.send(Box::new(f));
+        }
+    }
+
+    static EXECUTOR: LazyLock<Executor> = LazyLock::new(Executor::new);
+
+    /// Run `f` on the actor thread (which owns a `LocalSet`). Blocks until done.
+    ///
+    /// Use this **once** in the desktop client `main` to initialize the
+    /// Commander, cache, network actor, and MCP server — all of which spawn
+    /// `!Send` futures via `Rt::spawn_local` that require a `LocalSet` context.
+    ///
+    /// Do **not** call this from the server (`app_root_server`): the server
+    /// uses actix-rt, which already provides a `LocalSet` on its runtime.
+    pub fn run_on_executor<F, R>(f: F) -> R
+    where
+        F: FnOnce() -> R + Send + 'static,
+        R: Send + 'static,
+    {
+        let (tx, rx) = std::sync::mpsc::channel();
+        EXECUTOR.submit(move || {
+            let result = f();
+            let _ = tx.send(result);
+        });
+        rx.recv().expect("local-executor died")
+    }
 
     pub struct S;
 
     impl Runtime for S {
         type JoinHandle<F> = super::join_handle::S<F>;
 
-        fn abortable_spawn_local<F: Future + 'static>(fut: F) -> Self::JoinHandle<F::Output> {
-            Self::JoinHandle::new(spawn_local(fut))
+        fn abortable_spawn_local<F>(fut: F) -> Self::JoinHandle<F::Output>
+        where
+            F: Future + 'static,
+        {
+            let handle = tokio::task::spawn_local(fut);
+            super::join_handle::S::new(handle)
         }
 
         fn spawn_local<F>(fut: F)
         where
             F: Future + 'static,
         {
-            spawn_local(fut);
+            tokio::task::spawn_local(fut);
         }
 
-        async fn timeout<T, F: Future<Output = T>>(_duration: Duration, _fut: F) -> Result<T> {
-            todo!()
+        async fn timeout<T, F: Future<Output = T>>(duration: Duration, fut: F) -> Result<T> {
+            Ok(tokio::time::timeout(duration, fut).await?)
         }
 
-        async fn sleep(_duration: Duration) {
-            todo!()
+        async fn sleep(duration: Duration) {
+            tokio::time::sleep(duration).await;
         }
 
         async fn select<R1, R2, F1: Future<Output = R1>, F2: Future<Output = R2>>(
@@ -75,16 +138,16 @@ mod target {
             fut2: F2,
         ) -> Either<R1, R2> {
             tokio::select! {
-                r1 = fut1 => {
-                    Either::One(r1)
-                }
-                r2 = fut2 => {
-                    Either::Two(r2)
-                }
+                r1 = fut1 => Either::One(r1),
+                r2 = fut2 => Either::Two(r2),
             }
         }
     }
 }
+
+// ============================================================================
+// WASM — unchanged behavior
+// ============================================================================
 
 #[cfg(target_arch = "wasm32")]
 pub mod target {
@@ -106,7 +169,10 @@ pub mod target {
     impl Runtime for S {
         type JoinHandle<T> = join_handle::S<T>;
 
-        fn abortable_spawn_local<F: Future + 'static>(fut: F) -> Self::JoinHandle<F::Output> {
+        fn abortable_spawn_local<F>(fut: F) -> Self::JoinHandle<F::Output>
+        where
+            F: Future + 'static,
+        {
             let (sender_to_abort, receiver_to_abort) = oneshot::channel();
             let join_handle = Self::JoinHandle::new(sender_to_abort);
 
@@ -121,7 +187,10 @@ pub mod target {
             join_handle
         }
 
-        fn spawn_local<F: Future + 'static>(fut: F) {
+        fn spawn_local<F>(fut: F)
+        where
+            F: Future + 'static,
+        {
             spawn_local(async {
                 fut.await;
             });
@@ -129,10 +198,8 @@ pub mod target {
 
         async fn timeout<T, F: Future<Output = T>>(duration: Duration, fut: F) -> Result<T> {
             let timeout_ms = duration.as_millis() as u32;
-
             let fut_pinned = pin!(fut);
             let timeout_pinned = pin!(TimeoutFuture::new(timeout_ms));
-
             match select(fut_pinned, timeout_pinned).await {
                 Eth::Left((result, _)) => Ok(result),
                 Eth::Right((_, _)) => bail!("timeout"),
@@ -155,11 +222,15 @@ pub mod target {
     }
 }
 
+// ============================================================================
+// Join handle
+// ============================================================================
+
 #[cfg(not(target_arch = "wasm32"))]
 mod join_handle {
     use super::JoinHandle;
 
-    pub struct S<T>(pub tokio::task::JoinHandle<T>);
+    pub struct S<T>(pub(super) tokio::task::JoinHandle<T>);
 
     impl<T> JoinHandle for S<T> {
         async fn abort(&mut self) {
@@ -168,7 +239,7 @@ mod join_handle {
     }
 
     impl<T> S<T> {
-        pub fn new(t: tokio::task::JoinHandle<T>) -> Self {
+        pub(super) fn new(t: tokio::task::JoinHandle<T>) -> Self {
             Self(t)
         }
     }
@@ -188,11 +259,8 @@ mod join_handle {
 
     impl<T> JoinHandle for S<T> {
         async fn abort(&mut self) {
-            match self.aborter.take() {
-                Some(s) => {
-                    let _ = s.send(());
-                }
-                None => return,
+            if let Some(s) = self.aborter.take() {
+                let _ = s.send(());
             }
         }
     }
