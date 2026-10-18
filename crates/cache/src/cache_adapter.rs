@@ -31,11 +31,27 @@ impl MarkerCache for S {}
 
 impl Cache for S {
     async fn new() -> Result<Self> {
-        let tables_db = Connection::open("opfs-sahpool://tables.db")?;
+        #[cfg(target_arch = "wasm32")]
+        let (tables_db_path, transactions_db_path) = (
+            "opfs-sahpool://tables.db".to_string(),
+            "opfs-sahpool://transactions.db".to_string(),
+        );
+
+        #[cfg(not(target_arch = "wasm32"))]
+        let (tables_db_path, transactions_db_path) = {
+            let dir = std::env::current_dir()?.join(".accounting_app_cache");
+            std::fs::create_dir_all(&dir)?;
+            (
+                dir.join("tables.db").to_string_lossy().into_owned(),
+                dir.join("transactions.db").to_string_lossy().into_owned(),
+            )
+        };
+
+        let tables_db = Connection::open(&tables_db_path)?;
         const TABLES_SCHEMA: &str = include_str!("../schema/tables.sql");
         tables_db.execute_batch(TABLES_SCHEMA)?;
 
-        let transactions_db = Connection::open("opfs-sahpool://transactions.db")?;
+        let transactions_db = Connection::open(&transactions_db_path)?;
         const TRANSACTIONS_SCHEMA: &str = include_str!("../schema/transactions.sql");
         transactions_db.execute_batch(TRANSACTIONS_SCHEMA)?;
 
@@ -45,7 +61,6 @@ impl Cache for S {
         };
 
         s.start_pending_txn_state().await?;
-
         Ok(s)
     }
 
