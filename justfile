@@ -36,8 +36,7 @@ test_cover:
     cargo tarpaulin --out HTML
     xdg-open /home/hashem/Documents/backup_folder_for_hashem/accounting_app/tarpaulin-report.html
 
-all:
-    check test warn test_cover
+all: check test warn test_cover
 
 ###################################################################################################
 
