@@ -129,14 +129,10 @@ impl Commander {
     }
 
     pub fn send(&self, replier: Replier, msg: impl MessageTrait) {
-        let mut sender = self.sender.clone();
-        Rt::spawn_local(async move {
-            let _ = sender
-                .send(MessageToCommander {
-                    replier,
-                    inner: Box::new(msg),
-                })
-                .await;
+        eprintln!("[Commander::send] reached");
+        let _ = self.sender.clone().unbounded_send(MessageToCommander {
+            replier,
+            inner: Box::new(msg),
         });
     }
 

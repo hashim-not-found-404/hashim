@@ -2,6 +2,7 @@ use anyhow::Result;
 
 pub trait Sender<T>: Clone {
     fn send(&mut self, t: T) -> impl Future<Output = Result<()>>;
+    fn unbounded_send(&mut self, t: T) -> Result<()>;
 }
 
 pub trait Receiver<T> {
@@ -59,6 +60,12 @@ mod target {
     impl<T> Sender<T> for MpscSender<T> {
         async fn send(&mut self, t: T) -> Result<()> {
             Ok(self.0.send(t).await?)
+        }
+
+        fn unbounded_send(&mut self, t: T) -> Result<()> {
+            self.0
+                .unbounded_send(t)
+                .map_err(|_| anyhow::anyhow!("send error"))
         }
     }
 
