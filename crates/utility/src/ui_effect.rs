@@ -129,7 +129,6 @@ impl Commander {
     }
 
     pub fn send(&self, replier: Replier, msg: impl MessageTrait) {
-        eprintln!("[Commander::send] reached");
         let _ = self.sender.clone().unbounded_send(MessageToCommander {
             replier,
             inner: Box::new(msg),
