@@ -67,8 +67,8 @@ new crate_name:
 run_server:
     RUSTFLAGS="-A warnings" cargo run -p app_root_server
 
-run_client:
-    RUSTFLAGS="-A warnings" dx serve --desktop --open --port=8082 --watch=false --keep-names --debug-symbols=true --hot-reload=false -p app_root_client
+run_client platform:
+    RUSTFLAGS="-A warnings" dx serve --{{platform}} --open --port=8082 --watch=false --keep-names --debug-symbols=true --hot-reload=false -p app_root_client
 
 run_db:
     cockroach start-single-node --insecure --store=trush
