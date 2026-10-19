@@ -301,6 +301,7 @@ dependencies = [
  "kernel",
  "patterns",
  "serde",
+ "tokio",
  "tracing",
  "tracing-subscriber",
  "tracing-web",

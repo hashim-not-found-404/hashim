@@ -129,10 +129,14 @@ impl Commander {
     }
 
     pub fn send(&self, replier: Replier, msg: impl MessageTrait) {
-        let _ = self.sender.clone().unbounded_send(MessageToCommander {
+        let result = self.sender.clone().unbounded_send(MessageToCommander {
             replier,
             inner: Box::new(msg),
         });
+
+        if let Err(e) = result {
+            eprintln!("the error from the sender to commander : {e}")
+        }
     }
 
     pub async fn async_send_box(&self, replier: Replier, msg: Box<dyn MessageTrait>) -> Result<()> {

@@ -5,6 +5,7 @@ mod use_case_navigator;
 mod utils;
 mod wire;
 
+use anyhow::Result;
 use dioxus::launch;
 
 #[cfg(target_arch = "wasm32")]
@@ -28,8 +29,10 @@ fn main() {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn main() {
-    // stderr only — stdout belongs to the MCP wire on native.
+fn main() -> Result<()> {
+    use std::sync::mpsc::channel;
+    use std::thread::Builder;
+
     tracing_subscriber::fmt()
         .without_time()
         .with_target(false)
@@ -37,17 +40,31 @@ fn main() {
         .with_writer(std::io::stderr)
         .init();
 
-    // 1. Send one job to the executor thread that:
-    //    - forces the LazyLocks (Commander, MODEL)
-    //    - spawns the commander actor, cache actor, network actor
-    //    - spawns the MCP stdio server (if enabled)
-    // All those `Rt::spawn_local` calls run *inside* a LocalSet,
-    // so they no longer panic — and the futures stay `!Send`.
-    infrastructure::runtime::target::run_on_executor(|| {
-        utils::init_commander_and_model();
-    });
+    let (init_done_tx, init_done_rx) = channel::<()>();
+    Builder::new()
+        .name("local-executor".into())
+        .spawn(move || -> Result<()> {
+            use crate::utils::init_commander_and_model;
+            use std::future::pending;
+            use tokio::runtime::Builder;
+            use tokio::task::LocalSet;
 
-    // 2. Main thread: no tokio runtime active.
-    //    Dioxus's `launch` panics if it finds one, and it panics for good reason.
+            let rt = Builder::new_current_thread().enable_all().build()?;
+
+            let local = LocalSet::new();
+            local.block_on(&rt, async move {
+                init_commander_and_model();
+                let _ = init_done_tx.send(());
+
+                pending::<()>().await;
+            });
+
+            Ok(())
+        })?;
+
+    init_done_rx.recv()?;
+
     launch(app_ui::App);
+
+    Ok(())
 }

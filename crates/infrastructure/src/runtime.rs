@@ -46,64 +46,7 @@ pub mod target {
     use super::Either;
     use super::Runtime;
     use anyhow::Result;
-    use std::sync::LazyLock;
     use std::time::Duration;
-    use tokio::sync::mpsc;
-
-    type Job = Box<dyn FnOnce() + Send + 'static>;
-
-    struct Executor {
-        tx: mpsc::UnboundedSender<Job>,
-    }
-
-    impl Executor {
-        fn new() -> Self {
-            let (tx, mut rx) = mpsc::unbounded_channel::<Job>();
-            std::thread::Builder::new()
-                .name("local-executor".into())
-                .spawn(move || {
-                    let rt = tokio::runtime::Builder::new_current_thread()
-                        .enable_all()
-                        .build()
-                        .expect("local-executor: build runtime");
-                    let local = tokio::task::LocalSet::new();
-                    local.block_on(&rt, async move {
-                        while let Some(job) = rx.recv().await {
-                            job();
-                        }
-                    });
-                })
-                .expect("local-executor: spawn thread");
-            Self { tx }
-        }
-
-        fn submit<F: FnOnce() + Send + 'static>(&self, f: F) {
-            let _ = self.tx.send(Box::new(f));
-        }
-    }
-
-    static EXECUTOR: LazyLock<Executor> = LazyLock::new(Executor::new);
-
-    /// Run `f` on the actor thread (which owns a `LocalSet`). Blocks until done.
-    ///
-    /// Use this **once** in the desktop client `main` to initialize the
-    /// Commander, cache, network actor, and MCP server — all of which spawn
-    /// `!Send` futures via `Rt::spawn_local` that require a `LocalSet` context.
-    ///
-    /// Do **not** call this from the server (`app_root_server`): the server
-    /// uses actix-rt, which already provides a `LocalSet` on its runtime.
-    pub fn run_on_executor<F, R>(f: F) -> R
-    where
-        F: FnOnce() -> R + Send + 'static,
-        R: Send + 'static,
-    {
-        let (tx, rx) = std::sync::mpsc::channel();
-        EXECUTOR.submit(move || {
-            let result = f();
-            let _ = tx.send(result);
-        });
-        rx.recv().expect("local-executor died")
-    }
 
     pub struct S;
 
