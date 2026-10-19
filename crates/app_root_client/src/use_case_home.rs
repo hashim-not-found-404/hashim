@@ -1,6 +1,6 @@
 pub(crate) mod client {
     use anyhow::Result;
-    use dioxus::core::bail;
+    use anyhow::bail;
     use infrastructure::random_number::RandomNumber;
     use infrastructure::random_number::Rn;
     use serde::Deserialize;
