@@ -192,6 +192,14 @@ fn FormInstance(index: usize, entry: FormEntry) -> Element {
     let replier: Replier = new_replier(async |msg| -> Result<()> { async_send(msg).await });
     let replier1 = replier.clone();
 
+    let is_loading = match &form {
+        FormLocalModel::CreateAccount(lm) => lm.async_state.is_loading(),
+        FormLocalModel::CreateBranch(lm) => lm.async_state.is_loading(),
+        FormLocalModel::CreateCompany(lm) => lm.async_state.is_loading(),
+        FormLocalModel::CreateAccountForBranch(lm) => lm.async_state.is_loading(),
+        FormLocalModel::CreateJournalEntry(lm) => lm.is_loading,
+    };
+
     rsx! {
         div {
             button {
@@ -203,6 +211,7 @@ fn FormInstance(index: usize, entry: FormEntry) -> Element {
                 "Copy"
             }
             button {
+                disabled: is_loading,
                 onclick: move |_| send(
                     replier1.clone(),
                     use_case_home::client::Message::Intent(
