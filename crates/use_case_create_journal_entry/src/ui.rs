@@ -40,13 +40,6 @@ pub fn Component(sender: EventHandler<Intent>, show_dialog: Dialog, is_loading: 
                 },
                 "Submit"
             }
-            button {
-                disabled: is_loading,
-                onclick: move |_| {
-                    sender(Intent::Clean);
-                },
-                "Clean"
-            }
         }
     }
 }

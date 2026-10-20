@@ -248,7 +248,6 @@ pub enum Effect {
 pub enum Intent {
     Submit,
     Consent(UserConsent),
-    Clean,
     IsDebit(bool),
     IsPermanentAccount(bool),
     AccountName(String),
@@ -429,19 +428,6 @@ pub fn update(
                 };
 
                 (local_change, vec![], effect)
-            }
-            Intent::Clean => {
-                let local_change = vec![
-                    LocalChange::ShowDialog(Default::default()),
-                    LocalChange::IsDebit(Default::default()),
-                    LocalChange::IsPermanentAccount(Default::default()),
-                    LocalChange::AccountName(Default::default()),
-                    LocalChange::UnitOfMeasurementOfQuantity(Default::default()),
-                    LocalChange::SelectedCompanyName(Default::default()),
-                    LocalChange::CheckState(CheckState::Idle),
-                    LocalChange::AsyncState(AsyncState::Idle),
-                ];
-                (local_change, vec![], vec![])
             }
             Intent::IsDebit(v) => {
                 let local_change = vec![

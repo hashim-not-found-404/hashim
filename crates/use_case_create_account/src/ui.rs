@@ -118,13 +118,6 @@ pub fn Component(
                 },
                 "Submit"
             }
-            button {
-                disabled: is_loading,
-                onclick: move |_| {
-                    sender(Intent::Clean);
-                },
-                "Clean"
-            }
         }
     }
 }

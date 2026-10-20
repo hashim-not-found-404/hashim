@@ -187,7 +187,6 @@ pub enum Effect {
 pub enum Intent {
     Submit,
     Consent(UserConsent),
-    Clean,
     AccountName(String),
     SelectedAccount(usize),
     OutflowType(OutFlowType),
@@ -313,16 +312,6 @@ pub fn update(
                 };
 
                 (local_change, vec![], effect)
-            }
-            Intent::Clean => {
-                let local_change = vec![
-                    LocalChange::ShowDialog(Default::default()),
-                    LocalChange::AccountName(Default::default()),
-                    LocalChange::OutflowType(Default::default()),
-                    LocalChange::InflowType(Default::default()),
-                    LocalChange::AsyncState(AsyncState::Idle),
-                ];
-                (local_change, vec![], vec![])
             }
             Intent::AccountName(v) => {
                 let local_change = vec![LocalChange::AccountName(v)];

@@ -264,7 +264,6 @@ pub enum Effect {
 pub enum Intent {
     Submit,
     Consent(UserConsent),
-    Clean,
     Subscribe,
     UnSubscribe,
     AddSingleEntry {
@@ -404,19 +403,6 @@ pub fn update(
                     }
                 };
                 (local_change, vec![], effect)
-            }
-            Intent::Clean => {
-                let local_change = vec![
-                    LocalChange::ShowDialog(Default::default()),
-                    LocalChange::IsLoading(false),
-                    LocalChange::SharedEntryId(Default::default()),
-                    LocalChange::SomeAccountAreNotInferred(false),
-                    LocalChange::ErrorContainerIsEmpty(false),
-                    LocalChange::NotAllEntryInferred(false),
-                    LocalChange::DoubleEntries(Default::default()),
-                    LocalChange::FilteredList(Default::default()),
-                ];
-                (local_change, vec![], vec![])
             }
             Intent::Subscribe => {
                 let effect = vec![

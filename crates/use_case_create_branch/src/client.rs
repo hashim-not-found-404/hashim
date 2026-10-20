@@ -260,7 +260,6 @@ pub enum Effect {
 pub enum Intent {
     Submit,
     Consent(UserConsent),
-    Clean,
     CompanyName(String),
     SelectedCompany(usize),
     BranchName(String),
@@ -431,18 +430,6 @@ pub fn update(
                 };
 
                 (local_change, vec![], effect)
-            }
-            Intent::Clean => {
-                let local_change = vec![
-                    LocalChange::ShowDialog(Default::default()),
-                    LocalChange::CompanyName(Default::default()),
-                    LocalChange::BranchName(Default::default()),
-                    LocalChange::Currency(Default::default()),
-                    LocalChange::Location(Default::default()),
-                    LocalChange::CheckState(CheckState::Idle),
-                    LocalChange::AsyncState(AsyncState::Idle),
-                ];
-                (local_change, vec![], vec![])
             }
             Intent::CompanyName(v) => {
                 let local_change = vec![

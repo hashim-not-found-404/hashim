@@ -163,7 +163,6 @@ pub enum Effect {
 
 #[derive(Debug, Clone)]
 pub enum Intent {
-    Clean,
     CompanyName(String),
     Consent(UserConsent),
     Currency(Currency),
@@ -237,16 +236,6 @@ pub fn update(
 
     match msg {
         Message::Intent(intent) => match intent {
-            Intent::Clean => {
-                let local_change = vec![
-                    LocalChange::ShowDialog(Default::default()),
-                    LocalChange::CompanyName(Default::default()),
-                    LocalChange::Currency(Default::default()),
-                    LocalChange::CheckState(CheckState::Idle),
-                    LocalChange::AsyncState(AsyncState::Idle),
-                ];
-                (local_change, vec![], vec![])
-            }
             Intent::CompanyName(v) => {
                 let local_change = vec![
                     LocalChange::CompanyName(v.clone()),
