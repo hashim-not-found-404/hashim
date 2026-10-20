@@ -1,4 +1,3 @@
-use crate::domain::HashimSignal;
 use dioxus::core::ReactiveContext;
 use serde::Deserialize;
 use serde::Deserializer;
@@ -101,30 +100,12 @@ impl<T> MySignal<T> {
     }
 }
 
-impl<T: 'static + Clone + Default + DeserializeOwned + Serialize> HashimSignal<T> for MySignal<T> {
-    fn read(&self) -> T {
-        self.with_ref(T::clone)
-    }
-
-    fn set(&self, value: T) {
-        self.with_mut(|v| *v = value);
-    }
-
-    fn with_ref<R>(&self, f: impl FnOnce(&T) -> R) -> R {
-        MySignal::with_ref(self, f)
-    }
-
-    fn with_mut<R>(&self, f: impl FnOnce(&mut T) -> R) -> R {
-        MySignal::with_mut(self, f)
-    }
-}
-
 impl<T: 'static + Clone + Default + DeserializeOwned + Serialize> Serialize for MySignal<T> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        self.read().serialize(serializer)
+        self.with_ref(T::clone).serialize(serializer)
     }
 }
 
@@ -135,9 +116,9 @@ impl<'de, T: 'static + Clone + Default + DeserializeOwned + Serialize> Deseriali
     where
         D: Deserializer<'de>,
     {
-        T::deserialize(deserializer).map(|a| {
+        T::deserialize(deserializer).map(|value| {
             let my_signal = Self::default();
-            my_signal.set(a);
+            my_signal.with_mut(|v| *v = value);
             my_signal
         })
     }
