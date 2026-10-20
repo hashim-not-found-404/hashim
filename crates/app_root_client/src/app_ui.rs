@@ -67,10 +67,7 @@ pub(crate) fn App() -> Element {
     rsx! {
         Router::<Route> {}
         use_case_error_handler::ui::Component {
-            sender: move |i| send(
-                replier.clone(),
-                use_case_error_handler::client::Message::Intent(i)
-            ),
+            sender: move |i| send(replier.clone(), use_case_error_handler::client::Message::Intent(i)),
             is_expand_all,
             errors,
         }
@@ -132,50 +129,51 @@ fn Home() -> Element {
                 onclick: move |_| send(
                     replier1.clone(),
                     use_case_home::client::Message::Intent(
-                    use_case_home::client::Intent::AddForm(FormsToAdd::CreateAccount),
-                )),
+                        use_case_home::client::Intent::AddForm(FormsToAdd::CreateAccount),
+                    ),
+                ),
                 "+ Account"
             }
             button {
                 onclick: move |_| send(
                     replier2.clone(),
                     use_case_home::client::Message::Intent(
-                    use_case_home::client::Intent::AddForm(FormsToAdd::CreateBranch),
-                )),
+                        use_case_home::client::Intent::AddForm(FormsToAdd::CreateBranch),
+                    ),
+                ),
                 "+ Branch"
             }
             button {
                 onclick: move |_| send(
                     replier3.clone(),
                     use_case_home::client::Message::Intent(
-                    use_case_home::client::Intent::AddForm(FormsToAdd::CreateCompany),
-                )),
+                        use_case_home::client::Intent::AddForm(FormsToAdd::CreateCompany),
+                    ),
+                ),
                 "+ Company"
             }
             button {
                 onclick: move |_| send(
                     replier4.clone(),
                     use_case_home::client::Message::Intent(
-                    use_case_home::client::Intent::AddForm(FormsToAdd::CreateAccountForBranch),
-                )),
+                        use_case_home::client::Intent::AddForm(FormsToAdd::CreateAccountForBranch),
+                    ),
+                ),
                 "+ Account for Branch"
             }
             button {
                 onclick: move |_| send(
                     replier5.clone(),
                     use_case_home::client::Message::Intent(
-                    use_case_home::client::Intent::AddForm(FormsToAdd::CreateJournalEntry),
-                )),
+                        use_case_home::client::Intent::AddForm(FormsToAdd::CreateJournalEntry),
+                    ),
+                ),
                 "+ Journal Entry"
             }
         }
 
         for (index, entry) in forms.iter().enumerate() {
-            FormInstance {
-                key: "{entry.id:?}",
-                index,
-                entry: entry.clone(),
-            }
+            FormInstance { key: "{entry.id:?}", index, entry: entry.clone() }
         }
     }
 }
@@ -206,8 +204,9 @@ fn FormInstance(index: usize, entry: FormEntry) -> Element {
                 onclick: move |_| send(
                     replier.clone(),
                     use_case_home::client::Message::Intent(
-                    use_case_home::client::Intent::CopyForm(index),
-                )),
+                        use_case_home::client::Intent::CopyForm(index),
+                    ),
+                ),
                 "Copy"
             }
             button {
@@ -215,8 +214,9 @@ fn FormInstance(index: usize, entry: FormEntry) -> Element {
                 onclick: move |_| send(
                     replier1.clone(),
                     use_case_home::client::Message::Intent(
-                    use_case_home::client::Intent::DeleteForm(index),
-                )),
+                        use_case_home::client::Intent::DeleteForm(index),
+                    ),
+                ),
                 "X"
             }
 
@@ -383,7 +383,9 @@ fn CreateAccountForBranchForm(
                 replier.clone(),
                 use_case_home::client::Message::FormRelated {
                     form_id,
-                    message: Box::new(use_case_create_account_for_branch::client::Message::Intent(i)),
+                    message: Box::new(
+                        use_case_create_account_for_branch::client::Message::Intent(i),
+                    ),
                 },
             ),
             show_dialog: lm.show_dialog.clone(),
@@ -444,8 +446,8 @@ fn SignIn() -> Element {
 
     rsx! {
         use_case_sign_in::ui::Component {
-            sender: move |i| send(replier.clone(),use_case_sign_in::client::Message::Intent(i)),
-            on_go_to_sign_up: move || send(replier1.clone(),Message::Intent(NavIntent::GoToSignUp)),
+            sender: move |i| send(replier.clone(), use_case_sign_in::client::Message::Intent(i)),
+            on_go_to_sign_up: move || send(replier1.clone(), Message::Intent(NavIntent::GoToSignUp)),
             show_dialog,
             user_id,
             password,
@@ -477,8 +479,8 @@ fn SignUp() -> Element {
 
     rsx! {
         use_case_sign_up::ui::Component {
-            sender: move |i| send(replier.clone(),use_case_sign_up::client::Message::Intent(i)),
-            on_back: move || send(replier1.clone(),Message::Intent(NavIntent::GoToSignIn)),
+            sender: move |i| send(replier.clone(), use_case_sign_up::client::Message::Intent(i)),
+            on_back: move || send(replier1.clone(), Message::Intent(NavIntent::GoToSignIn)),
             show_dialog,
             user_id,
             user_name,
