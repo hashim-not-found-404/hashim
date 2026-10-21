@@ -13,8 +13,20 @@ stat:
     git rev-list --count HEAD
 
 dump:
-    echo "commit: $(git rev-parse HEAD)" > codebase.txt
-    git ls-files | while read -r f; do file -b --mime-type "$f" | grep -q "^text/" && { echo "=== $f ==="; nl -ba -w5 -s' | ' "$f"; }; done >> codebase.txt
+    #!/usr/bin/env bash
+    set -euo pipefail
+    commit="$(git rev-parse HEAD)"
+    echo "commit: $commit" > codebase.txt
+    git ls-tree -r "$commit" | while IFS=$'\t' read -r meta path; do
+        set -- $meta
+        type="$2"
+        hash="$3"
+        [ "$type" = "blob" ] || continue
+        if git cat-file blob "$hash" | file -b --mime-type - | grep -q '^text/'; then
+            echo "=== $path ==="
+            git cat-file blob "$hash" | nl -ba -w5 -s' | '
+        fi
+    done >> codebase.txt
 
 # Annotated diffs since the last `just dump`.
 # Layout:

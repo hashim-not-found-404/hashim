@@ -6,5 +6,6 @@ graph.dot
 graph.png
 .code-ranker
 codebase.txt
+diffs.txt
 lcov.info
 tarpaulin-report.html
