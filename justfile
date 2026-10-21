@@ -51,7 +51,7 @@ diffs:
                     print "###    " subj
                     cur_commit = hash
                 }
-                file = $3; sub(/^b\//, "", file)
+                file = $3; sub(/^a\//, "", file)
                 print ""
                 print "  --- file: " file
                 next
@@ -69,7 +69,7 @@ diffs:
             echo "### uncommitted changes"
             printf '%s\n' "$u" | awk '
                 /^diff --git/ {
-                    file = $3; sub(/^b\//, "", file)
+                    file = $3; sub(/^a\//, "", file)
                     print ""
                     print "  --- file: " file
                     next
