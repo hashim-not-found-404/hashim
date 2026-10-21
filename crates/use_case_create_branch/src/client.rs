@@ -127,10 +127,6 @@ impl LocalModel {
         }
     }
 
-    pub fn is_submit_ok(&self) -> bool {
-        matches!(self.async_state, AsyncState::Success { .. })
-    }
-
     pub fn error_branch_name(&self) -> Option<BranchNameError> {
         if let CheckState::Failure { error, .. } = &self.check_state
             && let Some(e) = &error.branch_name

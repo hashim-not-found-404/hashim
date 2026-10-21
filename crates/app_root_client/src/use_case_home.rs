@@ -164,10 +164,10 @@ pub(crate) mod client {
     /// intentional for this pass.
     fn form_is_submit_ok(form: &FormLocalModel) -> bool {
         match form {
-            FormLocalModel::CreateBranch(lm) => lm.is_submit_ok(),
-            FormLocalModel::CreateCompany(lm) => lm.is_submit_ok(),
-            FormLocalModel::CreateAccount(lm) => lm.is_submit_ok(),
-            FormLocalModel::CreateAccountForBranch(lm) => lm.is_submit_ok(),
+            FormLocalModel::CreateBranch(lm) => lm.async_state.is_submit_ok(),
+            FormLocalModel::CreateCompany(lm) => lm.async_state.is_submit_ok(),
+            FormLocalModel::CreateAccount(lm) => lm.async_state.is_submit_ok(),
+            FormLocalModel::CreateAccountForBranch(lm) => lm.async_state.is_submit_ok(),
             FormLocalModel::CreateJournalEntry(_) => false,
         }
     }

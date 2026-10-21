@@ -123,10 +123,6 @@ impl LocalModel {
         }
     }
 
-    pub fn is_submit_ok(&self) -> bool {
-        matches!(self.async_state, AsyncState::Success { .. })
-    }
-
     pub fn resolved_account_uuid(&self, global_model: &impl GlobalModel) -> Option<AccountUuid> {
         let typed = self.account_name.clone();
         if typed.is_empty() {

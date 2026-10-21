@@ -62,7 +62,11 @@ where
     Error: Debug + Clone + PartialEq,
 {
     pub fn is_loading(&self) -> bool {
-        matches!(self, GenricAsyncState::Loading { .. })
+        matches!(self, Self::Loading { .. })
+    }
+
+    pub fn is_submit_ok(&self) -> bool {
+        matches!(self, Self::Success { .. })
     }
 }
 
