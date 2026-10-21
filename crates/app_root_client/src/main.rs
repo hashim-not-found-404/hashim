@@ -5,15 +5,19 @@ mod use_case_navigator;
 mod utils;
 mod wire;
 
+#[cfg(not(target_arch = "wasm32"))]
+mod mcp;
+
 use anyhow::Result;
 use dioxus::launch;
 
 #[cfg(target_arch = "wasm32")]
 fn main() {
     use console_error_panic_hook::set_once;
+    use tracing_subscriber::prelude::*;
+
     set_once();
 
-    use tracing_subscriber::prelude::*;
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::fmt::layer()
@@ -46,10 +50,10 @@ fn main() -> Result<()> {
         .spawn(move || -> Result<()> {
             use crate::utils::init_commander_and_model;
             use std::future::pending;
-            use tokio::runtime::Builder;
+            use tokio::runtime::Builder as TokioBuilder;
             use tokio::task::LocalSet;
 
-            let rt = Builder::new_current_thread().enable_all().build()?;
+            let rt = TokioBuilder::new_current_thread().enable_all().build()?;
 
             let local = LocalSet::new();
             local.block_on(&rt, async move {
@@ -63,6 +67,22 @@ fn main() -> Result<()> {
         })?;
 
     init_done_rx.recv()?;
+
+    {
+        use std::sync::Arc;
+
+        let addr = mcp::DEFAULT_ADDR.to_string();
+        let addr_for_thread = addr.clone();
+        Builder::new()
+            .name("mcp-executor".into())
+            .spawn(move || -> Result<()> {
+                use tokio::runtime::Builder;
+
+                let rt = Builder::new_multi_thread().enable_all().build()?;
+
+                rt.block_on(mcp::serve(Arc::new(mcp::McpBridge), addr_for_thread))
+            })?;
+    }
 
     launch(app_ui::App);
 
