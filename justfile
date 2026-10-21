@@ -12,8 +12,90 @@ stat:
     git ls-files "crates/*" | xargs wc -l | awk '$2 != "total" { split($2,p,"/"); d=p[1]"/"p[2]; s[d]+=$1 } END { for (k in s) print k, s[k] }' | sort
     git rev-list --count HEAD
 
-dump: fmt stat
-    git ls-files | while read -r f; do file -b --mime-type "$f" | grep -q "^text/" && { echo "=== $f ==="; nl -ba -w5 -s' | ' "$f"; } done > codebase.txt
+dump:
+    echo "commit: $(git rev-parse HEAD)" > codebase.txt
+    git ls-files | while read -r f; do file -b --mime-type "$f" | grep -q "^text/" && { echo "=== $f ==="; nl -ba -w5 -s' | ' "$f"; }; done >> codebase.txt
+
+# Annotated diffs since the last `just dump`.
+# Layout:
+#   ### commit <hash>
+#   ###    <subject>
+#     --- file: <path>
+#      123 + | added line
+#      124 - | removed line
+diffs:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [ ! -f codebase.txt ]; then
+        echo "error: codebase.txt not found; run 'just dump' first" >&2
+        exit 1
+    fi
+    base="$(head -n1 codebase.txt | sed -E 's/^commit:[[:space:]]*//')"
+    if ! git rev-parse --verify "${base}^{commit}" >/dev/null 2>&1; then
+        echo "error: could not resolve commit '$base' from codebase.txt" >&2
+        exit 1
+    fi
+    head="$(git rev-parse HEAD)"
+    {
+        echo "=== diffs from $base to $head ==="
+
+        # ---- committed diffs -------------------------------------------------
+        git log --reverse -p --format='COMMIT %H%nSUBJECT %s' "$base"..HEAD |
+        awk '
+            /^COMMIT /  { hash = $2; next }
+            /^SUBJECT / { subj = substr($0, 9); next }
+            /^diff --git/ {
+                if (cur_commit != hash) {
+                    print ""
+                    print "### commit " hash
+                    print "###    " subj
+                    cur_commit = hash
+                }
+                file = $3; sub(/^b\//, "", file)
+                print ""
+                print "  --- file: " file
+                next
+            }
+            /^@@ /              { match($0, /\+[0-9]+/); lineno = substr($0, RSTART+1, RLENGTH-1) + 0; next }
+            /^\+/ && !/^\+\+\+/ { printf "    %5d + | %s\n", lineno, substr($0,2); lineno++; next }
+            /^-/  && !/^---/    { printf "    %5d - | %s\n", lineno, substr($0,2); next }
+            /^ /                { lineno++; next }
+        '
+
+        # ---- uncommitted changes --------------------------------------------
+        u="$(git diff HEAD)"
+        if [ -n "$u" ]; then
+            echo
+            echo "### uncommitted changes"
+            printf '%s\n' "$u" | awk '
+                /^diff --git/ {
+                    file = $3; sub(/^b\//, "", file)
+                    print ""
+                    print "  --- file: " file
+                    next
+                }
+                /^@@ /              { match($0, /\+[0-9]+/); lineno = substr($0, RSTART+1, RLENGTH-1) + 0; next }
+                /^\+/ && !/^\+\+\+/ { printf "    %5d + | %s\n", lineno, substr($0,2); lineno++; next }
+                /^-/  && !/^---/    { printf "    %5d - | %s\n", lineno, substr($0,2); next }
+                /^ /                { lineno++; next }
+            '
+        fi
+
+        # ---- untracked files ------------------------------------------------
+        untracked="$(git ls-files --others --exclude-standard -- ':!diffs.txt' ':!codebase.txt')"
+        if [ -n "$untracked" ]; then
+            echo
+            echo "### new files (untracked)"
+            while IFS= read -r f; do
+                if file -b --mime-type "$f" | grep -q "^text/"; then
+                    echo ""
+                    echo "  --- file: $f"
+                    nl -ba -w5 -s' | ' "$f"
+                fi
+            done <<< "$untracked"
+        fi
+    } > diffs.txt
+    echo "wrote diffs.txt ($(wc -l < diffs.txt) lines, $(du -h diffs.txt | cut -f1))"
 
 ###################################################################################################
 
