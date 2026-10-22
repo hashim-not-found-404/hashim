@@ -28,6 +28,8 @@ use rmcp::tool;
 use rmcp::tool_handler;
 use rmcp::tool_router;
 use schemars::JsonSchema;
+use schemars::Schema;
+use schemars::SchemaGenerator;
 use serde::Deserialize;
 use serde::Serialize;
 use serde_json::to_string;
@@ -42,6 +44,24 @@ use utility::ui_orchestration::UserConsent;
 // -----------------------------------------------------------------------------
 // DTOs
 // -----------------------------------------------------------------------------
+
+/// Schema generator for the `UpdateFieldArgs::value` field.
+///
+/// `serde_json::Value` normally generates the bare schema `true` (accept any
+/// JSON value). That is legal JSON Schema but is rejected or mishandled by
+/// stricter MCP clients (e.g. the MCP Inspector flags it as
+/// "Bare `true` used where a schema object is expected").
+///
+/// In practice this field is always a string: `company_name` is parsed into a
+/// `String`, and `currency` is parsed into an enum whose wire form is a string
+/// (`"USD"` / `"IQD"`). Declaring it as a string is both accurate and gives a
+/// portable schema that strict clients render as a plain text input.
+fn json_value_schema(_generator: &mut SchemaGenerator) -> Schema {
+    schemars::json_schema!({
+        "type": "string",
+        "description": "New value for the field. `company_name` expects a string (e.g. \"Acme Corp\"); `currency` expects \"USD\" or \"IQD\"."
+    })
+}
 
 #[derive(Debug, Clone, JsonSchema, Deserialize, Serialize)]
 pub(crate) struct FormSnapshot {
@@ -84,6 +104,7 @@ pub(crate) struct OpenFormResponse {
 pub(crate) struct UpdateFieldArgs {
     pub form_id: u32,
     pub field: String,
+    #[schemars(schema_with = "json_value_schema")]
     pub value: serde_json::Value,
 }
 
