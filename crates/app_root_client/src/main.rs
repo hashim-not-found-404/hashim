@@ -5,12 +5,16 @@ mod use_case_navigator;
 mod utils;
 mod wire;
 
+#[cfg(not(target_arch = "wasm32"))]
+mod mcp;
+
 use anyhow::Result;
 use dioxus::launch;
 
 #[cfg(target_arch = "wasm32")]
 fn main() {
     use console_error_panic_hook::set_once;
+
     set_once();
 
     use tracing_subscriber::prelude::*;
@@ -30,6 +34,7 @@ fn main() {
 
 #[cfg(not(target_arch = "wasm32"))]
 fn main() -> Result<()> {
+    use std::sync::Arc;
     use std::sync::mpsc::channel;
     use std::thread::Builder;
 
@@ -63,6 +68,18 @@ fn main() -> Result<()> {
         })?;
 
     init_done_rx.recv()?;
+
+    let addr = mcp::DEFAULT_ADDR.to_string();
+    let addr_for_thread = addr.clone();
+    let bridge = Arc::new(mcp::McpBridge);
+    Builder::new()
+        .name("mcp-executor".into())
+        .spawn(move || -> Result<()> {
+            use tokio::runtime::Builder;
+
+            let rt = Builder::new_multi_thread().enable_all().build()?;
+            rt.block_on(mcp::serve(bridge, addr_for_thread))
+        })?;
 
     launch(app_ui::App);
 
