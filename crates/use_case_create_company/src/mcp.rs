@@ -38,14 +38,6 @@ pub fn field_intent(lm: &LocalModel, field: &str, value: Value) -> Result<Box<dy
     Ok(Box::new(Message::Intent(intent)))
 }
 
-pub fn submit_intent() -> Box<dyn MessageTrait> {
-    Box::new(Message::Intent(Intent::Submit))
-}
-
-pub fn consent_intent(consent: UserConsent) -> Box<dyn MessageTrait> {
-    Box::new(Message::Intent(Intent::Consent(consent)))
-}
-
 pub fn is_loading(lm: &LocalModel) -> bool {
     lm.async_state.is_loading()
 }

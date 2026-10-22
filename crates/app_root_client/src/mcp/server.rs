@@ -38,8 +38,6 @@ use std::collections::HashSet;
 use std::sync::Arc;
 use use_case_create_company::client::LocalModel as CompanyLocalModel;
 use utility::ui_effect::MessageTrait;
-use utility::ui_orchestration::GenricAsyncState;
-use utility::ui_orchestration::UserConsent;
 
 // -----------------------------------------------------------------------------
 // DTOs
@@ -73,29 +71,6 @@ pub(crate) struct FormSnapshot {
 }
 
 #[derive(Debug, Clone, JsonSchema, Deserialize, Serialize)]
-pub(crate) struct GlobalStateView {
-    pub signed_in: bool,
-    pub user_id: String,
-    pub user_name: Option<String>,
-    pub error_count: usize,
-}
-
-#[derive(Debug, Clone, JsonSchema, Deserialize, Serialize)]
-pub(crate) struct ListFormsResponse {
-    pub forms: Vec<FormSnapshot>,
-}
-
-#[derive(Debug, Clone, JsonSchema, Deserialize, Serialize)]
-pub(crate) struct GetFormArgs {
-    pub form_id: u32,
-}
-
-#[derive(Debug, Clone, JsonSchema, Deserialize, Serialize)]
-pub(crate) struct GetFormResponse {
-    pub form: Option<FormSnapshot>,
-}
-
-#[derive(Debug, Clone, JsonSchema, Deserialize, Serialize)]
 pub(crate) struct OpenFormResponse {
     pub form_id: u32,
 }
@@ -106,37 +81,6 @@ pub(crate) struct UpdateFieldArgs {
     pub field: String,
     #[schemars(schema_with = "json_value_schema")]
     pub value: serde_json::Value,
-}
-
-#[derive(Debug, Clone, JsonSchema, Deserialize, Serialize)]
-pub(crate) struct SubmitFormArgs {
-    pub form_id: u32,
-}
-
-#[derive(Debug, Clone, JsonSchema, Deserialize, Serialize)]
-pub(crate) struct DeleteFormArgs {
-    pub form_id: u32,
-}
-
-#[derive(Debug, Clone, JsonSchema, Deserialize, Serialize)]
-#[serde(rename_all = "snake_case")]
-pub(crate) enum ConsentArg {
-    Wait,
-    DontWait,
-    Cancel,
-}
-
-#[derive(Debug, Clone, JsonSchema, Deserialize, Serialize)]
-pub(crate) struct ConsentFormArgs {
-    pub form_id: u32,
-    pub consent: ConsentArg,
-}
-
-#[derive(Debug, Clone, JsonSchema, Deserialize, Serialize)]
-pub(crate) struct ActionResponse {
-    pub status: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub snapshot: Option<FormSnapshot>,
 }
 
 // -----------------------------------------------------------------------------
@@ -161,10 +105,6 @@ fn with_company_lm<R>(form: &FormLocalModel, f: impl FnOnce(&CompanyLocalModel) 
     } else {
         None
     }
-}
-
-fn has_async_failure(lm: &CompanyLocalModel) -> bool {
-    matches!(lm.async_state, GenricAsyncState::Failure { .. })
 }
 
 fn try_snapshot(entry: &FormEntry) -> Option<FormSnapshot> {
@@ -210,48 +150,6 @@ impl McpServer {
 
     fn bridge(&self) -> &McpBridge {
         &self.bridge
-    }
-
-    // -------------------------------------------------------------------------
-    // Reads
-    // -------------------------------------------------------------------------
-
-    #[tool(description = "Get current user state: signed_in, user_id, user_name, error_count.")]
-    async fn get_global_state(&self) -> Result<CallToolResult, ErrorData> {
-        let view = self.bridge().read(|m| GlobalStateView {
-            signed_in: m.user_uuid().is_some(),
-            user_id: m.user_id.clone(),
-            user_name: m.user_name.clone(),
-            error_count: m.page_error_handler.errors.0.len(),
-        });
-        json(view)
-    }
-
-    #[tool(
-        description = "List all currently-open create_company forms with their field values, loading state, dialog state, and errors. Forms of other kinds are not shown."
-    )]
-    async fn list_forms(&self) -> Result<CallToolResult, ErrorData> {
-        let forms: Vec<FormSnapshot> = self
-            .bridge()
-            .read(|m| m.page_home.forms.iter().filter_map(try_snapshot).collect());
-        json(ListFormsResponse { forms })
-    }
-
-    #[tool(
-        description = "Get one create_company form by form_id. Returns `{ form: null }` if the form does not exist or is not a create_company form. After a successful submit, the form is auto-closed, so `null` is the success signal."
-    )]
-    async fn get_form(
-        &self,
-        Parameters(args): Parameters<GetFormArgs>,
-    ) -> Result<CallToolResult, ErrorData> {
-        let form = self.bridge().read(|m| {
-            m.page_home
-                .forms
-                .iter()
-                .find(|e| form_id_to_u32(e.id) == args.form_id)
-                .and_then(try_snapshot)
-        });
-        json(GetFormResponse { form })
     }
 
     // -------------------------------------------------------------------------
@@ -365,169 +263,6 @@ impl McpServer {
             .ok_or_else(|| err(anyhow!("form disappeared after update")))?;
 
         json(snap)
-    }
-
-    #[tool(
-        description = "Submit a create_company form. Returns status = one of: `success` (form auto-closed on success; snapshot is null), `failure` (server or validation rejected; see snapshot.errors), `waiting_for_consent` (5s dialog appeared; call consent_form), `loading` (still in flight; call get_form later). Rejects if the form is already loading or showing a consent dialog."
-    )]
-    async fn submit_form(
-        &self,
-        Parameters(args): Parameters<SubmitFormArgs>,
-    ) -> Result<CallToolResult, ErrorData> {
-        let form_id = u32_to_form_id(args.form_id)
-            .ok_or_else(|| err(anyhow!("invalid form_id {}", args.form_id)))?;
-
-        let pre = self
-            .bridge()
-            .read(|m| {
-                m.page_home
-                    .forms
-                    .iter()
-                    .find(|e| e.id == form_id)
-                    .and_then(|e| {
-                        with_company_lm(&e.form, |lm| {
-                            (
-                                use_case_create_company::mcp::is_loading(lm),
-                                use_case_create_company::mcp::show_dialog(lm),
-                            )
-                        })
-                    })
-            })
-            .ok_or_else(|| {
-                err(anyhow!(
-                    "form {} not found or is not a create_company form",
-                    args.form_id
-                ))
-            })?;
-        if pre.0 {
-            return Err(err(anyhow!("form is loading; wait or call consent_form")));
-        }
-        if pre.1 {
-            return Err(err(anyhow!(
-                "form is waiting on a consent dialog; call consent_form first"
-            )));
-        }
-
-        let sub = use_case_create_company::mcp::submit_intent();
-        let wrapped: Box<dyn MessageTrait> = Box::new(HomeMessage::FormRelated {
-            form_id,
-            message: sub,
-        });
-
-        self.bridge()
-            .dispatch(wrapped, move |m| {
-                match m.page_home.forms.iter().find(|e| e.id == form_id) {
-                    None => true, // form auto-closed → success
-                    Some(e) => with_company_lm(&e.form, |lm| {
-                        use_case_create_company::mcp::show_dialog(lm) || has_async_failure(lm)
-                    })
-                    .unwrap_or(true),
-                }
-            })
-            .await
-            .map_err(err)?;
-
-        let (status, snapshot_out) =
-            self.bridge().read(
-                |m| match m.page_home.forms.iter().find(|e| e.id == form_id) {
-                    None => ("success".to_string(), None),
-                    Some(e) => match try_snapshot(e) {
-                        None => ("success".to_string(), None),
-                        Some(snap) => {
-                            if snap.show_dialog {
-                                ("waiting_for_consent".to_string(), Some(snap))
-                            } else if !snap.errors.is_empty() {
-                                ("failure".to_string(), Some(snap))
-                            } else if snap.loading {
-                                ("loading".to_string(), Some(snap))
-                            } else {
-                                ("submitted".to_string(), Some(snap))
-                            }
-                        }
-                    },
-                },
-            );
-
-        json(ActionResponse {
-            status,
-            snapshot: snapshot_out,
-        })
-    }
-
-    #[tool(
-        description = "Answer the 5s consent dialog on a create_company form. `consent` is one of: `wait` (block until server responds), `dont_wait` (apply to local cache only and continue offline), `cancel` (abort the pending submit). Call this whenever `get_form` reports `show_dialog: true`."
-    )]
-    async fn consent_form(
-        &self,
-        Parameters(args): Parameters<ConsentFormArgs>,
-    ) -> Result<CallToolResult, ErrorData> {
-        let form_id = u32_to_form_id(args.form_id)
-            .ok_or_else(|| err(anyhow!("invalid form_id {}", args.form_id)))?;
-
-        let consent = match args.consent {
-            ConsentArg::Wait => UserConsent::WaitForServerResponse,
-            ConsentArg::DontWait => UserConsent::DontWaitForServerResponse,
-            ConsentArg::Cancel => UserConsent::CancelOperation,
-        };
-
-        let sub = use_case_create_company::mcp::consent_intent(consent);
-        let wrapped: Box<dyn MessageTrait> = Box::new(HomeMessage::FormRelated {
-            form_id,
-            message: sub,
-        });
-
-        self.bridge()
-            .dispatch(wrapped, move |m| {
-                match m.page_home.forms.iter().find(|e| e.id == form_id) {
-                    None => true,
-                    Some(e) => with_company_lm(&e.form, |lm| {
-                        !use_case_create_company::mcp::show_dialog(lm)
-                    })
-                    .unwrap_or(true),
-                }
-            })
-            .await
-            .map_err(err)?;
-
-        let snapshot_out = self.bridge().read(|m| {
-            m.page_home
-                .forms
-                .iter()
-                .find(|e| e.id == form_id)
-                .and_then(try_snapshot)
-        });
-
-        json(ActionResponse {
-            status: "consented".into(),
-            snapshot: snapshot_out,
-        })
-    }
-
-    #[tool(description = "Close a form by form_id without submitting. Works for any form kind.")]
-    async fn delete_form(
-        &self,
-        Parameters(args): Parameters<DeleteFormArgs>,
-    ) -> Result<CallToolResult, ErrorData> {
-        let form_id = u32_to_form_id(args.form_id)
-            .ok_or_else(|| err(anyhow!("invalid form_id {}", args.form_id)))?;
-        let index = self
-            .bridge()
-            .read(|m| m.page_home.forms.iter().position(|e| e.id == form_id))
-            .ok_or_else(|| err(anyhow!("form {} not found", args.form_id)))?;
-
-        let message: Box<dyn MessageTrait> =
-            Box::new(HomeMessage::Intent(HomeIntent::DeleteForm(index)));
-        self.bridge()
-            .dispatch(message, move |m| {
-                !m.page_home.forms.iter().any(|e| e.id == form_id)
-            })
-            .await
-            .map_err(err)?;
-
-        json(ActionResponse {
-            status: "deleted".into(),
-            snapshot: None,
-        })
     }
 }
 
