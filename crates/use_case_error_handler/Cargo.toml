@@ -14,7 +14,6 @@ ui       = ["dep:chrono", "dep:dioxus"]
 infrastructure = { workspace = true }
 kernel         = { workspace = true }
 utility        = { workspace = true }
-utility_ui     = { workspace = true }
 
 anyhow = { workspace = true }
 serde  = { workspace = true }

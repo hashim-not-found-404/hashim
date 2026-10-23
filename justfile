@@ -189,6 +189,12 @@ all_p crate_name:
 
 udeps:
     RUSTFLAGS="-A warnings" cargo +nightly udeps --all-targets
+    RUSTFLAGS="-A warnings" cargo +nightly udeps --all-targets --features="server"
+    RUSTFLAGS="-A warnings" cargo +nightly udeps --all-targets --features="client"
+    RUSTFLAGS="-A warnings" cargo +nightly udeps --all-targets --features="database"
+    RUSTFLAGS="-A warnings" cargo +nightly udeps --all-targets --features="cache"
+    RUSTFLAGS="-A warnings" cargo +nightly udeps --all-targets --features="client,ui"
+    RUSTFLAGS="-A warnings" cargo +nightly udeps -p app_root_client --target wasm32-unknown-unknown
 
 new crate_name:
     cargo new crates/{{crate_name}} --lib --vcs none

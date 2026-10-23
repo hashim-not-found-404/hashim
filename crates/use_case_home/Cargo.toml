@@ -12,9 +12,7 @@ ui       = ["dep:dioxus"]
 
 [dependencies]
 infrastructure = { workspace = true }
-kernel         = { workspace = true }
 utility        = { workspace = true }
-utility_ui     = { workspace = true }
 
 anyhow    = { workspace = true }
 dyn-clone = { workspace = true }

@@ -4253,7 +4253,6 @@ dependencies = [
  "kernel",
  "serde",
  "utility",
- "utility_ui",
 ]
 
 [[package]]
@@ -4300,12 +4299,10 @@ dependencies = [
  "dioxus",
  "dyn-clone",
  "infrastructure",
- "kernel",
  "serde",
  "tokio",
  "typetag",
  "utility",
- "utility_ui",
 ]
 
 [[package]]
@@ -4325,7 +4322,6 @@ dependencies = [
  "typetag",
  "use_case_get_companies_and_branches",
  "utility",
- "utility_ui",
  "uuid",
 ]
 

@@ -14,7 +14,6 @@ ui       = ["dep:dioxus"]
 infrastructure = { workspace = true }
 kernel         = { workspace = true }
 utility        = { workspace = true }
-utility_ui     = { workspace = true }
 
 use_case_get_companies_and_branches = { workspace = true }
 
