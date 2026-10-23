@@ -4291,6 +4291,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "use_case_home"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "dioxus",
+ "dyn-clone",
+ "infrastructure",
+ "kernel",
+ "serde",
+ "tokio",
+ "typetag",
+ "utility",
+ "utility_ui",
+]
+
+[[package]]
 name = "use_case_select_default_company"
 version = "0.1.0"
 dependencies = [
