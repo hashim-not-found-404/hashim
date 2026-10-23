@@ -75,6 +75,7 @@ pub(crate) fn App() -> Element {
     }
 }
 
+// TODO move to the use case home
 #[component]
 fn Home() -> Element {
     let (
@@ -177,6 +178,7 @@ fn Home() -> Element {
     }
 }
 
+// TODO move to the use case home
 #[component]
 fn FormInstance(index: usize, entry: FormEntry) -> Element {
     let form_id: FormId = entry.id;
