@@ -47,6 +47,7 @@ use_case_get_companies_and_branches = { workspace = true, features = [
     "cache",
     "ui",
 ] }
+use_case_home = { workspace = true, features = ["client", "cache", "ui"] }
 use_case_select_default_company = { workspace = true, features = [
     "client",
     "cache",
@@ -58,6 +59,7 @@ use_case_sign_up = { workspace = true, features = ["client", "cache", "ui"] }
 anyhow = { workspace = true }
 serde = { workspace = true }
 tracing = { workspace = true }
+typetag = { workspace = true }
 
 console_error_panic_hook = { workspace = true }
 dioxus = { workspace = true }

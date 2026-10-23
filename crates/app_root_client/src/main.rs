@@ -1,6 +1,5 @@
 mod app_ui;
 mod model;
-mod use_case_home;
 mod use_case_navigator;
 mod utils;
 mod wire;

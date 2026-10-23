@@ -1,4 +1,3 @@
-use crate::use_case_home;
 use crate::use_case_navigator::client::Intent as NavIntent;
 use crate::use_case_navigator::client::Message;
 use crate::use_case_navigator::client::Navigator;
@@ -6,13 +5,15 @@ use crate::utils::async_send;
 use crate::utils::init_commander_and_model;
 use crate::utils::send;
 use crate::utils::with_model;
+use crate::wire::create_account_for_branch_form::WrapperForm as AccountForBranchForm;
+use crate::wire::create_account_form::WrapperForm as AccountForm;
+use crate::wire::create_branch_form::WrapperForm as BranchForm;
+use crate::wire::create_company_form::WrapperForm as CompanyForm;
 use anyhow::Result;
 use cache::utils::MyUuidConverter;
 use dioxus::prelude::*;
 use use_case_home::client::FormEntry;
 use use_case_home::client::FormId;
-use use_case_home::client::FormLocalModel;
-use use_case_home::client::FormsToAdd;
 use utility::ui_effect::Replier;
 use utility::ui_effect::new_replier;
 
@@ -107,7 +108,6 @@ fn Home() -> Element {
     let replier2 = replier.clone();
     let replier3 = replier.clone();
     let replier4 = replier.clone();
-    let replier5 = replier.clone();
 
     rsx! {
         use_case_select_default_company::ui::Component {
@@ -129,7 +129,9 @@ fn Home() -> Element {
                 onclick: move |_| send(
                     replier1.clone(),
                     use_case_home::client::Message::Intent(
-                        use_case_home::client::Intent::AddForm(FormsToAdd::CreateAccount),
+                        use_case_home::client::Intent::AddForm(Box::new(AccountForm(
+                            Default::default(),
+                        ))),
                     ),
                 ),
                 "+ Account"
@@ -138,7 +140,9 @@ fn Home() -> Element {
                 onclick: move |_| send(
                     replier2.clone(),
                     use_case_home::client::Message::Intent(
-                        use_case_home::client::Intent::AddForm(FormsToAdd::CreateBranch),
+                        use_case_home::client::Intent::AddForm(Box::new(BranchForm(
+                            Default::default(),
+                        ))),
                     ),
                 ),
                 "+ Branch"
@@ -147,7 +151,9 @@ fn Home() -> Element {
                 onclick: move |_| send(
                     replier3.clone(),
                     use_case_home::client::Message::Intent(
-                        use_case_home::client::Intent::AddForm(FormsToAdd::CreateCompany),
+                        use_case_home::client::Intent::AddForm(Box::new(CompanyForm(
+                            Default::default(),
+                        ))),
                     ),
                 ),
                 "+ Company"
@@ -156,19 +162,12 @@ fn Home() -> Element {
                 onclick: move |_| send(
                     replier4.clone(),
                     use_case_home::client::Message::Intent(
-                        use_case_home::client::Intent::AddForm(FormsToAdd::CreateAccountForBranch),
+                        use_case_home::client::Intent::AddForm(Box::new(
+                            AccountForBranchForm(Default::default()),
+                        )),
                     ),
                 ),
                 "+ Account for Branch"
-            }
-            button {
-                onclick: move |_| send(
-                    replier5.clone(),
-                    use_case_home::client::Message::Intent(
-                        use_case_home::client::Intent::AddForm(FormsToAdd::CreateJournalEntry),
-                    ),
-                ),
-                "+ Journal Entry"
             }
         }
 
@@ -183,20 +182,11 @@ fn FormInstance(index: usize, entry: FormEntry) -> Element {
     let form_id: FormId = entry.id;
     let form = entry.form;
 
-    // `Copy` and `Delete` are driven by a synchronous click, so `index`
-    // is always current for these two. The sub-form repliers below use
-    // `form_id` instead, since they may fire later than the click (the
-    // 5-second submit timer is the case that motivated this change).
     let replier: Replier = new_replier(async |msg| -> Result<()> { async_send(msg).await });
     let replier1 = replier.clone();
 
-    let is_loading = match &form {
-        FormLocalModel::CreateAccount(lm) => lm.async_state.is_loading(),
-        FormLocalModel::CreateBranch(lm) => lm.async_state.is_loading(),
-        FormLocalModel::CreateCompany(lm) => lm.async_state.is_loading(),
-        FormLocalModel::CreateAccountForBranch(lm) => lm.async_state.is_loading(),
-        FormLocalModel::CreateJournalEntry(lm) => lm.is_loading,
-    };
+    let is_loading = form.is_loading();
+    let rendered = use_case_home::ui::render_to_element(form.as_ref(), form_id);
 
     rsx! {
         div {
@@ -220,31 +210,16 @@ fn FormInstance(index: usize, entry: FormEntry) -> Element {
                 "X"
             }
 
-            {
-                match form {
-                    FormLocalModel::CreateAccount(lm) => rsx! {
-                        CreateAccountForm { form_id, lm }
-                    },
-                    FormLocalModel::CreateBranch(lm) => rsx! {
-                        CreateBranchForm { form_id, lm }
-                    },
-                    FormLocalModel::CreateCompany(lm) => rsx! {
-                        CreateCompanyForm { form_id, lm }
-                    },
-                    FormLocalModel::CreateAccountForBranch(lm) => rsx! {
-                        CreateAccountForBranchForm { form_id, lm }
-                    },
-                    FormLocalModel::CreateJournalEntry(lm) => rsx! {
-                        CreateJournalEntryForm { form_id, lm }
-                    },
-                }
-            }
+            {rendered}
         }
     }
 }
 
 #[component]
-fn CreateAccountForm(form_id: FormId, lm: use_case_create_account::client::LocalModel) -> Element {
+pub(crate) fn CreateAccountForm(
+    form_id: FormId,
+    lm: use_case_create_account::client::LocalModel,
+) -> Element {
     let (
         account_name_error,
         company_name_error,
@@ -292,7 +267,10 @@ fn CreateAccountForm(form_id: FormId, lm: use_case_create_account::client::Local
 }
 
 #[component]
-fn CreateBranchForm(form_id: FormId, lm: use_case_create_branch::client::LocalModel) -> Element {
+pub(crate) fn CreateBranchForm(
+    form_id: FormId,
+    lm: use_case_create_branch::client::LocalModel,
+) -> Element {
     let (company_name_error, resolved_company_uuid, list_of_company_name_and_uuid) =
         with_model(|m| {
             (
@@ -335,7 +313,10 @@ fn CreateBranchForm(form_id: FormId, lm: use_case_create_branch::client::LocalMo
 }
 
 #[component]
-fn CreateCompanyForm(form_id: FormId, lm: use_case_create_company::client::LocalModel) -> Element {
+pub(crate) fn CreateCompanyForm(
+    form_id: FormId,
+    lm: use_case_create_company::client::LocalModel,
+) -> Element {
     let replier: Replier = new_replier(move |msg| async move {
         async_send(Box::new(use_case_home::client::Message::FormRelated {
             form_id,
@@ -363,7 +344,7 @@ fn CreateCompanyForm(form_id: FormId, lm: use_case_create_company::client::Local
 }
 
 #[component]
-fn CreateAccountForBranchForm(
+pub(crate) fn CreateAccountForBranchForm(
     form_id: FormId,
     lm: use_case_create_account_for_branch::client::LocalModel,
 ) -> Element {
@@ -394,34 +375,6 @@ fn CreateAccountForBranchForm(
             outflow_type: lm.outflow_type,
             inflow_type: lm.inflow_type,
             list_of_account_name_and_uuid,
-        }
-    }
-}
-
-#[component]
-fn CreateJournalEntryForm(
-    form_id: FormId,
-    lm: use_case_create_journal_entry::client::LocalModel,
-) -> Element {
-    let replier: Replier = new_replier(move |msg| async move {
-        async_send(Box::new(use_case_home::client::Message::FormRelated {
-            form_id,
-            message: msg,
-        }))
-        .await
-    });
-
-    rsx! {
-        use_case_create_journal_entry::ui::Component {
-            sender: move |i| send(
-                replier.clone(),
-                use_case_home::client::Message::FormRelated {
-                    form_id,
-                    message: Box::new(use_case_create_journal_entry::client::Message::Intent(i)),
-                },
-            ),
-            show_dialog: lm.show_dialog.clone(),
-            is_loading: lm.is_loading,
         }
     }
 }

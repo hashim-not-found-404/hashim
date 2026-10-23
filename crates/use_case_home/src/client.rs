@@ -41,7 +41,9 @@ impl Default for FormId {
 pub trait FormLocalModel: Any + Debug + Send + Sync + 'static + DynClone {
     fn clone_user_input(&self) -> Box<dyn FormLocalModel>;
     fn is_submit_ok(&self) -> bool;
+    fn is_loading(&self) -> bool;
     fn handle(&mut self, message: Box<dyn MessageTrait>, global: &dyn Any) -> FormUpdate;
+    fn render(&self, form_id: FormId) -> Box<dyn Any>;
 }
 
 clone_trait_object!(FormLocalModel);
@@ -67,11 +69,11 @@ pub trait FormGlobalChange: Debug + Send + Sync + 'static + DynClone {
 clone_trait_object!(FormGlobalChange);
 
 pub trait FormEffect: Debug + Send + Sync + 'static + DynClone {
-    fn run(
-        self: Box<Self>,
+    fn effect(
+        &self,
         replier: Replier,
         context: UiContext,
-    ) -> Pin<Box<dyn Future<Output = Result<()>> + Send>>;
+    ) -> Pin<Box<dyn Future<Output = Result<()>>>>;
 }
 
 clone_trait_object!(FormEffect);
@@ -86,7 +88,7 @@ clone_trait_object!(FormEffect);
 // that Dioxus `#[component]` requires).
 // =====================================================================
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct FormEntry {
     pub id: FormId,
     pub form: Box<dyn FormLocalModel>,
@@ -117,7 +119,7 @@ pub trait GlobalModel: Any {}
 // Local model — `forms` is `pub` so `app_ui.rs` can read it
 // =====================================================================
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
 pub struct LocalModel {
     pub forms: Vec<FormEntry>,
 }
@@ -158,7 +160,7 @@ pub enum LocalChange {
     Forms(Vec<FormEntry>),
 }
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct GlobalChange {
     pub(crate) changes: Vec<Box<dyn FormGlobalChange>>,
 }
@@ -171,7 +173,7 @@ impl GlobalChange {
     }
 }
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Effect {
     pub(crate) effects: Vec<Box<dyn FormEffect>>,
 }
@@ -201,7 +203,7 @@ pub fn update(
                 Intent::AddForm(form) => {
                     let mut forms = local_model.forms.clone();
                     forms.push(FormEntry::new(form));
-                    (LocalChange::Forms(forms), vec![])
+                    (vec![LocalChange::Forms(forms)], vec![])
                 }
                 Intent::CopyForm(v) => {
                     let mut forms = local_model.forms.clone();
@@ -210,18 +212,23 @@ pub fn update(
                     };
                     let fresh_form = entry.form.clone_user_input();
                     forms.insert(v + 1, FormEntry::new(fresh_form));
-                    (LocalChange::Forms(forms), vec![])
+                    (vec![LocalChange::Forms(forms)], vec![])
                 }
                 Intent::DeleteForm(v) => {
                     let mut forms = local_model.forms.clone();
                     if v >= forms.len() {
                         return (vec![], vec![], vec![]);
                     }
-                    forms.remove(v);
-                    (LocalChange::Forms(forms), vec![])
+                    let form = forms.remove(v);
+
+                    if form.form.is_loading() {
+                        (vec![], vec![])
+                    } else {
+                        (vec![LocalChange::Forms(forms)], vec![])
+                    }
                 }
             };
-            (vec![change], vec![], effect)
+            (change, vec![], effect)
         }
 
         Message::Observe(observe) => match observe {},
@@ -276,7 +283,7 @@ pub fn global_apply(msg: GlobalChange, global_model: &mut dyn Any) {
 
 pub async fn effect(msg: Effect, replier: Replier, context: UiContext) -> Result<()> {
     for e in msg.effects {
-        e.run(replier.clone(), context.clone()).await?;
+        e.effect(replier.clone(), context.clone()).await?;
     }
     Ok(())
 }
