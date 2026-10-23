@@ -109,6 +109,41 @@ diffs:
     } > diffs.txt
     echo "wrote diffs.txt ($(wc -l < diffs.txt) lines, $(du -h diffs.txt | cut -f1))"
 
+# Write the FULL contents of every file changed since the last `just dump`
+# into `changed.txt`. Covers commits since the stored base, uncommitted
+# edits, and untracked text files. Same `=== path ===` / `nl` format as `dump`.
+changed:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [ ! -f codebase.txt ]; then
+        echo "error: codebase.txt not found; run 'just dump' first" >&2
+        exit 1
+    fi
+    base="$(head -n1 codebase.txt | sed -E 's/^commit:[[:space:]]*//')"
+    if ! git rev-parse --verify "${base}^{commit}" >/dev/null 2>&1; then
+        echo "error: could not resolve commit '$base' from codebase.txt" >&2
+        exit 1
+    fi
+    head="$(git rev-parse HEAD)"
+
+    {
+        # Files touched by commits made since the last dump
+        git diff --name-only "$base".."$head"
+        # Tracked files with staged/unstaged edits against HEAD
+        git diff --name-only HEAD
+        # New untracked files (respecting .gitignore; skip dump artifacts)
+        git ls-files --others --exclude-standard -- ':!codebase.txt' ':!diffs.txt' ':!changed.txt'
+    } | sort -u | while IFS= read -r f; do
+        [ -f "$f" ] || continue
+        if file -b --mime-type "$f" | grep -q '^text/'; then
+            echo ""
+            echo "=== $f ==="
+            nl -ba -w5 -s' | ' "$f"
+        fi
+    done > changed.txt
+
+    echo "wrote changed.txt ($(wc -l < changed.txt) lines, $(du -h changed.txt | cut -f1))"
+
 ###################################################################################################
 
 check:

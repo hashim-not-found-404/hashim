@@ -29,33 +29,23 @@ impl Default for FormId {
 // =====================================================================
 // The plug-in contract
 //
-// `FormLocalModel` is what the home stores. It does not name any use
-// case. Each use case implements it for its own `LocalModel`. The
-// message downcast (to the use case's concrete `Message`) and the
-// global downcast (to the app's `TypeGlobalModel`) both happen inside
-// `handle`, in the use case crate.
+// `Any` is a supertrait so callers can upcast `&dyn FormLocalModel` to
+// `&dyn Any` and downcast to a concrete use-case `LocalModel`.
+//
+// `#[typetag::serde]` makes `Box<dyn FormLocalModel>` Serialize/Deserialize
+// so that `FormEntry` and `LocalModel` can derive serde traits (needed by
+// `TypeGlobalModel` in `app_root_client`).
 // =====================================================================
 
-pub trait FormLocalModel: Debug + Send + Sync + 'static + DynClone {
-    /// Clone of this form with transient state (errors, async state,
-    /// dialog) reset. Used by `Intent::CopyForm`.
+#[typetag::serde]
+pub trait FormLocalModel: Any + Debug + Send + Sync + 'static + DynClone {
     fn clone_user_input(&self) -> Box<dyn FormLocalModel>;
-
-    /// Whether the last submit succeeded. The home checks this before
-    /// and after `handle` to auto-close a form when its submit lands.
     fn is_submit_ok(&self) -> bool;
-
-    /// Route one message addressed to this form into the form's own
-    /// reducer. Downcasting and dispatching live inside the impl.
     fn handle(&mut self, message: Box<dyn MessageTrait>, global: &dyn Any) -> FormUpdate;
 }
 
 clone_trait_object!(FormLocalModel);
 
-/// What `handle` returns. The form's *new state* is `&mut self` — no
-/// separate local channel is needed. Only global changes and effects
-/// need to be ferried back out, because their concrete types belong
-/// to the use case and the home cannot name them.
 pub struct FormUpdate {
     pub global: Vec<Box<dyn FormGlobalChange>>,
     pub effects: Vec<Box<dyn FormEffect>>,
@@ -70,15 +60,13 @@ impl FormUpdate {
     }
 }
 
-/// One global-model change. The impl downcasts `global` to the concrete
-/// type it is generic over and calls its own `global_apply`.
-pub trait FormGlobalChange: Debug + Send + Sync + 'static {
+pub trait FormGlobalChange: Debug + Send + Sync + 'static + DynClone {
     fn apply(&self, global: &mut dyn Any);
 }
 
-/// One side effect. The impl owns the concrete effect and calls its
-/// own `effect` function inside `run`.
-pub trait FormEffect: Debug + Send + Sync + 'static {
+clone_trait_object!(FormGlobalChange);
+
+pub trait FormEffect: Debug + Send + Sync + 'static + DynClone {
     fn run(
         self: Box<Self>,
         replier: Replier,
@@ -86,18 +74,32 @@ pub trait FormEffect: Debug + Send + Sync + 'static {
     ) -> Pin<Box<dyn Future<Output = Result<()>> + Send>>;
 }
 
+clone_trait_object!(FormEffect);
+
 // =====================================================================
 // Form entry
+//
+// Fields are `pub` so `app_root_client` can read `entry.id` and
+// `entry.form`. `PartialEq` is manual because `Box<dyn FormLocalModel>`
+// does not auto-derive it (the JSON form still derives it via typetag,
+// but `Box<dyn Trait>` needs a hand-written impl for the memoization
+// that Dioxus `#[component]` requires).
 // =====================================================================
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FormEntry {
-    pub(crate) id: FormId,
-    pub(crate) form: Box<dyn FormLocalModel>,
+    pub id: FormId,
+    pub form: Box<dyn FormLocalModel>,
+}
+
+impl PartialEq for FormEntry {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id && format!("{:?}", self.form) == format!("{:?}", other.form)
+    }
 }
 
 impl FormEntry {
-    pub(crate) fn new(form: Box<dyn FormLocalModel>) -> Self {
+    pub fn new(form: Box<dyn FormLocalModel>) -> Self {
         Self {
             id: FormId::default(),
             form,
@@ -107,21 +109,17 @@ impl FormEntry {
 
 // =====================================================================
 // Global model
-//
-// Marker trait. Any concrete global type implements it for free because
-// `Any` is blanket-impl'd for `'static`. `&impl GlobalModel` can be
-// cast to `&dyn Any` with `as &dyn Any`.
 // =====================================================================
 
 pub trait GlobalModel: Any {}
 
 // =====================================================================
-// Local model
+// Local model — `forms` is `pub` so `app_ui.rs` can read it
 // =====================================================================
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct LocalModel {
-    pub(crate) forms: Vec<FormEntry>,
+    pub forms: Vec<FormEntry>,
 }
 
 // =====================================================================
@@ -150,6 +148,9 @@ pub enum Observe {}
 
 // =====================================================================
 // Home change
+//
+// `GlobalChange` and `Effect` gained `Clone` and `Debug` (wire.rs
+// requires them — it wraps and clones these in its own wire structs).
 // =====================================================================
 
 #[derive(Debug, Clone)]
@@ -157,10 +158,7 @@ pub enum LocalChange {
     Forms(Vec<FormEntry>),
 }
 
-/// Container for global changes produced by one dispatch. Each element
-/// is one boxed change, so the home can `Vec<GlobalChange>` uniformly
-/// while the concrete types inside stay per-use-case.
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct GlobalChange {
     pub(crate) changes: Vec<Box<dyn FormGlobalChange>>,
 }
@@ -173,8 +171,7 @@ impl GlobalChange {
     }
 }
 
-/// Same shape for effects.
-#[derive(Default)]
+#[derive(Debug, Default, Clone)]
 pub struct Effect {
     pub(crate) effects: Vec<Box<dyn FormEffect>>,
 }
@@ -234,14 +231,9 @@ pub fn update(
                 return (vec![], vec![], vec![]);
             };
 
-            // Work on a clone so the reducer stays pure — the caller
-            // applies the result via `local_apply`.
             let mut new_forms = local_model.forms.clone();
-
             let was_ok_before = new_forms[form_index].form.is_submit_ok();
 
-            // `handle` mutates `new_forms[form_index].form` in place
-            // and returns the non-local channels.
             let update = new_forms[form_index]
                 .form
                 .handle(message, global_model as &dyn Any);
@@ -250,10 +242,8 @@ pub fn update(
 
             let mut effects: Vec<Effect> = update.effects.into_iter().map(Effect::new).collect();
 
-            // If this message completed the submit, auto-close the form.
             if !was_ok_before && is_ok_after {
                 new_forms.remove(form_index);
-                // (teardown hook — add when a use case actually needs one)
             }
 
             let global_changes: Vec<GlobalChange> =
