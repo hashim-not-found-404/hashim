@@ -42,7 +42,7 @@ pub(crate) fn my_macro(input: TokenStream) -> TokenStream {
             use utility::ui_effect::Replier;
             use utility::ui_effect::UiContext;
 
-            #[derive(Debug, Clone, Deserialize, Serialize)]
+            #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
             pub(crate) struct WrapperForm(pub(crate) LocalModel);
 
             #[serde]
@@ -57,6 +57,13 @@ pub(crate) fn my_macro(input: TokenStream) -> TokenStream {
 
                 fn is_loading(&self) -> bool {
                     self.0.async_state.is_loading()
+                }
+
+                fn dyn_eq(&self, other: &dyn FormLocalModel) -> bool {
+                    let other : &dyn Any = other;
+                    other
+                        .downcast_ref::<Self>()
+                        .is_some_and(|o| self == o)
                 }
 
                 fn handle(

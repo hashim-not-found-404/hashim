@@ -42,6 +42,7 @@ pub trait FormLocalModel: Any + Debug + Send + Sync + 'static + DynClone {
     fn clone_user_input(&self) -> Box<dyn FormLocalModel>;
     fn is_submit_ok(&self) -> bool;
     fn is_loading(&self) -> bool;
+    fn dyn_eq(&self, other: &dyn FormLocalModel) -> bool;
     fn handle(&mut self, message: Box<dyn MessageTrait>, global: &dyn Any) -> FormUpdate;
     fn render(&self, form_id: FormId) -> Box<dyn Any>;
 }
@@ -96,7 +97,7 @@ pub struct FormEntry {
 
 impl PartialEq for FormEntry {
     fn eq(&self, other: &Self) -> bool {
-        self.id == other.id && format!("{:?}", self.form) == format!("{:?}", other.form)
+        self.id == other.id && self.form.dyn_eq(other.form.as_ref())
     }
 }
 
@@ -119,7 +120,7 @@ pub trait GlobalModel: Any {}
 // Local model — `forms` is `pub` so `app_ui.rs` can read it
 // =====================================================================
 
-#[derive(Debug, Clone, Default, Deserialize, Serialize)]
+#[derive(Debug, Clone, Default, Deserialize, Serialize, PartialEq)]
 pub struct LocalModel {
     pub forms: Vec<FormEntry>,
 }
