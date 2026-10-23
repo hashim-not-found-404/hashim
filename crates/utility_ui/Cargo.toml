@@ -1,5 +1,5 @@
 [package]
-name = "utility_ui"
+name    = "utility_ui"
 version = "0.1.0"
 edition = "2024"
 
@@ -9,4 +9,4 @@ ui = ["dioxus"]
 [dependencies]
 serde = { workspace = true }
 
-dioxus = { workspace = true, optional = true }
+dioxus = { optional = true, workspace = true }

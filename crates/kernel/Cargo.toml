@@ -1,18 +1,18 @@
 [package]
-name = "kernel"
+name    = "kernel"
 version = "0.1.0"
 edition = "2024"
 
 [features]
-ui = []
-cache = []
+cache    = []
 database = []
+ui       = []
 
 [dependencies]
 infrastructure = { workspace = true }
-utility = { workspace = true }
+utility        = { workspace = true }
 
-anyhow = { workspace = true }
+anyhow    = { workspace = true }
 dyn-clone = { workspace = true }
-serde = { workspace = true }
-typetag = { workspace = true }
+serde     = { workspace = true }
+typetag   = { workspace = true }

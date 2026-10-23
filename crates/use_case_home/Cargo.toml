@@ -1,27 +1,27 @@
 [package]
-name = "use_case_home"
+name    = "use_case_home"
 version = "0.1.0"
 edition = "2024"
 
 [features]
-ui = ["dep:dioxus"]
-cache = []
+cache    = []
+client   = []
 database = []
-client = []
-server = []
+server   = []
+ui       = ["dep:dioxus"]
 
 [dependencies]
 infrastructure = { workspace = true }
-kernel = { workspace = true }
-utility = { workspace = true }
-utility_ui = { workspace = true }
+kernel         = { workspace = true }
+utility        = { workspace = true }
+utility_ui     = { workspace = true }
 
-anyhow = { workspace = true }
+anyhow    = { workspace = true }
 dyn-clone = { workspace = true }
-serde = { workspace = true }
-typetag = { workspace = true }
+serde     = { workspace = true }
+typetag   = { workspace = true }
 
-dioxus = { workspace = true, optional = true }
+dioxus = { optional = true, workspace = true }
 
 [dev-dependencies]
 tokio = { workspace = true }

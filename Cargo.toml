@@ -1,84 +1,81 @@
 [workspace]
 resolver = "3"
-members = ["crates/*"]
+members  = ["crates/*"]
 
 [workspace.dependencies]
 # app agnostic
 accounting_engine = { path = "./crates/accounting_engine" }
-infrastructure = { path = "./crates/infrastructure" }
-utility = { path = "./crates/utility" }
-utility_ui = { path = "./crates/utility_ui" }
+infrastructure    = { path = "./crates/infrastructure" }
+utility           = { path = "./crates/utility" }
+utility_ui        = { path = "./crates/utility_ui" }
 
 # internal use cases agnostic
-cache = { path = "./crates/cache" }
+cache    = { path = "./crates/cache" }
 database = { path = "./crates/database" }
-kernel = { path = "./crates/kernel" }
+kernel   = { path = "./crates/kernel" }
 patterns = { path = "./crates/patterns" }
-server = { path = "./crates/server" }
+server   = { path = "./crates/server" }
 
 # use cases
-use_case_create_account = { path = "./crates/use_case_create_account" }
-use_case_create_account_for_branch = { path = "./crates/use_case_create_account_for_branch" }
-use_case_create_branch = { path = "./crates/use_case_create_branch" }
-use_case_create_company = { path = "./crates/use_case_create_company" }
-use_case_create_journal_entry = { path = "./crates/use_case_create_journal_entry" }
-use_case_error_handler = { path = "./crates/use_case_error_handler" }
-use_case_get_all_accounts = { path = "./crates/use_case_get_all_accounts" }
+use_case_create_account             = { path = "./crates/use_case_create_account" }
+use_case_create_account_for_branch  = { path = "./crates/use_case_create_account_for_branch" }
+use_case_create_branch              = { path = "./crates/use_case_create_branch" }
+use_case_create_company             = { path = "./crates/use_case_create_company" }
+use_case_create_journal_entry       = { path = "./crates/use_case_create_journal_entry" }
+use_case_error_handler              = { path = "./crates/use_case_error_handler" }
+use_case_get_all_accounts           = { path = "./crates/use_case_get_all_accounts" }
 use_case_get_companies_and_branches = { path = "./crates/use_case_get_companies_and_branches" }
-use_case_home = { path = "./crates/use_case_home" }
-use_case_select_default_company = { path = "./crates/use_case_select_default_company" }
-use_case_sign_in = { path = "./crates/use_case_sign_in" }
-use_case_sign_up = { path = "./crates/use_case_sign_up" }
+use_case_home                       = { path = "./crates/use_case_home" }
+use_case_select_default_company     = { path = "./crates/use_case_select_default_company" }
+use_case_sign_in                    = { path = "./crates/use_case_sign_in" }
+use_case_sign_up                    = { path = "./crates/use_case_sign_up" }
 
 # external in the domain
-anyhow = { version = "1.0.104" }
-dyn-clone = { version = "1.0.20" }
-heck = { version = "0.5.0" }
-paste = { version = "1.0.15" }
+anyhow      = { version = "1.0.104" }
+dyn-clone   = { version = "1.0.20" }
+heck        = { version = "0.5.0" }
+paste       = { version = "1.0.15" }
 proc-macro2 = { version = "1.0.107" }
-quote = { version = "1.0.47" }
-serde = { version = "1.0.229", features = ["derive"] }
-syn = { version = "3.0.9" }
-typetag = { version = "0.2.23" }
+quote       = { version = "1.0.47" }
+serde       = { features = ["derive"], version = "1.0.229" }
+syn         = { version = "3.0.9" }
+typetag     = { version = "0.2.23" }
 
 # external out the domain
-actix-cors = { version = "0.7.2" }
-actix-web = { version = "4.17.0", features = ["rustls-0_23"] }
-actix-ws = { version = "0.4.0" }
-argon2 = { version = "0.5.3" }
-chrono = { version = "0.4.45" }
+actix-cors               = { version = "0.7.2" }
+actix-web                = { features = ["rustls-0_23"], version = "4.17.0" }
+actix-ws                 = { version = "0.4.0" }
+argon2                   = { version = "0.5.3" }
+chrono                   = { version = "0.4.45" }
 console_error_panic_hook = { version = "0.1.7" }
-deadpool-postgres = { version = "0.14.2" }
-derive_more = { version = "2.1.1", features = ["full"] }
-dioxus = { version = "0.7.10", features = ["router"] }
-futures = { version = "0.3.34" }
-futures-util = { version = "0.3.34" }
-getrandom = { version = "0.4.3", features = ["wasm_js"] }
-gloo-net = { version = "0.7.0" }
-gloo-timers = { version = "0.4.0", features = ["futures"] }
-jsonwebtoken = { version = "10.4.0", features = ["rust_crypto"] }
-postcard = { version = "1.1.3", features = ["alloc"] }
-regex = { version = "1.13.1" }
-rusqlite = { version = "0.40.2", features = ["bundled"] }
-rust_decimal = { version = "1.43.0", features = ["db-tokio-postgres"] }
-rustls = { version = "0.23.46" }
-rustls-pemfile = { version = "2.2.0" }
-serde_json = { version = "1.0.154" }
-tokio = { version = "1.53.3", features = ["macros", "rt", "sync", "time"] }
-tokio-postgres = { version = "0.7.18", features = [
-    "with-uuid-1",
-    "with-serde_json-1",
-] }
-tokio-tungstenite = { version = "0.29.0" }
-tracing = { version = "0.1.44" }
-tracing-subscriber = { version = "0.3.23" }
-tracing-web = "0.1.3"
-uuid = { version = "1.28.0", features = ["v7", "serde", "js"] }
-wasm-bindgen-futures = { version = "0.4.79" }
+deadpool-postgres        = { version = "0.14.2" }
+derive_more              = { features = ["full"], version = "2.1.1" }
+dioxus                   = { features = ["router"], version = "0.7.10" }
+futures                  = { version = "0.3.34" }
+futures-util             = { version = "0.3.34" }
+getrandom                = { features = ["wasm_js"], version = "0.4.3" }
+gloo-net                 = { version = "0.7.0" }
+gloo-timers              = { features = ["futures"], version = "0.4.0" }
+jsonwebtoken             = { features = ["rust_crypto"], version = "10.4.0" }
+postcard                 = { features = ["alloc"], version = "1.1.3" }
+regex                    = { version = "1.13.1" }
+rusqlite                 = { features = ["bundled"], version = "0.40.2" }
+rust_decimal             = { features = ["db-tokio-postgres"], version = "1.43.0" }
+rustls                   = { version = "0.23.46" }
+rustls-pemfile           = { version = "2.2.0" }
+serde_json               = { version = "1.0.154" }
+tokio                    = { features = ["macros", "rt", "sync", "time"], version = "1.53.3" }
+tokio-postgres           = { features = ["with-serde_json-1", "with-uuid-1"], version = "0.7.18" }
+tokio-tungstenite        = { version = "0.29.0" }
+tracing                  = { version = "0.1.44" }
+tracing-subscriber       = { version = "0.3.23" }
+tracing-web              = "0.1.3"
+uuid                     = { features = ["js", "serde", "v7"], version = "1.28.0" }
+wasm-bindgen-futures     = { version = "0.4.79" }
 
 [profile.dev.package."*"]
 opt-level = 0
-debug = true
+debug     = true
 
 [profile.test.package."*"]
 opt-level = 0

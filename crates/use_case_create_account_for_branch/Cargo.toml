@@ -1,31 +1,31 @@
 [package]
-name = "use_case_create_account_for_branch"
+name    = "use_case_create_account_for_branch"
 version = "0.1.0"
 edition = "2024"
 
 [features]
-ui = ["dioxus"]
-cache = ["dep:cache", "rusqlite"]
+cache    = ["dep:cache", "rusqlite"]
+client   = []
 database = ["dep:database"]
-client = []
-server = []
+server   = []
+ui       = ["dioxus"]
 
 [dependencies]
 accounting_engine = { workspace = true }
-infrastructure = { workspace = true }
-kernel = { workspace = true }
-utility = { workspace = true }
-utility_ui = { workspace = true }
+infrastructure    = { workspace = true }
+kernel            = { workspace = true }
+utility           = { workspace = true }
+utility_ui        = { workspace = true }
 
-cache = { workspace = true, optional = true }
-database = { workspace = true, optional = true }
+cache    = { optional = true, workspace = true }
+database = { optional = true, workspace = true }
 
-anyhow = { workspace = true }
-serde = { workspace = true }
+anyhow  = { workspace = true }
+serde   = { workspace = true }
 typetag = { workspace = true }
 
-dioxus = { workspace = true, optional = true }
-rusqlite = { workspace = true, optional = true }
+dioxus   = { optional = true, workspace = true }
+rusqlite = { optional = true, workspace = true }
 
 [dev-dependencies]
 tokio = { workspace = true }

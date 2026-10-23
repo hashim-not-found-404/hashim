@@ -1,0 +1,19 @@
+# taplo.toml
+# Apply this rule to all Cargo.toml files
+[[rule]]
+include = ["**/Cargo.toml"]
+keys    = ["features"]      # Target the 'features' table
+[rule.formatting]
+reorder_keys = true # Alphabetically sort the feature names (the keys)
+
+
+[formatting]
+reorder_arrays        = true
+align_entries         = true
+reorder_inline_tables = true
+align_comments        = true
+array_trailing_comma  = true
+array_auto_expand     = false
+compact_arrays        = true
+compact_inline_tables = true
+inline_table_expand   = false

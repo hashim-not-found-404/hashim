@@ -1,6 +1,6 @@
-unstable_features = true
+unstable_features   = true
 imports_granularity = "Item"
-group_imports = "One"
+group_imports       = "One"
 
 # force_multiline_blocks=true
 # overflow_delimited_expr = true
@@ -11,9 +11,9 @@ group_imports = "One"
 # use_small_heuristics="Off"
 # use_try_shorthand=true
 
-format_macro_matchers = true
-format_macro_bodies = true
-hex_literal_case = "Upper"
+format_macro_matchers       = true
+format_macro_bodies         = true
+hex_literal_case            = "Upper"
 float_literal_trailing_zero = "Always"
 # single_line_if_else_max_width=0
 # single_line_let_else_max_width=0

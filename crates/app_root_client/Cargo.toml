@@ -1,69 +1,37 @@
 [package]
-name = "app_root_client"
+name    = "app_root_client"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-cache = { workspace = true }
+cache          = { workspace = true }
 infrastructure = { workspace = true }
-kernel = { workspace = true }
-patterns = { workspace = true }
-utility = { workspace = true }
-utility_ui = { workspace = true, features = ["ui"] }
+kernel         = { workspace = true }
+patterns       = { workspace = true }
+utility        = { workspace = true }
+utility_ui     = { features = ["ui"], workspace = true }
 
-use_case_create_account = { workspace = true, features = [
-    "client",
-    "cache",
-    "ui",
-] }
-use_case_create_account_for_branch = { workspace = true, features = [
-    "client",
-    "cache",
-    "ui",
-] }
-use_case_create_branch = { workspace = true, features = [
-    "client",
-    "cache",
-    "ui",
-] }
-use_case_create_company = { workspace = true, features = [
-    "client",
-    "cache",
-    "ui",
-] }
-use_case_create_journal_entry = { workspace = true, features = [
-    "client",
-    "cache",
-    "ui",
-] }
-use_case_error_handler = { workspace = true, features = ["client", "ui"] }
-use_case_get_all_accounts = { workspace = true, features = [
-    "client",
-    "cache",
-    "ui",
-] }
-use_case_get_companies_and_branches = { workspace = true, features = [
-    "client",
-    "cache",
-    "ui",
-] }
-use_case_home = { workspace = true, features = ["client", "cache", "ui"] }
-use_case_select_default_company = { workspace = true, features = [
-    "client",
-    "cache",
-    "ui",
-] }
-use_case_sign_in = { workspace = true, features = ["client", "cache", "ui"] }
-use_case_sign_up = { workspace = true, features = ["client", "cache", "ui"] }
+use_case_create_account             = { features = ["cache", "client", "ui"], workspace = true }
+use_case_create_account_for_branch  = { features = ["cache", "client", "ui"], workspace = true }
+use_case_create_branch              = { features = ["cache", "client", "ui"], workspace = true }
+use_case_create_company             = { features = ["cache", "client", "ui"], workspace = true }
+use_case_create_journal_entry       = { features = ["cache", "client", "ui"], workspace = true }
+use_case_error_handler              = { features = ["client", "ui"], workspace = true }
+use_case_get_all_accounts           = { features = ["cache", "client", "ui"], workspace = true }
+use_case_get_companies_and_branches = { features = ["cache", "client", "ui"], workspace = true }
+use_case_home                       = { features = ["cache", "client", "ui"], workspace = true }
+use_case_select_default_company     = { features = ["cache", "client", "ui"], workspace = true }
+use_case_sign_in                    = { features = ["cache", "client", "ui"], workspace = true }
+use_case_sign_up                    = { features = ["cache", "client", "ui"], workspace = true }
 
-anyhow = { workspace = true }
-serde = { workspace = true }
+anyhow  = { workspace = true }
+serde   = { workspace = true }
 tracing = { workspace = true }
 typetag = { workspace = true }
 
 console_error_panic_hook = { workspace = true }
-dioxus = { workspace = true }
-tracing-subscriber = { workspace = true }
+dioxus                   = { workspace = true }
+tracing-subscriber       = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tokio = { workspace = true }
