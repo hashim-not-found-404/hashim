@@ -120,7 +120,7 @@ pub trait GlobalModel: Any {}
 // Local model — `forms` is `pub` so `app_ui.rs` can read it
 // =====================================================================
 
-#[derive(Debug, Clone, Default, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
 pub struct LocalModel {
     pub forms: Vec<FormEntry>,
 }

@@ -1,6 +1,5 @@
 mod caster;
-mod client_wrapper_cache_check;
-mod client_wrapper_cache_write;
+mod client_wrapper_cache;
 mod client_wrapper_form;
 mod client_wrapper_updater;
 mod server_wrapper_read;
@@ -35,13 +34,8 @@ pub fn make_client_wrapper_updater(input: TokenStream) -> TokenStream {
 }
 
 #[proc_macro]
-pub fn make_client_wrapper_cache_check(input: TokenStream) -> TokenStream {
-    client_wrapper_cache_check::my_macro(input)
-}
-
-#[proc_macro]
-pub fn make_client_wrapper_cache_write(input: TokenStream) -> TokenStream {
-    client_wrapper_cache_write::my_macro(input)
+pub fn make_client_wrapper_cache(input: TokenStream) -> TokenStream {
+    client_wrapper_cache::my_macro(input)
 }
 
 // -----------------------------------------------------------------------------

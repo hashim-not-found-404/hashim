@@ -7,10 +7,11 @@ use syn::parse_macro_input;
 pub fn my_macro(input: TokenStream) -> TokenStream {
     let use_case_name = parse_macro_input!(input as Ident);
     let crate_name = format_ident!("use_case_{}", use_case_name);
-    let mod_name = format_ident!("cache_check_use_case_{}", use_case_name);
+    let check_mod_name = format_ident!("cache_check_use_case_{}", use_case_name);
+    let write_mod_name = format_ident!("cache_write_use_case_{}", use_case_name);
 
     quote! {
-        mod #mod_name {
+        mod #check_mod_name {
             use anyhow::Result;
             use cache::cache_adapter;
             use std::pin::Pin;
@@ -31,6 +32,30 @@ pub fn my_macro(input: TokenStream) -> TokenStream {
                     cache: &'a mut Self::Cache,
                 ) -> Pin<Box<dyn Future<Output = Result<TypeOperationClientResult>> + 'a>> {
                     Box::pin(async { check_input::<Self::Cache, CacheOp>(&self.0, cache).await })
+                }
+            }
+        }
+
+        mod #write_mod_name {
+            use anyhow::Result;
+            use cache::cache_adapter;
+            use kernel::types::DatabaseWrite;
+            use std::pin::Pin;
+            use #crate_name::cache::CacheOp;
+            use #crate_name::domain::Ok;
+            use utility::cache::TraitOperationCacheOk;
+
+            #[derive(Debug, Clone)]
+            pub(crate) struct Wrapper(pub(crate) Ok);
+
+            impl TraitOperationCacheOk for Wrapper {
+                type Cache = cache_adapter::S;
+
+                fn apply_to_cache<'a>(
+                    &'a self,
+                    cache: &'a mut Self::Cache,
+                ) -> Pin<Box<dyn Future<Output = Result<()>> + 'a>> {
+                    Box::pin(async { CacheOp::write(cache, &self.0).await })
                 }
             }
         }
