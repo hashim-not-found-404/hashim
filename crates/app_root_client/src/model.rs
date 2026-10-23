@@ -1,4 +1,3 @@
-use crate::use_case_home;
 use crate::use_case_navigator::client::Navigator;
 use kernel::new_types::AccountUuid;
 use kernel::new_types::BranchUuid;
@@ -7,6 +6,7 @@ use kernel::new_types::UserUuid;
 use serde::Deserialize;
 use serde::Serialize;
 use std::fmt::Debug;
+use use_case_home;
 use utility::ui_effect::Model;
 
 impl Model for TypeGlobalModel {}

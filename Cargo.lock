@@ -305,6 +305,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "tracing-web",
+ "typetag",
  "use_case_create_account",
  "use_case_create_account_for_branch",
  "use_case_create_branch",
@@ -313,6 +314,7 @@ dependencies = [
  "use_case_error_handler",
  "use_case_get_all_accounts",
  "use_case_get_companies_and_branches",
+ "use_case_home",
  "use_case_select_default_company",
  "use_case_sign_in",
  "use_case_sign_up",
@@ -4288,6 +4290,22 @@ dependencies = [
  "typetag",
  "utility",
  "uuid",
+]
+
+[[package]]
+name = "use_case_home"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "dioxus",
+ "dyn-clone",
+ "infrastructure",
+ "kernel",
+ "serde",
+ "tokio",
+ "typetag",
+ "utility",
+ "utility_ui",
 ]
 
 [[package]]

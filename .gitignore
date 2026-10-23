@@ -5,6 +5,7 @@ trush/
 graph.dot
 graph.png
 .code-ranker
+changed.txt
 codebase.txt
 diffs.txt
 lcov.info
