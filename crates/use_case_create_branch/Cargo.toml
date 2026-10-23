@@ -4,11 +4,11 @@ name    = "use_case_create_branch"
 version = "0.1.0"
 
 [features]
-cache    = ["dep:cache", "rusqlite"]
+cache    = ["dep:cache", "dep:rusqlite"]
 client   = []
 database = ["dep:database", "dep:rust_decimal"]
 server   = []
-ui       = ["dioxus"]
+ui       = ["dep:dioxus"]
 
 [dependencies]
 infrastructure = { workspace = true }

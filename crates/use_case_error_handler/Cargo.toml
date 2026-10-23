@@ -4,8 +4,11 @@ name    = "use_case_error_handler"
 version = "0.1.0"
 
 [features]
-client = []
-ui     = ["dep:chrono", "dep:dioxus"]
+cache    = []
+client   = []
+database = []
+server   = []
+ui       = ["dep:chrono", "dep:dioxus"]
 
 [dependencies]
 infrastructure = { workspace = true }

@@ -4,11 +4,11 @@ name    = "use_case_create_journal_entry"
 version = "0.1.0"
 
 [features]
-cache    = ["dep:cache", "dep:serde_json", "rusqlite"]
+cache    = ["dep:cache", "dep:rusqlite", "dep:serde_json"]
 client   = []
 database = ["dep:database", "dep:serde_json", "dep:tokio-postgres", "dep:uuid"]
 server   = []
-ui       = ["dioxus"]
+ui       = ["dep:dioxus"]
 
 [dependencies]
 accounting_engine = { workspace = true }
