@@ -7,6 +7,7 @@ use serde::Deserialize;
 use serde::Serialize;
 use std::fmt::Debug;
 use use_case_home;
+use use_case_home::client::FormLocalModel; // ← NEW (needed for `.is_loading()` / `.is_submit_ok()` method calls)
 use utility::ui_effect::Model;
 
 impl Model for TypeGlobalModel {}
@@ -185,4 +186,17 @@ impl use_case_create_journal_entry::client::GlobalModel for TypeGlobalModel {
     }
 }
 
-impl use_case_home::client::GlobalModel for TypeGlobalModel {}
+impl use_case_home::client::GlobalModel for TypeGlobalModel {
+    fn forms(&self) -> Vec<use_case_home::client::FormInfo> {
+        self.page_home
+            .forms
+            .iter()
+            .enumerate()
+            .map(|(index, entry)| use_case_home::client::FormInfo {
+                index,
+                is_loading: entry.form.is_loading(),
+                is_submit_ok: entry.form.is_submit_ok(),
+            })
+            .collect()
+    }
+}

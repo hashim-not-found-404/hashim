@@ -1,4 +1,6 @@
 pub mod client;
+#[cfg(feature = "mcp")]
+pub mod mcp;
 pub mod new_types;
 pub mod request_response;
 pub mod server;

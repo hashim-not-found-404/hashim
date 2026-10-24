@@ -32,7 +32,7 @@ pub(crate) fn with_model<T>(f: impl FnOnce(&TypeGlobalModel) -> T) -> T {
     guard
 }
 
-static COMMANDER: LazyLock<Commander> = LazyLock::new(|| {
+pub(crate) static COMMANDER: LazyLock<Commander> = LazyLock::new(|| {
     let (sender_to_error, receiver_to_error) = Mpsc::channel();
 
     let model = MODEL.deref().clone();
