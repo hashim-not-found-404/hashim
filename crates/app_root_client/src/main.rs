@@ -85,6 +85,8 @@ fn spawn_mcp_server() {
     use rmcp::model::ContentBlock;
     use rmcp::model::ListToolsResult;
     use rmcp::model::PaginatedRequestParams;
+    use rmcp::model::ServerCapabilities;
+    use rmcp::model::ServerConfig;
     use rmcp::model::Tool;
     use rmcp::service::RequestContext;
     use rmcp::transport::streamable_http_server::StreamableHttpServerConfig;
@@ -97,6 +99,12 @@ fn spawn_mcp_server() {
     struct Handler;
 
     impl ServerHandler for Handler {
+        fn get_info(&self) -> ServerConfig {
+            let mut config = ServerConfig::default();
+            config.capabilities = ServerCapabilities::builder().enable_tools().build();
+            config
+        }
+
         async fn list_tools(
             &self,
             _request: Option<PaginatedRequestParams>,
