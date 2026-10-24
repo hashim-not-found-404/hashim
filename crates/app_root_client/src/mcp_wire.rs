@@ -2,6 +2,7 @@ use crate::model::TypeGlobalModel;
 use crate::utils::COMMANDER;
 use crate::utils::with_model;
 use anyhow::Result;
+use kernel::mcp::CallInput;
 use kernel::mcp::McpProvider;
 use kernel::mcp::McpToolDef;
 use serde_json::Value;
@@ -23,7 +24,13 @@ impl McpProvider for HomeProvider {
         let tool_name = tool_name.to_owned();
         Box::pin(async move {
             with_model(|model: &TypeGlobalModel| {
-                use_case_home::mcp::call(&tool_name, args, &model.page_home, model, &*COMMANDER)
+                use_case_home::mcp::call(CallInput {
+                    tool_name: &tool_name,
+                    args,
+                    local: &model.page_home,
+                    global: model,
+                    commander: &COMMANDER,
+                })
             })
         })
     }

@@ -8,6 +8,7 @@ use serde_json::from_value;
 use serde_json::json;
 use std::future::Future;
 use std::pin::Pin;
+use utility::ui_effect::Commander;
 
 pub struct McpToolDef {
     pub name: &'static str,
@@ -33,4 +34,12 @@ pub trait McpProvider: Send + Sync + 'static {
         tool_name: &str,
         args: Value,
     ) -> Pin<Box<dyn Future<Output = Result<Value>> + Send>>;
+}
+
+pub struct CallInput<'a, LocalModel, GlobalModel> {
+    pub tool_name: &'a str,
+    pub args: Value,
+    pub local: &'a LocalModel,
+    pub global: &'a GlobalModel,
+    pub commander: &'a Commander,
 }
