@@ -172,15 +172,15 @@ fn Home() -> Element {
             }
         }
 
-        for (index, entry) in forms.iter().enumerate() {
-            FormInstance { key: "{entry.id:?}", index, entry: entry.clone() }
+        for  entry in forms.iter() {
+            FormInstance { key: "{entry.id:?}", entry: entry.clone() }
         }
     }
 }
 
 // TODO move to the use case home
 #[component]
-fn FormInstance(index: usize, entry: FormEntry) -> Element {
+fn FormInstance(entry: FormEntry) -> Element {
     let form_id: FormId = entry.id;
     let form = entry.form;
 
@@ -196,7 +196,7 @@ fn FormInstance(index: usize, entry: FormEntry) -> Element {
                 onclick: move |_| send(
                     replier.clone(),
                     use_case_home::client::Message::Intent(
-                        use_case_home::client::Intent::CopyForm(index),
+                        use_case_home::client::Intent::CopyForm(form_id),
                     ),
                 ),
                 "Copy"
@@ -206,7 +206,7 @@ fn FormInstance(index: usize, entry: FormEntry) -> Element {
                 onclick: move |_| send(
                     replier1.clone(),
                     use_case_home::client::Message::Intent(
-                        use_case_home::client::Intent::DeleteForm(index),
+                        use_case_home::client::Intent::DeleteForm(form_id),
                     ),
                 ),
                 "X"

@@ -20,6 +20,12 @@ use utility::ui_effect::UiContext;
 #[derive(Debug, Clone, Copy, Eq, Hash, PartialEq, Deserialize, Serialize)]
 pub struct FormId(u32);
 
+impl From<u32> for FormId {
+    fn from(value: u32) -> Self {
+        FormId(value)
+    }
+}
+
 impl Default for FormId {
     fn default() -> Self {
         FormId(Rn::generate() as u32)
@@ -142,8 +148,8 @@ pub enum Message {
 #[derive(Debug, Clone)]
 pub enum Intent {
     AddForm(Box<dyn FormLocalModel>),
-    CopyForm(usize),
-    DeleteForm(usize),
+    CopyForm(FormId),
+    DeleteForm(FormId),
 }
 
 #[derive(Debug, Clone)]
@@ -206,27 +212,25 @@ pub fn update(
                     forms.push(FormEntry::new(form));
                     (vec![LocalChange::Forms(forms)], vec![])
                 }
-                Intent::CopyForm(v) => {
+                Intent::CopyForm(id) => {
                     let mut forms = local_model.forms.clone();
-                    let Some(entry) = forms.get(v).cloned() else {
+                    let Some(position) = forms.iter().position(|e| e.id == id) else {
                         return (vec![], vec![], vec![]);
                     };
-                    let fresh_form = entry.form.clone_user_input();
-                    forms.insert(v + 1, FormEntry::new(fresh_form));
+                    let fresh_form = forms[position].form.clone_user_input();
+                    forms.insert(position + 1, FormEntry::new(fresh_form));
                     (vec![LocalChange::Forms(forms)], vec![])
                 }
-                Intent::DeleteForm(v) => {
+                Intent::DeleteForm(id) => {
                     let mut forms = local_model.forms.clone();
-                    if v >= forms.len() {
+                    let Some(position) = forms.iter().position(|e| e.id == id) else {
+                        return (vec![], vec![], vec![]);
+                    };
+                    if forms[position].form.is_loading() {
                         return (vec![], vec![], vec![]);
                     }
-                    let form = forms.remove(v);
-
-                    if form.form.is_loading() {
-                        (vec![], vec![])
-                    } else {
-                        (vec![LocalChange::Forms(forms)], vec![])
-                    }
+                    forms.remove(position);
+                    (vec![LocalChange::Forms(forms)], vec![])
                 }
             };
             (change, vec![], effect)

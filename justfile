@@ -153,6 +153,7 @@ check:
     RUSTFLAGS="-A warnings" cargo check --all-targets --features="database"
     RUSTFLAGS="-A warnings" cargo check --all-targets --features="cache"
     RUSTFLAGS="-A warnings" cargo check --all-targets --features="client,ui"
+    RUSTFLAGS="-A warnings" cargo check --all-targets --features="client,mcp"
     RUSTFLAGS="-A warnings" cargo check -p app_root_client --target wasm32-unknown-unknown
 
 test:
@@ -194,6 +195,7 @@ udeps:
     RUSTFLAGS="-A warnings" cargo +nightly udeps --all-targets --features="database"
     RUSTFLAGS="-A warnings" cargo +nightly udeps --all-targets --features="cache"
     RUSTFLAGS="-A warnings" cargo +nightly udeps --all-targets --features="client,ui"
+    RUSTFLAGS="-A warnings" cargo +nightly udeps --all-targets --features="client,mcp"
     RUSTFLAGS="-A warnings" cargo +nightly udeps -p app_root_client --target wasm32-unknown-unknown
 
 new crate_name:
