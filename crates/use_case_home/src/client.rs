@@ -114,18 +114,7 @@ impl FormEntry {
 // Global model
 // =====================================================================
 
-/// Read-only view of a form that `use_case_home` exposes to non-UI callers
-/// (MCP, CLI, tests). Does not leak the concrete `FormLocalModel` type.
-#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
-pub struct FormInfo {
-    pub index: usize,
-    pub is_loading: bool,
-    pub is_submit_ok: bool,
-}
-
-pub trait GlobalModel: Any {
-    fn forms(&self) -> Vec<FormInfo>;
-}
+pub trait GlobalModel: Any {}
 
 // =====================================================================
 // Local model — `forms` is `pub` so `app_ui.rs` can read it

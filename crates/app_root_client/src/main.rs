@@ -55,7 +55,7 @@ fn main() -> Result<()> {
             let local = LocalSet::new();
             local.block_on(&rt, async move {
                 init_commander_and_model();
-                spawn_mcp_server();
+                mcp_server::spawn();
                 let _ = init_done_tx.send(());
 
                 pending::<()>().await;
@@ -71,11 +71,25 @@ fn main() -> Result<()> {
     Ok(())
 }
 
+// =============================================================================
+// MCP server
+// =============================================================================
+
+/// Inline module that owns the MCP Streamable-HTTP server.
+///
+/// The module knows nothing about individual use cases: it iterates over
+/// `crate::mcp_wire::get_all_providers()` and forwards `list_tools` /
+/// `call_tool` to whichever provider advertises the matching tool name.
+///
+/// Adding a new use case is a one-line edit in `mcp_wire.rs` — this module
+/// does not change.
 #[cfg(not(target_arch = "wasm32"))]
-fn spawn_mcp_server() {
+mod mcp_server {
+    use crate::mcp_wire::get_all_providers;
+    use axum::Router;
     use infrastructure::runtime::Rt;
     use infrastructure::runtime::Runtime;
-    use kernel::mcp::McpProviderRegistration;
+    use kernel::mcp::McpProvider;
     use rmcp::ErrorData;
     use rmcp::RoleServer;
     use rmcp::ServerHandler;
@@ -92,11 +106,42 @@ fn spawn_mcp_server() {
     use rmcp::transport::streamable_http_server::StreamableHttpServerConfig;
     use rmcp::transport::streamable_http_server::StreamableHttpService;
     use rmcp::transport::streamable_http_server::session::local::LocalSessionManager;
+    use serde_json::Value;
     use std::borrow::Cow;
+    use std::net::IpAddr;
+    use std::net::Ipv4Addr;
+    use std::net::SocketAddr;
     use std::sync::Arc;
+    use tokio::net::TcpListener;
+
+    const ADDR: SocketAddr = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 8083);
 
     #[derive(Clone)]
-    struct Handler;
+    struct Handler {
+        providers: Arc<Vec<Box<dyn McpProvider>>>,
+    }
+
+    impl Handler {
+        fn new() -> Self {
+            Self {
+                providers: Arc::new(get_all_providers()),
+            }
+        }
+
+        fn find_provider_for<'a>(
+            &'a self,
+            tool_name: &str,
+        ) -> Option<(&'a dyn McpProvider, &'static str)> {
+            for provider in self.providers.iter() {
+                for def in provider.tools() {
+                    if def.name == tool_name {
+                        return Some((provider.as_ref(), def.name));
+                    }
+                }
+            }
+            None
+        }
+    }
 
     impl ServerHandler for Handler {
         fn get_info(&self) -> ServerConfig {
@@ -111,8 +156,7 @@ fn spawn_mcp_server() {
             _context: RequestContext<RoleServer>,
         ) -> Result<ListToolsResult, ErrorData> {
             let mut tools = Vec::new();
-            for reg in inventory::iter::<McpProviderRegistration> {
-                let provider = (reg.make)();
+            for provider in self.providers.iter() {
                 for def in provider.tools() {
                     let schema_obj = def.input_schema.as_object().cloned().unwrap_or_default();
                     tools.push(Tool::new(
@@ -131,52 +175,49 @@ fn spawn_mcp_server() {
             _context: RequestContext<RoleServer>,
         ) -> Result<CallToolResponse, ErrorData> {
             let args = match request.arguments {
-                Some(m) => serde_json::Value::Object(m),
+                Some(m) => Value::Object(m),
                 None => serde_json::json!({}),
             };
 
-            for reg in inventory::iter::<McpProviderRegistration> {
-                let provider = (reg.make)();
-                for def in provider.tools() {
-                    if def.name == request.name {
-                        let result: CallToolResult = match provider.call(&request.name, args).await
-                        {
-                            Ok(v) => CallToolResult::success(vec![ContentBlock::text(
-                                serde_json::to_string(&v).unwrap_or_default(),
-                            )]),
-                            Err(e) => {
-                                CallToolResult::error(vec![ContentBlock::text(format!("{e:?}"))])
-                            }
-                        };
-                        return Ok(result.into());
-                    }
-                }
-            }
+            let Some((provider, tool_name)) = self.find_provider_for(&request.name) else {
+                return Ok(CallToolResult::error(vec![ContentBlock::text("unknown tool")]).into());
+            };
 
-            Ok(CallToolResult::error(vec![ContentBlock::text("unknown tool")]).into())
+            let result: CallToolResult = match provider.call(tool_name, args).await {
+                Ok(v) => CallToolResult::success(vec![ContentBlock::text(
+                    serde_json::to_string(&v).unwrap_or_default(),
+                )]),
+                Err(e) => CallToolResult::error(vec![ContentBlock::text(format!("{e:?}"))]),
+            };
+            Ok(result.into())
         }
     }
 
-    Rt::spawn_local(async move {
-        let addr = std::net::SocketAddr::from(([127, 0, 0, 1], 8083));
+    /// Spawns the MCP Streamable-HTTP server on the current local executor.
+    ///
+    /// Must be called from inside a `tokio::task::LocalSet`, after
+    /// `init_commander_and_model()` — the MCP handlers read the live
+    /// `TypeGlobalModel` and dispatch through `COMMANDER`.
+    pub fn spawn() {
+        Rt::spawn_local(async move {
+            let service = StreamableHttpService::new(
+                || Ok(Handler::new()),
+                LocalSessionManager::default().into(),
+                StreamableHttpServerConfig::default(),
+            );
 
-        let service = StreamableHttpService::new(
-            || Ok(Handler),
-            LocalSessionManager::default().into(),
-            StreamableHttpServerConfig::default(),
-        );
+            let router = Router::new().nest_service("/mcp", service);
 
-        let router = axum::Router::new().nest_service("/mcp", service);
+            let listener = match TcpListener::bind(ADDR).await {
+                Ok(l) => l,
+                Err(e) => {
+                    eprintln!("MCP HTTP server: failed to bind {ADDR}: {e}");
+                    return;
+                }
+            };
 
-        let listener = match tokio::net::TcpListener::bind(addr).await {
-            Ok(l) => l,
-            Err(e) => {
-                eprintln!("MCP HTTP server: failed to bind {addr}: {e}");
-                return;
-            }
-        };
-
-        eprintln!("MCP Streamable HTTP server listening on http://{addr}/mcp");
-        let _ = axum::serve(listener, router).await;
-    });
+            eprintln!("MCP Streamable HTTP server listening on http://{ADDR}/mcp");
+            let _ = axum::serve(listener, router).await;
+        });
+    }
 }

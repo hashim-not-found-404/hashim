@@ -34,7 +34,6 @@ use_case_sign_up                    = { path = "./crates/use_case_sign_up" }
 anyhow      = "1.0.104"
 dyn-clone   = "1.0.20"
 heck        = "0.5.0"
-inventory   = "0.3"
 paste       = "1.0.15"
 proc-macro2 = "1.0.107"
 quote       = "1.0.47"

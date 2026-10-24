@@ -1,5 +1,4 @@
 use anyhow::Result;
-pub use inventory;
 use serde_json::Value;
 use std::future::Future;
 use std::pin::Pin;
@@ -18,9 +17,3 @@ pub trait McpProvider: Send + Sync + 'static {
         args: Value,
     ) -> Pin<Box<dyn Future<Output = Result<Value>> + Send>>;
 }
-
-pub struct McpProviderRegistration {
-    pub make: fn() -> Box<dyn McpProvider>,
-}
-
-inventory::collect!(McpProviderRegistration);

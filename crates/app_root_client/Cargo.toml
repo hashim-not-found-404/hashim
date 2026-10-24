@@ -34,7 +34,6 @@ tracing-subscriber = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 axum       = { workspace = true }
-inventory  = { workspace = true }
 rmcp       = { workspace = true }
 serde_json = { workspace = true }
 tokio      = { features = ["net"], workspace = true }

@@ -3,7 +3,6 @@ use crate::utils::COMMANDER;
 use crate::utils::with_model;
 use anyhow::Result;
 use kernel::mcp::McpProvider;
-use kernel::mcp::McpProviderRegistration;
 use kernel::mcp::McpToolDef;
 use serde_json::Value;
 use std::future::Future;
@@ -24,12 +23,12 @@ impl McpProvider for HomeProvider {
         let tool_name = tool_name.to_owned();
         Box::pin(async move {
             with_model(|model: &TypeGlobalModel| {
-                use_case_home::mcp::call(&tool_name, args, model, &*COMMANDER)
+                use_case_home::mcp::call(&tool_name, args, &model.page_home, model, &*COMMANDER)
             })
         })
     }
 }
 
-inventory::submit! {
-    McpProviderRegistration { make: || Box::new(HomeProvider) }
+pub(crate) fn get_all_providers() -> Vec<Box<dyn McpProvider>> {
+    vec![Box::new(HomeProvider) as Box<dyn McpProvider>]
 }
