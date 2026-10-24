@@ -3,6 +3,7 @@ use crate::use_case_navigator;
 use anyhow::Result;
 use anyhow::bail;
 use cache::cache_adapter;
+use kernel::mcp::TraitMcpProvider;
 use kernel::ui_construct::CastDTOToClient;
 use patterns::cast_error_to_client_case;
 use patterns::cast_input_to_cache_check_case;
@@ -13,6 +14,7 @@ use patterns::cast_ok_to_client_case;
 use patterns::make_client_wrapper_cache;
 use patterns::make_client_wrapper_form;
 use patterns::make_client_wrapper_updater;
+use patterns::make_mcp_provider;
 use std::any::Any;
 use std::sync::Arc;
 use utility::cache::CastClientToCache;
@@ -100,17 +102,22 @@ make_client_wrapper_cache!(get_all_accounts);
 make_client_wrapper_cache!(get_companies_and_branches);
 make_client_wrapper_cache!(sign_in);
 make_client_wrapper_cache!(sign_up);
-
 make_client_wrapper_form!(create_account);
 make_client_wrapper_form!(create_account_for_branch);
 make_client_wrapper_form!(create_branch);
 make_client_wrapper_form!(create_company);
-
 make_client_wrapper_updater!(error_handler);
 make_client_wrapper_updater!(home);
 make_client_wrapper_updater!(select_default_company);
 make_client_wrapper_updater!(sign_in);
 make_client_wrapper_updater!(sign_up);
+#[cfg(not(target_arch = "wasm32"))]
+make_mcp_provider!(home);
+
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) fn get_all_providers() -> Vec<Box<dyn TraitMcpProvider>> {
+    vec![Box::new(mcp_provider_home::TypeMcpProvider) as Box<dyn TraitMcpProvider>]
+}
 
 pub(crate) struct MyCaster;
 

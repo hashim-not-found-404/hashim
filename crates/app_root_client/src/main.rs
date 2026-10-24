@@ -1,6 +1,4 @@
 mod app_ui;
-#[cfg(not(target_arch = "wasm32"))]
-mod mcp_wire;
 mod model;
 mod use_case_navigator;
 mod utils;
@@ -71,25 +69,13 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-// =============================================================================
-// MCP server
-// =============================================================================
-
-/// Inline module that owns the MCP Streamable-HTTP server.
-///
-/// The module knows nothing about individual use cases: it iterates over
-/// `crate::mcp_wire::get_all_providers()` and forwards `list_tools` /
-/// `call_tool` to whichever provider advertises the matching tool name.
-///
-/// Adding a new use case is a one-line edit in `mcp_wire.rs` — this module
-/// does not change.
 #[cfg(not(target_arch = "wasm32"))]
 mod mcp_server {
-    use crate::mcp_wire::get_all_providers;
+    use crate::wire::get_all_providers;
     use axum::Router;
     use infrastructure::runtime::Rt;
     use infrastructure::runtime::Runtime;
-    use kernel::mcp::McpProvider;
+    use kernel::mcp::TraitMcpProvider;
     use rmcp::ErrorData;
     use rmcp::RoleServer;
     use rmcp::ServerHandler;
@@ -118,7 +104,7 @@ mod mcp_server {
 
     #[derive(Clone)]
     struct Handler {
-        providers: Arc<Vec<Box<dyn McpProvider>>>,
+        providers: Arc<Vec<Box<dyn TraitMcpProvider>>>,
     }
 
     impl Handler {
@@ -131,7 +117,7 @@ mod mcp_server {
         fn find_provider_for<'a>(
             &'a self,
             tool_name: &str,
-        ) -> Option<(&'a dyn McpProvider, &'static str)> {
+        ) -> Option<(&'a dyn TraitMcpProvider, &'static str)> {
             for provider in self.providers.iter() {
                 for def in provider.tools() {
                     if def.name == tool_name {

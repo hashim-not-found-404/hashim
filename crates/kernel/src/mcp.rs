@@ -27,7 +27,7 @@ pub fn error_to_mcp(code: &str, message: impl Into<String>) -> Error {
     )
 }
 
-pub trait McpProvider: Send + Sync + 'static {
+pub trait TraitMcpProvider: Send + Sync + 'static {
     fn tools(&self) -> Vec<McpToolDef>;
     fn call(
         &self,

@@ -13,7 +13,6 @@ use utility::dtos::TypeOperationDTOInput;
 make_server_wrapper_read!(get_all_accounts);
 make_server_wrapper_read!(get_companies_and_branches);
 make_server_wrapper_read!(sign_in);
-
 make_server_wrapper_write!(create_account);
 make_server_wrapper_write!(create_account_for_branch);
 make_server_wrapper_write!(create_branch);
