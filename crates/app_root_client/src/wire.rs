@@ -15,6 +15,7 @@ use patterns::make_client_wrapper_cache;
 use patterns::make_client_wrapper_form;
 use patterns::make_client_wrapper_updater;
 use patterns::make_mcp_provider;
+use patterns::make_mcp_provider_form;
 use std::any::Any;
 use std::sync::Arc;
 use utility::cache::CastClientToCache;
@@ -111,12 +112,14 @@ make_client_wrapper_updater!(home);
 make_client_wrapper_updater!(select_default_company);
 make_client_wrapper_updater!(sign_in);
 make_client_wrapper_updater!(sign_up);
-#[cfg(not(target_arch = "wasm32"))]
 make_mcp_provider!(home);
+make_mcp_provider_form!(create_company);
 
-#[cfg(not(target_arch = "wasm32"))]
 pub(crate) fn get_all_providers() -> Vec<Box<dyn TraitMcpProvider>> {
-    vec![Box::new(mcp_provider_home::TypeMcpProvider) as Box<dyn TraitMcpProvider>]
+    vec![
+        Box::new(mcp_provider_home::TypeMcpProvider) as Box<dyn TraitMcpProvider>,
+        Box::new(mcp_provider_create_company::TypeMcpProvider) as Box<dyn TraitMcpProvider>,
+    ]
 }
 
 pub(crate) struct MyCaster;

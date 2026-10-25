@@ -14,11 +14,7 @@ use serde::Deserialize;
 use serde::Serialize;
 use serde_json::Value;
 use serde_json::to_value;
-use std::sync::Arc;
-use use_case_home::client::FormId;
-use utility::ui_effect::Commander;
-use utility::ui_effect::Replier;
-use utility::ui_effect::new_replier;
+use use_case_home::mcp::form_sender;
 
 const CREATE_COMPANY: &str = "create_company";
 
@@ -63,9 +59,16 @@ pub fn call<'a>(input: CallInput<'a, LocalModel, impl GlobalModel>) -> Result<Va
                 ));
             }
 
-            input.commander.send(
-                form_replier(input.commander.clone(), args.form_id.into()),
+            form_sender(
+                input.commander.clone(),
+                args.form_id.into(),
                 Message::Intent(Intent::CompanyName(args.company_name)),
+            );
+
+            form_sender(
+                input.commander.clone(),
+                args.form_id.into(),
+                Message::Intent(Intent::Currency(args.currency)),
             );
 
             Ok(to_value(Output { is_ok: true })?)
@@ -75,32 +78,4 @@ pub fn call<'a>(input: CallInput<'a, LocalModel, impl GlobalModel>) -> Result<Va
             format!("unknown tool: {}", input.tool_name),
         )),
     }
-}
-
-fn form_replier(commander: Commander, form_id: FormId) -> Replier {
-    let replier: Replier = new_replier(move |msg| {
-        let commander = commander.clone();
-
-        async move {
-            let replier = forward_to_commander(commander.clone());
-
-            let msg1 = Box::new(use_case_home::client::Message::FormRelated {
-                form_id,
-                message: msg,
-            });
-
-            commander.async_send_box(replier, msg1).await
-        }
-    });
-    replier
-}
-
-fn forward_to_commander(commander: Commander) -> Replier {
-    new_replier(move |msg| {
-        let commander = commander.clone();
-        async move {
-            let replier = forward_to_commander(commander.clone());
-            commander.async_send_box(replier, msg).await
-        }
-    })
 }

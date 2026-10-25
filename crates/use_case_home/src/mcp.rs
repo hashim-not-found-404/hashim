@@ -1,4 +1,5 @@
 use crate::client::FormEntry;
+use crate::client::FormId;
 use crate::client::GlobalModel;
 use crate::client::Intent;
 use crate::client::LocalModel;
@@ -15,7 +16,10 @@ use serde::Serialize;
 use serde_json::Value;
 use serde_json::to_value;
 use std::sync::Arc;
+use utility::ui_effect::Commander;
+use utility::ui_effect::MessageTrait;
 use utility::ui_effect::Replier;
+use utility::ui_effect::new_replier;
 
 const LIST_FORMS: &str = "list_forms";
 const DELETE_FORM: &str = "delete_form";
@@ -111,4 +115,42 @@ pub fn call<'a>(input: CallInput<'a, LocalModel, impl GlobalModel>) -> Result<Va
 
 fn dummy_replier() -> Replier {
     Arc::new(|_msg| Box::pin(async { Ok(()) }))
+}
+
+pub fn form_sender(commander: Commander, form_id: FormId, msg: impl MessageTrait) {
+    commander.send(
+        form_replier(commander.clone(), form_id),
+        Message::FormRelated {
+            form_id: form_id,
+            message: Box::new(msg),
+        },
+    );
+}
+
+fn form_replier(commander: Commander, form_id: FormId) -> Replier {
+    let replier: Replier = new_replier(move |msg| {
+        let commander = commander.clone();
+
+        async move {
+            let replier = forward_to_commander(commander.clone());
+
+            let msg1 = Box::new(Message::FormRelated {
+                form_id,
+                message: msg,
+            });
+
+            commander.async_send_box(replier, msg1).await
+        }
+    });
+    replier
+}
+
+fn forward_to_commander(commander: Commander) -> Replier {
+    new_replier(move |msg| {
+        let commander = commander.clone();
+        async move {
+            let replier = forward_to_commander(commander.clone());
+            commander.async_send_box(replier, msg).await
+        }
+    })
 }

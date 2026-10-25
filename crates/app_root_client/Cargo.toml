@@ -14,7 +14,7 @@ utility_ui     = { features = ["ui"], workspace = true }
 use_case_create_account             = { features = ["cache", "client", "ui"], workspace = true }
 use_case_create_account_for_branch  = { features = ["cache", "client", "ui"], workspace = true }
 use_case_create_branch              = { features = ["cache", "client", "ui"], workspace = true }
-use_case_create_company             = { features = ["cache", "client", "ui"], workspace = true }
+use_case_create_company             = { features = ["cache", "client", "mcp", "ui"], workspace = true }
 use_case_create_journal_entry       = { features = ["cache", "client", "ui"], workspace = true }
 use_case_error_handler              = { features = ["cache", "client", "ui"], workspace = true }
 use_case_get_all_accounts           = { features = ["cache", "client", "ui"], workspace = true }
@@ -30,13 +30,13 @@ tracing = { workspace = true }
 typetag = { workspace = true }
 
 dioxus             = { workspace = true }
+serde_json         = { workspace = true }
 tracing-subscriber = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-axum       = { workspace = true }
-rmcp       = { workspace = true }
-serde_json = { workspace = true }
-tokio      = { features = ["net"], workspace = true }
+axum  = { workspace = true }
+rmcp  = { workspace = true }
+tokio = { features = ["net"], workspace = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 console_error_panic_hook = { workspace = true }
