@@ -24,7 +24,8 @@ struct CreateBranchArgs {
     /// form id of the form to write.
     form_id: u32,
     /// Company name. Must match an existing company visible to the user or empty if user select some company.
-    company_name: Option<String>,
+    #[serde(default)]
+    company_name: String,
     /// Branch name. Must be non-empty.
     branch_name: String,
     /// Currency. One of: "USD", "IQD".
@@ -80,14 +81,11 @@ pub fn call<'a>(input: CallInput<'a, LocalModel, impl GlobalModel>) -> Result<Va
             let form_id = args.form_id.into();
             let commander = input.commander.clone();
 
-            if let Some(company_name) = args.company_name {
-                form_sender(
-                    commander.clone(),
-                    form_id,
-                    Message::Intent(Intent::CompanyName(company_name)),
-                );
-            }
-
+            form_sender(
+                commander.clone(),
+                form_id,
+                Message::Intent(Intent::CompanyName(args.company_name)),
+            );
             form_sender(
                 commander.clone(),
                 form_id,

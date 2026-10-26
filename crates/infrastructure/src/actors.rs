@@ -24,6 +24,7 @@ mod target {
     use super::Receiver;
     use super::Sender;
     use anyhow::Result;
+    use anyhow::anyhow;
     use futures::SinkExt;
     use futures::channel::mpsc::UnboundedReceiver;
     use futures::channel::mpsc::UnboundedSender;
@@ -63,9 +64,7 @@ mod target {
         }
 
         fn unbounded_send(&mut self, t: T) -> Result<()> {
-            self.0
-                .unbounded_send(t)
-                .map_err(|_| anyhow::anyhow!("send error"))
+            self.0.unbounded_send(t).map_err(|_| anyhow!("send error"))
         }
     }
 
