@@ -16,9 +16,9 @@ pub(crate) fn my_macro(input: TokenStream) -> TokenStream {
             use crate::utils::COMMANDER;
             use crate::utils::with_model;
             use anyhow::Result;
-            use kernel::mcp::CallInput;
-            use kernel::mcp::TraitMcpProvider;
-            use kernel::mcp::McpToolDef;
+            use utility::mcp::CallInput;
+            use utility::mcp::TraitMcpProvider;
+            use utility::mcp::McpToolDef;
             use serde_json::Value;
             use std::future::Future;
             use std::pin::Pin;

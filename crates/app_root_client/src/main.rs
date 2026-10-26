@@ -75,7 +75,6 @@ mod mcp_server {
     use axum::Router;
     use infrastructure::runtime::Rt;
     use infrastructure::runtime::Runtime;
-    use kernel::mcp::TraitMcpProvider;
     use rmcp::ErrorData;
     use rmcp::RoleServer;
     use rmcp::ServerHandler;
@@ -99,6 +98,7 @@ mod mcp_server {
     use std::net::SocketAddr;
     use std::sync::Arc;
     use tokio::net::TcpListener;
+    use utility::mcp::TraitMcpProvider;
 
     const ADDR: SocketAddr = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 8083);
 

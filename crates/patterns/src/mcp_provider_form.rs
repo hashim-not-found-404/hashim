@@ -19,10 +19,10 @@ pub(crate) fn my_macro(input: TokenStream) -> TokenStream {
             use crate::wire::#form_mod::WrapperForm;
             use anyhow::Context;
             use anyhow::Result;
-            use kernel::mcp::CallInput;
-            use kernel::mcp::McpToolDef;
-            use kernel::mcp::TraitMcpProvider;
-            use kernel::mcp::error_to_mcp;
+            use utility::mcp::CallInput;
+            use utility::mcp::McpToolDef;
+            use utility::mcp::TraitMcpProvider;
+            use utility::mcp::error_to_mcp;
             use serde_json::Value;
             use std::any::Any;
             use std::future::Future;

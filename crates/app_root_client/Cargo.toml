@@ -6,9 +6,9 @@ version = "0.1.0"
 [dependencies]
 cache          = { workspace = true }
 infrastructure = { workspace = true }
-kernel         = { features = ["mcp"], workspace = true }
+kernel         = { workspace = true }
 patterns       = { workspace = true }
-utility        = { workspace = true }
+utility        = { features = ["mcp"], workspace = true }
 utility_ui     = { features = ["ui"], workspace = true }
 
 use_case_create_account             = { features = ["cache", "client", "ui"], workspace = true }

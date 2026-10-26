@@ -2436,7 +2436,6 @@ dependencies = [
  "infrastructure",
  "schemars",
  "serde",
- "serde_json",
  "typetag",
  "utility",
 ]
@@ -4750,7 +4749,9 @@ dependencies = [
  "anyhow",
  "dyn-clone",
  "infrastructure",
+ "schemars",
  "serde",
+ "serde_json",
  "tracing",
  "typetag",
 ]
