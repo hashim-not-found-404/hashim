@@ -41,7 +41,7 @@ pub fn tools() -> Vec<McpToolDef> {
     vec![McpToolDef {
         name: CREATE_COMPANY,
         description: "Create a new company with the given name and currency. \
-                      The company form is pre-filled and auto-submitted; \
+                      The company form is pre-filled; \
                       the companies list will refresh once the server responds.",
         input_schema: schema_for!(CreateCompanyArgs),
     }]
