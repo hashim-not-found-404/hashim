@@ -7,11 +7,13 @@ version = "0.1.0"
 cache    = []
 client   = []
 database = []
+mcp      = ["dep:schemars", "dep:serde_json"]
 server   = []
 ui       = ["dep:dioxus"]
 
 [dependencies]
 infrastructure = { workspace = true }
+kernel         = { workspace = true }
 utility        = { workspace = true }
 
 anyhow    = { workspace = true }
@@ -19,7 +21,9 @@ dyn-clone = { workspace = true }
 serde     = { workspace = true }
 typetag   = { workspace = true }
 
-dioxus = { optional = true, workspace = true }
+dioxus     = { optional = true, workspace = true }
+schemars   = { optional = true, workspace = true }
+serde_json = { optional = true, workspace = true }
 
 [dev-dependencies]
 tokio = { workspace = true }

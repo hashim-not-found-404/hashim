@@ -1,3 +1,4 @@
+use crate::mcp_home_forms;
 use crate::model::TypeGlobalModel;
 use crate::use_case_navigator;
 use anyhow::Result;
@@ -13,6 +14,8 @@ use patterns::cast_ok_to_client_case;
 use patterns::make_client_wrapper_cache;
 use patterns::make_client_wrapper_form;
 use patterns::make_client_wrapper_updater;
+use patterns::make_mcp_provider;
+use patterns::make_mcp_provider_form;
 use std::any::Any;
 use std::sync::Arc;
 use utility::cache::CastClientToCache;
@@ -24,6 +27,7 @@ use utility::cache::TypeOperationClientOk;
 use utility::dtos::TypeOperationDTOError;
 use utility::dtos::TypeOperationDTOInput;
 use utility::dtos::TypeOperationDTOOk;
+use utility::mcp::TraitMcpProvider;
 use utility::ui_effect::CastMessageToReducer;
 use utility::ui_effect::MessageTrait;
 use utility::ui_effect::UpdaterTrait;
@@ -100,17 +104,27 @@ make_client_wrapper_cache!(get_all_accounts);
 make_client_wrapper_cache!(get_companies_and_branches);
 make_client_wrapper_cache!(sign_in);
 make_client_wrapper_cache!(sign_up);
-
 make_client_wrapper_form!(create_account);
 make_client_wrapper_form!(create_account_for_branch);
 make_client_wrapper_form!(create_branch);
 make_client_wrapper_form!(create_company);
-
 make_client_wrapper_updater!(error_handler);
 make_client_wrapper_updater!(home);
 make_client_wrapper_updater!(select_default_company);
 make_client_wrapper_updater!(sign_in);
 make_client_wrapper_updater!(sign_up);
+make_mcp_provider!(home);
+make_mcp_provider_form!(create_branch);
+make_mcp_provider_form!(create_company);
+
+pub(crate) fn get_all_providers() -> Vec<Box<dyn TraitMcpProvider>> {
+    vec![
+        Box::new(mcp_provider_home::TypeMcpProvider),
+        Box::new(mcp_provider_create_company::TypeMcpProvider),
+        Box::new(mcp_provider_create_branch::TypeMcpProvider),
+        Box::new(mcp_home_forms::TypeMcpProvider),
+    ]
+}
 
 pub(crate) struct MyCaster;
 

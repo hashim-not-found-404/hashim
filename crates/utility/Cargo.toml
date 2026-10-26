@@ -3,11 +3,17 @@ edition = "2024"
 name    = "utility"
 version = "0.1.0"
 
+[features]
+mcp = ["dep:serde_json"]
+
 [dependencies]
 infrastructure = { workspace = true }
 
 anyhow    = { workspace = true }
 dyn-clone = { workspace = true }
+schemars  = { workspace = true }
 serde     = { workspace = true }
 tracing   = { workspace = true }
 typetag   = { workspace = true }
+
+serde_json = { optional = true, workspace = true }

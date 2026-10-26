@@ -2,6 +2,8 @@ mod caster;
 mod client_wrapper_cache;
 mod client_wrapper_form;
 mod client_wrapper_updater;
+mod mcp_provider;
+mod mcp_provider_form;
 mod server_wrapper_read;
 mod server_wrapper_write;
 
@@ -36,6 +38,16 @@ pub fn make_client_wrapper_updater(input: TokenStream) -> TokenStream {
 #[proc_macro]
 pub fn make_client_wrapper_cache(input: TokenStream) -> TokenStream {
     client_wrapper_cache::my_macro(input)
+}
+
+#[proc_macro]
+pub fn make_mcp_provider(input: TokenStream) -> TokenStream {
+    mcp_provider::my_macro(input)
+}
+
+#[proc_macro]
+pub fn make_mcp_provider_form(input: TokenStream) -> TokenStream {
+    mcp_provider_form::my_macro(input)
 }
 
 // -----------------------------------------------------------------------------

@@ -42,7 +42,7 @@ pub(crate) fn my_macro(input: TokenStream) -> TokenStream {
             use utility::ui_effect::Replier;
             use utility::ui_effect::UiContext;
 
-            #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+            #[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
             pub(crate) struct WrapperForm(pub(crate) LocalModel);
 
             #[serde]

@@ -2,6 +2,7 @@ use crate::new_types::BranchUuid;
 use crate::new_types::CompanyUuid;
 use anyhow::Result;
 use anyhow::bail;
+use schemars::JsonSchema;
 use serde::Deserialize;
 use serde::Serialize;
 use std::error::Error;
@@ -73,7 +74,7 @@ impl Location {
     }
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
+#[derive(Debug, Clone, Default, JsonSchema, PartialEq, Deserialize, Serialize)]
 pub enum Currency {
     #[default]
     USD,

@@ -14,5 +14,6 @@ utility        = { workspace = true }
 
 anyhow    = { workspace = true }
 dyn-clone = { workspace = true }
+schemars  = { workspace = true }
 serde     = { workspace = true }
 typetag   = { workspace = true }

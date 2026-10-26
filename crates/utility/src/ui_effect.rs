@@ -45,6 +45,10 @@ where
     )
 }
 
+pub fn dummy_replier() -> Replier {
+    Arc::new(|_| Box::pin(async { Ok(()) }))
+}
+
 pub struct MessageToCommander {
     pub replier: Replier,
     pub inner: Box<dyn MessageTrait>,
