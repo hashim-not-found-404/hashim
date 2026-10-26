@@ -9,6 +9,7 @@ use std::any::Any;
 use std::fmt::Debug;
 use std::future::Future;
 use std::pin::Pin;
+use typetag::serde;
 use utility::ui_effect::MessageTrait;
 use utility::ui_effect::Replier;
 use utility::ui_effect::UiContext;
@@ -43,7 +44,7 @@ impl Default for FormId {
 // `TypeGlobalModel` in `app_root_client`).
 // =====================================================================
 
-#[typetag::serde]
+#[serde]
 pub trait FormLocalModel: Any + Debug + Send + Sync + 'static + DynClone {
     fn clone_user_input(&self) -> Box<dyn FormLocalModel>;
     fn is_submit_ok(&self) -> bool;

@@ -1,3 +1,4 @@
+use crate::mcp_home_forms;
 use crate::model::TypeGlobalModel;
 use crate::use_case_navigator;
 use anyhow::Result;
@@ -118,9 +119,10 @@ make_mcp_provider_form!(create_company);
 
 pub(crate) fn get_all_providers() -> Vec<Box<dyn TraitMcpProvider>> {
     vec![
-        Box::new(mcp_provider_home::TypeMcpProvider) as Box<dyn TraitMcpProvider>,
-        Box::new(mcp_provider_create_company::TypeMcpProvider) as Box<dyn TraitMcpProvider>,
-        Box::new(mcp_provider_create_branch::TypeMcpProvider) as Box<dyn TraitMcpProvider>,
+        Box::new(mcp_provider_home::TypeMcpProvider),
+        Box::new(mcp_provider_create_company::TypeMcpProvider),
+        Box::new(mcp_provider_create_branch::TypeMcpProvider),
+        Box::new(mcp_home_forms::TypeMcpProvider),
     ]
 }
 

@@ -24,10 +24,11 @@ use_case_select_default_company     = { features = ["cache", "client", "ui"], wo
 use_case_sign_in                    = { features = ["cache", "client", "ui"], workspace = true }
 use_case_sign_up                    = { features = ["cache", "client", "ui"], workspace = true }
 
-anyhow  = { workspace = true }
-serde   = { workspace = true }
-tracing = { workspace = true }
-typetag = { workspace = true }
+anyhow   = { workspace = true }
+schemars = { workspace = true }
+serde    = { workspace = true }
+tracing  = { workspace = true }
+typetag  = { workspace = true }
 
 dioxus             = { workspace = true }
 serde_json         = { workspace = true }

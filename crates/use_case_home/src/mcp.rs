@@ -11,7 +11,6 @@ use serde::Deserialize;
 use serde::Serialize;
 use serde_json::Value;
 use serde_json::to_value;
-use std::sync::Arc;
 use utility::mcp::CallInput;
 use utility::mcp::McpToolDef;
 use utility::mcp::error_to_mcp;
@@ -19,6 +18,7 @@ use utility::mcp::parse_args;
 use utility::ui_effect::Commander;
 use utility::ui_effect::MessageTrait;
 use utility::ui_effect::Replier;
+use utility::ui_effect::dummy_replier;
 use utility::ui_effect::new_replier;
 
 const LIST_FORMS: &str = "list_forms";
@@ -111,10 +111,6 @@ pub fn call<'a>(input: CallInput<'a, LocalModel, impl GlobalModel>) -> Result<Va
             format!("unknown tool: {}", input.tool_name),
         )),
     }
-}
-
-fn dummy_replier() -> Replier {
-    Arc::new(|_msg| Box::pin(async { Ok(()) }))
 }
 
 pub fn form_sender(commander: Commander, form_id: FormId, msg: impl MessageTrait) {

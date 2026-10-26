@@ -1,4 +1,5 @@
 mod app_ui;
+mod mcp_home_forms;
 mod model;
 mod use_case_navigator;
 mod utils;
