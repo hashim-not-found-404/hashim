@@ -113,12 +113,14 @@ make_client_wrapper_updater!(select_default_company);
 make_client_wrapper_updater!(sign_in);
 make_client_wrapper_updater!(sign_up);
 make_mcp_provider!(home);
+make_mcp_provider_form!(create_branch);
 make_mcp_provider_form!(create_company);
 
 pub(crate) fn get_all_providers() -> Vec<Box<dyn TraitMcpProvider>> {
     vec![
         Box::new(mcp_provider_home::TypeMcpProvider) as Box<dyn TraitMcpProvider>,
         Box::new(mcp_provider_create_company::TypeMcpProvider) as Box<dyn TraitMcpProvider>,
+        Box::new(mcp_provider_create_branch::TypeMcpProvider) as Box<dyn TraitMcpProvider>,
     ]
 }
 

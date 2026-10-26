@@ -4557,9 +4557,12 @@ dependencies = [
  "kernel",
  "rusqlite",
  "rust_decimal",
+ "schemars",
  "serde",
+ "serde_json",
  "tokio",
  "typetag",
+ "use_case_home",
  "utility",
  "utility_ui",
 ]
