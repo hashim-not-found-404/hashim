@@ -51,11 +51,17 @@ pub fn Component(
                 on_select: move |a| sender(Intent::SelectedCompany(a)),
                 list: list_of_company_name_and_uuid,
                 row_renderer: Callback::new(move |a: (CompanyUuid, String)| {
-                    rsx! { button { disabled: is_loading, "{a.1}" } }
+                    rsx! {
+                        button { disabled: is_loading, "{a.1}" }
+                    }
                 }),
             }
-            if let Some(err) = company_name_error { label { {err} } }
-            if let Some(uuid) = resolved_company_uuid { label { "{uuid}" } }
+            if let Some(err) = company_name_error {
+                label { {err} }
+            }
+            if let Some(uuid) = resolved_company_uuid {
+                label { "{uuid}" }
+            }
 
             input {
                 disabled: is_loading,
@@ -63,7 +69,9 @@ pub fn Component(
                 oninput: move |event| sender(Intent::Name(event.value())),
                 value: name,
             }
-            if let Some(err) = name_error { label { {err} } }
+            if let Some(err) = name_error {
+                label { {err} }
+            }
 
             div {
                 label { "Does this journal track quantity?" }

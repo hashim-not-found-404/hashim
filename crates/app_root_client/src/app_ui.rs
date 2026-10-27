@@ -65,7 +65,7 @@ pub(crate) fn App() -> Element {
     rsx! {
         Router::<Route> {}
         use_case_error_handler::ui::Component {
-            sender: move |i| send( use_case_error_handler::client::Message::Intent(i)),
+            sender: move |i| send(use_case_error_handler::client::Message::Intent(i)),
             is_expand_all,
             errors,
         }
@@ -103,10 +103,7 @@ fn Home() -> Element {
 
     rsx! {
         use_case_select_default_company::ui::Component {
-            sender: move |i| send(
-
-                use_case_select_default_company::client::Message::Intent(i),
-            ),
+            sender: move |i| send(use_case_select_default_company::client::Message::Intent(i)),
             user_name,
             companies,
             branches,
@@ -120,31 +117,29 @@ fn Home() -> Element {
             button {
                 onclick: move |_| send(
                     use_case_home::client::Message::Intent(
-                        use_case_home::client::Intent::AddForm(Box::new(AccountForm(
-                            Default::default(),
-                        ))),
+                        use_case_home::client::Intent::AddForm(
+                            Box::new(AccountForm(Default::default())),
+                        ),
                     ),
                 ),
                 "+ Account"
             }
             button {
                 onclick: move |_| send(
-
                     use_case_home::client::Message::Intent(
-                        use_case_home::client::Intent::AddForm(Box::new(BranchForm(
-                            Default::default(),
-                        ))),
+                        use_case_home::client::Intent::AddForm(
+                            Box::new(BranchForm(Default::default())),
+                        ),
                     ),
                 ),
                 "+ Branch"
             }
             button {
                 onclick: move |_| send(
-
                     use_case_home::client::Message::Intent(
-                        use_case_home::client::Intent::AddForm(Box::new(CompanyForm(
-                            Default::default(),
-                        ))),
+                        use_case_home::client::Intent::AddForm(
+                            Box::new(CompanyForm(Default::default())),
+                        ),
                     ),
                 ),
                 "+ Company"
@@ -152,9 +147,9 @@ fn Home() -> Element {
             button {
                 onclick: move |_| send(
                     use_case_home::client::Message::Intent(
-                        use_case_home::client::Intent::AddForm(Box::new(
-                            AccountForBranchForm(Default::default()),
-                        )),
+                        use_case_home::client::Intent::AddForm(
+                            Box::new(AccountForBranchForm(Default::default())),
+                        ),
                     ),
                 ),
                 "+ Account for Branch"
@@ -162,9 +157,9 @@ fn Home() -> Element {
             button {
                 onclick: move |_| send(
                     use_case_home::client::Message::Intent(
-                        use_case_home::client::Intent::AddForm(Box::new(JournalForm(
-                            Default::default(),
-                        ))),
+                        use_case_home::client::Intent::AddForm(
+                            Box::new(JournalForm(Default::default())),
+                        ),
                     ),
                 ),
                 "+ Journal"
@@ -190,7 +185,6 @@ fn FormInstance(entry: FormEntry) -> Element {
         div {
             button {
                 onclick: move |_| send(
-
                     use_case_home::client::Message::Intent(
                         use_case_home::client::Intent::CopyForm(form_id),
                     ),
@@ -386,8 +380,8 @@ fn SignIn() -> Element {
 
     rsx! {
         use_case_sign_in::ui::Component {
-            sender: move |i| send( use_case_sign_in::client::Message::Intent(i)),
-            on_go_to_sign_up: move || send( Message::Intent(NavIntent::GoToSignUp)),
+            sender: move |i| send(use_case_sign_in::client::Message::Intent(i)),
+            on_go_to_sign_up: move || send(Message::Intent(NavIntent::GoToSignUp)),
             show_dialog,
             user_id,
             password,
@@ -416,8 +410,8 @@ fn SignUp() -> Element {
 
     rsx! {
         use_case_sign_up::ui::Component {
-            sender: move |i| send( use_case_sign_up::client::Message::Intent(i)),
-            on_back: move || send( Message::Intent(NavIntent::GoToSignIn)),
+            sender: move |i| send(use_case_sign_up::client::Message::Intent(i)),
+            on_back: move || send(Message::Intent(NavIntent::GoToSignIn)),
             show_dialog,
             user_id,
             user_name,
