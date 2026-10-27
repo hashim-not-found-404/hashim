@@ -171,7 +171,14 @@ all: check test warn test_cover
 ###################################################################################################
 
 test_p crate_name:
-    RUSTFLAGS="-A warnings" cargo test -p {{crate_name}}
+    RUSTFLAGS="-A warnings" cargo test -p {{crate_name}} --all-targets
+    RUSTFLAGS="-A warnings" cargo test -p {{crate_name}} --all-targets --features="server"
+    RUSTFLAGS="-A warnings" cargo test -p {{crate_name}} --all-targets --features="client"
+    RUSTFLAGS="-A warnings" cargo test -p {{crate_name}} --all-targets --features="database"
+    RUSTFLAGS="-A warnings" cargo test -p {{crate_name}} --all-targets --features="cache"
+    RUSTFLAGS="-A warnings" cargo test -p {{crate_name}} --all-targets --features="client,ui"
+    RUSTFLAGS="-A warnings" cargo test -p {{crate_name}} --all-targets --features="client,mcp"
+    RUSTFLAGS="-A warnings" cargo test -p {{crate_name}} --target wasm32-unknown-unknown
 
 warn_p crate_name:
     cargo clippy -p {{crate_name}} --all-targets --all-features -- -W clippy::pedantic

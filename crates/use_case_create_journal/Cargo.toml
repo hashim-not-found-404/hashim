@@ -4,9 +4,9 @@ name    = "use_case_create_journal"
 version = "0.1.0"
 
 [features]
-cache    = ["dep:cache", "dep:rusqlite"]
+cache    = ["dep:cache", "dep:rusqlite", "dep:serde_json"]
 client   = []
-database = ["dep:database"]
+database = ["dep:database", "dep:serde_json"]
 mcp      = ["dep:schemars", "dep:serde_json"]
 server   = []
 ui       = ["dep:dioxus"]
