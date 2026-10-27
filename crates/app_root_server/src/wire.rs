@@ -13,6 +13,7 @@ use utility::dtos::TypeOperationDTOInput;
 make_server_wrapper_read!(get_all_accounts);
 make_server_wrapper_read!(get_companies_and_branches);
 make_server_wrapper_read!(sign_in);
+make_server_wrapper_write!(create_journal);
 make_server_wrapper_write!(create_account);
 make_server_wrapper_write!(create_account_for_branch);
 make_server_wrapper_write!(create_branch);
@@ -31,6 +32,7 @@ impl CastDTOToServer for MyCaster {
     ) -> Result<Box<dyn TraitOperationServerInput<Cli = Self::Cli, Jwt = Self::Jwt>>> {
         let v: Box<dyn Any> = v;
 
+        cast_input_to_server_case!(create_journal);
         cast_input_to_server_case!(create_account);
         cast_input_to_server_case!(create_account_for_branch);
         cast_input_to_server_case!(create_branch);

@@ -99,6 +99,7 @@ make_client_wrapper_cache!(create_account);
 make_client_wrapper_cache!(create_account_for_branch);
 make_client_wrapper_cache!(create_branch);
 make_client_wrapper_cache!(create_company);
+make_client_wrapper_cache!(create_journal);
 make_client_wrapper_cache!(create_journal_entry);
 make_client_wrapper_cache!(get_all_accounts);
 make_client_wrapper_cache!(get_companies_and_branches);
@@ -108,6 +109,7 @@ make_client_wrapper_form!(create_account);
 make_client_wrapper_form!(create_account_for_branch);
 make_client_wrapper_form!(create_branch);
 make_client_wrapper_form!(create_company);
+make_client_wrapper_form!(create_journal);
 make_client_wrapper_updater!(error_handler);
 make_client_wrapper_updater!(home);
 make_client_wrapper_updater!(select_default_company);
@@ -116,12 +118,14 @@ make_client_wrapper_updater!(sign_up);
 make_mcp_provider!(home);
 make_mcp_provider_form!(create_branch);
 make_mcp_provider_form!(create_company);
+make_mcp_provider_form!(create_journal);
 
 pub(crate) fn get_all_providers() -> Vec<Box<dyn TraitMcpProvider>> {
     vec![
         Box::new(mcp_provider_home::TypeMcpProvider),
         Box::new(mcp_provider_create_company::TypeMcpProvider),
         Box::new(mcp_provider_create_branch::TypeMcpProvider),
+        Box::new(mcp_provider_create_journal::TypeMcpProvider),
         Box::new(mcp_home_forms::TypeMcpProvider),
     ]
 }
@@ -143,7 +147,7 @@ impl CastMessageToReducer for MyCaster {
         cast_message_to_reducer_case!(sign_in);
         cast_message_to_reducer_case!(sign_up);
 
-        bail!("downcast error")
+        bail!("downcast error in cast_message_to_reducer method")
     }
 }
 
@@ -159,13 +163,14 @@ impl CastClientToCache for MyCaster {
         cast_input_to_cache_check_case!(create_account_for_branch);
         cast_input_to_cache_check_case!(create_branch);
         cast_input_to_cache_check_case!(create_company);
+        cast_input_to_cache_check_case!(create_journal);
         cast_input_to_cache_check_case!(create_journal_entry);
         cast_input_to_cache_check_case!(get_all_accounts);
         cast_input_to_cache_check_case!(get_companies_and_branches);
         cast_input_to_cache_check_case!(sign_in);
         cast_input_to_cache_check_case!(sign_up);
 
-        bail!("downcast error")
+        bail!("downcast error in cast_input method")
     }
 
     fn cast_ok(
@@ -177,13 +182,14 @@ impl CastClientToCache for MyCaster {
         cast_ok_to_cache_write_case!(create_account_for_branch);
         cast_ok_to_cache_write_case!(create_branch);
         cast_ok_to_cache_write_case!(create_company);
+        cast_ok_to_cache_write_case!(create_journal);
         cast_ok_to_cache_write_case!(create_journal_entry);
         cast_ok_to_cache_write_case!(get_all_accounts);
         cast_ok_to_cache_write_case!(get_companies_and_branches);
         cast_ok_to_cache_write_case!(sign_in);
         cast_ok_to_cache_write_case!(sign_up);
 
-        bail!("downcast error")
+        bail!("downcast error in cast_ok method")
     }
 }
 
@@ -195,13 +201,14 @@ impl CastDTOToClient for MyCaster {
         cast_input_to_client_case!(create_account_for_branch);
         cast_input_to_client_case!(create_branch);
         cast_input_to_client_case!(create_company);
+        cast_input_to_client_case!(create_journal);
         cast_input_to_client_case!(create_journal_entry);
         cast_input_to_client_case!(get_all_accounts);
         cast_input_to_client_case!(get_companies_and_branches);
         cast_input_to_client_case!(sign_in);
         cast_input_to_client_case!(sign_up);
 
-        bail!("downcast error")
+        bail!("downcast error in cast_input method")
     }
 
     fn cast_ok(v: TypeOperationDTOOk) -> Result<TypeOperationClientOk> {
@@ -211,13 +218,14 @@ impl CastDTOToClient for MyCaster {
         cast_ok_to_client_case!(create_account_for_branch);
         cast_ok_to_client_case!(create_branch);
         cast_ok_to_client_case!(create_company);
+        cast_ok_to_client_case!(create_journal);
         cast_ok_to_client_case!(create_journal_entry);
         cast_ok_to_client_case!(get_all_accounts);
         cast_ok_to_client_case!(get_companies_and_branches);
         cast_ok_to_client_case!(sign_in);
         cast_ok_to_client_case!(sign_up);
 
-        bail!("downcast error")
+        bail!("downcast error in cast_ok method")
     }
 
     fn cast_error(v: TypeOperationDTOError) -> Result<TypeOperationClientError> {
@@ -227,12 +235,13 @@ impl CastDTOToClient for MyCaster {
         cast_error_to_client_case!(create_account_for_branch);
         cast_error_to_client_case!(create_branch);
         cast_error_to_client_case!(create_company);
+        cast_error_to_client_case!(create_journal);
         cast_error_to_client_case!(create_journal_entry);
         cast_error_to_client_case!(get_all_accounts);
         cast_error_to_client_case!(get_companies_and_branches);
         cast_error_to_client_case!(sign_in);
         cast_error_to_client_case!(sign_up);
 
-        bail!("downcast error")
+        bail!("downcast error in cast_error method")
     }
 }

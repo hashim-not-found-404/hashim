@@ -1,15 +1,21 @@
-use serde::Deserialize;
-use serde::Serialize;
-use std::ops::Deref;
-
+#[macro_export]
 macro_rules! make_type {
     ($inner_type:ty, $new_type:ident) => {
         #[derive(
-            Debug, Clone, Default, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize,
+            Debug,
+            Clone,
+            Default,
+            Eq,
+            Hash,
+            Ord,
+            PartialEq,
+            PartialOrd,
+            serde::Deserialize,
+            serde::Serialize,
         )]
         pub struct $new_type($inner_type);
 
-        impl Deref for $new_type {
+        impl std::ops::Deref for $new_type {
             type Target = $inner_type;
 
             fn deref(&self) -> &Self::Target {

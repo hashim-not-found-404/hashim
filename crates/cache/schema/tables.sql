@@ -43,6 +43,16 @@ CREATE TABLE IF NOT EXISTS product(
     is_visible                                  BOOLEAN
 );
 
+CREATE TABLE IF NOT EXISTS journal(
+    rowid                                       TEXT PRIMARY KEY,
+
+    company_belong                              TEXT REFERENCES company(rowid) ON DELETE CASCADE,
+    name                                        TEXT,
+    is_it_contain_quantity                      BOOLEAN,
+
+    UNIQUE (company_belong, name)
+);
+
 CREATE TABLE IF NOT EXISTS account(
     rowid                                       TEXT PRIMARY KEY,
 
@@ -50,7 +60,7 @@ CREATE TABLE IF NOT EXISTS account(
     is_permanent_account                        BOOLEAN,
     name                                        TEXT,
     unit_of_measurement_of_quantity             TEXT,
-    belong_to_company                           TEXT REFERENCES company(rowid) ON DELETE CASCADE
+    belong_to_journal                           TEXT REFERENCES journal(rowid) ON DELETE CASCADE
 
     -- person_out_side_the_system_rowid            TEXT REFERENCES person_out_side_the_system(rowid) ON DELETE CASCADE,
     -- company_rowid                               TEXT REFERENCES company(rowid) ON DELETE CASCADE,

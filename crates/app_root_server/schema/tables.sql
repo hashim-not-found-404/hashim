@@ -47,6 +47,16 @@ CREATE TABLE IF NOT EXISTS accounting_app.product(
     is_visible                                  BOOL NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS accounting_app.journal(
+    rowid                                       UUID PRIMARY KEY,
+
+    company_belong                              UUID REFERENCES accounting_app.company(rowid) ON DELETE CASCADE NOT NULL,
+    name                                        STRING NOT NULL,
+    is_it_contain_quantity                      BOOL NOT NULL,
+
+    UNIQUE (company_belong, name)
+);
+
 CREATE TABLE IF NOT EXISTS accounting_app.account(
     rowid                                       UUID PRIMARY KEY,
 
@@ -54,7 +64,9 @@ CREATE TABLE IF NOT EXISTS accounting_app.account(
     is_permanent_account                        BOOL NOT NULL,
     name                                        STRING NOT NULL,
     unit_of_measurement_of_quantity             STRING,
-    belong_to_company                           UUID REFERENCES accounting_app.company(rowid) ON DELETE CASCADE NOT NULL
+    belong_to_journal                           UUID REFERENCES accounting_app.journal(rowid) ON DELETE CASCADE NOT NULL,
+
+    UNIQUE (belong_to_journal, name)
 
     -- person_out_side_the_system_rowid            UUID REFERENCES accounting_app.person_out_side_the_system(rowid) ON DELETE CASCADE,
     -- company_rowid                               UUID REFERENCES accounting_app.company(rowid) ON DELETE CASCADE,

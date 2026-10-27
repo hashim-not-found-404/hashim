@@ -15,6 +15,7 @@ use_case_create_account             = { features = ["cache", "client", "ui"], wo
 use_case_create_account_for_branch  = { features = ["cache", "client", "ui"], workspace = true }
 use_case_create_branch              = { features = ["cache", "client", "mcp", "ui"], workspace = true }
 use_case_create_company             = { features = ["cache", "client", "mcp", "ui"], workspace = true }
+use_case_create_journal             = { features = ["cache", "client", "mcp", "ui"], workspace = true }
 use_case_create_journal_entry       = { features = ["cache", "client", "ui"], workspace = true }
 use_case_error_handler              = { features = ["cache", "client", "ui"], workspace = true }
 use_case_get_all_accounts           = { features = ["cache", "client", "ui"], workspace = true }

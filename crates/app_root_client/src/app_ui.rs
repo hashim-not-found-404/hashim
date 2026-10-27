@@ -1,7 +1,7 @@
 use crate::use_case_navigator::client::Intent as NavIntent;
 use crate::use_case_navigator::client::Message;
 use crate::use_case_navigator::client::Navigator;
-use crate::utils::async_send;
+use crate::utils::COMMANDER;
 use crate::utils::init_commander_and_model;
 use crate::utils::send;
 use crate::utils::with_model;
@@ -9,13 +9,12 @@ use crate::wire::create_account_for_branch_form::WrapperForm as AccountForBranch
 use crate::wire::create_account_form::WrapperForm as AccountForm;
 use crate::wire::create_branch_form::WrapperForm as BranchForm;
 use crate::wire::create_company_form::WrapperForm as CompanyForm;
-use anyhow::Result;
+use crate::wire::create_journal_form::WrapperForm as JournalForm;
 use cache::utils::MyUuidConverter;
 use dioxus::prelude::*;
 use use_case_home::client::FormEntry;
 use use_case_home::client::FormId;
-use utility::ui_effect::Replier;
-use utility::ui_effect::new_replier;
+use use_case_home::mcp::form_sender;
 
 #[derive(Debug, Clone, PartialEq, Routable)]
 pub(crate) enum Route {
@@ -63,12 +62,10 @@ pub(crate) fn App() -> Element {
         )
     });
 
-    let replier: Replier = new_replier(async |msg| -> Result<()> { async_send(msg).await });
-
     rsx! {
         Router::<Route> {}
         use_case_error_handler::ui::Component {
-            sender: move |i| send(replier.clone(), use_case_error_handler::client::Message::Intent(i)),
+            sender: move |i| send( use_case_error_handler::client::Message::Intent(i)),
             is_expand_all,
             errors,
         }
@@ -104,16 +101,10 @@ fn Home() -> Element {
         )
     });
 
-    let replier: Replier = new_replier(async |msg| -> Result<()> { async_send(msg).await });
-    let replier1 = replier.clone();
-    let replier2 = replier.clone();
-    let replier3 = replier.clone();
-    let replier4 = replier.clone();
-
     rsx! {
         use_case_select_default_company::ui::Component {
             sender: move |i| send(
-                replier.clone(),
+
                 use_case_select_default_company::client::Message::Intent(i),
             ),
             user_name,
@@ -128,7 +119,6 @@ fn Home() -> Element {
         div {
             button {
                 onclick: move |_| send(
-                    replier1.clone(),
                     use_case_home::client::Message::Intent(
                         use_case_home::client::Intent::AddForm(Box::new(AccountForm(
                             Default::default(),
@@ -139,7 +129,7 @@ fn Home() -> Element {
             }
             button {
                 onclick: move |_| send(
-                    replier2.clone(),
+
                     use_case_home::client::Message::Intent(
                         use_case_home::client::Intent::AddForm(Box::new(BranchForm(
                             Default::default(),
@@ -150,7 +140,7 @@ fn Home() -> Element {
             }
             button {
                 onclick: move |_| send(
-                    replier3.clone(),
+
                     use_case_home::client::Message::Intent(
                         use_case_home::client::Intent::AddForm(Box::new(CompanyForm(
                             Default::default(),
@@ -161,7 +151,6 @@ fn Home() -> Element {
             }
             button {
                 onclick: move |_| send(
-                    replier4.clone(),
                     use_case_home::client::Message::Intent(
                         use_case_home::client::Intent::AddForm(Box::new(
                             AccountForBranchForm(Default::default()),
@@ -170,9 +159,19 @@ fn Home() -> Element {
                 ),
                 "+ Account for Branch"
             }
+            button {
+                onclick: move |_| send(
+                    use_case_home::client::Message::Intent(
+                        use_case_home::client::Intent::AddForm(Box::new(JournalForm(
+                            Default::default(),
+                        ))),
+                    ),
+                ),
+                "+ Journal"
+            }
         }
 
-        for  entry in forms.iter() {
+        for entry in forms.iter() {
             FormInstance { key: "{entry.id:?}", entry: entry.clone() }
         }
     }
@@ -184,9 +183,6 @@ fn FormInstance(entry: FormEntry) -> Element {
     let form_id: FormId = entry.id;
     let form = entry.form;
 
-    let replier: Replier = new_replier(async |msg| -> Result<()> { async_send(msg).await });
-    let replier1 = replier.clone();
-
     let is_loading = form.is_loading();
     let rendered = use_case_home::ui::render_to_element(form.as_ref(), form_id);
 
@@ -194,7 +190,7 @@ fn FormInstance(entry: FormEntry) -> Element {
         div {
             button {
                 onclick: move |_| send(
-                    replier.clone(),
+
                     use_case_home::client::Message::Intent(
                         use_case_home::client::Intent::CopyForm(form_id),
                     ),
@@ -204,7 +200,6 @@ fn FormInstance(entry: FormEntry) -> Element {
             button {
                 disabled: is_loading,
                 onclick: move |_| send(
-                    replier1.clone(),
                     use_case_home::client::Message::Intent(
                         use_case_home::client::Intent::DeleteForm(form_id),
                     ),
@@ -236,22 +231,12 @@ pub(crate) fn CreateAccountForm(
         )
     });
 
-    let replier: Replier = new_replier(move |msg| async move {
-        async_send(Box::new(use_case_home::client::Message::FormRelated {
-            form_id,
-            message: msg,
-        }))
-        .await
-    });
-
     rsx! {
         use_case_create_account::ui::Component {
-            sender: move |i| send(
-                replier.clone(),
-                use_case_home::client::Message::FormRelated {
-                    form_id,
-                    message: Box::new(use_case_create_account::client::Message::Intent(i)),
-                },
+            sender: move |i| form_sender(
+                COMMANDER.clone(),
+                form_id,
+                use_case_create_account::client::Message::Intent(i),
             ),
             show_dialog: lm.show_dialog.clone(),
             is_loading: lm.async_state.clone().is_loading(),
@@ -282,22 +267,12 @@ pub(crate) fn CreateBranchForm(
             )
         });
 
-    let replier: Replier = new_replier(move |msg| async move {
-        async_send(Box::new(use_case_home::client::Message::FormRelated {
-            form_id,
-            message: msg,
-        }))
-        .await
-    });
-
     rsx! {
         use_case_create_branch::ui::Component {
-            sender: move |i| send(
-                replier.clone(),
-                use_case_home::client::Message::FormRelated {
-                    form_id,
-                    message: Box::new(use_case_create_branch::client::Message::Intent(i)),
-                },
+            sender: move |i| form_sender(
+                COMMANDER.clone(),
+                form_id,
+                use_case_create_branch::client::Message::Intent(i),
             ),
             show_dialog: lm.show_dialog.clone(),
             is_loading: lm.async_state.clone().is_loading(),
@@ -319,22 +294,12 @@ pub(crate) fn CreateCompanyForm(
     form_id: FormId,
     lm: use_case_create_company::client::LocalModel,
 ) -> Element {
-    let replier: Replier = new_replier(move |msg| async move {
-        async_send(Box::new(use_case_home::client::Message::FormRelated {
-            form_id,
-            message: msg,
-        }))
-        .await
-    });
-
     rsx! {
         use_case_create_company::ui::Component {
-            sender: move |i| send(
-                replier.clone(),
-                use_case_home::client::Message::FormRelated {
-                    form_id,
-                    message: Box::new(use_case_create_company::client::Message::Intent(i)),
-                },
+            sender: move |i| form_sender(
+                COMMANDER.clone(),
+                form_id,
+                use_case_create_company::client::Message::Intent(i),
             ),
             show_dialog: lm.show_dialog.clone(),
             is_loading: lm.async_state.clone().is_loading(),
@@ -352,24 +317,12 @@ pub(crate) fn CreateAccountForBranchForm(
 ) -> Element {
     let list_of_account_name_and_uuid = with_model(|m| lm.list_of_accounts_to_display(m));
 
-    let replier: Replier = new_replier(move |msg| async move {
-        async_send(Box::new(use_case_home::client::Message::FormRelated {
-            form_id,
-            message: msg,
-        }))
-        .await
-    });
-
     rsx! {
         use_case_create_account_for_branch::ui::Component {
-            sender: move |i| send(
-                replier.clone(),
-                use_case_home::client::Message::FormRelated {
-                    form_id,
-                    message: Box::new(
-                        use_case_create_account_for_branch::client::Message::Intent(i),
-                    ),
-                },
+            sender: move |i| form_sender(
+                COMMANDER.clone(),
+                form_id,
+                use_case_create_account_for_branch::client::Message::Intent(i),
             ),
             show_dialog: lm.show_dialog.clone(),
             is_loading: lm.async_state.clone().is_loading(),
@@ -377,6 +330,41 @@ pub(crate) fn CreateAccountForBranchForm(
             outflow_type: lm.outflow_type,
             inflow_type: lm.inflow_type,
             list_of_account_name_and_uuid,
+        }
+    }
+}
+
+#[component]
+pub(crate) fn CreateJournalForm(
+    form_id: FormId,
+    lm: use_case_create_journal::client::LocalModel,
+) -> Element {
+    let (company_name_error, resolved_company_uuid, list_of_company_name_and_uuid, name_error) =
+        with_model(|m| {
+            (
+                lm.error_company_name(m).map(|e| format!("{e:?}")),
+                lm.resolved_company_uuid(m).map(|uuid| uuid.to_string()),
+                lm.list_of_companies_to_display(m),
+                lm.error_name().map(|e| format!("{e:?}")),
+            )
+        });
+
+    rsx! {
+        use_case_create_journal::ui::Component {
+            sender: move |i| form_sender(
+                COMMANDER.clone(),
+                form_id,
+                use_case_create_journal::client::Message::Intent(i),
+            ),
+            show_dialog: lm.show_dialog.clone(),
+            is_loading: lm.async_state.clone().is_loading(),
+            company_name: lm.company_name.clone(),
+            company_name_error,
+            resolved_company_uuid,
+            name: lm.name.clone(),
+            name_error,
+            is_it_contain_quantity: lm.is_it_contain_quantity,
+            list_of_company_name_and_uuid,
         }
     }
 }
@@ -396,13 +384,10 @@ fn SignIn() -> Element {
             )
         });
 
-    let replier: Replier = new_replier(async |msg| -> Result<()> { async_send(msg).await });
-    let replier1 = replier.clone();
-
     rsx! {
         use_case_sign_in::ui::Component {
-            sender: move |i| send(replier.clone(), use_case_sign_in::client::Message::Intent(i)),
-            on_go_to_sign_up: move || send(replier1.clone(), Message::Intent(NavIntent::GoToSignUp)),
+            sender: move |i| send( use_case_sign_in::client::Message::Intent(i)),
+            on_go_to_sign_up: move || send( Message::Intent(NavIntent::GoToSignUp)),
             show_dialog,
             user_id,
             password,
@@ -429,13 +414,10 @@ fn SignUp() -> Element {
             )
         });
 
-    let replier: Replier = new_replier(async |msg| -> Result<()> { async_send(msg).await });
-    let replier1 = replier.clone();
-
     rsx! {
         use_case_sign_up::ui::Component {
-            sender: move |i| send(replier.clone(), use_case_sign_up::client::Message::Intent(i)),
-            on_back: move || send(replier1.clone(), Message::Intent(NavIntent::GoToSignIn)),
+            sender: move |i| send( use_case_sign_up::client::Message::Intent(i)),
+            on_back: move || send( Message::Intent(NavIntent::GoToSignIn)),
             show_dialog,
             user_id,
             user_name,
