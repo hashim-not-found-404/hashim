@@ -25,60 +25,7 @@ CREATE TABLE IF NOT EXISTS company_branch(
     company_belong                              TEXT REFERENCES company(rowid) ON DELETE CASCADE,
     name                                        TEXT,
     location_latitude                           DECIMAL(9,6)  CHECK (location_latitude BETWEEN -90 AND 90),
-    location_longitude                          DECIMAL(10,6)  CHECK (location_longitude BETWEEN -180 AND 180),
-    currency                                    TEXT
-);
-
-CREATE TABLE IF NOT EXISTS photo(
-    rowid                                       TEXT PRIMARY KEY,
-
-    photo                                       BLOB
-);
-
-CREATE TABLE IF NOT EXISTS product(
-    rowid                                       TEXT PRIMARY KEY,
-
-    name                                        TEXT,
-    primary_photo                               TEXT REFERENCES photo(rowid) ON DELETE CASCADE,
-    is_visible                                  BOOLEAN
-);
-
-CREATE TABLE IF NOT EXISTS journal(
-    rowid                                       TEXT PRIMARY KEY,
-
-    company_belong                              TEXT REFERENCES company(rowid) ON DELETE CASCADE,
-    name                                        TEXT,
-    is_it_contain_quantity                      BOOLEAN,
-
-    UNIQUE (company_belong, name)
-);
-
-CREATE TABLE IF NOT EXISTS account(
-    rowid                                       TEXT PRIMARY KEY,
-
-    is_debit                                    BOOLEAN,
-    is_permanent_account                        BOOLEAN,
-    name                                        TEXT,
-    unit_of_measurement_of_quantity             TEXT,
-    belong_to_journal                           TEXT REFERENCES journal(rowid) ON DELETE CASCADE
-
-    -- person_out_side_the_system_rowid            TEXT REFERENCES person_out_side_the_system(rowid) ON DELETE CASCADE,
-    -- company_rowid                               TEXT REFERENCES company(rowid) ON DELETE CASCADE,
-    -- company_branch_rowid                        TEXT REFERENCES company_branch(rowid) ON DELETE CASCADE,
-
-    -- product_rowid                               TEXT REFERENCES product(rowid) ON DELETE CASCADE,
-    -- is_second_hand                              BOOLEAN,
-    -- job                                         TEXT
-);
-
-CREATE TABLE IF NOT EXISTS account_flow_type(
-    rowid                                       TEXT PRIMARY KEY,
-
-    account                                     TEXT REFERENCES account(rowid) ON DELETE CASCADE,
-    company_branch                              TEXT REFERENCES company_branch(rowid) ON DELETE CASCADE,
-    outflow_type                                TEXT,
-    inflow_type                                 TEXT,
-    inventory                                   TEXT DEFAULT '[]'
+    location_longitude                          DECIMAL(10,6)  CHECK (location_longitude BETWEEN -180 AND 180)
 );
 
 CREATE TABLE IF NOT EXISTS shared_entry(
@@ -92,21 +39,101 @@ CREATE TABLE IF NOT EXISTS entry(
     rowid                                       TEXT PRIMARY KEY,
 
     writer                                      TEXT REFERENCES user(rowid) ON DELETE CASCADE,
-    notes                                       TEXT,
     time                                        INTEGER,
     shared_entry_id                             TEXT REFERENCES shared_entry(rowid) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS single_entry(
+--------------------------------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS journal_with_quantity(
+    rowid                                       TEXT PRIMARY KEY,
+
+    company_belong                              TEXT REFERENCES company(rowid) ON DELETE CASCADE,
+    name                                        TEXT
+);
+
+CREATE TABLE IF NOT EXISTS account_with_quantity(
+    rowid                                       TEXT PRIMARY KEY,
+
+    is_debit                                    BOOLEAN,
+    is_permanent_account                        BOOLEAN,
+    name                                        TEXT,
+    unit_of_measurement_of_quantity             TEXT,
+    belong_to_journal                           TEXT REFERENCES journal_with_quantity(rowid) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS account_inventory_with_quantity(
+    rowid                                       TEXT PRIMARY KEY,
+
+    account                                     TEXT REFERENCES account_with_quantity(rowid) ON DELETE CASCADE,
+    company_branch                              TEXT REFERENCES company_branch(rowid) ON DELETE CASCADE,
+    outflow_type                                TEXT,
+    inflow_type                                 TEXT,
+    records                                     TEXT DEFAULT '[]'
+);
+
+CREATE TABLE IF NOT EXISTS single_entry_with_quantity(
     rowid                                       TEXT PRIMARY KEY,
 
     double_entry                                INTEGER,
     entry                                       TEXT REFERENCES entry(rowid) ON DELETE CASCADE,
-    account                                     TEXT REFERENCES account_flow_type(rowid) ON DELETE CASCADE,
+    account                                     TEXT REFERENCES account_inventory_with_quantity(rowid) ON DELETE CASCADE,
     is_debit                                    BOOLEAN,
     cost_out_flow_type                          TEXT,
     quantity                                    DECIMAL,
     amount                                      DECIMAL
+);
+
+--------------------------------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS journal_without_quantity(
+    rowid                                       TEXT PRIMARY KEY,
+
+    company_belong                              TEXT REFERENCES company(rowid) ON DELETE CASCADE,
+    name                                        TEXT
+);
+
+CREATE TABLE IF NOT EXISTS account_without_quantity(
+    rowid                                       TEXT PRIMARY KEY,
+
+    is_debit                                    BOOLEAN,
+    is_permanent_account                        BOOLEAN,
+    name                                        TEXT,
+    belong_to_journal                           TEXT REFERENCES journal_without_quantity(rowid) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS account_inventory_without_quantity(
+    rowid                                       TEXT PRIMARY KEY,
+
+    account                                     TEXT REFERENCES account_without_quantity(rowid) ON DELETE CASCADE,
+    company_branch                              TEXT REFERENCES company_branch(rowid) ON DELETE CASCADE,
+    total_amount                                DECIMAL
+);
+
+CREATE TABLE IF NOT EXISTS single_entry_without_quantity(
+    rowid                                       TEXT PRIMARY KEY,
+
+    double_entry                                INTEGER,
+    entry                                       TEXT REFERENCES entry(rowid) ON DELETE CASCADE,
+    account                                     TEXT REFERENCES account_inventory_without_quantity(rowid) ON DELETE CASCADE,
+    is_debit                                    BOOLEAN,
+    amount                                      DECIMAL
+);
+
+--------------------------------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS photo(
+    rowid                                       TEXT PRIMARY KEY,
+
+    photo                                       BLOB
+);
+
+CREATE TABLE IF NOT EXISTS product(
+    rowid                                       TEXT PRIMARY KEY,
+
+    name                                        TEXT,
+    primary_photo                               TEXT REFERENCES photo(rowid) ON DELETE CASCADE,
+    is_visible                                  BOOLEAN
 );
 
 CREATE TABLE IF NOT EXISTS person_attributes(
@@ -347,7 +374,7 @@ CREATE TABLE IF NOT EXISTS account_translation(
     rowid                                       TEXT PRIMARY KEY,
 
     company_branch                              TEXT REFERENCES company_branch(rowid) ON DELETE CASCADE,
-    account                                     TEXT REFERENCES account(rowid) ON DELETE CASCADE,
+    account                                     TEXT REFERENCES account_with_quantity(rowid) ON DELETE CASCADE,
     name                                        TEXT
 );
 

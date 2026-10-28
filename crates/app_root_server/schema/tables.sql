@@ -29,62 +29,7 @@ CREATE TABLE IF NOT EXISTS accounting_app.company_branch(
     company_belong                              UUID REFERENCES accounting_app.company(rowid) ON DELETE CASCADE NOT NULL,
     name                                        STRING NOT NULL,
     location_latitude                           DECIMAL(9,6) NOT NULL CHECK (location_latitude BETWEEN -90 AND 90),
-    location_longitude                          DECIMAL(10,6) NOT NULL CHECK (location_longitude BETWEEN -180 AND 180),
-    currency                                    STRING NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS accounting_app.photo(
-    rowid                                       UUID PRIMARY KEY,
-
-    photo                                       BYTES NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS accounting_app.product(
-    rowid                                       UUID PRIMARY KEY,
-
-    name                                        STRING,
-    primary_photo                               UUID REFERENCES accounting_app.photo(rowid) ON DELETE CASCADE NOT NULL,
-    is_visible                                  BOOL NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS accounting_app.journal(
-    rowid                                       UUID PRIMARY KEY,
-
-    company_belong                              UUID REFERENCES accounting_app.company(rowid) ON DELETE CASCADE NOT NULL,
-    name                                        STRING NOT NULL,
-    is_it_contain_quantity                      BOOL NOT NULL,
-
-    UNIQUE (company_belong, name)
-);
-
-CREATE TABLE IF NOT EXISTS accounting_app.account(
-    rowid                                       UUID PRIMARY KEY,
-
-    is_debit                                    BOOL NOT NULL,
-    is_permanent_account                        BOOL NOT NULL,
-    name                                        STRING NOT NULL,
-    unit_of_measurement_of_quantity             STRING,
-    belong_to_journal                           UUID REFERENCES accounting_app.journal(rowid) ON DELETE CASCADE NOT NULL,
-
-    UNIQUE (belong_to_journal, name)
-
-    -- person_out_side_the_system_rowid            UUID REFERENCES accounting_app.person_out_side_the_system(rowid) ON DELETE CASCADE,
-    -- company_rowid                               UUID REFERENCES accounting_app.company(rowid) ON DELETE CASCADE,
-    -- company_branch_rowid                        UUID REFERENCES accounting_app.company_branch(rowid) ON DELETE CASCADE,
-
-    -- product_rowid                               UUID REFERENCES accounting_app.product(rowid) ON DELETE CASCADE,
-    -- is_second_hand                              BOOL,
-    -- job                                         STRING
-);
-
-CREATE TABLE IF NOT EXISTS accounting_app.account_flow_type(
-    rowid                                       UUID PRIMARY KEY,
-
-    account                                     UUID REFERENCES accounting_app.account(rowid) ON DELETE CASCADE NOT NULL,
-    company_branch                              UUID REFERENCES accounting_app.company_branch(rowid) ON DELETE CASCADE NOT NULL,
-    outflow_type                                STRING NOT NULL,
-    inflow_type                                 STRING NOT NULL,
-    inventory                                   JSONB NOT NULL DEFAULT '[]'::JSONB
+    location_longitude                          DECIMAL(10,6) NOT NULL CHECK (location_longitude BETWEEN -180 AND 180)
 );
 
 CREATE TABLE IF NOT EXISTS accounting_app.shared_entry(
@@ -102,16 +47,97 @@ CREATE TABLE IF NOT EXISTS accounting_app.entry(
     shared_entry_id                             UUID REFERENCES accounting_app.shared_entry(rowid) ON DELETE CASCADE NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS accounting_app.single_entry(
+--------------------------------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS accounting_app.journal_with_quantity(
+    rowid                                       UUID PRIMARY KEY,
+
+    company_belong                              UUID REFERENCES accounting_app.company(rowid) ON DELETE CASCADE NOT NULL,
+    name                                        STRING NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS accounting_app.account_with_quantity(
+    rowid                                       UUID PRIMARY KEY,
+
+    is_debit                                    BOOL NOT NULL,
+    is_permanent_account                        BOOL NOT NULL,
+    name                                        STRING NOT NULL,
+    unit_of_measurement_of_quantity             STRING,
+    belong_to_journal                           UUID REFERENCES accounting_app.journal_with_quantity(rowid) ON DELETE CASCADE NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS accounting_app.account_inventory_with_quantity(
+    rowid                                       UUID PRIMARY KEY,
+
+    account                                     UUID REFERENCES accounting_app.account_with_quantity(rowid) ON DELETE CASCADE NOT NULL,
+    company_branch                              UUID REFERENCES accounting_app.company_branch(rowid) ON DELETE CASCADE NOT NULL,
+    outflow_type                                STRING NOT NULL,
+    inflow_type                                 STRING NOT NULL,
+    records                                     JSONB NOT NULL DEFAULT '[]'::JSONB
+);
+
+CREATE TABLE IF NOT EXISTS accounting_app.single_entry_with_quantity(
     rowid                                       UUID PRIMARY KEY,
 
     double_entry                                SMALLINT NOT NULL,
     entry                                       UUID REFERENCES accounting_app.entry(rowid) ON DELETE CASCADE NOT NULL,
-    account                                     UUID REFERENCES accounting_app.account_flow_type(rowid) ON DELETE CASCADE NOT NULL,
+    account                                     UUID REFERENCES accounting_app.account_inventory_with_quantity(rowid) ON DELETE CASCADE NOT NULL,
     is_debit                                    BOOL NOT NULL,
     cost_out_flow_type                          STRING NOT NULL,
     quantity                                    DECIMAL NOT NULL,
     amount                                      DECIMAL NOT NULL
+);
+
+--------------------------------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS accounting_app.journal_without_quantity(
+    rowid                                       UUID PRIMARY KEY,
+
+    company_belong                              UUID REFERENCES accounting_app.company(rowid) ON DELETE CASCADE NOT NULL,
+    name                                        STRING NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS accounting_app.account_without_quantity(
+    rowid                                       UUID PRIMARY KEY,
+
+    is_debit                                    BOOL NOT NULL,
+    is_permanent_account                        BOOL NOT NULL,
+    name                                        STRING NOT NULL,
+    belong_to_journal                           UUID REFERENCES accounting_app.journal_without_quantity(rowid) ON DELETE CASCADE NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS accounting_app.account_inventory_without_quantity(
+    rowid                                       UUID PRIMARY KEY,
+
+    account                                     UUID REFERENCES accounting_app.account_without_quantity(rowid) ON DELETE CASCADE NOT NULL,
+    company_branch                              UUID REFERENCES accounting_app.company_branch(rowid) ON DELETE CASCADE NOT NULL,
+    total_amount                                DECIMAL NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS accounting_app.single_entry_without_quantity(
+    rowid                                       UUID PRIMARY KEY,
+
+    double_entry                                SMALLINT NOT NULL,
+    entry                                       UUID REFERENCES accounting_app.entry(rowid) ON DELETE CASCADE NOT NULL,
+    account                                     UUID REFERENCES accounting_app.account_inventory_without_quantity(rowid) ON DELETE CASCADE NOT NULL,
+    is_debit                                    BOOL NOT NULL,
+    amount                                      DECIMAL NOT NULL
+);
+
+--------------------------------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS accounting_app.photo(
+    rowid                                       UUID PRIMARY KEY,
+
+    photo                                       BYTES NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS accounting_app.product(
+    rowid                                       UUID PRIMARY KEY,
+
+    name                                        STRING,
+    primary_photo                               UUID REFERENCES accounting_app.photo(rowid) ON DELETE CASCADE NOT NULL,
+    is_visible                                  BOOL NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS accounting_app.person_attributes(
@@ -397,7 +423,7 @@ CREATE TABLE IF NOT EXISTS accounting_app.account_translation(
     rowid                                       UUID PRIMARY KEY,
 
     company_branch                              UUID REFERENCES accounting_app.company_branch(rowid) ON DELETE CASCADE NOT NULL,
-    account                                     UUID REFERENCES accounting_app.account(rowid) ON DELETE CASCADE NOT NULL,
+    account                                     UUID REFERENCES accounting_app.account_with_quantity(rowid) ON DELETE CASCADE NOT NULL,
     name                                        STRING NOT NULL
 );
 
