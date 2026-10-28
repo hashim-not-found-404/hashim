@@ -35,9 +35,7 @@ struct AddFormArgs {
 }
 
 #[derive(Debug, Serialize)]
-struct AddFormOutput {
-    is_ok: bool,
-}
+struct Output {}
 
 pub(crate) struct TypeMcpProvider;
 
@@ -64,7 +62,7 @@ impl TraitMcpProvider for TypeMcpProvider {
 
                     COMMANDER.sender_with_replier(Message::Intent(Intent::AddForm(form)));
 
-                    Ok(to_value(AddFormOutput { is_ok: true })?)
+                    Ok(to_value(Output {})?)
                 }
                 _ => Err(error_to_mcp(
                     "unknown_tool",

@@ -308,14 +308,11 @@ async fn push_data<
         operations: Vec::with_capacity(input.operations.len()),
     };
 
-    let mut is_there_error = false;
-
     for jwt_value in &input.jwts {
         if let Some(user_uuid) = side_effects.jwt.validate(jwt_value.clone()) {
             side_effects.authenticated_users.insert(user_uuid);
         } else {
             the_return_result.jwts.push(Err(JWTError::Invalid));
-            is_there_error = true;
         }
     }
 
@@ -331,9 +328,6 @@ async fn push_data<
 
     if !check_nonce_if_valid(&input.nonce, is_nonce_used) {
         the_return_result.nonce = Err(NonceError::Invalid);
-    }
-
-    if is_there_error {
         return Ok(the_return_result);
     }
 

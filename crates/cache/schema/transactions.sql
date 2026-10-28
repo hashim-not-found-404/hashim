@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS write_cache_transactions_input(
     txn_number                                  INTEGER PRIMARY KEY,
 
-    is_faild                                    BOOLEAN,
+    is_faild                                    BOOLEAN NOT NULL DEFAULT false,
     user_                                       TEXT,
     txn                                         BLOB
 );

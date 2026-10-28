@@ -35,12 +35,7 @@ struct CreateJournalArgs {
 }
 
 #[derive(Debug, Serialize)]
-struct Output {
-    /// `true` once the intents were queued.
-    /// Does NOT mean the server has responded — the journals list will
-    /// refresh via the subscription broadcast on success.
-    is_ok: bool,
-}
+struct Output {}
 
 pub fn tools() -> Vec<McpToolDef> {
     vec![McpToolDef {
@@ -80,7 +75,7 @@ pub fn call<'a>(input: CallInput<'a, LocalModel, impl GlobalModel>) -> Result<Va
                 Message::Intent(Intent::IsItContainQuantity(args.is_it_contain_quantity)),
             );
 
-            Ok(to_value(Output { is_ok: true })?)
+            Ok(to_value(Output {})?)
         }
         _ => Err(error_to_mcp(
             "unknown_tool",

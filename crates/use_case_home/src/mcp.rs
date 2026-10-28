@@ -48,12 +48,7 @@ struct ListFormsOutput {
 }
 
 #[derive(Debug, Serialize)]
-struct Output {
-    /// `true` once the intent was accepted onto the commander queue.
-    /// Does NOT mean the reducer has already applied the change — call
-    /// `list_forms` again to confirm.
-    is_ok: bool,
-}
+struct Output {}
 
 pub fn tools() -> Vec<McpToolDef> {
     vec![
@@ -92,7 +87,7 @@ pub fn call<'a>(input: CallInput<'a, LocalModel, impl GlobalModel>) -> Result<Va
                 .commander
                 .sender_with_replier(Message::Intent(Intent::DeleteForm(form_id.into())));
 
-            Ok(to_value(Output { is_ok: true })?)
+            Ok(to_value(Output {})?)
         }
         COPY_FORM => {
             let CopyFormArgs { form_id } = parse_args(input.args)?;
@@ -101,7 +96,7 @@ pub fn call<'a>(input: CallInput<'a, LocalModel, impl GlobalModel>) -> Result<Va
                 .commander
                 .sender_with_replier(Message::Intent(Intent::CopyForm(form_id.into())));
 
-            Ok(to_value(Output { is_ok: true })?)
+            Ok(to_value(Output {})?)
         }
         _ => Err(error_to_mcp(
             "unknown_tool",

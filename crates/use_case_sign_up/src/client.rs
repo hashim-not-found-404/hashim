@@ -55,7 +55,7 @@ impl TraitOperationClientError for Error {
 
 impl TraitOperationClientInput for Input {
     fn user_uuid(&self) -> Option<[u8; 16]> {
-        Some(*self.user_uuid.deref().deref())
+        None
     }
 
     fn state_less_check(&self) -> Option<TypeOperationClientError> {

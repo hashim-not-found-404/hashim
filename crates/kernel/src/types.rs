@@ -114,8 +114,8 @@ impl FromStr for Role {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "Manager" => Ok(Role::Manager),
-            "CoManager" => Ok(Role::CoManager),
+            "Manager" => Ok(Self::Manager),
+            "CoManager" => Ok(Self::CoManager),
             _ => bail!("not exist"),
         }
     }
@@ -124,12 +124,12 @@ impl FromStr for Role {
 impl Role {
     pub fn as_str(&self) -> &str {
         match self {
-            Role::Manager => "Manager",
-            Role::CoManager => "CoManager",
+            Self::Manager => "Manager",
+            Self::CoManager => "CoManager",
         }
     }
 
-    pub fn has_any(user_roles: &[Self], roles: &[Role]) -> bool {
+    pub fn has_any(user_roles: &[Self], roles: &[Self]) -> bool {
         for role in roles {
             if user_roles.contains(role) {
                 return true;

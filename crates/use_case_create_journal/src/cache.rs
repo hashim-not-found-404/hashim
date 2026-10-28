@@ -8,15 +8,17 @@ use kernel::types::DatabaseRead;
 use kernel::types::DatabaseWrite;
 use kernel::types::Role;
 use rusqlite::params;
+use serde_json::Value;
+use serde_json::from_str;
 use std::str::FromStr;
 
 const READ_QUERY: &str = "
     SELECT
-        EXISTS(SELECT 1 FROM journal WHERE rowid = ?1)                           AS new_uuid_used,
-        EXISTS(SELECT 1 FROM company WHERE rowid = ?2)                            AS company_exists,
-        EXISTS(SELECT 1 FROM journal WHERE company_belong = ?2 AND name = ?4)     AS name_used,
+        EXISTS(SELECT 1 FROM journal WHERE rowid = ?1) AS new_uuid_used,
+        EXISTS(SELECT 1 FROM company WHERE rowid = ?2) AS company_exists,
+        EXISTS(SELECT 1 FROM journal WHERE company_belong = ?2 AND name = ?4) AS name_used,
         (SELECT json_group_array(role) FROM access_control_for_company
-            WHERE data_group = ?2 AND user_ = ?3)                                 AS roles_json
+            WHERE data_group = ?2 AND user_ = ?3) AS roles_json
 ";
 
 const WRITE_QUERY: &str = "
@@ -49,8 +51,7 @@ impl DatabaseRead for CacheOp {
             },
         )?;
 
-        let roles_value: serde_json::Value =
-            serde_json::from_str(&row.3).unwrap_or(serde_json::Value::Array(vec![]));
+        let roles_value: Value = from_str(&row.3).unwrap_or(Value::Array(vec![]));
         let user_roles: Vec<Role> = roles_value
             .as_array()
             .map(|a| {
