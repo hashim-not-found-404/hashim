@@ -1,5 +1,5 @@
 use anyhow::Error;
-use jsonwebtoken::decode_header;
+use jwt_simple::prelude::*;
 use serde::Deserialize;
 use serde::Serialize;
 use std::ops::Deref;
@@ -25,7 +25,7 @@ impl TryFrom<String> for JsonWebTokenType {
     type Error = Error;
 
     fn try_from(token: String) -> Result<Self, Self::Error> {
-        decode_header(&token)?;
+        Token::decode_metadata(&token)?;
         Ok(JsonWebTokenType(token))
     }
 }
@@ -43,64 +43,48 @@ pub type Jwt = target::S;
 mod target {
     use super::JWT;
     use super::JsonWebTokenType;
-    use chrono::Duration;
-    use chrono::Utc;
-    use jsonwebtoken::Algorithm;
-    use jsonwebtoken::DecodingKey;
-    use jsonwebtoken::EncodingKey;
-    use jsonwebtoken::Header;
-    use jsonwebtoken::Validation;
-    use jsonwebtoken::decode;
-    use jsonwebtoken::encode;
+    use jwt_simple::prelude::*;
     use serde::Deserialize;
     use serde::Serialize;
     use std::sync::Arc;
+    use std::time::Duration;
+
+    #[derive(Debug, Deserialize, Serialize)]
+    struct CustomClaims<Subject> {
+        id: Subject,
+    }
 
     #[derive(Debug, Clone)]
     pub struct S {
-        key: Arc<Vec<u8>>,
+        key: Arc<HS256Key>,
     }
 
-    fn exp_time() -> u64 {
-        (Utc::now() + Duration::minutes(30)).timestamp() as u64
-    }
-
-    #[derive(Debug, Deserialize, Serialize)]
-    struct Claims<Subject> {
-        id: Subject,
-        exp: u64,
+    fn exp_duration() -> Duration {
+        Duration::from_secs(30 * 60)
     }
 
     impl<Subject: Serialize + for<'de> Deserialize<'de> + Clone> JWT<Subject> for S {
         fn new() -> Self {
-            Self {
-                key: Arc::new("key".into()),
-            }
+            let key_bytes = b"keydflzjlzfjlzjflzfzvzjzssjdofzfii";
+            let key = HS256Key::from_bytes(key_bytes);
+            Self { key: Arc::new(key) }
         }
 
         fn sign(&self, subject: &Subject) -> JsonWebTokenType {
-            let claims = Claims {
+            let custom = CustomClaims {
                 id: subject.clone(),
-                exp: exp_time(),
             };
-
-            JsonWebTokenType(
-                encode(
-                    &Header::default(),
-                    &claims,
-                    &EncodingKey::from_secret(&self.key),
-                )
-                .unwrap(),
-            )
+            let claims = Claims::with_custom_claims(custom, exp_duration().into());
+            let token = self.key.authenticate(claims).unwrap();
+            JsonWebTokenType(token)
         }
 
         fn validate(&self, token: JsonWebTokenType) -> Option<Subject> {
-            let result = decode::<Claims<Subject>>(
-                &token.0,
-                &DecodingKey::from_secret(&self.key),
-                &Validation::new(Algorithm::HS256),
-            );
-            result.ok().map(|data| data.claims.id)
+            let claims = self
+                .key
+                .verify_token::<CustomClaims<Subject>>(&token.0, None)
+                .ok()?;
+            Some(claims.custom.id)
         }
     }
 }
