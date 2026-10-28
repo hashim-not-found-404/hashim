@@ -61,7 +61,7 @@ impl DatabaseWrite for CacheOp {
                 input.user_uuid.to_string(),
                 input.user_id,
                 input.user_name,
-                input.jwt.0,
+                input.jwt.clone().into_inner(),
             ],
         )?;
 

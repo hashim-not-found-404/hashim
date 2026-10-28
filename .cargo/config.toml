@@ -2,3 +2,6 @@
 rustflags = ["--cfg", "target_arch=\"wasm32\""]
 
 [build]
+
+[env]
+CC_wasm32_unknown_unknown = "/opt/wasi-sdk/bin/clang --sysroot=/opt/wasi-sdk/share/wasi-sysroot --target=wasm32-wasi"

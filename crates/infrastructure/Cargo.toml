@@ -19,11 +19,12 @@ uuid         = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 argon2            = { workspace = true }
-jsonwebtoken      = { workspace = true }
+jsonwebtoken      = { features = ["rust_crypto"], workspace = true }
 tokio             = { features = ["process", "rt-multi-thread"], workspace = true }
 tokio-tungstenite = { workspace = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 gloo-net             = { workspace = true }
 gloo-timers          = { workspace = true }
+jsonwebtoken         = { features = ["aws_lc_rs"], workspace = true }
 wasm-bindgen-futures = { workspace = true }

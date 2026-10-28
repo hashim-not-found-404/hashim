@@ -1,9 +1,17 @@
+use anyhow::Error;
+use jsonwebtoken::decode_header;
 use serde::Deserialize;
 use serde::Serialize;
 use std::ops::Deref;
 
 #[derive(Debug, Clone, Default, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
-pub struct JsonWebTokenType(pub String);
+pub struct JsonWebTokenType(String);
+
+impl JsonWebTokenType {
+    pub fn into_inner(self) -> String {
+        self.0
+    }
+}
 
 impl Deref for JsonWebTokenType {
     type Target = String;
@@ -12,9 +20,13 @@ impl Deref for JsonWebTokenType {
         &self.0
     }
 }
-impl From<String> for JsonWebTokenType {
-    fn from(value: String) -> Self {
-        Self(value)
+
+impl TryFrom<String> for JsonWebTokenType {
+    type Error = Error;
+
+    fn try_from(token: String) -> Result<Self, Self::Error> {
+        decode_header(&token)?;
+        Ok(JsonWebTokenType(token))
     }
 }
 

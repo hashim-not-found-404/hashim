@@ -37,20 +37,23 @@ impl DatabaseRead for CacheOp {
     }
 }
 
-const WRITE_QUERY: &str = "INSERT INTO user (rowid, id, name, jwt) VALUES (?1, ?2, ?3, ?4)";
+const WRITE_QUERY: &str =
+    "INSERT OR REPLACE INTO user (rowid, id, name, jwt) VALUES (?1, ?2, ?3, ?4)";
 
 impl DatabaseWrite for CacheOp {
     type Db<'a> = cache_adapter::S;
     type Input = Ok;
 
     async fn write(txn: &mut Self::Db<'_>, input: &Self::Input) -> Result<()> {
+        let jwt_str = input.jwt.as_ref().map(|j| j.as_str()).unwrap_or("");
+
         txn.tables_db.execute(
             WRITE_QUERY,
             params![
                 input.new_uuid.to_string(),
                 input.user_id,
                 input.user_name,
-                input.jwt.0,
+                jwt_str,
             ],
         )?;
 

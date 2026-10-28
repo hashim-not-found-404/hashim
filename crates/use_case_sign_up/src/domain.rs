@@ -40,7 +40,7 @@ pub struct Ok {
     pub user_id: String,
     pub user_name: Option<String>,
     pub hashed_password: String,
-    pub jwt: JsonWebTokenType,
+    pub jwt: Option<JsonWebTokenType>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
@@ -123,7 +123,7 @@ impl Input {
             user_id: self.user_id.clone(),
             user_name: self.name.clone(),
             hashed_password,
-            jwt,
+            jwt: Some(jwt),
         }
     }
 }

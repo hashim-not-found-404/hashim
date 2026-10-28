@@ -88,11 +88,18 @@ pub async fn check_input<
         })));
     }
 
+    let Some(jwt) = JsonWebTokenType::try_from(cached_jwt).ok() else {
+        return Ok(Err(Box::new(Error {
+            user_id: Some(UserIdError::NotExist),
+            password: None,
+        })));
+    };
+
     Ok(Ok(Arc::new(Ok {
         user_uuid,
         user_id: input.user_id.clone(),
         user_name,
-        jwt: JsonWebTokenType(cached_jwt),
+        jwt,
     })))
 }
 
