@@ -109,6 +109,8 @@ pub struct LocalModel {
     pub async_state: AsyncState,
 
     pub company_name: String,
+    pub selected_company_uuid: Option<CompanyUuid>,
+
     pub name: String,
     pub is_it_contain_quantity: bool,
 }
@@ -138,6 +140,12 @@ impl LocalModel {
     }
 
     pub fn resolved_company_uuid(&self, global_model: &impl GlobalModel) -> Option<CompanyUuid> {
+        if !self.company_name.is_empty()
+            && let Some(uuid) = &self.selected_company_uuid
+        {
+            return Some(uuid.clone());
+        }
+
         let typed = self.company_name.clone();
         if typed.is_empty() {
             return global_model.selected_company();
@@ -209,6 +217,7 @@ pub struct AsyncInput {
 pub enum LocalChange {
     ShowDialog(Dialog),
     CompanyName(String),
+    SelectedCompanyUuid(Option<CompanyUuid>),
     Name(String),
     IsItContainQuantity(bool),
     CheckState(CheckStateLocal),
@@ -402,19 +411,14 @@ pub fn update(
                 (local_change, vec![], effect)
             }
             Intent::CompanyName(v) => {
-                let local_change = vec![
+                let mut local_change = vec![
                     LocalChange::CompanyName(v.clone()),
                     LocalChange::CheckState(CheckState::Idle),
                 ];
-                let resolved = if v.is_empty() {
-                    global_model.selected_company()
-                } else {
-                    global_model
-                        .list_of_companies()
-                        .into_iter()
-                        .find_map(|(uuid, name)| (name == v).then_some(uuid))
-                };
-                let effect = build_check_effect(local_model, global_model, resolved, |_| {});
+                if v != local_model.company_name {
+                    local_change.push(LocalChange::SelectedCompanyUuid(None));
+                }
+                let effect = build_check_effect(local_model, global_model, None, |_| {});
                 (local_change, vec![], effect)
             }
             Intent::SelectedCompany(idx) => {
@@ -423,6 +427,7 @@ pub fn update(
                     Some((company_uuid, company_name)) => {
                         let local_change = vec![
                             LocalChange::CompanyName(company_name.clone()),
+                            LocalChange::SelectedCompanyUuid(Some(company_uuid.clone())),
                             LocalChange::CheckState(CheckState::Idle),
                         ];
                         let effect = build_check_effect(
@@ -478,6 +483,7 @@ pub fn update(
                     let local_change = vec![
                         LocalChange::ShowDialog(Default::default()),
                         LocalChange::CompanyName(Default::default()),
+                        LocalChange::SelectedCompanyUuid(Default::default()),
                         LocalChange::Name(Default::default()),
                         LocalChange::IsItContainQuantity(Default::default()),
                         LocalChange::CheckState(CheckState::Idle),
@@ -511,6 +517,7 @@ pub fn local_apply(msg: LocalChange, local_model: &mut LocalModel) {
     match msg {
         LocalChange::ShowDialog(i) => local_model.show_dialog = i,
         LocalChange::CompanyName(i) => local_model.company_name = i,
+        LocalChange::SelectedCompanyUuid(i) => local_model.selected_company_uuid = i,
         LocalChange::Name(i) => local_model.name = i,
         LocalChange::IsItContainQuantity(i) => local_model.is_it_contain_quantity = i,
         LocalChange::CheckState(i) => local_model.check_state = i,

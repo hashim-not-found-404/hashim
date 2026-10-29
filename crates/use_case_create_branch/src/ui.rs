@@ -1,4 +1,5 @@
 use crate::client::Intent;
+use cache::utils::MyUuidConverter;
 use dioxus::prelude::*;
 use kernel::new_types::CompanyUuid;
 use kernel::types::Location;
@@ -53,8 +54,10 @@ pub fn Component(
                 on_select: move |a| sender(Intent::SelectedCompany(a)),
                 list: list_of_company_name_and_uuid,
                 row_renderer: Callback::new(move |a: (CompanyUuid, String)| {
+                    let bytes = a.0;
+                    let bytes = bytes.to_string();
                     rsx! {
-                        button { disabled: is_loading, "{a.1}" }
+                        button { disabled: is_loading, "{a.1} [{bytes}]" }
                     }
                 }),
             }
