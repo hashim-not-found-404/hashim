@@ -1,3 +1,4 @@
+use crate::cache::CacheStruct;
 use crate::ui_effect::Commander;
 use anyhow::Error;
 use anyhow::Result;
@@ -42,4 +43,11 @@ pub struct CallInput<'a, LocalModel, GlobalModel> {
     pub local: &'a LocalModel,
     pub global: &'a GlobalModel,
     pub commander: &'a Commander,
+}
+
+pub struct CallInputForFetch<'a, Input> {
+    pub tool_name: &'a str,
+    pub args: Value,
+    pub input: &'a Input,
+    pub cache: &'a CacheStruct,
 }

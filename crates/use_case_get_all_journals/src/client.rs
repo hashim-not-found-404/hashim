@@ -4,6 +4,7 @@ use crate::domain::MyResult;
 use crate::domain::Ok;
 use crate::domain::ReadInput;
 use crate::domain::ReadOutput;
+use anyhow::Context;
 use anyhow::Result;
 use anyhow::anyhow;
 use anyhow::bail;
@@ -87,12 +88,17 @@ pub async fn get_data(
 ) -> Result<MyResult> {
     let data: TypeOperationClientInput = Arc::new(input);
 
-    let (sender, receiver) = Mpsc::channel();
+    let (sender, mut receiver) = Mpsc::channel();
 
-    let f: ResponseFunction =
-        Box::new(|a: Response| -> Pin<Box<dyn Future<Output = Result<()>>>> {
-            Box::pin(async { sender.send(a).await })
-        });
+    let f: ResponseFunction = Box::new(
+        move |a: Response| -> Pin<Box<dyn Future<Output = Result<()>>>> {
+            let mut sender = sender.clone();
+            Box::pin(async move {
+                sender.send(a).await?;
+                Ok(())
+            })
+        },
+    );
 
     let caching_strategy = if is_from_server {
         CachingStrategy::ReadServerOnly
@@ -129,7 +135,7 @@ pub async fn fetch(mut cache: CacheStruct, input: Input) -> Result<()> {
     let data: TypeOperationClientInput = Arc::new(input);
 
     let f: ResponseFunction =
-        Box::new(|a: Response| -> Pin<Box<dyn Future<Output = Result<()>>>> {
+        Box::new(|_: Response| -> Pin<Box<dyn Future<Output = Result<()>>>> {
             Box::pin(async { Ok(()) })
         });
 

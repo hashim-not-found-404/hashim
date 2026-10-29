@@ -12,6 +12,8 @@ use kernel::types::RowIdError;
 use kernel::types::UserUuidError;
 use serde::Deserialize;
 use serde::Serialize;
+use std::collections::HashMap;
+use std::collections::HashSet;
 use typetag::serde;
 use utility::dtos::TraitOperationDTOError;
 use utility::dtos::TraitOperationDTOInput;
@@ -35,13 +37,13 @@ pub struct Input {
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct Ok {
-    pub data: Vec<Data>,
+    pub data: Vec<JournalInfo>,
 }
 
 make_type!(UuidType, JournalUuid);
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
-pub struct Data {
+pub struct JournalInfo {
     pub row_uuid: JournalUuid,
     pub company_uuid: CompanyUuid,
     pub name: String,
@@ -60,8 +62,8 @@ pub struct ReadInput {
 }
 
 pub struct ReadOutput {
-    pub user_roles: Vec<(CompanyUuid, Role)>,
-    pub data: Vec<Data>,
+    pub user_roles: HashMap<CompanyUuid, Vec<Role>>,
+    pub data: Vec<JournalInfo>,
 }
 
 impl Input {
@@ -70,10 +72,6 @@ impl Input {
 
         if !Id::validate(&self.user_uuid) {
             errr.user_uuid = Some(UserUuidError::Invalid);
-        }
-
-        if !Id::validate(&self.company_uuid) {
-            errr.company_uuid = Some(RowIdError::Invalid);
         }
 
         errr
@@ -93,14 +91,22 @@ impl Input {
         )
         .await?;
 
-        if read_output.user_roles.is_empty() {
-            return Ok(Err(Error {
-                user_uuid: Some(UserUuidError::YouDontHavePermissionToDoThat),
-            }));
+        let mut accepted_uuid = HashSet::new();
+
+        for (company_uuid, role) in read_output.user_roles {
+            if Role::has_any(&[Role::Manager], role.as_slice()) {
+                accepted_uuid.insert(company_uuid);
+            }
         }
 
-        Ok(Ok(Ok {
-            data: read_output.data,
-        }))
+        let mut journals = Vec::new();
+
+        for i in read_output.data {
+            if accepted_uuid.contains(&i.company_uuid) {
+                journals.push(i);
+            }
+        }
+
+        Ok(Ok(Ok { data: journals }))
     }
 }

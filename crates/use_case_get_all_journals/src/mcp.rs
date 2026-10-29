@@ -1,32 +1,25 @@
+use crate::client::get_data;
+use crate::domain::Input;
+use anyhow::Context;
 use anyhow::Result;
-use cache::utils::MyUuidConverter;
 use schemars::JsonSchema;
 use schemars::schema_for;
 use serde::Deserialize;
-use serde::Serialize;
 use serde_json::Value;
 use serde_json::to_value;
-use utility::mcp::CallInput;
+use utility::mcp::CallInputForFetch;
 use utility::mcp::McpToolDef;
 use utility::mcp::error_to_mcp;
 use utility::mcp::parse_args;
+
+pub trait GetInput {
+    fn get_input(&self) -> Option<Input>;
+}
 
 const LIST_JOURNALS: &str = "list_journals";
 
 #[derive(Debug, JsonSchema, Deserialize)]
 struct ListJournalsArgs {}
-
-#[derive(Debug, Serialize)]
-struct JournalInfo {
-    row_uuid: String,
-    name: String,
-    is_it_contain_quantity: bool,
-}
-
-#[derive(Debug, Serialize)]
-struct ListJournalsOutput {
-    journals: Vec<JournalInfo>,
-}
 
 pub fn tools() -> Vec<McpToolDef> {
     vec![McpToolDef {
@@ -39,23 +32,24 @@ pub fn tools() -> Vec<McpToolDef> {
     }]
 }
 
-pub fn call<'a>(input: CallInput<'a, LocalModel, impl GlobalModel>) -> Result<Value> {
+pub async fn call<'a>(input: CallInputForFetch<'a, impl GetInput>) -> Result<Value> {
     match input.tool_name {
         LIST_JOURNALS => {
             let _: ListJournalsArgs = parse_args(input.args)?;
 
-            let journals = input
-                .local
-                .list()
-                .into_iter()
-                .map(|d| JournalInfo {
-                    row_uuid: d.row_uuid.to_string(),
-                    name: d.name,
-                    is_it_contain_quantity: d.is_it_contain_quantity,
-                })
-                .collect();
+            let ok = get_data(
+                input.cache.clone(),
+                false,
+                input.input.get_input().context("user id not found")?,
+            )
+            .await?;
 
-            Ok(to_value(ListJournalsOutput { journals })?)
+            let a = match ok {
+                Ok(a) => a,
+                Err(a) => return Ok(to_value(a)?),
+            };
+
+            Ok(to_value(a)?)
         }
         _ => Err(error_to_mcp(
             "unknown_tool",
