@@ -15,7 +15,6 @@ use kernel::new_types::BranchUuid;
 use kernel::new_types::CompanyUuid;
 use kernel::new_types::UserUuid;
 use kernel::new_types::UuidType;
-use kernel::types::Currency;
 use kernel::types::DatabaseRead;
 use kernel::types::Location;
 use kernel::types::MyErrorTrait;
@@ -112,7 +111,6 @@ pub struct LocalModel {
 
     pub company_name: String,
     pub branch_name: String,
-    pub currency: Currency,
     pub location: Location,
 }
 
@@ -121,7 +119,6 @@ impl LocalModel {
         Self {
             company_name: self.company_name.clone(),
             branch_name: self.branch_name.clone(),
-            currency: self.currency.clone(),
             location: self.location.clone(),
             ..Default::default()
         }
@@ -220,7 +217,6 @@ pub struct AsyncInput {
     pub user_uuid: UserUuid,
     pub company_belong: CompanyUuid,
     pub branch_name: String,
-    pub currency: Currency,
     pub location: Location,
 }
 
@@ -229,7 +225,6 @@ pub enum LocalChange {
     ShowDialog(Dialog),
     CompanyName(String),
     BranchName(String),
-    Currency(Currency),
     Location(Location),
     CheckState(CheckStateLocal),
     AsyncState(AsyncState),
@@ -259,7 +254,6 @@ pub enum Intent {
     CompanyName(String),
     SelectedCompany(usize),
     BranchName(String),
-    Currency(Currency),
     Latitude(f64),
     Longitude(f64),
     Subscribe,
@@ -292,7 +286,6 @@ fn current_check_input(
         user_uuid,
         company_belong,
         branch_name: local_model.branch_name.clone(),
-        currency: local_model.currency.clone(),
         location: local_model.location.clone(),
     })
 }
@@ -315,7 +308,6 @@ fn build_check_effect(
         user_uuid,
         company_belong,
         branch_name: local_model.branch_name.clone(),
-        currency: local_model.currency.clone(),
         location: local_model.location.clone(),
     };
     mutate(&mut a);
@@ -365,7 +357,6 @@ pub fn update(
                     user_uuid,
                     company_belong,
                     branch_name: local_model.branch_name.clone(),
-                    currency: local_model.currency.clone(),
                     location: local_model.location.clone(),
                 };
 
@@ -411,7 +402,6 @@ pub fn update(
                             user_uuid,
                             company_belong,
                             branch_name: local_model.branch_name.clone(),
-                            currency: local_model.currency.clone(),
                             location: local_model.location.clone(),
                         };
 
@@ -472,16 +462,6 @@ pub fn update(
                 });
                 (local_change, vec![], effect)
             }
-            Intent::Currency(v) => {
-                let local_change = vec![
-                    LocalChange::Currency(v.clone()),
-                    LocalChange::CheckState(CheckState::Idle),
-                ];
-                let effect = build_check_effect(local_model, global_model, None, |a| {
-                    a.currency = v;
-                });
-                (local_change, vec![], effect)
-            }
             Intent::Latitude(v) => {
                 let mut loc = local_model.location.clone();
                 loc.latitude = v;
@@ -531,7 +511,6 @@ pub fn update(
                         LocalChange::ShowDialog(Default::default()),
                         LocalChange::CompanyName(Default::default()),
                         LocalChange::BranchName(Default::default()),
-                        LocalChange::Currency(Default::default()),
                         LocalChange::Location(Default::default()),
                         LocalChange::CheckState(CheckState::Idle),
                         LocalChange::AsyncState(result),
@@ -565,7 +544,6 @@ pub fn local_apply(msg: LocalChange, local_model: &mut LocalModel) {
         LocalChange::ShowDialog(i) => local_model.show_dialog = i,
         LocalChange::CompanyName(i) => local_model.company_name = i,
         LocalChange::BranchName(i) => local_model.branch_name = i,
-        LocalChange::Currency(i) => local_model.currency = i,
         LocalChange::Location(i) => local_model.location = i,
         LocalChange::CheckState(i) => local_model.check_state = i,
         LocalChange::AsyncState(i) => local_model.async_state = i,
@@ -643,7 +621,6 @@ impl UseCaseClient for Wire {
             new_uuid: BranchUuid::from(UuidType::from(Id::generate())),
             company_belong: input.company_belong.clone(),
             branch_name: input.branch_name.clone(),
-            currency: input.currency.clone(),
             location: input.location.clone(),
         }
     }

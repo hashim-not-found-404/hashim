@@ -274,7 +274,6 @@ pub(crate) fn CreateBranchForm(
             company_name_error,
             resolved_company_uuid,
             branch_name: lm.branch_name.clone(),
-            currency: lm.currency.clone(),
             location: lm.location.clone(),
             branch_name_error: lm.error_branch_name().map(|e| format!("{e:?}")),
             location_error: lm.error_location().map(|e| format!("{e:?}")),

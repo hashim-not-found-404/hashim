@@ -4,7 +4,6 @@ use infrastructure::row_id::RowId;
 use kernel::new_types::BranchUuid;
 use kernel::new_types::CompanyUuid;
 use kernel::new_types::UserUuid;
-use kernel::types::Currency;
 use kernel::types::DatabaseRead;
 use kernel::types::Location;
 use kernel::types::MarkerMyErrorTrait;
@@ -35,7 +34,6 @@ pub struct Input {
     pub new_uuid: BranchUuid,
     pub company_belong: CompanyUuid,
     pub branch_name: String,
-    pub currency: Currency,
     pub location: Location,
 }
 
@@ -45,7 +43,6 @@ pub struct Ok {
     pub company_belong: CompanyUuid,
     pub user_uuid: UserUuid,
     pub branch_name: String,
-    pub currency: Currency,
     pub location: Location,
     pub role: Role,
 }
@@ -162,7 +159,6 @@ impl Input {
             company_belong: self.company_belong.clone(),
             user_uuid: self.user_uuid.clone(),
             branch_name: self.branch_name.clone(),
-            currency: self.currency.clone(),
             location: self.location.clone(),
             role: Role::CoManager,
         }

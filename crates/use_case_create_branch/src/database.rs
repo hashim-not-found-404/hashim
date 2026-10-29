@@ -75,13 +75,13 @@ impl DatabaseRead for DataBaseOp {
 const WRITE_QUERY: &str = "
     WITH branch_insert AS (
         INSERT INTO accounting_app.company_branch (
-            rowid, company_belong, name, currency,
+            rowid, company_belong, name,
             location_latitude, location_longitude
-        ) VALUES ($1, $2, $3, $4, $5, $6)
+        ) VALUES ($1, $2, $3, $4, $5)
         RETURNING rowid
     )
     INSERT INTO accounting_app.access_control_for_company_branch (rowid, data_group, user_, role)
-    SELECT rowid, rowid, $7, $8 FROM branch_insert
+    SELECT rowid, rowid, $6, $7 FROM branch_insert
 ";
 
 impl DatabaseWrite for DataBaseOp {
@@ -103,7 +103,6 @@ impl DatabaseWrite for DataBaseOp {
                     &input.new_uuid.to_externel_uuid(),
                     &input.company_belong.to_externel_uuid(),
                     &input.branch_name,
-                    &input.currency.as_str(),
                     &latitude,
                     &longitude,
                     &input.user_uuid.to_externel_uuid(),

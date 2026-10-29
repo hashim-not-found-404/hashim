@@ -61,9 +61,9 @@ impl DatabaseRead for CacheOp {
 
 const WRITE_BRANCH_QUERY: &str = "
     INSERT OR REPLACE INTO company_branch (
-        rowid, company_belong, name, currency,
+        rowid, company_belong, name,
         location_latitude, location_longitude
-    ) VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+    ) VALUES (?1, ?2, ?3, ?4, ?5)
 ";
 
 const WRITE_ACCESS_QUERY: &str = "
@@ -85,7 +85,6 @@ impl DatabaseWrite for CacheOp {
                 &branch_uuid,
                 &company_uuid,
                 &input.branch_name,
-                input.currency.as_str(),
                 input.location.latitude,
                 input.location.longitude,
             ],
