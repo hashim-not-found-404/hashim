@@ -14,14 +14,21 @@ use utility::types::LogError;
 const READ_QUERY: &str = "
     WITH
     new_uuid_check AS (
-        SELECT EXISTS(SELECT 1 FROM accounting_app.journal WHERE rowid = $1) AS used
+        SELECT (
+            EXISTS(SELECT 1 FROM accounting_app.journal_with_quantity WHERE rowid = $1)
+            OR EXISTS(SELECT 1 FROM accounting_app.journal_without_quantity WHERE rowid = $1)
+        ) AS used
     ),
     company_check AS (
         SELECT EXISTS(SELECT 1 FROM accounting_app.company WHERE rowid = $2) AS exists
     ),
     name_check AS (
-        SELECT EXISTS(SELECT 1 FROM accounting_app.journal
-                      WHERE company_belong = $2 AND name = $4) AS used
+        SELECT (
+            EXISTS(SELECT 1 FROM accounting_app.journal_with_quantity
+                   WHERE company_belong = $2 AND name = $4)
+            OR EXISTS(SELECT 1 FROM accounting_app.journal_without_quantity
+                   WHERE company_belong = $2 AND name = $4)
+        ) AS used
     ),
     user_roles AS (
         SELECT COALESCE(jsonb_agg(role), '[]'::jsonb) AS roles
@@ -33,6 +40,16 @@ const READ_QUERY: &str = "
         (SELECT exists FROM company_check)  AS company_exists,
         (SELECT used   FROM name_check)     AS name_used,
         (SELECT roles  FROM user_roles)     AS user_roles
+";
+
+const WRITE_JOURNAL_WITH_QUANTITY_QUERY: &str = "
+    INSERT INTO accounting_app.journal_with_quantity (rowid, company_belong, name)
+    VALUES ($1, $2, $3)
+";
+
+const WRITE_JOURNAL_WITHOUT_QUANTITY_QUERY: &str = "
+    INSERT INTO accounting_app.journal_without_quantity (rowid, company_belong, name)
+    VALUES ($1, $2, $3)
 ";
 
 pub struct DataBaseOp;
@@ -78,17 +95,18 @@ impl DatabaseRead for DataBaseOp {
     }
 }
 
-const WRITE_QUERY: &str = "
-    INSERT INTO accounting_app.journal (rowid, company_belong, name, is_it_contain_quantity)
-    VALUES ($1, $2, $3, $4)
-";
-
 impl DatabaseWrite for DataBaseOp {
     type Db<'a> = db_transaction::S<'a>;
     type Input = Ok;
 
     async fn write(txn: &mut Self::Db<'_>, input: &Self::Input) -> Result<()> {
-        let stmt = txn.txn.prepare_cached(WRITE_QUERY).await.log()?;
+        let query = if input.is_it_contain_quantity {
+            WRITE_JOURNAL_WITH_QUANTITY_QUERY
+        } else {
+            WRITE_JOURNAL_WITHOUT_QUANTITY_QUERY
+        };
+
+        let stmt = txn.txn.prepare_cached(query).await.log()?;
         txn.txn
             .execute(
                 &stmt,
@@ -96,7 +114,6 @@ impl DatabaseWrite for DataBaseOp {
                     &input.new_uuid.to_externel_uuid(),
                     &input.company_belong.to_externel_uuid(),
                     &input.name,
-                    &input.is_it_contain_quantity,
                 ],
             )
             .await
@@ -113,6 +130,11 @@ mod tests {
     #[tokio::test]
     async fn test_query_string_directly() {
         test_query_helper(READ_QUERY).await.unwrap();
-        test_query_helper(WRITE_QUERY).await.unwrap();
+        test_query_helper(WRITE_JOURNAL_WITH_QUANTITY_QUERY)
+            .await
+            .unwrap();
+        test_query_helper(WRITE_JOURNAL_WITHOUT_QUANTITY_QUERY)
+            .await
+            .unwrap();
     }
 }
