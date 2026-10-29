@@ -1,0 +1,31 @@
+[package]
+edition = "2024"
+name    = "use_case_get_all_journals"
+version = "0.1.0"
+
+[features]
+cache    = ["dep:cache", "dep:rusqlite"]
+client   = []
+database = ["dep:database", "dep:uuid"]
+mcp      = ["dep:schemars", "dep:serde_json"]
+server   = []
+
+[dependencies]
+infrastructure = { workspace = true }
+kernel         = { workspace = true }
+utility        = { workspace = true }
+
+cache    = { optional = true, workspace = true }
+database = { optional = true, workspace = true }
+
+anyhow  = { workspace = true }
+serde   = { workspace = true }
+typetag = { workspace = true }
+
+rusqlite   = { optional = true, workspace = true }
+schemars   = { optional = true, workspace = true }
+serde_json = { optional = true, workspace = true }
+uuid       = { optional = true, workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true }

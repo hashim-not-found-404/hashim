@@ -363,6 +363,7 @@ dependencies = [
  "use_case_create_journal_entry",
  "use_case_error_handler",
  "use_case_get_all_accounts",
+ "use_case_get_all_journals",
  "use_case_get_companies_and_branches",
  "use_case_home",
  "use_case_select_default_company",
@@ -390,6 +391,7 @@ dependencies = [
  "use_case_create_journal",
  "use_case_create_journal_entry",
  "use_case_get_all_accounts",
+ "use_case_get_all_journals",
  "use_case_get_companies_and_branches",
  "use_case_sign_in",
  "use_case_sign_up",
@@ -4938,6 +4940,25 @@ dependencies = [
  "kernel",
  "rusqlite",
  "serde",
+ "tokio",
+ "typetag",
+ "utility",
+ "uuid",
+]
+
+[[package]]
+name = "use_case_get_all_journals"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "cache",
+ "database",
+ "infrastructure",
+ "kernel",
+ "rusqlite",
+ "schemars",
+ "serde",
+ "serde_json",
  "tokio",
  "typetag",
  "utility",

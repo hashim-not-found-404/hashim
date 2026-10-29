@@ -11,6 +11,7 @@ use std::any::Any;
 use utility::dtos::TypeOperationDTOInput;
 
 make_server_wrapper_read!(get_all_accounts);
+make_server_wrapper_read!(get_all_journals);
 make_server_wrapper_read!(get_companies_and_branches);
 make_server_wrapper_read!(sign_in);
 make_server_wrapper_write!(create_account);
@@ -39,6 +40,7 @@ impl CastDTOToServer for MyCaster {
         cast_input_to_server_case!(create_journal);
         cast_input_to_server_case!(create_journal_entry);
         cast_input_to_server_case!(get_all_accounts);
+        cast_input_to_server_case!(get_all_journals);
         cast_input_to_server_case!(get_companies_and_branches);
         cast_input_to_server_case!(sign_in);
         cast_input_to_server_case!(sign_up);

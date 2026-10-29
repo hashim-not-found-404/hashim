@@ -25,6 +25,7 @@ use_case_create_journal             = { path = "./crates/use_case_create_journal
 use_case_create_journal_entry       = { path = "./crates/use_case_create_journal_entry" }
 use_case_error_handler              = { path = "./crates/use_case_error_handler" }
 use_case_get_all_accounts           = { path = "./crates/use_case_get_all_accounts" }
+use_case_get_all_journals           = { path = "./crates/use_case_get_all_journals" }
 use_case_get_companies_and_branches = { path = "./crates/use_case_get_companies_and_branches" }
 use_case_home                       = { path = "./crates/use_case_home" }
 use_case_select_default_company     = { path = "./crates/use_case_select_default_company" }

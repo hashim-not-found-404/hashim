@@ -102,6 +102,7 @@ make_client_wrapper_cache!(create_company);
 make_client_wrapper_cache!(create_journal);
 make_client_wrapper_cache!(create_journal_entry);
 make_client_wrapper_cache!(get_all_accounts);
+make_client_wrapper_cache!(get_all_journals);
 make_client_wrapper_cache!(get_companies_and_branches);
 make_client_wrapper_cache!(sign_in);
 make_client_wrapper_cache!(sign_up);
@@ -115,6 +116,7 @@ make_client_wrapper_updater!(home);
 make_client_wrapper_updater!(select_default_company);
 make_client_wrapper_updater!(sign_in);
 make_client_wrapper_updater!(sign_up);
+make_mcp_provider!(get_all_journals);
 make_mcp_provider!(home);
 make_mcp_provider_form!(create_branch);
 make_mcp_provider_form!(create_company);
@@ -122,11 +124,12 @@ make_mcp_provider_form!(create_journal);
 
 pub(crate) fn get_all_providers() -> Vec<Box<dyn TraitMcpProvider>> {
     vec![
-        Box::new(mcp_provider_home::TypeMcpProvider),
-        Box::new(mcp_provider_create_company::TypeMcpProvider),
-        Box::new(mcp_provider_create_branch::TypeMcpProvider),
-        Box::new(mcp_provider_create_journal::TypeMcpProvider),
         Box::new(mcp_home_forms::TypeMcpProvider),
+        Box::new(mcp_provider_create_branch::TypeMcpProvider),
+        Box::new(mcp_provider_create_company::TypeMcpProvider),
+        Box::new(mcp_provider_create_journal::TypeMcpProvider),
+        Box::new(mcp_provider_get_all_journals::TypeMcpProvider),
+        Box::new(mcp_provider_home::TypeMcpProvider),
     ]
 }
 
@@ -166,6 +169,7 @@ impl CastClientToCache for MyCaster {
         cast_input_to_cache_check_case!(create_journal);
         cast_input_to_cache_check_case!(create_journal_entry);
         cast_input_to_cache_check_case!(get_all_accounts);
+        cast_input_to_cache_check_case!(get_all_journals);
         cast_input_to_cache_check_case!(get_companies_and_branches);
         cast_input_to_cache_check_case!(sign_in);
         cast_input_to_cache_check_case!(sign_up);
@@ -185,6 +189,7 @@ impl CastClientToCache for MyCaster {
         cast_ok_to_cache_write_case!(create_journal);
         cast_ok_to_cache_write_case!(create_journal_entry);
         cast_ok_to_cache_write_case!(get_all_accounts);
+        cast_ok_to_cache_write_case!(get_all_journals);
         cast_ok_to_cache_write_case!(get_companies_and_branches);
         cast_ok_to_cache_write_case!(sign_in);
         cast_ok_to_cache_write_case!(sign_up);
@@ -204,6 +209,7 @@ impl CastDTOToClient for MyCaster {
         cast_input_to_client_case!(create_journal);
         cast_input_to_client_case!(create_journal_entry);
         cast_input_to_client_case!(get_all_accounts);
+        cast_input_to_client_case!(get_all_journals);
         cast_input_to_client_case!(get_companies_and_branches);
         cast_input_to_client_case!(sign_in);
         cast_input_to_client_case!(sign_up);
@@ -221,6 +227,7 @@ impl CastDTOToClient for MyCaster {
         cast_ok_to_client_case!(create_journal);
         cast_ok_to_client_case!(create_journal_entry);
         cast_ok_to_client_case!(get_all_accounts);
+        cast_ok_to_client_case!(get_all_journals);
         cast_ok_to_client_case!(get_companies_and_branches);
         cast_ok_to_client_case!(sign_in);
         cast_ok_to_client_case!(sign_up);
@@ -238,6 +245,7 @@ impl CastDTOToClient for MyCaster {
         cast_error_to_client_case!(create_journal);
         cast_error_to_client_case!(create_journal_entry);
         cast_error_to_client_case!(get_all_accounts);
+        cast_error_to_client_case!(get_all_journals);
         cast_error_to_client_case!(get_companies_and_branches);
         cast_error_to_client_case!(sign_in);
         cast_error_to_client_case!(sign_up);
