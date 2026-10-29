@@ -77,6 +77,7 @@ pub(crate) fn App() -> Element {
 fn Home() -> Element {
     let (
         user_name,
+        is_loading_companies,
         companies,
         branches,
         selected_company,
@@ -91,6 +92,7 @@ fn Home() -> Element {
                 .clone()
                 .or_else(|| Some(m.user_id.clone()))
                 .unwrap_or_default(),
+            page.async_state.clone().is_loading(), // ← new
             page.list_of_companies(),
             page.list_of_branches(m),
             m.selected_company_uuid.clone(),
@@ -105,6 +107,7 @@ fn Home() -> Element {
         use_case_select_default_company::ui::Component {
             sender: move |i| send(use_case_select_default_company::client::Message::Intent(i)),
             user_name,
+            is_loading: is_loading_companies,
             companies,
             branches,
             selected_company,

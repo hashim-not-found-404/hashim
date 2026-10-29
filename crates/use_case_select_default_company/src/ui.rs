@@ -7,6 +7,7 @@ use kernel::new_types::CompanyUuid;
 pub fn Component(
     sender: EventHandler<Intent>,
     user_name: String,
+    is_loading: bool,
     companies: Vec<(CompanyUuid, String)>,
     branches: Vec<(BranchUuid, String)>,
     selected_company: Option<CompanyUuid>,
@@ -52,8 +53,10 @@ pub fn Component(
 
                 if companies_open {
                     div {
-                        if companies.is_empty() {
+                        if is_loading {
                             span { "loading companies…" }
+                        } else if companies.is_empty() {
+                            span { "no companies" }
                         } else {
                             for (uuid, name) in companies.iter() {
                                 {
@@ -92,7 +95,9 @@ pub fn Component(
 
                 if branches_open && has_company {
                     div {
-                        if branches.is_empty() {
+                        if is_loading {
+                            span { "loading branches…" }
+                        } else if branches.is_empty() {
                             span { "no branches for this company" }
                         } else {
                             for (uuid, name) in branches.iter() {
