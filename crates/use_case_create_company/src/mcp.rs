@@ -30,12 +30,7 @@ struct CreateCompanyArgs {
 }
 
 #[derive(Debug, Serialize)]
-struct Output {
-    /// `true` once the intent was accepted onto the commander queue.
-    /// Does NOT mean the reducer has already applied the change — call
-    /// `list_forms` again to confirm.
-    is_ok: bool,
-}
+struct Output {}
 
 pub fn tools() -> Vec<McpToolDef> {
     vec![McpToolDef {
@@ -71,7 +66,7 @@ pub fn call<'a>(input: CallInput<'a, LocalModel, impl GlobalModel>) -> Result<Va
                 Message::Intent(Intent::Currency(args.currency)),
             );
 
-            Ok(to_value(Output { is_ok: true })?)
+            Ok(to_value(Output {})?)
         }
         _ => Err(error_to_mcp(
             "unknown_tool",

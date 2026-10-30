@@ -186,3 +186,15 @@ impl use_case_create_journal_entry::client::GlobalModel for TypeGlobalModel {
 }
 
 impl use_case_home::client::GlobalModel for TypeGlobalModel {}
+
+impl use_case_create_journal::client::GlobalModel for TypeGlobalModel {
+    fn user_uuid(&self) -> Option<UserUuid> {
+        self.user_uuid()
+    }
+    fn selected_company(&self) -> Option<CompanyUuid> {
+        self.selected_company_uuid.clone()
+    }
+    fn list_of_companies(&self) -> Vec<(CompanyUuid, String)> {
+        self.list_of_companies()
+    }
+}

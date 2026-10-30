@@ -16,13 +16,13 @@ use utility::mcp::McpToolDef;
 use utility::mcp::TraitMcpProvider;
 use utility::mcp::error_to_mcp;
 use utility::mcp::parse_args;
-use utility::ui_effect::dummy_replier;
 
 #[derive(Debug, Clone, JsonSchema, Deserialize)]
 #[serde(rename_all = "snake_case")]
 enum FormType {
     CreateBranch,
     CreateCompany,
+    CreateJournal,
 }
 
 const ADD_FORM: &str = "add_form";
@@ -35,9 +35,7 @@ struct AddFormArgs {
 }
 
 #[derive(Debug, Serialize)]
-struct AddFormOutput {
-    is_ok: bool,
-}
+struct Output {}
 
 pub(crate) struct TypeMcpProvider;
 
@@ -62,9 +60,9 @@ impl TraitMcpProvider for TypeMcpProvider {
                     let AddFormArgs { form_type } = parse_args(args)?;
                     let form = map_form_type_to_local_model(form_type);
 
-                    COMMANDER.send(dummy_replier(), Message::Intent(Intent::AddForm(form)));
+                    COMMANDER.sender_with_replier(Message::Intent(Intent::AddForm(form)));
 
-                    Ok(to_value(AddFormOutput { is_ok: true })?)
+                    Ok(to_value(Output {})?)
                 }
                 _ => Err(error_to_mcp(
                     "unknown_tool",
@@ -79,5 +77,6 @@ fn map_form_type_to_local_model(form_type: FormType) -> Box<dyn FormLocalModel> 
     match form_type {
         FormType::CreateBranch => Box::new(wire::create_branch_form::WrapperForm::default()),
         FormType::CreateCompany => Box::new(wire::create_company_form::WrapperForm::default()),
+        FormType::CreateJournal => Box::new(wire::create_journal_form::WrapperForm::default()),
     }
 }

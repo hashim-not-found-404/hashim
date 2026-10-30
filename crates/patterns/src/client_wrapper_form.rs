@@ -25,6 +25,7 @@ pub(crate) fn my_macro(input: TokenStream) -> TokenStream {
             use std::any::Any;
             use std::pin::Pin;
             use typetag::serde;
+            use #use_case::client::Intent;
             use #use_case::client::Effect;
             use #use_case::client::GlobalChange;
             use #use_case::client::LocalModel;
@@ -47,6 +48,11 @@ pub(crate) fn my_macro(input: TokenStream) -> TokenStream {
 
             #[serde]
             impl FormLocalModel for WrapperForm {
+                fn unsubscribe_message(&self) -> Option<Box<dyn MessageTrait>> {
+                    let msg: Box<dyn MessageTrait> = Box::new(Message::Intent(Intent::UnSubscribe));
+                    Some(msg)
+                }
+
                 fn clone_user_input(&self) -> Box<dyn FormLocalModel> {
                     Box::new(WrapperForm(self.0.clone_user_input()))
                 }

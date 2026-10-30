@@ -15,8 +15,10 @@ use_case_create_account             = { features = ["database", "server"], works
 use_case_create_account_for_branch  = { features = ["database", "server"], workspace = true }
 use_case_create_branch              = { features = ["database", "server"], workspace = true }
 use_case_create_company             = { features = ["database", "server"], workspace = true }
+use_case_create_journal             = { features = ["database", "server"], workspace = true }
 use_case_create_journal_entry       = { features = ["database", "server"], workspace = true }
 use_case_get_all_accounts           = { features = ["database", "server"], workspace = true }
+use_case_get_all_journals           = { features = ["database", "server"], workspace = true }
 use_case_get_companies_and_branches = { features = ["database", "server"], workspace = true }
 use_case_sign_in                    = { features = ["database", "server"], workspace = true }
 use_case_sign_up                    = { features = ["database", "server"], workspace = true }

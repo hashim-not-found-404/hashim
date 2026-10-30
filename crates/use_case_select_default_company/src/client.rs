@@ -129,6 +129,7 @@ pub enum Effect {
     Subscribe(ProcessId),
     UnSubscribe(ProcessId),
     Refresh { async_input: AsyncInput },
+    FetchFromServer { async_input: AsyncInput },
 }
 
 #[derive(Debug, Clone)]
@@ -172,7 +173,7 @@ pub fn update(
 
                 let effect = vec![
                     Effect::Subscribe(local_model.process_id),
-                    Effect::Refresh { async_input },
+                    Effect::FetchFromServer { async_input },
                 ];
                 (local_change, vec![], effect)
             }
@@ -247,6 +248,13 @@ pub async fn effect(msg: Effect, replier: Replier, context: UiContext) -> Result
         }
         Effect::Refresh { async_input } => {
             handle_refresh::<Wire>(replier, async_input, context).await?;
+        }
+        Effect::FetchFromServer { async_input } => {
+            use_case_get_companies_and_branches::client::fetch(
+                context.cache.clone(),
+                async_input.user_uuid,
+            )
+            .await?;
         }
     }
     Ok(())

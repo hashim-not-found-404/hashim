@@ -15,7 +15,6 @@ use kernel::new_types::BranchUuid;
 use kernel::new_types::CompanyUuid;
 use kernel::new_types::UserUuid;
 use kernel::new_types::UuidType;
-use kernel::types::Currency;
 use kernel::types::DatabaseRead;
 use kernel::types::Location;
 use kernel::types::MyErrorTrait;
@@ -111,8 +110,8 @@ pub struct LocalModel {
     pub async_state: AsyncState,
 
     pub company_name: String,
+    pub selected_company_uuid: Option<CompanyUuid>,
     pub branch_name: String,
-    pub currency: Currency,
     pub location: Location,
 }
 
@@ -121,7 +120,6 @@ impl LocalModel {
         Self {
             company_name: self.company_name.clone(),
             branch_name: self.branch_name.clone(),
-            currency: self.currency.clone(),
             location: self.location.clone(),
             ..Default::default()
         }
@@ -156,6 +154,12 @@ impl LocalModel {
     }
 
     pub fn resolved_company_uuid(&self, global_model: &impl GlobalModel) -> Option<CompanyUuid> {
+        if !self.company_name.is_empty()
+            && let Some(uuid) = &self.selected_company_uuid
+        {
+            return Some(uuid.clone());
+        }
+
         let typed = self.company_name.clone();
         if typed.is_empty() {
             return global_model.selected_company();
@@ -220,7 +224,6 @@ pub struct AsyncInput {
     pub user_uuid: UserUuid,
     pub company_belong: CompanyUuid,
     pub branch_name: String,
-    pub currency: Currency,
     pub location: Location,
 }
 
@@ -228,8 +231,8 @@ pub struct AsyncInput {
 pub enum LocalChange {
     ShowDialog(Dialog),
     CompanyName(String),
+    SelectedCompanyUuid(Option<CompanyUuid>),
     BranchName(String),
-    Currency(Currency),
     Location(Location),
     CheckState(CheckStateLocal),
     AsyncState(AsyncState),
@@ -259,7 +262,6 @@ pub enum Intent {
     CompanyName(String),
     SelectedCompany(usize),
     BranchName(String),
-    Currency(Currency),
     Latitude(f64),
     Longitude(f64),
     Subscribe,
@@ -292,7 +294,6 @@ fn current_check_input(
         user_uuid,
         company_belong,
         branch_name: local_model.branch_name.clone(),
-        currency: local_model.currency.clone(),
         location: local_model.location.clone(),
     })
 }
@@ -315,7 +316,6 @@ fn build_check_effect(
         user_uuid,
         company_belong,
         branch_name: local_model.branch_name.clone(),
-        currency: local_model.currency.clone(),
         location: local_model.location.clone(),
     };
     mutate(&mut a);
@@ -365,7 +365,6 @@ pub fn update(
                     user_uuid,
                     company_belong,
                     branch_name: local_model.branch_name.clone(),
-                    currency: local_model.currency.clone(),
                     location: local_model.location.clone(),
                 };
 
@@ -411,7 +410,6 @@ pub fn update(
                             user_uuid,
                             company_belong,
                             branch_name: local_model.branch_name.clone(),
-                            currency: local_model.currency.clone(),
                             location: local_model.location.clone(),
                         };
 
@@ -428,19 +426,17 @@ pub fn update(
                 (local_change, vec![], effect)
             }
             Intent::CompanyName(v) => {
-                let local_change = vec![
+                let mut local_change = vec![
                     LocalChange::CompanyName(v.clone()),
                     LocalChange::CheckState(CheckState::Idle),
                 ];
-                let resolved = if v.is_empty() {
-                    global_model.selected_company()
-                } else {
-                    global_model
-                        .list_of_companies()
-                        .into_iter()
-                        .find_map(|(uuid, name)| (name == v).then_some(uuid))
-                };
-                let effect = build_check_effect(local_model, global_model, resolved, |_| {});
+                // Only drop the picked UUID if the user actually changed the
+                // text. Re-typing the same text must not silently swap which
+                // company is targeted (which would be the *first* name match).
+                if v != local_model.company_name {
+                    local_change.push(LocalChange::SelectedCompanyUuid(None));
+                }
+                let effect = build_check_effect(local_model, global_model, None, |_| {});
                 (local_change, vec![], effect)
             }
             Intent::SelectedCompany(idx) => {
@@ -449,6 +445,7 @@ pub fn update(
                     Some((company_uuid, company_name)) => {
                         let local_change = vec![
                             LocalChange::CompanyName(company_name.clone()),
+                            LocalChange::SelectedCompanyUuid(Some(company_uuid.clone())),
                             LocalChange::CheckState(CheckState::Idle),
                         ];
                         let effect = build_check_effect(
@@ -469,16 +466,6 @@ pub fn update(
                 ];
                 let effect = build_check_effect(local_model, global_model, None, |a| {
                     a.branch_name = v;
-                });
-                (local_change, vec![], effect)
-            }
-            Intent::Currency(v) => {
-                let local_change = vec![
-                    LocalChange::Currency(v.clone()),
-                    LocalChange::CheckState(CheckState::Idle),
-                ];
-                let effect = build_check_effect(local_model, global_model, None, |a| {
-                    a.currency = v;
                 });
                 (local_change, vec![], effect)
             }
@@ -530,10 +517,10 @@ pub fn update(
                     let local_change = vec![
                         LocalChange::ShowDialog(Default::default()),
                         LocalChange::CompanyName(Default::default()),
+                        LocalChange::SelectedCompanyUuid(Default::default()),
                         LocalChange::BranchName(Default::default()),
-                        LocalChange::Currency(Default::default()),
                         LocalChange::Location(Default::default()),
-                        LocalChange::CheckState(CheckState::Idle),
+                        LocalChange::CheckState(Default::default()),
                         LocalChange::AsyncState(result),
                     ];
                     (local_change, vec![], vec![])
@@ -564,8 +551,8 @@ pub fn local_apply(msg: LocalChange, local_model: &mut LocalModel) {
     match msg {
         LocalChange::ShowDialog(i) => local_model.show_dialog = i,
         LocalChange::CompanyName(i) => local_model.company_name = i,
+        LocalChange::SelectedCompanyUuid(i) => local_model.selected_company_uuid = i,
         LocalChange::BranchName(i) => local_model.branch_name = i,
-        LocalChange::Currency(i) => local_model.currency = i,
         LocalChange::Location(i) => local_model.location = i,
         LocalChange::CheckState(i) => local_model.check_state = i,
         LocalChange::AsyncState(i) => local_model.async_state = i,
@@ -643,7 +630,6 @@ impl UseCaseClient for Wire {
             new_uuid: BranchUuid::from(UuidType::from(Id::generate())),
             company_belong: input.company_belong.clone(),
             branch_name: input.branch_name.clone(),
-            currency: input.currency.clone(),
             location: input.location.clone(),
         }
     }

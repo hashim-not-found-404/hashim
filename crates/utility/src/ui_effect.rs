@@ -45,10 +45,6 @@ where
     )
 }
 
-pub fn dummy_replier() -> Replier {
-    Arc::new(|_| Box::pin(async { Ok(()) }))
-}
-
 pub struct MessageToCommander {
     pub replier: Replier,
     pub inner: Box<dyn MessageTrait>,
@@ -130,6 +126,20 @@ impl Commander {
         );
 
         commander
+    }
+
+    fn replier(self) -> Replier {
+        new_replier(move |msg| {
+            let commander = self.clone();
+            async move {
+                let next = commander.clone().replier();
+                commander.async_send_box(next, msg).await
+            }
+        })
+    }
+
+    pub fn sender_with_replier(&self, msg: impl MessageTrait) {
+        self.send(self.clone().replier(), msg);
     }
 
     pub fn send(&self, replier: Replier, msg: impl MessageTrait) {

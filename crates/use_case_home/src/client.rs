@@ -14,10 +14,6 @@ use utility::ui_effect::MessageTrait;
 use utility::ui_effect::Replier;
 use utility::ui_effect::UiContext;
 
-// =====================================================================
-// Form id — home-owned identity for a live form instance
-// =====================================================================
-
 #[derive(Debug, Clone, Copy, Eq, Hash, PartialEq, Deserialize, Serialize)]
 pub struct FormId(u32);
 
@@ -33,19 +29,11 @@ impl Default for FormId {
     }
 }
 
-// =====================================================================
-// The plug-in contract
-//
-// `Any` is a supertrait so callers can upcast `&dyn FormLocalModel` to
-// `&dyn Any` and downcast to a concrete use-case `LocalModel`.
-//
-// `#[typetag::serde]` makes `Box<dyn FormLocalModel>` Serialize/Deserialize
-// so that `FormEntry` and `LocalModel` can derive serde traits (needed by
-// `TypeGlobalModel` in `app_root_client`).
-// =====================================================================
-
 #[serde]
 pub trait FormLocalModel: Any + Debug + Send + Sync + 'static + DynClone {
+    fn unsubscribe_message(&self) -> Option<Box<dyn MessageTrait>> {
+        None
+    }
     fn clone_user_input(&self) -> Box<dyn FormLocalModel>;
     fn is_submit_ok(&self) -> bool;
     fn is_loading(&self) -> bool;
@@ -86,16 +74,6 @@ pub trait FormEffect: Debug + Send + Sync + 'static + DynClone {
 
 clone_trait_object!(FormEffect);
 
-// =====================================================================
-// Form entry
-//
-// Fields are `pub` so `app_root_client` can read `entry.id` and
-// `entry.form`. `PartialEq` is manual because `Box<dyn FormLocalModel>`
-// does not auto-derive it (the JSON form still derives it via typetag,
-// but `Box<dyn Trait>` needs a hand-written impl for the memoization
-// that Dioxus `#[component]` requires).
-// =====================================================================
-
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct FormEntry {
     pub id: FormId,
@@ -117,24 +95,12 @@ impl FormEntry {
     }
 }
 
-// =====================================================================
-// Global model
-// =====================================================================
-
 pub trait GlobalModel: Any {}
-
-// =====================================================================
-// Local model — `forms` is `pub` so `app_ui.rs` can read it
-// =====================================================================
 
 #[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
 pub struct LocalModel {
     pub forms: Vec<FormEntry>,
 }
-
-// =====================================================================
-// Home message / intent / observe
-// =====================================================================
 
 #[derive(Debug, Clone)]
 pub enum Message {
@@ -155,13 +121,6 @@ pub enum Intent {
 
 #[derive(Debug, Clone)]
 pub enum Observe {}
-
-// =====================================================================
-// Home change
-//
-// `GlobalChange` and `Effect` gained `Clone` and `Debug` (wire.rs
-// requires them — it wraps and clones these in its own wire structs).
-// =====================================================================
 
 #[derive(Debug, Clone)]
 pub enum LocalChange {
@@ -196,10 +155,6 @@ impl Effect {
 
 impl MessageTrait for Message {}
 
-// =====================================================================
-// update
-// =====================================================================
-
 pub fn update(
     msg: Message,
     local_model: &LocalModel,
@@ -230,8 +185,15 @@ pub fn update(
                     if forms[position].form.is_loading() {
                         return (vec![], vec![], vec![]);
                     }
+
+                    let mut cleanup_effects: Vec<Effect> = Vec::new();
+                    if let Some(msg) = forms[position].form.unsubscribe_message() {
+                        let update = forms[position].form.handle(msg, global_model as &dyn Any);
+                        cleanup_effects.extend(update.effects.into_iter().map(Effect::new));
+                    }
+
                     forms.remove(position);
-                    (vec![LocalChange::Forms(forms)], vec![])
+                    (vec![LocalChange::Forms(forms)], cleanup_effects)
                 }
             };
             (change, vec![], effect)
@@ -270,10 +232,6 @@ pub fn update(
         }
     }
 }
-
-// =====================================================================
-// local_apply / global_apply / effect
-// =====================================================================
 
 pub fn local_apply(msg: LocalChange, local_model: &mut LocalModel) {
     match msg {

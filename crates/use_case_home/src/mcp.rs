@@ -18,7 +18,6 @@ use utility::mcp::parse_args;
 use utility::ui_effect::Commander;
 use utility::ui_effect::MessageTrait;
 use utility::ui_effect::Replier;
-use utility::ui_effect::dummy_replier;
 use utility::ui_effect::new_replier;
 
 const LIST_FORMS: &str = "list_forms";
@@ -49,12 +48,7 @@ struct ListFormsOutput {
 }
 
 #[derive(Debug, Serialize)]
-struct Output {
-    /// `true` once the intent was accepted onto the commander queue.
-    /// Does NOT mean the reducer has already applied the change — call
-    /// `list_forms` again to confirm.
-    is_ok: bool,
-}
+struct Output {}
 
 pub fn tools() -> Vec<McpToolDef> {
     vec![
@@ -89,22 +83,20 @@ pub fn call<'a>(input: CallInput<'a, LocalModel, impl GlobalModel>) -> Result<Va
         DELETE_FORM => {
             let DeleteFormArgs { form_id } = parse_args(input.args)?;
 
-            input.commander.send(
-                dummy_replier(),
-                Message::Intent(Intent::DeleteForm(form_id.into())),
-            );
+            input
+                .commander
+                .sender_with_replier(Message::Intent(Intent::DeleteForm(form_id.into())));
 
-            Ok(to_value(Output { is_ok: true })?)
+            Ok(to_value(Output {})?)
         }
         COPY_FORM => {
             let CopyFormArgs { form_id } = parse_args(input.args)?;
 
-            input.commander.send(
-                dummy_replier(),
-                Message::Intent(Intent::CopyForm(form_id.into())),
-            );
+            input
+                .commander
+                .sender_with_replier(Message::Intent(Intent::CopyForm(form_id.into())));
 
-            Ok(to_value(Output { is_ok: true })?)
+            Ok(to_value(Output {})?)
         }
         _ => Err(error_to_mcp(
             "unknown_tool",
@@ -114,38 +106,28 @@ pub fn call<'a>(input: CallInput<'a, LocalModel, impl GlobalModel>) -> Result<Va
 }
 
 pub fn form_sender(commander: Commander, form_id: FormId, msg: impl MessageTrait) {
-    commander.send(
-        form_replier(commander.clone(), form_id),
-        Message::FormRelated {
-            form_id: form_id,
-            message: Box::new(msg),
-        },
-    );
+    let replier = form_replier(commander.clone(), form_id);
+
+    let msg = Message::FormRelated {
+        form_id: form_id,
+        message: Box::new(msg),
+    };
+
+    commander.send(replier, msg);
 }
 
 fn form_replier(commander: Commander, form_id: FormId) -> Replier {
-    let replier: Replier = new_replier(move |msg| {
+    new_replier(move |msg| {
         let commander = commander.clone();
 
         async move {
-            let replier = forward_to_commander(commander.clone());
+            let replier = form_replier(commander.clone(), form_id);
 
-            let msg1 = Box::new(Message::FormRelated {
+            let msg = Box::new(Message::FormRelated {
                 form_id,
                 message: msg,
             });
 
-            commander.async_send_box(replier, msg1).await
-        }
-    });
-    replier
-}
-
-fn forward_to_commander(commander: Commander) -> Replier {
-    new_replier(move |msg| {
-        let commander = commander.clone();
-        async move {
-            let replier = forward_to_commander(commander.clone());
             commander.async_send_box(replier, msg).await
         }
     })

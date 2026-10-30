@@ -1,9 +1,8 @@
 use crate::client::Intent;
+use cache::utils::MyUuidConverter;
 use dioxus::prelude::*;
 use kernel::new_types::CompanyUuid;
-use kernel::types::Currency;
 use kernel::types::Location;
-use std::str::FromStr;
 use utility::ui_orchestration::UserConsent;
 use utility_ui::components::DialogComponent;
 use utility_ui::components::ListInput;
@@ -18,7 +17,6 @@ pub fn Component(
     company_name_error: Option<String>,
     resolved_company_uuid: Option<String>,
     branch_name: String,
-    currency: Currency,
     location: Location,
     branch_name_error: Option<String>,
     location_error: Option<String>,
@@ -56,8 +54,10 @@ pub fn Component(
                 on_select: move |a| sender(Intent::SelectedCompany(a)),
                 list: list_of_company_name_and_uuid,
                 row_renderer: Callback::new(move |a: (CompanyUuid, String)| {
+                    let bytes = a.0;
+                    let bytes = bytes.to_string();
                     rsx! {
-                        button { disabled: is_loading, "{a.1}" }
+                        button { disabled: is_loading, "{a.1} [{bytes}]" }
                     }
                 }),
             }
@@ -79,17 +79,6 @@ pub fn Component(
             }
             if let Some(err) = branch_name_error {
                 label { {err} }
-            }
-
-            select {
-                disabled: is_loading,
-                value: currency.as_str(),
-                onchange: move |event| {
-                    let c = Currency::from_str(&event.value()).unwrap_or_default();
-                    sender(Intent::Currency(c));
-                },
-                option { value: "USD", "USD" }
-                option { value: "IQD", "IQD" }
             }
 
             input {

@@ -21,9 +21,11 @@ use_case_create_account             = { path = "./crates/use_case_create_account
 use_case_create_account_for_branch  = { path = "./crates/use_case_create_account_for_branch" }
 use_case_create_branch              = { path = "./crates/use_case_create_branch" }
 use_case_create_company             = { path = "./crates/use_case_create_company" }
+use_case_create_journal             = { path = "./crates/use_case_create_journal" }
 use_case_create_journal_entry       = { path = "./crates/use_case_create_journal_entry" }
 use_case_error_handler              = { path = "./crates/use_case_error_handler" }
 use_case_get_all_accounts           = { path = "./crates/use_case_get_all_accounts" }
+use_case_get_all_journals           = { path = "./crates/use_case_get_all_journals" }
 use_case_get_companies_and_branches = { path = "./crates/use_case_get_companies_and_branches" }
 use_case_home                       = { path = "./crates/use_case_home" }
 use_case_select_default_company     = { path = "./crates/use_case_select_default_company" }
@@ -58,7 +60,7 @@ futures-util             = "0.3.34"
 getrandom                = { features = ["wasm_js"], version = "0.4.3" }
 gloo-net                 = "0.7.0"
 gloo-timers              = { features = ["futures"], version = "0.4.0" }
-jsonwebtoken             = { features = ["rust_crypto"], version = "11.1.0" }
+jwt-simple               = { default-features = false, features = ["pure-rust"], version = "0.15.0" }
 postcard                 = { features = ["alloc"], version = "1.1.3" }
 regex                    = "1.13.1"
 rmcp                     = { features = ["server", "transport-streamable-http-server", "transport-streamable-http-server-session"], version = "3.7" }

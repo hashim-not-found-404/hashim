@@ -1,0 +1,34 @@
+[package]
+edition = "2024"
+name    = "use_case_create_journal"
+version = "0.1.0"
+
+[features]
+cache    = ["dep:cache", "dep:rusqlite", "dep:serde_json"]
+client   = []
+database = ["dep:database", "dep:serde_json"]
+mcp      = ["dep:schemars", "dep:serde_json"]
+server   = []
+ui       = ["dep:dioxus"]
+
+[dependencies]
+infrastructure = { workspace = true }
+kernel         = { workspace = true }
+use_case_home  = { workspace = true }
+utility        = { workspace = true }
+utility_ui     = { workspace = true }
+
+cache    = { optional = true, workspace = true }
+database = { optional = true, workspace = true }
+
+anyhow  = { workspace = true }
+serde   = { workspace = true }
+typetag = { workspace = true }
+
+dioxus     = { optional = true, workspace = true }
+rusqlite   = { optional = true, workspace = true }
+schemars   = { optional = true, workspace = true }
+serde_json = { optional = true, workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true }

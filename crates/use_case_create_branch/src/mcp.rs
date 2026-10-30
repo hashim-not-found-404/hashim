@@ -3,7 +3,6 @@ use crate::client::Intent;
 use crate::client::LocalModel;
 use crate::client::Message;
 use anyhow::Result;
-use kernel::types::Currency;
 use schemars::JsonSchema;
 use schemars::schema_for;
 use serde::Deserialize;
@@ -28,8 +27,6 @@ struct CreateBranchArgs {
     company_name: String,
     /// Branch name. Must be non-empty.
     branch_name: String,
-    /// Currency. One of: "USD", "IQD".
-    currency: Currency,
     /// Latitude in decimal degrees, in [-90, 90].
     latitude: f64,
     /// Longitude in decimal degrees, in [-180, 180].
@@ -37,12 +34,7 @@ struct CreateBranchArgs {
 }
 
 #[derive(Debug, Serialize)]
-struct Output {
-    /// `true` once the intents were queued.
-    /// Does NOT mean the server has responded — the companies/branches
-    /// list will refresh via the subscription broadcast on success.
-    is_ok: bool,
-}
+struct Output {}
 
 pub fn tools() -> Vec<McpToolDef> {
     vec![McpToolDef {
@@ -94,20 +86,15 @@ pub fn call<'a>(input: CallInput<'a, LocalModel, impl GlobalModel>) -> Result<Va
             form_sender(
                 commander.clone(),
                 form_id,
-                Message::Intent(Intent::Currency(args.currency)),
-            );
-            form_sender(
-                commander.clone(),
-                form_id,
                 Message::Intent(Intent::Latitude(args.latitude)),
             );
             form_sender(
-                commander.clone(),
+                commander,
                 form_id,
                 Message::Intent(Intent::Longitude(args.longitude)),
             );
 
-            Ok(to_value(Output { is_ok: true })?)
+            Ok(to_value(Output {})?)
         }
         _ => Err(error_to_mcp(
             "unknown_tool",

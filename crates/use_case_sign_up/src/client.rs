@@ -6,7 +6,6 @@ use crate::domain::ReadOutput;
 use crate::domain::UserIdError;
 use crate::domain::UserNameError;
 use anyhow::Result;
-use infrastructure::jwt::JsonWebTokenType;
 use infrastructure::row_id::Id;
 use infrastructure::row_id::RowId;
 use infrastructure::runtime::Rt;
@@ -19,7 +18,6 @@ use kernel::types::MyErrorTrait;
 use serde::Deserialize;
 use serde::Serialize;
 use std::fmt::Debug;
-use std::ops::Deref;
 use std::sync::Arc;
 use std::time::Duration;
 use utility::cache::ResourceName;
@@ -55,7 +53,7 @@ impl TraitOperationClientError for Error {
 
 impl TraitOperationClientInput for Input {
     fn user_uuid(&self) -> Option<[u8; 16]> {
-        Some(*self.user_uuid.deref().deref())
+        None
     }
 
     fn state_less_check(&self) -> Option<TypeOperationClientError> {
@@ -86,7 +84,7 @@ pub async fn check_input<
         user_id: input.user_id.clone(),
         user_name: input.name.clone(),
         hashed_password: String::new(),
-        jwt: JsonWebTokenType(String::new()),
+        jwt: None,
     };
 
     Ok(Ok(Arc::new(state_less_operation)))

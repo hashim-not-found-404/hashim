@@ -133,7 +133,7 @@ impl Cache for S {
             stmt.query_one([&user_uuid.to_string()], |row| row.get::<_, String>(0));
 
         let json_web_token = match json_web_token_type {
-            Ok(a) => Some(JsonWebTokenType::from(a)),
+            Ok(a) => JsonWebTokenType::try_from(a).ok(),
             Err(_) => None,
         };
 
