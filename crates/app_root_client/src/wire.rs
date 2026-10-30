@@ -116,7 +116,6 @@ make_client_wrapper_updater!(home);
 make_client_wrapper_updater!(select_default_company);
 make_client_wrapper_updater!(sign_in);
 make_client_wrapper_updater!(sign_up);
-make_mcp_provider!(get_all_journals);
 make_mcp_provider!(home);
 make_mcp_provider_form!(create_branch);
 make_mcp_provider_form!(create_company);
@@ -128,7 +127,6 @@ pub(crate) fn get_all_providers() -> Vec<Box<dyn TraitMcpProvider>> {
         Box::new(mcp_provider_create_branch::TypeMcpProvider),
         Box::new(mcp_provider_create_company::TypeMcpProvider),
         Box::new(mcp_provider_create_journal::TypeMcpProvider),
-        Box::new(mcp_provider_get_all_journals::TypeMcpProvider),
         Box::new(mcp_provider_home::TypeMcpProvider),
     ]
 }
