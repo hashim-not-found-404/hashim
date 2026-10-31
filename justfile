@@ -193,15 +193,15 @@ new crate_name:
     cargo new crates/{{crate_name}} --lib --vcs none
 
 new_use_case name:
-    cargo new crates/use_case/{{name}}/database     --name use_case_{{name}}__database      --lib --vcs none
-    cargo new crates/use_case/{{name}}/server       --name use_case_{{name}}__server        --lib --vcs none
-    cargo new crates/use_case/{{name}}/domain       --name use_case_{{name}}__domain        --lib --vcs none
-    cargo new crates/use_case/{{name}}/client       --name use_case_{{name}}__client        --lib --vcs none
-    cargo new crates/use_case/{{name}}/cache        --name use_case_{{name}}__cache         --lib --vcs none
-    cargo new crates/use_case/{{name}}/ui           --name use_case_{{name}}__ui            --lib --vcs none
-    cargo new crates/use_case/{{name}}/mcp          --name use_case_{{name}}__mcp           --lib --vcs none
-    cargo new crates/use_case/{{name}}/wire_client  --name use_case_{{name}}__wire_client   --lib --vcs none
-    cargo new crates/use_case/{{name}}/wire_server  --name use_case_{{name}}__wire_server   --lib --vcs none
+    cargo new crates/use_case/{{name}}/database     --name use_case_{{name}}_database      --lib --vcs none
+    cargo new crates/use_case/{{name}}/server       --name use_case_{{name}}_server        --lib --vcs none
+    cargo new crates/use_case/{{name}}/domain       --name use_case_{{name}}_domain        --lib --vcs none
+    cargo new crates/use_case/{{name}}/client       --name use_case_{{name}}_client        --lib --vcs none
+    cargo new crates/use_case/{{name}}/cache        --name use_case_{{name}}_cache         --lib --vcs none
+    cargo new crates/use_case/{{name}}/ui           --name use_case_{{name}}_ui            --lib --vcs none
+    cargo new crates/use_case/{{name}}/mcp          --name use_case_{{name}}_mcp           --lib --vcs none
+    cargo new crates/use_case/{{name}}/wire_client  --name use_case_{{name}}_wire_client   --lib --vcs none
+    cargo new crates/use_case/{{name}}/wire_server  --name use_case_{{name}}_wire_server   --lib --vcs none
 
 run_server:
     RUSTFLAGS="-A warnings" cargo run -p app_root_server

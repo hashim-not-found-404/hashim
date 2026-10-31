@@ -1,0 +1,14 @@
+[package]
+edition = "2024"
+name    = "use_case_prelude_client"
+version = "0.1.0"
+
+[dependencies]
+anyhow         = { workspace = true }
+dyn-clone      = { workspace = true }
+infrastructure = { workspace = true }
+kernel         = { workspace = true }
+serde          = { workspace = true }
+typetag        = { workspace = true }
+utility        = { workspace = true }
+utility_ui     = { workspace = true }

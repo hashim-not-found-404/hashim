@@ -6,22 +6,10 @@ use crate::domain::ReadInput;
 use crate::domain::ReadOutput;
 use accounting_engine::accounting_stuff::InFlowType;
 use accounting_engine::accounting_stuff::OutFlowType;
-use anyhow::Result;
-use database::db_transaction::DbTransactionAdapter;
-use database::utils::MyUuidConverter;
-use kernel::new_types::AccountForBranchUuid;
-use kernel::new_types::UuidType;
-use kernel::types::DatabaseRead;
-use kernel::types::DatabaseWrite;
-use kernel::types::Role;
-use serde::Deserialize;
-use serde_json::Value;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::str::FromStr;
-use tokio_postgres::types::ToSql;
-use utility::types::LogError;
-use uuid::Uuid;
+use use_case_prelude_database::*;
 
 const READ_QUERY: &str = r#"
     WITH
@@ -153,7 +141,7 @@ impl DatabaseRead for DataBaseOp {
         }
 
         let account_infos: Vec<AccountInfoJson> =
-            serde_json::from_value(account_infos_json).unwrap_or_default();
+            from_value(account_infos_json).unwrap_or_default();
 
         let mut account_info = AccountInfoProviderImpl(HashMap::new());
         for info in account_infos {
@@ -223,11 +211,11 @@ impl DatabaseWrite for DataBaseOp {
     type Input = Ok;
 
     async fn write(txn: &mut Self::Db<'_>, input: &Self::Input) -> Result<()> {
-        let single_entries: Vec<serde_json::Value> = input
+        let single_entries: Vec<Value> = input
             .double_entry
             .iter()
             .map(|single| {
-                serde_json::json!({
+                json!({
                     "rowid": single.new_uuid.to_externel_uuid(),
                     "double_entry": single.double_entry_number as i16,
                     "entry": input.new_uuid.to_externel_uuid(),
@@ -239,19 +227,19 @@ impl DatabaseWrite for DataBaseOp {
                 })
             })
             .collect();
-        let single_json = serde_json::to_value(&single_entries)?;
+        let single_json = to_value(&single_entries)?;
 
-        let inventory_updates: Vec<serde_json::Value> = input
+        let inventory_updates: Vec<Value> = input
             .inventory
             .iter()
             .map(|(account_uuid, inventory_wrapper)| {
-                serde_json::json!({
+                json!({
                     "account_uuid": account_uuid.to_externel_uuid(),
                     "inventory": inventory_wrapper.0,
                 })
             })
             .collect();
-        let inventory_json = serde_json::to_value(&inventory_updates)?;
+        let inventory_json = to_value(&inventory_updates)?;
 
         let shared_entry_id_param = input
             .shared_entry_id
@@ -279,7 +267,6 @@ impl DatabaseWrite for DataBaseOp {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use database::test_helper::test_query_helper;
 
     #[tokio::test]
     async fn test_query_string_directly() {

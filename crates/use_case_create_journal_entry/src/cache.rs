@@ -7,20 +7,10 @@ use crate::domain::ReadOutput;
 use accounting_engine::accounting_stuff::InFlowType;
 use accounting_engine::accounting_stuff::InventoryRecord;
 use accounting_engine::accounting_stuff::OutFlowType;
-use anyhow::Result;
-use cache::cache_adapter::CacheAdapter;
-use cache::utils::MyUuidConverter;
-use cache::utils::MyUuidConverter1;
-use kernel::new_types::AccountForBranchUuid;
-use kernel::types::DatabaseRead;
-use kernel::types::DatabaseWrite;
-use kernel::types::Role;
-use rusqlite::params;
-use serde::Deserialize;
-use serde_json::Value;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::str::FromStr;
+use use_case_prelude_cache::*;
 
 const READ_QUERY: &str = r#"
     WITH
@@ -99,8 +89,8 @@ impl DatabaseRead for CacheOp {
             .map(|uuid| uuid.to_string())
             .collect();
 
-        let accounts_json = serde_json::to_string(&accounts_uuid_vec)?;
-        let new_entries_json = serde_json::to_string(&new_entries_uuid_vec)?;
+        let accounts_json = to_string(&accounts_uuid_vec)?;
+        let new_entries_json = to_string(&new_entries_uuid_vec)?;
 
         let mut stmt = db.tables_db.prepare(READ_QUERY)?;
         let mut rows = stmt.query(params![
@@ -120,7 +110,7 @@ impl DatabaseRead for CacheOp {
         let new_entries_map_json: String = row.get(3)?;
         let account_infos_json: String = row.get(4)?;
 
-        let roles_value: Value = serde_json::from_str(&roles_json).unwrap_or(Value::Array(vec![]));
+        let roles_value: Value = from_str(&roles_json).unwrap_or(Value::Array(vec![]));
         let user_roles: Vec<Role> = roles_value
             .as_array()
             .unwrap_or(&vec![])
@@ -129,8 +119,8 @@ impl DatabaseRead for CacheOp {
             .map(|s| Role::from_str(s).unwrap())
             .collect();
 
-        let new_entries_value: Value = serde_json::from_str(&new_entries_map_json)
-            .unwrap_or(Value::Object(serde_json::Map::new()));
+        let new_entries_value: Value =
+            from_str(&new_entries_map_json).unwrap_or(Value::Object(Map::new()));
         let mut used_new_entries_uuid = HashSet::new();
         if let Some(obj) = new_entries_value.as_object() {
             for (key, value) in obj {
@@ -152,8 +142,7 @@ impl DatabaseRead for CacheOp {
             inventory: Vec<InventoryRecord>,
         }
 
-        let account_infos: Vec<AccountInfoJson> =
-            serde_json::from_str(&account_infos_json).unwrap_or_default();
+        let account_infos: Vec<AccountInfoJson> = from_str(&account_infos_json).unwrap_or_default();
 
         let mut account_info = AccountInfoProviderImpl(HashMap::new());
         for info in account_infos {
@@ -196,7 +185,6 @@ impl DatabaseWrite for CacheOp {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cache::test_helper::test_query_helper_for_tables_schema;
 
     #[test]
     fn test_query_string_directly() {

@@ -3,16 +3,9 @@ use crate::domain::CompanyWithBranches;
 use crate::domain::Ok;
 use crate::domain::ReadInput;
 use crate::domain::ReadOutput;
-use anyhow::Result;
-use cache::cache_adapter::CacheAdapter;
-use cache::utils::MyUuidConverter;
-use cache::utils::MyUuidConverter1;
-use kernel::types::Currency;
-use kernel::types::DatabaseRead;
-use kernel::types::DatabaseWrite;
-use rusqlite::params;
 use std::collections::HashMap;
 use std::str::FromStr;
+use use_case_prelude_cache::*;
 
 const READ_COMPANIES_QUERY: &str = "
     SELECT c.rowid, c.name, c.currency
@@ -163,7 +156,6 @@ impl DatabaseWrite for CacheOp {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cache::test_helper::test_query_helper_for_tables_schema;
 
     #[test]
     fn test_query_string_directly() {

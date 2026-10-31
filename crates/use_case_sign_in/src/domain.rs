@@ -1,16 +1,4 @@
-use anyhow::Result;
-use infrastructure::authentication::HashedPassword;
-use infrastructure::jwt::JWT;
-use infrastructure::jwt::JsonWebTokenType;
-use kernel::new_types::UserUuid;
-use kernel::types::DatabaseRead;
-use kernel::types::MarkerMyErrorTrait;
-use serde::Deserialize;
-use serde::Serialize;
-use typetag::serde;
-use utility::dtos::TraitOperationDTOError;
-use utility::dtos::TraitOperationDTOInput;
-use utility::dtos::TraitOperationDTOOk;
+use use_case_prelude_domain::*;
 
 #[serde(name = "sign_in")]
 impl TraitOperationDTOInput for Input {}

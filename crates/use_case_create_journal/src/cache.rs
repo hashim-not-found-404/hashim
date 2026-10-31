@@ -1,16 +1,8 @@
 use crate::domain::Ok;
 use crate::domain::ReadInput;
 use crate::domain::ReadOutput;
-use anyhow::Result;
-use cache::cache_adapter::CacheAdapter;
-use cache::utils::MyUuidConverter;
-use kernel::types::DatabaseRead;
-use kernel::types::DatabaseWrite;
-use kernel::types::Role;
-use rusqlite::params;
-use serde_json::Value;
-use serde_json::from_str;
 use std::str::FromStr;
+use use_case_prelude_cache::*;
 
 const READ_QUERY: &str = "
     SELECT
@@ -110,7 +102,6 @@ impl DatabaseWrite for CacheOp {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cache::test_helper::test_query_helper_for_tables_schema;
 
     #[test]
     fn test_query_string_directly() {

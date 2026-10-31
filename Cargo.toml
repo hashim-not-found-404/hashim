@@ -1,8 +1,28 @@
 [workspace]
-# exclude  = ["crates/use_case"]
 members = [
-    # "crates/use_case/*/*"
-    "crates/*",
+    "crates/accounting_engine",
+    "crates/app_root_client",
+    "crates/app_root_server",
+    "crates/cache",
+    "crates/database",
+    "crates/infrastructure",
+    "crates/kernel",
+    "crates/patterns",
+    "crates/server",
+    # new nested crates — must be listed one-by-one (exclude is prefix-based)
+    "crates/use_case/prelude/cache",
+    "crates/use_case/prelude/client",
+    "crates/use_case/prelude/database",
+    "crates/use_case/prelude/domain",
+    "crates/use_case/prelude/mcp",
+    "crates/use_case/prelude/server",
+    "crates/use_case/prelude/ui",
+    "crates/use_case/prelude/wire_client",
+    "crates/use_case/prelude/wire_server",
+    # old flat use cases (glob still works here, no exclude conflict)
+    "crates/use_case_*",
+    "crates/utility",
+    "crates/utility_ui",
 ]
 resolver = "3"
 
@@ -19,6 +39,16 @@ database = { path = "./crates/database" }
 kernel   = { path = "./crates/kernel" }
 patterns = { path = "./crates/patterns" }
 server   = { path = "./crates/server" }
+
+use_case_prelude_cache       = { path = "./crates/use_case/prelude/cache" }
+use_case_prelude_client      = { path = "./crates/use_case/prelude/client" }
+use_case_prelude_database    = { path = "./crates/use_case/prelude/database" }
+use_case_prelude_domain      = { path = "./crates/use_case/prelude/domain" }
+use_case_prelude_mcp         = { path = "./crates/use_case/prelude/mcp" }
+use_case_prelude_server      = { path = "./crates/use_case/prelude/server" }
+use_case_prelude_ui          = { path = "./crates/use_case/prelude/ui" }
+use_case_prelude_wire_client = { path = "./crates/use_case/prelude/wire_client" }
+use_case_prelude_wire_server = { path = "./crates/use_case/prelude/wire_server" }
 
 # use cases
 use_case_create_account             = { path = "./crates/use_case_create_account" }

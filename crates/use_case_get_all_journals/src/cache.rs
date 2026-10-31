@@ -3,23 +3,10 @@ use crate::domain::JournalUuid;
 use crate::domain::Ok;
 use crate::domain::ReadInput;
 use crate::domain::ReadOutput;
-use anyhow::Result;
-use cache::cache_adapter::CacheAdapter;
-use cache::utils::MyUuidConverter;
-use cache::utils::MyUuidConverter1;
-use kernel::new_types::CompanyUuid;
-use kernel::new_types::UuidType;
-use kernel::types::DatabaseRead;
-use kernel::types::DatabaseWrite;
-use kernel::types::Role;
-use rusqlite::params;
-use serde::Deserialize;
-use serde_json::Value;
-use serde_json::from_str;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::str::FromStr;
-use uuid::Uuid;
+use use_case_prelude_cache::*;
 
 const READ_QUERY: &str = "
     WITH
@@ -116,7 +103,7 @@ impl DatabaseRead for CacheOp {
 
         // ---- roles (flat list -> HashMap<company, Vec<Role>>) ----
         let roles_value: Value = from_str(&roles_str).unwrap_or(Value::Array(vec![]));
-        let raw_roles: Vec<RawRole> = serde_json::from_value(roles_value).unwrap_or_default();
+        let raw_roles: Vec<RawRole> = from_value(roles_value).unwrap_or_default();
         let mut user_roles: HashMap<CompanyUuid, Vec<Role>> = HashMap::new();
         for r in raw_roles {
             let role = match Role::from_str(&r.role) {
@@ -133,7 +120,7 @@ impl DatabaseRead for CacheOp {
 
         // ---- journals ----
         let data_value: Value = from_str(&data_str).unwrap_or(Value::Array(vec![]));
-        let raw: Vec<RawData> = serde_json::from_value(data_value)?;
+        let raw: Vec<RawData> = from_value(data_value)?;
         let data = raw
             .into_iter()
             .map(|r| -> Result<JournalInfo> {
@@ -195,7 +182,6 @@ impl DatabaseWrite for CacheOp {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cache::test_helper::test_query_helper_for_tables_schema;
 
     #[test]
     fn test_query_string_directly() {

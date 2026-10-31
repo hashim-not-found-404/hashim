@@ -1,23 +1,10 @@
-use anyhow::Result;
-use infrastructure::actors::MpscReceiver;
-use infrastructure::actors::Receiver;
-use infrastructure::runtime::Rt;
-use infrastructure::runtime::Runtime;
-use infrastructure::time::Ti;
-use infrastructure::time::Time;
-use kernel::types::HashimError;
-use serde::Deserialize;
-use serde::Serialize;
 use std::backtrace::BacktraceStatus;
 use std::fmt::Debug;
 use std::pin::Pin;
 use std::sync::Arc;
-use utility::ui_effect::Commander;
-use utility::ui_effect::MessageTrait;
-use utility::ui_effect::Replier;
-use utility::ui_effect::UiContext;
+use use_case_prelude_client::*;
 
-pub fn spawn_listener(mut receiver_to_error: MpscReceiver<anyhow::Error>, commander: Commander) {
+pub fn spawn_listener(mut receiver_to_error: MpscReceiver<Error>, commander: Commander) {
     Rt::spawn_local(async move {
         loop {
             let new_err = receiver_to_error.recv().await.unwrap();

@@ -2,14 +2,7 @@ use crate::domain::Input;
 use crate::domain::MyResult;
 use crate::domain::ReadInput;
 use crate::domain::ReadOutput;
-use infrastructure::jwt::JWT;
-use kernel::make_auth_check;
-use kernel::new_types::UserUuid;
-use kernel::server::DBClient;
-use kernel::server::SideEffects;
-use kernel::types::DatabaseRead;
-use kernel::types::MyErrorTrait;
-use kernel::types::UserUuidError;
+use use_case_prelude_server::*;
 
 pub async fn handle_operation_generic<
     Cli: DBClient,
@@ -18,7 +11,7 @@ pub async fn handle_operation_generic<
 >(
     input: &Input,
     side_effects: &mut SideEffects<'_, Cli, Jwt>,
-) -> anyhow::Result<MyResult> {
+) -> Result<MyResult> {
     let mut errr = input.state_less_check();
     make_auth_check!(side_effects, input, errr);
 

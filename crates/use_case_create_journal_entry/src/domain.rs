@@ -9,24 +9,6 @@ use accounting_engine::check_journal_input::DoubleEntryError;
 use accounting_engine::check_journal_input::EntryContainerError;
 use accounting_engine::check_journal_input::SingleEntryError;
 use accounting_engine::correct_journal_input;
-use anyhow::Result;
-use infrastructure::row_id::Id;
-use infrastructure::row_id::RowId;
-use infrastructure::time::Ti;
-use infrastructure::time::Time;
-use kernel::new_types::AccountForBranchUuid;
-use kernel::new_types::BranchUuid;
-use kernel::new_types::SharedEntryUuid;
-use kernel::new_types::UserUuid;
-use kernel::new_types::UuidType;
-use kernel::types::DatabaseRead;
-use kernel::types::MarkerMyErrorTrait;
-use kernel::types::MyErrorTrait;
-use kernel::types::Role;
-use kernel::types::RowIdError;
-use kernel::types::UserUuidError;
-use serde::Deserialize;
-use serde::Serialize;
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -35,10 +17,7 @@ use std::ops::DerefMut;
 use std::slice::Iter;
 use std::slice::IterMut;
 use std::vec::IntoIter;
-use typetag::serde;
-use utility::dtos::TraitOperationDTOError;
-use utility::dtos::TraitOperationDTOInput;
-use utility::dtos::TraitOperationDTOOk;
+use use_case_prelude_domain::*;
 
 #[serde(name = "create_journal_entry")]
 impl TraitOperationDTOInput for Input {}

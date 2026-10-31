@@ -2,20 +2,9 @@ use crate::domain::JournalInfo;
 use crate::domain::JournalUuid;
 use crate::domain::ReadInput;
 use crate::domain::ReadOutput;
-use anyhow::Result;
-use database::db_client::DbClientAdapter;
-use database::utils::MyUuidConverter;
-use kernel::new_types::CompanyUuid;
-use kernel::new_types::UuidType;
-use kernel::types::DatabaseRead;
-use kernel::types::Role;
-use serde::Deserialize;
-use serde_json::Value;
-use serde_json::from_value;
 use std::collections::HashMap;
 use std::str::FromStr;
-use utility::types::LogError;
-use uuid::Uuid;
+use use_case_prelude_database::*;
 
 const READ_QUERY: &str = "
     WITH
@@ -140,7 +129,6 @@ impl DatabaseRead for DataBaseOp {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use database::test_helper::test_query_helper;
 
     #[tokio::test]
     async fn test_query_string_directly() {

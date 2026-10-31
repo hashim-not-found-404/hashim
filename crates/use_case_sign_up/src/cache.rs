@@ -1,12 +1,7 @@
 use crate::domain::Ok;
 use crate::domain::ReadInput;
 use crate::domain::ReadOutput;
-use anyhow::Result;
-use cache::cache_adapter::CacheAdapter;
-use cache::utils::MyUuidConverter;
-use kernel::types::DatabaseRead;
-use kernel::types::DatabaseWrite;
-use rusqlite::params;
+use use_case_prelude_cache::*;
 
 const READ_QUERY: &str = "SELECT
     EXISTS(SELECT 1 FROM user WHERE rowid = ?1),
@@ -64,7 +59,6 @@ impl DatabaseWrite for CacheOp {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cache::test_helper::test_query_helper_for_tables_schema;
 
     #[test]
     fn test_query_string_directly() {

@@ -1,0 +1,12 @@
+[package]
+edition = "2024"
+name    = "use_case_prelude_ui"
+version = "0.1.0"
+
+[dependencies]
+cache      = { workspace = true }
+chrono     = { workspace = true }
+dioxus     = { workspace = true }
+kernel     = { workspace = true }
+utility    = { workspace = true }
+utility_ui = { workspace = true }

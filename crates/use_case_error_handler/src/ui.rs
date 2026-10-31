@@ -1,7 +1,6 @@
 use crate::client::ErrorList;
 use crate::client::Intent;
-use chrono::DateTime;
-use dioxus::prelude::*;
+use use_case_prelude_ui::*;
 
 #[component]
 pub fn Component(sender: EventHandler<Intent>, is_expand_all: bool, errors: ErrorList) -> Element {

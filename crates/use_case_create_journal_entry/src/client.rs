@@ -6,42 +6,10 @@ use crate::domain::ReadInput;
 use crate::domain::ReadOutput;
 use accounting_engine::accounting_stuff::InFlowType;
 use accounting_engine::accounting_stuff::OutFlowType;
-use anyhow::Result;
-use infrastructure::row_id::Id;
-use infrastructure::row_id::RowId;
-use infrastructure::runtime::Rt;
-use infrastructure::runtime::Runtime;
-use kernel::client::Cache;
-use kernel::new_types::AccountForBranchUuid;
-use kernel::new_types::SharedEntryUuid;
-use kernel::new_types::UserUuid;
-use kernel::new_types::UuidType;
-use kernel::types::DatabaseRead;
-use kernel::types::MyErrorTrait;
-use serde::Deserialize;
-use serde::Serialize;
 use std::ops::Deref;
 use std::sync::Arc;
 use std::time::Duration;
-use utility::cache::ProcessId;
-use utility::cache::ResourceName;
-use utility::cache::TraitOperationClientError;
-use utility::cache::TraitOperationClientInput;
-use utility::cache::TraitOperationClientOk;
-use utility::cache::TypeOperationClientError;
-use utility::cache::TypeOperationClientResult;
-use utility::cache::new_resource_name;
-use utility::tools::select_strings;
-use utility::ui_effect::MessageTrait;
-use utility::ui_effect::Replier;
-use utility::ui_effect::UiContext;
-use utility::ui_orchestration::GenricAsyncState;
-use utility::ui_orchestration::UseCaseClient;
-use utility::ui_orchestration::UserConsent;
-use utility::ui_orchestration::handle_submit;
-use utility::ui_orchestration::handle_subscribe;
-use utility::ui_orchestration::handle_unsubscribe;
-use utility_ui::domain::Dialog;
+use use_case_prelude_client::*;
 
 const RESOURCES_NAME_TO_POKE: &[ResourceName] = &[new_resource_name("entries")];
 const RESOURCES_NAME_TO_LISTEN: &[ResourceName] = &[new_resource_name("accounts_for_branch")];
@@ -178,7 +146,7 @@ pub(crate) type AsyncState = GenricAsyncState<AsyncInput, Ok, Error>;
 
 pub trait GlobalModel {
     fn user_uuid(&self) -> Option<UserUuid>;
-    fn selected_company_branch(&self) -> Option<kernel::new_types::BranchUuid>;
+    fn selected_company_branch(&self) -> Option<BranchUuid>;
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
@@ -210,7 +178,7 @@ impl LocalModel {
 pub struct AsyncInput {
     pub new_uuid: UuidType,
     pub user_uuid: UserUuid,
-    pub belong_to_company_branch: kernel::new_types::BranchUuid,
+    pub belong_to_company_branch: BranchUuid,
     pub shared_entry_id: Option<SharedEntryUuid>,
     pub double_entries: Vec<SingleEntryAsync>,
 }

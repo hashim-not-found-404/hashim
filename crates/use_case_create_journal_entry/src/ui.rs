@@ -1,8 +1,5 @@
 use crate::client::Intent;
-use dioxus::prelude::*;
-use utility::ui_orchestration::UserConsent;
-use utility_ui::components::DialogComponent;
-use utility_ui::domain::Dialog;
+use use_case_prelude_ui::*;
 
 #[component]
 pub fn Component(sender: EventHandler<Intent>, show_dialog: Dialog, is_loading: bool) -> Element {

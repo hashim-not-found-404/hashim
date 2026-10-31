@@ -1,14 +1,8 @@
 use crate::domain::Ok;
 use crate::domain::ReadInput;
 use crate::domain::ReadOutput;
-use anyhow::Result;
-use cache::cache_adapter::CacheAdapter;
-use cache::utils::MyUuidConverter;
-use kernel::types::DatabaseRead;
-use kernel::types::DatabaseWrite;
-use kernel::types::Role;
-use rusqlite::params;
 use std::str::FromStr;
+use use_case_prelude_cache::*;
 
 const READ_QUERY1: &str =
     "SELECT role FROM access_control_for_company WHERE data_group = ?1 AND user_ = ?2";
@@ -91,7 +85,6 @@ impl DatabaseWrite for CacheOp {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cache::test_helper::test_query_helper_for_tables_schema;
 
     #[test]
     fn test_query_string_directly() {

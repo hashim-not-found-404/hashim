@@ -1,22 +1,6 @@
-use anyhow::Result;
-use infrastructure::row_id::Id;
-use infrastructure::row_id::RowId;
-use kernel::make_type;
-use kernel::new_types::CompanyUuid;
-use kernel::new_types::UserUuid;
-use kernel::new_types::UuidType;
-use kernel::types::DatabaseRead;
-use kernel::types::MarkerMyErrorTrait;
-use kernel::types::Role;
-use kernel::types::UserUuidError;
-use serde::Deserialize;
-use serde::Serialize;
 use std::collections::HashMap;
 use std::collections::HashSet;
-use typetag::serde;
-use utility::dtos::TraitOperationDTOError;
-use utility::dtos::TraitOperationDTOInput;
-use utility::dtos::TraitOperationDTOOk;
+use use_case_prelude_domain::*;
 
 #[serde(name = "get_all_journals")]
 impl TraitOperationDTOInput for Input {}

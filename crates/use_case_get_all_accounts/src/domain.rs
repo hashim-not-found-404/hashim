@@ -1,19 +1,6 @@
-use anyhow::Result;
-use infrastructure::row_id::Id;
-use infrastructure::row_id::RowId;
-use kernel::new_types::AccountUuid;
-use kernel::new_types::CompanyUuid;
-use kernel::new_types::UserUuid;
-use kernel::types::DatabaseRead;
-use kernel::types::MarkerMyErrorTrait;
-use kernel::types::RowIdError;
-use kernel::types::UserUuidError;
 use serde::Deserialize;
 use serde::Serialize;
-use typetag::serde;
-use utility::dtos::TraitOperationDTOError;
-use utility::dtos::TraitOperationDTOInput;
-use utility::dtos::TraitOperationDTOOk;
+use use_case_prelude_domain::*;
 
 #[serde(name = "get_all_accounts")]
 impl TraitOperationDTOInput for Input {}

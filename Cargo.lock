@@ -4795,18 +4795,15 @@ dependencies = [
 name = "use_case_create_account"
 version = "0.1.0"
 dependencies = [
- "anyhow",
- "cache",
- "database",
- "dioxus",
- "infrastructure",
- "kernel",
- "rusqlite",
  "serde",
  "tokio",
- "typetag",
- "utility",
- "utility_ui",
+ "use_case_prelude_cache",
+ "use_case_prelude_client",
+ "use_case_prelude_database",
+ "use_case_prelude_domain",
+ "use_case_prelude_mcp",
+ "use_case_prelude_server",
+ "use_case_prelude_ui",
 ]
 
 [[package]]
@@ -4814,82 +4811,63 @@ name = "use_case_create_account_for_branch"
 version = "0.1.0"
 dependencies = [
  "accounting_engine",
- "anyhow",
- "cache",
- "database",
- "dioxus",
- "infrastructure",
- "kernel",
- "rusqlite",
  "serde",
  "tokio",
- "typetag",
- "utility",
- "utility_ui",
+ "use_case_prelude_cache",
+ "use_case_prelude_client",
+ "use_case_prelude_database",
+ "use_case_prelude_domain",
+ "use_case_prelude_mcp",
+ "use_case_prelude_server",
+ "use_case_prelude_ui",
 ]
 
 [[package]]
 name = "use_case_create_branch"
 version = "0.1.0"
 dependencies = [
- "anyhow",
- "cache",
- "database",
- "dioxus",
- "infrastructure",
- "kernel",
- "rusqlite",
- "rust_decimal",
- "schemars",
  "serde",
- "serde_json",
  "tokio",
- "typetag",
  "use_case_home",
- "utility",
- "utility_ui",
+ "use_case_prelude_cache",
+ "use_case_prelude_client",
+ "use_case_prelude_database",
+ "use_case_prelude_domain",
+ "use_case_prelude_mcp",
+ "use_case_prelude_server",
+ "use_case_prelude_ui",
 ]
 
 [[package]]
 name = "use_case_create_company"
 version = "0.1.0"
 dependencies = [
- "anyhow",
- "cache",
- "database",
- "dioxus",
- "infrastructure",
- "kernel",
- "rusqlite",
- "schemars",
  "serde",
- "serde_json",
  "tokio",
- "typetag",
  "use_case_home",
- "utility",
- "utility_ui",
+ "use_case_prelude_cache",
+ "use_case_prelude_client",
+ "use_case_prelude_database",
+ "use_case_prelude_domain",
+ "use_case_prelude_mcp",
+ "use_case_prelude_server",
+ "use_case_prelude_ui",
 ]
 
 [[package]]
 name = "use_case_create_journal"
 version = "0.1.0"
 dependencies = [
- "anyhow",
- "cache",
- "database",
- "dioxus",
- "infrastructure",
- "kernel",
- "rusqlite",
- "schemars",
  "serde",
- "serde_json",
  "tokio",
- "typetag",
  "use_case_home",
- "utility",
- "utility_ui",
+ "use_case_prelude_cache",
+ "use_case_prelude_client",
+ "use_case_prelude_database",
+ "use_case_prelude_domain",
+ "use_case_prelude_mcp",
+ "use_case_prelude_server",
+ "use_case_prelude_ui",
 ]
 
 [[package]]
@@ -4897,163 +4875,227 @@ name = "use_case_create_journal_entry"
 version = "0.1.0"
 dependencies = [
  "accounting_engine",
- "anyhow",
- "cache",
- "database",
- "dioxus",
- "infrastructure",
- "kernel",
- "rusqlite",
  "serde",
- "serde_json",
  "tokio",
- "tokio-postgres",
- "typetag",
- "utility",
- "utility_ui",
- "uuid",
+ "use_case_prelude_cache",
+ "use_case_prelude_client",
+ "use_case_prelude_database",
+ "use_case_prelude_domain",
+ "use_case_prelude_mcp",
+ "use_case_prelude_server",
+ "use_case_prelude_ui",
 ]
 
 [[package]]
 name = "use_case_error_handler"
 version = "0.1.0"
 dependencies = [
- "anyhow",
- "chrono",
- "dioxus",
- "infrastructure",
- "kernel",
  "serde",
- "utility",
+ "tokio",
+ "use_case_prelude_cache",
+ "use_case_prelude_client",
+ "use_case_prelude_database",
+ "use_case_prelude_domain",
+ "use_case_prelude_mcp",
+ "use_case_prelude_server",
+ "use_case_prelude_ui",
 ]
 
 [[package]]
 name = "use_case_get_all_accounts"
 version = "0.1.0"
 dependencies = [
- "anyhow",
- "cache",
- "database",
- "dyn-clone",
- "infrastructure",
- "kernel",
- "rusqlite",
  "serde",
  "tokio",
- "typetag",
- "utility",
- "uuid",
+ "use_case_prelude_cache",
+ "use_case_prelude_client",
+ "use_case_prelude_database",
+ "use_case_prelude_domain",
+ "use_case_prelude_mcp",
+ "use_case_prelude_server",
+ "use_case_prelude_ui",
 ]
 
 [[package]]
 name = "use_case_get_all_journals"
 version = "0.1.0"
 dependencies = [
- "anyhow",
- "cache",
- "database",
- "infrastructure",
- "kernel",
- "rusqlite",
- "schemars",
  "serde",
- "serde_json",
  "tokio",
- "typetag",
- "utility",
- "uuid",
+ "use_case_prelude_cache",
+ "use_case_prelude_client",
+ "use_case_prelude_database",
+ "use_case_prelude_domain",
+ "use_case_prelude_mcp",
+ "use_case_prelude_server",
+ "use_case_prelude_ui",
 ]
 
 [[package]]
 name = "use_case_get_companies_and_branches"
 version = "0.1.0"
 dependencies = [
- "anyhow",
- "cache",
- "database",
- "infrastructure",
- "kernel",
- "rusqlite",
  "serde",
- "serde_json",
  "tokio",
- "typetag",
- "utility",
- "uuid",
+ "use_case_prelude_cache",
+ "use_case_prelude_client",
+ "use_case_prelude_database",
+ "use_case_prelude_domain",
+ "use_case_prelude_server",
+ "use_case_prelude_ui",
 ]
 
 [[package]]
 name = "use_case_home"
 version = "0.1.0"
 dependencies = [
+ "serde",
+ "tokio",
+ "use_case_prelude_cache",
+ "use_case_prelude_client",
+ "use_case_prelude_database",
+ "use_case_prelude_domain",
+ "use_case_prelude_mcp",
+ "use_case_prelude_server",
+ "use_case_prelude_ui",
+]
+
+[[package]]
+name = "use_case_prelude_cache"
+version = "0.1.0"
+dependencies = [
  "anyhow",
- "dioxus",
+ "cache",
+ "kernel",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "uuid",
+]
+
+[[package]]
+name = "use_case_prelude_client"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
  "dyn-clone",
  "infrastructure",
  "kernel",
- "schemars",
+ "serde",
+ "typetag",
+ "utility",
+ "utility_ui",
+]
+
+[[package]]
+name = "use_case_prelude_database"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "database",
+ "kernel",
+ "rust_decimal",
  "serde",
  "serde_json",
- "tokio",
+ "tokio-postgres",
+ "utility",
+ "uuid",
+]
+
+[[package]]
+name = "use_case_prelude_domain"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "infrastructure",
+ "kernel",
+ "serde",
  "typetag",
  "utility",
 ]
 
 [[package]]
-name = "use_case_select_default_company"
+name = "use_case_prelude_mcp"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "cache",
- "database",
- "dioxus",
- "infrastructure",
  "kernel",
- "rusqlite",
+ "schemars",
  "serde",
  "serde_json",
- "tokio",
- "typetag",
- "use_case_get_companies_and_branches",
  "utility",
- "uuid",
+]
+
+[[package]]
+name = "use_case_prelude_server"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "infrastructure",
+ "kernel",
+]
+
+[[package]]
+name = "use_case_prelude_ui"
+version = "0.1.0"
+dependencies = [
+ "cache",
+ "chrono",
+ "dioxus",
+ "kernel",
+ "utility",
+ "utility_ui",
+]
+
+[[package]]
+name = "use_case_prelude_wire_client"
+version = "0.1.0"
+
+[[package]]
+name = "use_case_prelude_wire_server"
+version = "0.1.0"
+
+[[package]]
+name = "use_case_select_default_company"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "tokio",
+ "use_case_get_companies_and_branches",
+ "use_case_prelude_cache",
+ "use_case_prelude_client",
+ "use_case_prelude_database",
+ "use_case_prelude_domain",
+ "use_case_prelude_server",
+ "use_case_prelude_ui",
 ]
 
 [[package]]
 name = "use_case_sign_in"
 version = "0.1.0"
 dependencies = [
- "anyhow",
- "cache",
- "database",
- "dioxus",
- "infrastructure",
- "kernel",
- "rusqlite",
  "serde",
  "tokio",
- "typetag",
- "utility",
- "utility_ui",
- "uuid",
+ "use_case_prelude_cache",
+ "use_case_prelude_client",
+ "use_case_prelude_database",
+ "use_case_prelude_domain",
+ "use_case_prelude_server",
+ "use_case_prelude_ui",
 ]
 
 [[package]]
 name = "use_case_sign_up"
 version = "0.1.0"
 dependencies = [
- "anyhow",
- "cache",
- "database",
- "dioxus",
- "infrastructure",
- "kernel",
- "rusqlite",
  "serde",
  "tokio",
- "typetag",
- "utility",
- "utility_ui",
+ "use_case_prelude_cache",
+ "use_case_prelude_client",
+ "use_case_prelude_database",
+ "use_case_prelude_domain",
+ "use_case_prelude_server",
+ "use_case_prelude_ui",
 ]
 
 [[package]]

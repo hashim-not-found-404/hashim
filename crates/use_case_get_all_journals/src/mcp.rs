@@ -1,16 +1,6 @@
 use crate::client::get_data;
 use crate::domain::Input;
-use anyhow::Context;
-use anyhow::Result;
-use schemars::JsonSchema;
-use schemars::schema_for;
-use serde::Deserialize;
-use serde_json::Value;
-use serde_json::to_value;
-use utility::mcp::CallInputForFetch;
-use utility::mcp::McpToolDef;
-use utility::mcp::error_to_mcp;
-use utility::mcp::parse_args;
+use use_case_prelude_mcp::*;
 
 pub trait GetInput {
     fn get_input(&self) -> Option<Input>;

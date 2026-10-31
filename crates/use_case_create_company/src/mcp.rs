@@ -2,19 +2,8 @@ use crate::client::GlobalModel;
 use crate::client::Intent;
 use crate::client::LocalModel;
 use crate::client::Message;
-use anyhow::Result;
-use kernel::types::Currency;
-use schemars::JsonSchema;
-use schemars::schema_for;
-use serde::Deserialize;
-use serde::Serialize;
-use serde_json::Value;
-use serde_json::to_value;
 use use_case_home::mcp::form_sender;
-use utility::mcp::CallInput;
-use utility::mcp::McpToolDef;
-use utility::mcp::error_to_mcp;
-use utility::mcp::parse_args;
+use use_case_prelude_mcp::*;
 
 const CREATE_COMPANY: &str = "create_company";
 

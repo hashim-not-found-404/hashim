@@ -1,7 +1,5 @@
 use crate::client::Intent;
-use dioxus::prelude::*;
-use kernel::new_types::BranchUuid;
-use kernel::new_types::CompanyUuid;
+use use_case_prelude_ui::*;
 
 #[component]
 pub fn Component(

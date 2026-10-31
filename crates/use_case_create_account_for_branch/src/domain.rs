@@ -1,23 +1,6 @@
 use accounting_engine::accounting_stuff::InFlowType;
 use accounting_engine::accounting_stuff::OutFlowType;
-use anyhow::Result;
-use infrastructure::row_id::Id;
-use infrastructure::row_id::RowId;
-use kernel::new_types::AccountForBranchUuid;
-use kernel::new_types::AccountUuid;
-use kernel::new_types::BranchUuid;
-use kernel::new_types::UserUuid;
-use kernel::types::DatabaseRead;
-use kernel::types::MarkerMyErrorTrait;
-use kernel::types::Role;
-use kernel::types::RowIdError;
-use kernel::types::UserUuidError;
-use serde::Deserialize;
-use serde::Serialize;
-use typetag::serde;
-use utility::dtos::TraitOperationDTOError;
-use utility::dtos::TraitOperationDTOInput;
-use utility::dtos::TraitOperationDTOOk;
+use use_case_prelude_domain::*;
 
 #[serde(name = "create_account_for_branch")]
 impl TraitOperationDTOInput for Input {}

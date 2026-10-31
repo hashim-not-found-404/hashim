@@ -2,17 +2,8 @@ use crate::domain::BranchInfo;
 use crate::domain::CompanyWithBranches;
 use crate::domain::ReadInput;
 use crate::domain::ReadOutput;
-use anyhow::Result;
-use database::db_client::DbClientAdapter;
-use database::utils::MyUuidConverter;
-use database::utils::MyUuidConverter1;
-use kernel::types::Currency;
-use kernel::types::DatabaseRead;
-use kernel::types::Role;
-use serde::Deserialize;
 use std::str::FromStr;
-use utility::types::LogError;
-use uuid::Uuid;
+use use_case_prelude_database::*;
 
 const READ_QUERY: &str = r#"
     WITH user_companies AS (
@@ -103,14 +94,14 @@ impl DatabaseRead for DataBaseOp {
             let company_uuid_str: String = row.try_get(0).log()?;
             let company_name: String = row.try_get(1).log()?;
             let company_currency_str: String = row.try_get(2).log()?;
-            let company_roles_json: serde_json::Value = row.try_get(3).log()?;
-            let branches_json: serde_json::Value = row.try_get(4).log()?;
+            let company_roles_json: Value = row.try_get(3).log()?;
+            let branches_json: Value = row.try_get(4).log()?;
 
             let company_uuid = Uuid::parse_str(&company_uuid_str).log()?.to_uuid();
             let currency = Currency::from_str(&company_currency_str).log()?;
-            let roles: Vec<Role> = serde_json::from_value(company_roles_json).log()?;
+            let roles: Vec<Role> = from_value(company_roles_json).log()?;
 
-            let raw_branches: Vec<BranchJson> = serde_json::from_value(branches_json).log()?;
+            let raw_branches: Vec<BranchJson> = from_value(branches_json).log()?;
             let branches = raw_branches
                 .into_iter()
                 .map(|b| {
@@ -121,7 +112,7 @@ impl DatabaseRead for DataBaseOp {
                         roles: b.roles,
                     })
                 })
-                .collect::<Result<Vec<_>, anyhow::Error>>()
+                .collect::<Result<Vec<_>>>()
                 .log()?;
 
             companies.push(CompanyWithBranches {
@@ -140,7 +131,6 @@ impl DatabaseRead for DataBaseOp {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use database::test_helper::test_query_helper;
 
     #[tokio::test]
     async fn test_query_string_directly() {

@@ -1,13 +1,8 @@
 use crate::client::Intent;
 use accounting_engine::accounting_stuff::InFlowType;
 use accounting_engine::accounting_stuff::OutFlowType;
-use dioxus::prelude::*;
-use kernel::new_types::AccountUuid;
 use std::str::FromStr;
-use utility::ui_orchestration::UserConsent;
-use utility_ui::components::DialogComponent;
-use utility_ui::components::ListInput;
-use utility_ui::domain::Dialog;
+use use_case_prelude_ui::*;
 
 #[component]
 pub fn Component(

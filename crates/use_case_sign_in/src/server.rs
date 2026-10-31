@@ -2,13 +2,7 @@ use crate::domain::Input;
 use crate::domain::MyResult;
 use crate::domain::ReadInput;
 use crate::domain::ReadOutput;
-use anyhow::Result;
-use infrastructure::authentication::Auth;
-use infrastructure::jwt::JWT;
-use kernel::new_types::UserUuid;
-use kernel::server::DBClient;
-use kernel::server::SideEffects;
-use kernel::types::DatabaseRead;
+use use_case_prelude_server::*;
 
 pub async fn handle_operation_generic<
     Cli: DBClient,

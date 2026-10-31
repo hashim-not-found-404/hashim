@@ -3,27 +3,10 @@ use crate::domain::Input;
 use crate::domain::Ok;
 use crate::domain::ReadInput;
 use crate::domain::ReadOutput;
-use anyhow::Result;
-use kernel::client::Cache;
-use kernel::new_types::UserUuid;
-use kernel::types::DatabaseRead;
-use kernel::types::MyErrorTrait;
 use std::ops::Deref;
 use std::pin::Pin;
 use std::sync::Arc;
-use utility::cache::CacheStruct;
-use utility::cache::CachingStrategy;
-use utility::cache::ResourceName;
-use utility::cache::Response;
-use utility::cache::ResponseFunction;
-use utility::cache::TraitOperationClientError;
-use utility::cache::TraitOperationClientInput;
-use utility::cache::TraitOperationClientOk;
-use utility::cache::TypeOperationClientError;
-use utility::cache::TypeOperationClientInput;
-use utility::cache::TypeOperationClientResult;
-use utility::cache::new_resource_name;
-use utility::dtos::TxnNumber;
+use use_case_prelude_client::*;
 
 const RESOURCES_NAME_TO_POKE: &[ResourceName] = &[
     new_resource_name("companies"),

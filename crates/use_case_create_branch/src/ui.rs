@@ -1,12 +1,5 @@
 use crate::client::Intent;
-use cache::utils::MyUuidConverter;
-use dioxus::prelude::*;
-use kernel::new_types::CompanyUuid;
-use kernel::types::Location;
-use utility::ui_orchestration::UserConsent;
-use utility_ui::components::DialogComponent;
-use utility_ui::components::ListInput;
-use utility_ui::domain::Dialog;
+use use_case_prelude_ui::*;
 
 #[component]
 pub fn Component(

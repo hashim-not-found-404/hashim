@@ -4,27 +4,21 @@ name    = "use_case_sign_up"
 version = "0.1.0"
 
 [features]
-cache    = ["dep:cache", "dep:rusqlite"]
-client   = []
-database = ["dep:database"]
-server   = []
-ui       = ["dep:dioxus"]
+cache    = ["dep:use_case_prelude_cache"]
+client   = ["dep:use_case_prelude_client"]
+database = ["dep:use_case_prelude_database"]
+server   = ["dep:use_case_prelude_server"]
+ui       = ["dep:use_case_prelude_ui"]
 
 [dependencies]
-infrastructure = { workspace = true }
-kernel         = { workspace = true }
-utility        = { workspace = true }
-utility_ui     = { workspace = true }
+serde                   = { workspace = true }
+use_case_prelude_domain = { workspace = true }
 
-anyhow  = { workspace = true }
-serde   = { workspace = true }
-typetag = { workspace = true }
-
-cache    = { optional = true, workspace = true }
-database = { optional = true, workspace = true }
-
-dioxus   = { optional = true, workspace = true }
-rusqlite = { optional = true, workspace = true }
+use_case_prelude_cache    = { optional = true, workspace = true }
+use_case_prelude_client   = { optional = true, workspace = true }
+use_case_prelude_database = { optional = true, workspace = true }
+use_case_prelude_server   = { optional = true, workspace = true }
+use_case_prelude_ui       = { optional = true, workspace = true }
 
 [dev-dependencies]
 tokio = { workspace = true }

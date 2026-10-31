@@ -1,6 +1,6 @@
 use crate::client::FormId;
 use crate::client::FormLocalModel;
-use dioxus::prelude::*;
+use use_case_prelude_ui::*;
 
 /// Render a form to a Dioxus `Element`.
 ///

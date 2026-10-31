@@ -1,7 +1,3 @@
-use anyhow::Result;
-use kernel::new_types::BranchUuid;
-use kernel::new_types::CompanyUuid;
-use kernel::new_types::UserUuid;
 use serde::Deserialize;
 use serde::Serialize;
 use std::fmt::Debug;
@@ -9,17 +5,7 @@ use use_case_get_companies_and_branches::domain::CompanyWithBranches;
 use use_case_get_companies_and_branches::domain::Error;
 use use_case_get_companies_and_branches::domain::Input;
 use use_case_get_companies_and_branches::domain::Ok;
-use utility::cache::ProcessId;
-use utility::cache::ResourceName;
-use utility::cache::new_resource_name;
-use utility::ui_effect::MessageTrait;
-use utility::ui_effect::Replier;
-use utility::ui_effect::UiContext;
-use utility::ui_orchestration::GenricAsyncState;
-use utility::ui_orchestration::UseCaseClient;
-use utility::ui_orchestration::handle_refresh;
-use utility::ui_orchestration::handle_subscribe;
-use utility::ui_orchestration::handle_unsubscribe;
+use use_case_prelude_client::*;
 
 const RESOURCES_NAME_TO_LISTEN: &[ResourceName] = &[
     new_resource_name("companies"),
