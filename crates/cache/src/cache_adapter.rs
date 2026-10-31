@@ -22,14 +22,14 @@ const QUERY7: &str =
     "ROLLBACK TO SAVEPOINT pending_txn_branch; RELEASE SAVEPOINT pending_txn_branch;";
 const QUERY8: &str = "SAVEPOINT pending_txn_branch;";
 
-pub struct S {
+pub struct CacheAdapter {
     pub tables_db: Connection,
     pub(crate) transactions_db: Connection,
 }
 
-impl MarkerCache for S {}
+impl MarkerCache for CacheAdapter {}
 
-impl Cache for S {
+impl Cache for CacheAdapter {
     async fn new() -> Result<Self> {
         #[cfg(target_arch = "wasm32")]
         let (tables_db_path, transactions_db_path) = (

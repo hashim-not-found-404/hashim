@@ -1,6 +1,6 @@
 use crate::model::TypeGlobalModel;
 use crate::wire::MyCaster;
-use cache::cache_adapter;
+use cache::cache_adapter::CacheAdapter;
 use infrastructure::actors::Mpsc;
 use infrastructure::actors::MultiProducerSingleConsumer;
 use kernel::ui_construct::new;
@@ -34,10 +34,8 @@ pub(crate) static COMMANDER: LazyLock<Commander> = LazyLock::new(|| {
 
     let model = MODEL.deref().clone();
 
-    let commander = new::<cache_adapter::S, TypeGlobalModel, MyCaster, MyCaster, MyCaster>(
-        model,
-        sender_to_error,
-    );
+    let commander =
+        new::<CacheAdapter, TypeGlobalModel, MyCaster, MyCaster, MyCaster>(model, sender_to_error);
 
     spawn_listener(receiver_to_error, commander.clone());
 

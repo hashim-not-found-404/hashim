@@ -2,7 +2,7 @@ use crate::domain::Ok;
 use crate::domain::ReadInput;
 use crate::domain::ReadOutput;
 use anyhow::Result;
-use cache::cache_adapter;
+use cache::cache_adapter::CacheAdapter;
 use cache::utils::MyUuidConverter;
 use kernel::types::DatabaseRead;
 use kernel::types::DatabaseWrite;
@@ -13,7 +13,7 @@ const READ_QUERY: &str = "SELECT 1 FROM company WHERE rowid = ?1";
 pub struct CacheOp;
 
 impl DatabaseRead for CacheOp {
-    type Db<'a> = cache_adapter::S;
+    type Db<'a> = CacheAdapter;
     type Input = ReadInput;
     type Output = ReadOutput;
 
@@ -34,7 +34,7 @@ const WRITE_ACCESS_QUERY: &str = "
 ";
 
 impl DatabaseWrite for CacheOp {
-    type Db<'a> = cache_adapter::S;
+    type Db<'a> = CacheAdapter;
     type Input = Ok;
 
     async fn write(txn: &mut Self::Db<'_>, input: &Self::Input) -> Result<()> {

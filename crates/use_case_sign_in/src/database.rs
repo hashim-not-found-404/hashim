@@ -1,7 +1,7 @@
 use crate::domain::ReadInput;
 use crate::domain::ReadOutput;
 use anyhow::Result;
-use database::db_client;
+use database::db_client::DbClientAdapter;
 use kernel::new_types::UuidType;
 use kernel::types::DatabaseRead;
 use utility::types::LogError;
@@ -17,7 +17,7 @@ const READ_QUERY: &str = "
 pub struct DataBaseOp;
 
 impl DatabaseRead for DataBaseOp {
-    type Db<'a> = db_client::S;
+    type Db<'a> = DbClientAdapter;
     type Input = ReadInput;
     type Output = ReadOutput;
 

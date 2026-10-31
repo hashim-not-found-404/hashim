@@ -3,7 +3,7 @@ use crate::model::TypeGlobalModel;
 use crate::use_case_navigator;
 use anyhow::Result;
 use anyhow::bail;
-use cache::cache_adapter;
+use cache::cache_adapter::CacheAdapter;
 use kernel::ui_construct::CastDTOToClient;
 use patterns::cast_error_to_client_case;
 use patterns::cast_input_to_cache_check_case;
@@ -153,7 +153,7 @@ impl CastMessageToReducer for MyCaster {
 }
 
 impl CastClientToCache for MyCaster {
-    type Cache = cache_adapter::S;
+    type Cache = CacheAdapter;
 
     fn cast_input(
         v: TypeOperationClientInput,

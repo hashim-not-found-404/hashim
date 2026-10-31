@@ -27,7 +27,7 @@ pub fn my_macro(input: TokenStream) -> TokenStream {
             pub(crate) struct Wrapper(pub(crate) Input);
 
             impl TraitOperationServerInput for Wrapper {
-                type Cli = db_client::S;
+                type Cli = db_client::DbClientAdapter;
                 type Jwt = Jwt;
                 fn handle_operation<'a>(
                     self: Box<Self>,

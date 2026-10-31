@@ -8,7 +8,7 @@ use accounting_engine::accounting_stuff::InFlowType;
 use accounting_engine::accounting_stuff::InventoryRecord;
 use accounting_engine::accounting_stuff::OutFlowType;
 use anyhow::Result;
-use cache::cache_adapter;
+use cache::cache_adapter::CacheAdapter;
 use cache::utils::MyUuidConverter;
 use cache::utils::MyUuidConverter1;
 use kernel::new_types::AccountForBranchUuid;
@@ -83,7 +83,7 @@ const READ_QUERY: &str = r#"
 pub struct CacheOp;
 
 impl DatabaseRead for CacheOp {
-    type Db<'a> = cache_adapter::S;
+    type Db<'a> = CacheAdapter;
     type Input = ReadInput;
     type Output = ReadOutput;
 
@@ -183,7 +183,7 @@ impl DatabaseRead for CacheOp {
 }
 
 impl DatabaseWrite for CacheOp {
-    type Db<'a> = cache_adapter::S;
+    type Db<'a> = CacheAdapter;
     type Input = Ok;
 
     async fn write(_txn: &mut Self::Db<'_>, _input: &Self::Input) -> Result<()> {

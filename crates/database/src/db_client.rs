@@ -1,4 +1,4 @@
-use crate::db_transaction;
+use crate::db_transaction::DbTransactionAdapter;
 use crate::utils::MyUuidConverter;
 use anyhow::Result;
 use deadpool_postgres::Object;
@@ -40,15 +40,15 @@ const WRITE_NONCE_IF_NOT_USED_QUERY: &str = "
     ON CONFLICT (rowid) DO NOTHING
     RETURNING true";
 
-pub struct S {
+pub struct DbClientAdapter {
     pub client: Object,
 }
 
-impl DBClient for S {
-    type Txn<'a> = db_transaction::S<'a>;
+impl DBClient for DbClientAdapter {
+    type Txn<'a> = DbTransactionAdapter<'a>;
 
     async fn begin_transaction(&mut self) -> Result<Self::Txn<'_>> {
-        Ok(db_transaction::S {
+        Ok(DbTransactionAdapter {
             txn: self.client.transaction().await.log()?,
         })
     }

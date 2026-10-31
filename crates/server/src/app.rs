@@ -12,8 +12,8 @@ use actix_ws::Session;
 use actix_ws::handle;
 use anyhow::Result;
 use anyhow::bail;
-use database::db;
-use database::db_client;
+use database::db::DbAdapter;
+use database::db_client::DbClientAdapter;
 use futures_util::StreamExt;
 use infrastructure::jwt::Jwt;
 use kernel::server::CastDTOToServer;
@@ -24,9 +24,10 @@ use kernel::types::HOST;
 use kernel::types::PORT;
 use utility::types::LogError;
 
-type ServerMethodsType = ServerMethods<Jwt, db::S>;
+type ServerMethodsType = ServerMethods<Jwt, DbAdapter>;
 
-pub async fn main<Cas: CastDTOToServer<Cli = db_client::S, Jwt = Jwt> + 'static>() -> Result<()> {
+pub async fn main<Cas: CastDTOToServer<Cli = DbClientAdapter, Jwt = Jwt> + 'static>() -> Result<()>
+{
     println!("started server");
 
     let actions = Data::new(ServerMethodsType::new().await?);
@@ -51,7 +52,7 @@ pub async fn main<Cas: CastDTOToServer<Cli = db_client::S, Jwt = Jwt> + 'static>
     Ok(())
 }
 
-async fn ws_handler<Cas: CastDTOToServer<Cli = db_client::S, Jwt = Jwt>>(
+async fn ws_handler<Cas: CastDTOToServer<Cli = DbClientAdapter, Jwt = Jwt>>(
     req: HttpRequest,
     stream: Payload,
 ) -> HttpResponse {

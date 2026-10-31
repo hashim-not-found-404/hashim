@@ -2,7 +2,7 @@ use crate::domain::Ok;
 use crate::domain::ReadInput;
 use crate::domain::ReadOutput;
 use anyhow::Result;
-use database::db_transaction;
+use database::db_transaction::DbTransactionAdapter;
 use database::utils::MyUuidConverter;
 use kernel::types::DatabaseRead;
 use kernel::types::DatabaseWrite;
@@ -55,7 +55,7 @@ const WRITE_JOURNAL_WITHOUT_QUANTITY_QUERY: &str = "
 pub struct DataBaseOp;
 
 impl DatabaseRead for DataBaseOp {
-    type Db<'a> = db_transaction::S<'a>;
+    type Db<'a> = DbTransactionAdapter<'a>;
     type Input = ReadInput;
     type Output = ReadOutput;
 
@@ -96,7 +96,7 @@ impl DatabaseRead for DataBaseOp {
 }
 
 impl DatabaseWrite for DataBaseOp {
-    type Db<'a> = db_transaction::S<'a>;
+    type Db<'a> = DbTransactionAdapter<'a>;
     type Input = Ok;
 
     async fn write(txn: &mut Self::Db<'_>, input: &Self::Input) -> Result<()> {

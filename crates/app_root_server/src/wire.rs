@@ -1,6 +1,6 @@
 use anyhow::Result;
 use anyhow::bail;
-use database::db_client;
+use database::db_client::DbClientAdapter;
 use infrastructure::jwt::Jwt;
 use kernel::server::CastDTOToServer;
 use kernel::server::TraitOperationServerInput;
@@ -25,7 +25,7 @@ make_server_wrapper_write!(sign_up);
 pub(crate) struct MyCaster;
 
 impl CastDTOToServer for MyCaster {
-    type Cli = db_client::S;
+    type Cli = DbClientAdapter;
     type Jwt = Jwt;
 
     fn cast_input(

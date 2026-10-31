@@ -25,7 +25,7 @@ pub fn my_macro(input: TokenStream) -> TokenStream {
             pub(crate) struct Wrapper(pub(crate) Input);
 
             impl TraitOperationCacheInput for Wrapper {
-                type Cache = cache_adapter::S;
+                type Cache = cache_adapter::CacheAdapter;
 
                 fn check_input<'a>(
                     &'a self,
@@ -49,7 +49,7 @@ pub fn my_macro(input: TokenStream) -> TokenStream {
             pub(crate) struct Wrapper(pub(crate) Ok);
 
             impl TraitOperationCacheOk for Wrapper {
-                type Cache = cache_adapter::S;
+                type Cache = cache_adapter::CacheAdapter;
 
                 fn apply_to_cache<'a>(
                     &'a self,

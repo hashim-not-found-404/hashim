@@ -3,7 +3,7 @@ use crate::domain::JournalUuid;
 use crate::domain::ReadInput;
 use crate::domain::ReadOutput;
 use anyhow::Result;
-use database::db_client;
+use database::db_client::DbClientAdapter;
 use database::utils::MyUuidConverter;
 use kernel::new_types::CompanyUuid;
 use kernel::new_types::UuidType;
@@ -84,7 +84,7 @@ struct RawData {
 pub struct DataBaseOp;
 
 impl DatabaseRead for DataBaseOp {
-    type Db<'a> = db_client::S;
+    type Db<'a> = DbClientAdapter;
     type Input = ReadInput;
     type Output = ReadOutput;
 

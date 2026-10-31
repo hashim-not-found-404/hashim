@@ -1,4 +1,4 @@
-use crate::db_client;
+use crate::db_client::DbClientAdapter;
 use anyhow::Result;
 use deadpool_postgres::Config;
 use deadpool_postgres::Pool;
@@ -7,12 +7,12 @@ use kernel::server::Database;
 use tokio_postgres::NoTls;
 use utility::types::LogError;
 
-pub struct S {
+pub struct DbAdapter {
     pool: Pool,
 }
 
-impl Database for S {
-    type Client = db_client::S;
+impl Database for DbAdapter {
+    type Client = DbClientAdapter;
 
     async fn new() -> Result<Self> {
         let mut cfg = Config::new();
@@ -24,11 +24,11 @@ impl Database for S {
 
         let pool = cfg.create_pool(Some(Runtime::Tokio1), NoTls)?;
 
-        Ok(S { pool })
+        Ok(DbAdapter { pool })
     }
 
     async fn get_client(&self) -> Result<Self::Client> {
-        Ok(db_client::S {
+        Ok(DbClientAdapter {
             client: self.pool.get().await.log()?,
         })
     }

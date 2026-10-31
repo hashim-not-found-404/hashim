@@ -8,7 +8,6 @@ use kernel::new_types::UuidType;
 use kernel::types::DatabaseRead;
 use kernel::types::MarkerMyErrorTrait;
 use kernel::types::Role;
-use kernel::types::RowIdError;
 use kernel::types::UserUuidError;
 use serde::Deserialize;
 use serde::Serialize;

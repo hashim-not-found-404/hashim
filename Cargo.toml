@@ -1,5 +1,9 @@
 [workspace]
-members  = ["crates/*"]
+# exclude  = ["crates/use_case"]
+members = [
+    # "crates/use_case/*/*"
+    "crates/*",
+]
 resolver = "3"
 
 [workspace.dependencies]

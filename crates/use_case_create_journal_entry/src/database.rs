@@ -7,7 +7,7 @@ use crate::domain::ReadOutput;
 use accounting_engine::accounting_stuff::InFlowType;
 use accounting_engine::accounting_stuff::OutFlowType;
 use anyhow::Result;
-use database::db_transaction;
+use database::db_transaction::DbTransactionAdapter;
 use database::utils::MyUuidConverter;
 use kernel::new_types::AccountForBranchUuid;
 use kernel::new_types::UuidType;
@@ -83,7 +83,7 @@ const READ_QUERY: &str = r#"
 pub struct DataBaseOp;
 
 impl DatabaseRead for DataBaseOp {
-    type Db<'a> = db_transaction::S<'a>;
+    type Db<'a> = DbTransactionAdapter<'a>;
     type Input = ReadInput;
     type Output = ReadOutput;
 
@@ -219,7 +219,7 @@ const WRITE_QUERY: &str = r#"
 "#;
 
 impl DatabaseWrite for DataBaseOp {
-    type Db<'a> = db_transaction::S<'a>;
+    type Db<'a> = DbTransactionAdapter<'a>;
     type Input = Ok;
 
     async fn write(txn: &mut Self::Db<'_>, input: &Self::Input) -> Result<()> {
