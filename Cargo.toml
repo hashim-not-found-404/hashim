@@ -54,6 +54,15 @@ members  = [
     "crates/use_case/create_journal/ui",
     "crates/use_case/create_journal/wire_client",
     "crates/use_case/create_journal/wire_server",
+    "crates/use_case/create_journal_entry/cache",
+    "crates/use_case/create_journal_entry/client",
+    "crates/use_case/create_journal_entry/database",
+    "crates/use_case/create_journal_entry/domain",
+    "crates/use_case/create_journal_entry/mcp",
+    "crates/use_case/create_journal_entry/server",
+    "crates/use_case/create_journal_entry/ui",
+    "crates/use_case/create_journal_entry/wire_client",
+    "crates/use_case/create_journal_entry/wire_server",
     "crates/use_case/error_handler/cache",
     "crates/use_case/error_handler/client",
     "crates/use_case/error_handler/database",
@@ -177,6 +186,15 @@ use_case_create_journal_cache                   = { path = "./crates/use_case/cr
 use_case_create_journal_client                  = { path = "./crates/use_case/create_journal/client" }
 use_case_create_journal_database                = { path = "./crates/use_case/create_journal/database" }
 use_case_create_journal_domain                  = { path = "./crates/use_case/create_journal/domain" }
+use_case_create_journal_entry_cache             = { path = "./crates/use_case/create_journal_entry/cache" }
+use_case_create_journal_entry_client            = { path = "./crates/use_case/create_journal_entry/client" }
+use_case_create_journal_entry_database          = { path = "./crates/use_case/create_journal_entry/database" }
+use_case_create_journal_entry_domain            = { path = "./crates/use_case/create_journal_entry/domain" }
+use_case_create_journal_entry_mcp               = { path = "./crates/use_case/create_journal_entry/mcp" }
+use_case_create_journal_entry_server            = { path = "./crates/use_case/create_journal_entry/server" }
+use_case_create_journal_entry_ui                = { path = "./crates/use_case/create_journal_entry/ui" }
+use_case_create_journal_entry_wire_client       = { path = "./crates/use_case/create_journal_entry/wire_client" }
+use_case_create_journal_entry_wire_server       = { path = "./crates/use_case/create_journal_entry/wire_server" }
 use_case_create_journal_mcp                     = { path = "./crates/use_case/create_journal/mcp" }
 use_case_create_journal_server                  = { path = "./crates/use_case/create_journal/server" }
 use_case_create_journal_ui                      = { path = "./crates/use_case/create_journal/ui" }

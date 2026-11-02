@@ -5243,6 +5243,91 @@ dependencies = [
 ]
 
 [[package]]
+name = "use_case_create_journal_entry_cache"
+version = "0.1.0"
+dependencies = [
+ "accounting_engine",
+ "serde",
+ "use_case_create_journal_entry_domain",
+ "use_case_prelude_cache",
+]
+
+[[package]]
+name = "use_case_create_journal_entry_client"
+version = "0.1.0"
+dependencies = [
+ "accounting_engine",
+ "serde",
+ "use_case_create_journal_entry_domain",
+ "use_case_prelude_client",
+]
+
+[[package]]
+name = "use_case_create_journal_entry_database"
+version = "0.1.0"
+dependencies = [
+ "accounting_engine",
+ "serde",
+ "tokio",
+ "use_case_create_journal_entry_domain",
+ "use_case_prelude_database",
+]
+
+[[package]]
+name = "use_case_create_journal_entry_domain"
+version = "0.1.0"
+dependencies = [
+ "accounting_engine",
+ "serde",
+ "use_case_prelude_domain",
+]
+
+[[package]]
+name = "use_case_create_journal_entry_mcp"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "use_case_create_journal_entry_client",
+ "use_case_prelude_mcp",
+]
+
+[[package]]
+name = "use_case_create_journal_entry_server"
+version = "0.1.0"
+dependencies = [
+ "use_case_create_journal_entry_domain",
+ "use_case_prelude_server",
+]
+
+[[package]]
+name = "use_case_create_journal_entry_ui"
+version = "0.1.0"
+dependencies = [
+ "use_case_create_journal_entry_client",
+ "use_case_prelude_ui",
+]
+
+[[package]]
+name = "use_case_create_journal_entry_wire_client"
+version = "0.1.0"
+dependencies = [
+ "use_case_create_journal_entry_cache",
+ "use_case_create_journal_entry_client",
+ "use_case_create_journal_entry_mcp",
+ "use_case_create_journal_entry_ui",
+ "use_case_prelude_wire_client",
+]
+
+[[package]]
+name = "use_case_create_journal_entry_wire_server"
+version = "0.1.0"
+dependencies = [
+ "use_case_create_journal_entry_database",
+ "use_case_create_journal_entry_server",
+ "use_case_prelude_wire_server",
+]
+
+[[package]]
 name = "use_case_create_journal_mcp"
 version = "0.1.0"
 dependencies = [
