@@ -4946,6 +4946,86 @@ dependencies = [
 ]
 
 [[package]]
+name = "use_case_get_companies_and_branches_cache"
+version = "0.1.0"
+dependencies = [
+ "use_case_get_companies_and_branches_domain",
+ "use_case_prelude_cache",
+]
+
+[[package]]
+name = "use_case_get_companies_and_branches_client"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "use_case_get_companies_and_branches_domain",
+ "use_case_prelude_client",
+]
+
+[[package]]
+name = "use_case_get_companies_and_branches_database"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "tokio",
+ "use_case_get_companies_and_branches_domain",
+ "use_case_prelude_database",
+]
+
+[[package]]
+name = "use_case_get_companies_and_branches_domain"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "use_case_prelude_domain",
+]
+
+[[package]]
+name = "use_case_get_companies_and_branches_mcp"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "use_case_get_companies_and_branches_client",
+ "use_case_prelude_mcp",
+]
+
+[[package]]
+name = "use_case_get_companies_and_branches_server"
+version = "0.1.0"
+dependencies = [
+ "use_case_get_companies_and_branches_domain",
+ "use_case_prelude_server",
+]
+
+[[package]]
+name = "use_case_get_companies_and_branches_ui"
+version = "0.1.0"
+dependencies = [
+ "use_case_get_companies_and_branches_client",
+ "use_case_prelude_ui",
+]
+
+[[package]]
+name = "use_case_get_companies_and_branches_wire_client"
+version = "0.1.0"
+dependencies = [
+ "use_case_get_companies_and_branches_cache",
+ "use_case_get_companies_and_branches_client",
+ "use_case_get_companies_and_branches_mcp",
+ "use_case_get_companies_and_branches_ui",
+ "use_case_prelude_wire_client",
+]
+
+[[package]]
+name = "use_case_get_companies_and_branches_wire_server"
+version = "0.1.0"
+dependencies = [
+ "use_case_get_companies_and_branches_database",
+ "use_case_get_companies_and_branches_server",
+ "use_case_prelude_wire_server",
+]
+
+[[package]]
 name = "use_case_home"
 version = "0.1.0"
 dependencies = [
