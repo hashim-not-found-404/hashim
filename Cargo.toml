@@ -9,6 +9,15 @@ members  = [
     "crates/kernel",
     "crates/patterns",
     "crates/server",
+    "crates/use_case/create_branch/cache",
+    "crates/use_case/create_branch/client",
+    "crates/use_case/create_branch/database",
+    "crates/use_case/create_branch/domain",
+    "crates/use_case/create_branch/mcp",
+    "crates/use_case/create_branch/server",
+    "crates/use_case/create_branch/ui",
+    "crates/use_case/create_branch/wire_client",
+    "crates/use_case/create_branch/wire_server",
     "crates/use_case/create_company/cache",
     "crates/use_case/create_company/client",
     "crates/use_case/create_company/database",
@@ -101,6 +110,15 @@ kernel   = { path = "./crates/kernel" }
 patterns = { path = "./crates/patterns" }
 server   = { path = "./crates/server" }
 
+use_case_create_branch_cache                    = { path = "./crates/use_case/create_branch/cache" }
+use_case_create_branch_client                   = { path = "./crates/use_case/create_branch/client" }
+use_case_create_branch_database                 = { path = "./crates/use_case/create_branch/database" }
+use_case_create_branch_domain                   = { path = "./crates/use_case/create_branch/domain" }
+use_case_create_branch_mcp                      = { path = "./crates/use_case/create_branch/mcp" }
+use_case_create_branch_server                   = { path = "./crates/use_case/create_branch/server" }
+use_case_create_branch_ui                       = { path = "./crates/use_case/create_branch/ui" }
+use_case_create_branch_wire_client              = { path = "./crates/use_case/create_branch/wire_client" }
+use_case_create_branch_wire_server              = { path = "./crates/use_case/create_branch/wire_server" }
 use_case_create_company_cache                   = { path = "./crates/use_case/create_company/cache" }
 use_case_create_company_client                  = { path = "./crates/use_case/create_company/client" }
 use_case_create_company_database                = { path = "./crates/use_case/create_company/database" }
