@@ -225,11 +225,15 @@ new crate_name:
 [private]
 new_layer_crate crate_name layer_name:
     cargo new crates/use_case/{{crate_name}}/{{layer_name}} --name use_case_{{crate_name}}_{{layer_name}} --lib --vcs none
-    cargo add --manifest-path crates/use_case/{{crate_name}}/{{layer_name}}/Cargo.toml use_case_prelude_{{layer_name}}
+    cargo add -p use_case_{{crate_name}}_{{layer_name}} use_case_prelude_{{layer_name}}
 
 [private]
-add_serde_to_use_case crate_name layer_name:
-    cargo add --manifest-path crates/use_case/{{crate_name}}/{{layer_name}}/Cargo.toml serde
+add_serde_to_layer_crate crate_name layer_name:
+    cargo add -p use_case_{{crate_name}}_{{layer_name}} serde
+
+[private]
+link_layer crate_name layer_name1 layer_name2:
+    cargo add -p use_case_{{crate_name}}_{{layer_name2}} use_case_{{crate_name}}_{{layer_name1}}
 
 new_use_case name:
     @just new_layer_crate {{name}} database
@@ -241,9 +245,39 @@ new_use_case name:
     @just new_layer_crate {{name}} mcp
     @just new_layer_crate {{name}} wire_client
     @just new_layer_crate {{name}} wire_server
-    @just add_serde_to_use_case {{name}} domain
-    @just add_serde_to_use_case {{name}} client
-    @just add_serde_to_use_case {{name}} mcp
+
+    @just add_serde_to_layer_crate {{name}} domain
+    @just add_serde_to_layer_crate {{name}} client
+    @just add_serde_to_layer_crate {{name}} mcp
+
+    @just link_layer {{name}} domain   client
+    @just link_layer {{name}} domain   server
+    @just link_layer {{name}} domain   database
+    @just link_layer {{name}} domain   cache
+    @just link_layer {{name}} client   ui
+    @just link_layer {{name}} client   mcp
+    @just link_layer {{name}} client   wire_client
+    @just link_layer {{name}} mcp      wire_client
+    @just link_layer {{name}} ui       wire_client
+    @just link_layer {{name}} cache    wire_client
+    @just link_layer {{name}} server   wire_server
+    @just link_layer {{name}} database wire_server
+
+
+[private]
+print_layer crate_name layer_name:
+    @echo "use_case_{{crate_name}}_{{layer_name}} = { path = \"./crates/use_case/{{crate_name}}/{{layer_name}}\" }"
+
+print_layers name:
+    @just print_layer {{name}} database
+    @just print_layer {{name}} server
+    @just print_layer {{name}} domain
+    @just print_layer {{name}} client
+    @just print_layer {{name}} cache
+    @just print_layer {{name}} ui
+    @just print_layer {{name}} mcp
+    @just print_layer {{name}} wire_client
+    @just print_layer {{name}} wire_server
 
 run_server:
     RUSTFLAGS="-A warnings" cargo run -p app_root_server
