@@ -1,5 +1,6 @@
 use crate::client::get_data;
 use crate::domain::Input;
+use serde::Deserialize;
 use use_case_prelude_mcp::*;
 
 pub trait GetInput {

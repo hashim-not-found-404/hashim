@@ -5,6 +5,8 @@ use crate::domain::ReadInput;
 use crate::domain::ReadOutput;
 use accounting_engine::accounting_stuff::InFlowType;
 use accounting_engine::accounting_stuff::OutFlowType;
+use serde::Deserialize;
+use serde::Serialize;
 use std::ops::Deref;
 use std::sync::Arc;
 use std::time::Duration;

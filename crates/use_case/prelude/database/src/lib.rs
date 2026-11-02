@@ -14,7 +14,6 @@ pub use kernel::types::DatabaseWrite;
 pub use kernel::types::Role;
 pub use rust_decimal::Decimal;
 pub use rust_decimal::prelude::FromPrimitive;
-pub use serde::Deserialize;
 pub use serde_json::Value;
 pub use serde_json::from_value;
 pub use serde_json::json;

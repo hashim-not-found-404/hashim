@@ -12,7 +12,6 @@ pub use kernel::types::DatabaseRead;
 pub use kernel::types::DatabaseWrite;
 pub use kernel::types::Role;
 pub use rusqlite::params;
-pub use serde::Deserialize;
 pub use serde_json::Map;
 pub use serde_json::Value;
 pub use serde_json::from_str;

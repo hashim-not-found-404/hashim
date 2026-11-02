@@ -4,8 +4,6 @@ pub use kernel::types::Currency;
 pub use schemars;
 pub use schemars::JsonSchema;
 pub use schemars::schema_for;
-pub use serde::Deserialize;
-pub use serde::Serialize;
 pub use serde_json::Value;
 pub use serde_json::to_value;
 pub use utility::mcp::CallInput;

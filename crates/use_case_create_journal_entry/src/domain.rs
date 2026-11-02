@@ -9,6 +9,8 @@ use accounting_engine::check_journal_input::DoubleEntryError;
 use accounting_engine::check_journal_input::EntryContainerError;
 use accounting_engine::check_journal_input::SingleEntryError;
 use accounting_engine::correct_journal_input;
+use serde::Deserialize;
+use serde::Serialize;
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::collections::HashSet;

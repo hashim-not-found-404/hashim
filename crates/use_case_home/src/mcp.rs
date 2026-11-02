@@ -4,6 +4,8 @@ use crate::client::GlobalModel;
 use crate::client::Intent;
 use crate::client::LocalModel;
 use crate::client::Message;
+use serde::Deserialize;
+use serde::Serialize;
 use use_case_prelude_mcp::*;
 
 const LIST_FORMS: &str = "list_forms";

@@ -5,6 +5,8 @@ use crate::domain::LocationError;
 use crate::domain::Ok;
 use crate::domain::ReadInput;
 use crate::domain::ReadOutput;
+use serde::Deserialize;
+use serde::Serialize;
 use std::ops::Deref;
 use std::sync::Arc;
 use std::time::Duration;

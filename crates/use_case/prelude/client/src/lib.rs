@@ -33,8 +33,6 @@ pub use kernel::types::HashimError;
 pub use kernel::types::Location;
 pub use kernel::types::MyErrorTrait;
 pub use kernel::types::RowIdError;
-pub use serde::Deserialize;
-pub use serde::Serialize;
 pub use typetag;
 pub use typetag::serde;
 pub use utility::cache::CacheStruct;

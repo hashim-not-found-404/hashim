@@ -3,6 +3,7 @@ use crate::domain::JournalUuid;
 use crate::domain::Ok;
 use crate::domain::ReadInput;
 use crate::domain::ReadOutput;
+use serde::Deserialize;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::str::FromStr;

@@ -2,6 +2,7 @@ use crate::domain::BranchInfo;
 use crate::domain::CompanyWithBranches;
 use crate::domain::ReadInput;
 use crate::domain::ReadOutput;
+use serde::Deserialize;
 use std::str::FromStr;
 use use_case_prelude_database::*;
 

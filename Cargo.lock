@@ -4968,7 +4968,6 @@ dependencies = [
  "cache",
  "kernel",
  "rusqlite",
- "serde",
  "serde_json",
  "uuid",
 ]
@@ -4981,7 +4980,6 @@ dependencies = [
  "dyn-clone",
  "infrastructure",
  "kernel",
- "serde",
  "typetag",
  "utility",
  "utility_ui",
@@ -4995,7 +4993,6 @@ dependencies = [
  "database",
  "kernel",
  "rust_decimal",
- "serde",
  "serde_json",
  "tokio-postgres",
  "utility",
@@ -5009,7 +5006,6 @@ dependencies = [
  "anyhow",
  "infrastructure",
  "kernel",
- "serde",
  "typetag",
  "utility",
 ]
@@ -5021,7 +5017,6 @@ dependencies = [
  "anyhow",
  "kernel",
  "schemars",
- "serde",
  "serde_json",
  "utility",
 ]

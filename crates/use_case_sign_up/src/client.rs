@@ -5,6 +5,8 @@ use crate::domain::ReadInput;
 use crate::domain::ReadOutput;
 use crate::domain::UserIdError;
 use crate::domain::UserNameError;
+use serde::Deserialize;
+use serde::Serialize;
 use std::fmt::Debug;
 use std::sync::Arc;
 use std::time::Duration;

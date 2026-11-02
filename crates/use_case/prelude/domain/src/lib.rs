@@ -22,8 +22,6 @@ pub use kernel::types::MyErrorTrait;
 pub use kernel::types::Role;
 pub use kernel::types::RowIdError;
 pub use kernel::types::UserUuidError;
-pub use serde::Deserialize;
-pub use serde::Serialize;
 pub use typetag;
 pub use typetag::serde;
 pub use utility::dtos::TraitOperationDTOError;

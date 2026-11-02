@@ -2,6 +2,7 @@ use crate::domain::JournalInfo;
 use crate::domain::JournalUuid;
 use crate::domain::ReadInput;
 use crate::domain::ReadOutput;
+use serde::Deserialize;
 use std::collections::HashMap;
 use std::str::FromStr;
 use use_case_prelude_database::*;

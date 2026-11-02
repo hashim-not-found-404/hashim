@@ -7,6 +7,7 @@ use crate::domain::ReadOutput;
 use accounting_engine::accounting_stuff::InFlowType;
 use accounting_engine::accounting_stuff::InventoryRecord;
 use accounting_engine::accounting_stuff::OutFlowType;
+use serde::Deserialize;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::str::FromStr;

@@ -8,7 +8,6 @@ anyhow         = { workspace = true }
 dyn-clone      = { workspace = true }
 infrastructure = { workspace = true }
 kernel         = { workspace = true }
-serde          = { workspace = true }
 typetag        = { workspace = true }
 utility        = { workspace = true }
 utility_ui     = { workspace = true }
