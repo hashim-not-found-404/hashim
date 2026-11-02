@@ -35,10 +35,17 @@ pub use typetag::serde;
 pub use utility::cache::CacheStruct;
 pub use utility::cache::CachingStrategy;
 pub use utility::cache::ProcessId;
+// TODO remove
+pub use utility::cache::ResourceName;
 pub use utility::cache::Response;
 pub use utility::cache::ResponseFunction;
+pub use utility::cache::TraitOperationClientError;
+pub use utility::cache::TraitOperationClientInput;
+pub use utility::cache::TraitOperationClientOk;
+pub use utility::cache::TypeOperationClientError;
 pub use utility::cache::TypeOperationClientInput;
 pub use utility::cache::TypeOperationClientResult;
+pub use utility::cache::new_resource_name;
 pub use utility::dtos::TxnNumber;
 pub use utility::tools::select_strings;
 pub use utility::types::MakeOptionIfEmpty;
@@ -56,11 +63,3 @@ pub use utility::ui_orchestration::handle_submit;
 pub use utility::ui_orchestration::handle_subscribe;
 pub use utility::ui_orchestration::handle_unsubscribe;
 pub use utility_ui::domain::Dialog;
-
-// TODO remove
-pub use utility::cache::ResourceName;
-pub use utility::cache::TraitOperationClientError;
-pub use utility::cache::TraitOperationClientInput;
-pub use utility::cache::TraitOperationClientOk;
-pub use utility::cache::TypeOperationClientError;
-pub use utility::cache::new_resource_name;

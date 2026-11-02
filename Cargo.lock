@@ -5080,6 +5080,85 @@ dependencies = [
 ]
 
 [[package]]
+name = "use_case_sign_in_cache"
+version = "0.1.0"
+dependencies = [
+ "use_case_prelude_cache",
+ "use_case_sign_in_domain",
+]
+
+[[package]]
+name = "use_case_sign_in_client"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "use_case_prelude_client",
+ "use_case_sign_in_domain",
+]
+
+[[package]]
+name = "use_case_sign_in_database"
+version = "0.1.0"
+dependencies = [
+ "tokio",
+ "use_case_prelude_database",
+ "use_case_sign_in_domain",
+]
+
+[[package]]
+name = "use_case_sign_in_domain"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "use_case_prelude_domain",
+]
+
+[[package]]
+name = "use_case_sign_in_mcp"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "use_case_prelude_mcp",
+ "use_case_sign_in_client",
+]
+
+[[package]]
+name = "use_case_sign_in_server"
+version = "0.1.0"
+dependencies = [
+ "use_case_prelude_server",
+ "use_case_sign_in_domain",
+]
+
+[[package]]
+name = "use_case_sign_in_ui"
+version = "0.1.0"
+dependencies = [
+ "use_case_prelude_ui",
+ "use_case_sign_in_client",
+]
+
+[[package]]
+name = "use_case_sign_in_wire_client"
+version = "0.1.0"
+dependencies = [
+ "use_case_prelude_wire_client",
+ "use_case_sign_in_cache",
+ "use_case_sign_in_client",
+ "use_case_sign_in_mcp",
+ "use_case_sign_in_ui",
+]
+
+[[package]]
+name = "use_case_sign_in_wire_server"
+version = "0.1.0"
+dependencies = [
+ "use_case_prelude_wire_server",
+ "use_case_sign_in_database",
+ "use_case_sign_in_server",
+]
+
+[[package]]
 name = "use_case_sign_up"
 version = "0.1.0"
 dependencies = [

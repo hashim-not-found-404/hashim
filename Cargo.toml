@@ -19,6 +19,15 @@ members = [
     "crates/use_case/prelude/ui",
     "crates/use_case/prelude/wire_client",
     "crates/use_case/prelude/wire_server",
+    "crates/use_case/sign_in/cache",
+    "crates/use_case/sign_in/client",
+    "crates/use_case/sign_in/database",
+    "crates/use_case/sign_in/domain",
+    "crates/use_case/sign_in/mcp",
+    "crates/use_case/sign_in/server",
+    "crates/use_case/sign_in/ui",
+    "crates/use_case/sign_in/wire_client",
+    "crates/use_case/sign_in/wire_server",
     "crates/use_case/sign_up/cache",
     "crates/use_case/sign_up/client",
     "crates/use_case/sign_up/database",
@@ -58,6 +67,15 @@ use_case_prelude_server      = { path = "./crates/use_case/prelude/server" }
 use_case_prelude_ui          = { path = "./crates/use_case/prelude/ui" }
 use_case_prelude_wire_client = { path = "./crates/use_case/prelude/wire_client" }
 use_case_prelude_wire_server = { path = "./crates/use_case/prelude/wire_server" }
+use_case_sign_in_cache       = { path = "./crates/use_case/sign_in/cache" }
+use_case_sign_in_client      = { path = "./crates/use_case/sign_in/client" }
+use_case_sign_in_database    = { path = "./crates/use_case/sign_in/database" }
+use_case_sign_in_domain      = { path = "./crates/use_case/sign_in/domain" }
+use_case_sign_in_mcp         = { path = "./crates/use_case/sign_in/mcp" }
+use_case_sign_in_server      = { path = "./crates/use_case/sign_in/server" }
+use_case_sign_in_ui          = { path = "./crates/use_case/sign_in/ui" }
+use_case_sign_in_wire_client = { path = "./crates/use_case/sign_in/wire_client" }
+use_case_sign_in_wire_server = { path = "./crates/use_case/sign_in/wire_server" }
 use_case_sign_up_cache       = { path = "./crates/use_case/sign_up/cache" }
 use_case_sign_up_client      = { path = "./crates/use_case/sign_up/client" }
 use_case_sign_up_database    = { path = "./crates/use_case/sign_up/database" }
