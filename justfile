@@ -222,6 +222,29 @@ udeps:
 new crate_name:
     cargo new crates/{{crate_name}} --lib --vcs none
 
+[private]
+new_layer_crate crate_name layer_name:
+    cargo new crates/use_case/{{crate_name}}/{{layer_name}} --name use_case_{{crate_name}}_{{layer_name}} --lib --vcs none
+    cargo add --manifest-path crates/use_case/{{crate_name}}/{{layer_name}}/Cargo.toml use_case_prelude_{{layer_name}}
+
+[private]
+add_serde_to_use_case crate_name layer_name:
+    cargo add --manifest-path crates/use_case/{{crate_name}}/{{layer_name}}/Cargo.toml serde
+
+new_use_case name:
+    @just new_layer_crate {{name}} database
+    @just new_layer_crate {{name}} server
+    @just new_layer_crate {{name}} domain
+    @just new_layer_crate {{name}} client
+    @just new_layer_crate {{name}} cache
+    @just new_layer_crate {{name}} ui
+    @just new_layer_crate {{name}} mcp
+    @just new_layer_crate {{name}} wire_client
+    @just new_layer_crate {{name}} wire_server
+    @just add_serde_to_use_case {{name}} domain
+    @just add_serde_to_use_case {{name}} client
+    @just add_serde_to_use_case {{name}} mcp
+
 run_server:
     RUSTFLAGS="-A warnings" cargo run -p app_root_server
 
