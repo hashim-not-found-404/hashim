@@ -1,3 +1,4 @@
+use crate::domain::AccountUuid;
 use crate::domain::Error;
 use crate::domain::Input;
 use crate::domain::Ok;
@@ -67,7 +68,9 @@ pub(crate) type AsyncState = GenricAsyncState<AsyncInput, Ok, Error>;
 pub trait GlobalModel {
     fn user_uuid(&self) -> Option<UserUuid>;
     fn selected_company_branch(&self) -> Option<BranchUuid>;
-    fn list_of_accounts(&self) -> Vec<(AccountUuid, String)>; // this should be fetched from this use case , not get it from the model
+    fn list_of_accounts(&self) -> Vec<(AccountUuid, String)> {
+        todo!("remove this method")
+    }
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
@@ -407,7 +410,7 @@ impl UseCaseClient for Wire {
     fn build_input(input: &Self::AsyncInput) -> Self::Input {
         Input {
             user_uuid: input.user_uuid.clone(),
-            new_uuid: AccountForBranchUuid::from(UuidType::from(Id::generate())),
+            new_uuid: UuidType::from(Id::generate()).into(),
             belong_to_account: input.belong_to_account.clone(),
             belong_to_company_branch: input.belong_to_company_branch.clone(),
             outflow_type: input.outflow_type,

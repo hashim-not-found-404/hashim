@@ -4,6 +4,9 @@ use serde::Deserialize;
 use serde::Serialize;
 use use_case_prelude_domain::*;
 
+make_type!(UuidType, AccountUuid);
+make_type!(UuidType, AccountForBranchUuid);
+
 #[serde(name = "create_account_for_branch")]
 impl TraitOperationDTOInput for Input {}
 

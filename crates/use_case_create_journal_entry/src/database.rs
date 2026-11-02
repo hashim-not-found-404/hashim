@@ -1,3 +1,4 @@
+use crate::domain::AccountForBranchUuid;
 use crate::domain::AccountInfo;
 use crate::domain::AccountInfoProviderImpl;
 use crate::domain::InventoryWrapper;

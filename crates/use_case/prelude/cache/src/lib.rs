@@ -3,7 +3,6 @@ pub use cache::cache_adapter::CacheAdapter;
 pub use cache::test_helper::test_query_helper_for_tables_schema;
 pub use cache::utils::MyUuidConverter;
 pub use cache::utils::MyUuidConverter1;
-pub use kernel::new_types::AccountForBranchUuid;
 pub use kernel::new_types::CompanyUuid;
 pub use kernel::new_types::UserUuid;
 pub use kernel::new_types::UuidType;

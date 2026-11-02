@@ -5,7 +5,6 @@ pub use database::db_transaction::DbTransactionAdapter;
 pub use database::test_helper::test_query_helper;
 pub use database::utils::MyUuidConverter;
 pub use database::utils::MyUuidConverter1;
-pub use kernel::new_types::AccountForBranchUuid;
 pub use kernel::new_types::CompanyUuid;
 pub use kernel::new_types::UuidType;
 pub use kernel::types::Currency;

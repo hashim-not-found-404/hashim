@@ -1,5 +1,4 @@
 use crate::use_case_navigator::client::Navigator;
-use kernel::new_types::AccountUuid;
 use kernel::new_types::BranchUuid;
 use kernel::new_types::CompanyUuid;
 use kernel::new_types::UserUuid;
@@ -169,10 +168,6 @@ impl use_case_create_account_for_branch::client::GlobalModel for TypeGlobalModel
 
     fn selected_company_branch(&self) -> Option<BranchUuid> {
         self.selected_company_branch_uuid.clone()
-    }
-
-    fn list_of_accounts(&self) -> Vec<(AccountUuid, String)> {
-        Vec::new()
     }
 }
 

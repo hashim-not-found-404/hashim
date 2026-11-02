@@ -2,6 +2,8 @@ use serde::Deserialize;
 use serde::Serialize;
 use use_case_prelude_domain::*;
 
+make_type!(UuidType, AccountUuid);
+
 #[serde(name = "get_all_accounts")]
 impl TraitOperationDTOInput for Input {}
 

@@ -1,4 +1,5 @@
 use crate::client::Intent;
+use crate::domain::AccountUuid;
 use accounting_engine::accounting_stuff::InFlowType;
 use accounting_engine::accounting_stuff::OutFlowType;
 use std::str::FromStr;

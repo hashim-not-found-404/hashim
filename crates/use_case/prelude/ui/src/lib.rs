@@ -1,7 +1,6 @@
 pub use cache::utils::MyUuidConverter;
 pub use chrono::DateTime;
 pub use dioxus::prelude::*;
-pub use kernel::new_types::AccountUuid;
 pub use kernel::new_types::BranchUuid;
 pub use kernel::new_types::CompanyUuid;
 pub use kernel::types::Currency;

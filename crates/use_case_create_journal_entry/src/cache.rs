@@ -147,7 +147,7 @@ impl DatabaseRead for CacheOp {
 
         let mut account_info = AccountInfoProviderImpl(HashMap::new());
         for info in account_infos {
-            let uuid_type: AccountForBranchUuid = info.account_uuid.to_uuid()?.into();
+            let uuid_type = info.account_uuid.to_uuid()?.into();
             let in_flow = InFlowType::from_str(&info.in_flow_type).unwrap();
             let out_flow = OutFlowType::from_str(&info.out_flow_type).unwrap();
             let inventory = InventoryWrapper(info.inventory);

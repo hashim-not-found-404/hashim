@@ -8,7 +8,10 @@ use accounting_engine::check_journal_input;
 use accounting_engine::check_journal_input::DoubleEntryError;
 use accounting_engine::check_journal_input::EntryContainerError;
 use accounting_engine::check_journal_input::SingleEntryError;
+use accounting_engine::check_journal_input::state_full_check_for_entry;
+use accounting_engine::check_journal_input::state_less_check_for_entry;
 use accounting_engine::correct_journal_input;
+use accounting_engine::correct_journal_input::correct_the_input;
 use serde::Deserialize;
 use serde::Serialize;
 use std::cmp::Ordering;
@@ -20,6 +23,9 @@ use std::slice::Iter;
 use std::slice::IterMut;
 use std::vec::IntoIter;
 use use_case_prelude_domain::*;
+
+make_type!(UuidType, AccountForBranchUuid);
+make_type!(UuidType, SharedEntryUuid);
 
 #[serde(name = "create_journal_entry")]
 impl TraitOperationDTOInput for Input {}
@@ -902,7 +908,7 @@ impl Input {
 
         let mut account_info = read_output.account_info;
 
-        correct_journal_input::correct_the_input(
+        correct_the_input(
             Ti::now_as_unix_milliseconds(),
             &mut container,
             &account_info,
@@ -914,9 +920,9 @@ impl Input {
             return Ok(Err(error));
         }
 
-        check_journal_input::state_less_check_for_entry(&mut container);
+        state_less_check_for_entry(&mut container);
 
-        check_journal_input::state_full_check_for_entry(
+        state_full_check_for_entry(
             Ti::now_as_unix_milliseconds(),
             &mut container,
             &mut account_info,

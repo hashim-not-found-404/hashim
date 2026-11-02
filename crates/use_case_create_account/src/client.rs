@@ -603,7 +603,7 @@ impl UseCaseClient for Wire {
     fn build_input(input: &Self::AsyncInput) -> Self::Input {
         Input {
             user_uuid: input.user_uuid.clone(),
-            new_uuid: AccountUuid::from(UuidType::from(Id::generate())),
+            new_uuid: UuidType::from(Id::generate()).into(),
             is_debit: input.is_debit,
             is_permanent_account: input.is_permanent_account,
             account_name: input.account_name.clone(),
