@@ -1,5 +1,5 @@
 [workspace]
-members = [
+members  = [
     "crates/accounting_engine",
     "crates/app_root_client",
     "crates/app_root_server",
@@ -9,7 +9,15 @@ members = [
     "crates/kernel",
     "crates/patterns",
     "crates/server",
-    # new nested crates — must be listed one-by-one (exclude is prefix-based)
+    "crates/use_case/create_company/cache",
+    "crates/use_case/create_company/client",
+    "crates/use_case/create_company/database",
+    "crates/use_case/create_company/domain",
+    "crates/use_case/create_company/mcp",
+    "crates/use_case/create_company/server",
+    "crates/use_case/create_company/ui",
+    "crates/use_case/create_company/wire_client",
+    "crates/use_case/create_company/wire_server",
     "crates/use_case/error_handler/cache",
     "crates/use_case/error_handler/client",
     "crates/use_case/error_handler/database",
@@ -28,6 +36,15 @@ members = [
     "crates/use_case/get_companies_and_branches/ui",
     "crates/use_case/get_companies_and_branches/wire_client",
     "crates/use_case/get_companies_and_branches/wire_server",
+    "crates/use_case/home/cache",
+    "crates/use_case/home/client",
+    "crates/use_case/home/database",
+    "crates/use_case/home/domain",
+    "crates/use_case/home/mcp",
+    "crates/use_case/home/server",
+    "crates/use_case/home/ui",
+    "crates/use_case/home/wire_client",
+    "crates/use_case/home/wire_server",
     "crates/use_case/prelude/cache",
     "crates/use_case/prelude/client",
     "crates/use_case/prelude/database",
@@ -64,7 +81,6 @@ members = [
     "crates/use_case/sign_up/ui",
     "crates/use_case/sign_up/wire_client",
     "crates/use_case/sign_up/wire_server",
-    # old flat use cases (glob still works here, no exclude conflict)
     "crates/use_case_*",
     "crates/utility",
     "crates/utility_ui",
@@ -85,6 +101,15 @@ kernel   = { path = "./crates/kernel" }
 patterns = { path = "./crates/patterns" }
 server   = { path = "./crates/server" }
 
+use_case_create_company_cache                   = { path = "./crates/use_case/create_company/cache" }
+use_case_create_company_client                  = { path = "./crates/use_case/create_company/client" }
+use_case_create_company_database                = { path = "./crates/use_case/create_company/database" }
+use_case_create_company_domain                  = { path = "./crates/use_case/create_company/domain" }
+use_case_create_company_mcp                     = { path = "./crates/use_case/create_company/mcp" }
+use_case_create_company_server                  = { path = "./crates/use_case/create_company/server" }
+use_case_create_company_ui                      = { path = "./crates/use_case/create_company/ui" }
+use_case_create_company_wire_client             = { path = "./crates/use_case/create_company/wire_client" }
+use_case_create_company_wire_server             = { path = "./crates/use_case/create_company/wire_server" }
 use_case_error_handler_cache                    = { path = "./crates/use_case/error_handler/cache" }
 use_case_error_handler_client                   = { path = "./crates/use_case/error_handler/client" }
 use_case_error_handler_database                 = { path = "./crates/use_case/error_handler/database" }
@@ -103,6 +128,15 @@ use_case_get_companies_and_branches_server      = { path = "./crates/use_case/ge
 use_case_get_companies_and_branches_ui          = { path = "./crates/use_case/get_companies_and_branches/ui" }
 use_case_get_companies_and_branches_wire_client = { path = "./crates/use_case/get_companies_and_branches/wire_client" }
 use_case_get_companies_and_branches_wire_server = { path = "./crates/use_case/get_companies_and_branches/wire_server" }
+use_case_home_cache                             = { path = "./crates/use_case/home/cache" }
+use_case_home_client                            = { path = "./crates/use_case/home/client" }
+use_case_home_database                          = { path = "./crates/use_case/home/database" }
+use_case_home_domain                            = { path = "./crates/use_case/home/domain" }
+use_case_home_mcp                               = { path = "./crates/use_case/home/mcp" }
+use_case_home_server                            = { path = "./crates/use_case/home/server" }
+use_case_home_ui                                = { path = "./crates/use_case/home/ui" }
+use_case_home_wire_client                       = { path = "./crates/use_case/home/wire_client" }
+use_case_home_wire_server                       = { path = "./crates/use_case/home/wire_server" }
 use_case_prelude_cache                          = { path = "./crates/use_case/prelude/cache" }
 use_case_prelude_client                         = { path = "./crates/use_case/prelude/client" }
 use_case_prelude_database                       = { path = "./crates/use_case/prelude/database" }

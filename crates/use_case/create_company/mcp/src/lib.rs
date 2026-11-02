@@ -1,0 +1,67 @@
+use serde::Deserialize;
+use serde::Serialize;
+use use_case_create_company_client::GlobalModel;
+use use_case_create_company_client::Intent;
+use use_case_create_company_client::LocalModel;
+use use_case_create_company_client::Message;
+use use_case_home::mcp::form_sender;
+use use_case_prelude_mcp::*;
+
+const CREATE_COMPANY: &str = "create_company";
+
+#[derive(Debug, JsonSchema, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct CreateCompanyArgs {
+    /// form id of the form to write.
+    form_id: u32,
+    /// Company name. Must be non-empty.
+    company_name: String,
+    /// Currency. One of: "USD", "IQD".
+    currency: Currency,
+}
+
+#[derive(Debug, Serialize)]
+struct Output {}
+
+pub fn tools() -> Vec<McpToolDef> {
+    vec![McpToolDef {
+        name: CREATE_COMPANY,
+        description: "Create a new company with the given name and currency. \
+                      The company form is pre-filled; \
+                      the companies list will refresh once the server responds.",
+        input_schema: schema_for!(CreateCompanyArgs),
+    }]
+}
+
+pub fn call<'a>(input: CallInput<'a, LocalModel, impl GlobalModel>) -> Result<Value> {
+    match input.tool_name {
+        CREATE_COMPANY => {
+            let args: CreateCompanyArgs = parse_args(input.args)?;
+
+            if args.company_name.trim().is_empty() {
+                return Err(error_to_mcp(
+                    "invalid_args",
+                    "company_name must not be empty",
+                ));
+            }
+
+            form_sender(
+                input.commander.clone(),
+                args.form_id.into(),
+                Message::Intent(Intent::CompanyName(args.company_name)),
+            );
+
+            form_sender(
+                input.commander.clone(),
+                args.form_id.into(),
+                Message::Intent(Intent::Currency(args.currency)),
+            );
+
+            Ok(to_value(Output {})?)
+        }
+        _ => Err(error_to_mcp(
+            "unknown_tool",
+            format!("unknown tool: {}", input.tool_name),
+        )),
+    }
+}
