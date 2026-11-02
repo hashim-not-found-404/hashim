@@ -1,0 +1,122 @@
+use use_case_prelude_ui::*;
+use use_case_select_default_company_client::Intent;
+
+#[component]
+pub fn Component(
+    sender: EventHandler<Intent>,
+    user_name: String,
+    is_loading: bool,
+    companies: Vec<(CompanyUuid, String)>,
+    branches: Vec<(BranchUuid, String)>,
+    selected_company: Option<CompanyUuid>,
+    selected_company_name: Option<String>,
+    selected_branch: Option<BranchUuid>,
+    selected_branch_name: Option<String>,
+) -> Element {
+    use_effect(move || {
+        sender(Intent::Subscribe);
+    });
+
+    use_drop(move || {
+        sender(Intent::UnSubscribe);
+    });
+
+    let mut show_companies = use_signal(|| false);
+    let mut show_branches = use_signal(|| false);
+
+    let companies_open = *show_companies.read();
+    let branches_open = *show_branches.read();
+
+    let company_label = selected_company_name
+        .clone()
+        .unwrap_or_else(|| "select company".to_string());
+    let branch_label = selected_branch_name
+        .clone()
+        .unwrap_or_else(|| "select branch".to_string());
+    let has_company = selected_company.is_some();
+
+    rsx! {
+        div {
+            span { "{user_name}" }
+            span { " > " }
+
+            div {
+                button {
+                    onclick: move |_| {
+                        *show_companies.write() ^= true;
+                        *show_branches.write() = false;
+                    },
+                    "{company_label}"
+                }
+
+                if companies_open {
+                    div {
+                        if is_loading {
+                            span { "loading companies…" }
+                        } else if companies.is_empty() {
+                            span { "no companies" }
+                        } else {
+                            for (uuid, name) in companies.iter() {
+                                {
+                                    let uuid = uuid.clone();
+                                    let name = name.clone();
+                                    rsx! {
+                                        button {
+                                            onclick: move |_| {
+                                                sender(Intent::SelectCompany(uuid.clone()));
+                                                *show_companies.write() = false;
+                                            },
+                                            "{name}"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            span { " > " }
+
+            div {
+                button {
+                    disabled: !has_company,
+                    onclick: move |_| {
+                        if !has_company {
+                            return;
+                        }
+                        *show_branches.write() ^= true;
+                        *show_companies.write() = false;
+                    },
+                    "{branch_label}"
+                }
+
+                if branches_open && has_company {
+                    div {
+                        if is_loading {
+                            span { "loading branches…" }
+                        } else if branches.is_empty() {
+                            span { "no branches for this company" }
+                        } else {
+                            for (uuid, name) in branches.iter() {
+                                {
+                                    let uuid = uuid.clone();
+                                    let name = name.clone();
+                                    rsx! {
+                                        button {
+                                            onclick: move |_| {
+                                                sender(Intent::SelectBranch(uuid.clone()));
+                                                *show_branches.write() = false;
+                                            },
+                                            "{name}"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
