@@ -209,19 +209,6 @@ all_p crate_name:
 
 ###################################################################################################
 
-udeps:
-    RUSTFLAGS="-A warnings" cargo +nightly udeps --all-targets
-    RUSTFLAGS="-A warnings" cargo +nightly udeps --all-targets --features="server"
-    RUSTFLAGS="-A warnings" cargo +nightly udeps --all-targets --features="client"
-    RUSTFLAGS="-A warnings" cargo +nightly udeps --all-targets --features="database"
-    RUSTFLAGS="-A warnings" cargo +nightly udeps --all-targets --features="cache"
-    RUSTFLAGS="-A warnings" cargo +nightly udeps --all-targets --features="client,ui"
-    RUSTFLAGS="-A warnings" cargo +nightly udeps --all-targets --features="client,mcp"
-    RUSTFLAGS="-A warnings" cargo +nightly udeps -p app_root_client --target wasm32-unknown-unknown
-
-new crate_name:
-    cargo new crates/{{crate_name}} --lib --vcs none
-
 [private]
 new_layer_crate crate_name layer_name:
     cargo new crates/use_case/{{crate_name}}/{{layer_name}} --name use_case_{{crate_name}}_{{layer_name}} --lib --vcs none
@@ -278,6 +265,23 @@ print_layers name:
     @just print_layer {{name}} mcp
     @just print_layer {{name}} wire_client
     @just print_layer {{name}} wire_server
+
+###################################################################################################
+
+udeps:
+    RUSTFLAGS="-A warnings" cargo +nightly udeps --all-targets
+    RUSTFLAGS="-A warnings" cargo +nightly udeps --all-targets --features="server"
+    RUSTFLAGS="-A warnings" cargo +nightly udeps --all-targets --features="client"
+    RUSTFLAGS="-A warnings" cargo +nightly udeps --all-targets --features="database"
+    RUSTFLAGS="-A warnings" cargo +nightly udeps --all-targets --features="cache"
+    RUSTFLAGS="-A warnings" cargo +nightly udeps --all-targets --features="client,ui"
+    RUSTFLAGS="-A warnings" cargo +nightly udeps --all-targets --features="client,mcp"
+    RUSTFLAGS="-A warnings" cargo +nightly udeps -p app_root_client --target wasm32-unknown-unknown
+
+new crate_name:
+    cargo new crates/{{crate_name}} --lib --vcs none
+
+###################################################################################################
 
 run_server:
     RUSTFLAGS="-A warnings" cargo run -p app_root_server
