@@ -1,11 +1,9 @@
-use crate::new_types::BranchUuid;
-use crate::new_types::CompanyUuid;
+use anyhow::Error;
 use anyhow::Result;
 use anyhow::bail;
 use schemars::JsonSchema;
 use serde::Deserialize;
 use serde::Serialize;
-use std::error::Error;
 use std::fmt::Debug;
 use std::fmt::Display;
 use std::fmt::Formatter;
@@ -41,22 +39,6 @@ impl<T: MarkerMyErrorTrait + Default + PartialEq> MyErrorTrait for T {
     }
 }
 
-pub type ListOfCompanies = Vec<Company>;
-
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct Company {
-    pub uuid: CompanyUuid,
-    pub name: String,
-    pub role: Role,
-    pub branches: Vec<Branch>,
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct Branch {
-    pub uuid: BranchUuid,
-    pub name: String,
-}
-
 #[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
 pub struct Location {
     pub latitude: f64,
@@ -82,7 +64,7 @@ pub enum Currency {
 }
 
 impl FromStr for Currency {
-    type Err = anyhow::Error;
+    type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
@@ -110,7 +92,7 @@ pub enum Role {
 }
 
 impl FromStr for Role {
-    type Err = anyhow::Error;
+    type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
@@ -160,12 +142,12 @@ pub enum RowIdError {
 }
 
 #[derive(Debug, PartialEq, Deserialize, Serialize)]
-pub enum NonceError {
+pub(crate) enum NonceError {
     Invalid,
 }
 
 #[derive(Debug, PartialEq, Deserialize, Serialize)]
-pub enum JWTError {
+pub(crate) enum JWTError {
     Invalid,
 }
 
@@ -177,7 +159,7 @@ pub enum HashimError {
     ConnectionClosed,
 }
 
-impl Error for HashimError {}
+impl std::error::Error for HashimError {}
 
 impl Display for HashimError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
