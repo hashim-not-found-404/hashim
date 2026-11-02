@@ -9,6 +9,15 @@ members  = [
     "crates/kernel",
     "crates/patterns",
     "crates/server",
+    "crates/use_case/create_account/cache",
+    "crates/use_case/create_account/client",
+    "crates/use_case/create_account/database",
+    "crates/use_case/create_account/domain",
+    "crates/use_case/create_account/mcp",
+    "crates/use_case/create_account/server",
+    "crates/use_case/create_account/ui",
+    "crates/use_case/create_account/wire_client",
+    "crates/use_case/create_account/wire_server",
     "crates/use_case/create_branch/cache",
     "crates/use_case/create_branch/client",
     "crates/use_case/create_branch/database",
@@ -119,6 +128,15 @@ kernel   = { path = "./crates/kernel" }
 patterns = { path = "./crates/patterns" }
 server   = { path = "./crates/server" }
 
+use_case_create_account_cache                   = { path = "./crates/use_case/create_account/cache" }
+use_case_create_account_client                  = { path = "./crates/use_case/create_account/client" }
+use_case_create_account_database                = { path = "./crates/use_case/create_account/database" }
+use_case_create_account_domain                  = { path = "./crates/use_case/create_account/domain" }
+use_case_create_account_mcp                     = { path = "./crates/use_case/create_account/mcp" }
+use_case_create_account_server                  = { path = "./crates/use_case/create_account/server" }
+use_case_create_account_ui                      = { path = "./crates/use_case/create_account/ui" }
+use_case_create_account_wire_client             = { path = "./crates/use_case/create_account/wire_client" }
+use_case_create_account_wire_server             = { path = "./crates/use_case/create_account/wire_server" }
 use_case_create_branch_cache                    = { path = "./crates/use_case/create_branch/cache" }
 use_case_create_branch_client                   = { path = "./crates/use_case/create_branch/client" }
 use_case_create_branch_database                 = { path = "./crates/use_case/create_branch/database" }
