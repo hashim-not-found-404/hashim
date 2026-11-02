@@ -1,4 +1,5 @@
 use dyn_clone::DynClone;
+use dyn_clone::clone_trait_object;
 use infrastructure::time::Ti;
 use infrastructure::time::Time;
 use serde::Deserialize;
@@ -42,7 +43,7 @@ pub type TypeOperationDTOError = Box<dyn TraitOperationDTOError>;
 pub trait TraitOperationDTOResource: Any + Debug + DynClone + Send + TraitOperationDTOOk {}
 pub type TypeOperationDTOResource = Box<dyn TraitOperationDTOResource>;
 
-dyn_clone::clone_trait_object!(TraitOperationDTOResource);
+clone_trait_object!(TraitOperationDTOResource);
 
 //////////////////////////////////////////////////////////////////////
 
