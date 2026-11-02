@@ -81,6 +81,15 @@ members  = [
     "crates/use_case/get_all_accounts/ui",
     "crates/use_case/get_all_accounts/wire_client",
     "crates/use_case/get_all_accounts/wire_server",
+    "crates/use_case/get_all_journals/cache",
+    "crates/use_case/get_all_journals/client",
+    "crates/use_case/get_all_journals/database",
+    "crates/use_case/get_all_journals/domain",
+    "crates/use_case/get_all_journals/mcp",
+    "crates/use_case/get_all_journals/server",
+    "crates/use_case/get_all_journals/ui",
+    "crates/use_case/get_all_journals/wire_client",
+    "crates/use_case/get_all_journals/wire_server",
     "crates/use_case/get_companies_and_branches/cache",
     "crates/use_case/get_companies_and_branches/client",
     "crates/use_case/get_companies_and_branches/database",
@@ -227,6 +236,15 @@ use_case_get_all_accounts_server                = { path = "./crates/use_case/ge
 use_case_get_all_accounts_ui                    = { path = "./crates/use_case/get_all_accounts/ui" }
 use_case_get_all_accounts_wire_client           = { path = "./crates/use_case/get_all_accounts/wire_client" }
 use_case_get_all_accounts_wire_server           = { path = "./crates/use_case/get_all_accounts/wire_server" }
+use_case_get_all_journals_cache                 = { path = "./crates/use_case/get_all_journals/cache" }
+use_case_get_all_journals_client                = { path = "./crates/use_case/get_all_journals/client" }
+use_case_get_all_journals_database              = { path = "./crates/use_case/get_all_journals/database" }
+use_case_get_all_journals_domain                = { path = "./crates/use_case/get_all_journals/domain" }
+use_case_get_all_journals_mcp                   = { path = "./crates/use_case/get_all_journals/mcp" }
+use_case_get_all_journals_server                = { path = "./crates/use_case/get_all_journals/server" }
+use_case_get_all_journals_ui                    = { path = "./crates/use_case/get_all_journals/ui" }
+use_case_get_all_journals_wire_client           = { path = "./crates/use_case/get_all_journals/wire_client" }
+use_case_get_all_journals_wire_server           = { path = "./crates/use_case/get_all_journals/wire_server" }
 use_case_get_companies_and_branches_cache       = { path = "./crates/use_case/get_companies_and_branches/cache" }
 use_case_get_companies_and_branches_client      = { path = "./crates/use_case/get_companies_and_branches/client" }
 use_case_get_companies_and_branches_database    = { path = "./crates/use_case/get_companies_and_branches/database" }
