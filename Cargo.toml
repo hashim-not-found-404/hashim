@@ -72,6 +72,15 @@ members  = [
     "crates/use_case/error_handler/ui",
     "crates/use_case/error_handler/wire_client",
     "crates/use_case/error_handler/wire_server",
+    "crates/use_case/get_all_accounts/cache",
+    "crates/use_case/get_all_accounts/client",
+    "crates/use_case/get_all_accounts/database",
+    "crates/use_case/get_all_accounts/domain",
+    "crates/use_case/get_all_accounts/mcp",
+    "crates/use_case/get_all_accounts/server",
+    "crates/use_case/get_all_accounts/ui",
+    "crates/use_case/get_all_accounts/wire_client",
+    "crates/use_case/get_all_accounts/wire_server",
     "crates/use_case/get_companies_and_branches/cache",
     "crates/use_case/get_companies_and_branches/client",
     "crates/use_case/get_companies_and_branches/database",
@@ -209,6 +218,15 @@ use_case_error_handler_server                   = { path = "./crates/use_case/er
 use_case_error_handler_ui                       = { path = "./crates/use_case/error_handler/ui" }
 use_case_error_handler_wire_client              = { path = "./crates/use_case/error_handler/wire_client" }
 use_case_error_handler_wire_server              = { path = "./crates/use_case/error_handler/wire_server" }
+use_case_get_all_accounts_cache                 = { path = "./crates/use_case/get_all_accounts/cache" }
+use_case_get_all_accounts_client                = { path = "./crates/use_case/get_all_accounts/client" }
+use_case_get_all_accounts_database              = { path = "./crates/use_case/get_all_accounts/database" }
+use_case_get_all_accounts_domain                = { path = "./crates/use_case/get_all_accounts/domain" }
+use_case_get_all_accounts_mcp                   = { path = "./crates/use_case/get_all_accounts/mcp" }
+use_case_get_all_accounts_server                = { path = "./crates/use_case/get_all_accounts/server" }
+use_case_get_all_accounts_ui                    = { path = "./crates/use_case/get_all_accounts/ui" }
+use_case_get_all_accounts_wire_client           = { path = "./crates/use_case/get_all_accounts/wire_client" }
+use_case_get_all_accounts_wire_server           = { path = "./crates/use_case/get_all_accounts/wire_server" }
 use_case_get_companies_and_branches_cache       = { path = "./crates/use_case/get_companies_and_branches/cache" }
 use_case_get_companies_and_branches_client      = { path = "./crates/use_case/get_companies_and_branches/client" }
 use_case_get_companies_and_branches_database    = { path = "./crates/use_case/get_companies_and_branches/database" }

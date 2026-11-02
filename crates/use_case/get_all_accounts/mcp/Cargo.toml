@@ -1,0 +1,9 @@
+[package]
+edition = "2024"
+name    = "use_case_get_all_accounts_mcp"
+version = "0.1.0"
+
+[dependencies]
+serde.workspace                            = true
+use_case_get_all_accounts_client.workspace = true
+use_case_prelude_mcp.workspace             = true
