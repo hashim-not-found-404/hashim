@@ -1,0 +1,11 @@
+[package]
+edition = "2024"
+name    = "use_case_sign_up_wire_client"
+version = "0.1.0"
+
+[dependencies]
+use_case_prelude_wire_client.workspace = true
+use_case_sign_up_cache.workspace       = true
+use_case_sign_up_client.workspace      = true
+use_case_sign_up_mcp.workspace         = true
+use_case_sign_up_ui.workspace          = true

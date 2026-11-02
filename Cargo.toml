@@ -19,6 +19,15 @@ members = [
     "crates/use_case/prelude/ui",
     "crates/use_case/prelude/wire_client",
     "crates/use_case/prelude/wire_server",
+    "crates/use_case/sign_up/cache",
+    "crates/use_case/sign_up/client",
+    "crates/use_case/sign_up/database",
+    "crates/use_case/sign_up/domain",
+    "crates/use_case/sign_up/mcp",
+    "crates/use_case/sign_up/server",
+    "crates/use_case/sign_up/ui",
+    "crates/use_case/sign_up/wire_client",
+    "crates/use_case/sign_up/wire_server",
     # old flat use cases (glob still works here, no exclude conflict)
     "crates/use_case_*",
     "crates/utility",
@@ -49,6 +58,15 @@ use_case_prelude_server      = { path = "./crates/use_case/prelude/server" }
 use_case_prelude_ui          = { path = "./crates/use_case/prelude/ui" }
 use_case_prelude_wire_client = { path = "./crates/use_case/prelude/wire_client" }
 use_case_prelude_wire_server = { path = "./crates/use_case/prelude/wire_server" }
+use_case_sign_up_cache       = { path = "./crates/use_case/sign_up/cache" }
+use_case_sign_up_client      = { path = "./crates/use_case/sign_up/client" }
+use_case_sign_up_database    = { path = "./crates/use_case/sign_up/database" }
+use_case_sign_up_domain      = { path = "./crates/use_case/sign_up/domain" }
+use_case_sign_up_mcp         = { path = "./crates/use_case/sign_up/mcp" }
+use_case_sign_up_server      = { path = "./crates/use_case/sign_up/server" }
+use_case_sign_up_ui          = { path = "./crates/use_case/sign_up/ui" }
+use_case_sign_up_wire_client = { path = "./crates/use_case/sign_up/wire_client" }
+use_case_sign_up_wire_server = { path = "./crates/use_case/sign_up/wire_server" }
 
 # use cases
 use_case_create_account             = { path = "./crates/use_case_create_account" }

@@ -237,6 +237,8 @@ new_use_case name:
     @just add_serde_to_layer_crate {{name}} client
     @just add_serde_to_layer_crate {{name}} mcp
 
+    cargo add --dev tokio -p use_case_{{name}}_database
+
     @just link_layer {{name}} domain   client
     @just link_layer {{name}} domain   server
     @just link_layer {{name}} domain   database
