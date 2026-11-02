@@ -1,0 +1,11 @@
+[package]
+edition = "2024"
+name    = "use_case_error_handler_wire_client"
+version = "0.1.0"
+
+[dependencies]
+use_case_error_handler_cache           = { path = "../cache", version = "0.1.0" }
+use_case_error_handler_client          = { path = "../client", version = "0.1.0" }
+use_case_error_handler_mcp             = { path = "../mcp", version = "0.1.0" }
+use_case_error_handler_ui              = { path = "../ui", version = "0.1.0" }
+use_case_prelude_wire_client.workspace = true

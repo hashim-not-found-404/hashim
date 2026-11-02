@@ -1,0 +1,9 @@
+[package]
+edition = "2024"
+name    = "use_case_error_handler_wire_server"
+version = "0.1.0"
+
+[dependencies]
+use_case_error_handler_database        = { path = "../database", version = "0.1.0" }
+use_case_error_handler_server          = { path = "../server", version = "0.1.0" }
+use_case_prelude_wire_server.workspace = true

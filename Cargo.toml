@@ -9,6 +9,16 @@ members = [
     "crates/kernel",
     "crates/patterns",
     "crates/server",
+    # new nested crates — must be listed one-by-one (exclude is prefix-based)
+    "crates/use_case/error_handler/cache",
+    "crates/use_case/error_handler/client",
+    "crates/use_case/error_handler/database",
+    "crates/use_case/error_handler/domain",
+    "crates/use_case/error_handler/mcp",
+    "crates/use_case/error_handler/server",
+    "crates/use_case/error_handler/ui",
+    "crates/use_case/error_handler/wire_client",
+    "crates/use_case/error_handler/wire_server",
     "crates/use_case/get_companies_and_branches/cache",
     "crates/use_case/get_companies_and_branches/client",
     "crates/use_case/get_companies_and_branches/database",
@@ -18,7 +28,6 @@ members = [
     "crates/use_case/get_companies_and_branches/ui",
     "crates/use_case/get_companies_and_branches/wire_client",
     "crates/use_case/get_companies_and_branches/wire_server",
-    # new nested crates — must be listed one-by-one (exclude is prefix-based)
     "crates/use_case/prelude/cache",
     "crates/use_case/prelude/client",
     "crates/use_case/prelude/database",
@@ -76,6 +85,15 @@ kernel   = { path = "./crates/kernel" }
 patterns = { path = "./crates/patterns" }
 server   = { path = "./crates/server" }
 
+use_case_error_handler_cache                    = { path = "./crates/use_case/error_handler/cache" }
+use_case_error_handler_client                   = { path = "./crates/use_case/error_handler/client" }
+use_case_error_handler_database                 = { path = "./crates/use_case/error_handler/database" }
+use_case_error_handler_domain                   = { path = "./crates/use_case/error_handler/domain" }
+use_case_error_handler_mcp                      = { path = "./crates/use_case/error_handler/mcp" }
+use_case_error_handler_server                   = { path = "./crates/use_case/error_handler/server" }
+use_case_error_handler_ui                       = { path = "./crates/use_case/error_handler/ui" }
+use_case_error_handler_wire_client              = { path = "./crates/use_case/error_handler/wire_client" }
+use_case_error_handler_wire_server              = { path = "./crates/use_case/error_handler/wire_server" }
 use_case_get_companies_and_branches_cache       = { path = "./crates/use_case/get_companies_and_branches/cache" }
 use_case_get_companies_and_branches_client      = { path = "./crates/use_case/get_companies_and_branches/client" }
 use_case_get_companies_and_branches_database    = { path = "./crates/use_case/get_companies_and_branches/database" }
