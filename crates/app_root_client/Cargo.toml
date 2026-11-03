@@ -26,9 +26,12 @@ use_case_create_branch_wire_client.workspace              = true
 use_case_create_company_wire_client.workspace             = true
 use_case_create_journal_entry_wire_client.workspace       = true
 use_case_create_journal_wire_client.workspace             = true
+use_case_error_handler_wire_client.workspace              = true
 use_case_get_all_accounts_wire_client.workspace           = true
 use_case_get_all_journals_wire_client.workspace           = true
 use_case_get_companies_and_branches_wire_client.workspace = true
+use_case_home_wire_client.workspace                       = true
+use_case_select_default_company_wire_client.workspace     = true
 use_case_sign_in_wire_client.workspace                    = true
 use_case_sign_up_wire_client.workspace                    = true
 

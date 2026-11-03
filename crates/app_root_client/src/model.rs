@@ -5,7 +5,6 @@ use kernel::new_types::UserUuid;
 use serde::Deserialize;
 use serde::Serialize;
 use std::fmt::Debug;
-use use_case_home;
 use utility::ui_effect::Model;
 
 impl Model for TypeGlobalModel {}
@@ -23,11 +22,11 @@ pub(crate) struct TypeGlobalModel {
     pub(crate) feature_state_auth: FeatureStateAuth,
 
     // pages
-    pub(crate) page_error_handler: use_case_error_handler::client::LocalModel,
-    pub(crate) page_sign_up: use_case_sign_up::client::LocalModel,
-    pub(crate) page_sign_in: use_case_sign_in::client::LocalModel,
-    pub(crate) page_select_default_company: use_case_select_default_company::client::LocalModel,
-    pub(crate) page_home: use_case_home::client::LocalModel,
+    pub(crate) page_error_handler: use_case_error_handler_wire_client::LocalModel,
+    pub(crate) page_sign_up: use_case_sign_up_wire_client::LocalModel,
+    pub(crate) page_sign_in: use_case_sign_in_wire_client::LocalModel,
+    pub(crate) page_select_default_company: use_case_select_default_company_wire_client::LocalModel,
+    pub(crate) page_home: use_case_home_wire_client::LocalModel,
 }
 
 #[derive(Debug, Default, Deserialize, Serialize)]
@@ -67,9 +66,9 @@ impl use_case_create_account::client::GlobalModel for TypeGlobalModel {
     }
 }
 
-impl use_case_error_handler::client::GlobalModel for TypeGlobalModel {}
+impl use_case_error_handler_wire_client::GlobalModel for TypeGlobalModel {}
 
-impl use_case_sign_up::client::GlobalModel for TypeGlobalModel {
+impl use_case_sign_up_wire_client::GlobalModel for TypeGlobalModel {
     fn user_name(&self) -> Option<String> {
         self.user_name.clone()
     }
@@ -95,7 +94,7 @@ impl use_case_sign_up::client::GlobalModel for TypeGlobalModel {
     }
 }
 
-impl use_case_sign_in::client::GlobalModel for TypeGlobalModel {
+impl use_case_sign_in_wire_client::GlobalModel for TypeGlobalModel {
     fn user_id(&self) -> String {
         self.user_id.clone()
     }
@@ -119,7 +118,7 @@ impl use_case_create_company::client::GlobalModel for TypeGlobalModel {
     }
 }
 
-impl use_case_select_default_company::client::GlobalModel for TypeGlobalModel {
+impl use_case_select_default_company_wire_client::GlobalModel for TypeGlobalModel {
     fn user_uuid(&self) -> Option<UserUuid> {
         self.user_uuid()
     }
@@ -180,7 +179,7 @@ impl use_case_create_journal_entry::client::GlobalModel for TypeGlobalModel {
     }
 }
 
-impl use_case_home::client::GlobalModel for TypeGlobalModel {}
+impl use_case_home_wire_client::GlobalModel for TypeGlobalModel {}
 
 impl use_case_create_journal::client::GlobalModel for TypeGlobalModel {
     fn user_uuid(&self) -> Option<UserUuid> {
@@ -191,5 +190,50 @@ impl use_case_create_journal::client::GlobalModel for TypeGlobalModel {
     }
     fn list_of_companies(&self) -> Vec<(CompanyUuid, String)> {
         self.list_of_companies()
+    }
+}
+
+impl use_case_sign_in_wire_client::HasPage for TypeGlobalModel {
+    fn page(&self) -> &use_case_sign_in_wire_client::LocalModel {
+        &self.page_sign_in
+    }
+    fn page_mut(&mut self) -> &mut use_case_sign_in_wire_client::LocalModel {
+        &mut self.page_sign_in
+    }
+}
+
+impl use_case_home_wire_client::HasPage for TypeGlobalModel {
+    fn page(&self) -> &use_case_home_wire_client::LocalModel {
+        &self.page_home
+    }
+    fn page_mut(&mut self) -> &mut use_case_home_wire_client::LocalModel {
+        &mut self.page_home
+    }
+}
+
+impl use_case_error_handler_wire_client::HasPage for TypeGlobalModel {
+    fn page(&self) -> &use_case_error_handler_wire_client::LocalModel {
+        &self.page_error_handler
+    }
+    fn page_mut(&mut self) -> &mut use_case_error_handler_wire_client::LocalModel {
+        &mut self.page_error_handler
+    }
+}
+
+impl use_case_select_default_company_wire_client::HasPage for TypeGlobalModel {
+    fn page(&self) -> &use_case_select_default_company_wire_client::LocalModel {
+        &self.page_select_default_company
+    }
+    fn page_mut(&mut self) -> &mut use_case_select_default_company_wire_client::LocalModel {
+        &mut self.page_select_default_company
+    }
+}
+
+impl use_case_sign_up_wire_client::HasPage for TypeGlobalModel {
+    fn page(&self) -> &use_case_sign_up_wire_client::LocalModel {
+        &self.page_sign_up
+    }
+    fn page_mut(&mut self) -> &mut use_case_sign_up_wire_client::LocalModel {
+        &mut self.page_sign_up
     }
 }

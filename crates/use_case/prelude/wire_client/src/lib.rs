@@ -5,6 +5,12 @@ pub use paste::paste;
 pub use utility::cache::TraitOperationCacheInput;
 pub use utility::cache::TraitOperationCacheOk;
 pub use utility::cache::TypeOperationClientResult;
+pub use utility::ui_effect::ApplierTrait;
+pub use utility::ui_effect::EffectorTrait;
+pub use utility::ui_effect::Model;
+pub use utility::ui_effect::Replier;
+pub use utility::ui_effect::UiContext;
+pub use utility::ui_effect::UpdaterTrait;
 
 #[macro_export]
 macro_rules! make_client_wrapper_cache {

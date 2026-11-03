@@ -63,22 +63,13 @@ pub struct UiContext {
     pub cache: CacheStruct,
 }
 
-pub trait UpdaterTrait: Debug {
-    type Mdl: Model;
-
-    fn update(
-        &self,
-        model: &Self::Mdl,
-    ) -> (
-        Vec<Box<dyn ApplierTrait<Mdl = Self::Mdl>>>,
-        Vec<Box<dyn EffectorTrait>>,
-    );
+pub trait UpdaterTrait<Mdl: Model>: Debug {
+    fn update(&self, model: &Mdl)
+    -> (Vec<Box<dyn ApplierTrait<Mdl>>>, Vec<Box<dyn EffectorTrait>>);
 }
 
-pub trait ApplierTrait: Debug {
-    type Mdl: Model;
-
-    fn apply(&self, model: &mut Self::Mdl);
+pub trait ApplierTrait<Mdl: Model>: Debug {
+    fn apply(&self, model: &mut Mdl);
 }
 
 pub trait EffectorTrait: Debug {
@@ -94,7 +85,7 @@ pub trait CastMessageToReducer {
 
     fn cast_message_to_reducer(
         v: Box<dyn MessageTrait>,
-    ) -> Result<Box<dyn UpdaterTrait<Mdl = Self::Mdl>>>;
+    ) -> Result<Box<dyn UpdaterTrait<Self::Mdl>>>;
 }
 
 #[derive(Clone)]

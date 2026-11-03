@@ -1,14 +1,85 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
+use std::boxed::Box;
+use std::future::Future;
+use std::pin::Pin;
+use std::vec::Vec;
+use use_case_error_handler_client::Effect;
+use use_case_error_handler_client::GlobalChange;
+pub use use_case_error_handler_client::GlobalModel;
+use use_case_error_handler_client::LocalChange;
+pub use use_case_error_handler_client::LocalModel;
+pub use use_case_error_handler_client::Message;
+use use_case_error_handler_client::effect;
+use use_case_error_handler_client::global_apply;
+use use_case_error_handler_client::local_apply;
+use use_case_error_handler_client::update;
+use use_case_prelude_wire_client::*;
+
+pub trait HasPage: GlobalModel {
+    fn page(&self) -> &LocalModel;
+
+    fn page_mut(&mut self) -> &mut LocalModel;
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+#[derive(Debug)]
+pub struct WrapperMessage(pub Message);
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
+impl<Mdl: Model + HasPage> UpdaterTrait<Mdl> for WrapperMessage {
+    fn update(
+        &self,
+        model: &Mdl,
+    ) -> (Vec<Box<dyn ApplierTrait<Mdl>>>, Vec<Box<dyn EffectorTrait>>) {
+        let page = model.page().clone();
+        let (local_changes, global_changes, effects) = update(self.0.clone(), &page, model);
+        let mut appliers: Vec<Box<dyn ApplierTrait<Mdl>>> = Vec::new();
+
+        appliers.extend(
+            local_changes
+                .into_iter()
+                .map(|c| Box::new(WrapperLocalChange(c)) as Box<dyn ApplierTrait<Mdl>>),
+        );
+
+        appliers.extend(
+            global_changes
+                .into_iter()
+                .map(|c| Box::new(WrapperGlobalChange(c)) as Box<dyn ApplierTrait<Mdl>>),
+        );
+
+        let effectors: Vec<Box<dyn EffectorTrait>> = effects
+            .into_iter()
+            .map(|e| Box::new(WrapperEffect(e)) as Box<dyn EffectorTrait>)
+            .collect();
+
+        (appliers, effectors)
+    }
+}
+
+#[derive(Debug)]
+pub struct WrapperLocalChange(pub LocalChange);
+
+impl<Mdl: Model + HasPage> ApplierTrait<Mdl> for WrapperLocalChange {
+    fn apply(&self, model: &mut Mdl) {
+        local_apply(self.0.clone(), model.page_mut());
+    }
+}
+
+#[derive(Debug)]
+pub struct WrapperGlobalChange(pub GlobalChange);
+
+impl<Mdl: Model + HasPage> ApplierTrait<Mdl> for WrapperGlobalChange {
+    fn apply(&self, model: &mut Mdl) {
+        global_apply(self.0.clone(), model);
+    }
+}
+
+#[derive(Debug)]
+pub struct WrapperEffect(pub Effect);
+
+impl EffectorTrait for WrapperEffect {
+    fn effect(
+        &self,
+        replier: Replier,
+        context: UiContext,
+    ) -> Pin<Box<dyn Future<Output = Result<()>>>> {
+        Box::pin(effect(self.0.clone(), replier, context))
     }
 }
