@@ -223,34 +223,36 @@ link_layer crate_name layer_name1 layer_name2:
     cargo add -p use_case_{{crate_name}}_{{layer_name2}} use_case_{{crate_name}}_{{layer_name1}}
 
 new_use_case name:
-    @just new_layer_crate {{name}} database
-    @just new_layer_crate {{name}} server
-    @just new_layer_crate {{name}} domain
-    @just new_layer_crate {{name}} client
     @just new_layer_crate {{name}} cache
-    @just new_layer_crate {{name}} ui
+    @just new_layer_crate {{name}} client
+    @just new_layer_crate {{name}} database
+    @just new_layer_crate {{name}} domain
     @just new_layer_crate {{name}} mcp
+    @just new_layer_crate {{name}} server
+    @just new_layer_crate {{name}} ui
     @just new_layer_crate {{name}} wire_client
     @just new_layer_crate {{name}} wire_server
 
-    @just add_serde_to_layer_crate {{name}} domain
     @just add_serde_to_layer_crate {{name}} client
+    @just add_serde_to_layer_crate {{name}} domain
     @just add_serde_to_layer_crate {{name}} mcp
 
     cargo add --dev tokio -p use_case_{{name}}_database
 
-    @just link_layer {{name}} domain   client
-    @just link_layer {{name}} domain   server
-    @just link_layer {{name}} domain   database
-    @just link_layer {{name}} domain   cache
-    @just link_layer {{name}} client   ui
-    @just link_layer {{name}} client   mcp
-    @just link_layer {{name}} client   wire_client
-    @just link_layer {{name}} mcp      wire_client
-    @just link_layer {{name}} ui       wire_client
     @just link_layer {{name}} cache    wire_client
-    @just link_layer {{name}} server   wire_server
+    @just link_layer {{name}} client   mcp
+    @just link_layer {{name}} client   ui
+    @just link_layer {{name}} client   wire_client
     @just link_layer {{name}} database wire_server
+    @just link_layer {{name}} domain   cache
+    @just link_layer {{name}} domain   client
+    @just link_layer {{name}} domain   database
+    @just link_layer {{name}} domain   server
+    @just link_layer {{name}} domain   wire_client
+    @just link_layer {{name}} domain   wire_server
+    @just link_layer {{name}} mcp      wire_client
+    @just link_layer {{name}} server   wire_server
+    @just link_layer {{name}} ui       wire_client
 
 
 [private]
