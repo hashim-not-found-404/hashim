@@ -83,3 +83,35 @@ impl EffectorTrait for WrapperEffect {
         Box::pin(effect(self.0.clone(), replier, context))
     }
 }
+
+////////////////////////////////////////////////////////////////////////////////////////
+
+use use_case_home_mcp::call;
+use use_case_home_mcp::tools;
+
+pub struct TypeMcpProvider;
+
+impl<Mdl: Model + HasPage> TraitMcpProvider<Mdl> for TypeMcpProvider {
+    fn tools(&self) -> Vec<McpToolDef> {
+        tools()
+    }
+
+    fn call<'a>(
+        &'a self,
+        tool_name: &str,
+        args: Value,
+        model: &'a Mdl,
+        commander: &'a Commander,
+    ) -> Pin<Box<dyn Future<Output = Result<Value>> + Send + 'a>> {
+        let tool_name = tool_name.to_owned();
+        Box::pin(async move {
+            call(CallInput {
+                tool_name: &tool_name,
+                args,
+                local: model.page(),
+                global: model,
+                commander: commander,
+            })
+        })
+    }
+}

@@ -1,3 +1,4 @@
+use crate::model::TypeGlobalModel;
 use crate::utils::COMMANDER;
 use crate::wire;
 use anyhow::Result;
@@ -39,7 +40,7 @@ struct Output {}
 
 pub(crate) struct TypeMcpProvider;
 
-impl TraitMcpProvider for TypeMcpProvider {
+impl TraitMcpProvider<TypeGlobalModel> for TypeMcpProvider {
     fn tools(&self) -> Vec<McpToolDef> {
         vec![McpToolDef {
             name: ADD_FORM,

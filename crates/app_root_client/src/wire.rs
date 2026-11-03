@@ -5,7 +5,6 @@ use anyhow::bail;
 use cache::cache_adapter::CacheAdapter;
 use kernel::ui_construct::CastDTOToClient;
 use patterns::make_client_wrapper_form;
-use patterns::make_mcp_provider;
 use patterns::make_mcp_provider_form;
 use std::any::Any;
 use std::sync::Arc;
@@ -91,18 +90,17 @@ make_client_wrapper_form!(create_account_for_branch);
 make_client_wrapper_form!(create_branch);
 make_client_wrapper_form!(create_company);
 make_client_wrapper_form!(create_journal);
-make_mcp_provider!(home);
 make_mcp_provider_form!(create_branch);
 make_mcp_provider_form!(create_company);
 make_mcp_provider_form!(create_journal);
 
-pub(crate) fn get_all_providers() -> Vec<Box<dyn TraitMcpProvider>> {
+pub(crate) fn get_all_providers() -> Vec<Box<dyn TraitMcpProvider<TypeGlobalModel>>> {
     vec![
         Box::new(mcp_home_forms::TypeMcpProvider),
         Box::new(mcp_provider_create_branch::TypeMcpProvider),
         Box::new(mcp_provider_create_company::TypeMcpProvider),
         Box::new(mcp_provider_create_journal::TypeMcpProvider),
-        Box::new(mcp_provider_home::TypeMcpProvider),
+        Box::new(use_case_home_wire_client::TypeMcpProvider),
     ]
 }
 

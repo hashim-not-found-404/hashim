@@ -16,7 +16,7 @@ pub(crate) static MODEL: LazyLock<NewType> =
     LazyLock::new(|| -> NewType { NewType(Default::default()) });
 
 #[derive(Clone)]
-pub(crate) struct NewType(MySignal<TypeGlobalModel>);
+pub(crate) struct NewType(pub MySignal<TypeGlobalModel>);
 
 impl SigNaaaaaaaaaaaaaaaaal<TypeGlobalModel> for NewType {
     fn with_mut<R>(&self, f: impl FnOnce(&mut TypeGlobalModel) -> R) -> R {

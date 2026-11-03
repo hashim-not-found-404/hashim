@@ -22,7 +22,7 @@ pub trait SigNaaaaaaaaaaaaaaaaal<T>: 'static {
     fn with_mut<R>(&self, f: impl FnOnce(&mut T) -> R) -> R;
 }
 
-pub trait Model: 'static {}
+pub trait Model: Sync + 'static {}
 
 pub trait MessageTrait: Any + Debug + 'static + Send + DynClone {
     // here it should have method that return serializable dyn trait for the intent to store it

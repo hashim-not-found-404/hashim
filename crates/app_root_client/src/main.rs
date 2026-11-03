@@ -72,6 +72,9 @@ fn main() -> Result<()> {
 
 #[cfg(not(target_arch = "wasm32"))]
 mod mcp_server {
+    use crate::model::TypeGlobalModel;
+    use crate::utils::COMMANDER;
+    use crate::utils::MODEL;
     use crate::wire::get_all_providers;
     use axum::Router;
     use infrastructure::runtime::Rt;
@@ -97,6 +100,7 @@ mod mcp_server {
     use std::net::IpAddr;
     use std::net::Ipv4Addr;
     use std::net::SocketAddr;
+    use std::ops::Deref;
     use std::sync::Arc;
     use tokio::net::TcpListener;
     use utility::mcp::TraitMcpProvider;
@@ -105,7 +109,7 @@ mod mcp_server {
 
     #[derive(Clone)]
     struct Handler {
-        providers: Arc<Vec<Box<dyn TraitMcpProvider>>>,
+        providers: Arc<Vec<Box<dyn TraitMcpProvider<TypeGlobalModel>>>>,
     }
 
     impl Handler {
@@ -118,7 +122,7 @@ mod mcp_server {
         fn find_provider_for<'a>(
             &'a self,
             tool_name: &str,
-        ) -> Option<(&'a dyn TraitMcpProvider, &'static str)> {
+        ) -> Option<(&'a dyn TraitMcpProvider<TypeGlobalModel>, &'static str)> {
             for provider in self.providers.iter() {
                 for def in provider.tools() {
                     if def.name == tool_name {
@@ -159,7 +163,7 @@ mod mcp_server {
         async fn call_tool(
             &self,
             request: CallToolRequestParams,
-            _context: RequestContext<RoleServer>,
+            _: RequestContext<RoleServer>,
         ) -> Result<CallToolResponse, ErrorData> {
             let args = match request.arguments {
                 Some(m) => Value::Object(m),
@@ -170,12 +174,15 @@ mod mcp_server {
                 return Ok(CallToolResult::error(vec![ContentBlock::text("unknown tool")]).into());
             };
 
-            let result: CallToolResult = match provider.call(tool_name, args).await {
-                Ok(v) => CallToolResult::success(vec![ContentBlock::text(
-                    serde_json::to_string(&v).unwrap_or_default(),
-                )]),
-                Err(e) => CallToolResult::error(vec![ContentBlock::text(format!("{e:?}"))]),
-            };
+            let model = MODEL.deref().0.with_ref(|a| a);
+
+            let result: CallToolResult =
+                match provider.call(tool_name, args, model, &COMMANDER).await {
+                    Ok(v) => CallToolResult::success(vec![ContentBlock::text(
+                        serde_json::to_string(&v).unwrap_or_default(),
+                    )]),
+                    Err(e) => CallToolResult::error(vec![ContentBlock::text(format!("{e:?}"))]),
+                };
             Ok(result.into())
         }
     }

@@ -4,8 +4,9 @@ name    = "use_case_prelude_wire_client"
 version = "0.1.0"
 
 [dependencies]
-anyhow  = { workspace = true }
-cache   = { workspace = true }
-kernel  = { workspace = true }
-paste   = { workspace = true }
-utility = { workspace = true }
+anyhow     = { workspace = true }
+cache      = { workspace = true }
+kernel     = { workspace = true }
+paste      = { workspace = true }
+serde_json = { workspace = true }
+utility    = { workspace = true }

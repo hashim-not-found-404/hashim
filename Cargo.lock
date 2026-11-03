@@ -5974,6 +5974,7 @@ dependencies = [
  "cache",
  "kernel",
  "paste",
+ "serde_json",
  "utility",
 ]
 

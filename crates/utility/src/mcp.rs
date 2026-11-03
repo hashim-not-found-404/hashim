@@ -1,5 +1,6 @@
 use crate::cache::CacheStruct;
 use crate::ui_effect::Commander;
+use crate::ui_effect::Model;
 use anyhow::Error;
 use anyhow::Result;
 use anyhow::anyhow;
@@ -28,13 +29,15 @@ pub fn error_to_mcp(code: &str, message: impl Into<String>) -> Error {
     )
 }
 
-pub trait TraitMcpProvider: Send + Sync + 'static {
+pub trait TraitMcpProvider<Mdl: Model>: Send + Sync + 'static {
     fn tools(&self) -> Vec<McpToolDef>;
-    fn call(
-        &self,
+    fn call<'a>(
+        &'a self,
         tool_name: &str,
         args: Value,
-    ) -> Pin<Box<dyn Future<Output = Result<Value>> + Send>>;
+        model: &'a Mdl,
+        commander: &'a Commander,
+    ) -> Pin<Box<dyn Future<Output = Result<Value>> + Send + 'a>>;
 }
 
 pub struct CallInput<'a, LocalModel, GlobalModel> {
