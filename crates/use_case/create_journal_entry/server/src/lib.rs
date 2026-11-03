@@ -7,8 +7,8 @@ use use_case_prelude_server::*;
 
 pub async fn handle_operation_generic<
     Cli: DBClient,
-    DBReader: for<'a> DatabaseRead<Db<'a> = Cli::Txn<'a>, Input = ReadInput, Output = ReadOutput>,
-    DBWrite: for<'a> DatabaseWrite<Db<'a> = Cli::Txn<'a>, Input = Ok>,
+    DBOp: for<'a> DatabaseRead<Db<'a> = Cli::Txn<'a>, Input = ReadInput, Output = ReadOutput>
+        + for<'a> DatabaseWrite<Db<'a> = Cli::Txn<'a>, Input = Ok>,
     Jwt: JWT<UserUuid>,
 >(
     input: &Input,
@@ -24,11 +24,11 @@ pub async fn handle_operation_generic<
     let mut txn = side_effects.client.begin_transaction().await?;
 
     let result: Result<MyResult> = async {
-        let result = input.state_full_check::<DBReader>(&mut txn).await?;
+        let result = input.state_full_check::<DBOp>(&mut txn).await?;
         let Ok(ok) = result else {
             return Ok(Err(errr));
         };
-        DBWrite::write(&mut txn, &ok).await?;
+        DBOp::write(&mut txn, &ok).await?;
         Ok(Ok(ok))
     }
     .await;

@@ -7,8 +7,8 @@ use use_case_sign_up_domain::ReadOutput;
 
 pub async fn handle_operation_generic<
     Cli: DBClient,
-    DBReader: for<'a> DatabaseRead<Db<'a> = Cli::Txn<'a>, Input = ReadInput, Output = ReadOutput>,
-    DBWrite: for<'a> DatabaseWrite<Db<'a> = Cli::Txn<'a>, Input = Ok>,
+    DBOp: for<'a> DatabaseRead<Db<'a> = Cli::Txn<'a>, Input = ReadInput, Output = ReadOutput>
+        + for<'a> DatabaseWrite<Db<'a> = Cli::Txn<'a>, Input = Ok>,
     Jwt: JWT<UserUuid>,
 >(
     input: &Input,
@@ -23,12 +23,12 @@ pub async fn handle_operation_generic<
     let mut txn = side_effects.client.begin_transaction().await?;
 
     let result: Result<MyResult> = async {
-        let errr = input.state_full_check::<DBReader>(&mut txn).await?;
+        let errr = input.state_full_check::<DBOp>(&mut txn).await?;
         if errr.is_there_error() {
             return Ok(Err(errr));
         }
         let result = input.state_full_operation::<Jwt, Auth>(side_effects.jwt);
-        DBWrite::write(&mut txn, &result).await?;
+        DBOp::write(&mut txn, &result).await?;
         Ok(Ok(result))
     }
     .await;

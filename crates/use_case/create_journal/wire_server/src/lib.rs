@@ -16,11 +16,9 @@ impl TraitOperationServerInput for Wrapper {
     ) -> Pin<Box<dyn Future<Output = Result<Result<TypeOperationDTOOk, TypeOperationDTOError>>> + 'a>>
     {
         Box::pin(async move {
-            let a = handle_operation_generic::<Self::Cli, DataBaseOp, DataBaseOp, Self::Jwt>(
-                &self.0,
-                side_effects,
-            )
-            .await?;
+            let a =
+                handle_operation_generic::<Self::Cli, DataBaseOp, Self::Jwt>(&self.0, side_effects)
+                    .await?;
             Result::Ok(dyn_result(a))
         })
     }
