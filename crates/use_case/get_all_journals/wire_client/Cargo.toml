@@ -4,9 +4,9 @@ name    = "use_case_get_all_journals_wire_client"
 version = "0.1.0"
 
 [dependencies]
-use_case_get_all_journals_cache.workspace   = true
-use_case_get_all_journals_client.workspace  = true
-use_case_get_all_journals_domain.workspace  = true
-use_case_get_all_journals_mcp.workspace     = true
-use_case_get_all_journals_ui.workspace      = true
-use_case_prelude_wire_client.workspace      = true
+use_case_get_all_journals_cache.workspace  = true
+use_case_get_all_journals_client.workspace = true
+use_case_get_all_journals_domain.workspace = true
+use_case_get_all_journals_mcp.workspace    = true
+use_case_get_all_journals_ui.workspace     = true
+use_case_prelude_wire_client.workspace     = true
