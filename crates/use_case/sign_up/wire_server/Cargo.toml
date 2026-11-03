@@ -6,4 +6,5 @@ version = "0.1.0"
 [dependencies]
 use_case_prelude_wire_server.workspace = true
 use_case_sign_up_database.workspace    = true
+use_case_sign_up_domain.workspace      = true
 use_case_sign_up_server.workspace      = true

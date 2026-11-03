@@ -382,19 +382,19 @@ dependencies = [
  "database",
  "infrastructure",
  "kernel",
- "patterns",
+ "paste",
  "server",
- "use_case_create_account",
- "use_case_create_account_for_branch",
- "use_case_create_branch",
- "use_case_create_company",
- "use_case_create_journal",
- "use_case_create_journal_entry",
- "use_case_get_all_accounts",
- "use_case_get_all_journals",
- "use_case_get_companies_and_branches",
- "use_case_sign_in",
- "use_case_sign_up",
+ "use_case_create_account_for_branch_wire_server",
+ "use_case_create_account_wire_server",
+ "use_case_create_branch_wire_server",
+ "use_case_create_company_wire_server",
+ "use_case_create_journal_entry_wire_server",
+ "use_case_create_journal_wire_server",
+ "use_case_get_all_accounts_wire_server",
+ "use_case_get_all_journals_wire_server",
+ "use_case_get_companies_and_branches_wire_server",
+ "use_case_sign_in_wire_server",
+ "use_case_sign_up_wire_server",
  "utility",
 ]
 
@@ -3115,6 +3115,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "paste"
+version = "1.0.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
+
+[[package]]
 name = "pastey"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4935,6 +4941,7 @@ name = "use_case_create_account_for_branch_wire_server"
 version = "0.1.0"
 dependencies = [
  "use_case_create_account_for_branch_database",
+ "use_case_create_account_for_branch_domain",
  "use_case_create_account_for_branch_server",
  "use_case_prelude_wire_server",
 ]
@@ -4980,6 +4987,7 @@ name = "use_case_create_account_wire_server"
 version = "0.1.0"
 dependencies = [
  "use_case_create_account_database",
+ "use_case_create_account_domain",
  "use_case_create_account_server",
  "use_case_prelude_wire_server",
 ]
@@ -5076,6 +5084,7 @@ name = "use_case_create_branch_wire_server"
 version = "0.1.0"
 dependencies = [
  "use_case_create_branch_database",
+ "use_case_create_branch_domain",
  "use_case_create_branch_server",
  "use_case_prelude_wire_server",
 ]
@@ -5172,6 +5181,7 @@ name = "use_case_create_company_wire_server"
 version = "0.1.0"
 dependencies = [
  "use_case_create_company_database",
+ "use_case_create_company_domain",
  "use_case_create_company_server",
  "use_case_prelude_wire_server",
 ]
@@ -5323,6 +5333,7 @@ name = "use_case_create_journal_entry_wire_server"
 version = "0.1.0"
 dependencies = [
  "use_case_create_journal_entry_database",
+ "use_case_create_journal_entry_domain",
  "use_case_create_journal_entry_server",
  "use_case_prelude_wire_server",
 ]
@@ -5369,6 +5380,7 @@ name = "use_case_create_journal_wire_server"
 version = "0.1.0"
 dependencies = [
  "use_case_create_journal_database",
+ "use_case_create_journal_domain",
  "use_case_create_journal_server",
  "use_case_prelude_wire_server",
 ]
@@ -5557,6 +5569,7 @@ name = "use_case_get_all_accounts_wire_server"
 version = "0.1.0"
 dependencies = [
  "use_case_get_all_accounts_database",
+ "use_case_get_all_accounts_domain",
  "use_case_get_all_accounts_server",
  "use_case_prelude_wire_server",
 ]
@@ -5654,6 +5667,7 @@ name = "use_case_get_all_journals_wire_server"
 version = "0.1.0"
 dependencies = [
  "use_case_get_all_journals_database",
+ "use_case_get_all_journals_domain",
  "use_case_get_all_journals_server",
  "use_case_prelude_wire_server",
 ]
@@ -5748,6 +5762,7 @@ name = "use_case_get_companies_and_branches_wire_server"
 version = "0.1.0"
 dependencies = [
  "use_case_get_companies_and_branches_database",
+ "use_case_get_companies_and_branches_domain",
  "use_case_get_companies_and_branches_server",
  "use_case_prelude_wire_server",
 ]
@@ -5935,6 +5950,13 @@ version = "0.1.0"
 [[package]]
 name = "use_case_prelude_wire_server"
 version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "database",
+ "infrastructure",
+ "kernel",
+ "utility",
+]
 
 [[package]]
 name = "use_case_select_default_company"
@@ -6122,6 +6144,7 @@ version = "0.1.0"
 dependencies = [
  "use_case_prelude_wire_server",
  "use_case_sign_in_database",
+ "use_case_sign_in_domain",
  "use_case_sign_in_server",
 ]
 
@@ -6215,6 +6238,7 @@ version = "0.1.0"
 dependencies = [
  "use_case_prelude_wire_server",
  "use_case_sign_up_database",
+ "use_case_sign_up_domain",
  "use_case_sign_up_server",
 ]
 

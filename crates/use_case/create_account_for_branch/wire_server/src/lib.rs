@@ -1,14 +1,27 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
+use std::pin::Pin;
+use use_case_create_account_for_branch_database::DataBaseOp;
+pub use use_case_create_account_for_branch_domain::Input;
+use use_case_create_account_for_branch_server::handle_operation_generic;
+use use_case_prelude_wire_server::*;
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+pub struct Wrapper(pub Input);
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
+impl TraitOperationServerInput for Wrapper {
+    type Cli = DbClientAdapter;
+    type Jwt = Jwt;
+
+    fn handle_operation<'a>(
+        self: Box<Self>,
+        side_effects: &'a mut SideEffects<'_, Self::Cli, Self::Jwt>,
+    ) -> Pin<Box<dyn Future<Output = Result<Result<TypeOperationDTOOk, TypeOperationDTOError>>> + 'a>>
+    {
+        Box::pin(async move {
+            let a = handle_operation_generic::<Self::Cli, DataBaseOp, DataBaseOp, Self::Jwt>(
+                &self.0,
+                side_effects,
+            )
+            .await?;
+            Result::Ok(dyn_result(a))
+        })
     }
 }
