@@ -1,14 +1,6 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
+use use_case_prelude_wire_client::*;
+pub use use_case_sign_up_domain::Error;
+pub use use_case_sign_up_domain::Input;
+pub use use_case_sign_up_domain::Ok;
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
+make_client_wrapper_cache!(sign_up);

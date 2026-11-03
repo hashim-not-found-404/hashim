@@ -357,18 +357,29 @@ dependencies = [
  "typetag",
  "use_case_create_account",
  "use_case_create_account_for_branch",
+ "use_case_create_account_for_branch_wire_client",
+ "use_case_create_account_wire_client",
  "use_case_create_branch",
+ "use_case_create_branch_wire_client",
  "use_case_create_company",
+ "use_case_create_company_wire_client",
  "use_case_create_journal",
  "use_case_create_journal_entry",
+ "use_case_create_journal_entry_wire_client",
+ "use_case_create_journal_wire_client",
  "use_case_error_handler",
  "use_case_get_all_accounts",
+ "use_case_get_all_accounts_wire_client",
  "use_case_get_all_journals",
+ "use_case_get_all_journals_wire_client",
  "use_case_get_companies_and_branches",
+ "use_case_get_companies_and_branches_wire_client",
  "use_case_home",
  "use_case_select_default_company",
  "use_case_sign_in",
+ "use_case_sign_in_wire_client",
  "use_case_sign_up",
+ "use_case_sign_up_wire_client",
  "utility",
  "utility_ui",
 ]
@@ -4931,6 +4942,7 @@ version = "0.1.0"
 dependencies = [
  "use_case_create_account_for_branch_cache",
  "use_case_create_account_for_branch_client",
+ "use_case_create_account_for_branch_domain",
  "use_case_create_account_for_branch_mcp",
  "use_case_create_account_for_branch_ui",
  "use_case_prelude_wire_client",
@@ -4977,6 +4989,7 @@ version = "0.1.0"
 dependencies = [
  "use_case_create_account_cache",
  "use_case_create_account_client",
+ "use_case_create_account_domain",
  "use_case_create_account_mcp",
  "use_case_create_account_ui",
  "use_case_prelude_wire_client",
@@ -5074,6 +5087,7 @@ version = "0.1.0"
 dependencies = [
  "use_case_create_branch_cache",
  "use_case_create_branch_client",
+ "use_case_create_branch_domain",
  "use_case_create_branch_mcp",
  "use_case_create_branch_ui",
  "use_case_prelude_wire_client",
@@ -5171,6 +5185,7 @@ version = "0.1.0"
 dependencies = [
  "use_case_create_company_cache",
  "use_case_create_company_client",
+ "use_case_create_company_domain",
  "use_case_create_company_mcp",
  "use_case_create_company_ui",
  "use_case_prelude_wire_client",
@@ -5323,6 +5338,7 @@ version = "0.1.0"
 dependencies = [
  "use_case_create_journal_entry_cache",
  "use_case_create_journal_entry_client",
+ "use_case_create_journal_entry_domain",
  "use_case_create_journal_entry_mcp",
  "use_case_create_journal_entry_ui",
  "use_case_prelude_wire_client",
@@ -5370,6 +5386,7 @@ version = "0.1.0"
 dependencies = [
  "use_case_create_journal_cache",
  "use_case_create_journal_client",
+ "use_case_create_journal_domain",
  "use_case_create_journal_mcp",
  "use_case_create_journal_ui",
  "use_case_prelude_wire_client",
@@ -5559,6 +5576,7 @@ version = "0.1.0"
 dependencies = [
  "use_case_get_all_accounts_cache",
  "use_case_get_all_accounts_client",
+ "use_case_get_all_accounts_domain",
  "use_case_get_all_accounts_mcp",
  "use_case_get_all_accounts_ui",
  "use_case_prelude_wire_client",
@@ -5657,6 +5675,7 @@ version = "0.1.0"
 dependencies = [
  "use_case_get_all_journals_cache",
  "use_case_get_all_journals_client",
+ "use_case_get_all_journals_domain",
  "use_case_get_all_journals_mcp",
  "use_case_get_all_journals_ui",
  "use_case_prelude_wire_client",
@@ -5752,6 +5771,7 @@ version = "0.1.0"
 dependencies = [
  "use_case_get_companies_and_branches_cache",
  "use_case_get_companies_and_branches_client",
+ "use_case_get_companies_and_branches_domain",
  "use_case_get_companies_and_branches_mcp",
  "use_case_get_companies_and_branches_ui",
  "use_case_prelude_wire_client",
@@ -5946,6 +5966,13 @@ dependencies = [
 [[package]]
 name = "use_case_prelude_wire_client"
 version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "cache",
+ "kernel",
+ "paste",
+ "utility",
+]
 
 [[package]]
 name = "use_case_prelude_wire_server"
@@ -6134,6 +6161,7 @@ dependencies = [
  "use_case_prelude_wire_client",
  "use_case_sign_in_cache",
  "use_case_sign_in_client",
+ "use_case_sign_in_domain",
  "use_case_sign_in_mcp",
  "use_case_sign_in_ui",
 ]
@@ -6228,6 +6256,7 @@ dependencies = [
  "use_case_prelude_wire_client",
  "use_case_sign_up_cache",
  "use_case_sign_up_client",
+ "use_case_sign_up_domain",
  "use_case_sign_up_mcp",
  "use_case_sign_up_ui",
 ]

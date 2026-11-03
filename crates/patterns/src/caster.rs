@@ -20,7 +20,7 @@ pub fn message_to_reducer(input: TokenStream) -> TokenStream {
 pub fn input_to_cache_check(input: TokenStream) -> TokenStream {
     let use_case_name = parse_macro_input!(input as Ident);
     let crate_name = format_ident!("use_case_{}", use_case_name);
-    let wrapper_mod = format_ident!("cache_check_use_case_{}", use_case_name);
+    let wrapper_mod = format_ident!("use_case_{}_cache_check", use_case_name);
 
     quote! {
         if let Some(v) = v.downcast_ref::<#crate_name::domain::Input>() {
@@ -33,7 +33,7 @@ pub fn input_to_cache_check(input: TokenStream) -> TokenStream {
 pub fn ok_to_cache_write(input: TokenStream) -> TokenStream {
     let use_case_name = parse_macro_input!(input as Ident);
     let crate_name = format_ident!("use_case_{}", use_case_name);
-    let wrapper_mod = format_ident!("cache_write_use_case_{}", use_case_name);
+    let wrapper_mod = format_ident!("use_case_{}_cache_write", use_case_name);
 
     quote! {
         if let Some(v) = v.downcast_ref::<#crate_name::domain::Ok>() {

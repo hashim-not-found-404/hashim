@@ -6,6 +6,7 @@ version = "0.1.0"
 [dependencies]
 use_case_create_account_for_branch_cache.workspace  = true
 use_case_create_account_for_branch_client.workspace = true
+use_case_create_account_for_branch_domain.workspace = true
 use_case_create_account_for_branch_mcp.workspace    = true
 use_case_create_account_for_branch_ui.workspace     = true
 use_case_prelude_wire_client.workspace              = true

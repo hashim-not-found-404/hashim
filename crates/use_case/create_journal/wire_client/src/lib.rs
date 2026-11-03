@@ -1,14 +1,6 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
+pub use use_case_create_journal_domain::Error;
+pub use use_case_create_journal_domain::Input;
+pub use use_case_create_journal_domain::Ok;
+use use_case_prelude_wire_client::*;
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
+make_client_wrapper_cache!(create_journal);

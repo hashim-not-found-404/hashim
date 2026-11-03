@@ -1,14 +1,65 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
+pub use anyhow::Result;
+pub use cache::cache_adapter;
+pub use kernel::types::DatabaseWrite;
+pub use paste::paste;
+pub use utility::cache::TraitOperationCacheInput;
+pub use utility::cache::TraitOperationCacheOk;
+pub use utility::cache::TypeOperationClientResult;
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+#[macro_export]
+macro_rules! make_client_wrapper_cache {
+    ($use_case_name:ident) => {
+        $crate::paste! {
+            pub mod cache_check {
+                use std::boxed::Box;
+                use std::future::Future;
+                use std::pin::Pin;
+                use [<use_case_ $use_case_name _cache>]::CacheOp;
+                use [<use_case_ $use_case_name _client>]::check_input;
+                use [<use_case_ $use_case_name _domain>]::Input;
+                use use_case_prelude_wire_client::Result;
+                use use_case_prelude_wire_client::TraitOperationCacheInput;
+                use use_case_prelude_wire_client::TypeOperationClientResult;
+                use use_case_prelude_wire_client::cache_adapter::CacheAdapter;
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
+                #[derive(Debug, Clone)]
+                pub struct Wrapper(pub Input);
+
+                impl TraitOperationCacheInput for Wrapper {
+                    type Cache = CacheAdapter;
+                    fn check_input<'a>(
+                        &'a self,
+                        cache: &'a mut Self::Cache,
+                    ) -> Pin<Box<dyn Future<Output = Result<TypeOperationClientResult>> + 'a>> {
+                        Box::pin(async { check_input::<Self::Cache, CacheOp>(&self.0, cache).await })
+                    }
+                }
+            }
+
+            pub mod cache_write {
+                use std::boxed::Box;
+                use std::future::Future;
+                use std::pin::Pin;
+                use [<use_case_ $use_case_name _cache>]::CacheOp;
+                use [<use_case_ $use_case_name _domain>]::Ok;
+                use use_case_prelude_wire_client::DatabaseWrite;
+                use use_case_prelude_wire_client::Result;
+                use use_case_prelude_wire_client::TraitOperationCacheOk;
+                use use_case_prelude_wire_client::cache_adapter::CacheAdapter;
+
+                #[derive(Debug, Clone)]
+                pub struct Wrapper(pub Ok);
+
+                impl TraitOperationCacheOk for Wrapper {
+                    type Cache = CacheAdapter;
+                    fn apply_to_cache<'a>(
+                        &'a self,
+                        cache: &'a mut Self::Cache,
+                    ) -> Pin<Box<dyn Future<Output = Result<()>> + 'a>> {
+                        Box::pin(async { CacheOp::write(cache, &self.0).await })
+                    }
+                }
+            }
+        }
+    };
 }

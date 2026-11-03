@@ -6,12 +6,9 @@ use anyhow::bail;
 use cache::cache_adapter::CacheAdapter;
 use kernel::ui_construct::CastDTOToClient;
 use patterns::cast_error_to_client_case;
-use patterns::cast_input_to_cache_check_case;
 use patterns::cast_input_to_client_case;
 use patterns::cast_message_to_reducer_case;
-use patterns::cast_ok_to_cache_write_case;
 use patterns::cast_ok_to_client_case;
-use patterns::make_client_wrapper_cache;
 use patterns::make_client_wrapper_form;
 use patterns::make_client_wrapper_updater;
 use patterns::make_mcp_provider;
@@ -95,17 +92,6 @@ mod updater_use_case_navigator {
     }
 }
 
-make_client_wrapper_cache!(create_account);
-make_client_wrapper_cache!(create_account_for_branch);
-make_client_wrapper_cache!(create_branch);
-make_client_wrapper_cache!(create_company);
-make_client_wrapper_cache!(create_journal);
-make_client_wrapper_cache!(create_journal_entry);
-make_client_wrapper_cache!(get_all_accounts);
-make_client_wrapper_cache!(get_all_journals);
-make_client_wrapper_cache!(get_companies_and_branches);
-make_client_wrapper_cache!(sign_in);
-make_client_wrapper_cache!(sign_up);
 make_client_wrapper_form!(create_account);
 make_client_wrapper_form!(create_account_for_branch);
 make_client_wrapper_form!(create_branch);
@@ -152,6 +138,26 @@ impl CastMessageToReducer for MyCaster {
     }
 }
 
+macro_rules! cast_input_to_cache_check_case {
+    ($v:ident, $name:ident) => {
+        if let Some(v) = $v.downcast_ref::<$name::Input>() {
+            return Ok(::std::boxed::Box::new($name::cache_check::Wrapper(
+                v.clone(),
+            )));
+        }
+    };
+}
+
+macro_rules! cast_ok_to_cache_write_case {
+    ($v:ident, $name:ident) => {
+        if let Some(v) = $v.downcast_ref::<$name::Ok>() {
+            return Ok(::std::boxed::Box::new($name::cache_write::Wrapper(
+                v.clone(),
+            )));
+        }
+    };
+}
+
 impl CastClientToCache for MyCaster {
     type Cache = CacheAdapter;
 
@@ -160,17 +166,17 @@ impl CastClientToCache for MyCaster {
     ) -> Result<Box<dyn TraitOperationCacheInput<Cache = Self::Cache>>> {
         let v: Arc<dyn Any> = v;
 
-        cast_input_to_cache_check_case!(create_account);
-        cast_input_to_cache_check_case!(create_account_for_branch);
-        cast_input_to_cache_check_case!(create_branch);
-        cast_input_to_cache_check_case!(create_company);
-        cast_input_to_cache_check_case!(create_journal);
-        cast_input_to_cache_check_case!(create_journal_entry);
-        cast_input_to_cache_check_case!(get_all_accounts);
-        cast_input_to_cache_check_case!(get_all_journals);
-        cast_input_to_cache_check_case!(get_companies_and_branches);
-        cast_input_to_cache_check_case!(sign_in);
-        cast_input_to_cache_check_case!(sign_up);
+        cast_input_to_cache_check_case!(v, use_case_create_account_for_branch_wire_client);
+        cast_input_to_cache_check_case!(v, use_case_create_account_wire_client);
+        cast_input_to_cache_check_case!(v, use_case_create_branch_wire_client);
+        cast_input_to_cache_check_case!(v, use_case_create_company_wire_client);
+        cast_input_to_cache_check_case!(v, use_case_create_journal_entry_wire_client);
+        cast_input_to_cache_check_case!(v, use_case_create_journal_wire_client);
+        cast_input_to_cache_check_case!(v, use_case_get_all_accounts_wire_client);
+        cast_input_to_cache_check_case!(v, use_case_get_all_journals_wire_client);
+        cast_input_to_cache_check_case!(v, use_case_get_companies_and_branches_wire_client);
+        cast_input_to_cache_check_case!(v, use_case_sign_in_wire_client);
+        cast_input_to_cache_check_case!(v, use_case_sign_up_wire_client);
 
         bail!("downcast error in cast_input method")
     }
@@ -180,17 +186,17 @@ impl CastClientToCache for MyCaster {
     ) -> Result<Box<dyn TraitOperationCacheOk<Cache = Self::Cache>>> {
         let v: Arc<dyn Any> = v;
 
-        cast_ok_to_cache_write_case!(create_account);
-        cast_ok_to_cache_write_case!(create_account_for_branch);
-        cast_ok_to_cache_write_case!(create_branch);
-        cast_ok_to_cache_write_case!(create_company);
-        cast_ok_to_cache_write_case!(create_journal);
-        cast_ok_to_cache_write_case!(create_journal_entry);
-        cast_ok_to_cache_write_case!(get_all_accounts);
-        cast_ok_to_cache_write_case!(get_all_journals);
-        cast_ok_to_cache_write_case!(get_companies_and_branches);
-        cast_ok_to_cache_write_case!(sign_in);
-        cast_ok_to_cache_write_case!(sign_up);
+        cast_ok_to_cache_write_case!(v, use_case_create_account_for_branch_wire_client);
+        cast_ok_to_cache_write_case!(v, use_case_create_account_wire_client);
+        cast_ok_to_cache_write_case!(v, use_case_create_branch_wire_client);
+        cast_ok_to_cache_write_case!(v, use_case_create_company_wire_client);
+        cast_ok_to_cache_write_case!(v, use_case_create_journal_entry_wire_client);
+        cast_ok_to_cache_write_case!(v, use_case_create_journal_wire_client);
+        cast_ok_to_cache_write_case!(v, use_case_get_all_accounts_wire_client);
+        cast_ok_to_cache_write_case!(v, use_case_get_all_journals_wire_client);
+        cast_ok_to_cache_write_case!(v, use_case_get_companies_and_branches_wire_client);
+        cast_ok_to_cache_write_case!(v, use_case_sign_in_wire_client);
+        cast_ok_to_cache_write_case!(v, use_case_sign_up_wire_client);
 
         bail!("downcast error in cast_ok method")
     }

@@ -11,6 +11,19 @@ patterns       = { workspace = true }
 utility        = { features = ["mcp"], workspace = true }
 utility_ui     = { features = ["ui"], workspace = true }
 
+use_case_create_account_wire_client.workspace             = true
+use_case_create_account_for_branch_wire_client.workspace  = true
+use_case_create_branch_wire_client.workspace              = true
+use_case_create_company_wire_client.workspace             = true
+use_case_create_journal_wire_client.workspace             = true
+use_case_create_journal_entry_wire_client.workspace       = true
+use_case_get_all_accounts_wire_client.workspace           = true
+use_case_get_all_journals_wire_client.workspace           = true
+use_case_get_companies_and_branches_wire_client.workspace = true
+use_case_sign_in_wire_client.workspace                    = true
+use_case_sign_up_wire_client.workspace                    = true
+
+# still needed for the forms / updaters / mcp providers not yet moved
 use_case_create_account             = { features = ["cache", "client", "ui"], workspace = true }
 use_case_create_account_for_branch  = { features = ["cache", "client", "ui"], workspace = true }
 use_case_create_branch              = { features = ["cache", "client", "mcp", "ui"], workspace = true }
