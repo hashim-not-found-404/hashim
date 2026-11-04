@@ -3,17 +3,12 @@ edition = "2024"
 name    = "kernel"
 version = "0.1.0"
 
-[features]
-cache    = []
-database = []
-ui       = []
-
 [dependencies]
-infrastructure = { workspace = true }
-utility        = { workspace = true }
+infrastructure.workspace = true
+utility.workspace        = true
 
-anyhow    = { workspace = true }
-dyn-clone = { workspace = true }
-schemars  = { workspace = true }
-serde     = { workspace = true }
-typetag   = { workspace = true }
+anyhow.workspace    = true
+dyn-clone.workspace = true
+schemars.workspace  = true
+serde.workspace     = true
+typetag.workspace   = true

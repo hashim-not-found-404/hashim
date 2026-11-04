@@ -3,10 +3,7 @@ edition = "2024"
 name    = "utility_ui"
 version = "0.1.0"
 
-[features]
-ui = ["dep:dioxus"]
-
 [dependencies]
-serde = { workspace = true }
+serde.workspace = true
 
-dioxus = { optional = true, workspace = true }
+dioxus.workspace = true

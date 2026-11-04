@@ -4,6 +4,6 @@ name    = "use_case_prelude_server"
 version = "0.1.0"
 
 [dependencies]
-anyhow         = { workspace = true }
-infrastructure = { workspace = true }
-kernel         = { workspace = true }
+anyhow.workspace         = true
+infrastructure.workspace = true
+kernel.workspace         = true

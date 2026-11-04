@@ -4,7 +4,7 @@ use use_case_create_company_client::GlobalModel;
 use use_case_create_company_client::Intent;
 use use_case_create_company_client::LocalModel;
 use use_case_create_company_client::Message;
-use use_case_home::mcp::form_sender;
+use use_case_home_mcp::form_sender;
 use use_case_prelude_mcp::*;
 
 const CREATE_COMPANY: &str = "create_company";

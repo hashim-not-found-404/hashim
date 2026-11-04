@@ -4,14 +4,14 @@ name    = "database"
 version = "0.1.0"
 
 [dependencies]
-kernel  = { workspace = true }
-utility = { workspace = true }
+kernel.workspace  = true
+utility.workspace = true
 
-anyhow = { workspace = true }
-serde  = { workspace = true }
+anyhow.workspace = true
+serde.workspace  = true
 
-deadpool-postgres = { workspace = true }
-serde_json        = { workspace = true }
-tokio             = { workspace = true }
-tokio-postgres    = { workspace = true }
-uuid              = { workspace = true }
+deadpool-postgres.workspace = true
+serde_json.workspace        = true
+tokio.workspace             = true
+tokio-postgres.workspace    = true
+uuid.workspace              = true
