@@ -5088,11 +5088,15 @@ dependencies = [
 name = "use_case_create_branch_wire_client"
 version = "0.1.0"
 dependencies = [
+ "serde",
  "use_case_create_branch_cache",
  "use_case_create_branch_client",
  "use_case_create_branch_domain",
  "use_case_create_branch_mcp",
  "use_case_create_branch_ui",
+ "use_case_home_client",
+ "use_case_home_mcp",
+ "use_case_home_wire_client",
  "use_case_prelude_wire_client",
 ]
 
@@ -5972,9 +5976,11 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "cache",
+ "dioxus",
  "kernel",
  "paste",
  "serde_json",
+ "typetag",
  "utility",
 ]
 

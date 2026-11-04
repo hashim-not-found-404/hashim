@@ -1,17 +1,24 @@
+pub use anyhow::Context;
 pub use anyhow::Result;
-pub use cache::cache_adapter;
+pub use cache::cache_adapter::CacheAdapter;
+pub use cache::utils::MyUuidConverter;
+pub use dioxus::prelude::*;
 pub use kernel::types::DatabaseWrite;
 pub use paste::paste;
 pub use serde_json::Value;
+pub use typetag;
+pub use typetag::serde;
 pub use utility::cache::TraitOperationCacheInput;
 pub use utility::cache::TraitOperationCacheOk;
 pub use utility::cache::TypeOperationClientResult;
 pub use utility::mcp::CallInput;
 pub use utility::mcp::McpToolDef;
 pub use utility::mcp::TraitMcpProvider;
+pub use utility::mcp::error_to_mcp;
 pub use utility::ui_effect::ApplierTrait;
 pub use utility::ui_effect::Commander;
 pub use utility::ui_effect::EffectorTrait;
+pub use utility::ui_effect::MessageTrait;
 pub use utility::ui_effect::Model;
 pub use utility::ui_effect::Replier;
 pub use utility::ui_effect::UiContext;
@@ -28,10 +35,7 @@ macro_rules! make_client_wrapper_cache {
                 use [<use_case_ $use_case_name _cache>]::CacheOp;
                 use [<use_case_ $use_case_name _client>]::check_input;
                 use [<use_case_ $use_case_name _domain>]::Input;
-                use use_case_prelude_wire_client::Result;
-                use use_case_prelude_wire_client::TraitOperationCacheInput;
-                use use_case_prelude_wire_client::TypeOperationClientResult;
-                use use_case_prelude_wire_client::cache_adapter::CacheAdapter;
+                use use_case_prelude_wire_client::*;
 
                 #[derive(Debug, Clone)]
                 pub struct Wrapper(pub Input);
@@ -53,10 +57,7 @@ macro_rules! make_client_wrapper_cache {
                 use std::pin::Pin;
                 use [<use_case_ $use_case_name _cache>]::CacheOp;
                 use [<use_case_ $use_case_name _domain>]::Ok;
-                use use_case_prelude_wire_client::DatabaseWrite;
-                use use_case_prelude_wire_client::Result;
-                use use_case_prelude_wire_client::TraitOperationCacheOk;
-                use use_case_prelude_wire_client::cache_adapter::CacheAdapter;
+                use use_case_prelude_wire_client::*;
 
                 #[derive(Debug, Clone)]
                 pub struct Wrapper(pub Ok);
