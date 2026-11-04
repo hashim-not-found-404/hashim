@@ -7,7 +7,6 @@ members  = [
     "crates/database",
     "crates/infrastructure",
     "crates/kernel",
-    "crates/patterns",
     "crates/server",
     "crates/use_case/create_account/cache",
     "crates/use_case/create_account/client",
@@ -160,7 +159,6 @@ utility_ui        = { path = "./crates/utility_ui" }
 cache    = { path = "./crates/cache" }
 database = { path = "./crates/database" }
 kernel   = { path = "./crates/kernel" }
-patterns = { path = "./crates/patterns" }
 server   = { path = "./crates/server" }
 
 # use cases

@@ -16,7 +16,6 @@ tracing-web.workspace              = true
 cache.workspace          = true
 infrastructure.workspace = true
 kernel.workspace         = true
-patterns.workspace       = true
 utility.workspace        = true
 utility_ui.workspace     = true
 
