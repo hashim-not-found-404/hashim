@@ -148,12 +148,6 @@ changed:
 
 check:
     RUSTFLAGS="-A warnings" cargo check --all-targets
-    RUSTFLAGS="-A warnings" cargo check --all-targets --features="server"
-    RUSTFLAGS="-A warnings" cargo check --all-targets --features="client"
-    RUSTFLAGS="-A warnings" cargo check --all-targets --features="database"
-    RUSTFLAGS="-A warnings" cargo check --all-targets --features="cache"
-    RUSTFLAGS="-A warnings" cargo check --all-targets --features="client,ui"
-    RUSTFLAGS="-A warnings" cargo check --all-targets --features="client,mcp"
     RUSTFLAGS="-A warnings" cargo check -p app_root_client --target wasm32-unknown-unknown
 
 test:
@@ -172,27 +166,9 @@ all: check test warn test_cover
 
 check_p crate_name:
     RUSTFLAGS="-A warnings" cargo check -p {{crate_name}} --all-targets
-    RUSTFLAGS="-A warnings" cargo check -p {{crate_name}} --all-targets --features="server"
-    RUSTFLAGS="-A warnings" cargo check -p {{crate_name}} --all-targets --features="client"
-    RUSTFLAGS="-A warnings" cargo check -p {{crate_name}} --all-targets --features="database"
-
-    RUSTFLAGS="-A warnings" cargo check -p {{crate_name}} --all-targets --features="cache"
-    RUSTFLAGS="-A warnings" cargo check -p {{crate_name}} --all-targets --features="ui"
-    RUSTFLAGS="-A warnings" cargo check -p {{crate_name}} --all-targets --features="mcp"
-
-    RUSTFLAGS="-A warnings" cargo check -p {{crate_name}} --target wasm32-unknown-unknown --features="cache"
-    RUSTFLAGS="-A warnings" cargo check -p {{crate_name}} --target wasm32-unknown-unknown --features="ui"
-    RUSTFLAGS="-A warnings" cargo check -p {{crate_name}} --target wasm32-unknown-unknown --features="mcp"
 
 test_p crate_name:
     RUSTFLAGS="-A warnings" cargo test -p {{crate_name}} --all-targets
-    RUSTFLAGS="-A warnings" cargo test -p {{crate_name}} --all-targets --features="server"
-    RUSTFLAGS="-A warnings" cargo test -p {{crate_name}} --all-targets --features="client"
-    RUSTFLAGS="-A warnings" cargo test -p {{crate_name}} --all-targets --features="database"
-    RUSTFLAGS="-A warnings" cargo test -p {{crate_name}} --all-targets --features="cache"
-    RUSTFLAGS="-A warnings" cargo test -p {{crate_name}} --all-targets --features="client,ui"
-    RUSTFLAGS="-A warnings" cargo test -p {{crate_name}} --all-targets --features="client,mcp"
-    RUSTFLAGS="-A warnings" cargo test -p {{crate_name}} --target wasm32-unknown-unknown
 
 warn_p crate_name:
     cargo clippy -p {{crate_name}} --all-targets --all-features -- -W clippy::pedantic
@@ -274,13 +250,7 @@ print_layers name:
 
 udeps:
     RUSTFLAGS="-A warnings" cargo +nightly udeps --all-targets
-    RUSTFLAGS="-A warnings" cargo +nightly udeps --all-targets --features="server"
-    RUSTFLAGS="-A warnings" cargo +nightly udeps --all-targets --features="client"
-    RUSTFLAGS="-A warnings" cargo +nightly udeps --all-targets --features="database"
-    RUSTFLAGS="-A warnings" cargo +nightly udeps --all-targets --features="cache"
-    RUSTFLAGS="-A warnings" cargo +nightly udeps --all-targets --features="client,ui"
-    RUSTFLAGS="-A warnings" cargo +nightly udeps --all-targets --features="client,mcp"
-    RUSTFLAGS="-A warnings" cargo +nightly udeps -p app_root_client --target wasm32-unknown-unknown
+    RUSTFLAGS="-A warnings" cargo +nightly udeps --target wasm32-unknown-unknown
 
 new crate_name:
     cargo new crates/{{crate_name}} --lib --vcs none
