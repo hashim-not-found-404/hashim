@@ -2,7 +2,6 @@ use accounting_engine::accounting_stuff::InFlowType;
 use accounting_engine::accounting_stuff::OutFlowType;
 use serde::Deserialize;
 use serde::Serialize;
-use std::ops::Deref;
 use std::sync::Arc;
 use std::time::Duration;
 use use_case_create_journal_entry_domain::AccountForBranchUuid;

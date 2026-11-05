@@ -59,7 +59,7 @@ async fn ws_handler<Cas: CastDTOToServer<Cli = DbClientAdapter, Jwt = Jwt>>(
     let (response, session, stream) = match handle(&req, stream) {
         Ok(result) => result,
         Err(e) => {
-            eprintln!("Error upgrading to WebSocket: {}", e);
+            eprintln!("Error upgrading to WebSocket: {e}");
             return HttpResponse::BadRequest().finish();
         }
     };

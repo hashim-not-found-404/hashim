@@ -155,8 +155,7 @@ mod tests {
         test_query_helper_for_transactions_schema(QUERY4).unwrap();
         test_query_helper_for_transactions_schema(QUERY5).unwrap();
         test_query_helper_for_tables_schema(QUERY6).unwrap();
-        test_query_helper_for_transactions_schema(format!("{}{}", QUERY8, QUERY7).as_str())
-            .unwrap();
+        test_query_helper_for_transactions_schema(format!("{QUERY8}{QUERY7}").as_str()).unwrap();
         test_query_helper_for_transactions_schema(QUERY8).unwrap();
     }
 }

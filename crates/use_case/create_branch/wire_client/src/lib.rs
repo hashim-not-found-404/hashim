@@ -24,6 +24,7 @@ use use_case_home_client::FormId;
 use use_case_home_client::FormLocalModel;
 use use_case_home_client::FormUpdate;
 use use_case_home_mcp::form_sender;
+use use_case_home_wire_client::ModelAccess as HomeModelAccess;
 use use_case_prelude_wire_client::*;
 
 make_client_wrapper_cache!(create_branch);
@@ -236,7 +237,7 @@ pub struct TypeMcpProvider;
 
 impl<Mdl> TraitMcpProvider<Mdl> for TypeMcpProvider
 where
-    Mdl: Model + use_case_home_wire_client::ModelAccess + ModelAccess + 'static,
+    Mdl: Model + HomeModelAccess + ModelAccess + 'static,
 {
     fn tools(&self) -> Vec<McpToolDef> {
         tools()

@@ -25,8 +25,7 @@ impl SigNaaaaaaaaaaaaaaaaal<TypeGlobalModel> for NewType {
 }
 
 pub(crate) fn with_model<T>(f: impl FnOnce(&TypeGlobalModel) -> T) -> T {
-    let guard = MODEL.0.with_ref(f);
-    guard
+    MODEL.0.with_ref(f)
 }
 
 pub(crate) static COMMANDER: LazyLock<Commander> = LazyLock::new(|| {
