@@ -93,11 +93,17 @@ fn Home() -> Element {
                 .unwrap_or_default(),
             page.async_state.clone().is_loading(),
             page.list_of_companies(),
-            page.list_of_branches(m),
+            page.list_of_branches(
+                &use_case_select_default_company_wire_client::ModelAccess::global_model(m),
+            ),
             m.selected_company_uuid.clone(),
-            page.selected_company_name(m),
+            page.selected_company_name(
+                &use_case_select_default_company_wire_client::ModelAccess::global_model(m),
+            ),
             m.selected_company_branch_uuid.clone(),
-            page.selected_company_branch_name(m),
+            page.selected_company_branch_name(
+                &use_case_select_default_company_wire_client::ModelAccess::global_model(m),
+            ),
             m.page_home.forms.clone(),
         )
     });

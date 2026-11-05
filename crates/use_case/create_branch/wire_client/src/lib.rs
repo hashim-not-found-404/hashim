@@ -1,7 +1,3 @@
-use serde::Deserialize;
-use serde::Deserializer;
-use serde::Serialize;
-use serde::Serializer;
 use std::any::Any;
 use std::fmt;
 use std::future::Future;
@@ -35,13 +31,7 @@ make_client_wrapper_cache!(create_branch);
 pub trait ModelAccess {
     fn global_model(&self) -> GlobalModel;
     fn global_model_set(&mut self, v: GlobalModel);
-    fn local_model(&self) -> LocalModel;
-    fn local_model_set(&mut self, v: LocalModel);
 }
-
-// ============================================================================
-// WrapperForm<Mdl>
-// ============================================================================
 
 pub struct WrapperForm<Mdl> {
     pub inner: LocalModel,
@@ -52,7 +42,6 @@ impl<Mdl> WrapperForm<Mdl> {
     pub fn into_inner(self) -> LocalModel {
         self.inner
     }
-
     pub fn from_inner(inner: LocalModel) -> Self {
         Self {
             inner,
@@ -91,21 +80,6 @@ impl<Mdl> PartialEq for WrapperForm<Mdl> {
     }
 }
 
-impl<Mdl> Serialize for WrapperForm<Mdl> {
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        self.inner.serialize(serializer)
-    }
-}
-
-impl<'de, Mdl> Deserialize<'de> for WrapperForm<Mdl> {
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        Ok(Self {
-            inner: LocalModel::deserialize(deserializer)?,
-            _marker: PhantomData,
-        })
-    }
-}
-
 impl<Mdl> FormLocalModel for WrapperForm<Mdl>
 where
     Mdl: ModelAccess + 'static,
@@ -134,11 +108,9 @@ where
 
     fn handle(&mut self, message: Box<dyn MessageTrait>, global: &dyn Any) -> FormUpdate {
         let message: Box<dyn Any> = message;
-
         let Ok(message) = message.downcast::<Message>() else {
             return FormUpdate::empty();
         };
-
         let Some(global) = global.downcast_ref::<Mdl>() else {
             return FormUpdate::empty();
         };
@@ -204,10 +176,6 @@ where
     }
 }
 
-// ============================================================================
-// WrapperGlobalChange<Mdl>
-// ============================================================================
-
 pub struct WrapperGlobalChange<Mdl> {
     pub inner: GlobalChange,
     _marker: PhantomData<fn() -> Mdl>,
@@ -251,10 +219,6 @@ where
     }
 }
 
-// ============================================================================
-// WrapperEffect
-// ============================================================================
-
 #[derive(Debug, Clone)]
 pub struct WrapperEffect(pub Effect);
 
@@ -267,10 +231,6 @@ impl FormEffect for WrapperEffect {
         Box::pin(effect(self.0.clone(), replier, context))
     }
 }
-
-// ============================================================================
-// TypeMcpProvider
-// ============================================================================
 
 pub struct TypeMcpProvider;
 

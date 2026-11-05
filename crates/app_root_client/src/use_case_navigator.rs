@@ -42,7 +42,7 @@ pub(crate) mod client {
 
     impl MessageTrait for Message {}
 
-    pub(crate) fn update(msg: Message, _: &GlobalModel) -> (Vec<GlobalChange>, Vec<Effect>) {
+    pub(crate) fn update(msg: Message, _: &impl GlobalModel) -> (Vec<GlobalChange>, Vec<Effect>) {
         match msg {
             Message::Intent(intent) => match intent {
                 Intent::GoToSignIn => (vec![GlobalChange::Navigator(Navigator::SignIn)], vec![]),
@@ -52,7 +52,7 @@ pub(crate) mod client {
         }
     }
 
-    pub(crate) fn global_apply(msg: GlobalChange, global_model: &mut GlobalModel) {
+    pub(crate) fn global_apply(msg: GlobalChange, global_model: &mut impl GlobalModel) {
         match msg {
             GlobalChange::Navigator(i) => global_model.set_navigator(i),
         }

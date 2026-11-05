@@ -32,8 +32,6 @@ make_client_wrapper_cache!(create_journal);
 pub trait ModelAccess {
     fn global_model(&self) -> GlobalModel;
     fn global_model_set(&mut self, v: GlobalModel);
-    fn local_model(&self) -> LocalModel;
-    fn local_model_set(&mut self, v: LocalModel);
 }
 
 pub struct WrapperForm<Mdl> {
@@ -111,11 +109,9 @@ where
 
     fn handle(&mut self, message: Box<dyn MessageTrait>, global: &dyn Any) -> FormUpdate {
         let message: Box<dyn Any> = message;
-
         let Ok(message) = message.downcast::<Message>() else {
             return FormUpdate::empty();
         };
-
         let Some(global) = global.downcast_ref::<Mdl>() else {
             return FormUpdate::empty();
         };
