@@ -24,10 +24,17 @@ pub use use_case_home_client::FormId;
 pub use use_case_home_client::FormLocalModel;
 use use_case_home_client::FormUpdate;
 pub use use_case_home_mcp::form_sender;
-use use_case_home_wire_client::HasPage;
+use use_case_home_wire_client::ModelAccess as HomeModelAccess;
 use use_case_prelude_wire_client::*;
 
 make_client_wrapper_cache!(create_company);
+
+pub trait ModelAccess {
+    fn global_model(&self) -> GlobalModel;
+    fn global_model_set(&mut self, v: GlobalModel);
+    fn local_model(&self) -> LocalModel;
+    fn local_model_set(&mut self, v: LocalModel);
+}
 
 pub struct WrapperForm<Mdl> {
     pub inner: LocalModel,
@@ -78,7 +85,7 @@ impl<Mdl> PartialEq for WrapperForm<Mdl> {
 
 impl<Mdl> FormLocalModel for WrapperForm<Mdl>
 where
-    Mdl: GlobalModel + 'static,
+    Mdl: ModelAccess + 'static,
 {
     fn unsubscribe_message(&self) -> Option<Box<dyn MessageTrait>> {
         let msg: Box<dyn MessageTrait> = Box::new(Message::Intent(Intent::UnSubscribe));
@@ -113,10 +120,10 @@ where
             return FormUpdate::empty();
         };
 
-        let (locals, globals, effects) = update(*message, &self.inner, global);
+        let (locals, globals, effects) = update(*message, &self.inner, &global.global_model());
 
         for c in locals {
-            local_apply(c, &mut self.inner);
+            self.inner = local_apply(c, self.inner.clone());
         }
 
         FormUpdate {
@@ -184,13 +191,13 @@ impl<Mdl> fmt::Debug for WrapperGlobalChange<Mdl> {
 
 impl<Mdl> FormGlobalChange for WrapperGlobalChange<Mdl>
 where
-    Mdl: GlobalModel + 'static,
+    Mdl: ModelAccess + 'static,
 {
     fn apply(&self, global: &mut dyn Any) {
         let Some(g) = global.downcast_mut::<Mdl>() else {
             return;
         };
-        global_apply(self.inner.clone(), g);
+        g.global_model_set(global_apply(self.inner.clone(), g.global_model()));
     }
 }
 
@@ -209,7 +216,10 @@ impl FormEffect for WrapperEffect {
 
 pub struct TypeMcpProvider;
 
-impl<Mdl: Model + HasPage + GlobalModel + 'static> TraitMcpProvider<Mdl> for TypeMcpProvider {
+impl<Mdl> TraitMcpProvider<Mdl> for TypeMcpProvider
+where
+    Mdl: Model + ModelAccess + HomeModelAccess + 'static,
+{
     fn tools(&self) -> Vec<McpToolDef> {
         tools()
     }
@@ -230,15 +240,16 @@ impl<Mdl: Model + HasPage + GlobalModel + 'static> TraitMcpProvider<Mdl> for Typ
                 .context(error_to_mcp("invalid_args", "there is no form_id field"))?;
 
             let form_id = FormId::from(id);
-            let entry = model
-                .page()
-                .forms
-                .iter()
-                .find(|e| e.id == form_id)
-                .context(error_to_mcp(
-                    "form_not_found",
-                    format!("no form with id {id}"),
-                ))?;
+            let local_model = HomeModelAccess::local_model(model);
+            let entry =
+                local_model
+                    .forms
+                    .iter()
+                    .find(|e| e.id == form_id)
+                    .context(error_to_mcp(
+                        "form_not_found",
+                        format!("no form with id {id}"),
+                    ))?;
 
             let form_local_model: &dyn Any = entry.form.as_ref();
 
@@ -253,7 +264,7 @@ impl<Mdl: Model + HasPage + GlobalModel + 'static> TraitMcpProvider<Mdl> for Typ
                 tool_name: &tool_name,
                 args,
                 local: &wrapper.inner,
-                global: model,
+                global: &ModelAccess::global_model(model),
                 commander,
             })
         })

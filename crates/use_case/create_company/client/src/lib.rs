@@ -27,8 +27,8 @@ pub async fn check_input<
     Ok(Ok(Arc::new(state_less_operation)))
 }
 
-pub trait GlobalModel {
-    fn user_uuid(&self) -> Option<UserUuid>;
+pub struct GlobalModel {
+    pub user_uuid: Option<UserUuid>,
 }
 
 pub(crate) type AsyncState = GenricAsyncState<AsyncInput, Ok, Error>;
@@ -123,11 +123,8 @@ pub enum Message {
 
 impl MessageTrait for Message {}
 
-fn current_check_input(
-    local_model: &LocalModel,
-    global_model: &impl GlobalModel,
-) -> Option<AsyncInput> {
-    let user_uuid = global_model.user_uuid()?;
+fn current_check_input(local_model: &LocalModel, global_model: &GlobalModel) -> Option<AsyncInput> {
+    let user_uuid = global_model.user_uuid.clone()?;
     Some(AsyncInput {
         user_uuid,
         company_name: local_model.company_name.clone(),
@@ -137,7 +134,7 @@ fn current_check_input(
 
 fn build_check_effect(
     local_model: &LocalModel,
-    global_model: &impl GlobalModel,
+    global_model: &GlobalModel,
     mutate: impl FnOnce(&mut AsyncInput),
 ) -> Vec<Effect> {
     let Some(mut a) = current_check_input(local_model, global_model) else {
@@ -150,7 +147,7 @@ fn build_check_effect(
 fn is_check_stale(
     result: &CheckStateLocal,
     local_model: &LocalModel,
-    global_model: &impl GlobalModel,
+    global_model: &GlobalModel,
 ) -> bool {
     let input = match result {
         CheckState::Idle => return false,
@@ -162,7 +159,7 @@ fn is_check_stale(
 pub fn update(
     msg: Message,
     local_model: &LocalModel,
-    global_model: &impl GlobalModel,
+    global_model: &GlobalModel,
 ) -> (Vec<LocalChange>, Vec<GlobalChange>, Vec<Effect>) {
     if let Message::Intent(ref a) = msg {
         if let Intent::Consent(_) = a {
@@ -209,7 +206,7 @@ pub fn update(
                         vec![Effect::SpawnTimer],
                     ),
                     UserConsent::DontWaitForServerResponse => {
-                        let Some(user_uuid) = global_model.user_uuid() else {
+                        let Some(user_uuid) = global_model.user_uuid.clone() else {
                             return (vec![], vec![], vec![]);
                         };
                         let async_input = AsyncInput {
@@ -231,7 +228,7 @@ pub fn update(
                 (local_change, vec![], effect)
             }
             Intent::Submit => {
-                let Some(user_uuid) = global_model.user_uuid() else {
+                let Some(user_uuid) = global_model.user_uuid.clone() else {
                     return (vec![], vec![], vec![]);
                 };
 
@@ -297,7 +294,7 @@ pub fn update(
     }
 }
 
-pub fn local_apply(msg: LocalChange, local_model: &mut LocalModel) {
+pub fn local_apply(msg: LocalChange, mut local_model: LocalModel) -> LocalModel {
     match msg {
         LocalChange::ShowDialog(i) => local_model.show_dialog = i,
         LocalChange::CompanyName(i) => local_model.company_name = i,
@@ -305,10 +302,12 @@ pub fn local_apply(msg: LocalChange, local_model: &mut LocalModel) {
         LocalChange::CheckState(i) => local_model.check_state = i,
         LocalChange::AsyncState(i) => local_model.async_state = i,
     }
+    local_model
 }
 
-pub fn global_apply(msg: GlobalChange, global_model: &mut impl GlobalModel) {
+pub fn global_apply(msg: GlobalChange, mut global_model: GlobalModel) -> GlobalModel {
     match msg {}
+    global_model
 }
 
 pub async fn effect(msg: Effect, replier: Replier, context: UiContext) -> Result<()> {

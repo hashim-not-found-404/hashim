@@ -21,22 +21,24 @@ use use_case_sign_in_client::global_apply;
 use use_case_sign_in_client::local_apply;
 use use_case_sign_in_client::update;
 
-pub trait HasPage: GlobalModel {
-    fn page(&self) -> &LocalModel;
-
-    fn page_mut(&mut self) -> &mut LocalModel;
+pub trait ModelAccess {
+    fn global_model(&self) -> GlobalModel;
+    fn global_model_set(&mut self, v: GlobalModel);
+    fn local_model(&self) -> LocalModel;
+    fn local_model_set(&mut self, v: LocalModel);
 }
 
 #[derive(Debug)]
 pub struct WrapperMessage(pub Message);
 
-impl<Mdl: Model + HasPage> UpdaterTrait<Mdl> for WrapperMessage {
+impl<Mdl: Model + ModelAccess> UpdaterTrait<Mdl> for WrapperMessage {
     fn update(
         &self,
         model: &Mdl,
     ) -> (Vec<Box<dyn ApplierTrait<Mdl>>>, Vec<Box<dyn EffectorTrait>>) {
-        let page = model.page().clone();
-        let (local_changes, global_changes, effects) = update(self.0.clone(), &page, model);
+        let page = model.local_model().clone();
+        let (local_changes, global_changes, effects) =
+            update(self.0.clone(), &page, &model.global_model());
         let mut appliers: Vec<Box<dyn ApplierTrait<Mdl>>> = Vec::new();
 
         appliers.extend(
@@ -63,18 +65,18 @@ impl<Mdl: Model + HasPage> UpdaterTrait<Mdl> for WrapperMessage {
 #[derive(Debug)]
 pub struct WrapperLocalChange(pub LocalChange);
 
-impl<Mdl: Model + HasPage> ApplierTrait<Mdl> for WrapperLocalChange {
+impl<Mdl: Model + ModelAccess> ApplierTrait<Mdl> for WrapperLocalChange {
     fn apply(&self, model: &mut Mdl) {
-        local_apply(self.0.clone(), model.page_mut());
+        model.local_model_set(local_apply(self.0.clone(), model.local_model()));
     }
 }
 
 #[derive(Debug)]
 pub struct WrapperGlobalChange(pub GlobalChange);
 
-impl<Mdl: Model + HasPage> ApplierTrait<Mdl> for WrapperGlobalChange {
+impl<Mdl: Model + ModelAccess> ApplierTrait<Mdl> for WrapperGlobalChange {
     fn apply(&self, model: &mut Mdl) {
-        global_apply(self.0.clone(), model);
+        model.global_model_set(global_apply(self.0.clone(), model.global_model()));
     }
 }
 

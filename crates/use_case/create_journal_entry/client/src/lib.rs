@@ -122,9 +122,9 @@ pub async fn check_input<
 
 pub(crate) type AsyncState = GenricAsyncState<AsyncInput, Ok, Error>;
 
-pub trait GlobalModel {
-    fn user_uuid(&self) -> Option<UserUuid>;
-    fn selected_company_branch_uuid(&self) -> Option<BranchUuid>;
+pub struct GlobalModel {
+    pub user_uuid: Option<UserUuid>,
+    pub selected_company_branch_uuid: Option<BranchUuid>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
@@ -250,7 +250,7 @@ impl MessageTrait for Message {}
 pub fn update(
     msg: Message,
     local_model: &LocalModel,
-    global_model: &impl GlobalModel,
+    global_model: &GlobalModel,
 ) -> (Vec<LocalChange>, Vec<GlobalChange>, Vec<Effect>) {
     if let Message::Intent(ref a) = msg {
         match a {
@@ -266,10 +266,11 @@ pub fn update(
     match msg {
         Message::Intent(intent) => match intent {
             Intent::Submit => {
-                let Some(user_uuid) = global_model.user_uuid() else {
+                let Some(user_uuid) = global_model.user_uuid.clone() else {
                     return (vec![], vec![], vec![]);
                 };
-                let Some(belong_to_company_branch) = global_model.selected_company_branch_uuid()
+                let Some(belong_to_company_branch) =
+                    global_model.selected_company_branch_uuid.clone()
                 else {
                     return (vec![], vec![], vec![]);
                 };
@@ -481,7 +482,7 @@ pub fn update(
     }
 }
 
-pub fn local_apply(msg: LocalChange, local_model: &mut LocalModel) {
+pub fn local_apply(msg: LocalChange, mut local_model: LocalModel) -> LocalModel {
     match msg {
         LocalChange::ShowDialog(i) => local_model.show_dialog = i,
         LocalChange::IsLoading(i) => local_model.is_loading = i,
@@ -496,9 +497,10 @@ pub fn local_apply(msg: LocalChange, local_model: &mut LocalModel) {
         }
         LocalChange::AccountsList(i) => local_model.list_of_available_account = i,
     }
+    local_model
 }
 
-pub fn global_apply(msg: GlobalChange, _: &mut impl GlobalModel) {
+pub fn global_apply(msg: GlobalChange, _: &mut GlobalModel) {
     match msg {}
 }
 

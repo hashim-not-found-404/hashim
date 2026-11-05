@@ -57,7 +57,7 @@ pub fn tools() -> Vec<McpToolDef> {
     ]
 }
 
-pub fn call<'a>(input: CallInput<'a, LocalModel, impl GlobalModel>) -> Result<Value> {
+pub fn call<'a>(input: CallInput<'a, LocalModel, GlobalModel>) -> Result<Value> {
     match input.tool_name {
         LIST_FORMS => {
             let _: ListFormsArgs = parse_args(input.args)?;

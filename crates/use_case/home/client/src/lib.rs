@@ -90,7 +90,7 @@ impl FormEntry {
     }
 }
 
-pub trait GlobalModel: Any {}
+pub struct GlobalModel {}
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct LocalModel {
@@ -153,7 +153,7 @@ impl MessageTrait for Message {}
 pub fn update(
     msg: Message,
     local_model: &LocalModel,
-    global_model: &impl GlobalModel,
+    global_model: &GlobalModel,
 ) -> (Vec<LocalChange>, Vec<GlobalChange>, Vec<Effect>) {
     match msg {
         Message::Intent(intent) => {
@@ -228,10 +228,11 @@ pub fn update(
     }
 }
 
-pub fn local_apply(msg: LocalChange, local_model: &mut LocalModel) {
+pub fn local_apply(msg: LocalChange, mut local_model: LocalModel) -> LocalModel {
     match msg {
         LocalChange::Forms(i) => local_model.forms = i,
     }
+    local_model
 }
 
 pub fn global_apply(msg: GlobalChange, global_model: &mut dyn Any) {

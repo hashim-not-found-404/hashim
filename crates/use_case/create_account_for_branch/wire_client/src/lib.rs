@@ -26,6 +26,13 @@ use use_case_prelude_wire_client::*;
 
 make_client_wrapper_cache!(create_account_for_branch);
 
+pub trait ModelAccess {
+    fn global_model(&self) -> GlobalModel;
+    fn global_model_set(&mut self, v: GlobalModel);
+    fn local_model(&self) -> LocalModel;
+    fn local_model_set(&mut self, v: LocalModel);
+}
+
 pub struct WrapperForm<Mdl> {
     pub inner: LocalModel,
     _marker: PhantomData<fn() -> Mdl>,
@@ -75,7 +82,7 @@ impl<Mdl> PartialEq for WrapperForm<Mdl> {
 
 impl<Mdl> FormLocalModel for WrapperForm<Mdl>
 where
-    Mdl: GlobalModel + 'static,
+    Mdl: ModelAccess + 'static,
 {
     fn unsubscribe_message(&self) -> Option<Box<dyn MessageTrait>> {
         let msg: Box<dyn MessageTrait> = Box::new(Message::Intent(Intent::UnSubscribe));
@@ -110,10 +117,10 @@ where
             return FormUpdate::empty();
         };
 
-        let (locals, globals, effects) = update(*message, &self.inner, global);
+        let (locals, globals, effects) = update(*message, &self.inner, &global.global_model());
 
         for c in locals {
-            local_apply(c, &mut self.inner);
+            self.inner = local_apply(c, self.inner.clone());
         }
 
         FormUpdate {
@@ -135,7 +142,9 @@ where
             });
         };
 
-        let list_of_account_name_and_uuid = self.inner.list_of_accounts_to_display(model);
+        let list_of_account_name_and_uuid = self
+            .inner
+            .list_of_accounts_to_display(&model.global_model());
         let commander_owned = commander.clone();
 
         Box::new(rsx! {
@@ -189,13 +198,13 @@ impl<Mdl> fmt::Debug for WrapperGlobalChange<Mdl> {
 
 impl<Mdl> FormGlobalChange for WrapperGlobalChange<Mdl>
 where
-    Mdl: GlobalModel + 'static,
+    Mdl: ModelAccess + 'static,
 {
     fn apply(&self, global: &mut dyn Any) {
         let Some(g) = global.downcast_mut::<Mdl>() else {
             return;
         };
-        global_apply(self.inner.clone(), g);
+        g.global_model_set(global_apply(self.inner.clone(), g.global_model()));
     }
 }
 

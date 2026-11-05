@@ -32,10 +32,10 @@ pub async fn check_input<
 pub(crate) type AsyncState = GenricAsyncState<AsyncInput, Ok, Error>;
 pub(crate) type CheckStateLocal = CheckState<AsyncInput, Ok, Error>;
 
-pub trait GlobalModel {
-    fn user_uuid(&self) -> Option<UserUuid>;
-    fn selected_company_uuid(&self) -> Option<CompanyUuid>;
-    fn list_of_companies(&self) -> Vec<(CompanyUuid, String)>;
+pub struct GlobalModel {
+    pub user_uuid: Option<UserUuid>,
+    pub selected_company_uuid: Option<CompanyUuid>,
+    pub list_of_companies: Vec<(CompanyUuid, String)>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
@@ -79,18 +79,19 @@ impl LocalModel {
         None
     }
 
-    pub fn resolved_company_uuid(&self, global_model: &impl GlobalModel) -> Option<CompanyUuid> {
+    pub fn resolved_company_uuid(&self, global_model: &GlobalModel) -> Option<CompanyUuid> {
         let typed = self.selected_company_name.clone();
         if typed.is_empty() {
-            return global_model.selected_company_uuid();
+            return global_model.selected_company_uuid.clone();
         }
         global_model
-            .list_of_companies()
+            .list_of_companies
+            .clone()
             .into_iter()
             .find_map(|(uuid, name)| (name == typed).then_some(uuid))
     }
 
-    pub fn error_company_name(&self, global_model: &impl GlobalModel) -> Option<CompanyNameError> {
+    pub fn error_company_name(&self, global_model: &GlobalModel) -> Option<CompanyNameError> {
         let belong_to_company_err = match &self.check_state {
             CheckState::Failure { error, .. } => error.belong_to_company.clone(),
             _ => match &self.async_state {
@@ -108,7 +109,7 @@ impl LocalModel {
 
         let typed = self.selected_company_name.clone();
         if typed.is_empty() {
-            if global_model.selected_company_uuid().is_none() {
+            if global_model.selected_company_uuid.clone().is_none() {
                 return Some(CompanyNameError::NotSelected);
             }
             return None;
@@ -122,10 +123,10 @@ impl LocalModel {
 
     pub fn list_of_companies_to_display(
         &self,
-        global_model: &impl GlobalModel,
+        global_model: &GlobalModel,
     ) -> Vec<(CompanyUuid, String)> {
         let typed = self.selected_company_name.clone();
-        let list = global_model.list_of_companies();
+        let list = global_model.list_of_companies.clone();
         if typed.is_empty() {
             return list;
         }
@@ -208,11 +209,8 @@ pub enum Message {
 
 impl MessageTrait for Message {}
 
-fn current_check_input(
-    local_model: &LocalModel,
-    global_model: &impl GlobalModel,
-) -> Option<AsyncInput> {
-    let user_uuid = global_model.user_uuid()?;
+fn current_check_input(local_model: &LocalModel, global_model: &GlobalModel) -> Option<AsyncInput> {
+    let user_uuid = global_model.user_uuid.clone()?;
     let belong_to_company = local_model.resolved_company_uuid(global_model)?;
     Some(AsyncInput {
         user_uuid,
@@ -226,11 +224,11 @@ fn current_check_input(
 
 fn build_check_effect(
     local_model: &LocalModel,
-    global_model: &impl GlobalModel,
+    global_model: &GlobalModel,
     override_company: Option<CompanyUuid>,
     mutate: impl FnOnce(&mut AsyncInput),
 ) -> Vec<Effect> {
-    let Some(user_uuid) = global_model.user_uuid() else {
+    let Some(user_uuid) = global_model.user_uuid.clone() else {
         return vec![];
     };
     let belong_to_company =
@@ -253,7 +251,7 @@ fn build_check_effect(
 fn is_check_stale(
     result: &CheckStateLocal,
     local_model: &LocalModel,
-    global_model: &impl GlobalModel,
+    global_model: &GlobalModel,
 ) -> bool {
     let input = match result {
         CheckState::Idle => return false,
@@ -265,7 +263,7 @@ fn is_check_stale(
 pub fn update(
     msg: Message,
     local_model: &LocalModel,
-    global_model: &impl GlobalModel,
+    global_model: &GlobalModel,
 ) -> (Vec<LocalChange>, Vec<GlobalChange>, Vec<Effect>) {
     if let Message::Intent(ref a) = msg {
         match a {
@@ -281,7 +279,7 @@ pub fn update(
     match msg {
         Message::Intent(intent) => match intent {
             Intent::Submit => {
-                let Some(user_uuid) = global_model.user_uuid() else {
+                let Some(user_uuid) = global_model.user_uuid.clone() else {
                     return (vec![], vec![], vec![]);
                 };
 
@@ -332,7 +330,7 @@ pub fn update(
                         vec![Effect::SpawnTimer],
                     ),
                     UserConsent::DontWaitForServerResponse => {
-                        let Some(user_uuid) = global_model.user_uuid() else {
+                        let Some(user_uuid) = global_model.user_uuid.clone() else {
                             return (vec![], vec![], vec![]);
                         };
                         let Some(belong_to_company) =
@@ -409,10 +407,11 @@ pub fn update(
                     LocalChange::CheckState(CheckState::Idle),
                 ];
                 let resolved = if v.is_empty() {
-                    global_model.selected_company_uuid()
+                    global_model.selected_company_uuid.clone()
                 } else {
                     global_model
-                        .list_of_companies()
+                        .list_of_companies
+                        .clone()
                         .into_iter()
                         .find_map(|(uuid, name)| (name == v).then_some(uuid))
                 };
@@ -491,7 +490,7 @@ pub fn update(
     }
 }
 
-pub fn local_apply(msg: LocalChange, local_model: &mut LocalModel) {
+pub fn local_apply(msg: LocalChange, mut local_model: LocalModel) -> LocalModel {
     match msg {
         LocalChange::ShowDialog(i) => local_model.show_dialog = i,
         LocalChange::IsDebit(i) => local_model.is_debit = i,
@@ -504,10 +503,12 @@ pub fn local_apply(msg: LocalChange, local_model: &mut LocalModel) {
         LocalChange::CheckState(i) => local_model.check_state = i,
         LocalChange::AsyncState(i) => local_model.async_state = i,
     }
+    local_model
 }
 
-pub fn global_apply(msg: GlobalChange, global_model: &mut impl GlobalModel) {
+pub fn global_apply(msg: GlobalChange, mut global_model: GlobalModel) -> GlobalModel {
     match msg {}
+    global_model
 }
 
 pub async fn effect(msg: Effect, replier: Replier, context: UiContext) -> Result<()> {

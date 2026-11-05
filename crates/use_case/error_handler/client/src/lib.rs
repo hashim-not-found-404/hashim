@@ -52,7 +52,7 @@ pub struct ErrorInfo {
 #[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
 pub struct ErrorList(pub Vec<ErrorInfo>);
 
-pub trait GlobalModel {}
+pub struct GlobalModel {}
 
 #[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
 pub struct LocalModel {
@@ -100,7 +100,7 @@ impl MessageTrait for Message {}
 pub fn update(
     msg: Message,
     local_model: &LocalModel,
-    _: &impl GlobalModel,
+    _: &GlobalModel,
 ) -> (Vec<LocalChange>, Vec<GlobalChange>, Vec<Effect>) {
     match msg {
         Message::Intent(intent) => match intent {
@@ -159,15 +159,17 @@ pub fn update(
     }
 }
 
-pub fn local_apply(msg: LocalChange, local_model: &mut LocalModel) {
+pub fn local_apply(msg: LocalChange, mut local_model: LocalModel) -> LocalModel {
     match msg {
         LocalChange::IsExpandAll(i) => local_model.is_expand_all = i,
         LocalChange::Errors(i) => local_model.errors = i,
     }
+    local_model
 }
 
-pub fn global_apply(msg: GlobalChange, _: &mut impl GlobalModel) {
+pub fn global_apply(msg: GlobalChange, mut global_model: GlobalModel) -> GlobalModel {
     match msg {}
+    global_model
 }
 
 pub async fn effect(_: Effect, _: Replier, _: UiContext) -> Result<()> {

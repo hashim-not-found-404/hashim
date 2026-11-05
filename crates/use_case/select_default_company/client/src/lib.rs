@@ -15,13 +15,10 @@ pub const RESOURCES_NAME_TO_LISTEN: &[ResourceName] = &[
 
 pub(crate) type AsyncState = GenricAsyncState<AsyncInput, Ok, Error>;
 
-pub trait GlobalModel {
-    fn user_uuid(&self) -> Option<UserUuid>;
-    fn selected_company_uuid(&self) -> Option<CompanyUuid>;
-    fn selected_company_branch_uuid(&self) -> Option<BranchUuid>;
-
-    fn set_selected_company_uuid(&mut self, v: Option<CompanyUuid>);
-    fn set_selected_company_branch_uuid(&mut self, v: Option<BranchUuid>);
+pub struct GlobalModel {
+    pub user_uuid: Option<UserUuid>,
+    pub selected_company_uuid: Option<CompanyUuid>,
+    pub selected_company_branch_uuid: Option<BranchUuid>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
@@ -46,8 +43,8 @@ impl LocalModel {
         }
     }
 
-    pub fn list_of_branches(&self, global_model: &impl GlobalModel) -> Vec<(BranchUuid, String)> {
-        let Some(company_uuid) = global_model.selected_company_uuid() else {
+    pub fn list_of_branches(&self, global_model: &GlobalModel) -> Vec<(BranchUuid, String)> {
+        let Some(company_uuid) = global_model.selected_company_uuid.clone() else {
             return Vec::new();
         };
         match self.async_state.clone() {
@@ -56,15 +53,15 @@ impl LocalModel {
         }
     }
 
-    pub fn selected_company_name(&self, global_model: &impl GlobalModel) -> Option<String> {
-        let uuid = global_model.selected_company_uuid()?;
+    pub fn selected_company_name(&self, global_model: &GlobalModel) -> Option<String> {
+        let uuid = global_model.selected_company_uuid.clone()?;
         self.list_of_companies()
             .into_iter()
             .find_map(|(c_uuid, c_name)| (c_uuid == uuid).then_some(c_name))
     }
 
-    pub fn selected_company_branch_name(&self, global_model: &impl GlobalModel) -> Option<String> {
-        let selected_company_branch_uuid = global_model.selected_company_branch_uuid();
+    pub fn selected_company_branch_name(&self, global_model: &GlobalModel) -> Option<String> {
+        let selected_company_branch_uuid = global_model.selected_company_branch_uuid.clone();
         let uuid = selected_company_branch_uuid?;
         self.list_of_branches(global_model)
             .into_iter()
@@ -144,12 +141,12 @@ impl MessageTrait for Message {}
 pub fn update(
     msg: Message,
     local_model: &LocalModel,
-    global_model: &impl GlobalModel,
+    global_model: &GlobalModel,
 ) -> (Vec<LocalChange>, Vec<GlobalChange>, Vec<Effect>) {
     match msg {
         Message::Intent(intent) => match intent {
             Intent::Subscribe => {
-                let Some(user_uuid) = global_model.user_uuid() else {
+                let Some(user_uuid) = global_model.user_uuid.clone() else {
                     return (vec![], vec![], vec![]);
                 };
                 let async_input = AsyncInput { user_uuid };
@@ -169,7 +166,7 @@ pub fn update(
                 (vec![], vec![], effect)
             }
             Intent::SelectCompany(uuid) => {
-                if global_model.selected_company_uuid().as_ref() == Some(&uuid) {
+                if global_model.selected_company_uuid.clone().as_ref() == Some(&uuid) {
                     return (vec![], vec![], vec![]);
                 }
 
@@ -180,7 +177,7 @@ pub fn update(
                 (vec![], global_change, vec![])
             }
             Intent::SelectBranch(uuid) => {
-                if global_model.selected_company_branch_uuid().as_ref() == Some(&uuid) {
+                if global_model.selected_company_branch_uuid.clone().as_ref() == Some(&uuid) {
                     return (vec![], vec![], vec![]);
                 }
 
@@ -190,7 +187,7 @@ pub fn update(
         },
         Message::Observe(observe) => match observe {
             Observe::Refresh => {
-                let Some(user_uuid) = global_model.user_uuid() else {
+                let Some(user_uuid) = global_model.user_uuid.clone() else {
                     return (vec![], vec![], vec![]);
                 };
                 let async_input = AsyncInput { user_uuid };
@@ -209,19 +206,19 @@ pub fn update(
     }
 }
 
-pub fn local_apply(msg: LocalChange, local_model: &mut LocalModel) {
+pub fn local_apply(msg: LocalChange, mut local_model: LocalModel) -> LocalModel {
     match msg {
         LocalChange::AsyncState(i) => local_model.async_state = i,
     }
+    local_model
 }
 
-pub fn global_apply(msg: GlobalChange, global_model: &mut impl GlobalModel) {
+pub fn global_apply(msg: GlobalChange, mut global_model: GlobalModel) -> GlobalModel {
     match msg {
-        GlobalChange::SelectedCompanyUuid(i) => global_model.set_selected_company_uuid(i),
-        GlobalChange::SelectedCompanyBranchUuid(i) => {
-            global_model.set_selected_company_branch_uuid(i)
-        }
+        GlobalChange::SelectedCompanyUuid(i) => global_model.selected_company_uuid = i,
+        GlobalChange::SelectedCompanyBranchUuid(i) => global_model.selected_company_branch_uuid = i,
     }
+    global_model
 }
 
 pub async fn effect(msg: Effect, replier: Replier, context: UiContext) -> Result<()> {

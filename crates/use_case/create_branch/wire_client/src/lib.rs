@@ -28,10 +28,16 @@ use use_case_home_client::FormId;
 use use_case_home_client::FormLocalModel;
 use use_case_home_client::FormUpdate;
 use use_case_home_mcp::form_sender;
-use use_case_home_wire_client::HasPage;
 use use_case_prelude_wire_client::*;
 
 make_client_wrapper_cache!(create_branch);
+
+pub trait ModelAccess {
+    fn global_model(&self) -> GlobalModel;
+    fn global_model_set(&mut self, v: GlobalModel);
+    fn local_model(&self) -> LocalModel;
+    fn local_model_set(&mut self, v: LocalModel);
+}
 
 // ============================================================================
 // WrapperForm<Mdl>
@@ -102,7 +108,7 @@ impl<'de, Mdl> Deserialize<'de> for WrapperForm<Mdl> {
 
 impl<Mdl> FormLocalModel for WrapperForm<Mdl>
 where
-    Mdl: GlobalModel + 'static,
+    Mdl: ModelAccess + 'static,
 {
     fn unsubscribe_message(&self) -> Option<Box<dyn MessageTrait>> {
         let msg: Box<dyn MessageTrait> = Box::new(Message::Intent(Intent::UnSubscribe));
@@ -137,10 +143,10 @@ where
             return FormUpdate::empty();
         };
 
-        let (locals, globals, effects) = update(*message, &self.inner, global);
+        let (locals, globals, effects) = update(*message, &self.inner, &global.global_model());
 
         for c in locals {
-            local_apply(c, &mut self.inner);
+            self.inner = local_apply(c, self.inner.clone());
         }
 
         FormUpdate {
@@ -164,13 +170,15 @@ where
 
         let company_name_error = self
             .inner
-            .company_name_error(model)
+            .company_name_error(&model.global_model())
             .map(|e| format!("{e:?}"));
         let resolved_company_uuid = self
             .inner
-            .resolved_company_uuid(model)
+            .resolved_company_uuid(&model.global_model())
             .map(|u| u.to_string());
-        let list_of_company_name_and_uuid = self.inner.list_of_companies_to_display(model);
+        let list_of_company_name_and_uuid = self
+            .inner
+            .list_of_companies_to_display(&model.global_model());
 
         let commander_owned = commander.clone();
 
@@ -233,13 +241,13 @@ impl<Mdl> fmt::Debug for WrapperGlobalChange<Mdl> {
 
 impl<Mdl> FormGlobalChange for WrapperGlobalChange<Mdl>
 where
-    Mdl: GlobalModel + 'static,
+    Mdl: ModelAccess + 'static,
 {
     fn apply(&self, global: &mut dyn Any) {
         let Some(g) = global.downcast_mut::<Mdl>() else {
             return;
         };
-        global_apply(self.inner.clone(), g);
+        g.global_model_set(global_apply(self.inner.clone(), g.global_model()));
     }
 }
 
@@ -266,7 +274,10 @@ impl FormEffect for WrapperEffect {
 
 pub struct TypeMcpProvider;
 
-impl<Mdl: Model + HasPage + GlobalModel + 'static> TraitMcpProvider<Mdl> for TypeMcpProvider {
+impl<Mdl> TraitMcpProvider<Mdl> for TypeMcpProvider
+where
+    Mdl: Model + use_case_home_wire_client::ModelAccess + ModelAccess + 'static,
+{
     fn tools(&self) -> Vec<McpToolDef> {
         tools()
     }
@@ -287,15 +298,16 @@ impl<Mdl: Model + HasPage + GlobalModel + 'static> TraitMcpProvider<Mdl> for Typ
                 .context(error_to_mcp("invalid_args", "there is no form_id field"))?;
 
             let form_id = FormId::from(id);
-            let entry = model
-                .page()
-                .forms
-                .iter()
-                .find(|e| e.id == form_id)
-                .context(error_to_mcp(
-                    "form_not_found",
-                    format!("no form with id {id}"),
-                ))?;
+            let local_model = use_case_home_wire_client::ModelAccess::local_model(model);
+            let entry =
+                local_model
+                    .forms
+                    .iter()
+                    .find(|e| e.id == form_id)
+                    .context(error_to_mcp(
+                        "form_not_found",
+                        format!("no form with id {id}"),
+                    ))?;
 
             let form_local_model: &dyn Any = entry.form.as_ref();
 
@@ -310,7 +322,7 @@ impl<Mdl: Model + HasPage + GlobalModel + 'static> TraitMcpProvider<Mdl> for Typ
                 tool_name: &tool_name,
                 args,
                 local: &wrapper.inner,
-                global: model,
+                global: &ModelAccess::global_model(model),
                 commander,
             })
         })

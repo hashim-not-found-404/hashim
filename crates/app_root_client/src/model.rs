@@ -143,7 +143,7 @@ impl use_case_create_journal_wire_client::GlobalModel for TypeGlobalModel {
     }
 }
 
-impl use_case_sign_in_wire_client::HasPage for TypeGlobalModel {
+impl use_case_sign_in_wire_client::ModelAccess for TypeGlobalModel {
     fn page(&self) -> &use_case_sign_in_wire_client::LocalModel {
         &self.page_sign_in
     }
@@ -152,7 +152,7 @@ impl use_case_sign_in_wire_client::HasPage for TypeGlobalModel {
     }
 }
 
-impl use_case_home_wire_client::HasPage for TypeGlobalModel {
+impl use_case_home_wire_client::ModelAccess for TypeGlobalModel {
     fn page(&self) -> &use_case_home_wire_client::LocalModel {
         &self.page_home
     }
@@ -161,7 +161,7 @@ impl use_case_home_wire_client::HasPage for TypeGlobalModel {
     }
 }
 
-impl use_case_error_handler_wire_client::HasPage for TypeGlobalModel {
+impl use_case_error_handler_wire_client::ModelAccess for TypeGlobalModel {
     fn page(&self) -> &use_case_error_handler_wire_client::LocalModel {
         &self.page_error_handler
     }
@@ -170,7 +170,7 @@ impl use_case_error_handler_wire_client::HasPage for TypeGlobalModel {
     }
 }
 
-impl use_case_select_default_company_wire_client::HasPage for TypeGlobalModel {
+impl use_case_select_default_company_wire_client::ModelAccess for TypeGlobalModel {
     fn page(&self) -> &use_case_select_default_company_wire_client::LocalModel {
         &self.page_select_default_company
     }

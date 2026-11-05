@@ -36,12 +36,9 @@ pub async fn check_input<
 
 pub(crate) type AsyncState = GenricAsyncState<AsyncInput, Ok, Error>;
 
-pub trait GlobalModel {
-    fn user_uuid(&self) -> Option<UserUuid>;
-    fn selected_company_branch_uuid(&self) -> Option<BranchUuid>;
-    fn list_of_accounts(&self) -> Vec<(AccountUuid, String)> {
-        todo!("remove this method")
-    }
+pub struct GlobalModel {
+    pub user_uuid: Option<UserUuid>,
+    pub selected_company_branch_uuid: Option<BranchUuid>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
@@ -66,23 +63,24 @@ impl LocalModel {
         }
     }
 
-    pub fn resolved_account_uuid(&self, global_model: &impl GlobalModel) -> Option<AccountUuid> {
+    pub fn resolved_account_uuid(&self, global_model: &GlobalModel) -> Option<AccountUuid> {
         let typed = self.account_name.clone();
         if typed.is_empty() {
             return None;
         }
-        global_model
-            .list_of_accounts()
-            .into_iter()
-            .find_map(|(uuid, name)| (name == typed).then_some(uuid))
+        todo!()
+        // global_model
+        //     .clone()
+        //     .into_iter()
+        //     .find_map(|(uuid, name)| (name == typed).then_some(uuid))
     }
 
     pub fn list_of_accounts_to_display(
         &self,
-        global_model: &impl GlobalModel,
+        global_model: &GlobalModel,
     ) -> Vec<(AccountUuid, String)> {
         let typed = self.account_name.clone();
-        let list = global_model.list_of_accounts();
+        let list = todo!();
         if typed.is_empty() {
             return list;
         }
@@ -152,7 +150,7 @@ impl MessageTrait for Message {}
 pub fn update(
     msg: Message,
     local_model: &LocalModel,
-    global_model: &impl GlobalModel,
+    global_model: &GlobalModel,
 ) -> (Vec<LocalChange>, Vec<GlobalChange>, Vec<Effect>) {
     if let Message::Intent(ref a) = msg {
         match a {
@@ -168,11 +166,12 @@ pub fn update(
     match msg {
         Message::Intent(intent) => match intent {
             Intent::Submit => {
-                let Some(user_uuid) = global_model.user_uuid() else {
+                let Some(user_uuid) = global_model.user_uuid.clone() else {
                     return (vec![], vec![], vec![]);
                 };
 
-                let Some(belong_to_company_branch) = global_model.selected_company_branch_uuid()
+                let Some(belong_to_company_branch) =
+                    global_model.selected_company_branch_uuid.clone()
                 else {
                     return (vec![], vec![], vec![]);
                 };
@@ -221,11 +220,11 @@ pub fn update(
                         vec![Effect::SpawnTimer],
                     ),
                     UserConsent::DontWaitForServerResponse => {
-                        let Some(user_uuid) = global_model.user_uuid() else {
+                        let Some(user_uuid) = global_model.user_uuid.clone() else {
                             return (vec![], vec![], vec![]);
                         };
                         let Some(belong_to_company_branch) =
-                            global_model.selected_company_branch_uuid()
+                            global_model.selected_company_branch_uuid.clone()
                         else {
                             return (vec![], vec![], vec![]);
                         };
@@ -316,7 +315,7 @@ pub fn update(
     }
 }
 
-pub fn local_apply(msg: LocalChange, local_model: &mut LocalModel) {
+pub fn local_apply(msg: LocalChange, mut local_model: LocalModel) -> LocalModel {
     match msg {
         LocalChange::ShowDialog(i) => local_model.show_dialog = i,
         LocalChange::AccountName(i) => local_model.account_name = i,
@@ -324,10 +323,12 @@ pub fn local_apply(msg: LocalChange, local_model: &mut LocalModel) {
         LocalChange::InflowType(i) => local_model.inflow_type = i,
         LocalChange::AsyncState(i) => local_model.async_state = i,
     }
+    local_model
 }
 
-pub fn global_apply(msg: GlobalChange, global_model: &mut impl GlobalModel) {
+pub fn global_apply(msg: GlobalChange, mut global_model: GlobalModel) -> GlobalModel {
     match msg {}
+    global_model
 }
 
 pub async fn effect(msg: Effect, replier: Replier, context: UiContext) -> Result<()> {

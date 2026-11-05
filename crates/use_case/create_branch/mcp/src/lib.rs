@@ -38,7 +38,7 @@ pub fn tools() -> Vec<McpToolDef> {
     }]
 }
 
-pub fn call<'a>(input: CallInput<'a, LocalModel, impl GlobalModel>) -> Result<Value> {
+pub fn call<'a>(input: CallInput<'a, LocalModel, GlobalModel>) -> Result<Value> {
     match input.tool_name {
         CREATE_BRANCH => {
             let args: CreateBranchArgs = parse_args(input.args)?;
