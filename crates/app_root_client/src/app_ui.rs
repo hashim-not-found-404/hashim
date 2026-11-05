@@ -217,7 +217,7 @@ fn SignIn() -> Element {
             (
                 page.show_dialog.clone(),
                 m.user_id.clone(),
-                m.feature_state_auth.user_password.clone(),
+                m.user_password.clone(),
                 page.error_user_id().map(|e| format!("{e:?}")),
                 page.error_password().map(|e| format!("{e:?}")),
                 page.async_state.clone().is_loading(),
@@ -247,7 +247,7 @@ fn SignUp() -> Element {
                 page.show_dialog.clone(),
                 m.user_id.clone(),
                 m.user_name.clone(),
-                m.feature_state_auth.user_password.clone(),
+                m.user_password.clone(),
                 page.error_user_id().map(|e| format!("{e:?}")),
                 page.error_user_name().map(|e| format!("{e:?}")),
                 page.async_state.clone().is_loading(),

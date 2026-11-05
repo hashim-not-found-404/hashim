@@ -14,9 +14,7 @@ pub(crate) struct TypeGlobalModel {
     pub(crate) selected_company_branch_uuid: Option<BranchUuid>,
     pub(crate) user_id: String,
     pub(crate) user_name: Option<String>,
-
-    // feature state
-    pub(crate) feature_state_auth: FeatureStateAuth,
+    pub(crate) user_password: String,
 
     // pages
     pub(crate) page_error_handler: use_case_error_handler_wire_client::LocalModel,
@@ -24,12 +22,6 @@ pub(crate) struct TypeGlobalModel {
     pub(crate) page_sign_in: use_case_sign_in_wire_client::LocalModel,
     pub(crate) page_select_default_company: use_case_select_default_company_wire_client::LocalModel,
     pub(crate) page_home: use_case_home_wire_client::LocalModel,
-}
-
-#[derive(Debug, Clone, Default)]
-pub(crate) struct FeatureStateAuth {
-    pub(crate) user_password: String,
-    pub(crate) is_loading: bool,
 }
 
 impl TypeGlobalModel {
@@ -70,7 +62,7 @@ impl use_case_sign_up_wire_client::GlobalModel for TypeGlobalModel {
         self.user_id.clone()
     }
     fn password(&self) -> String {
-        self.feature_state_auth.user_password.clone()
+        self.user_password.clone()
     }
     fn set_user_name(&mut self, v: Option<String>) {
         self.user_name = v
@@ -79,7 +71,7 @@ impl use_case_sign_up_wire_client::GlobalModel for TypeGlobalModel {
         self.user_id = v
     }
     fn set_password(&mut self, v: String) {
-        self.feature_state_auth.user_password = v
+        self.user_password = v
     }
 }
 
@@ -88,13 +80,13 @@ impl use_case_sign_in_wire_client::GlobalModel for TypeGlobalModel {
         self.user_id.clone()
     }
     fn password(&self) -> String {
-        self.feature_state_auth.user_password.clone()
+        self.user_password.clone()
     }
     fn set_user_id(&mut self, v: String) {
         self.user_id = v
     }
     fn set_password(&mut self, v: String) {
-        self.feature_state_auth.user_password = v
+        self.user_password = v
     }
 }
 
