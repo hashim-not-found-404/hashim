@@ -86,8 +86,7 @@ where
     Mdl: ModelAccess + 'static,
 {
     fn unsubscribe_message(&self) -> Option<Box<dyn MessageTrait>> {
-        let msg: Box<dyn MessageTrait> = Box::new(Message::Intent(Intent::UnSubscribe));
-        Some(msg)
+        None
     }
 
     fn clone_user_input(&self) -> Box<dyn FormLocalModel> {

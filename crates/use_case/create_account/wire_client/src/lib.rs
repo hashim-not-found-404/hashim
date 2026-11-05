@@ -27,7 +27,7 @@ use use_case_prelude_wire_client::*;
 
 make_client_wrapper_cache!(create_account);
 
-pub trait GlobalAccess {
+pub trait ModelAccess {
     fn global_model(&self) -> GlobalModel;
     fn global_model_set(&mut self, v: GlobalModel);
 }
@@ -81,7 +81,7 @@ impl<Mdl> PartialEq for WrapperForm<Mdl> {
 
 impl<Mdl> FormLocalModel for WrapperForm<Mdl>
 where
-    Mdl: GlobalAccess + 'static,
+    Mdl: ModelAccess + 'static,
 {
     fn unsubscribe_message(&self) -> Option<Box<dyn MessageTrait>> {
         Some(Box::new(Message::Intent(Intent::UnSubscribe)))
@@ -206,7 +206,7 @@ impl<Mdl> fmt::Debug for WrapperGlobalChange<Mdl> {
 
 impl<Mdl> FormGlobalChange for WrapperGlobalChange<Mdl>
 where
-    Mdl: GlobalAccess + 'static,
+    Mdl: ModelAccess + 'static,
 {
     fn apply(&self, global: &mut dyn Any) {
         let Some(g) = global.downcast_mut::<Mdl>() else {

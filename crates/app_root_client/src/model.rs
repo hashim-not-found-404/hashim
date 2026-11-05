@@ -51,7 +51,7 @@ impl crate::use_case_navigator::client::GlobalModel for TypeGlobalModel {
 // Form use cases — GlobalAccess (2 methods, read-only global access)
 // ============================================================================
 
-impl use_case_create_account_wire_client::GlobalAccess for TypeGlobalModel {
+impl use_case_create_account_wire_client::ModelAccess for TypeGlobalModel {
     fn global_model(&self) -> use_case_create_account_wire_client::GlobalModel {
         use_case_create_account_wire_client::GlobalModel {
             user_uuid: self.user_uuid(),

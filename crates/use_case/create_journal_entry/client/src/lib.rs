@@ -499,8 +499,9 @@ pub fn local_apply(msg: LocalChange, mut local_model: LocalModel) -> LocalModel 
     local_model
 }
 
-pub fn global_apply(msg: GlobalChange, _: &mut GlobalModel) {
+pub fn global_apply(msg: GlobalChange, mut global_model: GlobalModel) -> GlobalModel {
     match msg {}
+    global_model
 }
 
 pub async fn effect(msg: Effect, replier: Replier, context: UiContext) -> Result<()> {

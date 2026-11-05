@@ -105,7 +105,6 @@ pub enum Intent {
     Consent(UserConsent),
     Currency(Currency),
     Submit,
-    UnSubscribe,
 }
 
 #[derive(Debug, Clone)]
@@ -255,7 +254,6 @@ pub fn update(
 
                 (local_change, vec![], effect)
             }
-            Intent::UnSubscribe => (vec![], vec![], vec![]),
         },
         Message::Observe(observe) => match observe {
             Observe::Timeout => {
