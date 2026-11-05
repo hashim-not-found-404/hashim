@@ -269,7 +269,7 @@ run_db:
 push_schema:
     cockroach sql --file crates/app_root_server/schema/tables.sql --insecure
 
-mcp_inspect:
+run_mcp:
     npx @modelcontextprotocol/inspector
 
 ###################################################################################################
