@@ -38,14 +38,11 @@ pub async fn check_input<
 
 pub(crate) type AsyncState = GenricAsyncState<AsyncInput, Ok, Error>;
 
-pub trait GlobalModel {
-    fn user_name(&self) -> Option<String>;
-    fn user_id(&self) -> String;
-    fn password(&self) -> String;
-
-    fn set_user_name(&mut self, v: Option<String>);
-    fn set_user_id(&mut self, v: String);
-    fn set_password(&mut self, v: String);
+#[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
+pub struct GlobalModel {
+    pub user_name: Option<String>,
+    pub user_id: String,
+    pub password: String,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
@@ -139,7 +136,7 @@ impl MessageTrait for Message {}
 pub fn update(
     msg: Message,
     local_model: &LocalModel,
-    global_model: &impl GlobalModel,
+    global_model: &GlobalModel,
 ) -> (Vec<LocalChange>, Vec<GlobalChange>, Vec<Effect>) {
     if let Message::Intent(ref a) = msg {
         if let Intent::Consent(_) = a {
@@ -154,9 +151,9 @@ pub fn update(
         Message::Intent(intent) => match intent {
             Intent::Submit => {
                 let async_input = AsyncInput {
-                    name: global_model.user_name(),
-                    user_id: global_model.user_id(),
-                    password: global_model.password(),
+                    name: global_model.user_name.clone(),
+                    user_id: global_model.user_id.clone(),
+                    password: global_model.password.clone(),
                 };
 
                 let local_change = vec![
@@ -191,9 +188,9 @@ pub fn update(
                     ),
                     UserConsent::DontWaitForServerResponse => {
                         let async_input = AsyncInput {
-                            name: global_model.user_name(),
-                            user_id: global_model.user_id(),
-                            password: global_model.password(),
+                            name: global_model.user_name.clone(),
+                            user_id: global_model.user_id.clone(),
+                            password: global_model.password.clone(),
                         };
 
                         (
@@ -237,19 +234,21 @@ pub fn update(
     }
 }
 
-pub fn local_apply(msg: LocalChange, local_model: &mut LocalModel) {
+pub fn local_apply(msg: LocalChange, mut local_model: LocalModel) -> LocalModel {
     match msg {
         LocalChange::ShowDialog(i) => local_model.show_dialog = i,
         LocalChange::AsyncState(i) => local_model.async_state = i,
     }
+    local_model
 }
 
-pub fn global_apply(msg: GlobalChange, global_model: &mut impl GlobalModel) {
+pub fn global_apply(msg: GlobalChange, mut global_model: GlobalModel) -> GlobalModel {
     match msg {
-        GlobalChange::Password(i) => global_model.set_password(i),
-        GlobalChange::UserId(i) => global_model.set_user_id(i),
-        GlobalChange::UserName(i) => global_model.set_user_name(i),
+        GlobalChange::Password(i) => global_model.password = i,
+        GlobalChange::UserId(i) => global_model.user_id = i,
+        GlobalChange::UserName(i) => global_model.user_name = i,
     }
+    global_model
 }
 
 pub async fn effect(msg: Effect, replier: Replier, context: UiContext) -> Result<()> {

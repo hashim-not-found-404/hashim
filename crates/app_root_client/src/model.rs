@@ -14,7 +14,7 @@ pub(crate) struct TypeGlobalModel {
     pub(crate) selected_company_branch_uuid: Option<BranchUuid>,
     pub(crate) user_id: String,
     pub(crate) user_name: Option<String>,
-    pub(crate) user_password: String,
+    pub(crate) password: String,
 
     // pages
     pub(crate) page_error_handler: use_case_error_handler_wire_client::LocalModel,
@@ -54,39 +54,18 @@ impl use_case_create_account_wire_client::GlobalModel for TypeGlobalModel {
 
 impl use_case_error_handler_wire_client::GlobalModel for TypeGlobalModel {}
 
-impl use_case_sign_up_wire_client::GlobalModel for TypeGlobalModel {
-    fn user_name(&self) -> Option<String> {
-        self.user_name.clone()
-    }
-    fn user_id(&self) -> String {
-        self.user_id.clone()
-    }
-    fn password(&self) -> String {
-        self.user_password.clone()
-    }
-    fn set_user_name(&mut self, v: Option<String>) {
-        self.user_name = v
-    }
-    fn set_user_id(&mut self, v: String) {
-        self.user_id = v
-    }
-    fn set_password(&mut self, v: String) {
-        self.user_password = v
-    }
-}
-
 impl use_case_sign_in_wire_client::GlobalModel for TypeGlobalModel {
     fn user_id(&self) -> String {
         self.user_id.clone()
     }
     fn password(&self) -> String {
-        self.user_password.clone()
+        self.password.clone()
     }
     fn set_user_id(&mut self, v: String) {
         self.user_id = v
     }
     fn set_password(&mut self, v: String) {
-        self.user_password = v
+        self.password = v
     }
 }
 
@@ -200,11 +179,26 @@ impl use_case_select_default_company_wire_client::HasPage for TypeGlobalModel {
     }
 }
 
-impl use_case_sign_up_wire_client::HasPage for TypeGlobalModel {
-    fn page(&self) -> &use_case_sign_up_wire_client::LocalModel {
-        &self.page_sign_up
+impl use_case_sign_up_wire_client::ModelAccess for TypeGlobalModel {
+    fn global_model(&self) -> use_case_sign_up_wire_client::GlobalModel {
+        use_case_sign_up_wire_client::GlobalModel {
+            user_name: self.user_name.clone(),
+            user_id: self.user_id.clone(),
+            password: self.password.clone(),
+        }
     }
-    fn page_mut(&mut self) -> &mut use_case_sign_up_wire_client::LocalModel {
-        &mut self.page_sign_up
+
+    fn global_model_set(&mut self, v: use_case_sign_up_wire_client::GlobalModel) {
+        self.user_name = v.user_name;
+        self.user_id = v.user_id;
+        self.password = v.password;
+    }
+
+    fn local_model(&self) -> use_case_sign_up_wire_client::LocalModel {
+        self.page_sign_up.clone()
+    }
+
+    fn local_model_set(&mut self, v: use_case_sign_up_wire_client::LocalModel) {
+        self.page_sign_up = v
     }
 }
