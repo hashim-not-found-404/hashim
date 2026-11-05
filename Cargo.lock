@@ -353,7 +353,6 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "tracing-web",
- "typetag",
  "use_case_create_account_for_branch_wire_client",
  "use_case_create_account_wire_client",
  "use_case_create_branch_wire_client",
@@ -4886,6 +4885,8 @@ dependencies = [
  "use_case_create_account_for_branch_domain",
  "use_case_create_account_for_branch_mcp",
  "use_case_create_account_for_branch_ui",
+ "use_case_home_client",
+ "use_case_home_mcp",
  "use_case_prelude_wire_client",
 ]
 
@@ -4933,6 +4934,8 @@ dependencies = [
  "use_case_create_account_domain",
  "use_case_create_account_mcp",
  "use_case_create_account_ui",
+ "use_case_home_client",
+ "use_case_home_mcp",
  "use_case_prelude_wire_client",
 ]
 
@@ -5101,6 +5104,9 @@ dependencies = [
  "use_case_create_company_domain",
  "use_case_create_company_mcp",
  "use_case_create_company_ui",
+ "use_case_home_client",
+ "use_case_home_mcp",
+ "use_case_home_wire_client",
  "use_case_prelude_wire_client",
 ]
 
@@ -5270,6 +5276,9 @@ dependencies = [
  "use_case_create_journal_domain",
  "use_case_create_journal_mcp",
  "use_case_create_journal_ui",
+ "use_case_home_client",
+ "use_case_home_mcp",
+ "use_case_home_wire_client",
  "use_case_prelude_wire_client",
 ]
 

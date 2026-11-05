@@ -11,7 +11,9 @@ pub use use_case_error_handler_client::Message;
 use use_case_error_handler_client::effect;
 use use_case_error_handler_client::global_apply;
 use use_case_error_handler_client::local_apply;
+pub use use_case_error_handler_client::spawn_listener;
 use use_case_error_handler_client::update;
+pub use use_case_error_handler_ui::Component;
 use use_case_prelude_wire_client::*;
 
 pub trait HasPage: GlobalModel {

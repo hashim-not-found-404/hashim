@@ -1,24 +1,272 @@
-use use_case_create_branch_client::GlobalModel;
-use use_case_create_branch_client::LocalModel;
+use serde::Deserialize;
+use serde::Deserializer;
+use serde::Serialize;
+use serde::Serializer;
+use std::any::Any;
+use std::fmt;
+use std::future::Future;
+use std::marker::PhantomData;
+use std::pin::Pin;
+use use_case_create_branch_client::Effect;
+use use_case_create_branch_client::GlobalChange;
+pub use use_case_create_branch_client::GlobalModel;
+pub use use_case_create_branch_client::Intent;
+pub use use_case_create_branch_client::LocalModel;
+pub use use_case_create_branch_client::Message;
+use use_case_create_branch_client::effect;
+use use_case_create_branch_client::global_apply;
+use use_case_create_branch_client::local_apply;
+use use_case_create_branch_client::update;
 pub use use_case_create_branch_domain::Error;
 pub use use_case_create_branch_domain::Input;
 pub use use_case_create_branch_domain::Ok;
+use use_case_create_branch_mcp::call;
+use use_case_create_branch_mcp::tools;
+use use_case_home_client::FormEffect;
+use use_case_home_client::FormGlobalChange;
+use use_case_home_client::FormId;
+use use_case_home_client::FormLocalModel;
+use use_case_home_client::FormUpdate;
+use use_case_home_mcp::form_sender;
+use use_case_home_wire_client::HasPage;
 use use_case_prelude_wire_client::*;
 
 make_client_wrapper_cache!(create_branch);
 
-use std::any::Any;
-use std::future::Future;
-use std::pin::Pin;
-use use_case_create_branch_mcp::call;
-use use_case_create_branch_mcp::tools;
-use use_case_home_client::FormId;
-use use_case_home_mcp::form_sender;
-use use_case_home_wire_client::HasPage;
+// ============================================================================
+// WrapperForm<Mdl>
+// ============================================================================
+
+pub struct WrapperForm<Mdl> {
+    pub inner: LocalModel,
+    _marker: PhantomData<fn() -> Mdl>,
+}
+
+impl<Mdl> WrapperForm<Mdl> {
+    pub fn into_inner(self) -> LocalModel {
+        self.inner
+    }
+
+    pub fn from_inner(inner: LocalModel) -> Self {
+        Self {
+            inner,
+            _marker: PhantomData,
+        }
+    }
+}
+
+impl<Mdl> Default for WrapperForm<Mdl> {
+    fn default() -> Self {
+        Self {
+            inner: LocalModel::default(),
+            _marker: PhantomData,
+        }
+    }
+}
+
+impl<Mdl> Clone for WrapperForm<Mdl> {
+    fn clone(&self) -> Self {
+        Self {
+            inner: self.inner.clone(),
+            _marker: PhantomData,
+        }
+    }
+}
+
+impl<Mdl> fmt::Debug for WrapperForm<Mdl> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("WrapperForm").field(&self.inner).finish()
+    }
+}
+
+impl<Mdl> PartialEq for WrapperForm<Mdl> {
+    fn eq(&self, other: &Self) -> bool {
+        self.inner == other.inner
+    }
+}
+
+impl<Mdl> Serialize for WrapperForm<Mdl> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        self.inner.serialize(serializer)
+    }
+}
+
+impl<'de, Mdl> Deserialize<'de> for WrapperForm<Mdl> {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        Ok(Self {
+            inner: LocalModel::deserialize(deserializer)?,
+            _marker: PhantomData,
+        })
+    }
+}
+
+impl<Mdl> FormLocalModel for WrapperForm<Mdl>
+where
+    Mdl: GlobalModel + 'static,
+{
+    fn unsubscribe_message(&self) -> Option<Box<dyn MessageTrait>> {
+        let msg: Box<dyn MessageTrait> = Box::new(Message::Intent(Intent::UnSubscribe));
+        Some(msg)
+    }
+
+    fn clone_user_input(&self) -> Box<dyn FormLocalModel> {
+        Box::new(Self::from_inner(self.inner.clone_user_input()))
+    }
+
+    fn is_submit_ok(&self) -> bool {
+        self.inner.async_state.is_submit_ok()
+    }
+
+    fn is_loading(&self) -> bool {
+        self.inner.async_state.is_loading()
+    }
+
+    fn dyn_eq(&self, other: &dyn FormLocalModel) -> bool {
+        let other: &dyn Any = other;
+        other.downcast_ref::<Self>().is_some_and(|o| self == o)
+    }
+
+    fn handle(&mut self, message: Box<dyn MessageTrait>, global: &dyn Any) -> FormUpdate {
+        let message: Box<dyn Any> = message;
+
+        let Ok(message) = message.downcast::<Message>() else {
+            return FormUpdate::empty();
+        };
+
+        let Some(global) = global.downcast_ref::<Mdl>() else {
+            return FormUpdate::empty();
+        };
+
+        let (locals, globals, effects) = update(*message, &self.inner, global);
+
+        for c in locals {
+            local_apply(c, &mut self.inner);
+        }
+
+        FormUpdate {
+            global: globals
+                .into_iter()
+                .map(|c| Box::new(WrapperGlobalChange::<Mdl>::new(c)) as Box<dyn FormGlobalChange>)
+                .collect(),
+            effects: effects
+                .into_iter()
+                .map(|e| Box::new(WrapperEffect(e)) as Box<dyn FormEffect>)
+                .collect(),
+        }
+    }
+
+    fn render(&self, form_id: FormId, model: &dyn Any, commander: &Commander) -> Box<dyn Any> {
+        let Some(model) = model.downcast_ref::<Mdl>() else {
+            return Box::new(rsx! {
+                div { "create_branch: wrong model type" }
+            });
+        };
+
+        let company_name_error = self
+            .inner
+            .company_name_error(model)
+            .map(|e| format!("{e:?}"));
+        let resolved_company_uuid = self
+            .inner
+            .resolved_company_uuid(model)
+            .map(|u| u.to_string());
+        let list_of_company_name_and_uuid = self.inner.list_of_companies_to_display(model);
+
+        let commander_owned = commander.clone();
+
+        Box::new(rsx! {
+            use_case_create_branch_ui::Component {
+                sender: move |i| form_sender(
+                    commander_owned.clone(),
+                    form_id,
+                    Message::Intent(i),
+                ),
+                show_dialog: self.inner.show_dialog.clone(),
+                is_loading: self.inner.async_state.clone().is_loading(),
+                company_name: self.inner.company_name.clone(),
+                company_name_error,
+                resolved_company_uuid,
+                branch_name: self.inner.branch_name.clone(),
+                location: self.inner.location.clone(),
+                branch_name_error: self.inner.error_branch_name().map(|e| format!("{e:?}")),
+                location_error: self.inner.error_location().map(|e| format!("{e:?}")),
+                list_of_company_name_and_uuid,
+            }
+        })
+    }
+}
+
+// ============================================================================
+// WrapperGlobalChange<Mdl>
+// ============================================================================
+
+pub struct WrapperGlobalChange<Mdl> {
+    pub inner: GlobalChange,
+    _marker: PhantomData<fn() -> Mdl>,
+}
+
+impl<Mdl> WrapperGlobalChange<Mdl> {
+    pub fn new(inner: GlobalChange) -> Self {
+        Self {
+            inner,
+            _marker: PhantomData,
+        }
+    }
+}
+
+impl<Mdl> Clone for WrapperGlobalChange<Mdl> {
+    fn clone(&self) -> Self {
+        Self {
+            inner: self.inner.clone(),
+            _marker: PhantomData,
+        }
+    }
+}
+
+impl<Mdl> fmt::Debug for WrapperGlobalChange<Mdl> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("WrapperGlobalChange")
+            .field(&self.inner)
+            .finish()
+    }
+}
+
+impl<Mdl> FormGlobalChange for WrapperGlobalChange<Mdl>
+where
+    Mdl: GlobalModel + 'static,
+{
+    fn apply(&self, global: &mut dyn Any) {
+        let Some(g) = global.downcast_mut::<Mdl>() else {
+            return;
+        };
+        global_apply(self.inner.clone(), g);
+    }
+}
+
+// ============================================================================
+// WrapperEffect
+// ============================================================================
+
+#[derive(Debug, Clone)]
+pub struct WrapperEffect(pub Effect);
+
+impl FormEffect for WrapperEffect {
+    fn effect(
+        &self,
+        replier: Replier,
+        context: UiContext,
+    ) -> Pin<Box<dyn Future<Output = Result<()>>>> {
+        Box::pin(effect(self.0.clone(), replier, context))
+    }
+}
+
+// ============================================================================
+// TypeMcpProvider
+// ============================================================================
 
 pub struct TypeMcpProvider;
 
-impl<Mdl: Model + HasPage + GlobalModel> TraitMcpProvider<Mdl> for TypeMcpProvider {
+impl<Mdl: Model + HasPage + GlobalModel + 'static> TraitMcpProvider<Mdl> for TypeMcpProvider {
     fn tools(&self) -> Vec<McpToolDef> {
         tools()
     }
@@ -51,158 +299,20 @@ impl<Mdl: Model + HasPage + GlobalModel> TraitMcpProvider<Mdl> for TypeMcpProvid
 
             let form_local_model: &dyn Any = entry.form.as_ref();
 
-            let wrapper: &WrapperForm =
-                form_local_model
-                    .downcast_ref::<WrapperForm>()
-                    .context(error_to_mcp(
-                        "wrong_form_type",
-                        format!("form {id} is not a {} form", "create_branch"),
-                    ))?;
+            let wrapper: &WrapperForm<Mdl> = form_local_model
+                .downcast_ref::<WrapperForm<Mdl>>()
+                .context(error_to_mcp(
+                    "wrong_form_type",
+                    format!("form {id} is not a create_branch form"),
+                ))?;
 
             call(CallInput {
                 tool_name: &tool_name,
                 args,
-                local: &wrapper.0,
+                local: &wrapper.inner,
                 global: model,
-                commander: &commander,
+                commander,
             })
         })
-    }
-}
-
-#[component]
-pub(crate) fn CreateBranchForm<G: GlobalModel + PartialEq + Clone + 'static>(
-    commander: fn() -> Commander,
-    form_id: FormId,
-    lm: LocalModel,
-    gm: G,
-) -> Element {
-    let company_name_error = lm.company_name_error(&gm).map(|e| format!("{e:?}"));
-    let resolved_company_uuid = lm.resolved_company_uuid(&gm).map(|uuid| uuid.to_string());
-    let list_of_company_name_and_uuid = lm.list_of_companies_to_display(&gm);
-
-    rsx! {
-        use_case_create_branch_ui::Component {
-            sender: move |i| form_sender(
-                commander().clone(),
-                form_id,
-                use_case_create_branch_client::Message::Intent(i),
-            ),
-            show_dialog: lm.show_dialog.clone(),
-            is_loading: lm.async_state.clone().is_loading(),
-            company_name: lm.company_name.clone(),
-            company_name_error,
-            resolved_company_uuid,
-            branch_name: lm.branch_name.clone(),
-            location: lm.location.clone(),
-            branch_name_error: lm.error_branch_name().map(|e| format!("{e:?}")),
-            location_error: lm.error_location().map(|e| format!("{e:?}")),
-            list_of_company_name_and_uuid,
-        }
-    }
-}
-
-use serde::Deserialize;
-use serde::Serialize;
-use use_case_create_branch_client::Effect;
-use use_case_create_branch_client::GlobalChange;
-use use_case_create_branch_client::Intent;
-use use_case_create_branch_client::Message;
-use use_case_create_branch_client::effect;
-use use_case_create_branch_client::global_apply;
-use use_case_create_branch_client::local_apply;
-use use_case_create_branch_client::update;
-use use_case_home_client::FormEffect;
-use use_case_home_client::FormGlobalChange;
-use use_case_home_client::FormLocalModel;
-use use_case_home_client::FormUpdate;
-
-#[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
-pub(crate) struct WrapperForm(pub(crate) LocalModel);
-
-#[serde]
-impl FormLocalModel for WrapperForm {
-    fn unsubscribe_message(&self) -> Option<Box<dyn MessageTrait>> {
-        let msg: Box<dyn MessageTrait> = Box::new(Message::Intent(Intent::UnSubscribe));
-        Some(msg)
-    }
-
-    fn clone_user_input(&self) -> Box<dyn FormLocalModel> {
-        Box::new(WrapperForm(self.0.clone_user_input()))
-    }
-
-    fn is_submit_ok(&self) -> bool {
-        self.0.async_state.is_submit_ok()
-    }
-
-    fn is_loading(&self) -> bool {
-        self.0.async_state.is_loading()
-    }
-
-    fn dyn_eq(&self, other: &dyn FormLocalModel) -> bool {
-        let other: &dyn Any = other;
-        other.downcast_ref::<Self>().is_some_and(|o| self == o)
-    }
-
-    fn handle(&mut self, message: Box<dyn MessageTrait>, global: &dyn Any) -> FormUpdate {
-        let message: Box<dyn Any> = message;
-
-        let Ok(message) = message.downcast::<Message>() else {
-            return FormUpdate::empty();
-        };
-
-        let Some(global) = global.downcast_ref::<TypeGlobalModel>() else {
-            return FormUpdate::empty();
-        };
-
-        let (locals, globals, effects) = update(*message, &self.0, global);
-
-        for c in locals {
-            local_apply(c, &mut self.0);
-        }
-
-        FormUpdate {
-            global: globals
-                .into_iter()
-                .map(|c| Box::new(WrapperGlobalChange(c)) as Box<dyn FormGlobalChange>)
-                .collect(),
-            effects: effects
-                .into_iter()
-                .map(|e| Box::new(WrapperEffect(e)) as Box<dyn FormEffect>)
-                .collect(),
-        }
-    }
-
-    fn render(&self, form_id: FormId) -> Box<dyn Any> {
-        Box::new(rsx! {
-            CreateBranchForm {
-                form_id,lm: self.0.clone()
-            }
-        })
-    }
-}
-
-#[derive(Debug, Clone)]
-pub(crate) struct WrapperGlobalChange(pub(crate) GlobalChange);
-
-impl FormGlobalChange for WrapperGlobalChange {
-    fn apply(&self, global: &mut dyn Any) {
-        let Some(g) = global.downcast_mut::<TypeGlobalModel>() else {
-            return;
-        };
-        global_apply(self.0.clone(), g);
-    }
-}
-
-#[derive(Debug, Clone)]
-pub(crate) struct WrapperEffect(pub(crate) Effect);
-
-impl FormEffect for WrapperEffect {
-    fn effect(
-        &self,
-        replier: Replier,
-        context: UiContext,
-    ) -> Pin<Box<dyn Future<Output = Result<()>>>> {
-        Box::pin(effect(self.0.clone(), replier, context))
     }
 }

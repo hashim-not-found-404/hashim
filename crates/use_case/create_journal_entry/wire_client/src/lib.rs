@@ -1,3 +1,4 @@
+pub use use_case_create_journal_entry_client::GlobalModel;
 pub use use_case_create_journal_entry_domain::Error;
 pub use use_case_create_journal_entry_domain::Input;
 pub use use_case_create_journal_entry_domain::Ok;

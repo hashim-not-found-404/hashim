@@ -6,7 +6,7 @@ use infrastructure::actors::MultiProducerSingleConsumer;
 use kernel::ui_construct::new;
 use std::ops::Deref;
 use std::sync::LazyLock;
-use use_case_error_handler::client::spawn_listener;
+use use_case_error_handler_wire_client::spawn_listener;
 use utility::ui_effect::Commander;
 use utility::ui_effect::MessageTrait;
 use utility::ui_effect::SigNaaaaaaaaaaaaaaaaal;

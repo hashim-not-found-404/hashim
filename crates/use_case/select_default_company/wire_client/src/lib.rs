@@ -13,6 +13,7 @@ use use_case_select_default_company_client::effect;
 use use_case_select_default_company_client::global_apply;
 use use_case_select_default_company_client::local_apply;
 use use_case_select_default_company_client::update;
+pub use use_case_select_default_company_ui::Component;
 
 pub trait HasPage: GlobalModel {
     fn page(&self) -> &LocalModel;

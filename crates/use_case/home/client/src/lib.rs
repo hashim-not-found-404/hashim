@@ -1,4 +1,3 @@
-use serde::Deserialize;
 use serde::Serialize;
 use std::any::Any;
 use std::fmt::Debug;
@@ -6,7 +5,7 @@ use std::future::Future;
 use std::pin::Pin;
 use use_case_prelude_client::*;
 
-#[derive(Debug, Clone, Copy, Eq, Hash, PartialEq, Deserialize, Serialize)]
+#[derive(Debug, Clone, Copy, Eq, Hash, PartialEq, Serialize)]
 pub struct FormId(u32);
 
 impl From<u32> for FormId {
@@ -21,7 +20,6 @@ impl Default for FormId {
     }
 }
 
-#[serde]
 pub trait FormLocalModel: Any + Debug + Send + Sync + 'static + DynClone {
     fn unsubscribe_message(&self) -> Option<Box<dyn MessageTrait>> {
         None
@@ -31,7 +29,12 @@ pub trait FormLocalModel: Any + Debug + Send + Sync + 'static + DynClone {
     fn is_loading(&self) -> bool;
     fn dyn_eq(&self, other: &dyn FormLocalModel) -> bool;
     fn handle(&mut self, message: Box<dyn MessageTrait>, global: &dyn Any) -> FormUpdate;
-    fn render(&self, form_id: FormId) -> Box<dyn Any>;
+
+    /// `model` is `&TypeGlobalModel` at the call site, boxed as `&dyn Any`.
+    /// `commander` is the app-level dispatcher — the same instance the
+    /// `UpdaterTrait` uses, so `form_sender` can route back into the
+    /// correct form handler.
+    fn render(&self, form_id: FormId, model: &dyn Any, commander: &Commander) -> Box<dyn Any>;
 }
 
 clone_trait_object!(FormLocalModel);
@@ -66,7 +69,7 @@ pub trait FormEffect: Debug + Send + Sync + 'static + DynClone {
 
 clone_trait_object!(FormEffect);
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone)]
 pub struct FormEntry {
     pub id: FormId,
     pub form: Box<dyn FormLocalModel>,
@@ -89,7 +92,7 @@ impl FormEntry {
 
 pub trait GlobalModel: Any {}
 
-#[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct LocalModel {
     pub forms: Vec<FormEntry>,
 }

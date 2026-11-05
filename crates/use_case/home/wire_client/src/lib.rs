@@ -3,8 +3,15 @@ use std::future::Future;
 use std::pin::Pin;
 use std::vec::Vec;
 use use_case_home_client::Effect;
+pub use use_case_home_client::FormEffect;
+pub use use_case_home_client::FormEntry;
+pub use use_case_home_client::FormGlobalChange;
+pub use use_case_home_client::FormId;
+pub use use_case_home_client::FormLocalModel;
+pub use use_case_home_client::FormUpdate;
 use use_case_home_client::GlobalChange;
 pub use use_case_home_client::GlobalModel;
+pub use use_case_home_client::Intent;
 use use_case_home_client::LocalChange;
 pub use use_case_home_client::LocalModel;
 pub use use_case_home_client::Message;
@@ -12,6 +19,8 @@ use use_case_home_client::effect;
 use use_case_home_client::global_apply;
 use use_case_home_client::local_apply;
 use use_case_home_client::update;
+pub use use_case_home_mcp::form_sender;
+pub use use_case_home_ui::render_to_element;
 use use_case_prelude_wire_client::*;
 
 pub trait HasPage: GlobalModel {
@@ -83,8 +92,6 @@ impl EffectorTrait for WrapperEffect {
         Box::pin(effect(self.0.clone(), replier, context))
     }
 }
-
-////////////////////////////////////////////////////////////////////////////////////////
 
 use use_case_home_mcp::call;
 use use_case_home_mcp::tools;

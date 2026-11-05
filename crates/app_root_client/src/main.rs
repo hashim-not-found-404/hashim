@@ -174,10 +174,13 @@ mod mcp_server {
                 return Ok(CallToolResult::error(vec![ContentBlock::text("unknown tool")]).into());
             };
 
-            let model = MODEL.deref().0.with_ref(|a| a);
+            // Clone the model out of the signal: `with_ref` cannot hand out
+            // a reference that outlives its lock guard, and `provider.call`
+            // borrows `&Mdl` for the whole await.
+            let model: TypeGlobalModel = MODEL.deref().0.with_ref(|a| a.clone());
 
             let result: CallToolResult =
-                match provider.call(tool_name, args, model, &COMMANDER).await {
+                match provider.call(tool_name, args, &model, &COMMANDER).await {
                     Ok(v) => CallToolResult::success(vec![ContentBlock::text(
                         serde_json::to_string(&v).unwrap_or_default(),
                     )]),

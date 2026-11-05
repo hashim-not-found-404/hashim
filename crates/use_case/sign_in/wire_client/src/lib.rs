@@ -1,7 +1,11 @@
 use use_case_prelude_wire_client::*;
+pub use use_case_sign_in_client::GlobalModel;
+pub use use_case_sign_in_client::LocalModel;
+pub use use_case_sign_in_client::Message;
 pub use use_case_sign_in_domain::Error;
 pub use use_case_sign_in_domain::Input;
 pub use use_case_sign_in_domain::Ok;
+pub use use_case_sign_in_ui::Component;
 
 make_client_wrapper_cache!(sign_in);
 
@@ -11,10 +15,7 @@ use std::pin::Pin;
 use std::vec::Vec;
 use use_case_sign_in_client::Effect;
 use use_case_sign_in_client::GlobalChange;
-pub use use_case_sign_in_client::GlobalModel;
 use use_case_sign_in_client::LocalChange;
-pub use use_case_sign_in_client::LocalModel;
-pub use use_case_sign_in_client::Message;
 use use_case_sign_in_client::effect;
 use use_case_sign_in_client::global_apply;
 use use_case_sign_in_client::local_apply;

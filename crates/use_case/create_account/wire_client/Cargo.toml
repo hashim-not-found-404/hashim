@@ -9,4 +9,6 @@ use_case_create_account_client.workspace = true
 use_case_create_account_domain.workspace = true
 use_case_create_account_mcp.workspace    = true
 use_case_create_account_ui.workspace     = true
+use_case_home_client.workspace           = true
+use_case_home_mcp.workspace              = true
 use_case_prelude_wire_client.workspace   = true

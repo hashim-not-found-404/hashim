@@ -9,4 +9,7 @@ use_case_create_journal_client.workspace = true
 use_case_create_journal_domain.workspace = true
 use_case_create_journal_mcp.workspace    = true
 use_case_create_journal_ui.workspace     = true
+use_case_home_client.workspace           = true
+use_case_home_mcp.workspace              = true
+use_case_home_wire_client.workspace      = true
 use_case_prelude_wire_client.workspace   = true

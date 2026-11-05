@@ -1,6 +1,5 @@
 use serde::Deserialize;
 use serde::Serialize;
-use use_case_home_client::FormEntry;
 use use_case_home_client::FormId;
 use use_case_home_client::GlobalModel;
 use use_case_home_client::Intent;
@@ -32,7 +31,7 @@ struct CopyFormArgs {
 
 #[derive(Debug, Serialize)]
 struct ListFormsOutput {
-    forms: Vec<FormEntry>,
+    forms: Vec<FormId>,
 }
 
 #[derive(Debug, Serialize)]
@@ -64,7 +63,7 @@ pub fn call<'a>(input: CallInput<'a, LocalModel, impl GlobalModel>) -> Result<Va
             let _: ListFormsArgs = parse_args(input.args)?;
 
             let output = ListFormsOutput {
-                forms: input.local.forms.clone(),
+                forms: input.local.forms.iter().map(|e| e.id).collect(),
             };
             Ok(to_value(output)?)
         }
