@@ -35,7 +35,7 @@ pub(crate) type CheckStateLocal = CheckState<AsyncInput, Ok, Error>;
 
 pub trait GlobalModel {
     fn user_uuid(&self) -> Option<UserUuid>;
-    fn selected_company(&self) -> Option<CompanyUuid>;
+    fn selected_company_uuid(&self) -> Option<CompanyUuid>;
     fn list_of_companies(&self) -> Vec<(CompanyUuid, String)>;
 }
 
@@ -100,7 +100,7 @@ impl LocalModel {
 
         let typed = self.company_name.clone();
         if typed.is_empty() {
-            return global_model.selected_company();
+            return global_model.selected_company_uuid();
         }
         global_model
             .list_of_companies()
@@ -126,7 +126,7 @@ impl LocalModel {
 
         let typed = self.company_name.clone();
         if typed.is_empty() {
-            if global_model.selected_company().is_none() {
+            if global_model.selected_company_uuid().is_none() {
                 return Some(CompanyNameError::NotSelected);
             }
             return None;

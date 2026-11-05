@@ -44,7 +44,7 @@ impl use_case_create_account_wire_client::GlobalModel for TypeGlobalModel {
     fn user_uuid(&self) -> Option<UserUuid> {
         self.user_uuid()
     }
-    fn selected_company(&self) -> Option<CompanyUuid> {
+    fn selected_company_uuid(&self) -> Option<CompanyUuid> {
         self.selected_company_uuid.clone()
     }
     fn list_of_companies(&self) -> Vec<(CompanyUuid, String)> {
@@ -121,7 +121,7 @@ impl use_case_create_branch_wire_client::GlobalModel for TypeGlobalModel {
     fn user_uuid(&self) -> Option<UserUuid> {
         self.user_uuid()
     }
-    fn selected_company(&self) -> Option<CompanyUuid> {
+    fn selected_company_uuid(&self) -> Option<CompanyUuid> {
         self.selected_company_uuid.clone()
     }
 }
@@ -136,7 +136,7 @@ impl use_case_create_account_for_branch_wire_client::GlobalModel for TypeGlobalM
     fn user_uuid(&self) -> Option<UserUuid> {
         self.user_uuid()
     }
-    fn selected_company_branch(&self) -> Option<BranchUuid> {
+    fn selected_company_branch_uuid(&self) -> Option<BranchUuid> {
         self.selected_company_branch_uuid.clone()
     }
 }
@@ -145,7 +145,7 @@ impl use_case_create_journal_entry_wire_client::GlobalModel for TypeGlobalModel 
     fn user_uuid(&self) -> Option<UserUuid> {
         self.user_uuid()
     }
-    fn selected_company_branch(&self) -> Option<BranchUuid> {
+    fn selected_company_branch_uuid(&self) -> Option<BranchUuid> {
         self.selected_company_branch_uuid.clone()
     }
 }
@@ -156,7 +156,7 @@ impl use_case_create_journal_wire_client::GlobalModel for TypeGlobalModel {
     fn user_uuid(&self) -> Option<UserUuid> {
         self.user_uuid()
     }
-    fn selected_company(&self) -> Option<CompanyUuid> {
+    fn selected_company_uuid(&self) -> Option<CompanyUuid> {
         self.selected_company_uuid.clone()
     }
     fn list_of_companies(&self) -> Vec<(CompanyUuid, String)> {

@@ -124,7 +124,7 @@ pub(crate) type AsyncState = GenricAsyncState<AsyncInput, Ok, Error>;
 
 pub trait GlobalModel {
     fn user_uuid(&self) -> Option<UserUuid>;
-    fn selected_company_branch(&self) -> Option<BranchUuid>;
+    fn selected_company_branch_uuid(&self) -> Option<BranchUuid>;
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
@@ -269,7 +269,8 @@ pub fn update(
                 let Some(user_uuid) = global_model.user_uuid() else {
                     return (vec![], vec![], vec![]);
                 };
-                let Some(belong_to_company_branch) = global_model.selected_company_branch() else {
+                let Some(belong_to_company_branch) = global_model.selected_company_branch_uuid()
+                else {
                     return (vec![], vec![], vec![]);
                 };
 
