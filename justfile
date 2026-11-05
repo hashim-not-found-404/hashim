@@ -148,12 +148,6 @@ changed:
 
 check:
     RUSTFLAGS="-A warnings" cargo check --all-targets
-    RUSTFLAGS="-A warnings" cargo check --all-targets --features="server"
-    RUSTFLAGS="-A warnings" cargo check --all-targets --features="client"
-    RUSTFLAGS="-A warnings" cargo check --all-targets --features="database"
-    RUSTFLAGS="-A warnings" cargo check --all-targets --features="cache"
-    RUSTFLAGS="-A warnings" cargo check --all-targets --features="client,ui"
-    RUSTFLAGS="-A warnings" cargo check --all-targets --features="client,mcp"
     RUSTFLAGS="-A warnings" cargo check -p app_root_client --target wasm32-unknown-unknown
 
 test:
@@ -172,27 +166,9 @@ all: check test warn test_cover
 
 check_p crate_name:
     RUSTFLAGS="-A warnings" cargo check -p {{crate_name}} --all-targets
-    RUSTFLAGS="-A warnings" cargo check -p {{crate_name}} --all-targets --features="server"
-    RUSTFLAGS="-A warnings" cargo check -p {{crate_name}} --all-targets --features="client"
-    RUSTFLAGS="-A warnings" cargo check -p {{crate_name}} --all-targets --features="database"
-
-    RUSTFLAGS="-A warnings" cargo check -p {{crate_name}} --all-targets --features="cache"
-    RUSTFLAGS="-A warnings" cargo check -p {{crate_name}} --all-targets --features="ui"
-    RUSTFLAGS="-A warnings" cargo check -p {{crate_name}} --all-targets --features="mcp"
-
-    RUSTFLAGS="-A warnings" cargo check -p {{crate_name}} --target wasm32-unknown-unknown --features="cache"
-    RUSTFLAGS="-A warnings" cargo check -p {{crate_name}} --target wasm32-unknown-unknown --features="ui"
-    RUSTFLAGS="-A warnings" cargo check -p {{crate_name}} --target wasm32-unknown-unknown --features="mcp"
 
 test_p crate_name:
     RUSTFLAGS="-A warnings" cargo test -p {{crate_name}} --all-targets
-    RUSTFLAGS="-A warnings" cargo test -p {{crate_name}} --all-targets --features="server"
-    RUSTFLAGS="-A warnings" cargo test -p {{crate_name}} --all-targets --features="client"
-    RUSTFLAGS="-A warnings" cargo test -p {{crate_name}} --all-targets --features="database"
-    RUSTFLAGS="-A warnings" cargo test -p {{crate_name}} --all-targets --features="cache"
-    RUSTFLAGS="-A warnings" cargo test -p {{crate_name}} --all-targets --features="client,ui"
-    RUSTFLAGS="-A warnings" cargo test -p {{crate_name}} --all-targets --features="client,mcp"
-    RUSTFLAGS="-A warnings" cargo test -p {{crate_name}} --target wasm32-unknown-unknown
 
 warn_p crate_name:
     cargo clippy -p {{crate_name}} --all-targets --all-features -- -W clippy::pedantic
@@ -209,18 +185,77 @@ all_p crate_name:
 
 ###################################################################################################
 
+[private]
+new_layer_crate crate_name layer_name:
+    cargo new crates/use_case/{{crate_name}}/{{layer_name}} --name use_case_{{crate_name}}_{{layer_name}} --lib --vcs none
+    cargo add -p use_case_{{crate_name}}_{{layer_name}} use_case_prelude_{{layer_name}}
+
+[private]
+add_serde_to_layer_crate crate_name layer_name:
+    cargo add -p use_case_{{crate_name}}_{{layer_name}} serde
+
+[private]
+link_layer crate_name layer_name1 layer_name2:
+    cargo add -p use_case_{{crate_name}}_{{layer_name2}} use_case_{{crate_name}}_{{layer_name1}}
+
+new_use_case name:
+    @just new_layer_crate {{name}} cache
+    @just new_layer_crate {{name}} client
+    @just new_layer_crate {{name}} database
+    @just new_layer_crate {{name}} domain
+    @just new_layer_crate {{name}} mcp
+    @just new_layer_crate {{name}} server
+    @just new_layer_crate {{name}} ui
+    @just new_layer_crate {{name}} wire_client
+    @just new_layer_crate {{name}} wire_server
+
+    @just add_serde_to_layer_crate {{name}} client
+    @just add_serde_to_layer_crate {{name}} domain
+    @just add_serde_to_layer_crate {{name}} mcp
+
+    cargo add --dev tokio -p use_case_{{name}}_database
+
+    @just link_layer {{name}} cache    wire_client
+    @just link_layer {{name}} client   mcp
+    @just link_layer {{name}} client   ui
+    @just link_layer {{name}} client   wire_client
+    @just link_layer {{name}} database wire_server
+    @just link_layer {{name}} domain   cache
+    @just link_layer {{name}} domain   client
+    @just link_layer {{name}} domain   database
+    @just link_layer {{name}} domain   server
+    @just link_layer {{name}} domain   wire_client
+    @just link_layer {{name}} domain   wire_server
+    @just link_layer {{name}} mcp      wire_client
+    @just link_layer {{name}} server   wire_server
+    @just link_layer {{name}} ui       wire_client
+
+
+[private]
+print_layer crate_name layer_name:
+    @echo "use_case_{{crate_name}}_{{layer_name}} = { path = \"./crates/use_case/{{crate_name}}/{{layer_name}}\" }"
+
+print_layers name:
+    @just print_layer {{name}} database
+    @just print_layer {{name}} server
+    @just print_layer {{name}} domain
+    @just print_layer {{name}} client
+    @just print_layer {{name}} cache
+    @just print_layer {{name}} ui
+    @just print_layer {{name}} mcp
+    @just print_layer {{name}} wire_client
+    @just print_layer {{name}} wire_server
+
+###################################################################################################
+
 udeps:
     RUSTFLAGS="-A warnings" cargo +nightly udeps --all-targets
-    RUSTFLAGS="-A warnings" cargo +nightly udeps --all-targets --features="server"
-    RUSTFLAGS="-A warnings" cargo +nightly udeps --all-targets --features="client"
-    RUSTFLAGS="-A warnings" cargo +nightly udeps --all-targets --features="database"
-    RUSTFLAGS="-A warnings" cargo +nightly udeps --all-targets --features="cache"
-    RUSTFLAGS="-A warnings" cargo +nightly udeps --all-targets --features="client,ui"
-    RUSTFLAGS="-A warnings" cargo +nightly udeps --all-targets --features="client,mcp"
-    RUSTFLAGS="-A warnings" cargo +nightly udeps -p app_root_client --target wasm32-unknown-unknown
+    RUSTFLAGS="-A warnings" cargo +nightly udeps --target wasm32-unknown-unknown
 
 new crate_name:
     cargo new crates/{{crate_name}} --lib --vcs none
+
+###################################################################################################
 
 run_server:
     RUSTFLAGS="-A warnings" cargo run -p app_root_server
@@ -234,7 +269,7 @@ run_db:
 push_schema:
     cockroach sql --file crates/app_root_server/schema/tables.sql --insecure
 
-mcp_inspect:
+run_mcp:
     npx @modelcontextprotocol/inspector
 
 ###################################################################################################

@@ -345,7 +345,6 @@ dependencies = [
  "dioxus",
  "infrastructure",
  "kernel",
- "patterns",
  "rmcp",
  "schemars",
  "serde",
@@ -354,21 +353,20 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "tracing-web",
- "typetag",
- "use_case_create_account",
- "use_case_create_account_for_branch",
- "use_case_create_branch",
- "use_case_create_company",
- "use_case_create_journal",
- "use_case_create_journal_entry",
- "use_case_error_handler",
- "use_case_get_all_accounts",
- "use_case_get_all_journals",
- "use_case_get_companies_and_branches",
- "use_case_home",
- "use_case_select_default_company",
- "use_case_sign_in",
- "use_case_sign_up",
+ "use_case_create_account_for_branch_wire_client",
+ "use_case_create_account_wire_client",
+ "use_case_create_branch_wire_client",
+ "use_case_create_company_wire_client",
+ "use_case_create_journal_entry_wire_client",
+ "use_case_create_journal_wire_client",
+ "use_case_error_handler_wire_client",
+ "use_case_get_all_accounts_wire_client",
+ "use_case_get_all_journals_wire_client",
+ "use_case_get_companies_and_branches_wire_client",
+ "use_case_home_wire_client",
+ "use_case_select_default_company_wire_client",
+ "use_case_sign_in_wire_client",
+ "use_case_sign_up_wire_client",
  "utility",
  "utility_ui",
 ]
@@ -382,19 +380,19 @@ dependencies = [
  "database",
  "infrastructure",
  "kernel",
- "patterns",
+ "paste",
  "server",
- "use_case_create_account",
- "use_case_create_account_for_branch",
- "use_case_create_branch",
- "use_case_create_company",
- "use_case_create_journal",
- "use_case_create_journal_entry",
- "use_case_get_all_accounts",
- "use_case_get_all_journals",
- "use_case_get_companies_and_branches",
- "use_case_sign_in",
- "use_case_sign_up",
+ "use_case_create_account_for_branch_wire_server",
+ "use_case_create_account_wire_server",
+ "use_case_create_branch_wire_server",
+ "use_case_create_company_wire_server",
+ "use_case_create_journal_entry_wire_server",
+ "use_case_create_journal_wire_server",
+ "use_case_get_all_accounts_wire_server",
+ "use_case_get_all_journals_wire_server",
+ "use_case_get_companies_and_branches_wire_server",
+ "use_case_sign_in_wire_server",
+ "use_case_sign_up_wire_server",
  "utility",
 ]
 
@@ -684,7 +682,6 @@ dependencies = [
  "rusqlite",
  "serde",
  "serde_json",
- "tokio",
  "utility",
  "uuid",
 ]
@@ -2120,12 +2117,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "heck"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2304e00983f87ffb38b55b444b5e3b60a884b5d30c0fca7d82fe33449bbe55ea"
-
-[[package]]
 name = "hkdf"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3116,20 +3107,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "paste"
+version = "1.0.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
+
+[[package]]
 name = "pastey"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2ee67f1008b1ba2321834326597b8e186293b049a023cdef258527550b9935b4"
-
-[[package]]
-name = "patterns"
-version = "0.1.0"
-dependencies = [
- "heck",
- "proc-macro2",
- "quote",
- "syn 3.0.9",
-]
 
 [[package]]
 name = "pem-rfc7468"
@@ -4793,268 +4780,1272 @@ dependencies = [
 ]
 
 [[package]]
-name = "use_case_create_account"
+name = "use_case_create_account_cache"
 version = "0.1.0"
 dependencies = [
- "anyhow",
- "cache",
- "database",
- "dioxus",
- "infrastructure",
- "kernel",
- "rusqlite",
- "serde",
- "tokio",
- "typetag",
- "utility",
- "utility_ui",
+ "use_case_create_account_domain",
+ "use_case_prelude_cache",
 ]
 
 [[package]]
-name = "use_case_create_account_for_branch"
+name = "use_case_create_account_client"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "use_case_create_account_domain",
+ "use_case_prelude_client",
+]
+
+[[package]]
+name = "use_case_create_account_database"
+version = "0.1.0"
+dependencies = [
+ "tokio",
+ "use_case_create_account_domain",
+ "use_case_prelude_database",
+]
+
+[[package]]
+name = "use_case_create_account_domain"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "use_case_prelude_domain",
+]
+
+[[package]]
+name = "use_case_create_account_for_branch_cache"
+version = "0.1.0"
+dependencies = [
+ "use_case_create_account_for_branch_domain",
+ "use_case_prelude_cache",
+]
+
+[[package]]
+name = "use_case_create_account_for_branch_client"
 version = "0.1.0"
 dependencies = [
  "accounting_engine",
- "anyhow",
- "cache",
- "database",
- "dioxus",
- "infrastructure",
- "kernel",
- "rusqlite",
  "serde",
- "tokio",
- "typetag",
- "utility",
- "utility_ui",
+ "use_case_create_account_for_branch_domain",
+ "use_case_prelude_client",
 ]
 
 [[package]]
-name = "use_case_create_branch"
+name = "use_case_create_account_for_branch_database"
 version = "0.1.0"
 dependencies = [
- "anyhow",
- "cache",
- "database",
- "dioxus",
- "infrastructure",
- "kernel",
- "rusqlite",
- "rust_decimal",
- "schemars",
- "serde",
- "serde_json",
  "tokio",
- "typetag",
- "use_case_home",
- "utility",
- "utility_ui",
+ "use_case_create_account_for_branch_domain",
+ "use_case_prelude_database",
 ]
 
 [[package]]
-name = "use_case_create_company"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "cache",
- "database",
- "dioxus",
- "infrastructure",
- "kernel",
- "rusqlite",
- "schemars",
- "serde",
- "serde_json",
- "tokio",
- "typetag",
- "use_case_home",
- "utility",
- "utility_ui",
-]
-
-[[package]]
-name = "use_case_create_journal"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "cache",
- "database",
- "dioxus",
- "infrastructure",
- "kernel",
- "rusqlite",
- "schemars",
- "serde",
- "serde_json",
- "tokio",
- "typetag",
- "use_case_home",
- "utility",
- "utility_ui",
-]
-
-[[package]]
-name = "use_case_create_journal_entry"
+name = "use_case_create_account_for_branch_domain"
 version = "0.1.0"
 dependencies = [
  "accounting_engine",
+ "serde",
+ "use_case_prelude_domain",
+]
+
+[[package]]
+name = "use_case_create_account_for_branch_mcp"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "use_case_create_account_for_branch_client",
+ "use_case_prelude_mcp",
+]
+
+[[package]]
+name = "use_case_create_account_for_branch_server"
+version = "0.1.0"
+dependencies = [
+ "use_case_create_account_for_branch_domain",
+ "use_case_prelude_server",
+]
+
+[[package]]
+name = "use_case_create_account_for_branch_ui"
+version = "0.1.0"
+dependencies = [
+ "accounting_engine",
+ "use_case_create_account_for_branch_client",
+ "use_case_create_account_for_branch_domain",
+ "use_case_prelude_ui",
+]
+
+[[package]]
+name = "use_case_create_account_for_branch_wire_client"
+version = "0.1.0"
+dependencies = [
+ "use_case_create_account_for_branch_cache",
+ "use_case_create_account_for_branch_client",
+ "use_case_create_account_for_branch_domain",
+ "use_case_create_account_for_branch_mcp",
+ "use_case_create_account_for_branch_ui",
+ "use_case_home_client",
+ "use_case_home_mcp",
+ "use_case_prelude_wire_client",
+]
+
+[[package]]
+name = "use_case_create_account_for_branch_wire_server"
+version = "0.1.0"
+dependencies = [
+ "use_case_create_account_for_branch_database",
+ "use_case_create_account_for_branch_domain",
+ "use_case_create_account_for_branch_server",
+ "use_case_prelude_wire_server",
+]
+
+[[package]]
+name = "use_case_create_account_mcp"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "use_case_create_account_client",
+ "use_case_prelude_mcp",
+]
+
+[[package]]
+name = "use_case_create_account_server"
+version = "0.1.0"
+dependencies = [
+ "use_case_create_account_domain",
+ "use_case_prelude_server",
+]
+
+[[package]]
+name = "use_case_create_account_ui"
+version = "0.1.0"
+dependencies = [
+ "use_case_create_account_client",
+ "use_case_prelude_ui",
+]
+
+[[package]]
+name = "use_case_create_account_wire_client"
+version = "0.1.0"
+dependencies = [
+ "use_case_create_account_cache",
+ "use_case_create_account_client",
+ "use_case_create_account_domain",
+ "use_case_create_account_mcp",
+ "use_case_create_account_ui",
+ "use_case_home_client",
+ "use_case_home_mcp",
+ "use_case_prelude_wire_client",
+]
+
+[[package]]
+name = "use_case_create_account_wire_server"
+version = "0.1.0"
+dependencies = [
+ "use_case_create_account_database",
+ "use_case_create_account_domain",
+ "use_case_create_account_server",
+ "use_case_prelude_wire_server",
+]
+
+[[package]]
+name = "use_case_create_branch_cache"
+version = "0.1.0"
+dependencies = [
+ "use_case_create_branch_domain",
+ "use_case_prelude_cache",
+]
+
+[[package]]
+name = "use_case_create_branch_client"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "use_case_create_branch_domain",
+ "use_case_prelude_client",
+]
+
+[[package]]
+name = "use_case_create_branch_database"
+version = "0.1.0"
+dependencies = [
+ "tokio",
+ "use_case_create_branch_domain",
+ "use_case_prelude_database",
+]
+
+[[package]]
+name = "use_case_create_branch_domain"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "use_case_prelude_domain",
+]
+
+[[package]]
+name = "use_case_create_branch_mcp"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "use_case_create_branch_client",
+ "use_case_home_mcp",
+ "use_case_prelude_mcp",
+]
+
+[[package]]
+name = "use_case_create_branch_server"
+version = "0.1.0"
+dependencies = [
+ "use_case_create_branch_domain",
+ "use_case_prelude_server",
+]
+
+[[package]]
+name = "use_case_create_branch_ui"
+version = "0.1.0"
+dependencies = [
+ "use_case_create_branch_client",
+ "use_case_prelude_ui",
+]
+
+[[package]]
+name = "use_case_create_branch_wire_client"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "use_case_create_branch_cache",
+ "use_case_create_branch_client",
+ "use_case_create_branch_domain",
+ "use_case_create_branch_mcp",
+ "use_case_create_branch_ui",
+ "use_case_home_client",
+ "use_case_home_mcp",
+ "use_case_home_wire_client",
+ "use_case_prelude_wire_client",
+]
+
+[[package]]
+name = "use_case_create_branch_wire_server"
+version = "0.1.0"
+dependencies = [
+ "use_case_create_branch_database",
+ "use_case_create_branch_domain",
+ "use_case_create_branch_server",
+ "use_case_prelude_wire_server",
+]
+
+[[package]]
+name = "use_case_create_company_cache"
+version = "0.1.0"
+dependencies = [
+ "use_case_create_company_domain",
+ "use_case_prelude_cache",
+]
+
+[[package]]
+name = "use_case_create_company_client"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "use_case_create_company_domain",
+ "use_case_prelude_client",
+]
+
+[[package]]
+name = "use_case_create_company_database"
+version = "0.1.0"
+dependencies = [
+ "tokio",
+ "use_case_create_company_domain",
+ "use_case_prelude_database",
+]
+
+[[package]]
+name = "use_case_create_company_domain"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "use_case_prelude_domain",
+]
+
+[[package]]
+name = "use_case_create_company_mcp"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "use_case_create_company_client",
+ "use_case_home_mcp",
+ "use_case_prelude_mcp",
+]
+
+[[package]]
+name = "use_case_create_company_server"
+version = "0.1.0"
+dependencies = [
+ "use_case_create_company_domain",
+ "use_case_prelude_server",
+]
+
+[[package]]
+name = "use_case_create_company_ui"
+version = "0.1.0"
+dependencies = [
+ "use_case_create_company_client",
+ "use_case_prelude_ui",
+]
+
+[[package]]
+name = "use_case_create_company_wire_client"
+version = "0.1.0"
+dependencies = [
+ "use_case_create_company_cache",
+ "use_case_create_company_client",
+ "use_case_create_company_domain",
+ "use_case_create_company_mcp",
+ "use_case_create_company_ui",
+ "use_case_home_client",
+ "use_case_home_mcp",
+ "use_case_home_wire_client",
+ "use_case_prelude_wire_client",
+]
+
+[[package]]
+name = "use_case_create_company_wire_server"
+version = "0.1.0"
+dependencies = [
+ "use_case_create_company_database",
+ "use_case_create_company_domain",
+ "use_case_create_company_server",
+ "use_case_prelude_wire_server",
+]
+
+[[package]]
+name = "use_case_create_journal_cache"
+version = "0.1.0"
+dependencies = [
+ "use_case_create_journal_domain",
+ "use_case_prelude_cache",
+]
+
+[[package]]
+name = "use_case_create_journal_client"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "use_case_create_journal_domain",
+ "use_case_prelude_client",
+]
+
+[[package]]
+name = "use_case_create_journal_database"
+version = "0.1.0"
+dependencies = [
+ "tokio",
+ "use_case_create_journal_domain",
+ "use_case_prelude_database",
+]
+
+[[package]]
+name = "use_case_create_journal_domain"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "use_case_prelude_domain",
+]
+
+[[package]]
+name = "use_case_create_journal_entry_cache"
+version = "0.1.0"
+dependencies = [
+ "accounting_engine",
+ "serde",
+ "use_case_create_journal_entry_domain",
+ "use_case_prelude_cache",
+]
+
+[[package]]
+name = "use_case_create_journal_entry_client"
+version = "0.1.0"
+dependencies = [
+ "accounting_engine",
+ "serde",
+ "use_case_create_journal_entry_domain",
+ "use_case_prelude_client",
+]
+
+[[package]]
+name = "use_case_create_journal_entry_database"
+version = "0.1.0"
+dependencies = [
+ "accounting_engine",
+ "serde",
+ "tokio",
+ "use_case_create_journal_entry_domain",
+ "use_case_prelude_database",
+]
+
+[[package]]
+name = "use_case_create_journal_entry_domain"
+version = "0.1.0"
+dependencies = [
+ "accounting_engine",
+ "serde",
+ "use_case_prelude_domain",
+]
+
+[[package]]
+name = "use_case_create_journal_entry_mcp"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "use_case_create_journal_entry_client",
+ "use_case_prelude_mcp",
+]
+
+[[package]]
+name = "use_case_create_journal_entry_server"
+version = "0.1.0"
+dependencies = [
+ "use_case_create_journal_entry_domain",
+ "use_case_prelude_server",
+]
+
+[[package]]
+name = "use_case_create_journal_entry_ui"
+version = "0.1.0"
+dependencies = [
+ "use_case_create_journal_entry_client",
+ "use_case_prelude_ui",
+]
+
+[[package]]
+name = "use_case_create_journal_entry_wire_client"
+version = "0.1.0"
+dependencies = [
+ "use_case_create_journal_entry_cache",
+ "use_case_create_journal_entry_client",
+ "use_case_create_journal_entry_domain",
+ "use_case_create_journal_entry_mcp",
+ "use_case_create_journal_entry_ui",
+ "use_case_prelude_wire_client",
+]
+
+[[package]]
+name = "use_case_create_journal_entry_wire_server"
+version = "0.1.0"
+dependencies = [
+ "use_case_create_journal_entry_database",
+ "use_case_create_journal_entry_domain",
+ "use_case_create_journal_entry_server",
+ "use_case_prelude_wire_server",
+]
+
+[[package]]
+name = "use_case_create_journal_mcp"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "use_case_create_journal_client",
+ "use_case_home_mcp",
+ "use_case_prelude_mcp",
+]
+
+[[package]]
+name = "use_case_create_journal_server"
+version = "0.1.0"
+dependencies = [
+ "use_case_create_journal_domain",
+ "use_case_prelude_server",
+]
+
+[[package]]
+name = "use_case_create_journal_ui"
+version = "0.1.0"
+dependencies = [
+ "use_case_create_journal_client",
+ "use_case_prelude_ui",
+]
+
+[[package]]
+name = "use_case_create_journal_wire_client"
+version = "0.1.0"
+dependencies = [
+ "use_case_create_journal_cache",
+ "use_case_create_journal_client",
+ "use_case_create_journal_domain",
+ "use_case_create_journal_mcp",
+ "use_case_create_journal_ui",
+ "use_case_home_client",
+ "use_case_home_mcp",
+ "use_case_home_wire_client",
+ "use_case_prelude_wire_client",
+]
+
+[[package]]
+name = "use_case_create_journal_wire_server"
+version = "0.1.0"
+dependencies = [
+ "use_case_create_journal_database",
+ "use_case_create_journal_domain",
+ "use_case_create_journal_server",
+ "use_case_prelude_wire_server",
+]
+
+[[package]]
+name = "use_case_error_handler_cache"
+version = "0.1.0"
+dependencies = [
+ "use_case_error_handler_domain",
+ "use_case_prelude_cache",
+]
+
+[[package]]
+name = "use_case_error_handler_client"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "use_case_error_handler_domain",
+ "use_case_prelude_client",
+]
+
+[[package]]
+name = "use_case_error_handler_database"
+version = "0.1.0"
+dependencies = [
+ "tokio",
+ "use_case_error_handler_domain",
+ "use_case_prelude_database",
+]
+
+[[package]]
+name = "use_case_error_handler_domain"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "use_case_prelude_domain",
+]
+
+[[package]]
+name = "use_case_error_handler_mcp"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "use_case_error_handler_client",
+ "use_case_prelude_mcp",
+]
+
+[[package]]
+name = "use_case_error_handler_server"
+version = "0.1.0"
+dependencies = [
+ "use_case_error_handler_domain",
+ "use_case_prelude_server",
+]
+
+[[package]]
+name = "use_case_error_handler_ui"
+version = "0.1.0"
+dependencies = [
+ "use_case_error_handler_client",
+ "use_case_prelude_ui",
+]
+
+[[package]]
+name = "use_case_error_handler_wire_client"
+version = "0.1.0"
+dependencies = [
+ "use_case_error_handler_cache",
+ "use_case_error_handler_client",
+ "use_case_error_handler_mcp",
+ "use_case_error_handler_ui",
+ "use_case_prelude_wire_client",
+]
+
+[[package]]
+name = "use_case_error_handler_wire_server"
+version = "0.1.0"
+dependencies = [
+ "use_case_error_handler_database",
+ "use_case_error_handler_server",
+ "use_case_prelude_wire_server",
+]
+
+[[package]]
+name = "use_case_get_all_accounts_cache"
+version = "0.1.0"
+dependencies = [
+ "use_case_get_all_accounts_domain",
+ "use_case_prelude_cache",
+]
+
+[[package]]
+name = "use_case_get_all_accounts_client"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "use_case_get_all_accounts_domain",
+ "use_case_prelude_client",
+]
+
+[[package]]
+name = "use_case_get_all_accounts_database"
+version = "0.1.0"
+dependencies = [
+ "tokio",
+ "use_case_get_all_accounts_domain",
+ "use_case_prelude_database",
+]
+
+[[package]]
+name = "use_case_get_all_accounts_domain"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "use_case_prelude_domain",
+]
+
+[[package]]
+name = "use_case_get_all_accounts_mcp"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "use_case_get_all_accounts_client",
+ "use_case_prelude_mcp",
+]
+
+[[package]]
+name = "use_case_get_all_accounts_server"
+version = "0.1.0"
+dependencies = [
+ "use_case_get_all_accounts_domain",
+ "use_case_prelude_server",
+]
+
+[[package]]
+name = "use_case_get_all_accounts_ui"
+version = "0.1.0"
+dependencies = [
+ "use_case_get_all_accounts_client",
+ "use_case_prelude_ui",
+]
+
+[[package]]
+name = "use_case_get_all_accounts_wire_client"
+version = "0.1.0"
+dependencies = [
+ "use_case_get_all_accounts_cache",
+ "use_case_get_all_accounts_client",
+ "use_case_get_all_accounts_domain",
+ "use_case_get_all_accounts_mcp",
+ "use_case_get_all_accounts_ui",
+ "use_case_prelude_wire_client",
+]
+
+[[package]]
+name = "use_case_get_all_accounts_wire_server"
+version = "0.1.0"
+dependencies = [
+ "use_case_get_all_accounts_database",
+ "use_case_get_all_accounts_domain",
+ "use_case_get_all_accounts_server",
+ "use_case_prelude_wire_server",
+]
+
+[[package]]
+name = "use_case_get_all_journals_cache"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "use_case_get_all_journals_domain",
+ "use_case_prelude_cache",
+]
+
+[[package]]
+name = "use_case_get_all_journals_client"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "use_case_get_all_journals_domain",
+ "use_case_prelude_client",
+]
+
+[[package]]
+name = "use_case_get_all_journals_database"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "tokio",
+ "use_case_get_all_journals_domain",
+ "use_case_prelude_database",
+]
+
+[[package]]
+name = "use_case_get_all_journals_domain"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "use_case_prelude_domain",
+]
+
+[[package]]
+name = "use_case_get_all_journals_mcp"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "use_case_get_all_journals_client",
+ "use_case_get_all_journals_domain",
+ "use_case_prelude_mcp",
+]
+
+[[package]]
+name = "use_case_get_all_journals_server"
+version = "0.1.0"
+dependencies = [
+ "use_case_get_all_journals_domain",
+ "use_case_prelude_server",
+]
+
+[[package]]
+name = "use_case_get_all_journals_ui"
+version = "0.1.0"
+dependencies = [
+ "use_case_get_all_journals_client",
+ "use_case_prelude_ui",
+]
+
+[[package]]
+name = "use_case_get_all_journals_wire_client"
+version = "0.1.0"
+dependencies = [
+ "use_case_get_all_journals_cache",
+ "use_case_get_all_journals_client",
+ "use_case_get_all_journals_domain",
+ "use_case_get_all_journals_mcp",
+ "use_case_get_all_journals_ui",
+ "use_case_prelude_wire_client",
+]
+
+[[package]]
+name = "use_case_get_all_journals_wire_server"
+version = "0.1.0"
+dependencies = [
+ "use_case_get_all_journals_database",
+ "use_case_get_all_journals_domain",
+ "use_case_get_all_journals_server",
+ "use_case_prelude_wire_server",
+]
+
+[[package]]
+name = "use_case_get_companies_and_branches_cache"
+version = "0.1.0"
+dependencies = [
+ "use_case_get_companies_and_branches_domain",
+ "use_case_prelude_cache",
+]
+
+[[package]]
+name = "use_case_get_companies_and_branches_client"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "use_case_get_companies_and_branches_domain",
+ "use_case_prelude_client",
+]
+
+[[package]]
+name = "use_case_get_companies_and_branches_database"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "tokio",
+ "use_case_get_companies_and_branches_domain",
+ "use_case_prelude_database",
+]
+
+[[package]]
+name = "use_case_get_companies_and_branches_domain"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "use_case_prelude_domain",
+]
+
+[[package]]
+name = "use_case_get_companies_and_branches_mcp"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "use_case_get_companies_and_branches_client",
+ "use_case_prelude_mcp",
+]
+
+[[package]]
+name = "use_case_get_companies_and_branches_server"
+version = "0.1.0"
+dependencies = [
+ "use_case_get_companies_and_branches_domain",
+ "use_case_prelude_server",
+]
+
+[[package]]
+name = "use_case_get_companies_and_branches_ui"
+version = "0.1.0"
+dependencies = [
+ "use_case_get_companies_and_branches_client",
+ "use_case_prelude_ui",
+]
+
+[[package]]
+name = "use_case_get_companies_and_branches_wire_client"
+version = "0.1.0"
+dependencies = [
+ "use_case_get_companies_and_branches_cache",
+ "use_case_get_companies_and_branches_client",
+ "use_case_get_companies_and_branches_domain",
+ "use_case_get_companies_and_branches_mcp",
+ "use_case_get_companies_and_branches_ui",
+ "use_case_prelude_wire_client",
+]
+
+[[package]]
+name = "use_case_get_companies_and_branches_wire_server"
+version = "0.1.0"
+dependencies = [
+ "use_case_get_companies_and_branches_database",
+ "use_case_get_companies_and_branches_domain",
+ "use_case_get_companies_and_branches_server",
+ "use_case_prelude_wire_server",
+]
+
+[[package]]
+name = "use_case_home_cache"
+version = "0.1.0"
+dependencies = [
+ "use_case_home_domain",
+ "use_case_prelude_cache",
+]
+
+[[package]]
+name = "use_case_home_client"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "use_case_home_domain",
+ "use_case_prelude_client",
+]
+
+[[package]]
+name = "use_case_home_database"
+version = "0.1.0"
+dependencies = [
+ "tokio",
+ "use_case_home_domain",
+ "use_case_prelude_database",
+]
+
+[[package]]
+name = "use_case_home_domain"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "use_case_prelude_domain",
+]
+
+[[package]]
+name = "use_case_home_mcp"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "use_case_home_client",
+ "use_case_prelude_mcp",
+]
+
+[[package]]
+name = "use_case_home_server"
+version = "0.1.0"
+dependencies = [
+ "use_case_home_domain",
+ "use_case_prelude_server",
+]
+
+[[package]]
+name = "use_case_home_ui"
+version = "0.1.0"
+dependencies = [
+ "use_case_home_client",
+ "use_case_prelude_ui",
+]
+
+[[package]]
+name = "use_case_home_wire_client"
+version = "0.1.0"
+dependencies = [
+ "use_case_home_cache",
+ "use_case_home_client",
+ "use_case_home_mcp",
+ "use_case_home_ui",
+ "use_case_prelude_wire_client",
+]
+
+[[package]]
+name = "use_case_home_wire_server"
+version = "0.1.0"
+dependencies = [
+ "use_case_home_database",
+ "use_case_home_server",
+ "use_case_prelude_wire_server",
+]
+
+[[package]]
+name = "use_case_prelude_cache"
+version = "0.1.0"
+dependencies = [
  "anyhow",
  "cache",
- "database",
- "dioxus",
- "infrastructure",
  "kernel",
  "rusqlite",
- "serde",
  "serde_json",
- "tokio",
- "tokio-postgres",
- "typetag",
- "utility",
- "utility_ui",
  "uuid",
 ]
 
 [[package]]
-name = "use_case_error_handler"
+name = "use_case_prelude_client"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "dyn-clone",
+ "infrastructure",
+ "kernel",
+ "typetag",
+ "utility",
+ "utility_ui",
+]
+
+[[package]]
+name = "use_case_prelude_database"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "database",
+ "kernel",
+ "rust_decimal",
+ "serde_json",
+ "tokio-postgres",
+ "utility",
+ "uuid",
+]
+
+[[package]]
+name = "use_case_prelude_domain"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "infrastructure",
+ "kernel",
+ "typetag",
+ "utility",
+]
+
+[[package]]
+name = "use_case_prelude_mcp"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "kernel",
+ "schemars",
+ "serde_json",
+ "utility",
+]
+
+[[package]]
+name = "use_case_prelude_server"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "infrastructure",
+ "kernel",
+]
+
+[[package]]
+name = "use_case_prelude_ui"
+version = "0.1.0"
+dependencies = [
+ "cache",
  "chrono",
  "dioxus",
- "infrastructure",
  "kernel",
- "serde",
- "utility",
-]
-
-[[package]]
-name = "use_case_get_all_accounts"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "cache",
- "database",
- "dyn-clone",
- "infrastructure",
- "kernel",
- "rusqlite",
- "serde",
- "tokio",
- "typetag",
- "utility",
- "uuid",
-]
-
-[[package]]
-name = "use_case_get_all_journals"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "cache",
- "database",
- "infrastructure",
- "kernel",
- "rusqlite",
- "schemars",
- "serde",
- "serde_json",
- "tokio",
- "typetag",
- "utility",
- "uuid",
-]
-
-[[package]]
-name = "use_case_get_companies_and_branches"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "cache",
- "database",
- "infrastructure",
- "kernel",
- "rusqlite",
- "serde",
- "serde_json",
- "tokio",
- "typetag",
- "utility",
- "uuid",
-]
-
-[[package]]
-name = "use_case_home"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "dioxus",
- "dyn-clone",
- "infrastructure",
- "kernel",
- "schemars",
- "serde",
- "serde_json",
- "tokio",
- "typetag",
- "utility",
-]
-
-[[package]]
-name = "use_case_select_default_company"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "cache",
- "database",
- "dioxus",
- "infrastructure",
- "kernel",
- "rusqlite",
- "serde",
- "serde_json",
- "tokio",
- "typetag",
- "use_case_get_companies_and_branches",
- "utility",
- "uuid",
-]
-
-[[package]]
-name = "use_case_sign_in"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "cache",
- "database",
- "dioxus",
- "infrastructure",
- "kernel",
- "rusqlite",
- "serde",
- "tokio",
- "typetag",
  "utility",
  "utility_ui",
- "uuid",
 ]
 
 [[package]]
-name = "use_case_sign_up"
+name = "use_case_prelude_wire_client"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "cache",
- "database",
  "dioxus",
- "infrastructure",
  "kernel",
- "rusqlite",
- "serde",
- "tokio",
+ "paste",
+ "serde_json",
  "typetag",
  "utility",
- "utility_ui",
+]
+
+[[package]]
+name = "use_case_prelude_wire_server"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "database",
+ "infrastructure",
+ "kernel",
+ "paste",
+ "utility",
+]
+
+[[package]]
+name = "use_case_select_default_company_cache"
+version = "0.1.0"
+dependencies = [
+ "use_case_prelude_cache",
+ "use_case_select_default_company_domain",
+]
+
+[[package]]
+name = "use_case_select_default_company_client"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "use_case_get_companies_and_branches_client",
+ "use_case_get_companies_and_branches_domain",
+ "use_case_prelude_client",
+ "use_case_select_default_company_domain",
+]
+
+[[package]]
+name = "use_case_select_default_company_database"
+version = "0.1.0"
+dependencies = [
+ "tokio",
+ "use_case_prelude_database",
+ "use_case_select_default_company_domain",
+]
+
+[[package]]
+name = "use_case_select_default_company_domain"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "use_case_prelude_domain",
+]
+
+[[package]]
+name = "use_case_select_default_company_mcp"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "use_case_prelude_mcp",
+ "use_case_select_default_company_client",
+]
+
+[[package]]
+name = "use_case_select_default_company_server"
+version = "0.1.0"
+dependencies = [
+ "use_case_prelude_server",
+ "use_case_select_default_company_domain",
+]
+
+[[package]]
+name = "use_case_select_default_company_ui"
+version = "0.1.0"
+dependencies = [
+ "use_case_prelude_ui",
+ "use_case_select_default_company_client",
+]
+
+[[package]]
+name = "use_case_select_default_company_wire_client"
+version = "0.1.0"
+dependencies = [
+ "use_case_prelude_wire_client",
+ "use_case_select_default_company_cache",
+ "use_case_select_default_company_client",
+ "use_case_select_default_company_mcp",
+ "use_case_select_default_company_ui",
+]
+
+[[package]]
+name = "use_case_select_default_company_wire_server"
+version = "0.1.0"
+dependencies = [
+ "use_case_prelude_wire_server",
+ "use_case_select_default_company_database",
+ "use_case_select_default_company_server",
+]
+
+[[package]]
+name = "use_case_sign_in_cache"
+version = "0.1.0"
+dependencies = [
+ "use_case_prelude_cache",
+ "use_case_sign_in_domain",
+]
+
+[[package]]
+name = "use_case_sign_in_client"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "use_case_prelude_client",
+ "use_case_sign_in_domain",
+]
+
+[[package]]
+name = "use_case_sign_in_database"
+version = "0.1.0"
+dependencies = [
+ "tokio",
+ "use_case_prelude_database",
+ "use_case_sign_in_domain",
+]
+
+[[package]]
+name = "use_case_sign_in_domain"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "use_case_prelude_domain",
+]
+
+[[package]]
+name = "use_case_sign_in_mcp"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "use_case_prelude_mcp",
+ "use_case_sign_in_client",
+]
+
+[[package]]
+name = "use_case_sign_in_server"
+version = "0.1.0"
+dependencies = [
+ "use_case_prelude_server",
+ "use_case_sign_in_domain",
+]
+
+[[package]]
+name = "use_case_sign_in_ui"
+version = "0.1.0"
+dependencies = [
+ "use_case_prelude_ui",
+ "use_case_sign_in_client",
+]
+
+[[package]]
+name = "use_case_sign_in_wire_client"
+version = "0.1.0"
+dependencies = [
+ "use_case_prelude_wire_client",
+ "use_case_sign_in_cache",
+ "use_case_sign_in_client",
+ "use_case_sign_in_domain",
+ "use_case_sign_in_mcp",
+ "use_case_sign_in_ui",
+]
+
+[[package]]
+name = "use_case_sign_in_wire_server"
+version = "0.1.0"
+dependencies = [
+ "use_case_prelude_wire_server",
+ "use_case_sign_in_database",
+ "use_case_sign_in_domain",
+ "use_case_sign_in_server",
+]
+
+[[package]]
+name = "use_case_sign_up_cache"
+version = "0.1.0"
+dependencies = [
+ "use_case_prelude_cache",
+ "use_case_sign_up_domain",
+]
+
+[[package]]
+name = "use_case_sign_up_client"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "use_case_prelude_client",
+ "use_case_sign_up_domain",
+]
+
+[[package]]
+name = "use_case_sign_up_database"
+version = "0.1.0"
+dependencies = [
+ "tokio",
+ "use_case_prelude_database",
+ "use_case_sign_up_domain",
+]
+
+[[package]]
+name = "use_case_sign_up_domain"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "use_case_prelude_domain",
+]
+
+[[package]]
+name = "use_case_sign_up_mcp"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "use_case_prelude_mcp",
+ "use_case_sign_up_client",
+]
+
+[[package]]
+name = "use_case_sign_up_server"
+version = "0.1.0"
+dependencies = [
+ "use_case_prelude_server",
+ "use_case_sign_up_domain",
+]
+
+[[package]]
+name = "use_case_sign_up_ui"
+version = "0.1.0"
+dependencies = [
+ "use_case_prelude_ui",
+ "use_case_sign_up_client",
+]
+
+[[package]]
+name = "use_case_sign_up_wire_client"
+version = "0.1.0"
+dependencies = [
+ "use_case_prelude_wire_client",
+ "use_case_sign_up_cache",
+ "use_case_sign_up_client",
+ "use_case_sign_up_domain",
+ "use_case_sign_up_mcp",
+ "use_case_sign_up_ui",
+]
+
+[[package]]
+name = "use_case_sign_up_wire_server"
+version = "0.1.0"
+dependencies = [
+ "use_case_prelude_wire_server",
+ "use_case_sign_up_database",
+ "use_case_sign_up_domain",
+ "use_case_sign_up_server",
 ]
 
 [[package]]

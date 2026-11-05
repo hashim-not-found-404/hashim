@@ -1,0 +1,8 @@
+[package]
+edition = "2024"
+name    = "use_case_create_company_server"
+version = "0.1.0"
+
+[dependencies]
+use_case_create_company_domain.workspace = true
+use_case_prelude_server.workspace        = true

@@ -1,0 +1,9 @@
+[package]
+edition = "2024"
+name    = "use_case_select_default_company_mcp"
+version = "0.1.0"
+
+[dependencies]
+serde.workspace                                  = true
+use_case_prelude_mcp.workspace                   = true
+use_case_select_default_company_client.workspace = true

@@ -1,0 +1,15 @@
+[package]
+edition = "2024"
+name    = "use_case_create_company_wire_client"
+version = "0.1.0"
+
+[dependencies]
+use_case_create_company_cache.workspace  = true
+use_case_create_company_client.workspace = true
+use_case_create_company_domain.workspace = true
+use_case_create_company_mcp.workspace    = true
+use_case_create_company_ui.workspace     = true
+use_case_home_client.workspace           = true
+use_case_home_mcp.workspace              = true
+use_case_home_wire_client.workspace      = true
+use_case_prelude_wire_client.workspace   = true

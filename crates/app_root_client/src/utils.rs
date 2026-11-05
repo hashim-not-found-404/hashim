@@ -1,12 +1,12 @@
 use crate::model::TypeGlobalModel;
 use crate::wire::MyCaster;
-use cache::cache_adapter;
+use cache::cache_adapter::CacheAdapter;
 use infrastructure::actors::Mpsc;
 use infrastructure::actors::MultiProducerSingleConsumer;
 use kernel::ui_construct::new;
 use std::ops::Deref;
 use std::sync::LazyLock;
-use use_case_error_handler::client::spawn_listener;
+use use_case_error_handler_wire_client::spawn_listener;
 use utility::ui_effect::Commander;
 use utility::ui_effect::MessageTrait;
 use utility::ui_effect::SigNaaaaaaaaaaaaaaaaal;
@@ -16,7 +16,7 @@ pub(crate) static MODEL: LazyLock<NewType> =
     LazyLock::new(|| -> NewType { NewType(Default::default()) });
 
 #[derive(Clone)]
-pub(crate) struct NewType(MySignal<TypeGlobalModel>);
+pub(crate) struct NewType(pub MySignal<TypeGlobalModel>);
 
 impl SigNaaaaaaaaaaaaaaaaal<TypeGlobalModel> for NewType {
     fn with_mut<R>(&self, f: impl FnOnce(&mut TypeGlobalModel) -> R) -> R {
@@ -25,8 +25,7 @@ impl SigNaaaaaaaaaaaaaaaaal<TypeGlobalModel> for NewType {
 }
 
 pub(crate) fn with_model<T>(f: impl FnOnce(&TypeGlobalModel) -> T) -> T {
-    let guard = MODEL.0.with_ref(f);
-    guard
+    MODEL.0.with_ref(f)
 }
 
 pub(crate) static COMMANDER: LazyLock<Commander> = LazyLock::new(|| {
@@ -34,10 +33,8 @@ pub(crate) static COMMANDER: LazyLock<Commander> = LazyLock::new(|| {
 
     let model = MODEL.deref().clone();
 
-    let commander = new::<cache_adapter::S, TypeGlobalModel, MyCaster, MyCaster, MyCaster>(
-        model,
-        sender_to_error,
-    );
+    let commander =
+        new::<CacheAdapter, TypeGlobalModel, MyCaster, MyCaster, MyCaster>(model, sender_to_error);
 
     spawn_listener(receiver_to_error, commander.clone());
 

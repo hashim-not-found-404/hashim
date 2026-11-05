@@ -1,21 +1,9 @@
 use crate::mcp_home_forms;
 use crate::model::TypeGlobalModel;
-use crate::use_case_navigator;
 use anyhow::Result;
 use anyhow::bail;
-use cache::cache_adapter;
+use cache::cache_adapter::CacheAdapter;
 use kernel::ui_construct::CastDTOToClient;
-use patterns::cast_error_to_client_case;
-use patterns::cast_input_to_cache_check_case;
-use patterns::cast_input_to_client_case;
-use patterns::cast_message_to_reducer_case;
-use patterns::cast_ok_to_cache_write_case;
-use patterns::cast_ok_to_client_case;
-use patterns::make_client_wrapper_cache;
-use patterns::make_client_wrapper_form;
-use patterns::make_client_wrapper_updater;
-use patterns::make_mcp_provider;
-use patterns::make_mcp_provider_form;
 use std::any::Any;
 use std::sync::Arc;
 use utility::cache::CastClientToCache;
@@ -31,6 +19,13 @@ use utility::mcp::TraitMcpProvider;
 use utility::ui_effect::CastMessageToReducer;
 use utility::ui_effect::MessageTrait;
 use utility::ui_effect::UpdaterTrait;
+
+pub(crate) type AccountForm = use_case_create_account_wire_client::WrapperForm<TypeGlobalModel>;
+pub(crate) type AccountForBranchForm =
+    use_case_create_account_for_branch_wire_client::WrapperForm<TypeGlobalModel>;
+pub(crate) type BranchForm = use_case_create_branch_wire_client::WrapperForm<TypeGlobalModel>;
+pub(crate) type CompanyForm = use_case_create_company_wire_client::WrapperForm<TypeGlobalModel>;
+pub(crate) type JournalForm = use_case_create_journal_wire_client::WrapperForm<TypeGlobalModel>;
 
 mod updater_use_case_navigator {
     use crate::model::TypeGlobalModel;
@@ -51,19 +46,18 @@ mod updater_use_case_navigator {
     #[derive(Debug)]
     pub(crate) struct WrapperMessage(pub(crate) Message);
 
-    impl UpdaterTrait for WrapperMessage {
-        type Mdl = TypeGlobalModel;
+    impl UpdaterTrait<TypeGlobalModel> for WrapperMessage {
         fn update(
             &self,
-            model: &Self::Mdl,
+            model: &TypeGlobalModel,
         ) -> (
-            Vec<Box<dyn ApplierTrait<Mdl = TypeGlobalModel>>>,
+            Vec<Box<dyn ApplierTrait<TypeGlobalModel>>>,
             Vec<Box<dyn EffectorTrait>>,
         ) {
             let (changes, effects) = update(self.0.clone(), model);
-            let appliers: Vec<Box<dyn ApplierTrait<Mdl = TypeGlobalModel>>> = changes
+            let appliers: Vec<Box<dyn ApplierTrait<TypeGlobalModel>>> = changes
                 .into_iter()
-                .map(|c| Box::new(WrapperChange(c)) as Box<dyn ApplierTrait<Mdl = TypeGlobalModel>>)
+                .map(|c| Box::new(WrapperChange(c)) as Box<dyn ApplierTrait<TypeGlobalModel>>)
                 .collect();
             let effectors: Vec<Box<dyn EffectorTrait>> = effects
                 .into_iter()
@@ -72,15 +66,16 @@ mod updater_use_case_navigator {
             (appliers, effectors)
         }
     }
+
     #[derive(Debug)]
     pub(crate) struct WrapperChange(pub(crate) GlobalChange);
 
-    impl ApplierTrait for WrapperChange {
-        type Mdl = TypeGlobalModel;
-        fn apply(&self, model: &mut Self::Mdl) {
+    impl ApplierTrait<TypeGlobalModel> for WrapperChange {
+        fn apply(&self, model: &mut TypeGlobalModel) {
             global_apply(self.0.clone(), model);
         }
     }
+
     #[derive(Debug)]
     pub(crate) struct WrapperEffect(pub(crate) Effect);
 
@@ -95,39 +90,13 @@ mod updater_use_case_navigator {
     }
 }
 
-make_client_wrapper_cache!(create_account);
-make_client_wrapper_cache!(create_account_for_branch);
-make_client_wrapper_cache!(create_branch);
-make_client_wrapper_cache!(create_company);
-make_client_wrapper_cache!(create_journal);
-make_client_wrapper_cache!(create_journal_entry);
-make_client_wrapper_cache!(get_all_accounts);
-make_client_wrapper_cache!(get_all_journals);
-make_client_wrapper_cache!(get_companies_and_branches);
-make_client_wrapper_cache!(sign_in);
-make_client_wrapper_cache!(sign_up);
-make_client_wrapper_form!(create_account);
-make_client_wrapper_form!(create_account_for_branch);
-make_client_wrapper_form!(create_branch);
-make_client_wrapper_form!(create_company);
-make_client_wrapper_form!(create_journal);
-make_client_wrapper_updater!(error_handler);
-make_client_wrapper_updater!(home);
-make_client_wrapper_updater!(select_default_company);
-make_client_wrapper_updater!(sign_in);
-make_client_wrapper_updater!(sign_up);
-make_mcp_provider!(home);
-make_mcp_provider_form!(create_branch);
-make_mcp_provider_form!(create_company);
-make_mcp_provider_form!(create_journal);
-
-pub(crate) fn get_all_providers() -> Vec<Box<dyn TraitMcpProvider>> {
+pub(crate) fn get_all_providers() -> Vec<Box<dyn TraitMcpProvider<TypeGlobalModel>>> {
     vec![
         Box::new(mcp_home_forms::TypeMcpProvider),
-        Box::new(mcp_provider_create_branch::TypeMcpProvider),
-        Box::new(mcp_provider_create_company::TypeMcpProvider),
-        Box::new(mcp_provider_create_journal::TypeMcpProvider),
-        Box::new(mcp_provider_home::TypeMcpProvider),
+        Box::new(use_case_create_branch_wire_client::TypeMcpProvider),
+        Box::new(use_case_create_company_wire_client::TypeMcpProvider),
+        Box::new(use_case_create_journal_wire_client::TypeMcpProvider),
+        Box::new(use_case_home_wire_client::TypeMcpProvider),
     ]
 }
 
@@ -138,39 +107,112 @@ impl CastMessageToReducer for MyCaster {
 
     fn cast_message_to_reducer(
         v: Box<dyn MessageTrait>,
-    ) -> Result<Box<dyn UpdaterTrait<Mdl = Self::Mdl>>> {
+    ) -> Result<Box<dyn UpdaterTrait<Self::Mdl>>> {
         let v: Box<dyn Any> = v;
 
-        cast_message_to_reducer_case!(error_handler);
-        cast_message_to_reducer_case!(home);
-        cast_message_to_reducer_case!(navigator);
-        cast_message_to_reducer_case!(select_default_company);
-        cast_message_to_reducer_case!(sign_in);
-        cast_message_to_reducer_case!(sign_up);
+        if let Some(v) = v.downcast_ref::<use_case_error_handler_wire_client::Message>() {
+            return Ok(Box::new(
+                use_case_error_handler_wire_client::WrapperMessage(v.clone()),
+            ));
+        };
+
+        if let Some(v) = v.downcast_ref::<use_case_select_default_company_wire_client::Message>() {
+            return Ok(Box::new(
+                use_case_select_default_company_wire_client::WrapperMessage(v.clone()),
+            ));
+        };
+
+        if let Some(v) = v.downcast_ref::<crate::use_case_navigator::client::Message>() {
+            return Ok(Box::new(updater_use_case_navigator::WrapperMessage(
+                v.clone(),
+            )));
+        }
+
+        if let Some(v) = v.downcast_ref::<use_case_home_wire_client::Message>() {
+            return Ok(Box::new(use_case_home_wire_client::WrapperMessage(
+                v.clone(),
+            )));
+        };
+
+        if let Some(v) = v.downcast_ref::<use_case_sign_in_wire_client::Message>() {
+            return Ok(Box::new(use_case_sign_in_wire_client::WrapperMessage(
+                v.clone(),
+            )));
+        };
+
+        if let Some(v) = v.downcast_ref::<use_case_sign_up_wire_client::Message>() {
+            return Ok(Box::new(use_case_sign_up_wire_client::WrapperMessage(
+                v.clone(),
+            )));
+        };
 
         bail!("downcast error in cast_message_to_reducer method")
     }
 }
 
+macro_rules! cast_input_to_cache_check_case {
+    ($v:ident, $name:ident) => {
+        if let Some(v) = $v.downcast_ref::<$name::Input>() {
+            return Ok(::std::boxed::Box::new($name::cache_check::Wrapper(
+                v.clone(),
+            )));
+        }
+    };
+}
+
+macro_rules! cast_ok_to_cache_write_case {
+    ($v:ident, $name:ident) => {
+        if let Some(v) = $v.downcast_ref::<$name::Ok>() {
+            return Ok(::std::boxed::Box::new($name::cache_write::Wrapper(
+                v.clone(),
+            )));
+        }
+    };
+}
+
+macro_rules! cast_input_to_client_case {
+    ($v:ident, $name:ident) => {
+        if let Some(v) = $v.downcast_ref::<$name::Input>() {
+            return Ok(::std::sync::Arc::new(v.clone()));
+        }
+    };
+}
+
+macro_rules! cast_ok_to_client_case {
+    ($v:ident, $name:ident) => {
+        if let Some(v) = $v.downcast_ref::<$name::Ok>() {
+            return Ok(::std::sync::Arc::new(v.clone()));
+        }
+    };
+}
+
+macro_rules! cast_error_to_client_case {
+    ($v:ident, $name:ident) => {
+        if let Some(v) = $v.downcast_ref::<$name::Error>() {
+            return Ok(::std::boxed::Box::new(v.clone()));
+        }
+    };
+}
+
 impl CastClientToCache for MyCaster {
-    type Cache = cache_adapter::S;
+    type Cache = CacheAdapter;
 
     fn cast_input(
         v: TypeOperationClientInput,
     ) -> Result<Box<dyn TraitOperationCacheInput<Cache = Self::Cache>>> {
         let v: Arc<dyn Any> = v;
 
-        cast_input_to_cache_check_case!(create_account);
-        cast_input_to_cache_check_case!(create_account_for_branch);
-        cast_input_to_cache_check_case!(create_branch);
-        cast_input_to_cache_check_case!(create_company);
-        cast_input_to_cache_check_case!(create_journal);
-        cast_input_to_cache_check_case!(create_journal_entry);
-        cast_input_to_cache_check_case!(get_all_accounts);
-        cast_input_to_cache_check_case!(get_all_journals);
-        cast_input_to_cache_check_case!(get_companies_and_branches);
-        cast_input_to_cache_check_case!(sign_in);
-        cast_input_to_cache_check_case!(sign_up);
+        cast_input_to_cache_check_case!(v, use_case_create_account_for_branch_wire_client);
+        cast_input_to_cache_check_case!(v, use_case_create_account_wire_client);
+        cast_input_to_cache_check_case!(v, use_case_create_branch_wire_client);
+        cast_input_to_cache_check_case!(v, use_case_create_company_wire_client);
+        cast_input_to_cache_check_case!(v, use_case_create_journal_entry_wire_client);
+        cast_input_to_cache_check_case!(v, use_case_create_journal_wire_client);
+        cast_input_to_cache_check_case!(v, use_case_get_all_accounts_wire_client);
+        cast_input_to_cache_check_case!(v, use_case_get_all_journals_wire_client);
+        cast_input_to_cache_check_case!(v, use_case_get_companies_and_branches_wire_client);
+        cast_input_to_cache_check_case!(v, use_case_sign_in_wire_client);
+        cast_input_to_cache_check_case!(v, use_case_sign_up_wire_client);
 
         bail!("downcast error in cast_input method")
     }
@@ -180,17 +222,17 @@ impl CastClientToCache for MyCaster {
     ) -> Result<Box<dyn TraitOperationCacheOk<Cache = Self::Cache>>> {
         let v: Arc<dyn Any> = v;
 
-        cast_ok_to_cache_write_case!(create_account);
-        cast_ok_to_cache_write_case!(create_account_for_branch);
-        cast_ok_to_cache_write_case!(create_branch);
-        cast_ok_to_cache_write_case!(create_company);
-        cast_ok_to_cache_write_case!(create_journal);
-        cast_ok_to_cache_write_case!(create_journal_entry);
-        cast_ok_to_cache_write_case!(get_all_accounts);
-        cast_ok_to_cache_write_case!(get_all_journals);
-        cast_ok_to_cache_write_case!(get_companies_and_branches);
-        cast_ok_to_cache_write_case!(sign_in);
-        cast_ok_to_cache_write_case!(sign_up);
+        cast_ok_to_cache_write_case!(v, use_case_create_account_for_branch_wire_client);
+        cast_ok_to_cache_write_case!(v, use_case_create_account_wire_client);
+        cast_ok_to_cache_write_case!(v, use_case_create_branch_wire_client);
+        cast_ok_to_cache_write_case!(v, use_case_create_company_wire_client);
+        cast_ok_to_cache_write_case!(v, use_case_create_journal_entry_wire_client);
+        cast_ok_to_cache_write_case!(v, use_case_create_journal_wire_client);
+        cast_ok_to_cache_write_case!(v, use_case_get_all_accounts_wire_client);
+        cast_ok_to_cache_write_case!(v, use_case_get_all_journals_wire_client);
+        cast_ok_to_cache_write_case!(v, use_case_get_companies_and_branches_wire_client);
+        cast_ok_to_cache_write_case!(v, use_case_sign_in_wire_client);
+        cast_ok_to_cache_write_case!(v, use_case_sign_up_wire_client);
 
         bail!("downcast error in cast_ok method")
     }
@@ -200,17 +242,17 @@ impl CastDTOToClient for MyCaster {
     fn cast_input(v: TypeOperationDTOInput) -> Result<TypeOperationClientInput> {
         let v: Box<dyn Any> = v;
 
-        cast_input_to_client_case!(create_account);
-        cast_input_to_client_case!(create_account_for_branch);
-        cast_input_to_client_case!(create_branch);
-        cast_input_to_client_case!(create_company);
-        cast_input_to_client_case!(create_journal);
-        cast_input_to_client_case!(create_journal_entry);
-        cast_input_to_client_case!(get_all_accounts);
-        cast_input_to_client_case!(get_all_journals);
-        cast_input_to_client_case!(get_companies_and_branches);
-        cast_input_to_client_case!(sign_in);
-        cast_input_to_client_case!(sign_up);
+        cast_input_to_client_case!(v, use_case_create_account_wire_client);
+        cast_input_to_client_case!(v, use_case_create_account_for_branch_wire_client);
+        cast_input_to_client_case!(v, use_case_create_branch_wire_client);
+        cast_input_to_client_case!(v, use_case_create_company_wire_client);
+        cast_input_to_client_case!(v, use_case_create_journal_wire_client);
+        cast_input_to_client_case!(v, use_case_create_journal_entry_wire_client);
+        cast_input_to_client_case!(v, use_case_get_all_accounts_wire_client);
+        cast_input_to_client_case!(v, use_case_get_all_journals_wire_client);
+        cast_input_to_client_case!(v, use_case_get_companies_and_branches_wire_client);
+        cast_input_to_client_case!(v, use_case_sign_in_wire_client);
+        cast_input_to_client_case!(v, use_case_sign_up_wire_client);
 
         bail!("downcast error in cast_input method")
     }
@@ -218,17 +260,17 @@ impl CastDTOToClient for MyCaster {
     fn cast_ok(v: TypeOperationDTOOk) -> Result<TypeOperationClientOk> {
         let v: Box<dyn Any> = v;
 
-        cast_ok_to_client_case!(create_account);
-        cast_ok_to_client_case!(create_account_for_branch);
-        cast_ok_to_client_case!(create_branch);
-        cast_ok_to_client_case!(create_company);
-        cast_ok_to_client_case!(create_journal);
-        cast_ok_to_client_case!(create_journal_entry);
-        cast_ok_to_client_case!(get_all_accounts);
-        cast_ok_to_client_case!(get_all_journals);
-        cast_ok_to_client_case!(get_companies_and_branches);
-        cast_ok_to_client_case!(sign_in);
-        cast_ok_to_client_case!(sign_up);
+        cast_ok_to_client_case!(v, use_case_create_account_wire_client);
+        cast_ok_to_client_case!(v, use_case_create_account_for_branch_wire_client);
+        cast_ok_to_client_case!(v, use_case_create_branch_wire_client);
+        cast_ok_to_client_case!(v, use_case_create_company_wire_client);
+        cast_ok_to_client_case!(v, use_case_create_journal_wire_client);
+        cast_ok_to_client_case!(v, use_case_create_journal_entry_wire_client);
+        cast_ok_to_client_case!(v, use_case_get_all_accounts_wire_client);
+        cast_ok_to_client_case!(v, use_case_get_all_journals_wire_client);
+        cast_ok_to_client_case!(v, use_case_get_companies_and_branches_wire_client);
+        cast_ok_to_client_case!(v, use_case_sign_in_wire_client);
+        cast_ok_to_client_case!(v, use_case_sign_up_wire_client);
 
         bail!("downcast error in cast_ok method")
     }
@@ -236,17 +278,17 @@ impl CastDTOToClient for MyCaster {
     fn cast_error(v: TypeOperationDTOError) -> Result<TypeOperationClientError> {
         let v: Box<dyn Any> = v;
 
-        cast_error_to_client_case!(create_account);
-        cast_error_to_client_case!(create_account_for_branch);
-        cast_error_to_client_case!(create_branch);
-        cast_error_to_client_case!(create_company);
-        cast_error_to_client_case!(create_journal);
-        cast_error_to_client_case!(create_journal_entry);
-        cast_error_to_client_case!(get_all_accounts);
-        cast_error_to_client_case!(get_all_journals);
-        cast_error_to_client_case!(get_companies_and_branches);
-        cast_error_to_client_case!(sign_in);
-        cast_error_to_client_case!(sign_up);
+        cast_error_to_client_case!(v, use_case_create_account_wire_client);
+        cast_error_to_client_case!(v, use_case_create_account_for_branch_wire_client);
+        cast_error_to_client_case!(v, use_case_create_branch_wire_client);
+        cast_error_to_client_case!(v, use_case_create_company_wire_client);
+        cast_error_to_client_case!(v, use_case_create_journal_wire_client);
+        cast_error_to_client_case!(v, use_case_create_journal_entry_wire_client);
+        cast_error_to_client_case!(v, use_case_get_all_accounts_wire_client);
+        cast_error_to_client_case!(v, use_case_get_all_journals_wire_client);
+        cast_error_to_client_case!(v, use_case_get_companies_and_branches_wire_client);
+        cast_error_to_client_case!(v, use_case_sign_in_wire_client);
+        cast_error_to_client_case!(v, use_case_sign_up_wire_client);
 
         bail!("downcast error in cast_error method")
     }

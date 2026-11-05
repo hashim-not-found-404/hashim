@@ -1,3 +1,4 @@
+use crate::model::TypeGlobalModel;
 use crate::utils::COMMANDER;
 use crate::wire;
 use anyhow::Result;
@@ -9,13 +10,14 @@ use serde_json::Value;
 use serde_json::to_value;
 use std::future::Future;
 use std::pin::Pin;
-use use_case_home::client::FormLocalModel;
-use use_case_home::client::Intent;
-use use_case_home::client::Message;
+use use_case_home_wire_client::FormLocalModel;
+use use_case_home_wire_client::Intent;
+use use_case_home_wire_client::Message;
 use utility::mcp::McpToolDef;
 use utility::mcp::TraitMcpProvider;
 use utility::mcp::error_to_mcp;
 use utility::mcp::parse_args;
+use utility::ui_effect::Commander;
 
 #[derive(Debug, Clone, JsonSchema, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -39,7 +41,7 @@ struct Output {}
 
 pub(crate) struct TypeMcpProvider;
 
-impl TraitMcpProvider for TypeMcpProvider {
+impl TraitMcpProvider<TypeGlobalModel> for TypeMcpProvider {
     fn tools(&self) -> Vec<McpToolDef> {
         vec![McpToolDef {
             name: ADD_FORM,
@@ -48,11 +50,13 @@ impl TraitMcpProvider for TypeMcpProvider {
         }]
     }
 
-    fn call(
-        &self,
+    fn call<'a>(
+        &'a self,
         tool_name: &str,
         args: Value,
-    ) -> Pin<Box<dyn Future<Output = Result<Value>> + Send>> {
+        _model: &'a TypeGlobalModel,
+        _commander: &'a Commander,
+    ) -> Pin<Box<dyn Future<Output = Result<Value>> + Send + 'a>> {
         let tool_name = tool_name.to_owned();
         Box::pin(async move {
             match tool_name.as_str() {
@@ -75,8 +79,8 @@ impl TraitMcpProvider for TypeMcpProvider {
 
 fn map_form_type_to_local_model(form_type: FormType) -> Box<dyn FormLocalModel> {
     match form_type {
-        FormType::CreateBranch => Box::new(wire::create_branch_form::WrapperForm::default()),
-        FormType::CreateCompany => Box::new(wire::create_company_form::WrapperForm::default()),
-        FormType::CreateJournal => Box::new(wire::create_journal_form::WrapperForm::default()),
+        FormType::CreateBranch => Box::new(wire::BranchForm::default()),
+        FormType::CreateCompany => Box::new(wire::CompanyForm::default()),
+        FormType::CreateJournal => Box::new(wire::JournalForm::default()),
     }
 }

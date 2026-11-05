@@ -4,16 +4,13 @@ name    = "cache"
 version = "0.1.0"
 
 [dependencies]
-infrastructure = { workspace = true }
-kernel         = { workspace = true }
-utility        = { workspace = true }
+infrastructure.workspace = true
+kernel.workspace         = true
+utility.workspace        = true
 
-anyhow = { workspace = true }
-serde  = { workspace = true }
+anyhow.workspace = true
+serde.workspace  = true
 
-rusqlite   = { workspace = true }
-serde_json = { workspace = true }
-uuid       = { workspace = true }
-
-[dev-dependencies]
-tokio = { workspace = true }
+rusqlite.workspace   = true
+serde_json.workspace = true
+uuid.workspace       = true

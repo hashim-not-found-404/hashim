@@ -1,0 +1,9 @@
+[package]
+edition = "2024"
+name    = "use_case_error_handler_client"
+version = "0.1.0"
+
+[dependencies]
+serde.workspace                   = true
+use_case_error_handler_domain     = { path = "../domain", version = "0.1.0" }
+use_case_prelude_client.workspace = true

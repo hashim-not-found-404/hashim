@@ -1,0 +1,8 @@
+[package]
+edition = "2024"
+name    = "use_case_error_handler_ui"
+version = "0.1.0"
+
+[dependencies]
+use_case_error_handler_client = { path = "../client", version = "0.1.0" }
+use_case_prelude_ui.workspace = true

@@ -6,11 +6,11 @@ use kernel::server::DBTransaction;
 use tokio_postgres::error::SqlState;
 use utility::types::LogError;
 
-pub struct S<'a> {
+pub struct DbTransactionAdapter<'a> {
     pub txn: Transaction<'a>,
 }
 
-impl DBTransaction for S<'_> {
+impl DBTransaction for DbTransactionAdapter<'_> {
     async fn commit_transaction(self) -> Result<Result<(), AtCommit>> {
         match self.txn.commit().await {
             Ok(_) => Ok(Ok(())),

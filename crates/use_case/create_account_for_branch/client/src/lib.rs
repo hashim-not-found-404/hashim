@@ -1,0 +1,394 @@
+use accounting_engine::accounting_stuff::InFlowType;
+use accounting_engine::accounting_stuff::OutFlowType;
+use serde::Deserialize;
+use serde::Serialize;
+use std::sync::Arc;
+use std::time::Duration;
+use use_case_create_account_for_branch_domain::AccountUuid;
+use use_case_create_account_for_branch_domain::Error;
+use use_case_create_account_for_branch_domain::Input;
+use use_case_create_account_for_branch_domain::Ok;
+use use_case_create_account_for_branch_domain::ReadInput;
+use use_case_create_account_for_branch_domain::ReadOutput;
+use use_case_prelude_client::*;
+
+const RESOURCES_NAME_TO_LISTEN: &[ResourceName] = &[
+    new_resource_name("accounts"),
+    new_resource_name("accounts_for_branch"),
+];
+
+pub async fn check_input<
+    Ch: Cache,
+    DBReader: for<'a> DatabaseRead<Db<'a> = Ch, Input = ReadInput, Output = ReadOutput>,
+>(
+    input: &Input,
+    cache: &mut Ch,
+) -> Result<TypeOperationClientResult> {
+    let errr = input.state_full_check::<DBReader>(cache).await?;
+
+    if errr.is_there_error() {
+        return Ok(Err(Box::new(errr)));
+    }
+
+    let state_less_operation = input.state_less_operation();
+    Ok(Ok(Arc::new(state_less_operation)))
+}
+
+pub(crate) type AsyncState = GenricAsyncState<AsyncInput, Ok, Error>;
+
+pub struct GlobalModel {
+    pub user_uuid: Option<UserUuid>,
+    pub selected_company_branch_uuid: Option<BranchUuid>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
+pub struct LocalModel {
+    process_id: ProcessId,
+
+    pub show_dialog: Dialog,
+    pub async_state: AsyncState,
+
+    pub account_name: String,
+    pub outflow_type: OutFlowType,
+    pub inflow_type: InFlowType,
+}
+
+impl LocalModel {
+    pub fn clone_user_input(&self) -> Self {
+        Self {
+            account_name: self.account_name.clone(),
+            outflow_type: self.outflow_type,
+            inflow_type: self.inflow_type,
+            ..Default::default()
+        }
+    }
+
+    pub fn resolved_account_uuid(&self, global_model: &GlobalModel) -> Option<AccountUuid> {
+        let typed = self.account_name.clone();
+        if typed.is_empty() {
+            return None;
+        }
+        todo!()
+        // global_model
+        //     .clone()
+        //     .into_iter()
+        //     .find_map(|(uuid, name)| (name == typed).then_some(uuid))
+    }
+
+    pub fn list_of_accounts_to_display(
+        &self,
+        global_model: &GlobalModel,
+    ) -> Vec<(AccountUuid, String)> {
+        let typed = self.account_name.clone();
+        let list = todo!();
+        if typed.is_empty() {
+            return list;
+        }
+        select_strings(list, typed, |a| a.1.as_str())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+pub struct AsyncInput {
+    pub user_uuid: UserUuid,
+    pub belong_to_account: AccountUuid,
+    pub belong_to_company_branch: BranchUuid,
+    pub outflow_type: OutFlowType,
+    pub inflow_type: InFlowType,
+}
+
+#[derive(Debug, Clone)]
+pub enum LocalChange {
+    ShowDialog(Dialog),
+    AccountName(String),
+    OutflowType(OutFlowType),
+    InflowType(InFlowType),
+    AsyncState(AsyncState),
+}
+
+#[derive(Debug, Clone)]
+pub enum GlobalChange {}
+
+#[derive(Debug, Clone)]
+pub enum Effect {
+    SpawnTimer,
+    Submit {
+        async_input: AsyncInput,
+        is_to_server: bool,
+    },
+    Subscribe(ProcessId),
+    UnSubscribe(ProcessId),
+}
+
+#[derive(Debug, Clone)]
+pub enum Intent {
+    Submit,
+    Consent(UserConsent),
+    AccountName(String),
+    SelectedAccount(usize),
+    OutflowType(OutFlowType),
+    InflowType(InFlowType),
+    Subscribe,
+    UnSubscribe,
+}
+
+#[derive(Debug, Clone)]
+pub enum Observe {
+    Timeout,
+    Result(AsyncState),
+    Refresh,
+}
+
+#[derive(Debug, Clone)]
+pub enum Message {
+    Intent(Intent),
+    Observe(Observe),
+}
+
+impl MessageTrait for Message {}
+
+pub fn update(
+    msg: Message,
+    local_model: &LocalModel,
+    global_model: &GlobalModel,
+) -> (Vec<LocalChange>, Vec<GlobalChange>, Vec<Effect>) {
+    if let Message::Intent(ref a) = msg {
+        match a {
+            Intent::Consent(_) | Intent::Subscribe | Intent::UnSubscribe => {}
+            _ => {
+                if local_model.async_state.clone().is_loading() {
+                    return (vec![], vec![], vec![]);
+                }
+            }
+        }
+    }
+
+    match msg {
+        Message::Intent(intent) => match intent {
+            Intent::Submit => {
+                let Some(user_uuid) = global_model.user_uuid.clone() else {
+                    return (vec![], vec![], vec![]);
+                };
+
+                let Some(belong_to_company_branch) =
+                    global_model.selected_company_branch_uuid.clone()
+                else {
+                    return (vec![], vec![], vec![]);
+                };
+
+                let Some(belong_to_account) = local_model.resolved_account_uuid(global_model)
+                else {
+                    return (vec![], vec![], vec![]);
+                };
+
+                let async_input = AsyncInput {
+                    user_uuid,
+                    belong_to_account,
+                    belong_to_company_branch,
+                    outflow_type: local_model.outflow_type,
+                    inflow_type: local_model.inflow_type,
+                };
+
+                let local_change = vec![
+                    LocalChange::AsyncState(AsyncState::Loading {
+                        input: async_input.clone(),
+                    }),
+                    LocalChange::ShowDialog(Dialog::Hide),
+                ];
+
+                let effect = vec![
+                    Effect::SpawnTimer,
+                    Effect::Submit {
+                        async_input,
+                        is_to_server: true,
+                    },
+                ];
+
+                (local_change, vec![], effect)
+            }
+            Intent::Consent(v) => {
+                let (local_change, effect) = match v {
+                    UserConsent::CancelOperation => (
+                        vec![
+                            LocalChange::ShowDialog(Dialog::Hide),
+                            LocalChange::AsyncState(AsyncState::Idle),
+                        ],
+                        vec![],
+                    ),
+                    UserConsent::WaitForServerResponse => (
+                        vec![LocalChange::ShowDialog(Dialog::Hide)],
+                        vec![Effect::SpawnTimer],
+                    ),
+                    UserConsent::DontWaitForServerResponse => {
+                        let Some(user_uuid) = global_model.user_uuid.clone() else {
+                            return (vec![], vec![], vec![]);
+                        };
+                        let Some(belong_to_company_branch) =
+                            global_model.selected_company_branch_uuid.clone()
+                        else {
+                            return (vec![], vec![], vec![]);
+                        };
+                        let Some(belong_to_account) =
+                            local_model.resolved_account_uuid(global_model)
+                        else {
+                            return (vec![], vec![], vec![]);
+                        };
+                        let async_input = AsyncInput {
+                            user_uuid,
+                            belong_to_account,
+                            belong_to_company_branch,
+                            outflow_type: local_model.outflow_type,
+                            inflow_type: local_model.inflow_type,
+                        };
+
+                        (
+                            vec![LocalChange::ShowDialog(Dialog::Hide)],
+                            vec![Effect::Submit {
+                                async_input,
+                                is_to_server: false,
+                            }],
+                        )
+                    }
+                };
+
+                (local_change, vec![], effect)
+            }
+            Intent::AccountName(v) => {
+                let local_change = vec![LocalChange::AccountName(v)];
+                (local_change, vec![], vec![])
+            }
+            Intent::SelectedAccount(idx) => {
+                let list = local_model.list_of_accounts_to_display(global_model);
+                match list.get(idx) {
+                    Some((_, name)) => {
+                        (vec![LocalChange::AccountName(name.clone())], vec![], vec![])
+                    }
+                    None => (vec![], vec![], vec![]),
+                }
+            }
+            Intent::OutflowType(v) => {
+                let local_change = vec![LocalChange::OutflowType(v)];
+                (local_change, vec![], vec![])
+            }
+            Intent::InflowType(v) => {
+                let local_change = vec![LocalChange::InflowType(v)];
+                (local_change, vec![], vec![])
+            }
+            Intent::Subscribe => {
+                let effect = vec![Effect::Subscribe(local_model.process_id)];
+                (vec![], vec![], effect)
+            }
+            Intent::UnSubscribe => {
+                let effect = vec![Effect::UnSubscribe(local_model.process_id)];
+                (vec![], vec![], effect)
+            }
+        },
+        Message::Observe(observe) => match observe {
+            Observe::Timeout => {
+                let local_change = match local_model.async_state.clone() {
+                    AsyncState::Loading { .. } => vec![LocalChange::ShowDialog(Dialog::Show)],
+                    _ => vec![],
+                };
+                (local_change, vec![], vec![])
+            }
+            Observe::Result(result) => match result {
+                AsyncState::Success { .. } => {
+                    let local_change = vec![
+                        LocalChange::ShowDialog(Default::default()),
+                        LocalChange::AccountName(Default::default()),
+                        LocalChange::OutflowType(Default::default()),
+                        LocalChange::InflowType(Default::default()),
+                        LocalChange::AsyncState(result),
+                    ];
+                    (local_change, vec![], vec![])
+                }
+                _ => {
+                    let local_change = vec![
+                        LocalChange::ShowDialog(Default::default()),
+                        LocalChange::AsyncState(result),
+                    ];
+                    (local_change, vec![], vec![])
+                }
+            },
+            Observe::Refresh => (vec![], vec![], vec![]),
+        },
+    }
+}
+
+pub fn local_apply(msg: LocalChange, mut local_model: LocalModel) -> LocalModel {
+    match msg {
+        LocalChange::ShowDialog(i) => local_model.show_dialog = i,
+        LocalChange::AccountName(i) => local_model.account_name = i,
+        LocalChange::OutflowType(i) => local_model.outflow_type = i,
+        LocalChange::InflowType(i) => local_model.inflow_type = i,
+        LocalChange::AsyncState(i) => local_model.async_state = i,
+    }
+    local_model
+}
+
+pub fn global_apply(msg: GlobalChange, mut global_model: GlobalModel) -> GlobalModel {
+    match msg {}
+    global_model
+}
+
+pub async fn effect(msg: Effect, replier: Replier, context: UiContext) -> Result<()> {
+    match msg {
+        Effect::SpawnTimer => {
+            Rt::spawn_local(async move {
+                Rt::sleep(Duration::from_secs(5)).await;
+                let _ = replier(Box::new(Message::Observe(Observe::Timeout))).await;
+            });
+        }
+        Effect::Submit {
+            async_input,
+            is_to_server,
+        } => {
+            handle_submit::<Wire>(replier, async_input, context, is_to_server).await?;
+        }
+        Effect::Subscribe(process_id) => {
+            handle_subscribe::<Wire>(replier, process_id, context, RESOURCES_NAME_TO_LISTEN)
+                .await?;
+        }
+        Effect::UnSubscribe(process_id) => {
+            handle_unsubscribe::<Wire>(process_id, context).await?;
+        }
+    }
+    Ok(())
+}
+
+pub struct Wire;
+
+impl UseCaseClient for Wire {
+    type Input = Input;
+    type AsyncInput = AsyncInput;
+    type Ok = Ok;
+    type Error = Error;
+    type Message = Message;
+
+    fn msg_success_submit(input: Self::AsyncInput, ok: Self::Ok) -> Self::Message {
+        Message::Observe(Observe::Result(AsyncState::Success { input, ok }))
+    }
+
+    fn msg_failure_submit(input: Self::AsyncInput, error: Self::Error) -> Self::Message {
+        Message::Observe(Observe::Result(AsyncState::Failure { input, error }))
+    }
+
+    fn msg_timeout() -> Self::Message {
+        Message::Observe(Observe::Timeout)
+    }
+
+    fn msg_refresh() -> Self::Message {
+        Message::Observe(Observe::Refresh)
+    }
+
+    fn build_input(input: &Self::AsyncInput) -> Self::Input {
+        Input {
+            user_uuid: input.user_uuid.clone(),
+            new_uuid: UuidType::from(Id::generate()).into(),
+            belong_to_account: input.belong_to_account.clone(),
+            belong_to_company_branch: input.belong_to_company_branch.clone(),
+            outflow_type: input.outflow_type,
+            inflow_type: input.inflow_type,
+        }
+    }
+}

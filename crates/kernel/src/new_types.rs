@@ -35,12 +35,8 @@ macro_rules! make_type {
     };
 }
 
-// those need to be moved to the use_case_* crates
 make_type!([u8; 16], UuidType);
 make_type!(UuidType, NonceUuid);
 make_type!(UuidType, UserUuid);
 make_type!(UuidType, CompanyUuid);
 make_type!(UuidType, BranchUuid);
-make_type!(UuidType, AccountUuid);
-make_type!(UuidType, AccountForBranchUuid);
-make_type!(UuidType, SharedEntryUuid);
