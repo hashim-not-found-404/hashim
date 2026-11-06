@@ -96,6 +96,7 @@ pub(crate) fn get_all_providers() -> Vec<Box<dyn TraitMcpProvider<TypeGlobalMode
         Box::new(use_case_create_branch_wire_client::TypeMcpProvider),
         Box::new(use_case_create_company_wire_client::TypeMcpProvider),
         Box::new(use_case_create_journal_wire_client::TypeMcpProvider),
+        Box::new(use_case_get_all_journals_wire_client::TypeMcpProvider),
         Box::new(use_case_home_wire_client::TypeMcpProvider),
     ]
 }

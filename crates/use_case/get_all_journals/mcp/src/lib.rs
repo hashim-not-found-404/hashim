@@ -19,12 +19,12 @@ pub fn tools() -> Vec<McpToolDef> {
     }]
 }
 
-pub async fn call<'a>(input: CallInputForFetch<'a, Input>) -> Result<Value> {
+pub async fn call<'a>(input: CallInput<'a, (), Input>) -> Result<Value> {
     match input.tool_name {
         LIST_JOURNALS => {
             let _: ListJournalsArgs = parse_args(input.args)?;
 
-            let ok = get_data(input.cache.clone(), false, input.input.clone()).await?;
+            let ok = get_data(input.cache.clone(), false, input.global.clone()).await?;
 
             let a = match ok {
                 Ok(a) => a,

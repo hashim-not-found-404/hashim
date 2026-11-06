@@ -153,7 +153,7 @@ impl MessageTrait for Message {}
 pub fn update(
     msg: Message,
     local_model: &LocalModel,
-    global_model: &GlobalModel,
+    global_model: &dyn Any,
 ) -> (Vec<LocalChange>, Vec<GlobalChange>, Vec<Effect>) {
     match msg {
         Message::Intent(intent) => {
@@ -183,7 +183,7 @@ pub fn update(
 
                     let mut cleanup_effects: Vec<Effect> = Vec::new();
                     if let Some(msg) = forms[position].form.unsubscribe_message() {
-                        let update = forms[position].form.handle(msg, global_model as &dyn Any);
+                        let update = forms[position].form.handle(msg, global_model);
                         cleanup_effects.extend(update.effects.into_iter().map(Effect::new));
                     }
 
@@ -204,9 +204,7 @@ pub fn update(
             let mut new_forms = local_model.forms.clone();
             let was_ok_before = new_forms[form_index].form.is_submit_ok();
 
-            let update = new_forms[form_index]
-                .form
-                .handle(message, global_model as &dyn Any);
+            let update = new_forms[form_index].form.handle(message, global_model);
 
             let is_ok_after = new_forms[form_index].form.is_submit_ok();
 

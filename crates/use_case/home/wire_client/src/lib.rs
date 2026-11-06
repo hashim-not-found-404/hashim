@@ -1,3 +1,4 @@
+use std::any::Any;
 use std::boxed::Box;
 use std::future::Future;
 use std::pin::Pin;
@@ -42,7 +43,7 @@ impl<Mdl: Model + ModelAccess> UpdaterTrait<Mdl> for WrapperMessage {
     ) -> (Vec<Box<dyn ApplierTrait<Mdl>>>, Vec<Box<dyn EffectorTrait>>) {
         let page = model.local_model().clone();
         let (local_changes, global_changes, effects) =
-            update(self.0.clone(), &page, &model.global_model());
+            update(self.0.clone(), &page, model as &dyn Any);
         let mut appliers: Vec<Box<dyn ApplierTrait<Mdl>>> = Vec::new();
 
         appliers.extend(

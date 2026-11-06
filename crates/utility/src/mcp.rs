@@ -49,10 +49,3 @@ pub struct CallInput<'a, LocalModel, GlobalModel> {
     pub commander: &'a Commander,
     pub cache: &'a CacheStruct,
 }
-
-pub struct CallInputForFetch<'a, Input> {
-    pub tool_name: &'a str,
-    pub args: Value,
-    pub input: &'a Input,
-    pub cache: &'a CacheStruct,
-}

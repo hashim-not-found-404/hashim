@@ -7,7 +7,6 @@ pub use schemars::schema_for;
 pub use serde_json::Value;
 pub use serde_json::to_value;
 pub use utility::mcp::CallInput;
-pub use utility::mcp::CallInputForFetch;
 pub use utility::mcp::McpToolDef;
 pub use utility::mcp::error_to_mcp;
 pub use utility::mcp::parse_args;

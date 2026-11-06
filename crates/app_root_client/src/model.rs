@@ -198,3 +198,9 @@ impl use_case_select_default_company_wire_client::ModelAccess for TypeGlobalMode
         self.page_select_default_company = v;
     }
 }
+
+impl use_case_get_all_journals_wire_client::ModelAccess for TypeGlobalModel {
+    fn user_uuid(&self) -> Option<UserUuid> {
+        TypeGlobalModel::user_uuid(self)
+    }
+}
