@@ -70,14 +70,6 @@ where
     }
 }
 
-/// Result of a validation check.
-///
-/// Same shape as [`GenricAsyncState`] minus `Loading` — checks are silent
-/// background validations and never block the UI. Because the user can
-/// keep typing while a check is in flight, every `Success` / `Failure`
-/// carries the `input` it was computed for; the reducer compares that
-/// `input` against the current model and discards the result if the user
-/// has since changed it.
 #[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
 #[serde(bound(
     deserialize = "Input: DeserializeOwned, Ok: DeserializeOwned, Error: DeserializeOwned",
@@ -103,7 +95,7 @@ where
 
 pub trait UseCaseClient: 'static {
     type Input: TraitOperationClientInput + 'static;
-    type AsyncInput: Clone + 'static;
+    type AsyncInput: Clone + Send + 'static;
     type Ok: TraitOperationClientOk + Clone + 'static;
     type Error: TraitOperationClientError + 'static;
     type Message: MessageTrait;

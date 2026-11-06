@@ -250,7 +250,7 @@ where
         model: &'a Mdl,
         commander: &'a Commander,
         cache: &'a CacheStruct,
-    ) -> Pin<Box<dyn Future<Output = Result<Value>> + 'a>> {
+    ) -> Pin<Box<dyn Future<Output = Result<Value>> + Send + 'a>> {
         let tool_name = tool_name.to_owned();
         Box::pin(async move {
             let id = args

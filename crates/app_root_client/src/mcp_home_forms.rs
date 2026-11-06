@@ -57,8 +57,9 @@ impl TraitMcpProvider<TypeGlobalModel> for TypeMcpProvider {
         _model: &'a TypeGlobalModel,
         commander: &'a Commander,
         cache: &'a CacheStruct,
-    ) -> Pin<Box<dyn Future<Output = Result<Value>> + 'a>> {
+    ) -> Pin<Box<dyn Future<Output = Result<Value>> + Send + 'a>> {
         let tool_name = tool_name.to_owned();
+        let _ = cache;
         Box::pin(async move {
             match tool_name.as_str() {
                 ADD_FORM => {

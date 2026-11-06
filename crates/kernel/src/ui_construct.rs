@@ -41,7 +41,7 @@ use utility::ui_effect::SigNaaaaaaaaaaaaaaaaal;
 pub fn new<Ch, Mdl, CasDC, CasMsg, CasCh>(
     model: impl SigNaaaaaaaaaaaaaaaaal<Mdl>,
     sender_to_error: MpscSender<anyhow::Error>,
-) -> Commander
+) -> (Commander, CacheStruct)
 where
     Ch: Cache + 'static,
     Mdl: Model,
@@ -72,7 +72,9 @@ where
         is_online,
     );
 
-    Commander::new::<Mdl, CasMsg>(sender_to_error, model, cache)
+    let commander = Commander::new::<Mdl, CasMsg>(sender_to_error, model, cache.clone());
+
+    (commander, cache)
 }
 
 struct MyNetwork {

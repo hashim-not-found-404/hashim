@@ -25,17 +25,17 @@ pub struct Txn<T> {
 
 //////////////////////////////////////////////////////////////////////
 #[serde]
-pub trait TraitOperationDTOInput: Any + Debug {}
+pub trait TraitOperationDTOInput: Any + Debug + Send + Sync {}
 pub type TypeOperationDTOInput = Box<dyn TraitOperationDTOInput>;
 
 //////////////////////////////////////////////////////////////////////
 #[serde]
-pub trait TraitOperationDTOOk: Any + Debug {}
+pub trait TraitOperationDTOOk: Any + Debug + Send + Sync {}
 pub type TypeOperationDTOOk = Box<dyn TraitOperationDTOOk>;
 
 //////////////////////////////////////////////////////////////////////
 #[serde]
-pub trait TraitOperationDTOError: Any + Debug {}
+pub trait TraitOperationDTOError: Any + Debug + Send + Sync {}
 pub type TypeOperationDTOError = Box<dyn TraitOperationDTOError>;
 
 //////////////////////////////////////////////////////////////////////

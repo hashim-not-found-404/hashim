@@ -6,7 +6,9 @@ use infrastructure::actors::MultiProducerSingleConsumer;
 use kernel::ui_construct::new;
 use std::ops::Deref;
 use std::sync::LazyLock;
+use std::sync::OnceLock;
 use use_case_error_handler_wire_client::spawn_listener;
+use utility::cache::CacheStruct;
 use utility::ui_effect::Commander;
 use utility::ui_effect::MessageTrait;
 use utility::ui_effect::SigNaaaaaaaaaaaaaaaaal;
@@ -28,13 +30,25 @@ pub(crate) fn with_model<T>(f: impl FnOnce(&TypeGlobalModel) -> T) -> T {
     MODEL.0.with_ref(f)
 }
 
+pub(crate) static CACHE: OnceLock<CacheStruct> = OnceLock::new();
+
+pub(crate) fn cache() -> &'static CacheStruct {
+    CACHE
+        .get()
+        .expect("CACHE is not initialized; call init_commander_and_model first")
+}
+
 pub(crate) static COMMANDER: LazyLock<Commander> = LazyLock::new(|| {
     let (sender_to_error, receiver_to_error) = Mpsc::channel();
 
     let model = MODEL.deref().clone();
 
-    let commander =
+    let (commander, cache) =
         new::<CacheAdapter, TypeGlobalModel, MyCaster, MyCaster, MyCaster>(model, sender_to_error);
+
+    if CACHE.set(cache).is_err() {
+        panic!("CACHE was set before COMMANDER initialized")
+    };
 
     spawn_listener(receiver_to_error, commander.clone());
 

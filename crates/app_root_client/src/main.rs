@@ -178,14 +178,17 @@ mod mcp_server {
             // a reference that outlives its lock guard, and `provider.call`
             // borrows `&Mdl` for the whole await.
             let model: TypeGlobalModel = MODEL.deref().0.with_ref(|a| a.clone());
+            let cache = crate::utils::cache();
 
-            let result: CallToolResult =
-                match provider.call(tool_name, args, &model, &COMMANDER).await {
-                    Ok(v) => CallToolResult::success(vec![ContentBlock::text(
-                        serde_json::to_string(&v).unwrap_or_default(),
-                    )]),
-                    Err(e) => CallToolResult::error(vec![ContentBlock::text(format!("{e:?}"))]),
-                };
+            let result: CallToolResult = match provider
+                .call(tool_name, args, &model, &COMMANDER, cache)
+                .await
+            {
+                Ok(v) => CallToolResult::success(vec![ContentBlock::text(
+                    serde_json::to_string(&v).unwrap_or_default(),
+                )]),
+                Err(e) => CallToolResult::error(vec![ContentBlock::text(format!("{e:?}"))]),
+            };
             Ok(result.into())
         }
     }

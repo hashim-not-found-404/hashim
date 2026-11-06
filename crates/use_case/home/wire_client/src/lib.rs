@@ -111,7 +111,7 @@ impl<Mdl: Model + ModelAccess> TraitMcpProvider<Mdl> for TypeMcpProvider {
         model: &'a Mdl,
         commander: &'a Commander,
         cache: &'a CacheStruct,
-    ) -> Pin<Box<dyn Future<Output = Result<Value>> + 'a>> {
+    ) -> Pin<Box<dyn Future<Output = Result<Value>> + Send + 'a>> {
         let tool_name = tool_name.to_owned();
         Box::pin(async move {
             call(CallInput {
@@ -119,8 +119,8 @@ impl<Mdl: Model + ModelAccess> TraitMcpProvider<Mdl> for TypeMcpProvider {
                 args,
                 local: &model.local_model(),
                 global: &model.global_model(),
-                commander: commander,
-                cache: cache,
+                commander,
+                cache,
             })
         })
     }

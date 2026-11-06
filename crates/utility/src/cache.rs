@@ -142,8 +142,9 @@ pub enum Response {
     Data { data: TypeOperationClientResult },
 }
 
-pub type PokeType = Box<dyn Fn() -> Pin<Box<dyn Future<Output = Result<()>>>>>;
-pub type ResponseFunction = Box<dyn Fn(Response) -> Pin<Box<dyn Future<Output = Result<()>>>>>;
+pub type PokeType = Box<dyn Fn() -> Pin<Box<dyn Future<Output = Result<()>>>> + Send>;
+pub type ResponseFunction =
+    Box<dyn Fn(Response) -> Pin<Box<dyn Future<Output = Result<()>>>> + Send>;
 
 pub enum MessageToCache {
     WeAreBackOnline,
@@ -230,7 +231,7 @@ impl CacheStruct {
         &mut self,
         component_id: ProcessId,
         list_of_subscribtion: &'static [ResourceName],
-        poke: impl Fn() -> Pin<Box<dyn Future<Output = Result<()>>>> + 'static,
+        poke: impl Fn() -> Pin<Box<dyn Future<Output = Result<()>>>> + Send + 'static,
     ) -> Result<()> {
         self.sender
             .send(MessageToCache::Subscribe {
