@@ -225,7 +225,8 @@ where
         args: Value,
         model: &'a Mdl,
         commander: &'a Commander,
-    ) -> Pin<Box<dyn Future<Output = Result<Value>> + Send + 'a>> {
+        cache: &'a CacheStruct,
+    ) -> Pin<Box<dyn Future<Output = Result<Value>> + 'a>> {
         let tool_name = tool_name.to_owned();
         Box::pin(async move {
             let id = args
@@ -261,6 +262,7 @@ where
                 local: &wrapper.inner,
                 global: &ModelAccess::global_model(model),
                 commander,
+                cache,
             })
         })
     }

@@ -37,7 +37,8 @@ pub trait TraitMcpProvider<Mdl: Model>: Send + Sync + 'static {
         args: Value,
         model: &'a Mdl,
         commander: &'a Commander,
-    ) -> Pin<Box<dyn Future<Output = Result<Value>> + Send + 'a>>;
+        cache: &'a CacheStruct,
+    ) -> Pin<Box<dyn Future<Output = Result<Value>> + 'a>>;
 }
 
 pub struct CallInput<'a, LocalModel, GlobalModel> {
@@ -46,6 +47,7 @@ pub struct CallInput<'a, LocalModel, GlobalModel> {
     pub local: &'a LocalModel,
     pub global: &'a GlobalModel,
     pub commander: &'a Commander,
+    pub cache: &'a CacheStruct,
 }
 
 pub struct CallInputForFetch<'a, Input> {

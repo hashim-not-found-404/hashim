@@ -35,7 +35,6 @@ pub use typetag::serde;
 pub use utility::cache::CacheStruct;
 pub use utility::cache::CachingStrategy;
 pub use utility::cache::ProcessId;
-// TODO remove
 pub use utility::cache::ResourceName;
 pub use utility::cache::Response;
 pub use utility::cache::ResponseFunction;

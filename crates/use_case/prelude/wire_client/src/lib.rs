@@ -12,6 +12,7 @@ pub use paste::paste;
 pub use serde_json::Value;
 pub use typetag;
 pub use typetag::serde;
+pub use utility::cache::CacheStruct;
 pub use utility::cache::TraitOperationCacheInput;
 pub use utility::cache::TraitOperationCacheOk;
 pub use utility::cache::TypeOperationClientResult;

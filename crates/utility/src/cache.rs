@@ -7,6 +7,7 @@ use crate::handle_errors::handle_error;
 use crate::types::ReadAndSet;
 use anyhow::Result;
 use dyn_clone::DynClone;
+use dyn_clone::clone_trait_object;
 use infrastructure::actors::MpscReceiver;
 use infrastructure::actors::MpscSender;
 use infrastructure::actors::Receiver;
@@ -127,7 +128,7 @@ pub type TypeOperationClientOk = Arc<dyn TraitOperationClientOk>;
 pub type TypeOperationClientError = Box<dyn TraitOperationClientError>;
 pub type TypeOperationClientResult = Result<TypeOperationClientOk, TypeOperationClientError>;
 
-dyn_clone::clone_trait_object!(TraitOperationClientError);
+clone_trait_object!(TraitOperationClientError);
 
 pub enum MessageFromServer {
     Error(anyhow::Error),
@@ -177,16 +178,9 @@ pub enum CachingStrategy {
     WriteServerOnly,
 }
 
+#[derive(Clone)]
 pub struct CacheStruct {
     sender: MpscSender<MessageToCache>,
-}
-
-impl Clone for CacheStruct {
-    fn clone(&self) -> Self {
-        Self {
-            sender: self.sender.clone(),
-        }
-    }
 }
 
 impl CacheStruct {

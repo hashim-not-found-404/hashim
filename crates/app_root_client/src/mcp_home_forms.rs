@@ -1,5 +1,4 @@
 use crate::model::TypeGlobalModel;
-use crate::utils::COMMANDER;
 use crate::wire;
 use anyhow::Result;
 use schemars::JsonSchema;
@@ -13,6 +12,7 @@ use std::pin::Pin;
 use use_case_home_wire_client::FormLocalModel;
 use use_case_home_wire_client::Intent;
 use use_case_home_wire_client::Message;
+use utility::cache::CacheStruct;
 use utility::mcp::McpToolDef;
 use utility::mcp::TraitMcpProvider;
 use utility::mcp::error_to_mcp;
@@ -55,8 +55,9 @@ impl TraitMcpProvider<TypeGlobalModel> for TypeMcpProvider {
         tool_name: &str,
         args: Value,
         _model: &'a TypeGlobalModel,
-        _commander: &'a Commander,
-    ) -> Pin<Box<dyn Future<Output = Result<Value>> + Send + 'a>> {
+        commander: &'a Commander,
+        cache: &'a CacheStruct,
+    ) -> Pin<Box<dyn Future<Output = Result<Value>> + 'a>> {
         let tool_name = tool_name.to_owned();
         Box::pin(async move {
             match tool_name.as_str() {
@@ -64,7 +65,7 @@ impl TraitMcpProvider<TypeGlobalModel> for TypeMcpProvider {
                     let AddFormArgs { form_type } = parse_args(args)?;
                     let form = map_form_type_to_local_model(form_type);
 
-                    COMMANDER.sender_with_replier(Message::Intent(Intent::AddForm(form)));
+                    commander.sender_with_replier(Message::Intent(Intent::AddForm(form)));
 
                     Ok(to_value(Output {})?)
                 }

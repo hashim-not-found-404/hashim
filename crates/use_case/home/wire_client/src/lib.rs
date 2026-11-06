@@ -19,7 +19,9 @@ use use_case_home_client::effect;
 use use_case_home_client::global_apply;
 use use_case_home_client::local_apply;
 use use_case_home_client::update;
+use use_case_home_mcp::call;
 pub use use_case_home_mcp::form_sender;
+use use_case_home_mcp::tools;
 pub use use_case_home_ui::render_to_element;
 use use_case_prelude_wire_client::*;
 
@@ -95,9 +97,6 @@ impl EffectorTrait for WrapperEffect {
     }
 }
 
-use use_case_home_mcp::call;
-use use_case_home_mcp::tools;
-
 pub struct TypeMcpProvider;
 
 impl<Mdl: Model + ModelAccess> TraitMcpProvider<Mdl> for TypeMcpProvider {
@@ -111,7 +110,8 @@ impl<Mdl: Model + ModelAccess> TraitMcpProvider<Mdl> for TypeMcpProvider {
         args: Value,
         model: &'a Mdl,
         commander: &'a Commander,
-    ) -> Pin<Box<dyn Future<Output = Result<Value>> + Send + 'a>> {
+        cache: &'a CacheStruct,
+    ) -> Pin<Box<dyn Future<Output = Result<Value>> + 'a>> {
         let tool_name = tool_name.to_owned();
         Box::pin(async move {
             call(CallInput {
@@ -120,6 +120,7 @@ impl<Mdl: Model + ModelAccess> TraitMcpProvider<Mdl> for TypeMcpProvider {
                 local: &model.local_model(),
                 global: &model.global_model(),
                 commander: commander,
+                cache: cache,
             })
         })
     }

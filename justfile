@@ -147,7 +147,7 @@ changed:
 ###################################################################################################
 
 check:
-    RUSTFLAGS="-A warnings" cargo check --all-targets
+    RUSTFLAGS="-A warnings" cargo check
     RUSTFLAGS="-A warnings" cargo check -p app_root_client --target wasm32-unknown-unknown
 
 test:
@@ -165,7 +165,7 @@ all: check test warn test_cover
 ###################################################################################################
 
 check_p crate_name:
-    RUSTFLAGS="-A warnings" cargo check -p {{crate_name}} --all-targets
+    RUSTFLAGS="-A warnings" cargo check -p {{crate_name}}
 
 test_p crate_name:
     RUSTFLAGS="-A warnings" cargo test -p {{crate_name}} --all-targets
