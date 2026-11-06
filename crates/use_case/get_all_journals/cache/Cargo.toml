@@ -1,9 +1,9 @@
 [package]
 edition = "2024"
-name    = "use_case_get_all_journals_cache"
+name = "use_case_get_all_journals_cache"
 version = "0.1.0"
 
 [dependencies]
-serde.workspace                            = true
+serde.workspace = true
 use_case_get_all_journals_domain.workspace = true
-use_case_prelude_cache.workspace           = true
+use_case_prelude_cache.workspace = true

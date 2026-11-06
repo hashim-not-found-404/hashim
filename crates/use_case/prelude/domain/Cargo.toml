@@ -1,11 +1,11 @@
 [package]
 edition = "2024"
-name    = "use_case_prelude_domain"
+name = "use_case_prelude_domain"
 version = "0.1.0"
 
 [dependencies]
-anyhow.workspace         = true
+anyhow.workspace = true
 infrastructure.workspace = true
-kernel.workspace         = true
-typetag.workspace        = true
-utility.workspace        = true
+kernel.workspace = true
+typetag.workspace = true
+utility.workspace = true

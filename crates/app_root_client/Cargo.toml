@@ -1,44 +1,44 @@
 [package]
 edition = "2024"
-name    = "app_root_client"
+name = "app_root_client"
 version = "0.1.0"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 axum.workspace = true
 rmcp.workspace = true
-tokio          = { features = ["net"], workspace = true }
+tokio = { features = ["net"], workspace = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 console_error_panic_hook.workspace = true
-tracing-web.workspace              = true
+tracing-web.workspace = true
 
 [dependencies]
-cache.workspace          = true
+cache.workspace = true
 infrastructure.workspace = true
-kernel.workspace         = true
-utility.workspace        = true
-utility_ui.workspace     = true
+kernel.workspace = true
+utility.workspace = true
+utility_ui.workspace = true
 
-use_case_create_account_for_branch_wire_client.workspace  = true
-use_case_create_account_wire_client.workspace             = true
-use_case_create_branch_wire_client.workspace              = true
-use_case_create_company_wire_client.workspace             = true
-use_case_create_journal_entry_wire_client.workspace       = true
-use_case_create_journal_wire_client.workspace             = true
-use_case_error_handler_wire_client.workspace              = true
-use_case_get_all_accounts_wire_client.workspace           = true
-use_case_get_all_journals_wire_client.workspace           = true
+use_case_create_account_for_branch_wire_client.workspace = true
+use_case_create_account_wire_client.workspace = true
+use_case_create_branch_wire_client.workspace = true
+use_case_create_company_wire_client.workspace = true
+use_case_create_journal_entry_wire_client.workspace = true
+use_case_create_journal_wire_client.workspace = true
+use_case_error_handler_wire_client.workspace = true
+use_case_get_all_accounts_wire_client.workspace = true
+use_case_get_all_journals_wire_client.workspace = true
 use_case_get_companies_and_branches_wire_client.workspace = true
-use_case_home_wire_client.workspace                       = true
-use_case_select_default_company_wire_client.workspace     = true
-use_case_sign_in_wire_client.workspace                    = true
-use_case_sign_up_wire_client.workspace                    = true
+use_case_home_wire_client.workspace = true
+use_case_select_default_company_wire_client.workspace = true
+use_case_sign_in_wire_client.workspace = true
+use_case_sign_up_wire_client.workspace = true
 
-anyhow.workspace   = true
+anyhow.workspace = true
 schemars.workspace = true
-serde.workspace    = true
-tracing.workspace  = true
+serde.workspace = true
+tracing.workspace = true
 
-dioxus.workspace             = true
-serde_json.workspace         = true
+dioxus.workspace = true
+serde_json.workspace = true
 tracing-subscriber.workspace = true

@@ -1,14 +1,14 @@
 [package]
 edition = "2024"
-name    = "use_case_prelude_wire_client"
+name = "use_case_prelude_wire_client"
 version = "0.1.0"
 
 [dependencies]
-anyhow.workspace     = true
-cache.workspace      = true
-dioxus.workspace     = true
-kernel.workspace     = true
-paste.workspace      = true
+anyhow.workspace = true
+cache.workspace = true
+dioxus.workspace = true
+kernel.workspace = true
+paste.workspace = true
 serde_json.workspace = true
-typetag.workspace    = true
-utility.workspace    = true
+typetag.workspace = true
+utility.workspace = true

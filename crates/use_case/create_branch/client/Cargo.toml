@@ -1,10 +1,10 @@
 [package]
 edition = "2024"
-name    = "use_case_create_branch_client"
+name = "use_case_create_branch_client"
 version = "0.1.0"
 
 [dependencies]
-serde.workspace                                      = true
-use_case_create_branch_domain.workspace              = true
+serde.workspace = true
+use_case_create_branch_domain.workspace = true
 use_case_get_companies_and_branches_client.workspace = true
-use_case_prelude_client.workspace                    = true
+use_case_prelude_client.workspace = true

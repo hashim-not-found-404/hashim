@@ -1,11 +1,11 @@
 [package]
 edition = "2024"
-name    = "use_case_select_default_company_client"
+name = "use_case_select_default_company_client"
 version = "0.1.0"
 
 [dependencies]
-serde.workspace                                      = true
+serde.workspace = true
 use_case_get_companies_and_branches_client.workspace = true
 use_case_get_companies_and_branches_domain.workspace = true
-use_case_prelude_client.workspace                    = true
-use_case_select_default_company_domain.workspace     = true
+use_case_prelude_client.workspace = true
+use_case_select_default_company_domain.workspace = true

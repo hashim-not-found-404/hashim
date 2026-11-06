@@ -1,9 +1,9 @@
 [package]
 edition = "2024"
-name    = "use_case_create_account_for_branch_domain"
+name = "use_case_create_account_for_branch_domain"
 version = "0.1.0"
 
 [dependencies]
-accounting_engine.workspace       = true
-serde.workspace                   = true
+accounting_engine.workspace = true
+serde.workspace = true
 use_case_prelude_domain.workspace = true

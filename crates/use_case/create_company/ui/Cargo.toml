@@ -1,8 +1,8 @@
 [package]
 edition = "2024"
-name    = "use_case_create_company_ui"
+name = "use_case_create_company_ui"
 version = "0.1.0"
 
 [dependencies]
 use_case_create_company_client.workspace = true
-use_case_prelude_ui.workspace            = true
+use_case_prelude_ui.workspace = true

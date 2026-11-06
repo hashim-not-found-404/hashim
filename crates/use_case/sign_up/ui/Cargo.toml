@@ -1,8 +1,8 @@
 [package]
 edition = "2024"
-name    = "use_case_sign_up_ui"
+name = "use_case_sign_up_ui"
 version = "0.1.0"
 
 [dependencies]
-use_case_prelude_ui.workspace     = true
+use_case_prelude_ui.workspace = true
 use_case_sign_up_client.workspace = true

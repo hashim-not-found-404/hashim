@@ -1,10 +1,10 @@
 [package]
 edition = "2024"
-name    = "use_case_create_journal_entry_client"
+name = "use_case_create_journal_entry_client"
 version = "0.1.0"
 
 [dependencies]
-accounting_engine.workspace                    = true
-serde.workspace                                = true
+accounting_engine.workspace = true
+serde.workspace = true
 use_case_create_journal_entry_domain.workspace = true
-use_case_prelude_client.workspace              = true
+use_case_prelude_client.workspace = true

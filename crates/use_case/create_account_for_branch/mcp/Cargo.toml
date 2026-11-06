@@ -1,9 +1,9 @@
 [package]
 edition = "2024"
-name    = "use_case_create_account_for_branch_mcp"
+name = "use_case_create_account_for_branch_mcp"
 version = "0.1.0"
 
 [dependencies]
-serde.workspace                                     = true
+serde.workspace = true
 use_case_create_account_for_branch_client.workspace = true
-use_case_prelude_mcp.workspace                      = true
+use_case_prelude_mcp.workspace = true

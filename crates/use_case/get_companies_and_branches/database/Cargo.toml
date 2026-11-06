@@ -1,12 +1,12 @@
 [package]
 edition = "2024"
-name    = "use_case_get_companies_and_branches_database"
+name = "use_case_get_companies_and_branches_database"
 version = "0.1.0"
 
 [dependencies]
-serde.workspace                                      = true
+serde.workspace = true
 use_case_get_companies_and_branches_domain.workspace = true
-use_case_prelude_database.workspace                  = true
+use_case_prelude_database.workspace = true
 
 [dev-dependencies]
 tokio.workspace = true

@@ -1,28 +1,28 @@
 [package]
 edition = "2024"
-name    = "app_root_server"
+name = "app_root_server"
 version = "0.1.0"
 
 [dependencies]
-database.workspace       = true
+database.workspace = true
 infrastructure.workspace = true
-kernel.workspace         = true
-server.workspace         = true
-utility.workspace        = true
+kernel.workspace = true
+server.workspace = true
+utility.workspace = true
 
-use_case_create_account_for_branch_wire_server.workspace  = true
-use_case_create_account_wire_server.workspace             = true
-use_case_create_branch_wire_server.workspace              = true
-use_case_create_company_wire_server.workspace             = true
-use_case_create_journal_entry_wire_server.workspace       = true
-use_case_create_journal_wire_server.workspace             = true
-use_case_get_all_accounts_wire_server.workspace           = true
-use_case_get_all_journals_wire_server.workspace           = true
+use_case_create_account_for_branch_wire_server.workspace = true
+use_case_create_account_wire_server.workspace = true
+use_case_create_branch_wire_server.workspace = true
+use_case_create_company_wire_server.workspace = true
+use_case_create_journal_entry_wire_server.workspace = true
+use_case_create_journal_wire_server.workspace = true
+use_case_get_all_accounts_wire_server.workspace = true
+use_case_get_all_journals_wire_server.workspace = true
 use_case_get_companies_and_branches_wire_server.workspace = true
-use_case_sign_in_wire_server.workspace                    = true
-use_case_sign_up_wire_server.workspace                    = true
+use_case_sign_in_wire_server.workspace = true
+use_case_sign_up_wire_server.workspace = true
 
 anyhow.workspace = true
-paste.workspace  = true
+paste.workspace = true
 
 actix-web.workspace = true

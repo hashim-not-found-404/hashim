@@ -1,9 +1,9 @@
 [package]
 edition = "2024"
-name    = "use_case_error_handler_mcp"
+name = "use_case_error_handler_mcp"
 version = "0.1.0"
 
 [dependencies]
-serde.workspace                = true
-use_case_error_handler_client  = { path = "../client", version = "0.1.0" }
+serde.workspace = true
+use_case_error_handler_client = { path = "../client", version = "0.1.0" }
 use_case_prelude_mcp.workspace = true

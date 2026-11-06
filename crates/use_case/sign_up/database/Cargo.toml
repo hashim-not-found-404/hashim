@@ -1,11 +1,11 @@
 [package]
 edition = "2024"
-name    = "use_case_sign_up_database"
+name = "use_case_sign_up_database"
 version = "0.1.0"
 
 [dependencies]
 use_case_prelude_database.workspace = true
-use_case_sign_up_domain.workspace   = true
+use_case_sign_up_domain.workspace = true
 
 [dev-dependencies]
 tokio.workspace = true

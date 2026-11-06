@@ -1,14 +1,14 @@
 [package]
 edition = "2024"
-name    = "kernel"
+name = "kernel"
 version = "0.1.0"
 
 [dependencies]
 infrastructure.workspace = true
-utility.workspace        = true
+utility.workspace = true
 
-anyhow.workspace    = true
+anyhow.workspace = true
 dyn-clone.workspace = true
-schemars.workspace  = true
-serde.workspace     = true
-typetag.workspace   = true
+schemars.workspace = true
+serde.workspace = true
+typetag.workspace = true

@@ -1,10 +1,10 @@
 [package]
 edition = "2024"
-name    = "use_case_select_default_company_database"
+name = "use_case_select_default_company_database"
 version = "0.1.0"
 
 [dependencies]
-use_case_prelude_database.workspace              = true
+use_case_prelude_database.workspace = true
 use_case_select_default_company_domain.workspace = true
 
 [dev-dependencies]

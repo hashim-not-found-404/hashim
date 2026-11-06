@@ -1,11 +1,11 @@
 [package]
 edition = "2024"
-name    = "use_case_select_default_company_wire_client"
+name = "use_case_select_default_company_wire_client"
 version = "0.1.0"
 
 [dependencies]
-use_case_prelude_wire_client.workspace           = true
-use_case_select_default_company_cache.workspace  = true
+use_case_prelude_wire_client.workspace = true
+use_case_select_default_company_cache.workspace = true
 use_case_select_default_company_client.workspace = true
-use_case_select_default_company_mcp.workspace    = true
-use_case_select_default_company_ui.workspace     = true
+use_case_select_default_company_mcp.workspace = true
+use_case_select_default_company_ui.workspace = true
