@@ -4,6 +4,7 @@ name    = "use_case_create_journal_client"
 version = "0.1.0"
 
 [dependencies]
-serde.workspace                          = true
-use_case_create_journal_domain.workspace = true
-use_case_prelude_client.workspace        = true
+serde.workspace                            = true
+use_case_create_journal_domain.workspace   = true
+use_case_get_all_journals_client.workspace = true
+use_case_prelude_client.workspace          = true

@@ -10,9 +10,14 @@ use use_case_create_branch_domain::LocationError;
 use use_case_create_branch_domain::Ok;
 use use_case_create_branch_domain::ReadInput;
 use use_case_create_branch_domain::ReadOutput;
+use use_case_get_companies_and_branches_client::fetch;
 use use_case_prelude_client::*;
 
-const RESOURCES_NAME_TO_LISTEN: &[ResourceName] = &[new_resource_name("branches")];
+const RESOURCES_NAME_TO_LISTEN: &[ResourceName] = &[
+    new_resource_name("companies"),
+    new_resource_name("branches"),
+];
+
 pub async fn check_input<
     Ch: Cache,
     DBReader: for<'a> DatabaseRead<Db<'a> = Ch, Input = ReadInput, Output = ReadOutput>,
@@ -192,6 +197,9 @@ pub enum Effect {
     },
     Subscribe(ProcessId),
     UnSubscribe(ProcessId),
+    FetchFromServer {
+        user_uuid: UserUuid,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -432,7 +440,10 @@ pub fn update(
                 (local_change, vec![], effect)
             }
             Intent::Subscribe => {
-                let effect = vec![Effect::Subscribe(local_model.process_id)];
+                let mut effect = vec![Effect::Subscribe(local_model.process_id)];
+                if let Some(user_uuid) = global_model.user_uuid.clone() {
+                    effect.push(Effect::FetchFromServer { user_uuid });
+                }
                 (vec![], vec![], effect)
             }
             Intent::UnSubscribe => {
@@ -524,6 +535,9 @@ pub async fn effect(msg: Effect, replier: Replier, context: UiContext) -> Result
         }
         Effect::UnSubscribe(process_id) => {
             handle_unsubscribe::<Wire>(process_id, context).await?;
+        }
+        Effect::FetchFromServer { user_uuid } => {
+            fetch(context.cache.clone(), user_uuid).await?;
         }
     }
     Ok(())

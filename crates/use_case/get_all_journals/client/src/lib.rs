@@ -2,7 +2,7 @@ use std::any::Any;
 use std::pin::Pin;
 use std::sync::Arc;
 use use_case_get_all_journals_domain::Error;
-use use_case_get_all_journals_domain::Input;
+pub use use_case_get_all_journals_domain::Input;
 use use_case_get_all_journals_domain::MyResult;
 use use_case_get_all_journals_domain::Ok;
 use use_case_get_all_journals_domain::ReadInput;
