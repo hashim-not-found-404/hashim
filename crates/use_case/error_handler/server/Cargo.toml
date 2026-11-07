@@ -4,5 +4,5 @@ name = "use_case_error_handler_server"
 version = "0.1.0"
 
 [dependencies]
-use_case_error_handler_domain = { path = "../domain", version = "0.1.0" }
+use_case_error_handler_domain.workspace = true
 use_case_prelude_server.workspace = true

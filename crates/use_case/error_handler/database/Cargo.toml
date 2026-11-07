@@ -4,7 +4,7 @@ name = "use_case_error_handler_database"
 version = "0.1.0"
 
 [dependencies]
-use_case_error_handler_domain = { path = "../domain", version = "0.1.0" }
+use_case_error_handler_domain.workspace = true
 use_case_prelude_database.workspace = true
 
 [dev-dependencies]

@@ -233,7 +233,7 @@ new_use_case name:
 
 [private]
 print_layer crate_name layer_name:
-    @echo "use_case_{{crate_name}}_{{layer_name}} = { path = \"./crates/use_case/{{crate_name}}/{{layer_name}}\" }"
+    @echo "use_case_{{crate_name}}_{{layer_name}}.path = \"./crates/use_case/{{crate_name}}/{{layer_name}}\""
 
 print_layers name:
     @just print_layer {{name}} database
